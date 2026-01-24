@@ -1,0 +1,257 @@
+#!/bin/bash
+# Magic Slash CLI
+# Manage your Magic Slash configuration
+
+VERSION="__VERSION__"
+CONFIG_FILE="$HOME/.config/magic-slash/config.json"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+DIM='\033[2m'
+NC='\033[0m' # No Color
+
+# Menu options
+OPTIONS=("Edit BACKEND path" "Edit FRONTEND path" "Quit")
+SELECTED=0
+
+# Hide cursor
+hide_cursor() {
+  printf '\033[?25l'
+}
+
+# Show cursor
+show_cursor() {
+  printf '\033[?25h'
+}
+
+# Clean exit
+cleanup() {
+  show_cursor
+  echo ""
+  exit 0
+}
+
+trap cleanup EXIT INT TERM
+
+# Print logo
+print_logo() {
+  echo ""
+  echo "  __  __             _        _____ _           _     "
+  echo " |  \/  |           (_)      / ____| |         | |    "
+  echo " | \  / | __ _  __ _ _  ___ | (___ | | __ _ ___| |__  "
+  echo " | |\/| |/ _\` |/ _\` | |/ __|  \\___ \\| |/ _\` / __| '_ \\ "
+  echo " | |  | | (_| | (_| | | (__  ____) | | (_| \\__ \\ | | |"
+  echo " |_|  |_|\\__,_|\\__, |_|\\___||_____/|_|\\__,_|___/_| |_|"
+  echo "                __/ |                                 "
+  echo "               |___/                                  "
+  echo ""
+}
+
+# Read configuration
+read_config() {
+  if [ -f "$CONFIG_FILE" ]; then
+    BACKEND=$(jq -r '.repositories.backend // "not configured"' "$CONFIG_FILE")
+    FRONTEND=$(jq -r '.repositories.frontend // "not configured"' "$CONFIG_FILE")
+  else
+    BACKEND="not configured"
+    FRONTEND="not configured"
+  fi
+}
+
+# Display header
+display_header() {
+  clear
+  print_logo
+  echo -e "${BOLD}  Magic Slash v${VERSION}${NC}"
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo -e "${DIM}Current configuration:${NC}"
+  echo -e "  Backend:  ${CYAN}${BACKEND}${NC}"
+  echo -e "  Frontend: ${CYAN}${FRONTEND}${NC}"
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo -e "${DIM}Use ↑/↓ to navigate, Enter to select${NC}"
+  echo ""
+}
+
+# Display menu
+display_menu() {
+  for i in "${!OPTIONS[@]}"; do
+    if [ $i -eq $SELECTED ]; then
+      echo -e "  ${GREEN}→ ${BOLD}${OPTIONS[$i]}${NC}"
+    else
+      echo -e "    ${DIM}${OPTIONS[$i]}${NC}"
+    fi
+  done
+}
+
+# Validate path
+validate_path() {
+  local path="$1"
+
+  # Expand ~
+  path="${path/#\~/$HOME}"
+
+  if [ ! -d "$path" ]; then
+    echo -e "  ${YELLOW}⚠️  Directory does not exist: $path${NC}"
+    read -p "  Continue anyway? (y/N) " confirm < /dev/tty
+    [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && return 1
+  elif [ ! -d "$path/.git" ]; then
+    echo -e "  ${YELLOW}⚠️  $path is not a git repository${NC}"
+    read -p "  Continue anyway? (y/N) " confirm < /dev/tty
+    [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && return 1
+  fi
+
+  echo "$path"
+  return 0
+}
+
+# Update configuration
+update_config() {
+  local key="$1"
+  local value="$2"
+
+  # Create config directory if needed
+  mkdir -p "$(dirname "$CONFIG_FILE")"
+
+  # Create config file if it doesn't exist
+  if [ ! -f "$CONFIG_FILE" ]; then
+    echo '{"repositories": {}}' > "$CONFIG_FILE"
+  fi
+
+  # Update the value
+  jq ".repositories.$key = \"$value\"" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+}
+
+# Edit path
+edit_path() {
+  local field="$1"
+  local display_name="$2"
+
+  show_cursor
+  echo ""
+  echo -e "  ${BOLD}Edit $display_name path${NC}"
+  echo ""
+
+  if [ "$field" = "backend" ]; then
+    current="$BACKEND"
+  else
+    current="$FRONTEND"
+  fi
+
+  echo -e "  Current value: ${CYAN}$current${NC}"
+  echo ""
+  read -p "  New path (empty to cancel): " new_path < /dev/tty
+
+  if [ -z "$new_path" ]; then
+    echo -e "  ${DIM}Cancelled${NC}"
+    sleep 1
+    return
+  fi
+
+  # Expand ~
+  new_path="${new_path/#\~/$HOME}"
+
+  # Validate
+  if [ ! -d "$new_path" ]; then
+    echo -e "  ${YELLOW}⚠️  Directory does not exist: $new_path${NC}"
+    read -p "  Continue anyway? (y/N) " confirm < /dev/tty
+    if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+      echo -e "  ${DIM}Cancelled${NC}"
+      sleep 1
+      return
+    fi
+  elif [ ! -d "$new_path/.git" ]; then
+    echo -e "  ${YELLOW}⚠️  $new_path is not a git repository${NC}"
+    read -p "  Continue anyway? (y/N) " confirm < /dev/tty
+    if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+      echo -e "  ${DIM}Cancelled${NC}"
+      sleep 1
+      return
+    fi
+  fi
+
+  # Update config
+  update_config "$field" "$new_path"
+  echo -e "  ${GREEN}✅ $display_name path updated${NC}"
+  sleep 1
+
+  # Reload config
+  read_config
+}
+
+# Handle key press
+handle_input() {
+  local key
+
+  # Read first character
+  read -rsn1 key
+
+  # Check for escape sequence (arrow keys)
+  if [[ $key == $'\x1b' ]]; then
+    read -rsn2 key
+    case $key in
+      '[A') # Up arrow
+        ((SELECTED--))
+        [ $SELECTED -lt 0 ] && SELECTED=$((${#OPTIONS[@]} - 1))
+        ;;
+      '[B') # Down arrow
+        ((SELECTED++))
+        [ $SELECTED -ge ${#OPTIONS[@]} ] && SELECTED=0
+        ;;
+    esac
+  elif [[ $key == '' ]]; then # Enter key
+    return 1 # Signal selection made
+  elif [[ $key == 'q' ]] || [[ $key == 'Q' ]]; then
+    SELECTED=$((${#OPTIONS[@]} - 1)) # Select "Quitter"
+    return 1
+  fi
+
+  return 0
+}
+
+# Main menu loop
+main_menu() {
+  hide_cursor
+
+  while true; do
+    display_header
+    display_menu
+
+    if ! handle_input; then
+      case $SELECTED in
+        0) # Backend
+          edit_path "backend" "BACKEND"
+          hide_cursor
+          ;;
+        1) # Frontend
+          edit_path "frontend" "FRONTEND"
+          hide_cursor
+          ;;
+        2) # Quit
+          break
+          ;;
+      esac
+    fi
+  done
+}
+
+# Check for jq
+if ! command -v jq &> /dev/null; then
+  echo -e "${RED}❌ jq is required but not installed.${NC}"
+  echo "   Install it with: brew install jq (macOS) / apt install jq (Linux)"
+  exit 1
+fi
+
+# Main
+read_config
+main_menu
+echo ""
+echo -e "${GREEN}Goodbye!${NC}"
+echo ""

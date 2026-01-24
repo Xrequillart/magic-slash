@@ -132,23 +132,23 @@ Next steps:
 | ----------------------------------- | ------------------------------------ |
 | `~/.claude/settings.json`           | Atlassian & GitHub MCP configuration |
 | `~/.config/magic-slash/config.json` | Repository paths                     |
+| `~/.local/bin/magic-slash`          | CLI command to manage configuration  |
 | `~/.claude/commands/start.md`       | Slash command /start                 |
 | `~/.claude/commands/commit.md`      | Slash command /commit                |
 | `~/.claude/commands/done.md`        | Slash command /done                  |
 
 ### Modify repositories
 
+Run the `magic-slash` command to modify your repository paths:
+
 ```bash
-nano ~/.config/magic-slash/config.json
+magic-slash
 ```
 
-```json
-{
-  "repositories": {
-    "backend": "/path/to/your/backend",
-    "frontend": "/path/to/your/frontend"
-  }
-}
+Use the arrow keys to navigate and Enter to select. You can also edit the config file directly:
+
+```bash
+nano ~/.config/magic-slash/config.json
 ```
 
 ## Project structure
@@ -172,7 +172,8 @@ magic-slash/
 │   └── CNAME             # Custom domain config
 ├── install/
 │   ├── install.sh        # Installation script
-│   └── uninstall.sh      # Uninstallation script
+│   ├── uninstall.sh      # Uninstallation script
+│   └── magic-slash       # CLI script
 ├── CHANGELOG.md          # Version history
 ├── CODE_OF_CONDUCT.md    # Community guidelines
 ├── CONTRIBUTING.md       # Contribution guide

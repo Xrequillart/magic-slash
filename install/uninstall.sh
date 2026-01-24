@@ -30,6 +30,7 @@ echo "  • ~/.claude/commands/done.md"
 echo "  • ~/.config/magic-slash/ (entire folder)"
 echo "  • MCP Atlassian (via claude mcp remove)"
 echo "  • MCP GitHub (via claude mcp remove)"
+echo "  • magic-slash CLI command"
 echo ""
 read -p "Continue? (y/N) " CONFIRM < /dev/tty
 echo ""
@@ -101,11 +102,33 @@ fi
 echo ""
 
 # ============================================
-# 4. BACKUP CLEANUP (OPTIONAL)
+# 4. CLI REMOVAL
+# ============================================
+echo "4. Removing magic-slash CLI..."
+echo ""
+
+CLI_REMOVED=false
+for dir in "$HOME/.local/bin" "/usr/local/bin"; do
+  if [ -f "$dir/magic-slash" ]; then
+    rm "$dir/magic-slash"
+    echo "   ✓ Removed: $dir/magic-slash"
+    CLI_REMOVED=true
+    break
+  fi
+done
+
+if [ "$CLI_REMOVED" = false ]; then
+  echo "   - magic-slash CLI not found"
+fi
+
+echo ""
+
+# ============================================
+# 5. BACKUP CLEANUP (OPTIONAL)
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "4. Cleaning up backup files..."
+echo "5. Cleaning up backup files..."
 echo ""
 
 BACKUP_COUNT=$(find "$HOME/.claude" -name "*.backup.*" 2>/dev/null | wc -l | tr -d ' ')
