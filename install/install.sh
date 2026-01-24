@@ -1,0 +1,565 @@
+#!/bin/bash
+# Magic Slash - Installation script
+# Usage: curl -fsSL https://magic-slash.io/install.sh | bash
+
+set -e
+
+echo ""
+echo "  __  __             _        _____ _           _     "
+echo " |  \/  |           (_)      / ____| |         | |    "
+echo " | \  / | __ _  __ _ _  ___ | (___ | | __ _ ___| |__  "
+echo " | |\/| |/ _\` |/ _\` | |/ __|  \___ \| |/ _\` / __| '_ \ "
+echo " | |  | | (_| | (_| | | (__  ____) | | (_| \__ \ | | |"
+echo " |_|  |_|\__,_|\__, |_|\___||_____/|_|\__,_|___/_| |_|"
+echo "                __/ |                                 "
+echo "               |___/                                  "
+echo ""
+echo "  Installing /start, /commit and /done commands"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# ============================================
+# 1. PREREQUISITES CHECK
+# ============================================
+echo "1. Checking prerequisites..."
+echo ""
+
+check_command() {
+  if ! command -v "$1" &> /dev/null; then
+    echo "   ❌ $1 is not installed"
+    return 1
+  else
+    echo "   ✓ $1"
+    return 0
+  fi
+}
+
+MISSING=false
+
+check_command "claude" || MISSING=true
+check_command "node" || MISSING=true
+check_command "git" || MISSING=true
+check_command "jq" || MISSING=true
+
+echo ""
+
+if [ "$MISSING" = true ]; then
+  echo "❌ Some prerequisites are missing. Please install them before continuing."
+  echo ""
+  echo "   • Claude Code : https://claude.ai/download"
+  echo "   • Node.js     : https://nodejs.org"
+  echo "   • Git         : https://git-scm.com"
+  echo "   • jq          : brew install jq (macOS) / apt install jq (Linux)"
+  echo ""
+  exit 1
+fi
+
+echo "✅ All prerequisites are installed"
+echo ""
+
+# ============================================
+# 2. MCP ATLASSIAN CONFIGURATION (JIRA + CONFLUENCE)
+# ============================================
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "2. MCP Atlassian configuration (Jira + Confluence)"
+echo ""
+
+CLAUDE_CONFIG="$HOME/.claude.json"
+
+# Check if MCP Atlassian is already configured
+SKIP_JIRA=false
+if [ -f "$CLAUDE_CONFIG" ] && jq -e '.mcpServers.atlassian' "$CLAUDE_CONFIG" > /dev/null 2>&1; then
+  echo "   MCP Atlassian already configured (OAuth)"
+  echo ""
+  read -p "   Reconfigure? (y/N) " RECONFIG
+  [ "$RECONFIG" != "y" ] && SKIP_JIRA=true
+  echo ""
+fi
+
+if [ "$SKIP_JIRA" = false ]; then
+  echo "   This MCP uses the official Atlassian server with OAuth."
+  echo "   → No API Token needed!"
+  echo "   → Authentication will happen in your browser on first use."
+  echo ""
+  echo "   Prerequisites:"
+  echo "   • An Atlassian Cloud site (Jira and/or Confluence)"
+  echo "   • Being logged into your Atlassian account in your browser"
+  echo ""
+  read -p "   Continue installation? (Y/n) " CONTINUE_JIRA
+
+  if [ "$CONTINUE_JIRA" = "n" ] || [ "$CONTINUE_JIRA" = "N" ]; then
+    echo "   ⏭️  MCP Atlassian configuration skipped"
+  else
+    # Add MCP Atlassian via claude mcp add (HTTP server with OAuth)
+    claude mcp add atlassian \
+      --scope user \
+      --transport http \
+      https://mcp.atlassian.com/v1/mcp
+
+    echo "   ✅ MCP Atlassian configured"
+    echo ""
+    echo "   ℹ️  On first use, an OAuth window will open in your browser"
+    echo "      to authorize Claude to access your Atlassian workspace."
+  fi
+else
+  echo "   ✅ MCP Atlassian kept"
+fi
+
+echo ""
+
+# ============================================
+# 3. MCP GITHUB CONFIGURATION
+# ============================================
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "3. MCP GitHub configuration (required for /done)"
+echo ""
+
+SKIP_GITHUB=false
+if [ -f "$CLAUDE_CONFIG" ] && jq -e '.mcpServers.github' "$CLAUDE_CONFIG" > /dev/null 2>&1; then
+  echo "   MCP GitHub already configured"
+  echo ""
+  read -p "   Reconfigure? (y/N) " RECONFIG_GH
+  [ "$RECONFIG_GH" != "y" ] && SKIP_GITHUB=true
+  echo ""
+fi
+
+if [ "$SKIP_GITHUB" = false ]; then
+  echo "   To get your GitHub Personal Access Token:"
+  echo "   → https://github.com/settings/tokens"
+  echo "   (Required permissions: repo, read:org)"
+  echo ""
+
+  read -sp "   GitHub Personal Access Token: " GITHUB_TOKEN
+  echo ""
+  echo ""
+
+  # Add MCP GitHub via claude mcp add
+  claude mcp add github \
+    --scope user \
+    -e GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN" \
+    -- npx -y @modelcontextprotocol/server-github
+
+  echo "   ✅ MCP GitHub configured"
+else
+  echo "   ✅ MCP GitHub kept"
+fi
+
+echo ""
+
+# ============================================
+# 4. REPOSITORIES CONFIGURATION
+# ============================================
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "4. Repositories configuration"
+echo ""
+
+CONFIG_DIR="$HOME/.config/magic-slash"
+CONFIG_FILE="$CONFIG_DIR/config.json"
+
+# Check if already configured
+SKIP_REPOS=false
+if [ -f "$CONFIG_FILE" ]; then
+  BACKEND=$(jq -r '.repositories.backend // "not configured"' "$CONFIG_FILE")
+  FRONTEND=$(jq -r '.repositories.frontend // "not configured"' "$CONFIG_FILE")
+
+  echo "   Repositories already configured:"
+  echo "   • Backend  : $BACKEND"
+  echo "   • Frontend : $FRONTEND"
+  echo ""
+  read -p "   Reconfigure? (y/N) " RECONFIG_REPOS
+  [ "$RECONFIG_REPOS" != "y" ] && SKIP_REPOS=true
+  echo ""
+fi
+
+if [ "$SKIP_REPOS" = false ]; then
+  read -p "   BACKEND repo path (e.g.: ~/projects/my-api): " BACKEND_PATH
+  read -p "   FRONTEND repo path (e.g.: ~/projects/my-app): " FRONTEND_PATH
+  echo ""
+
+  # Expand ~
+  BACKEND_PATH="${BACKEND_PATH/#\~/$HOME}"
+  FRONTEND_PATH="${FRONTEND_PATH/#\~/$HOME}"
+
+  # Check that paths exist
+  if [ ! -d "$BACKEND_PATH" ]; then
+    echo "   ⚠️  Backend directory does not exist: $BACKEND_PATH"
+    read -p "   Continue anyway? (y/N) " CONTINUE
+    [ "$CONTINUE" != "y" ] && exit 1
+  fi
+
+  if [ ! -d "$FRONTEND_PATH" ]; then
+    echo "   ⚠️  Frontend directory does not exist: $FRONTEND_PATH"
+    read -p "   Continue anyway? (y/N) " CONTINUE
+    [ "$CONTINUE" != "y" ] && exit 1
+  fi
+
+  # Check that they are git repos
+  if [ ! -d "$BACKEND_PATH/.git" ]; then
+    echo "   ⚠️  $BACKEND_PATH is not a git repo"
+    read -p "   Continue anyway? (y/N) " CONTINUE
+    [ "$CONTINUE" != "y" ] && exit 1
+  fi
+
+  if [ ! -d "$FRONTEND_PATH/.git" ]; then
+    echo "   ⚠️  $FRONTEND_PATH is not a git repo"
+    read -p "   Continue anyway? (y/N) " CONTINUE
+    [ "$CONTINUE" != "y" ] && exit 1
+  fi
+
+  # Create config file
+  mkdir -p "$CONFIG_DIR"
+  cat > "$CONFIG_FILE" <<EOF
+{
+  "repositories": {
+    "backend": "$BACKEND_PATH",
+    "frontend": "$FRONTEND_PATH"
+  }
+}
+EOF
+
+  echo "   ✅ Repositories configured"
+else
+  echo "   ✅ Repositories kept"
+fi
+
+echo ""
+
+# ============================================
+# 5. SLASH COMMANDS INSTALLATION
+# ============================================
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "5. Installing /start, /commit and /done commands"
+echo ""
+
+COMMANDS_DIR="$HOME/.claude/commands"
+mkdir -p "$COMMANDS_DIR"
+
+# --- /start installation ---
+START_CMD="$COMMANDS_DIR/start.md"
+SKIP_START=false
+
+if [ -f "$START_CMD" ]; then
+  echo "   ⚠️  The /start command already exists"
+  read -p "   Overwrite? (y/N) " OVERWRITE
+  if [ "$OVERWRITE" != "y" ]; then
+    echo "   ✅ /start command kept"
+    SKIP_START=true
+  else
+    cp "$START_CMD" "$START_CMD.backup.$(date +%s)"
+  fi
+  echo ""
+fi
+
+if [ "$SKIP_START" != true ]; then
+  cat > "$START_CMD" << 'SLASH_CMD'
+---
+description: Start a task from a Jira ticket
+argument-hint: <TICKET-ID>
+allowed-tools: Bash(*), mcp__atlassian__*
+---
+
+# Magic Slash - /start
+
+You are an assistant that helps start a development task from a Jira ticket.
+
+## Step 1: Retrieve the Jira ticket
+
+Use the MCP Atlassian tool `mcp__atlassian__getJiraIssue` to retrieve ticket details: $ARGUMENTS
+
+Note: If you don't know the `cloudId`, first use `mcp__atlassian__getAccessibleAtlassianResources` to get it.
+
+## Step 2: Analyze the ticket
+
+Determine the ticket scope (BACK, FRONT, or BOTH) by analyzing:
+- **Labels**: "backend", "frontend", "fullstack", "api", "ui"...
+- **Jira Components**: if defined in the project
+- **Keywords in title/description**:
+  - BACK: API, endpoint, database, migration, service, controller, model, query
+  - FRONT: component, UI, style, CSS, page, form, button, view, screen
+
+If no clear indication, ask the user: "Does this ticket concern BACKEND, FRONTEND, or BOTH?"
+
+## Step 3: Read the configuration
+
+Read the configuration file to get repo paths:
+```bash
+cat ~/.config/magic-slash/config.json
+```
+
+## Step 4: Create worktrees
+
+For each relevant repo (based on step 2 analysis):
+
+1. Go to the repo directory
+2. Get the repo folder name
+3. Fetch latest changes
+4. Create the worktree AT THE SAME LEVEL as the main repo
+
+```bash
+cd {REPO_PATH}
+REPO_NAME=$(basename "$PWD")
+git fetch origin
+git worktree add -b feature/$ARGUMENTS ../${REPO_NAME}-$ARGUMENTS origin/main
+```
+
+Example: If the repo is `/projects/my-api`, the worktree will be `/projects/my-api-PROJ-1234`
+
+## Step 5: Summary and agent context
+
+Once worktrees are created, display a summary:
+- Ticket: [ID] - [Title]
+- Type: [Bug/Feature/Task...]
+- Scope: [BACK/FRONT/BOTH]
+- Worktree(s) created: [paths]
+
+Then generate a contextual prompt to start working on the task, based on:
+- The ticket description
+- The acceptance criteria
+- The expected type of modification
+SLASH_CMD
+
+  echo "   ✅ /start command installed"
+fi
+
+# --- /commit installation ---
+COMMIT_CMD="$COMMANDS_DIR/commit.md"
+SKIP_COMMIT=false
+
+if [ -f "$COMMIT_CMD" ]; then
+  echo "   ⚠️  The /commit command already exists"
+  read -p "   Overwrite? (y/N) " OVERWRITE_COMMIT
+  if [ "$OVERWRITE_COMMIT" != "y" ]; then
+    echo "   ✅ /commit command kept"
+    SKIP_COMMIT=true
+  else
+    cp "$COMMIT_CMD" "$COMMIT_CMD.backup.$(date +%s)"
+  fi
+  echo ""
+fi
+
+if [ "$SKIP_COMMIT" != true ]; then
+  cat > "$COMMIT_CMD" << 'SLASH_CMD_COMMIT'
+---
+description: Create an atomic commit with a conventional message
+allowed-tools: Bash(*)
+---
+
+# Magic Slash - /commit
+
+You are an assistant that creates atomic commits with conventional messages.
+
+## Step 1: Check repository status
+
+```bash
+git status
+```
+
+If no changes are detected, inform the user that there is nothing to commit.
+
+## Step 2: Stage changes
+
+```bash
+git add -A
+```
+
+## Step 3: Analyze changes
+
+```bash
+git diff --cached
+```
+
+Analyze modified files to understand the nature of changes.
+
+## Step 4: Generate commit message
+
+Generate a commit message following these rules:
+
+**Format**: `type(scope): description`
+
+**Language**: English only
+
+**Constraints**:
+- Single line
+- No Co-Authored-By
+- Concise and descriptive
+
+**Available types**:
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation only
+- `style`: Formatting, missing semicolons, etc. (no code change)
+- `refactor`: Code refactoring (neither new feature nor bug fix)
+- `test`: Adding or modifying tests
+- `chore`: Maintenance, dependencies, configuration
+
+**Scope**: The main file or modified component (e.g.: `auth`, `api`, `user-service`)
+
+**Examples**:
+- `feat(auth): add JWT token refresh mechanism`
+- `fix(api): handle null response from payment gateway`
+- `refactor(user-service): extract validation logic`
+- `chore(deps): update axios to 1.6.0`
+
+## Step 5: Create the commit
+
+```bash
+git commit -m "generated message"
+```
+
+## Step 6: Confirm
+
+```bash
+git log -1 --oneline
+```
+
+Display the created commit for confirmation.
+SLASH_CMD_COMMIT
+
+  echo "   ✅ /commit command installed"
+fi
+
+# --- /done installation ---
+DONE_CMD="$COMMANDS_DIR/done.md"
+SKIP_DONE=false
+
+if [ -f "$DONE_CMD" ]; then
+  echo "   ⚠️  The /done command already exists"
+  read -p "   Overwrite? (y/N) " OVERWRITE_DONE
+  if [ "$OVERWRITE_DONE" != "y" ]; then
+    echo "   ✅ /done command kept"
+    SKIP_DONE=true
+  else
+    cp "$DONE_CMD" "$DONE_CMD.backup.$(date +%s)"
+  fi
+  echo ""
+fi
+
+if [ "$SKIP_DONE" != true ]; then
+  cat > "$DONE_CMD" << 'SLASH_CMD_DONE'
+---
+description: Push commits, create PR and update Jira ticket
+allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
+---
+
+# Magic Slash - /done
+
+You are an assistant that finalizes a task by pushing commits, creating a PR and updating the Jira ticket.
+
+## Step 1: Get current branch
+
+```bash
+git branch --show-current
+```
+
+Verify you are not on `main` or `master`. If so, inform the user they must be on a feature branch.
+
+## Step 2: Push to remote
+
+```bash
+git push -u origin <branch-name>
+```
+
+If push fails, display the error and stop the process.
+
+## Step 3: List commits for PR
+
+```bash
+git log origin/main..HEAD --oneline
+```
+
+Retrieve the list of commits that will be included in the PR.
+
+## Step 4: Create Pull Request via MCP GitHub
+
+Use the MCP GitHub tool `mcp__github__create_pull_request` to create the PR:
+
+- **Title**: Based on branch name or first commit
+  - If branch contains a ticket ID (e.g.: `feature/PROJ-123`), use format: `[PROJ-123] Description`
+- **Description**: Generated from commits
+  - List commits with their messages
+  - Add a "Changes" section summarizing modifications
+- **Base**: `main` (or `master` depending on repo)
+- **Head**: Current branch
+
+## Step 5: Extract ticket ID
+
+Analyze branch name to extract Jira ticket ID:
+- Pattern: `feature/PROJ-123`, `fix/PROJ-456`, `PROJ-789-description`
+- Regex: `[A-Z]+-\d+`
+
+If no ticket ID is found, ask the user if they still want to update a Jira ticket.
+
+## Step 6: Update Jira ticket
+
+If a ticket ID is found, use MCP Atlassian tools:
+
+Note: If you don't know the `cloudId`, first use `mcp__atlassian__getAccessibleAtlassianResources` to get it.
+
+1. **Get available transitions** with `mcp__atlassian__getTransitionsForJiraIssue`
+2. **Change status** to "To be reviewed" (or equivalent) with `mcp__atlassian__transitionJiraIssue`
+3. **Add a comment** with the PR link via `mcp__atlassian__addCommentToJiraIssue`
+
+If "To be reviewed" status doesn't exist, try:
+- "In Review"
+- "Code Review"
+- "Review"
+
+## Step 7: Final summary
+
+Display a summary of what was done:
+
+```
+✅ Task completed!
+
+📌 Branch  : feature/PROJ-123
+🔗 PR      : https://github.com/org/repo/pull/42
+🎫 Ticket  : PROJ-123 → To be reviewed
+
+Next steps:
+1. Request a review from your colleagues
+2. Wait for approval and CI checks
+3. Merge the PR once approved
+```
+SLASH_CMD_DONE
+
+  echo "   ✅ /done command installed"
+fi
+
+echo ""
+
+# ============================================
+# 6. DONE
+# ============================================
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "🎉 Installation complete!"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Next steps:"
+echo ""
+echo "  1. Restart Claude Code (to load MCPs)"
+echo ""
+echo "  2. On first /start, an OAuth window will open"
+echo "     to connect your Atlassian account"
+echo ""
+echo "  3. Launch Claude Code and use:"
+echo "     /start PROJ-1234    → Start a Jira task"
+echo "     /commit             → Commit with conventional message"
+echo "     /done               → Push, PR and update Jira"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Created files:"
+echo "  • MCP Atlassian  : ~/.claude.json (OAuth - Jira + Confluence)"
+echo "  • MCP GitHub     : ~/.claude.json"
+echo "  • Repos config   : ~/.config/magic-slash/config.json"
+echo "  • /start command : ~/.claude/commands/start.md"
+echo "  • /commit command: ~/.claude/commands/commit.md"
+echo "  • /done command  : ~/.claude/commands/done.md"
+echo ""
