@@ -1,0 +1,4854 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Magic Slash - Slash Commands pour Claude Code</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link href="fonts/Avenir/font.css" rel="stylesheet" />
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+      :root {
+        --bg: #0a0a0b;
+        --bg-secondary: #141416;
+        --bg-tertiary: #1c1c1f;
+        --text: #ffffff;
+        --text-secondary: #a1a1aa;
+        --accent: #6366f1;
+        --accent-hover: #818cf8;
+        --purple: #a855f7;
+        --green: #22c55e;
+        --red: #ef4444;
+        --border: #27272a;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          "Avenir",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* Language Toggle */
+      [data-lang="en"] {
+        display: none;
+      }
+      [data-lang="fr"] {
+        display: inline;
+      }
+      html[lang="en"] [data-lang="en"] {
+        display: inline;
+      }
+      html[lang="en"] [data-lang="fr"] {
+        display: none;
+      }
+
+      .block[data-lang="en"] {
+        display: none;
+      }
+      .block[data-lang="fr"] {
+        display: block;
+      }
+      html[lang="en"] .block[data-lang="en"] {
+        display: block;
+      }
+      html[lang="en"] .block[data-lang="fr"] {
+        display: none;
+      }
+
+      .flex[data-lang="en"] {
+        display: none;
+      }
+      .flex[data-lang="fr"] {
+        display: flex;
+      }
+      html[lang="en"] .flex[data-lang="en"] {
+        display: flex;
+      }
+      html[lang="en"] .flex[data-lang="fr"] {
+        display: none;
+      }
+
+      h2[data-lang="en"] {
+        display: none;
+      }
+      h2[data-lang="fr"] {
+        display: block;
+      }
+      html[lang="en"] h2[data-lang="en"] {
+        display: block;
+      }
+      html[lang="en"] h2[data-lang="fr"] {
+        display: none;
+      }
+
+      .bg-orbs {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: -1;
+        overflow: hidden;
+      }
+
+      .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.5;
+      }
+
+      .orb-1 {
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(
+          circle,
+          rgba(99, 102, 241, 0.4) 0%,
+          transparent 70%
+        );
+        top: -200px;
+        right: -100px;
+        animation: float1 8s ease-in-out infinite;
+      }
+
+      .orb-2 {
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(
+          circle,
+          rgba(168, 85, 247, 0.35) 0%,
+          transparent 70%
+        );
+        top: 40%;
+        left: -150px;
+        animation: float2 10s ease-in-out infinite;
+      }
+
+      .orb-3 {
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(
+          circle,
+          rgba(34, 197, 94, 0.3) 0%,
+          transparent 70%
+        );
+        bottom: 10%;
+        right: -100px;
+        animation: float3 9s ease-in-out infinite;
+      }
+
+      .orb-4 {
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(
+          circle,
+          rgba(168, 85, 247, 0.25) 0%,
+          transparent 70%
+        );
+        top: 60%;
+        left: 30%;
+        animation: float4 7s ease-in-out infinite;
+      }
+
+      @keyframes float1 {
+        0%,
+        100% {
+          transform: translate(0, 0) scale(1);
+        }
+        50% {
+          transform: translate(-50px, 50px) scale(1.1);
+        }
+      }
+
+      @keyframes float2 {
+        0%,
+        100% {
+          transform: translate(0, 0) scale(1);
+        }
+        50% {
+          transform: translate(30px, -40px) scale(1.05);
+        }
+      }
+
+      @keyframes float3 {
+        0%,
+        100% {
+          transform: translate(0, 0) scale(1);
+        }
+        50% {
+          transform: translate(-40px, -30px) scale(1.08);
+        }
+      }
+
+      @keyframes float4 {
+        0%,
+        100% {
+          transform: translate(0, 0) scale(1);
+        }
+        50% {
+          transform: translate(50px, 30px) scale(1.1);
+        }
+      }
+
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      /* Header */
+      header {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1001;
+        pointer-events: none;
+      }
+
+      .header-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        background: rgba(20, 20, 25, 0.8);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        pointer-events: auto;
+      }
+
+      .logo {
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+        padding: 4px 8px;
+      }
+
+      .logo-img {
+        height: 24px;
+        width: auto;
+      }
+
+      /* Navigation Menu */
+      .nav-menu {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+
+      .nav-link {
+        display: flex;
+        align-items: center;
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 10px 18px;
+        border-radius: 50px;
+        transition: all 0.2s;
+      }
+
+      .nav-link:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .nav-link.active {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .nav-link svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      /* Language Selector */
+      .lang-selector {
+        position: relative;
+      }
+
+      .lang-selector-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-secondary);
+        background: transparent;
+        border: none;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 10px 14px;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .lang-selector-btn:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .lang-selector-btn svg {
+        width: 14px;
+        height: 14px;
+        transition: transform 0.2s;
+      }
+
+      .lang-selector.open .lang-selector-btn svg {
+        transform: rotate(180deg);
+      }
+
+      .lang-selector-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        min-width: 140px;
+        background: rgba(20, 20, 25, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 6px;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      .lang-selector.open .lang-selector-dropdown {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+
+      .lang-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 10px 12px;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .lang-option:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .lang-option.active {
+        color: var(--text);
+        background: rgba(99, 102, 241, 0.2);
+      }
+
+      /* Terminal Hero - Full Screen */
+      .terminal-hero {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 24px;
+        box-sizing: border-box;
+      }
+
+      .terminal-hero .workflow {
+        margin: 0;
+      }
+
+      /* Hero */
+      .hero {
+        padding: 100px 0 80px;
+        text-align: center;
+      }
+
+      .badge {
+        display: inline-block;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        font-size: clamp(36px, 6vw, 56px);
+        font-weight: 700;
+        line-height: 1.1;
+        margin-bottom: 20px;
+      }
+
+      .gradient-text {
+        background: linear-gradient(135deg, var(--accent), var(--purple));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .hero p {
+        font-size: 18px;
+        color: var(--text-secondary);
+        max-width: 650px;
+        margin: 0 auto 40px;
+      }
+
+      /* Install Box */
+      .install-box {
+        background: rgba(20, 20, 25, 0.8);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        max-width: 700px;
+        margin: 0 auto 40px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      .install-box code {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+        color: var(--green);
+        flex: 1;
+        text-align: left;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .install-box .copy-btn {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        padding: 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+      }
+
+      .install-box .copy-btn:hover {
+        color: var(--text);
+        border-color: var(--accent);
+      }
+
+      .install-box .copy-btn svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      /* Animated title */
+      .title-commands {
+        display: inline-block;
+        min-width: 280px;
+      }
+
+      /* Terminal Animation */
+      .workflow {
+        margin-top: 40px;
+        position: relative;
+      }
+
+      .workflow-demo {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        width: 700px;
+        max-width: 100%;
+        margin: 0 auto;
+        box-shadow:
+          0 20px 80px -20px rgba(99, 102, 241, 0.4),
+          0 30px 60px -30px rgba(168, 85, 247, 0.3);
+        opacity: 0;
+        transform: translateY(60px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+        position: relative;
+      }
+
+      .workflow-demo.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .workflow-header {
+        background: var(--bg-tertiary);
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .workflow-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--border);
+      }
+
+      .workflow-dot.red {
+        background: #ef4444;
+      }
+      .workflow-dot.yellow {
+        background: #eab308;
+      }
+      .workflow-dot.green {
+        background: #22c55e;
+      }
+
+      .phase-indicator {
+        margin-left: auto;
+        display: flex;
+        gap: 6px;
+      }
+
+      .phase-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--border);
+        transition: all 0.3s ease;
+      }
+
+      .phase-dot.active {
+        width: 24px;
+        border-radius: 4px;
+      }
+
+      .phase-dot.phase-1.active {
+        background: var(--accent);
+      }
+      .phase-dot.phase-2.active {
+        background: var(--purple);
+      }
+      .phase-dot.phase-3.active {
+        background: var(--green);
+      }
+
+      .workflow-content {
+        padding: 24px 24px 60px 24px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+        text-align: left;
+        height: 380px;
+        overflow-y: auto;
+      }
+
+      .workflow-line {
+        margin-bottom: 6px;
+        opacity: 0;
+        transform: translateY(10px);
+        transition:
+          opacity 0.4s ease,
+          transform 0.4s ease;
+        white-space: nowrap;
+      }
+
+      .workflow-line.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .loader {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: middle;
+      }
+
+      .loader.purple {
+        border-top-color: var(--purple);
+      }
+      .loader.green {
+        border-top-color: var(--green);
+      }
+
+      .loader.done {
+        display: none;
+      }
+
+      .checkmark {
+        color: var(--green);
+        display: none;
+        vertical-align: middle;
+      }
+
+      .checkmark.visible {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .checkmark svg {
+        width: 14px;
+        height: 14px;
+        stroke-width: 3;
+      }
+
+      /* Diff styles pour agents coding */
+      .agents-diff-container {
+        margin-top: 8px;
+        margin-left: 22px;
+        opacity: 0;
+        max-height: 0;
+        overflow: hidden;
+        transition:
+          opacity 0.3s ease,
+          max-height 0.3s ease;
+      }
+
+      .agents-diff-container.visible {
+        opacity: 1;
+        max-height: 300px;
+      }
+
+      .diff-file {
+        margin-bottom: 6px;
+        opacity: 0;
+        transform: translateY(5px);
+        transition:
+          opacity 0.3s ease,
+          transform 0.3s ease;
+      }
+
+      .diff-file.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .diff-filename {
+        color: var(--text-secondary);
+        font-size: 11px;
+        margin-bottom: 2px;
+      }
+
+      .diff-line {
+        font-size: 11px;
+        padding: 1px 6px;
+        border-radius: 2px;
+        margin: 1px 0;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        white-space: nowrap;
+      }
+
+      .diff-line.visible {
+        opacity: 1;
+      }
+
+      .diff-line.removed {
+        color: var(--red);
+        background: rgba(239, 68, 68, 0.1);
+      }
+
+      .diff-line.added {
+        color: var(--green);
+        background: rgba(34, 197, 94, 0.1);
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Claude Code CLI Style */
+      .cli-prompt {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 4px;
+      }
+
+      .cli-prompt-icon {
+        color: var(--accent);
+        font-weight: bold;
+        flex-shrink: 0;
+      }
+
+      .cli-prompt-icon.purple {
+        color: var(--purple);
+      }
+      .cli-prompt-icon.green {
+        color: var(--green);
+      }
+
+      .cli-prompt-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .cli-prompt-label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .command {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      .command.typing::after {
+        content: "▋";
+        animation: blink-cursor 0.8s infinite;
+        margin-left: 2px;
+        color: var(--accent);
+      }
+
+      .command.typing.purple::after {
+        color: var(--purple);
+      }
+      .command.typing.green::after {
+        color: var(--green);
+      }
+
+      @keyframes blink-cursor {
+        0%,
+        50% {
+          opacity: 1;
+        }
+        51%,
+        100% {
+          opacity: 0;
+        }
+      }
+
+      .cli-response {
+        padding-left: 24px;
+        border-left: 2px solid var(--border);
+        margin-left: 8px;
+        margin-top: 8px;
+        margin-bottom: 8px;
+      }
+
+      .cli-response.purple {
+        border-left-color: var(--purple);
+      }
+      .cli-response.green {
+        border-left-color: var(--green);
+      }
+
+      .cli-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+        color: var(--text-secondary);
+      }
+
+      .cli-status-icon {
+        width: 16px;
+        text-align: center;
+        flex-shrink: 0;
+      }
+
+      .cli-status-icon.success {
+        color: var(--green);
+        display: inline-flex;
+      }
+      .cli-status-icon.success svg {
+        width: 14px;
+        height: 14px;
+        stroke-width: 3;
+      }
+      .cli-status-icon.info {
+        color: var(--accent);
+      }
+      .cli-status-icon.purple {
+        color: var(--purple);
+      }
+
+      .cli-status-text {
+        flex: 1;
+      }
+
+      .cli-status-result {
+        color: var(--highlight, #f59e0b);
+        font-weight: 500;
+      }
+
+      .cli-section-title {
+        color: var(--text);
+        font-weight: 500;
+        margin-bottom: 6px;
+        margin-top: 8px;
+      }
+
+      .cli-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+        padding-left: 8px;
+        color: var(--text-secondary);
+      }
+
+      .cli-agents {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(99, 102, 241, 0.1);
+        border-radius: 6px;
+        margin-top: 8px;
+        color: var(--accent);
+        transition:
+          background 0.4s ease,
+          color 0.4s ease;
+      }
+
+      .cli-agents.completed {
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--green);
+      }
+
+      .cli-agents .agents-text {
+        transition: color 0.4s ease;
+      }
+
+      .cli-agents.completed .agents-text {
+        color: var(--green);
+      }
+
+      .cli-success-banner {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        background: rgba(34, 197, 94, 0.1);
+        border-radius: 6px;
+        margin-top: 8px;
+        color: var(--green);
+        font-weight: 500;
+      }
+
+      .success-check {
+        display: inline-flex;
+        align-items: center;
+        color: var(--green);
+      }
+
+      .success-check svg {
+        width: 18px;
+        height: 18px;
+        stroke-width: 3;
+      }
+
+      /* Sparkles/Confetti effect */
+      .sparkles-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        pointer-events: none;
+        z-index: 100;
+      }
+
+      .sparkle {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        animation: sparkle-burst 0.8s ease-out forwards;
+      }
+
+      .sparkle.star {
+        width: 0;
+        height: 0;
+        border-radius: 0;
+        background: transparent !important;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-bottom: 8px solid var(--sparkle-color, #a855f7);
+      }
+
+      @keyframes sparkle-burst {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(0);
+          opacity: 0;
+        }
+      }
+
+      .cli-success-banner {
+        position: relative;
+        overflow: visible;
+      }
+
+      .cli-success-banner.celebrate {
+        animation: celebrate-pulse 0.5s ease-out;
+      }
+
+      @keyframes celebrate-pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      /* Animation d'apparition des éléments CLI */
+      .cli-prompt,
+      .cli-response,
+      .cli-status,
+      .cli-section-title,
+      .cli-item,
+      .cli-agents,
+      .cli-success-banner {
+        opacity: 0;
+        transform: translateY(8px);
+        transition:
+          opacity 0.3s ease,
+          transform 0.3s ease;
+      }
+
+      .cli-prompt.visible,
+      .cli-response.visible,
+      .cli-status.visible,
+      .cli-section-title.visible,
+      .cli-item.visible,
+      .cli-agents.visible,
+      .cli-success-banner.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .cli-status .result {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .cli-status .result.visible {
+        opacity: 1;
+      }
+
+      .output {
+        color: var(--text-secondary);
+      }
+
+      .highlight {
+        color: #f59e0b;
+      }
+
+      .result {
+        display: none;
+      }
+
+      .replay-btn {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        padding: 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      .replay-btn.visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .replay-btn:hover {
+        border-color: var(--accent);
+        color: var(--text);
+      }
+
+      .replay-btn svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      /* Commands Section */
+      .commands {
+        padding: 100px 0;
+      }
+
+      .commands h2 {
+        text-align: center;
+        font-size: 32px;
+        margin-bottom: 16px;
+      }
+
+      .commands > .container > p {
+        text-align: center;
+        color: var(--text-secondary);
+        margin-bottom: 60px;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .commands-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+      }
+
+      .command-card {
+        background: rgba(20, 20, 25, 0.8);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 32px 24px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      .command-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--accent);
+      }
+
+      .command-card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+
+      .command-card.start .command-card-icon {
+        background: rgba(99, 102, 241, 0.15);
+        color: var(--accent);
+      }
+
+      .command-card.commit .command-card-icon {
+        background: rgba(168, 85, 247, 0.15);
+        color: var(--purple);
+      }
+
+      .command-card.done .command-card-icon {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--green);
+      }
+
+      .command-card-icon svg {
+        width: 24px;
+        height: 24px;
+      }
+
+      .command-card h3 {
+        font-size: 22px;
+        margin-bottom: 8px;
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      .command-card.start h3 {
+        color: var(--accent);
+      }
+      .command-card.commit h3 {
+        color: var(--purple);
+      }
+      .command-card.done h3 {
+        color: var(--green);
+      }
+
+      .command-card > p {
+        color: var(--text-secondary);
+        font-size: 15px;
+        margin-bottom: 20px;
+        line-height: 1.6;
+      }
+
+      .command-card ul {
+        list-style: none;
+      }
+
+      .command-card li {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+      }
+
+      .command-card li svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        margin-top: 3px;
+      }
+
+      .command-card.start li svg {
+        color: var(--accent);
+      }
+      .command-card.commit li svg {
+        color: var(--purple);
+      }
+      .command-card.done li svg {
+        color: var(--green);
+      }
+
+      @media (max-width: 900px) {
+        .commands-grid {
+          grid-template-columns: 1fr;
+          max-width: 400px;
+          margin: 0 auto;
+        }
+      }
+
+      /* CTA Section */
+      .cta {
+        padding: 80px 0;
+        text-align: center;
+      }
+
+      .cta-box {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 60px 40px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .cta-box::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background:
+          radial-gradient(
+            circle at 30% 50%,
+            rgba(99, 102, 241, 0.1) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 70% 50%,
+            rgba(168, 85, 247, 0.1) 0%,
+            transparent 50%
+          );
+        pointer-events: none;
+      }
+
+      .cta h2 {
+        font-size: 28px;
+        margin-bottom: 16px;
+        position: relative;
+      }
+
+      .cta p {
+        color: var(--text-secondary);
+        margin-bottom: 32px;
+        position: relative;
+      }
+
+      .cta-buttons {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
+        position: relative;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 28px;
+        border-radius: 50px;
+        font-size: 15px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent), var(--purple));
+        color: white;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.5);
+      }
+
+      .btn-secondary {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      .btn-secondary:hover {
+        border-color: var(--accent);
+        background: var(--bg-secondary);
+      }
+
+      .btn svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      /* Footer */
+      footer {
+        padding: 40px 0;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 14px;
+        border-top: 1px solid var(--border);
+      }
+
+      footer a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      footer a:hover {
+        text-decoration: underline;
+      }
+
+      .footer-links {
+        display: flex;
+        justify-content: center;
+        gap: 24px;
+        margin-bottom: 16px;
+      }
+
+      /* Sparkle trail */
+      .sparkle {
+        position: fixed;
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 1;
+      }
+
+      .sparkle::before,
+      .sparkle::after {
+        content: "";
+        position: absolute;
+        background: currentColor;
+      }
+
+      .sparkle::before {
+        width: 100%;
+        height: 2px;
+        top: 50%;
+        left: 0;
+        transform: translateY(-50%);
+      }
+
+      .sparkle::after {
+        width: 2px;
+        height: 100%;
+        left: 50%;
+        top: 0;
+        transform: translateX(-50%);
+      }
+
+      @keyframes sparkle-fade {
+        0% {
+          opacity: 1;
+          transform: scale(1) rotate(0deg);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(0) rotate(180deg);
+        }
+      }
+
+      /* Zoom Effect */
+      .zoom-spacer {
+        height: 300vh;
+        position: relative;
+        pointer-events: none;
+      }
+
+      .page-content {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .page-content.visible {
+        opacity: 1;
+      }
+
+      .workflow-demo.zoom-mode {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(var(--zoom-scale, 2.5));
+        z-index: 1000;
+        max-width: 700px;
+        width: 90vw;
+        transition: none;
+        opacity: 1;
+      }
+
+      .workflow-demo.zoom-mode.transitioning {
+        transition: transform 0.1s ease-out;
+      }
+
+      .zoom-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: var(--bg);
+        z-index: 999;
+        pointer-events: none;
+        opacity: 1;
+        transition: opacity 0.3s ease;
+      }
+
+      .zoom-overlay.hidden {
+        opacity: 0;
+      }
+
+      /* Intro Elements (Logo + Tagline) */
+      .intro-logo {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1002;
+        opacity: 1;
+        transition: opacity 0.4s ease;
+      }
+
+      .intro-logo img {
+        height: 180px;
+        width: auto;
+        filter: drop-shadow(0 0 50px rgba(99, 102, 241, 0.4));
+      }
+
+      .intro-logo.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .intro-tagline {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1002;
+        text-align: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.4s ease;
+        padding: 0 24px;
+      }
+
+      .intro-tagline.visible {
+        opacity: 1;
+      }
+
+      .intro-tagline h2 {
+        font-size: clamp(28px, 4vw, 48px);
+        font-weight: 700;
+        line-height: 1.2;
+        color: var(--text);
+        max-width: 700px;
+        margin: 0 auto;
+        text-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+      }
+
+      .intro-tagline .highlight {
+        background: linear-gradient(135deg, var(--accent), var(--purple));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      @media (max-width: 768px) {
+        .intro-logo img {
+          height: 100px;
+        }
+
+        .intro-tagline h2 {
+          font-size: 22px;
+        }
+      }
+
+      .scroll-indicator {
+        position: fixed;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1001;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-secondary);
+        font-size: 13px;
+        opacity: 0;
+        animation: fadeInIndicator 0.5s ease 1s forwards;
+      }
+
+      .scroll-indicator.hidden {
+        opacity: 0 !important;
+        pointer-events: none;
+        animation: none !important;
+      }
+
+      .scroll-indicator .mouse {
+        width: 24px;
+        height: 40px;
+        border: 2px solid var(--text-secondary);
+        border-radius: 12px;
+        position: relative;
+      }
+
+      .scroll-indicator .mouse::before {
+        content: "";
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 4px;
+        height: 8px;
+        background: var(--accent);
+        border-radius: 2px;
+        animation: scrollWheel 1.5s ease-in-out infinite;
+      }
+
+      @keyframes scrollWheel {
+        0%,
+        100% {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+        50% {
+          opacity: 0.3;
+          transform: translateX(-50%) translateY(10px);
+        }
+      }
+
+      @keyframes fadeInIndicator {
+        to {
+          opacity: 1;
+        }
+      }
+
+      body.zoom-active {
+        overflow-x: hidden;
+      }
+
+      header,
+      .hero,
+      .commands {
+        transition: opacity 0.4s ease;
+      }
+
+      body.zoom-active header,
+      body.zoom-active .hero,
+      body.zoom-active .commands {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      body.zoom-complete header,
+      body.zoom-complete .hero,
+      body.zoom-complete .commands {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .nav-menu {
+          display: none;
+        }
+
+        .header-content {
+          padding: 6px 10px;
+        }
+
+        .logo-img {
+          height: 28px;
+        }
+
+        .hero {
+          padding: 60px 0 40px;
+        }
+
+        .workflow-content {
+          font-size: 11px;
+          padding: 16px;
+        }
+
+        .cta-box {
+          padding: 40px 24px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .lang-toggle {
+          padding: 6px 10px;
+        }
+      }
+
+      /* Documentation Modal */
+      .doc-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 2000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+      }
+
+      .doc-modal-overlay.open {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .doc-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.95);
+        width: 90%;
+        max-width: 1100px;
+        max-height: 85vh;
+        background: rgba(20, 20, 25, 0.9);
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        z-index: 2001;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+      }
+
+      .doc-modal-overlay.open + .doc-modal,
+      .doc-modal.open {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      .doc-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 24px 32px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .doc-modal-header h2 {
+        font-size: 24px;
+        font-weight: 700;
+      }
+
+      .doc-modal-close {
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        transition: all 0.2s;
+      }
+
+      .doc-modal-close:hover {
+        background: rgba(255, 255, 255, 0.2);
+        color: var(--text);
+      }
+
+      .doc-modal-close svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .doc-modal-container {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .doc-sidebar {
+        width: 220px;
+        flex-shrink: 0;
+        padding: 16px;
+        margin: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+
+      .doc-sidebar-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+      }
+
+      .doc-sidebar-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .doc-nav-group {
+        margin-bottom: 16px;
+      }
+
+      .doc-nav-group:last-child {
+        margin-bottom: 0;
+      }
+
+      .doc-nav-group-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-secondary);
+        padding: 8px 14px 6px;
+        opacity: 0.7;
+      }
+
+      .doc-sidebar-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 50px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      .doc-sidebar-link:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+      }
+
+      .doc-sidebar-link.active {
+        background: rgba(99, 102, 241, 0.15);
+        color: var(--accent);
+      }
+
+      .doc-sidebar-link svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      }
+
+      .doc-modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      .doc-modal-body::-webkit-scrollbar {
+        display: none;
+      }
+
+      @media (max-width: 768px) {
+        .doc-sidebar {
+          display: none;
+        }
+      }
+
+      /* Doc Modal Content Styles */
+      .doc-section {
+        width: 100%;
+        padding: 32px;
+        padding-bottom: 48px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .doc-section:last-child {
+        border-bottom: none;
+      }
+
+      .doc-section h3 {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid var(--accent);
+      }
+
+      .doc-section h3 svg {
+        width: 24px;
+        height: 24px;
+        color: var(--accent);
+      }
+
+      .doc-section h4 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 32px 0 16px;
+        color: var(--text);
+      }
+
+      .doc-section h4:first-of-type {
+        margin-top: 0;
+      }
+
+      .doc-section p {
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+        line-height: 1.7;
+      }
+
+      .doc-section ul,
+      .doc-section ol {
+        list-style: none;
+        margin-bottom: 16px;
+      }
+
+      .doc-section li {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+        line-height: 1.6;
+      }
+
+      .doc-section li svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        margin-top: 4px;
+        color: var(--green);
+      }
+
+      .doc-section li.red svg {
+        color: var(--red);
+      }
+
+      .doc-section ol {
+        counter-reset: doc-counter;
+      }
+
+      .doc-section ol li {
+        counter-increment: doc-counter;
+      }
+
+      .doc-section ol li::before {
+        content: counter(doc-counter);
+        background: var(--accent);
+        color: white;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 600;
+        flex-shrink: 0;
+      }
+
+      .doc-section ol li svg {
+        display: none;
+      }
+
+      .doc-code-block {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 20px;
+      }
+
+      .doc-code-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .doc-code-header span {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 600;
+      }
+
+      .doc-code-header .copy-btn {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text-secondary);
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      }
+
+      .doc-code-header .copy-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: var(--text);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .doc-code-header .copy-btn svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .doc-code-content {
+        padding: 16px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+        color: var(--text);
+        overflow-x: auto;
+      }
+
+      .doc-command-detail {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 20px;
+      }
+
+      .doc-command-detail h4 {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 18px;
+        margin: 0 0 12px 0;
+      }
+
+      .doc-command-detail.start h4 {
+        color: var(--accent);
+      }
+      .doc-command-detail.commit h4 {
+        color: var(--purple);
+      }
+      .doc-command-detail.done h4 {
+        color: var(--green);
+      }
+
+      .doc-command-detail ol li::before {
+        background: var(--accent);
+      }
+
+      .doc-command-detail.commit ol li::before {
+        background: var(--purple);
+      }
+
+      .doc-command-detail.done ol li::before {
+        background: var(--green);
+      }
+
+      /* Timeline */
+      .doc-timeline {
+        position: relative;
+        padding-left: 40px;
+      }
+
+      .doc-timeline::before {
+        content: "";
+        position: absolute;
+        left: 15px;
+        top: 12px;
+        bottom: 12px;
+        width: 2px;
+        background: var(--purple);
+        border-radius: 2px;
+        opacity: 0.5;
+      }
+
+      .doc-timeline-item {
+        position: relative;
+        padding-bottom: 24px;
+      }
+
+      .doc-timeline-item:last-child {
+        padding-bottom: 0;
+      }
+
+      .doc-timeline-dot {
+        position: absolute;
+        left: -40px;
+        top: 4px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 700;
+        color: white;
+        background: var(--purple);
+        box-shadow: 0 0 16px rgba(168, 85, 247, 0.5);
+      }
+
+      .doc-timeline-content {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px 24px;
+      }
+
+      .doc-timeline-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--purple);
+      }
+
+      .doc-timeline-desc {
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      /* FAQ Styles */
+      .doc-faq-item {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 16px;
+      }
+
+      .doc-faq-item h4 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 12px 0;
+        color: var(--text);
+        font-size: 15px;
+      }
+
+      .doc-faq-item h4 svg {
+        width: 18px;
+        height: 18px;
+        color: var(--purple);
+        flex-shrink: 0;
+      }
+
+      .doc-faq-item p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .doc-faq-item code {
+        background: rgba(99, 102, 241, 0.15);
+        color: var(--accent);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+      }
+
+      /* Conventional Commits Styles */
+      .doc-commit-type {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 20px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 12px;
+      }
+
+      .doc-commit-type code {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--green);
+        background: rgba(34, 197, 94, 0.15);
+        padding: 4px 10px;
+        border-radius: 6px;
+        flex-shrink: 0;
+        min-width: 80px;
+        text-align: center;
+      }
+
+      .doc-commit-type span {
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .doc-commit-example {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 12px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+        color: var(--green);
+      }
+
+      /* Config File Styles */
+      .doc-config-block {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 20px;
+      }
+
+      .doc-config-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--text-secondary);
+        font-weight: 600;
+      }
+
+      .doc-config-header svg {
+        width: 14px;
+        height: 14px;
+        color: var(--accent);
+      }
+
+      .doc-config-content {
+        padding: 16px 20px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+        line-height: 1.7;
+        color: var(--text-secondary);
+        white-space: pre-wrap;
+      }
+
+      .doc-config-content pre {
+        margin: 0;
+        padding: 0;
+        font-family: inherit;
+        font-size: inherit;
+        line-height: inherit;
+        color: inherit;
+        background: transparent;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body class="zoom-active">
+    <div class="zoom-overlay"></div>
+
+    <!-- Intro Elements -->
+    <div class="intro-logo">
+      <img src="logo.svg" alt="Magic Slash" />
+    </div>
+    <div class="intro-tagline">
+      <h2 data-lang="fr">
+        <span class="highlight">Trois slash commands</span> qui automatisent ton
+        workflow
+      </h2>
+      <h2 data-lang="en">
+        <span class="highlight">Three slash commands</span> that automate your
+        workflow
+      </h2>
+    </div>
+
+    <div class="scroll-indicator hidden">
+      <div class="mouse"></div>
+      <span data-lang="fr">Scrollez</span>
+      <span data-lang="en">Scroll</span>
+    </div>
+    <div class="zoom-spacer"></div>
+    <div class="bg-orbs">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+      <div class="orb orb-4"></div>
+    </div>
+
+    <header>
+      <div class="header-content">
+        <a href="index.html" class="logo">
+          <img src="logo.svg" alt="Magic Slash" class="logo-img" />
+        </a>
+        <nav class="nav-menu">
+          <a href="index.html" class="nav-link active">
+            <span data-lang="fr">Accueil</span>
+            <span data-lang="en">Home</span>
+          </a>
+          <a href="#" class="nav-link" id="doc-link">Documentation</a>
+          <a
+            href="https://github.com/xrequillart/magic-slash"
+            class="nav-link"
+            target="_blank"
+            >GitHub</a
+          >
+        </nav>
+        <div class="lang-selector" id="lang-selector">
+          <button class="lang-selector-btn" id="lang-selector-btn">
+            <span data-lang="fr">FR</span>
+            <span data-lang="en">EN</span>
+            <i data-feather="chevron-down"></i>
+          </button>
+          <div class="lang-selector-dropdown">
+            <button class="lang-option" data-value="fr">Français</button>
+            <button class="lang-option" data-value="en">English</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- Terminal Section - Full Screen -->
+      <section class="terminal-hero">
+        <section class="workflow">
+          <div class="workflow-demo">
+            <div class="workflow-header">
+              <span class="workflow-dot red"></span>
+              <span class="workflow-dot yellow"></span>
+              <span class="workflow-dot green"></span>
+            </div>
+            <div class="workflow-content" id="terminal-content">
+              <!-- Phase 1: /start -->
+              <div class="workflow-line phase-1-line cli-prompt">
+                <span class="cli-prompt-icon">❯</span>
+                <span class="command" data-text="/start PROJ-42"></span>
+              </div>
+
+              <div class="workflow-line phase-1-line cli-response">
+                <div class="cli-status phase-1-status-1">
+                  <span class="cli-status-icon"
+                    ><span class="loader"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span class="cli-status-text"
+                    >Fetching Jira ticket PROJ-42...</span
+                  >
+                </div>
+                <div class="cli-status phase-1-status-2">
+                  <span class="cli-status-icon"
+                    ><span class="loader"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span class="cli-status-text">Analysing ticket...</span>
+                  <span class="cli-status-result result"
+                    >BOTH (Backend + Frontend)</span
+                  >
+                </div>
+                <div class="cli-section-title phase-1-status-3">
+                  Creating worktrees:
+                </div>
+                <div class="cli-item phase-1-status-4">
+                  <span class="cli-status-icon"
+                    ><span class="loader"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span>/projects/project-back-PROJ-42</span>
+                </div>
+                <div class="cli-item phase-1-status-5">
+                  <span class="cli-status-icon"
+                    ><span class="loader"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span>/projects/project-front-PROJ-42</span>
+                </div>
+                <div
+                  class="cli-status phase-1-status-6"
+                  style="margin-top: 8px"
+                >
+                  <span class="cli-status-icon success"
+                    ><i data-feather="check"></i
+                  ></span>
+                  <span class="cli-status-text">Ready! Starting work...</span>
+                </div>
+                <div class="cli-agents phase-1-status-7">
+                  <span class="cli-status-icon"
+                    ><span class="loader"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span class="agents-text">2 agents coding...</span>
+                </div>
+                <div class="agents-diff-container">
+                  <div class="diff-file" data-diff-file="1">
+                    <div class="diff-filename">src/api/users.ts</div>
+                    <div class="diff-line removed">
+                      - return users.slice(0, 10);
+                    </div>
+                    <div class="diff-line added">
+                      + return paginate(users, page, limit);
+                    </div>
+                  </div>
+                  <div class="diff-file" data-diff-file="2">
+                    <div class="diff-filename">src/api/pagination.ts</div>
+                    <div class="diff-line added">
+                      +export function paginate&lt;T&gt;(items: T[], page:
+                      number, limit: number): T[] {
+                    </div>
+                    <div class="diff-line added">
+                      + const start = (page - 1) * limit;
+                    </div>
+                    <div class="diff-line added">
+                      + return items.slice(start, start + limit);
+                    </div>
+                    <div class="diff-line added">+}</div>
+                  </div>
+                  <div class="diff-file" data-diff-file="3">
+                    <div class="diff-filename">src/components/UserList.tsx</div>
+                    <div class="diff-line removed">
+                      - const users = await fetchUsers();
+                    </div>
+                    <div class="diff-line added">
+                      + const { users, total } = await fetchUsers(page);
+                    </div>
+                    <div class="diff-line added">
+                      + &lt;Pagination total={total} current={page} /&gt;
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Phase 2: /commit (Back) -->
+              <div
+                class="workflow-line phase-2-line cli-prompt"
+                style="margin-top: 16px"
+              >
+                <span class="cli-prompt-icon purple">❯</span>
+                <span class="command purple" data-text="/commit"></span>
+              </div>
+
+              <div class="workflow-line phase-2-line cli-response purple">
+                <div
+                  class="cli-section-title phase-2-status-0"
+                  style="margin-top: 0"
+                >
+                  project-back-PROJ-42
+                </div>
+                <div class="cli-status phase-2-status-1">
+                  <span class="cli-status-icon"
+                    ><span class="loader purple"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span class="cli-status-text">Staging changes...</span>
+                  <span class="cli-status-result result">3 files staged</span>
+                </div>
+                <div class="cli-status phase-2-status-2">
+                  <span class="cli-status-icon"
+                    ><span class="loader purple"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span class="cli-status-text"
+                    >Generating commit message...</span
+                  >
+                </div>
+                <div class="cli-status phase-2-status-3">
+                  <span class="cli-status-icon success"
+                    ><i data-feather="check"></i
+                  ></span>
+                  <span class="cli-status-text" style="color: var(--text)"
+                    >feat(api): add user pagination endpoint</span
+                  >
+                </div>
+                <div class="cli-status phase-2-status-4">
+                  <span class="cli-status-icon"
+                    ><span class="loader purple"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span class="cli-status-text">Committing...</span>
+                  <span class="cli-status-result result">Commit created!</span>
+                </div>
+
+                <div
+                  class="cli-section-title phase-2-status-5"
+                  style="margin-top: 16px"
+                >
+                  project-front-PROJ-42
+                </div>
+                <div class="cli-status phase-2-status-6">
+                  <span class="cli-status-icon"
+                    ><span class="loader purple"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span class="cli-status-text">Staging changes...</span>
+                  <span class="cli-status-result result">2 files staged</span>
+                </div>
+                <div class="cli-status phase-2-status-7">
+                  <span class="cli-status-icon"
+                    ><span class="loader purple"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span class="cli-status-text"
+                    >Generating commit message...</span
+                  >
+                </div>
+                <div class="cli-status phase-2-status-8">
+                  <span class="cli-status-icon success"
+                    ><i data-feather="check"></i
+                  ></span>
+                  <span class="cli-status-text" style="color: var(--text)"
+                    >feat(ui): add pagination component</span
+                  >
+                </div>
+                <div class="cli-status phase-2-status-9">
+                  <span class="cli-status-icon"
+                    ><span class="loader purple"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span class="cli-status-text">Committing...</span>
+                  <span class="cli-status-result result">Commit created!</span>
+                </div>
+              </div>
+
+              <!-- Phase 3: /done -->
+              <div
+                class="workflow-line phase-3-line cli-prompt"
+                style="margin-top: 16px"
+              >
+                <span class="cli-prompt-icon green">❯</span>
+                <span class="command green" data-text="/done"></span>
+              </div>
+
+              <div class="workflow-line phase-3-line cli-response green">
+                <div class="cli-status phase-3-status-1">
+                  <span class="cli-status-icon"
+                    ><span class="loader green"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span class="cli-status-text">Pushing to remote...</span>
+                  <span class="cli-status-result result"
+                    >origin/feature/PROJ-42</span
+                  >
+                </div>
+                <div class="cli-status phase-3-status-2">
+                  <span class="cli-status-icon"
+                    ><span class="loader green"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span class="cli-status-text">Creating pull request...</span>
+                  <span class="cli-status-result result">PR #123 created</span>
+                </div>
+                <div class="cli-status phase-3-status-3">
+                  <span class="cli-status-icon"
+                    ><span class="loader green"></span
+                    ><span class="checkmark"><i data-feather="check"></i></span
+                  ></span>
+                  <span class="cli-status-text">Updating Jira ticket...</span>
+                  <span class="cli-status-result result"
+                    >PROJ-42 → "To be reviewed"</span
+                  >
+                </div>
+                <div class="cli-success-banner phase-3-status-4">
+                  <span class="success-check"
+                    ><i data-feather="check"></i
+                  ></span>
+                  <span>🎉</span>
+                  <span>Task complete!</span>
+                </div>
+              </div>
+            </div>
+            <button class="replay-btn" onclick="replayTerminal()">
+              <i data-feather="rotate-cw"></i>
+            </button>
+          </div>
+        </section>
+      </section>
+
+      <!-- Hero Section -->
+      <section class="hero">
+        <div class="container">
+          <span class="badge">
+            <span data-lang="fr">Pour Claude Code</span>
+            <span data-lang="en">For Claude Code</span>
+          </span>
+          <h1>
+            <span data-lang="fr">Le workflow dev parfait avec</span>
+            <span data-lang="en">The perfect dev workflow with</span>
+            <br />
+            <span class="gradient-text"
+              ><span class="title-commands">/start PROJ-42</span></span
+            >
+          </h1>
+          <p>
+            <span data-lang="fr"
+              >Trois slash commands qui automatisent ton workflow : de la
+              récupération du ticket Jira jusqu'au push de la PR.</span
+            >
+            <span data-lang="en"
+              >Three slash commands that automate your workflow: from fetching
+              the Jira ticket to pushing the PR.</span
+            >
+          </p>
+
+          <div class="install-box">
+            <code id="install-cmd"
+              >curl -fsSL https://magic-slash.io/install.sh | bash</code
+            >
+            <button class="copy-btn" onclick="copyCommand('install-cmd')">
+              <i data-feather="copy"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="commands">
+        <div class="container">
+          <h2>
+            <span data-lang="fr">Trois commandes, un workflow</span>
+            <span data-lang="en">Three commands, one workflow</span>
+          </h2>
+          <p>
+            <span data-lang="fr"
+              >Chaque commande g&egrave;re une &eacute;tape cl&eacute; de ton
+              d&eacute;veloppement.</span
+            >
+            <span data-lang="en"
+              >Each command handles a key step of your development.</span
+            >
+          </p>
+
+          <div class="commands-grid">
+            <!-- /start Card -->
+            <div class="command-card start">
+              <div class="command-card-icon">
+                <i data-feather="play-circle"></i>
+              </div>
+              <h3>/start</h3>
+              <p>
+                <span data-lang="fr"
+                  >D&eacute;marre une nouvelle t&acirc;che depuis un ticket
+                  Jira.</span
+                >
+                <span data-lang="en">Start a new task from a Jira ticket.</span>
+              </p>
+              <ul>
+                <li>
+                  <i data-feather="check"></i>
+                  <span>
+                    <span data-lang="fr"
+                      >R&eacute;cup&egrave;re les d&eacute;tails du ticket</span
+                    >
+                    <span data-lang="en">Fetches ticket details</span>
+                  </span>
+                </li>
+                <li>
+                  <i data-feather="check"></i>
+                  <span>
+                    <span data-lang="fr"
+                      >Analyse le scope (Backend/Frontend)</span
+                    >
+                    <span data-lang="en"
+                      >Analyzes scope (Backend/Frontend)</span
+                    >
+                  </span>
+                </li>
+                <li>
+                  <i data-feather="check"></i>
+                  <span>
+                    <span data-lang="fr">Cr&eacute;e les worktrees Git</span>
+                    <span data-lang="en">Creates Git worktrees</span>
+                  </span>
+                </li>
+                <li>
+                  <i data-feather="check"></i>
+                  <span>
+                    <span data-lang="fr"
+                      >G&eacute;n&egrave;re le contexte agent</span
+                    >
+                    <span data-lang="en">Generates agent context</span>
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- /commit Card -->
+            <div class="command-card commit">
+              <div class="command-card-icon">
+                <i data-feather="git-commit"></i>
+              </div>
+              <h3>/commit</h3>
+              <p>
+                <span data-lang="fr"
+                  >Cr&eacute;e un commit avec un message conventionnel.</span
+                >
+                <span data-lang="en"
+                  >Create a commit with a conventional message.</span
+                >
+              </p>
+              <ul>
+                <li>
+                  <i data-feather="check"></i>
+                  <span>
+                    <span data-lang="fr">Analyse les changements</span>
+                    <span data-lang="en">Analyzes changes</span>
+                  </span>
+                </li>
+                <li>
+                  <i data-feather="check"></i>
+                  <span>
+                    <span data-lang="fr"
+                      >Stage les fichiers modifi&eacute;s</span
+                    >
+                    <span data-lang="en">Stages modified files</span>
+                  </span>
+                </li>
+                <li>
+                  <i data-feather="check"></i>
+                  <span>
+                    <span data-lang="fr"
+                      >G&eacute;n&egrave;re le message de commit</span
+                    >
+                    <span data-lang="en">Generates commit message</span>
+                  </span>
+                </li>
+                <li>
+                  <i data-feather="check"></i>
+                  <span>
+                    <span data-lang="fr"
+                      >Format conventionnel (feat/fix/...)</span
+                    >
+                    <span data-lang="en"
+                      >Conventional format (feat/fix/...)</span
+                    >
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- /done Card -->
+            <div class="command-card done">
+              <div class="command-card-icon">
+                <i data-feather="check-circle"></i>
+              </div>
+              <h3>/done</h3>
+              <p>
+                <span data-lang="fr">Finalise ta t&acirc;che en un geste.</span>
+                <span data-lang="en">Finalize your task in one gesture.</span>
+              </p>
+              <ul>
+                <li>
+                  <i data-feather="check"></i>
+                  <span>
+                    <span data-lang="fr">Push vers le remote</span>
+                    <span data-lang="en">Push to remote</span>
+                  </span>
+                </li>
+                <li>
+                  <i data-feather="check"></i>
+                  <span>
+                    <span data-lang="fr">Cr&eacute;e la Pull Request</span>
+                    <span data-lang="en">Creates Pull Request</span>
+                  </span>
+                </li>
+                <li>
+                  <i data-feather="check"></i>
+                  <span>
+                    <span data-lang="fr">Met &agrave; jour le ticket Jira</span>
+                    <span data-lang="en">Updates Jira ticket</span>
+                  </span>
+                </li>
+                <li>
+                  <i data-feather="check"></i>
+                  <span>
+                    <span data-lang="fr">Statut &rarr; "To be reviewed"</span>
+                    <span data-lang="en">Status &rarr; "To be reviewed"</span>
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta">
+        <div class="container">
+          <div class="cta-box">
+            <h2>
+              <span data-lang="fr"
+                >Pr&ecirc;t &agrave; automatiser ton workflow ?</span
+              >
+              <span data-lang="en">Ready to automate your workflow?</span>
+            </h2>
+            <p>
+              <span data-lang="fr"
+                >Installe Magic Slash en une commande et commence &agrave; coder
+                plus vite.</span
+              >
+              <span data-lang="en"
+                >Install Magic Slash with one command and start coding
+                faster.</span
+              >
+            </p>
+            <div class="cta-buttons">
+              <a href="#" class="btn btn-primary" id="doc-link-cta">
+                <i data-feather="book-open"></i>
+                <span data-lang="fr">Voir la documentation</span>
+                <span data-lang="en">View documentation</span>
+              </a>
+              <a
+                href="https://github.com/xrequillart/magic-slash"
+                class="btn btn-secondary"
+                target="_blank"
+              >
+                <i data-feather="github"></i>
+                <span data-lang="fr">Voir sur GitHub</span>
+                <span data-lang="en">View on GitHub</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Documentation Modal -->
+    <div class="doc-modal-overlay" id="doc-modal-overlay"></div>
+    <div class="doc-modal" id="doc-modal">
+      <div class="doc-modal-header">
+        <h2>Documentation</h2>
+        <button class="doc-modal-close" id="doc-modal-close">
+          <i data-feather="x"></i>
+        </button>
+      </div>
+      <div class="doc-modal-container">
+        <aside class="doc-sidebar">
+          <div class="doc-sidebar-title">
+            <span data-lang="fr">Sommaire</span
+            ><span data-lang="en">Contents</span>
+          </div>
+          <nav class="doc-sidebar-nav">
+            <div class="doc-nav-group">
+              <div class="doc-nav-group-title">
+                <span data-lang="fr">Démarrage</span>
+                <span data-lang="en">Get started</span>
+              </div>
+              <a href="#doc-installation" class="doc-sidebar-link active">
+                <i data-feather="download"></i>
+                <span>Installation</span>
+              </a>
+              <a href="#doc-uninstall" class="doc-sidebar-link">
+                <i data-feather="trash-2"></i>
+                <span data-lang="fr">Désinstallation</span>
+                <span data-lang="en">Uninstall</span>
+              </a>
+            </div>
+            <div class="doc-nav-group">
+              <div class="doc-nav-group-title">
+                <span data-lang="fr">Utilisation</span>
+                <span data-lang="en">Usage</span>
+              </div>
+              <a href="#doc-commands" class="doc-sidebar-link">
+                <i data-feather="terminal"></i>
+                <span data-lang="fr">Commandes</span>
+                <span data-lang="en">Commands</span>
+              </a>
+              <a href="#doc-how-it-works" class="doc-sidebar-link">
+                <i data-feather="cpu"></i>
+                <span data-lang="fr">Comment ça marche</span>
+                <span data-lang="en">How it works</span>
+              </a>
+            </div>
+            <div class="doc-nav-group">
+              <div class="doc-nav-group-title">
+                <span data-lang="fr">Référence</span>
+                <span data-lang="en">Reference</span>
+              </div>
+              <a href="#doc-faq" class="doc-sidebar-link">
+                <i data-feather="help-circle"></i>
+                <span>FAQ</span>
+              </a>
+              <a href="#doc-conventional-commits" class="doc-sidebar-link">
+                <i data-feather="git-commit"></i>
+                <span>Conventional Commits</span>
+              </a>
+              <a href="#doc-advanced-config" class="doc-sidebar-link">
+                <i data-feather="settings"></i>
+                <span data-lang="fr">Configuration avancée</span>
+                <span data-lang="en">Advanced config</span>
+              </a>
+            </div>
+          </nav>
+        </aside>
+        <div class="doc-modal-body">
+          <!-- Installation -->
+          <div class="doc-section" id="doc-installation">
+            <h3><i data-feather="download"></i> Installation</h3>
+
+            <h4>
+              <span data-lang="fr">Prérequis</span
+              ><span data-lang="en">Prerequisites</span>
+            </h4>
+            <ul>
+              <li>
+                <i data-feather="check"></i>
+                <span
+                  ><strong>Claude Code</strong> -
+                  <span data-lang="fr">installé et configuré</span
+                  ><span data-lang="en">installed and configured</span></span
+                >
+              </li>
+              <li>
+                <i data-feather="check"></i>
+                <span><strong>Node.js</strong> - v18+</span>
+              </li>
+              <li>
+                <i data-feather="check"></i>
+                <span
+                  ><strong>Git</strong> -
+                  <span data-lang="fr">avec support des worktrees</span
+                  ><span data-lang="en">with worktrees support</span></span
+                >
+              </li>
+              <li>
+                <i data-feather="check"></i>
+                <span
+                  ><strong>jq</strong> -
+                  <span data-lang="fr">pour le parsing JSON</span
+                  ><span data-lang="en">for JSON parsing</span></span
+                >
+              </li>
+            </ul>
+
+            <h4>
+              <span data-lang="fr">Commande d'installation</span
+              ><span data-lang="en">Installation command</span>
+            </h4>
+            <p>
+              <span data-lang="fr"
+                >Exécute cette commande dans ton terminal :</span
+              ><span data-lang="en">Run this command in your terminal:</span>
+            </p>
+            <div class="doc-code-block">
+              <div class="doc-code-header">
+                <span>Terminal</span>
+                <button
+                  class="copy-btn"
+                  onclick="copyDocCode('doc-install-code')"
+                >
+                  <i data-feather="copy"></i>
+                </button>
+              </div>
+              <div class="doc-code-content" id="doc-install-code">
+                curl -fsSL https://magic-slash.io/install.sh | bash
+              </div>
+            </div>
+            <p>
+              <span data-lang="fr"
+                >Le script configure automatiquement les serveurs MCP Atlassian
+                et GitHub, puis te demande les chemins de tes repositories
+                backend et frontend.</span
+              ><span data-lang="en"
+                >The script automatically configures Atlassian and GitHub MCP
+                servers, then asks for your backend and frontend repository
+                paths.</span
+              >
+            </p>
+          </div>
+
+          <!-- Désinstallation -->
+          <div class="doc-section" id="doc-uninstall">
+            <h3>
+              <i data-feather="trash-2"></i>
+              <span data-lang="fr">Désinstallation</span
+              ><span data-lang="en">Uninstall</span>
+            </h3>
+            <p>
+              <span data-lang="fr"
+                >Pour désinstaller Magic Slash complètement :</span
+              ><span data-lang="en">To completely uninstall Magic Slash:</span>
+            </p>
+            <div class="doc-code-block">
+              <div class="doc-code-header">
+                <span>Terminal</span>
+                <button
+                  class="copy-btn"
+                  onclick="copyDocCode('doc-uninstall-code')"
+                >
+                  <i data-feather="copy"></i>
+                </button>
+              </div>
+              <div class="doc-code-content" id="doc-uninstall-code">
+                curl -fsSL https://magic-slash.io/uninstall.sh | bash
+              </div>
+            </div>
+
+            <h4>
+              <span data-lang="fr">Fichiers supprimés</span
+              ><span data-lang="en">Deleted files</span>
+            </h4>
+            <ul>
+              <li class="red">
+                <i data-feather="x"></i>
+                <span><code>~/.claude/commands/start.md</code></span>
+              </li>
+              <li class="red">
+                <i data-feather="x"></i>
+                <span><code>~/.claude/commands/commit.md</code></span>
+              </li>
+              <li class="red">
+                <i data-feather="x"></i>
+                <span><code>~/.claude/commands/done.md</code></span>
+              </li>
+              <li class="red">
+                <i data-feather="x"></i>
+                <span
+                  ><code>~/.config/magic-slash/</code>
+                  <span data-lang="fr">(dossier de configuration)</span
+                  ><span data-lang="en">(configuration folder)</span></span
+                >
+              </li>
+              <li class="red">
+                <i data-feather="x"></i>
+                <span
+                  ><span data-lang="fr"
+                    >Configuration MCP Atlassian & GitHub dans</span
+                  ><span data-lang="en"
+                    >MCP Atlassian & GitHub configuration in</span
+                  >
+                  <code>~/.claude/settings.json</code></span
+                >
+              </li>
+            </ul>
+          </div>
+
+          <!-- Commandes -->
+          <div class="doc-section" id="doc-commands">
+            <h3>
+              <i data-feather="terminal"></i>
+              <span data-lang="fr">Commandes détaillées</span
+              ><span data-lang="en">Detailed commands</span>
+            </h3>
+
+            <div class="doc-command-detail start">
+              <h4>/start &lt;TICKET-ID&gt;</h4>
+              <p>
+                <span data-lang="fr"
+                  >Démarre une nouvelle tâche à partir d'un ticket Jira.</span
+                ><span data-lang="en"
+                  >Starts a new task from a Jira ticket.</span
+                >
+              </p>
+              <p><strong>Workflow :</strong></p>
+              <ol>
+                <li>
+                  <span data-lang="fr"
+                    >Récupère les détails du ticket via l'API Jira (titre,
+                    description, labels, composants)</span
+                  ><span data-lang="en"
+                    >Fetches ticket details via Jira API (title, description,
+                    labels, components)</span
+                  >
+                </li>
+                <li>
+                  <span data-lang="fr"
+                    >Analyse le contenu pour déterminer le scope : BACKEND,
+                    FRONTEND, ou BOTH</span
+                  ><span data-lang="en"
+                    >Analyzes content to determine scope: BACKEND, FRONTEND, or
+                    BOTH</span
+                  >
+                </li>
+                <li>
+                  <span data-lang="fr"
+                    >Crée les worktrees Git nécessaires avec le bon nom de
+                    branche</span
+                  ><span data-lang="en"
+                    >Creates necessary Git worktrees with the correct branch
+                    name</span
+                  >
+                </li>
+                <li>
+                  <span data-lang="fr"
+                    >Génère un contexte agent personnalisé avec les informations
+                    du ticket</span
+                  ><span data-lang="en"
+                    >Generates a custom agent context with ticket
+                    information</span
+                  >
+                </li>
+                <li>
+                  <span data-lang="fr"
+                    >Lance l'agent Claude pour commencer le développement</span
+                  ><span data-lang="en"
+                    >Launches Claude agent to start development</span
+                  >
+                </li>
+              </ol>
+            </div>
+
+            <div class="doc-command-detail commit">
+              <h4>/commit</h4>
+              <p>
+                <span data-lang="fr"
+                  >Crée un commit avec un message conventionnel généré
+                  automatiquement.</span
+                ><span data-lang="en"
+                  >Creates a commit with an automatically generated conventional
+                  message.</span
+                >
+              </p>
+              <p><strong>Workflow :</strong></p>
+              <ol>
+                <li>
+                  <span data-lang="fr"
+                    >Détecte les fichiers modifiés dans le repository
+                    courant</span
+                  ><span data-lang="en"
+                    >Detects modified files in the current repository</span
+                  >
+                </li>
+                <li>
+                  <span data-lang="fr">Stage les changements (git add)</span
+                  ><span data-lang="en">Stages changes (git add)</span>
+                </li>
+                <li>
+                  <span data-lang="fr"
+                    >Analyse le diff pour comprendre les modifications</span
+                  ><span data-lang="en"
+                    >Analyzes diff to understand changes</span
+                  >
+                </li>
+                <li>
+                  <span data-lang="fr"
+                    >Génère un message de commit au format conventionnel
+                    (feat/fix/refactor/...)</span
+                  ><span data-lang="en"
+                    >Generates a commit message in conventional format
+                    (feat/fix/refactor/...)</span
+                  >
+                </li>
+                <li>
+                  <span data-lang="fr">Exécute le commit</span
+                  ><span data-lang="en">Executes the commit</span>
+                </li>
+              </ol>
+            </div>
+
+            <div class="doc-command-detail done">
+              <h4>/done</h4>
+              <p>
+                <span data-lang="fr"
+                  >Finalise la tâche : push, PR, et mise à jour Jira.</span
+                ><span data-lang="en"
+                  >Finalizes the task: push, PR, and Jira update.</span
+                >
+              </p>
+              <p><strong>Workflow :</strong></p>
+              <ol>
+                <li>
+                  <span data-lang="fr"
+                    >Push les commits vers le remote (origin)</span
+                  ><span data-lang="en">Pushes commits to remote (origin)</span>
+                </li>
+                <li>
+                  <span data-lang="fr"
+                    >Crée une Pull Request avec un titre et une description
+                    générés</span
+                  ><span data-lang="en"
+                    >Creates a Pull Request with generated title and
+                    description</span
+                  >
+                </li>
+                <li>
+                  <span data-lang="fr">Lie la PR au ticket Jira</span
+                  ><span data-lang="en">Links PR to Jira ticket</span>
+                </li>
+                <li>
+                  <span data-lang="fr"
+                    >Met à jour le statut du ticket Jira vers "To be
+                    reviewed"</span
+                  ><span data-lang="en"
+                    >Updates Jira ticket status to "To be reviewed"</span
+                  >
+                </li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- Comment ça marche -->
+          <div class="doc-section" id="doc-how-it-works">
+            <h3>
+              <i data-feather="cpu"></i>
+              <span data-lang="fr">Comment ça marche</span
+              ><span data-lang="en">How it works</span>
+            </h3>
+
+            <p>
+              <span data-lang="fr"
+                >Magic Slash repose sur deux mécanismes clés de Claude Code :
+                les <strong>Slash Commands</strong> et les
+                <strong>serveurs MCP</strong>.</span
+              ><span data-lang="en"
+                >Magic Slash relies on two key Claude Code mechanisms:
+                <strong>Slash Commands</strong> and
+                <strong>MCP servers</strong>.</span
+              >
+            </p>
+
+            <h4>Slash Commands</h4>
+            <p>
+              <span data-lang="fr"
+                >Les slash commands sont des fichiers Markdown stockés dans
+                <code>~/.claude/commands/</code>. Quand tu tapes
+                <code>/start</code>, Claude Code lit le fichier
+                <code>start.md</code> et exécute les instructions qu'il
+                contient.</span
+              ><span data-lang="en"
+                >Slash commands are Markdown files stored in
+                <code>~/.claude/commands/</code>. When you type
+                <code>/start</code>, Claude Code reads the
+                <code>start.md</code> file and executes the instructions it
+                contains.</span
+              >
+            </p>
+            <p>
+              <span data-lang="fr"
+                >Chaque commande Magic Slash est un prompt pré-configuré qui
+                guide Claude pour effectuer une série d'actions
+                automatisées.</span
+              ><span data-lang="en"
+                >Each Magic Slash command is a pre-configured prompt that guides
+                Claude to perform a series of automated actions.</span
+              >
+            </p>
+
+            <h4>
+              <span data-lang="fr">Serveurs MCP (Model Context Protocol)</span
+              ><span data-lang="en">MCP Servers (Model Context Protocol)</span>
+            </h4>
+            <p>
+              <span data-lang="fr"
+                >Les serveurs MCP permettent à Claude d'interagir avec des
+                services externes. Magic Slash configure deux serveurs :</span
+              ><span data-lang="en"
+                >MCP servers allow Claude to interact with external services.
+                Magic Slash configures two servers:</span
+              >
+            </p>
+            <ul>
+              <li>
+                <i data-feather="check"></i>
+                <span
+                  ><strong>MCP Atlassian</strong> —
+                  <span data-lang="fr"
+                    >Permet de lire les tickets Jira, récupérer les détails,
+                    mettre à jour les statuts, et interagir avec
+                    Confluence</span
+                  ><span data-lang="en"
+                    >Reads Jira tickets, fetches details, updates statuses, and
+                    interacts with Confluence</span
+                  ></span
+                >
+              </li>
+              <li>
+                <i data-feather="check"></i>
+                <span
+                  ><strong>MCP GitHub</strong> —
+                  <span data-lang="fr"
+                    >Permet de créer des Pull Requests et gérer les
+                    repositories</span
+                  ><span data-lang="en"
+                    >Creates Pull Requests and manages repositories</span
+                  ></span
+                >
+              </li>
+            </ul>
+
+            <h4>
+              <span data-lang="fr">Flux d'exécution</span
+              ><span data-lang="en">Execution flow</span>
+            </h4>
+            <div class="doc-timeline">
+              <div class="doc-timeline-item">
+                <div class="doc-timeline-dot">1</div>
+                <div class="doc-timeline-content">
+                  <div class="doc-timeline-title">/start PROJ-42</div>
+                  <div class="doc-timeline-desc">
+                    <span data-lang="fr"
+                      >Tu tapes la commande dans Claude Code. Le système détecte
+                      la slash command et charge le fichier
+                      <code>start.md</code> correspondant.</span
+                    ><span data-lang="en"
+                      >You type the command in Claude Code. The system detects
+                      the slash command and loads the corresponding
+                      <code>start.md</code> file.</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <div class="doc-timeline-item">
+                <div class="doc-timeline-dot">2</div>
+                <div class="doc-timeline-content">
+                  <div class="doc-timeline-title">
+                    <span data-lang="fr">Lecture du prompt</span
+                    ><span data-lang="en">Reading the prompt</span>
+                  </div>
+                  <div class="doc-timeline-desc">
+                    <span data-lang="fr"
+                      >Claude Code lit les instructions contenues dans le
+                      fichier Markdown. Ce prompt lui indique exactement quoi
+                      faire et dans quel ordre.</span
+                    ><span data-lang="en"
+                      >Claude Code reads the instructions in the Markdown file.
+                      This prompt tells it exactly what to do and in what
+                      order.</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <div class="doc-timeline-item">
+                <div class="doc-timeline-dot">3</div>
+                <div class="doc-timeline-content">
+                  <div class="doc-timeline-title">
+                    <span data-lang="fr">Appel MCP Atlassian</span
+                    ><span data-lang="en">MCP Atlassian call</span>
+                  </div>
+                  <div class="doc-timeline-desc">
+                    <span data-lang="fr"
+                      >Via le serveur MCP Atlassian, Claude récupère les détails
+                      du ticket : titre, description, labels, composants. Il
+                      analyse ensuite le scope (Backend, Frontend, ou les
+                      deux).</span
+                    ><span data-lang="en"
+                      >Via the MCP Atlassian server, Claude fetches ticket
+                      details: title, description, labels, components. It then
+                      analyzes the scope (Backend, Frontend, or both).</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <div class="doc-timeline-item">
+                <div class="doc-timeline-dot">4</div>
+                <div class="doc-timeline-content">
+                  <div class="doc-timeline-title">
+                    <span data-lang="fr">Création des worktrees</span
+                    ><span data-lang="en">Worktree creation</span>
+                  </div>
+                  <div class="doc-timeline-desc">
+                    <span data-lang="fr"
+                      >Claude crée les branches Git nécessaires via des
+                      worktrees. Cela permet de travailler sur plusieurs repos
+                      en parallèle sans changer de dossier.</span
+                    ><span data-lang="en"
+                      >Claude creates the necessary Git branches via worktrees.
+                      This allows working on multiple repos in parallel without
+                      changing directories.</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <div class="doc-timeline-item">
+                <div class="doc-timeline-dot">5</div>
+                <div class="doc-timeline-content">
+                  <div class="doc-timeline-title">
+                    <span data-lang="fr">Agents au travail</span
+                    ><span data-lang="en">Agents at work</span>
+                  </div>
+                  <div class="doc-timeline-desc">
+                    <span data-lang="fr"
+                      >Claude lance un ou plusieurs agents qui commencent à
+                      coder. Chaque agent a le contexte du ticket et sait
+                      exactement quoi implémenter.</span
+                    ><span data-lang="en"
+                      >Claude launches one or more agents that start coding.
+                      Each agent has the ticket context and knows exactly what
+                      to implement.</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h4>
+              <span data-lang="fr">Fichiers de configuration</span
+              ><span data-lang="en">Configuration files</span>
+            </h4>
+            <ul>
+              <li>
+                <i data-feather="check"></i>
+                <span
+                  ><code>~/.claude/commands/*.md</code> —
+                  <span data-lang="fr">Les slash commands</span
+                  ><span data-lang="en">Slash commands</span></span
+                >
+              </li>
+              <li>
+                <i data-feather="check"></i>
+                <span
+                  ><code>~/.claude/settings.json</code> —
+                  <span data-lang="fr">Configuration des serveurs MCP</span
+                  ><span data-lang="en">MCP servers configuration</span></span
+                >
+              </li>
+              <li>
+                <i data-feather="check"></i>
+                <span
+                  ><code>~/.config/magic-slash/config.json</code> —
+                  <span data-lang="fr">Chemins des repositories</span
+                  ><span data-lang="en">Repository paths</span></span
+                >
+              </li>
+            </ul>
+          </div>
+
+          <!-- FAQ / Troubleshooting -->
+          <div class="doc-section" id="doc-faq">
+            <h3>
+              <i data-feather="help-circle"></i>
+              <span data-lang="fr">FAQ / Troubleshooting</span
+              ><span data-lang="en">FAQ / Troubleshooting</span>
+            </h3>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="key"></i>
+                <span data-lang="fr">Comment autoriser le MCP Atlassian ?</span
+                ><span data-lang="en">How to authorize the Atlassian MCP?</span>
+              </h4>
+              <p data-lang="fr">
+                Lors de la première utilisation d'un outil Atlassian (Jira ou
+                Confluence), Claude Code vous demandera d'autoriser l'accès. Un
+                lien s'affichera dans le terminal : cliquez dessus pour ouvrir
+                votre navigateur et connectez-vous avec votre compte Atlassian.
+                Une fois l'autorisation accordée, le token OAuth sera
+                automatiquement sauvegardé.
+              </p>
+              <p data-lang="en">
+                On the first use of an Atlassian tool (Jira or Confluence),
+                Claude Code will ask you to authorize access. A link will appear
+                in the terminal: click on it to open your browser and log in
+                with your Atlassian account. Once authorization is granted, the
+                OAuth token will be automatically saved.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="github"></i>
+                <span data-lang="fr"
+                  >Comment générer un token GitHub (Personal Access Token)
+                  ?</span
+                ><span data-lang="en"
+                  >How to generate a GitHub Personal Access Token?</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Allez sur
+                <code
+                  >GitHub &gt; Settings &gt; Developer settings &gt; Personal
+                  access tokens &gt; Tokens (classic)</code
+                >. Créez un nouveau token avec les permissions
+                <code>repo</code> (accès complet aux repositories). Copiez le
+                token, il ne sera affiché qu'une seule fois.
+              </p>
+              <p data-lang="en">
+                Go to
+                <code
+                  >GitHub &gt; Settings &gt; Developer settings &gt; Personal
+                  access tokens &gt; Tokens (classic)</code
+                >. Create a new token with <code>repo</code> permissions (full
+                repository access). Copy the token, it will only be displayed
+                once.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="alert-triangle"></i>
+                <span data-lang="fr">Erreur "MCP server not found"</span
+                ><span data-lang="en">"MCP server not found" error</span>
+              </h4>
+              <p data-lang="fr">
+                Cette erreur indique que Node.js n'est pas correctement installé
+                ou n'est pas dans le PATH. Vérifiez avec
+                <code>node --version</code> que Node.js v18+ est installé. Si ce
+                n'est pas le cas, installez-le via
+                <code>brew install node</code> ou depuis nodejs.org.
+              </p>
+              <p data-lang="en">
+                This error indicates that Node.js is not properly installed or
+                not in the PATH. Check with <code>node --version</code> that
+                Node.js v18+ is installed. If not, install it via
+                <code>brew install node</code> or from nodejs.org.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="git-branch"></i>
+                <span data-lang="fr">Le worktree ne se crée pas</span
+                ><span data-lang="en">Worktree doesn't get created</span>
+              </h4>
+              <p data-lang="fr">
+                Vérifiez que vous avez les droits d'écriture sur le dossier
+                parent des repositories. Assurez-vous aussi que le chemin dans
+                <code>~/.config/magic-slash/config.json</code> est correct et
+                que le repository Git existe bien à cet emplacement.
+              </p>
+              <p data-lang="en">
+                Check that you have write permissions on the parent folder of
+                the repositories. Also make sure the path in
+                <code>~/.config/magic-slash/config.json</code> is correct and
+                the Git repository exists at that location.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="search"></i>
+                <span data-lang="fr">Le ticket Jira n'est pas trouvé</span
+                ><span data-lang="en">Jira ticket not found</span>
+              </h4>
+              <p data-lang="fr">
+                Vérifiez que l'URL Jira dans la configuration est correcte
+                (format: <code>https://votre-domaine.atlassian.net</code>).
+                Assurez-vous que vos credentials (email + API token) sont
+                valides et que vous avez accès au projet contenant le ticket.
+              </p>
+              <p data-lang="en">
+                Check that the Jira URL in the configuration is correct (format:
+                <code>https://your-domain.atlassian.net</code>). Make sure your
+                credentials (email + API token) are valid and you have access to
+                the project containing the ticket.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="refresh-cw"></i>
+                <span data-lang="fr">Le statut Jira ne se met pas à jour</span
+                ><span data-lang="en">Jira status doesn't update</span>
+              </h4>
+              <p data-lang="fr">
+                Le workflow Jira peut restreindre certaines transitions de
+                statut. Vérifiez dans Jira que la transition vers "To be
+                reviewed" est autorisée depuis le statut actuel du ticket.
+                Contactez votre administrateur Jira si nécessaire.
+              </p>
+              <p data-lang="en">
+                The Jira workflow may restrict certain status transitions. Check
+                in Jira that the transition to "To be reviewed" is allowed from
+                the ticket's current status. Contact your Jira administrator if
+                needed.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="alert-octagon"></i>
+                <span data-lang="fr"
+                  >Le commit échoue avec une erreur pre-commit hook</span
+                ><span data-lang="en"
+                  >Commit fails with a pre-commit hook error</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Les hooks pre-commit peuvent bloquer un commit si le code ne
+                respecte pas certaines règles (linting, formatage, tests).
+                Lisez le message d'erreur pour identifier le problème, puis
+                corrigez-le (ex: <code>npm run lint:fix</code> ou
+                <code>npm run format</code>). Relancez ensuite
+                <code>/commit</code>. Si vous devez absolument bypasser le hook,
+                utilisez <code>git commit --no-verify</code>, mais c'est
+                déconseillé.
+              </p>
+              <p data-lang="en">
+                Pre-commit hooks can block a commit if the code doesn't follow
+                certain rules (linting, formatting, tests). Read the error
+                message to identify the problem, then fix it (e.g.,
+                <code>npm run lint:fix</code> or <code>npm run format</code>).
+                Then run <code>/commit</code> again. If you absolutely need to
+                bypass the hook, use <code>git commit --no-verify</code>, but
+                this is not recommended.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="download"></i>
+                <span data-lang="fr"
+                  >Comment mettre à jour Magic Slash ?</span
+                ><span data-lang="en">How to update Magic Slash?</span>
+              </h4>
+              <p data-lang="fr">
+                Pour mettre à jour Magic Slash vers la dernière version,
+                relancez simplement la commande d'installation :
+                <code
+                  >curl -fsSL https://magic-slash.io/install.sh | bash</code
+                >. Le script détectera l'installation existante et la mettra à
+                jour automatiquement. Vos configurations personnelles seront
+                préservées.
+              </p>
+              <p data-lang="en">
+                To update Magic Slash to the latest version, simply run the
+                installation command again:
+                <code
+                  >curl -fsSL https://magic-slash.io/install.sh | bash</code
+                >. The script will detect the existing installation and update
+                it automatically. Your personal configurations will be
+                preserved.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="lock"></i>
+                <span data-lang="fr"
+                  >Où sont stockés mes tokens et credentials ?</span
+                ><span data-lang="en"
+                  >Where are my tokens and credentials stored?</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Les tokens sont stockés dans
+                <code>~/.config/magic-slash/</code> et le keychain système pour
+                OAuth.
+              </p>
+              <p data-lang="en">
+                Tokens are stored in <code>~/.config/magic-slash/</code> and the
+                system keychain for OAuth.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="user-x"></i>
+                <span data-lang="fr"
+                  >Comment révoquer l'accès OAuth Atlassian ?</span
+                ><span data-lang="en"
+                  >How to revoke Atlassian OAuth access?</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Allez sur Atlassian > Account Settings > Connected Apps >
+                Révoquer Magic Slash.
+              </p>
+              <p data-lang="en">
+                Go to Atlassian > Account Settings > Connected Apps > Revoke
+                Magic Slash.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="clock"></i>
+                <span data-lang="fr"
+                  >Mon token GitHub a expiré, que faire ?</span
+                ><span data-lang="en"
+                  >My GitHub token has expired, what to do?</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Générez un nouveau token sur GitHub et mettez à jour la
+                configuration.
+              </p>
+              <p data-lang="en">
+                Generate a new token on GitHub and update the configuration.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="git-commit"></i>
+                <span data-lang="fr"
+                  >Puis-je utiliser /commit sans ticket Jira ?</span
+                ><span data-lang="en"
+                  >Can I use /commit without a Jira ticket?</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Oui, <code>/commit</code> fonctionne indépendamment, il crée un
+                commit conventionnel.
+              </p>
+              <p data-lang="en">
+                Yes, <code>/commit</code> works independently, it creates a
+                conventional commit.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="x-circle"></i>
+                <span data-lang="fr">Comment annuler un /start en cours ?</span
+                ><span data-lang="en">How to cancel an ongoing /start?</span>
+              </h4>
+              <p data-lang="fr">
+                Utilisez Ctrl+C pour interrompre, puis supprimez le worktree
+                manuellement si créé.
+              </p>
+              <p data-lang="en">
+                Use Ctrl+C to interrupt, then manually delete the worktree if
+                created.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="trash-2"></i>
+                <span data-lang="fr"
+                  >Le worktree prend beaucoup de place, comment nettoyer ?</span
+                ><span data-lang="en"
+                  >The worktree takes up a lot of space, how to clean up?</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Utilisez <code>git worktree remove &lt;path&gt;</code> ou
+                supprimez le dossier et lancez
+                <code>git worktree prune</code>.
+              </p>
+              <p data-lang="en">
+                Use <code>git worktree remove &lt;path&gt;</code> or delete the
+                folder and run <code>git worktree prune</code>.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="layers"></i>
+                <span data-lang="fr"
+                  >Comment travailler sur plusieurs tickets en parallèle ?</span
+                ><span data-lang="en"
+                  >How to work on multiple tickets in parallel?</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Chaque <code>/start</code> crée un worktree séparé, permettant
+                de switcher entre tickets.
+              </p>
+              <p data-lang="en">
+                Each <code>/start</code> creates a separate worktree, allowing
+                switching between tickets.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="plus-circle"></i>
+                <span data-lang="fr"
+                  >Puis-je créer mes propres slash commands ?</span
+                ><span data-lang="en"
+                  >Can I create my own slash commands?</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Oui, créez un fichier <code>.md</code> dans le dossier skills de
+                Claude Code.
+              </p>
+              <p data-lang="en">
+                Yes, create a <code>.md</code> file in Claude Code's skills
+                folder.
+              </p>
+            </div>
+          </div>
+
+          <!-- Conventional Commits -->
+          <div class="doc-section" id="doc-conventional-commits">
+            <h3><i data-feather="git-commit"></i> Conventional Commits</h3>
+
+            <p data-lang="fr">
+              Magic Slash utilise le format
+              <strong>Conventional Commits</strong> pour générer automatiquement
+              des messages de commit cohérents et lisibles.
+            </p>
+            <p data-lang="en">
+              Magic Slash uses the <strong>Conventional Commits</strong> format
+              to automatically generate consistent and readable commit messages.
+            </p>
+
+            <h4>Format</h4>
+            <div class="doc-commit-example">type(scope): description</div>
+
+            <h4 data-lang="fr">Types disponibles</h4>
+            <h4 data-lang="en">Available types</h4>
+
+            <div class="doc-commit-type">
+              <code>feat</code>
+              <span data-lang="fr"
+                >Nouvelle fonctionnalité — Ajout d'une nouvelle feature au
+                produit</span
+              >
+              <span data-lang="en"
+                >New feature — Adding a new feature to the product</span
+              >
+            </div>
+
+            <div class="doc-commit-type">
+              <code>fix</code>
+              <span data-lang="fr"
+                >Correction de bug — Résolution d'un problème existant</span
+              >
+              <span data-lang="en">Bug fix — Fixing an existing issue</span>
+            </div>
+
+            <div class="doc-commit-type">
+              <code>docs</code>
+              <span data-lang="fr"
+                >Documentation — Modifications de la documentation
+                uniquement</span
+              >
+              <span data-lang="en"
+                >Documentation — Documentation changes only</span
+              >
+            </div>
+
+            <div class="doc-commit-type">
+              <code>style</code>
+              <span data-lang="fr"
+                >Formatage — Changements de style (sans modification de la
+                logique)</span
+              >
+              <span data-lang="en"
+                >Formatting — Style changes (no logic modification)</span
+              >
+            </div>
+
+            <div class="doc-commit-type">
+              <code>refactor</code>
+              <span data-lang="fr"
+                >Refactoring — Restructuration du code sans changer le
+                comportement</span
+              >
+              <span data-lang="en"
+                >Refactoring — Code restructuring without changing
+                behavior</span
+              >
+            </div>
+
+            <div class="doc-commit-type">
+              <code>test</code>
+              <span data-lang="fr">Tests — Ajout ou modification de tests</span>
+              <span data-lang="en">Tests — Adding or modifying tests</span>
+            </div>
+
+            <div class="doc-commit-type">
+              <code>chore</code>
+              <span data-lang="fr"
+                >Maintenance — Tâches de maintenance, dépendances, config</span
+              >
+              <span data-lang="en"
+                >Maintenance — Maintenance tasks, dependencies, config</span
+              >
+            </div>
+
+            <h4 data-lang="fr">Exemples</h4>
+            <h4 data-lang="en">Examples</h4>
+
+            <div class="doc-commit-example">
+              feat(auth): add OAuth2 login with Google
+            </div>
+            <div class="doc-commit-example">
+              fix(api): resolve null pointer in user endpoint
+            </div>
+            <div class="doc-commit-example">
+              docs(readme): update installation instructions
+            </div>
+            <div class="doc-commit-example">
+              refactor(utils): simplify date formatting logic
+            </div>
+            <div class="doc-commit-example">
+              chore(deps): upgrade React to v18.2
+            </div>
+          </div>
+
+          <!-- Configuration avancée -->
+          <div class="doc-section" id="doc-advanced-config">
+            <h3>
+              <i data-feather="settings"></i>
+              <span data-lang="fr">Configuration avancée</span
+              ><span data-lang="en">Advanced Configuration</span>
+            </h3>
+
+            <h4 data-lang="fr">Modifier les chemins des repositories</h4>
+            <h4 data-lang="en">Modify repository paths</h4>
+
+            <p data-lang="fr">
+              Les chemins vers vos repositories backend et frontend sont stockés
+              dans le fichier de configuration. Pour les modifier :
+            </p>
+            <p data-lang="en">
+              The paths to your backend and frontend repositories are stored in
+              the configuration file. To modify them:
+            </p>
+
+            <div class="doc-config-block">
+              <div class="doc-config-header">
+                <i data-feather="file-text"></i>
+                ~/.config/magic-slash/config.json
+              </div>
+              <div class="doc-config-content"><pre>{
+  "repositories": {
+    "backend": "/path/to/your/backend-repo",
+    "frontend": "/path/to/your/frontend-repo"
+  }
+}</pre></div>
+            </div>
+
+            <h4 data-lang="fr">Reconfigurer les serveurs MCP</h4>
+            <h4 data-lang="en">Reconfigure MCP servers</h4>
+
+            <p data-lang="fr">
+              Pour mettre à jour vos tokens Jira ou GitHub, ou reconfigurer les
+              serveurs MCP, relancez simplement le script d'installation :
+            </p>
+            <p data-lang="en">
+              To update your Jira or GitHub tokens, or reconfigure the MCP
+              servers, simply re-run the installation script:
+            </p>
+
+            <div class="doc-code-block">
+              <div class="doc-code-header">
+                <span>Terminal</span>
+                <button
+                  class="copy-btn"
+                  onclick="copyDocCode('doc-reinstall-code')"
+                >
+                  <i data-feather="copy"></i>
+                </button>
+              </div>
+              <div class="doc-code-content" id="doc-reinstall-code">
+                curl -fsSL https://magic-slash.io/install.sh | bash
+              </div>
+            </div>
+
+            <h4 data-lang="fr">Emplacements des fichiers importants</h4>
+            <h4 data-lang="en">Important file locations</h4>
+
+            <ul>
+              <li>
+                <i data-feather="folder"></i>
+                <span
+                  ><code>~/.claude/commands/</code> —
+                  <span data-lang="fr"
+                    >Dossier contenant les slash commands (start.md, commit.md,
+                    done.md)</span
+                  ><span data-lang="en"
+                    >Folder containing slash commands (start.md, commit.md,
+                    done.md)</span
+                  ></span
+                >
+              </li>
+              <li>
+                <i data-feather="file-text"></i>
+                <span
+                  ><code>~/.claude/settings.json</code> —
+                  <span data-lang="fr"
+                    >Configuration Claude Code incluant les serveurs MCP</span
+                  ><span data-lang="en"
+                    >Claude Code configuration including MCP servers</span
+                  ></span
+                >
+              </li>
+              <li>
+                <i data-feather="settings"></i>
+                <span
+                  ><code>~/.config/magic-slash/config.json</code> —
+                  <span data-lang="fr"
+                    >Configuration Magic Slash (chemins des repos)</span
+                  ><span data-lang="en"
+                    >Magic Slash configuration (repo paths)</span
+                  ></span
+                >
+              </li>
+            </ul>
+
+            <h4 data-lang="fr">Structure du fichier settings.json</h4>
+            <h4 data-lang="en">settings.json file structure</h4>
+
+            <p data-lang="fr">
+              Le fichier <code>~/.claude/settings.json</code> contient la
+              configuration des serveurs MCP. Magic Slash y ajoute
+              automatiquement les entrées pour Atlassian et GitHub :
+            </p>
+            <p data-lang="en">
+              The <code>~/.claude/settings.json</code> file contains the MCP
+              servers configuration. Magic Slash automatically adds entries for
+              Atlassian and GitHub:
+            </p>
+
+            <div class="doc-config-block">
+              <div class="doc-config-header">
+                <i data-feather="file-text"></i>
+                ~/.claude/settings.json <span data-lang="fr">(extrait)</span
+                ><span data-lang="en">(excerpt)</span>
+              </div>
+              <div class="doc-config-content"><pre>{
+  "mcpServers": {
+    "atlassian": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "..."],
+      "env": { ... }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "..."
+      }
+    }
+  }
+}</pre></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="container">
+        <div class="footer-links">
+          <a href="#" id="doc-link-footer">Documentation</a>
+          <a href="https://github.com/xrequillart/magic-slash" target="_blank"
+            >GitHub</a
+          >
+        </div>
+        <p>
+          <span data-lang="fr">Fait avec &hearts; &agrave; Paris</span>
+          <span data-lang="en">Made with &hearts; in Paris</span>
+          &mdash;
+          <a href="https://github.com/xrequillart/magic-slash" target="_blank"
+            >xrequillart/magic-slash</a
+          >
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // Initialize Feather Icons
+      feather.replace();
+
+      // Language Selector
+      const langSelector = document.getElementById("lang-selector");
+      const langSelectorBtn = document.getElementById("lang-selector-btn");
+      const langOptions = document.querySelectorAll(".lang-option");
+
+      function updateLangOptions() {
+        const currentLang = document.documentElement.lang;
+        langOptions.forEach((option) => {
+          option.classList.toggle(
+            "active",
+            option.dataset.value === currentLang,
+          );
+        });
+      }
+
+      langSelectorBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        langSelector.classList.toggle("open");
+      });
+
+      langOptions.forEach((option) => {
+        option.addEventListener("click", () => {
+          const lang = option.dataset.value;
+          document.documentElement.lang = lang;
+          langSelector.classList.remove("open");
+          updateLangOptions();
+          localStorage.setItem("preferred-lang", lang);
+        });
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!langSelector.contains(e.target)) {
+          langSelector.classList.remove("open");
+        }
+      });
+
+      // Load saved language preference
+      const savedLang = localStorage.getItem("preferred-lang");
+      if (savedLang) {
+        document.documentElement.lang = savedLang;
+      }
+      updateLangOptions();
+
+      // Zoom Effect on Scroll (bidirectionnel) avec phases Logo -> Tagline -> Terminal
+      const zoomSpacer = document.querySelector(".zoom-spacer");
+      const zoomOverlay = document.querySelector(".zoom-overlay");
+      const scrollIndicator = document.querySelector(".scroll-indicator");
+      const workflowDemoZoom = document.querySelector(".workflow-demo");
+      const introLogo = document.querySelector(".intro-logo");
+      const introTagline = document.querySelector(".intro-tagline");
+
+      // Configuration
+      const startScale = 5; // Zoom max (en haut) - très zoomé
+      const endScale = 1; // Zoom normal (après scroll)
+      const scrollDistance = window.innerHeight * 3; // 3x la hauteur pour plus de scroll
+
+      // Phases de l'animation (en % du scroll total)
+      const PHASE_LOGO_END = 0.2; // Logo visible jusqu'à 20%
+      const PHASE_LOGO_FADE = 0.3; // Logo complètement disparu à 30%
+      const PHASE_TAGLINE_START = 0.32; // Tagline commence à apparaître à 32%
+      const PHASE_TAGLINE_VISIBLE = 0.4; // Tagline complètement visible à 40%
+      const PHASE_TAGLINE_END = 0.55; // Tagline visible jusqu'à 55%
+      const PHASE_TAGLINE_FADE = 0.65; // Tagline complètement disparu à 65%
+      const PHASE_ZOOM_START = 0.6; // Dézoom commence à 60%
+      const PHASE_TERMINAL_PIN_START = 0.75; // Terminal ralentit à cette phase
+      const PHASE_TERMINAL_PIN_END = 0.95; // Terminal accélère à nouveau
+      const TERMINAL_PIN_SCALE = 1.5; // Scale atteint au début du ralentissement
+      const TERMINAL_SLOW_END_SCALE = 1.15; // Scale atteint à la fin du ralentissement (très lent)
+
+      let isInZoomZone = true;
+
+      let terminalAnimationStarted = false;
+      let showScrollIndicatorEarly = false;
+
+      // Initialisation
+      function initZoomEffect() {
+        workflowDemoZoom.classList.add("zoom-mode");
+        workflowDemoZoom.classList.add("visible");
+        workflowDemoZoom.style.setProperty("--zoom-scale", startScale);
+        workflowDemoZoom.style.opacity = 0.15; // Terminal quasi-invisible au début
+        document.body.classList.add("zoom-active");
+
+        // Afficher l'indicateur de scroll après 2s si l'utilisateur n'a pas scrollé
+        setTimeout(() => {
+          if (window.scrollY < 10) {
+            showScrollIndicatorEarly = true;
+            scrollIndicator.classList.remove("hidden");
+            scrollIndicator.style.opacity = 1;
+          }
+        }, 2000);
+      }
+
+      // Gérer le scroll pour l'effet de zoom (bidirectionnel) avec phases
+      function handleZoomScroll() {
+        const scrollY = window.scrollY;
+        const progress = Math.min(Math.max(scrollY / scrollDistance, 0), 1);
+
+        // Zone de zoom (progress < 1)
+        if (progress < 1) {
+          if (!isInZoomZone) {
+            // On revient dans la zone de zoom
+            isInZoomZone = true;
+            workflowDemoZoom.style.transition = "none";
+            workflowDemoZoom.classList.add("zoom-mode");
+            workflowDemoZoom.offsetHeight;
+            workflowDemoZoom.style.transition = "";
+            zoomOverlay.classList.remove("hidden");
+            introLogo.classList.remove("hidden");
+            document.body.classList.add("zoom-active");
+            document.body.classList.remove("zoom-complete");
+
+            // Reset l'animation du terminal pour qu'elle puisse redémarrer
+            if (terminalAnimationStarted && progress < PHASE_ZOOM_START) {
+              terminalAnimationStarted = false;
+              terminalAnimationComplete = false;
+              // Reset tous les éléments visuels
+              document
+                .querySelectorAll(
+                  ".cli-prompt, .cli-response, .cli-status, .cli-section-title, .cli-item, .cli-agents, .cli-success-banner",
+                )
+                .forEach((el) => {
+                  el.classList.remove("visible");
+                  el.classList.remove("completed");
+                });
+              document
+                .querySelectorAll(".loader")
+                .forEach((el) => el.classList.remove("done"));
+              document
+                .querySelectorAll(".checkmark")
+                .forEach((el) => el.classList.remove("visible"));
+              document
+                .querySelectorAll(".result")
+                .forEach((el) => el.classList.remove("visible"));
+              document.querySelectorAll(".command").forEach((cmd) => {
+                cmd.textContent = "";
+                cmd.classList.remove("typing");
+              });
+              const agentsText = document.querySelector(".agents-text");
+              if (agentsText) agentsText.textContent = "2 agents coding...";
+              const diffContainer = document.querySelector(
+                ".agents-diff-container",
+              );
+              if (diffContainer) diffContainer.classList.remove("visible");
+              document
+                .querySelectorAll(".diff-file")
+                .forEach((el) => el.classList.remove("visible"));
+              document
+                .querySelectorAll(".diff-line")
+                .forEach((el) => el.classList.remove("visible"));
+              replayBtn.classList.remove("visible");
+              terminalContent.scrollTop = 0;
+            }
+          }
+
+          // === PHASE 1: LOGO ===
+          // Logo visible de 0% à PHASE_LOGO_END, puis fade out jusqu'à PHASE_LOGO_FADE
+          // + effet de zoom progressif pendant le scroll
+          if (progress <= PHASE_LOGO_END) {
+            introLogo.classList.remove("hidden");
+            introLogo.style.opacity = 1;
+            // Zoom de 1 à 1.5 pendant cette phase
+            const logoZoom = 1 + (progress / PHASE_LOGO_END) * 0.5;
+            introLogo.style.transform = `translate(-50%, -50%) scale(${logoZoom})`;
+          } else if (progress <= PHASE_LOGO_FADE) {
+            // Fade out progressif + continue le zoom
+            const logoFadeProgress =
+              (progress - PHASE_LOGO_END) / (PHASE_LOGO_FADE - PHASE_LOGO_END);
+            introLogo.style.opacity = 1 - logoFadeProgress;
+            const logoZoom = 1.5 + logoFadeProgress * 0.8; // Continue à zoomer pendant le fade
+            introLogo.style.transform = `translate(-50%, -50%) scale(${logoZoom})`;
+          } else {
+            introLogo.style.opacity = 0;
+            introLogo.classList.add("hidden");
+          }
+
+          // === PHASE 2: TAGLINE ===
+          // Tagline fade in de PHASE_TAGLINE_START à PHASE_TAGLINE_VISIBLE
+          // Tagline visible jusqu'à PHASE_TAGLINE_END, puis fade out jusqu'à PHASE_TAGLINE_FADE
+          // + effet de zoom progressif pendant le scroll
+          if (progress < PHASE_TAGLINE_START) {
+            introTagline.classList.remove("visible");
+            introTagline.style.opacity = 0;
+            introTagline.style.transform = "translate(-50%, -50%) scale(1)";
+          } else if (progress <= PHASE_TAGLINE_VISIBLE) {
+            // Fade in progressif
+            const taglineFadeIn =
+              (progress - PHASE_TAGLINE_START) /
+              (PHASE_TAGLINE_VISIBLE - PHASE_TAGLINE_START);
+            introTagline.style.opacity = taglineFadeIn;
+            introTagline.classList.add("visible");
+            const taglineZoom = 1 + taglineFadeIn * 0.1;
+            introTagline.style.transform = `translate(-50%, -50%) scale(${taglineZoom})`;
+          } else if (progress <= PHASE_TAGLINE_END) {
+            // Pleinement visible + zoom progressif
+            introTagline.classList.add("visible");
+            introTagline.style.opacity = 1;
+            const phaseProgress =
+              (progress - PHASE_TAGLINE_VISIBLE) /
+              (PHASE_TAGLINE_END - PHASE_TAGLINE_VISIBLE);
+            const taglineZoom = 1.1 + phaseProgress * 0.3;
+            introTagline.style.transform = `translate(-50%, -50%) scale(${taglineZoom})`;
+          } else if (progress <= PHASE_TAGLINE_FADE) {
+            // Fade out progressif + continue le zoom
+            const taglineFadeOut =
+              (progress - PHASE_TAGLINE_END) /
+              (PHASE_TAGLINE_FADE - PHASE_TAGLINE_END);
+            introTagline.style.opacity = 1 - taglineFadeOut;
+            const taglineZoom = 1.4 + taglineFadeOut * 0.6;
+            introTagline.style.transform = `translate(-50%, -50%) scale(${taglineZoom})`;
+          } else {
+            introTagline.style.opacity = 0;
+            introTagline.classList.remove("visible");
+          }
+
+          // === PHASE 3: ZOOM DU TERMINAL ===
+          // Le terminal reste très zoomé jusqu'à PHASE_ZOOM_START puis dézoome
+          // Avec une phase de "pin" où le terminal se bloque à une taille intermédiaire
+          if (progress <= PHASE_ZOOM_START) {
+            // Garder le zoom max pendant les phases logo/tagline
+            workflowDemoZoom.style.setProperty("--zoom-scale", startScale);
+            // Terminal légèrement transparent pendant logo/tagline
+            workflowDemoZoom.style.opacity = 0.15;
+          } else if (progress <= PHASE_TERMINAL_PIN_START) {
+            // Démarrer l'animation du terminal une seule fois
+            if (!terminalAnimationStarted) {
+              terminalAnimationStarted = true;
+              setTimeout(animateTerminal, 300);
+            }
+
+            // Phase 1: Dézoom de startScale (5) à TERMINAL_PIN_SCALE (2.2)
+            const zoomProgress =
+              (progress - PHASE_ZOOM_START) /
+              (PHASE_TERMINAL_PIN_START - PHASE_ZOOM_START);
+            const currentScale =
+              startScale - (startScale - TERMINAL_PIN_SCALE) * zoomProgress;
+            workflowDemoZoom.style.setProperty("--zoom-scale", currentScale);
+            // Ramener progressivement l'opacité à 1
+            const opacityProgress = Math.min(zoomProgress * 2, 1);
+            workflowDemoZoom.style.opacity = 0.15 + 0.85 * opacityProgress;
+          } else if (progress <= PHASE_TERMINAL_PIN_END) {
+            // Démarrer l'animation si pas encore fait (scroll rapide)
+            if (!terminalAnimationStarted) {
+              terminalAnimationStarted = true;
+              setTimeout(animateTerminal, 300);
+            }
+            // Phase 2: Dézoom TRÈS LENT de TERMINAL_PIN_SCALE à TERMINAL_SLOW_END_SCALE
+            const slowZoomProgress =
+              (progress - PHASE_TERMINAL_PIN_START) /
+              (PHASE_TERMINAL_PIN_END - PHASE_TERMINAL_PIN_START);
+            const currentScale =
+              TERMINAL_PIN_SCALE -
+              (TERMINAL_PIN_SCALE - TERMINAL_SLOW_END_SCALE) * slowZoomProgress;
+            workflowDemoZoom.style.setProperty("--zoom-scale", currentScale);
+            workflowDemoZoom.style.opacity = 1;
+          } else {
+            // Démarrer l'animation si pas encore fait (scroll très rapide)
+            if (!terminalAnimationStarted) {
+              terminalAnimationStarted = true;
+              setTimeout(animateTerminal, 300);
+            }
+            // Phase 3: Dézoom de TERMINAL_SLOW_END_SCALE à endScale (1)
+            const zoomProgress =
+              (progress - PHASE_TERMINAL_PIN_END) /
+              (1 - PHASE_TERMINAL_PIN_END);
+            const currentScale =
+              TERMINAL_SLOW_END_SCALE -
+              (TERMINAL_SLOW_END_SCALE - endScale) * zoomProgress;
+            workflowDemoZoom.style.setProperty("--zoom-scale", currentScale);
+            workflowDemoZoom.style.opacity = 1;
+          }
+
+          // Opacité de l'overlay (reste noir jusqu'à la fin de l'animation)
+          if (progress <= PHASE_TERMINAL_PIN_END) {
+            zoomOverlay.style.opacity = 1;
+          } else {
+            // Fade out rapide à la toute fin
+            const overlayProgress =
+              (progress - PHASE_TERMINAL_PIN_END) /
+              (1 - PHASE_TERMINAL_PIN_END);
+            zoomOverlay.style.opacity = 1 - overlayProgress;
+          }
+
+          // Indicateur de scroll
+          if (showScrollIndicatorEarly || terminalAnimationComplete) {
+            if (progress < 0.05) {
+              scrollIndicator.style.opacity = 1;
+              scrollIndicator.classList.remove("hidden");
+            } else if (progress < 0.15) {
+              // Fade out progressif
+              scrollIndicator.style.opacity = Math.max(
+                0,
+                1 - (progress - 0.05) * 10,
+              );
+            } else {
+              scrollIndicator.style.opacity = 0;
+              scrollIndicator.classList.add("hidden");
+            }
+          }
+        } else {
+          // Hors zone de zoom (page normale)
+          if (isInZoomZone) {
+            isInZoomZone = false;
+            workflowDemoZoom.style.transition = "none";
+            workflowDemoZoom.classList.remove("zoom-mode");
+            workflowDemoZoom.style.setProperty("--zoom-scale", endScale);
+            workflowDemoZoom.offsetHeight;
+            workflowDemoZoom.style.transition = "";
+            zoomOverlay.classList.add("hidden");
+            scrollIndicator.classList.add("hidden");
+            introLogo.classList.add("hidden");
+            introTagline.classList.remove("visible");
+            document.body.classList.remove("zoom-active");
+            document.body.classList.add("zoom-complete");
+          }
+        }
+      }
+
+      // Forcer le scroll à 0 au chargement
+      if ("scrollRestoration" in history) {
+        history.scrollRestoration = "manual";
+      }
+      window.scrollTo(0, 0);
+
+      // Initialiser
+      initZoomEffect();
+
+      // Écouter le scroll
+      window.addEventListener("scroll", handleZoomScroll);
+
+      // Copy Command
+      function copyCommand(elementId) {
+        const el = document.getElementById(elementId);
+        const text = el.textContent.trim();
+        navigator.clipboard.writeText(text).then(() => {
+          const btn = el.closest(".install-box").querySelector(".copy-btn");
+          btn.innerHTML = '<i data-feather="check"></i>';
+          feather.replace();
+          setTimeout(() => {
+            btn.innerHTML = '<i data-feather="copy"></i>';
+            feather.replace();
+          }, 2000);
+        });
+      }
+
+      // Animated title with commands
+      const commands = ["/start PROJ-42", "/commit", "/done"];
+      let cmdIndex = 0;
+      let charIndex = 0;
+      let isDeleting = false;
+      const titleElement = document.querySelector(".title-commands");
+      const typeSpeed = 80;
+      const deleteSpeed = 50;
+      const pauseTime = 2500;
+
+      function typeCommand() {
+        const currentCmd = commands[cmdIndex];
+
+        if (isDeleting) {
+          titleElement.textContent = currentCmd.substring(0, charIndex - 1);
+          charIndex--;
+        } else {
+          titleElement.textContent = currentCmd.substring(0, charIndex + 1);
+          charIndex++;
+        }
+
+        let delay = isDeleting ? deleteSpeed : typeSpeed;
+
+        if (!isDeleting && charIndex === currentCmd.length) {
+          delay = pauseTime;
+          isDeleting = true;
+        } else if (isDeleting && charIndex === 0) {
+          isDeleting = false;
+          cmdIndex = (cmdIndex + 1) % commands.length;
+          delay = 400;
+        }
+
+        setTimeout(typeCommand, delay);
+      }
+
+      setTimeout(typeCommand, 1000);
+
+      // Terminal Animation - Claude Code CLI Style
+      const workflowDemo = document.querySelector(".workflow-demo");
+      const terminalContent = document.getElementById("terminal-content");
+      const phaseDots = document.querySelectorAll(".phase-dot");
+      const replayBtn = document.querySelector(".replay-btn");
+      let terminalAnimationComplete = false;
+
+      function setPhase(phaseNum) {
+        phaseDots.forEach((dot, i) => {
+          dot.classList.toggle("active", i + 1 === phaseNum);
+        });
+      }
+
+      // Fonction pour taper le texte caractère par caractère
+      function typeText(element, text, speed = 50) {
+        return new Promise((resolve) => {
+          element.classList.add("typing");
+          element.textContent = "";
+          let i = 0;
+
+          function type() {
+            if (i < text.length) {
+              element.textContent += text.charAt(i);
+              i++;
+              setTimeout(type, speed);
+            } else {
+              element.classList.remove("typing");
+              resolve();
+            }
+          }
+          type();
+        });
+      }
+
+      // Désactiver le scroll manuel du terminal si l'utilisateur scroll la page
+      window.addEventListener(
+        "scroll",
+        () => {
+          if (window.scrollY > 10) {
+            terminalContent.style.pointerEvents = "none";
+          }
+        },
+        { passive: true },
+      );
+
+      // Fonction pour scroller vers un élément
+      function scrollToElement(el) {
+        if (!el) return;
+        const lineTop = el.offsetTop;
+        const lineHeight = el.offsetHeight;
+        const containerHeight = terminalContent.clientHeight;
+        const scrollTarget = lineTop + lineHeight - containerHeight + 40;
+        if (scrollTarget > terminalContent.scrollTop) {
+          terminalContent.scrollTo({
+            top: scrollTarget,
+            behavior: "smooth",
+          });
+        }
+      }
+
+      // Fonction pour afficher un élément avec animation
+      function showElement(selector, delay) {
+        setTimeout(() => {
+          const el = document.querySelector(selector);
+          if (el) {
+            el.classList.add("visible");
+            scrollToElement(el);
+          }
+        }, delay);
+      }
+
+      // Fonction pour créer l'effet de paillettes
+      function createSparkles(element) {
+        const colors = [
+          "#a855f7",
+          "#22c55e",
+          "#facc15",
+          "#3b82f6",
+          "#ec4899",
+          "#f97316",
+          "#14b8a6",
+        ];
+        const sparkleCount = 30;
+
+        // Créer le conteneur de paillettes
+        const container = document.createElement("div");
+        container.className = "sparkles-container";
+        element.appendChild(container);
+
+        // Créer les paillettes
+        for (let i = 0; i < sparkleCount; i++) {
+          const sparkle = document.createElement("div");
+          sparkle.className = "sparkle" + (Math.random() > 0.5 ? " star" : "");
+
+          // Position et direction aléatoires
+          const angle =
+            (Math.PI * 2 * i) / sparkleCount + (Math.random() - 0.5) * 0.5;
+          const distance = 60 + Math.random() * 80;
+          const tx = Math.cos(angle) * distance;
+          const ty = Math.sin(angle) * distance;
+
+          sparkle.style.setProperty("--tx", tx + "px");
+          sparkle.style.setProperty("--ty", ty + "px");
+          sparkle.style.setProperty(
+            "--sparkle-color",
+            colors[Math.floor(Math.random() * colors.length)],
+          );
+          sparkle.style.background =
+            colors[Math.floor(Math.random() * colors.length)];
+          sparkle.style.animationDelay = Math.random() * 0.2 + "s";
+          sparkle.style.animationDuration = 0.6 + Math.random() * 0.4 + "s";
+
+          container.appendChild(sparkle);
+        }
+
+        // Ajouter l'animation de pulse
+        element.classList.add("celebrate");
+
+        // Nettoyer après l'animation
+        setTimeout(() => {
+          container.remove();
+          element.classList.remove("celebrate");
+        }, 1500);
+      }
+
+      // Fonction pour terminer un loader et afficher le checkmark
+      function completeStatus(selector, delay, showResult = false) {
+        setTimeout(() => {
+          const el = document.querySelector(selector);
+          if (el) {
+            const loader = el.querySelector(".loader");
+            const check = el.querySelector(".checkmark");
+            const result = el.querySelector(".result");
+            if (loader) loader.classList.add("done");
+            if (check) check.classList.add("visible");
+            if (showResult && result) result.classList.add("visible");
+            scrollToElement(el);
+          }
+        }, delay);
+      }
+
+      function animateTerminal() {
+        workflowDemo.classList.add("visible");
+        setPhase(1);
+
+        // Configuration
+        const typeSpeed = 60;
+        const startCmdDuration = "/start PROJ-42".length * typeSpeed;
+        const commitCmdDuration = "/commit".length * typeSpeed;
+        const doneCmdDuration = "/done".length * typeSpeed;
+
+        // ===== PHASE 1: /start =====
+        const p1 = 400; // Début phase 1
+
+        // Afficher le prompt et taper la commande
+        setTimeout(() => {
+          const prompt1 = document.querySelector(".phase-1-line.cli-prompt");
+          const response1 = document.querySelector(
+            ".phase-1-line.cli-response",
+          );
+          if (prompt1) {
+            prompt1.classList.add("visible");
+            scrollToElement(prompt1);
+          }
+
+          const cmd1 = prompt1.querySelector(".command");
+          if (cmd1 && cmd1.dataset.text) {
+            typeText(cmd1, cmd1.dataset.text, typeSpeed);
+          }
+
+          // Afficher la réponse après la frappe
+          setTimeout(() => {
+            if (response1) {
+              response1.classList.add("visible");
+              scrollToElement(response1);
+            }
+          }, startCmdDuration + 200);
+        }, p1);
+
+        // Animations des statuts phase 1
+        const p1Response = p1 + startCmdDuration + 400;
+        showElement(".phase-1-status-1", p1Response);
+        completeStatus(".phase-1-status-1", p1Response + 800);
+
+        showElement(".phase-1-status-2", p1Response + 1000);
+        completeStatus(".phase-1-status-2", p1Response + 2000, true);
+
+        showElement(".phase-1-status-3", p1Response + 2200);
+
+        showElement(".phase-1-status-4", p1Response + 2500);
+        completeStatus(".phase-1-status-4", p1Response + 3000);
+
+        showElement(".phase-1-status-5", p1Response + 3200);
+        completeStatus(".phase-1-status-5", p1Response + 3700);
+
+        showElement(".phase-1-status-6", p1Response + 4000);
+        showElement(".phase-1-status-7", p1Response + 4300);
+
+        // Afficher le container de diffs et animer les fichiers
+        setTimeout(() => {
+          const diffContainer = document.querySelector(
+            ".agents-diff-container",
+          );
+          if (diffContainer) {
+            diffContainer.classList.add("visible");
+            scrollToElement(diffContainer);
+
+            // Animer chaque fichier avec ses lignes de diff
+            const diffFiles = diffContainer.querySelectorAll(".diff-file");
+            let fileDelay = 0;
+
+            diffFiles.forEach((file, fileIndex) => {
+              setTimeout(() => {
+                file.classList.add("visible");
+                scrollToElement(file);
+
+                // Animer chaque ligne de diff dans le fichier
+                const diffLines = file.querySelectorAll(".diff-line");
+                diffLines.forEach((line, lineIndex) => {
+                  setTimeout(() => {
+                    line.classList.add("visible");
+                    scrollToElement(line);
+                  }, lineIndex * 150);
+                });
+              }, fileDelay);
+
+              fileDelay += 1500; // Délai entre chaque fichier
+            });
+          }
+        }, p1Response + 4800);
+
+        // Compléter "2 agents coding..." après un moment
+        setTimeout(() => {
+          const agentsEl = document.querySelector(".phase-1-status-7");
+          const diffContainer = document.querySelector(
+            ".agents-diff-container",
+          );
+          const fileCount = diffContainer
+            ? diffContainer.querySelectorAll(".diff-file").length
+            : 0;
+
+          if (agentsEl) {
+            const loader = agentsEl.querySelector(".loader");
+            const check = agentsEl.querySelector(".checkmark");
+            if (loader) loader.classList.add("done");
+            if (check) check.classList.add("visible");
+            agentsEl.classList.add("completed");
+            agentsEl.querySelector(".agents-text").textContent =
+              `2 agents done (${fileCount} files updated)`;
+          }
+        }, p1Response + 9500);
+
+        // ===== PHASE 2: /commit =====
+        const p2 = p1Response + 10500;
+        setPhase(2);
+
+        setTimeout(() => {
+          setPhase(2);
+          const prompt2 = document.querySelector(".phase-2-line.cli-prompt");
+          const response2 = document.querySelector(
+            ".phase-2-line.cli-response",
+          );
+          if (prompt2) {
+            prompt2.classList.add("visible");
+            scrollToElement(prompt2);
+          }
+
+          const cmd2 = prompt2.querySelector(".command");
+          if (cmd2 && cmd2.dataset.text) {
+            typeText(cmd2, cmd2.dataset.text, typeSpeed);
+          }
+
+          setTimeout(() => {
+            if (response2) {
+              response2.classList.add("visible");
+              scrollToElement(response2);
+            }
+          }, commitCmdDuration + 200);
+        }, p2);
+
+        const p2Response = p2 + commitCmdDuration + 400;
+
+        // Commit Back
+        showElement(".phase-2-status-0", p2Response);
+        showElement(".phase-2-status-1", p2Response + 200);
+        completeStatus(".phase-2-status-1", p2Response + 1000, true);
+
+        showElement(".phase-2-status-2", p2Response + 1200);
+        completeStatus(".phase-2-status-2", p2Response + 2000);
+
+        showElement(".phase-2-status-3", p2Response + 2200);
+
+        showElement(".phase-2-status-4", p2Response + 2400);
+        completeStatus(".phase-2-status-4", p2Response + 3200, true);
+
+        // Commit Front
+        showElement(".phase-2-status-5", p2Response + 3600);
+        showElement(".phase-2-status-6", p2Response + 3800);
+        completeStatus(".phase-2-status-6", p2Response + 4600, true);
+
+        showElement(".phase-2-status-7", p2Response + 4800);
+        completeStatus(".phase-2-status-7", p2Response + 5600);
+
+        showElement(".phase-2-status-8", p2Response + 5800);
+
+        showElement(".phase-2-status-9", p2Response + 6000);
+        completeStatus(".phase-2-status-9", p2Response + 6800, true);
+
+        // ===== PHASE 3: /done =====
+        const p3 = p2Response + 7500;
+
+        setTimeout(() => {
+          setPhase(3);
+          const prompt3 = document.querySelector(".phase-3-line.cli-prompt");
+          const response3 = document.querySelector(
+            ".phase-3-line.cli-response",
+          );
+          if (prompt3) {
+            prompt3.classList.add("visible");
+            scrollToElement(prompt3);
+          }
+
+          const cmd3 = prompt3.querySelector(".command");
+          if (cmd3 && cmd3.dataset.text) {
+            typeText(cmd3, cmd3.dataset.text, typeSpeed);
+          }
+
+          setTimeout(() => {
+            if (response3) {
+              response3.classList.add("visible");
+              scrollToElement(response3);
+            }
+          }, doneCmdDuration + 200);
+        }, p3);
+
+        const p3Response = p3 + doneCmdDuration + 400;
+        showElement(".phase-3-status-1", p3Response);
+        completeStatus(".phase-3-status-1", p3Response + 800, true);
+
+        showElement(".phase-3-status-2", p3Response + 1000);
+        completeStatus(".phase-3-status-2", p3Response + 1800, true);
+
+        showElement(".phase-3-status-3", p3Response + 2000);
+        completeStatus(".phase-3-status-3", p3Response + 2800, true);
+
+        // Afficher "Task complete!" avec paillettes
+        setTimeout(() => {
+          const successBanner = document.querySelector(".phase-3-status-4");
+          if (successBanner) {
+            successBanner.classList.add("visible");
+            scrollToElement(successBanner);
+            createSparkles(successBanner);
+          }
+        }, p3Response + 3200);
+
+        // Bouton replay et afficher l'indicateur de scroll
+        setTimeout(() => {
+          replayBtn.classList.add("visible");
+          terminalAnimationComplete = true;
+          // N'afficher l'indicateur que si on est en haut de page (pas scrollé)
+          const scrollIndicator = document.querySelector(".scroll-indicator");
+          if (scrollIndicator && window.scrollY < 50) {
+            scrollIndicator.classList.remove("hidden");
+            scrollIndicator.style.opacity = 1;
+          }
+        }, p3Response + 4000);
+      }
+
+      function replayTerminal() {
+        replayBtn.classList.remove("visible");
+        terminalAnimationComplete = false;
+
+        // Reset tous les éléments
+        document
+          .querySelectorAll(
+            ".cli-prompt, .cli-response, .cli-status, .cli-section-title, .cli-item, .cli-agents, .cli-success-banner",
+          )
+          .forEach((el) => {
+            el.classList.remove("visible");
+            el.classList.remove("completed");
+          });
+
+        document
+          .querySelectorAll(".loader")
+          .forEach((el) => el.classList.remove("done"));
+        document
+          .querySelectorAll(".checkmark")
+          .forEach((el) => el.classList.remove("visible"));
+        document
+          .querySelectorAll(".result")
+          .forEach((el) => el.classList.remove("visible"));
+
+        document.querySelectorAll(".command").forEach((cmd) => {
+          cmd.textContent = "";
+          cmd.classList.remove("typing");
+        });
+
+        // Reset agents text
+        const agentsText = document.querySelector(".agents-text");
+        if (agentsText) agentsText.textContent = "2 agents coding...";
+
+        // Reset diffs
+        const diffContainer = document.querySelector(".agents-diff-container");
+        if (diffContainer) diffContainer.classList.remove("visible");
+        document
+          .querySelectorAll(".diff-file")
+          .forEach((el) => el.classList.remove("visible"));
+        document
+          .querySelectorAll(".diff-line")
+          .forEach((el) => el.classList.remove("visible"));
+
+        // Cacher l'indicateur de scroll
+        const scrollIndicator = document.querySelector(".scroll-indicator");
+        if (scrollIndicator) scrollIndicator.classList.add("hidden");
+
+        terminalContent.scrollTop = 0;
+
+        setTimeout(animateTerminal, 300);
+      }
+
+      // Start terminal animation after page load (now handled by zoom effect)
+      // Terminal animation is started in initZoomEffect()
+
+      // Purple sparkle trail effect
+      const purpleColors = [
+        "#a855f7",
+        "#9333ea",
+        "#7c3aed",
+        "#6366f1",
+        "#8b5cf6",
+        "#c084fc",
+        "#d8b4fe",
+        "#a78bfa",
+      ];
+      let lastTrailTime = 0;
+      const trailDelay = 25;
+
+      document.addEventListener("mousemove", (e) => {
+        const now = Date.now();
+        if (now - lastTrailTime < trailDelay) return;
+        lastTrailTime = now;
+
+        const numSparkles = Math.random() > 0.5 ? 2 : 1;
+
+        for (let i = 0; i < numSparkles; i++) {
+          const sparkle = document.createElement("div");
+          sparkle.className = "sparkle";
+
+          const offsetX = (Math.random() - 0.5) * 20;
+          const offsetY = (Math.random() - 0.5) * 20;
+          const size = 8 + Math.random() * 12;
+          const color =
+            purpleColors[Math.floor(Math.random() * purpleColors.length)];
+          const rotation = Math.random() * 45;
+
+          sparkle.style.left = e.clientX - size / 2 + offsetX + "px";
+          sparkle.style.top = e.clientY - size / 2 + offsetY + "px";
+          sparkle.style.width = size + "px";
+          sparkle.style.height = size + "px";
+          sparkle.style.color = color;
+          sparkle.style.filter = `drop-shadow(0 0 ${3 + Math.random() * 4}px ${color})`;
+          sparkle.style.transform = `rotate(${rotation}deg)`;
+          sparkle.style.animation = `sparkle-fade ${0.4 + Math.random() * 0.3}s ease-out forwards`;
+
+          document.body.appendChild(sparkle);
+
+          setTimeout(() => {
+            sparkle.remove();
+          }, 700);
+        }
+      });
+
+      // Documentation Modal
+      const docModalOverlay = document.getElementById("doc-modal-overlay");
+      const docModal = document.getElementById("doc-modal");
+      const docModalClose = document.getElementById("doc-modal-close");
+      const docLink = document.getElementById("doc-link");
+      const docLinkFooter = document.getElementById("doc-link-footer");
+      const docLinkCta = document.getElementById("doc-link-cta");
+
+      function openDocModal(e) {
+        e.preventDefault();
+        docModalOverlay.classList.add("open");
+        docModal.classList.add("open");
+        document.body.style.overflow = "hidden";
+        feather.replace();
+      }
+
+      function closeDocModal() {
+        docModalOverlay.classList.remove("open");
+        docModal.classList.remove("open");
+        document.body.style.overflow = "";
+      }
+
+      docLink.addEventListener("click", openDocModal);
+      docLinkFooter.addEventListener("click", openDocModal);
+      docLinkCta.addEventListener("click", openDocModal);
+      docModalClose.addEventListener("click", closeDocModal);
+      docModalOverlay.addEventListener("click", closeDocModal);
+
+      // Close on Escape key
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && docModal.classList.contains("open")) {
+          closeDocModal();
+        }
+      });
+
+      // Copy code in doc modal
+      function copyDocCode(elementId) {
+        const el = document.getElementById(elementId);
+        const text = el.textContent.trim();
+        navigator.clipboard.writeText(text).then(() => {
+          const btn = el.closest(".doc-code-block").querySelector(".copy-btn");
+          btn.innerHTML = '<i data-feather="check"></i>';
+          feather.replace();
+          setTimeout(() => {
+            btn.innerHTML = '<i data-feather="copy"></i>';
+            feather.replace();
+          }, 2000);
+        });
+      }
+
+      // Sidebar navigation
+      const sidebarLinks = document.querySelectorAll(".doc-sidebar-link");
+      const docModalBody = document.querySelector(".doc-modal-body");
+
+      sidebarLinks.forEach((link) => {
+        link.addEventListener("click", (e) => {
+          e.preventDefault();
+          const targetId = link.getAttribute("href").substring(1);
+          const targetSection = document.getElementById(targetId);
+
+          if (targetSection) {
+            targetSection.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+
+            // Update active state
+            sidebarLinks.forEach((l) => l.classList.remove("active"));
+            link.classList.add("active");
+          }
+        });
+      });
+
+      // Update active link on scroll
+      docModalBody.addEventListener("scroll", () => {
+        const sections = document.querySelectorAll(".doc-section[id]");
+        let currentSection = "";
+
+        sections.forEach((section) => {
+          const sectionTop = section.offsetTop - docModalBody.offsetTop;
+          if (docModalBody.scrollTop >= sectionTop - 100) {
+            currentSection = section.getAttribute("id");
+          }
+        });
+
+        sidebarLinks.forEach((link) => {
+          link.classList.remove("active");
+          if (link.getAttribute("href") === "#" + currentSection) {
+            link.classList.add("active");
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
