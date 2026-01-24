@@ -5,53 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-01-24
 
 ### Added
 
-- Community files for open source (CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md)
-- GitHub issue templates for bug reports and feature requests
-- Pull request template
-- CI/CD workflows with GitHub Actions
-- Linting configuration (markdownlint, yamllint, editorconfig)
-- Dependabot configuration for automated dependency updates
+- **CLI `magic-slash`**: Interactive command-line tool for configuration management
+  - TUI interface with keyboard navigation (arrow keys, Enter, q to quit)
+  - Configure backend and frontend repository paths
+  - Path validation with git repository detection
+  - Persistent configuration stored in `~/.config/magic-slash/config.json`
 
-### Changed
-
-- Updated README.md with badges and contributing section
-
-## [1.0.0] - 2026-01-23
+## [0.0.1] - 2026-01-24
 
 ### Added
 
-- Initial release of Magic Slash
-- `/start` command - Start a task from a Jira ticket
-  - Fetches ticket details via MCP Atlassian
-  - Analyzes scope (BACKEND/FRONTEND/BOTH)
-  - Creates Git worktrees automatically
-  - Generates contextual agent prompt
-- `/commit` command - Create atomic commits
-  - Stages all changes
-  - Analyzes diff
-  - Generates conventional commit message
-  - Creates the commit
-- `/done` command - Finalize development tasks
-  - Pushes branch to origin
-  - Creates Pull Request via MCP GitHub
-  - Updates Jira ticket status
-  - Adds PR link as comment
-- Installation script with interactive setup
-  - MCP Atlassian configuration (OAuth)
-  - MCP GitHub configuration (PAT)
-  - Repository paths configuration
-- Uninstallation script
-- Documentation
-  - README with usage examples
-  - FLOW.md workflow diagram
-  - PLAN.md implementation details
-- Landing page with logo and documentation
-- Reveal.js presentation slides
-- MIT License
+- **Slash commands for Claude Code**:
+  - `/start <TICKET-ID>`: Start a task from a Jira ticket
+    - Fetches ticket details via Atlassian MCP
+    - Analyzes scope (backend/frontend/both) from labels and keywords
+    - Creates git worktrees for isolated development
+  - `/commit`: Create atomic commits with conventional messages
+    - Analyzes staged changes
+    - Generates conventional commit messages (`type(scope): description`)
+    - Supports feat, fix, docs, style, refactor, test, chore types
+  - `/done`: Finalize a task
+    - Pushes commits to remote
+    - Creates Pull Request via GitHub MCP
+    - Updates Jira ticket status to "To be reviewed"
+    - Adds PR link as comment on Jira ticket
+- **Installation scripts**:
+  - `install.sh`: One-line installation via curl
+  - `uninstall.sh`: Clean removal of all components
+- **Documentation website**: Landing page at magic-slash.io
+- **CI/CD pipelines**:
+  - `ci.yml`: Linting and validation workflow
+  - `release.yml`: Automated GitHub releases on version tags
+- **Community files**:
+  - Issue templates (bug report, feature request)
+  - Pull request template with checklist
+  - Contributing guidelines
+  - Code of conduct
+  - Security policy
 
-[Unreleased]: https://github.com/xrequillart/magic-slash/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/xrequillart/magic-slash/releases/tag/v1.0.0
+[0.1.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.1.0
+[0.0.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.0.1

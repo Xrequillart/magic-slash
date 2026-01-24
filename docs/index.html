@@ -2831,6 +2831,15 @@
                 paths.</span
               >
             </p>
+            <p>
+              <span data-lang="fr"
+                >La commande <code>magic-slash</code> est également installée
+                pour gérer facilement votre configuration.</span
+              ><span data-lang="en"
+                >The <code>magic-slash</code> command is also installed to
+                easily manage your configuration.</span
+              >
+            </p>
           </div>
 
           <!-- Désinstallation -->
@@ -2894,6 +2903,14 @@
                     >MCP Atlassian & GitHub configuration in</span
                   >
                   <code>~/.claude/settings.json</code></span
+                >
+              </li>
+              <li class="red">
+                <i data-feather="x"></i>
+                <span
+                  ><code>~/.local/bin/magic-slash</code>
+                  <span data-lang="fr">(commande CLI)</span
+                  ><span data-lang="en">(CLI command)</span></span
                 >
               </li>
             </ul>
@@ -3627,6 +3644,51 @@
                 folder.
               </p>
             </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="terminal"></i>
+                <span data-lang="fr"
+                  >Comment utiliser la commande magic-slash ?</span
+                ><span data-lang="en"
+                  >How to use the magic-slash command?</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Tapez simplement <code>magic-slash</code> dans votre terminal.
+                Un menu interactif s'affiche avec la configuration actuelle.
+                Utilisez les flèches ↑/↓ pour naviguer et Entrée pour
+                sélectionner une option.
+              </p>
+              <p data-lang="en">
+                Simply type <code>magic-slash</code> in your terminal. An
+                interactive menu displays your current configuration. Use ↑/↓
+                arrows to navigate and Enter to select an option.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="alert-circle"></i>
+                <span data-lang="fr"
+                  >La commande magic-slash n'est pas trouvée</span
+                ><span data-lang="en">magic-slash command not found</span>
+              </h4>
+              <p data-lang="fr">
+                Vérifiez que <code>~/.local/bin</code> est dans votre PATH.
+                Ajoutez cette ligne à votre fichier de configuration shell
+                (~/.bashrc, ~/.zshrc) :
+                <code>export PATH="$HOME/.local/bin:$PATH"</code>. Puis
+                relancez votre terminal ou exécutez
+                <code>source ~/.bashrc</code>.
+              </p>
+              <p data-lang="en">
+                Make sure <code>~/.local/bin</code> is in your PATH. Add this
+                line to your shell config file (~/.bashrc, ~/.zshrc):
+                <code>export PATH="$HOME/.local/bin:$PATH"</code>. Then restart
+                your terminal or run <code>source ~/.bashrc</code>.
+              </p>
+            </div>
           </div>
 
           <!-- Conventional Commits -->
@@ -3750,12 +3812,36 @@
             <h4 data-lang="en">Modify repository paths</h4>
 
             <p data-lang="fr">
-              Les chemins vers vos repositories backend et frontend sont stockés
-              dans le fichier de configuration. Pour les modifier :
+              Utilisez la commande <code>magic-slash</code> pour modifier les
+              chemins :
             </p>
             <p data-lang="en">
-              The paths to your backend and frontend repositories are stored in
-              the configuration file. To modify them:
+              Use the <code>magic-slash</code> command to modify paths:
+            </p>
+
+            <div class="doc-code-block">
+              <div class="doc-code-header">
+                <span>Terminal</span>
+                <button
+                  class="copy-btn"
+                  onclick="copyDocCode('doc-magic-slash-cmd')"
+                >
+                  <i data-feather="copy"></i>
+                </button>
+              </div>
+              <div class="doc-code-content" id="doc-magic-slash-cmd">
+                magic-slash
+              </div>
+            </div>
+
+            <p data-lang="fr">
+              L'interface interactive vous permet de naviguer avec les flèches
+              et de modifier les chemins. Vous pouvez aussi éditer le fichier
+              manuellement :
+            </p>
+            <p data-lang="en">
+              The interactive interface lets you navigate with arrow keys and
+              modify paths. You can also edit the file manually:
             </p>
 
             <div class="doc-config-block">
@@ -3834,6 +3920,17 @@
                     >Configuration Magic Slash (chemins des repos)</span
                   ><span data-lang="en"
                     >Magic Slash configuration (repo paths)</span
+                  ></span
+                >
+              </li>
+              <li>
+                <i data-feather="terminal"></i>
+                <span
+                  ><code>~/.local/bin/magic-slash</code> —
+                  <span data-lang="fr"
+                    >Commande CLI pour gérer la configuration</span
+                  ><span data-lang="en"
+                    >CLI command to manage configuration</span
                   ></span
                 >
               </li>

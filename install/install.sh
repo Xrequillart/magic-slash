@@ -533,7 +533,57 @@ fi
 echo ""
 
 # ============================================
-# 6. DONE
+# 6. CLI INSTALLATION
+# ============================================
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "6. Installing magic-slash CLI command"
+echo ""
+
+CLI_DIR="$HOME/.local/bin"
+CLI_PATH="$CLI_DIR/magic-slash"
+
+# Create directory if needed
+mkdir -p "$CLI_DIR"
+
+# Get version from package.json (if available) or use default
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/../package.json" ]; then
+  VERSION=$(jq -r '.version' "$SCRIPT_DIR/../package.json")
+else
+  VERSION="0.0.1"
+fi
+
+# Copy CLI script and inject version
+if [ -f "$SCRIPT_DIR/magic-slash" ]; then
+  # Local installation
+  sed "s/__VERSION__/$VERSION/g" "$SCRIPT_DIR/magic-slash" > "$CLI_PATH"
+else
+  # Remote installation - download from GitHub
+  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/install/magic-slash" | \
+    sed "s/__VERSION__/$VERSION/g" > "$CLI_PATH"
+fi
+
+chmod +x "$CLI_PATH"
+
+echo "   ✅ magic-slash CLI installed at $CLI_PATH"
+
+# Check if ~/.local/bin is in PATH
+if [[ ":$PATH:" != *":$CLI_DIR:"* ]]; then
+  echo ""
+  echo "   ⚠️  $CLI_DIR is not in your PATH"
+  echo ""
+  echo "   Add this line to your shell config (~/.bashrc, ~/.zshrc, etc.):"
+  echo ""
+  echo "      export PATH=\"\$HOME/.local/bin:\$PATH\""
+  echo ""
+  echo "   Then restart your terminal or run: source ~/.bashrc"
+fi
+
+echo ""
+
+# ============================================
+# 7. DONE
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
@@ -562,4 +612,7 @@ echo "  • Repos config   : ~/.config/magic-slash/config.json"
 echo "  • /start command : ~/.claude/commands/start.md"
 echo "  • /commit command: ~/.claude/commands/commit.md"
 echo "  • /done command  : ~/.claude/commands/done.md"
+echo "  • CLI command    : ~/.local/bin/magic-slash"
+echo ""
+echo "Run 'magic-slash' anytime to update your configuration."
 echo ""
