@@ -1,0 +1,39 @@
+{
+  "name": "magic-slash",
+  "version": "0.0.1",
+  "description": "3 slash commands for Claude Code that automate the entire development cycle with Jira Tickets and GitHub repositories.",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "slash-commands",
+    "jira",
+    "github",
+    "automation",
+    "developer-tools",
+    "productivity"
+  ],
+  "homepage": "https://github.com/xrequillart/magic-slash#readme",
+  "bugs": {
+    "url": "https://github.com/xrequillart/magic-slash/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xrequillart/magic-slash.git"
+  },
+  "license": "MIT",
+  "author": "xrequillart",
+  "scripts": {
+    "lint": "npm run lint:md && npm run lint:yaml",
+    "lint:md": "markdownlint '**/*.md' --ignore node_modules",
+    "lint:yaml": "yamllint -c .yamllint.yml .",
+    "lint:fix": "markdownlint '**/*.md' --ignore node_modules --fix"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "markdownlint-cli": "^0.43.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
