@@ -25,7 +25,7 @@
 
 | Command   | Description                                       |
 | --------- | ------------------------------------------------- |
-| `/start`  | Start a task from a Jira ticket                   |
+| `/start`  | Start a task from a Jira ticket or GitHub issue   |
 | `/commit` | Create an atomic commit with conventional message |
 | `/done`   | Push, create PR and update Jira                   |
 
@@ -54,19 +54,23 @@ curl -fsSL https://magic-slash.io/install.sh | bash
 ### /start - Start a task
 
 ```bash
-/start PROJ-1234
+/start PROJ-1234    # Jira ticket
+/start 42           # GitHub issue
+/start #42          # GitHub issue (with #)
 ```
 
-1. Fetches the Jira ticket (title, description, labels)
-2. Analyzes the scope: BACKEND / FRONTEND / BOTH
-3. Creates Git worktrees automatically
-4. Generates an agent context to start coding
+1. Detects the ticket type (Jira or GitHub) based on format
+2. Fetches ticket/issue details (title, description, labels)
+3. Analyzes the scope: BACKEND / FRONTEND / BOTH
+4. Creates Git worktrees automatically
+5. Generates an agent context to start coding
 
-**Example:**
+**Jira example:**
 
 ```text
 > /start PROJ-42
 
+Source: Jira
 Ticket: PROJ-42 - Add pagination on /users
 Type: Feature
 Scope: BOTH
@@ -77,6 +81,38 @@ Worktrees created:
 
 Context:
 You need to implement pagination on the GET /users endpoint...
+```
+
+**GitHub example:**
+
+```text
+> /start 123
+
+Source: GitHub (owner/repo-backend)
+Issue: #123 - Fix authentication bug
+Labels: bug, backend
+Scope: BACK
+
+Worktree created:
+✓ /projects/project-back-123
+
+Context:
+You need to fix the authentication bug in the login flow...
+```
+
+**Multiple issues with same ID:**
+
+If the same issue number exists in multiple configured repositories, you'll be prompted to choose:
+
+```text
+> /start 42
+
+Multiple issues #42 found:
+
+1. owner/repo-backend : "Add caching layer"
+2. owner/repo-frontend : "Add loading spinner"
+
+Which one do you want to use?
 ```
 
 ### /commit - Create a commit

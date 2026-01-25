@@ -258,42 +258,117 @@ fi
 if [ "$SKIP_START" != true ]; then
   cat > "$START_CMD" << 'SLASH_CMD'
 ---
-description: Start a task from a Jira ticket
+description: Start a task from a Jira ticket or GitHub issue
 argument-hint: <TICKET-ID>
-allowed-tools: Bash(*), mcp__atlassian__*
+allowed-tools: Bash(*), mcp__atlassian__*, mcp__github__*
 ---
 
 # Magic Slash - /start
 
-You are an assistant that helps start a development task from a Jira ticket.
+You are an assistant that helps start a development task from a Jira ticket or GitHub issue.
 
-## Step 1: Retrieve the Jira ticket
+## Step 1: Detect ticket type
 
-Use the MCP Atlassian tool `mcp__atlassian__getJiraIssue` to retrieve ticket details: $ARGUMENTS
+Analyze the provided argument: `$ARGUMENTS`
+
+- **Jira format**: Contains an alphabetic prefix followed by a hyphen and digits (e.g., `PROJ-123`, `ABC-456`)
+  - Regex: `^[A-Z]+-\d+$`
+  - → Go to **Step 2A** (Jira)
+
+- **GitHub format**: A simple number, with or without `#` (e.g., `123`, `#456`)
+  - Regex: `^#?\d+$`
+  - → Go to **Step 2B** (GitHub)
+
+If format is not recognized, ask the user to clarify.
+
+## Step 2A: Retrieve Jira ticket
+
+Use the MCP Atlassian tool `mcp__atlassian__getJiraIssue` to retrieve ticket details.
 
 Note: If you don't know the `cloudId`, first use `mcp__atlassian__getAccessibleAtlassianResources` to get it.
 
-## Step 2: Analyze the ticket
+→ Continue to **Step 3**.
+
+## Step 2B: Retrieve GitHub issue
+
+### 2B.1: Read repository configuration
+
+```bash
+cat ~/.config/magic-slash/config.json
+```
+
+Get the paths of configured repos (backend and frontend).
+
+### 2B.2: Identify GitHub repositories
+
+For each configured repo, get the owner and repo name:
+
+```bash
+cd {REPO_PATH} && git remote get-url origin
+```
+
+Parse the URL to extract `owner/repo` (possible formats: `git@github.com:owner/repo.git` or `https://github.com/owner/repo.git`).
+
+### 2B.3: Search for issue in each repo
+
+For each identified repo, use `mcp__github__get_issue` to check if the issue exists:
+
+- `owner`: The repository owner
+- `repo`: The repository name
+- `issue_number`: The issue number (without `#`)
+
+Collect all found issues.
+
+### 2B.4: Resolution
+
+- **No issue found**: Inform the user that no issue with this number exists in configured repos.
+
+- **Single issue found**: Use this issue and continue.
+
+- **Multiple issues found**: Display options and ask the user to choose:
+  ```
+  Multiple issues #123 found:
+
+  1. owner1/repo-backend : "Backend issue title"
+  2. owner2/repo-frontend : "Frontend issue title"
+
+  Which one do you want to use?
+  ```
+
+→ Continue to **Step 3**.
+
+## Step 3: Analyze ticket scope
 
 Determine the ticket scope (BACK, FRONT, or BOTH) by analyzing:
+
+**For Jira:**
 - **Labels**: "backend", "frontend", "fullstack", "api", "ui"...
 - **Jira Components**: if defined in the project
+
+**For GitHub:**
+- **Labels**: "backend", "frontend", "fullstack", "api", "ui"...
+- **Assignees** and **Milestone** can provide hints
+
+**For both:**
 - **Keywords in title/description**:
   - BACK: API, endpoint, database, migration, service, controller, model, query
   - FRONT: component, UI, style, CSS, page, form, button, view, screen
 
 If no clear indication, ask the user: "Does this ticket concern BACKEND, FRONTEND, or BOTH?"
 
-## Step 3: Read the configuration
+**GitHub special case**: If the issue was found in only one repo during step 2B, the scope is automatically determined by that repo (BACK if backend, FRONT if frontend).
 
-Read the configuration file to get repo paths:
+## Step 4: Read configuration
+
+If not already done in step 2B, read the configuration file to get repo paths:
+
 ```bash
 cat ~/.config/magic-slash/config.json
 ```
 
-## Step 4: Create worktrees
+## Step 5: Create worktrees
 
-For each relevant repo (based on step 2 analysis):
+For each relevant repo (based on step 3 analysis):
 
 1. Go to the repo directory
 2. Get the repo folder name
@@ -304,22 +379,28 @@ For each relevant repo (based on step 2 analysis):
 cd {REPO_PATH}
 REPO_NAME=$(basename "$PWD")
 git fetch origin
-git worktree add -b feature/$ARGUMENTS ../${REPO_NAME}-$ARGUMENTS origin/main
+git worktree add -b feature/$TICKET_ID ../${REPO_NAME}-$TICKET_ID origin/main
 ```
 
-Example: If the repo is `/projects/my-api`, the worktree will be `/projects/my-api-PROJ-1234`
+**Branch naming note**:
+- For Jira: use the ID as-is (e.g., `feature/PROJ-1234`)
+- For GitHub: prefix with repo name to avoid conflicts (e.g., `feature/repo-name-123`)
 
-## Step 5: Summary and agent context
+Example: If the repo is `/projects/my-api`, the worktree will be `/projects/my-api-PROJ-1234` (Jira) or `/projects/my-api-123` (GitHub)
+
+## Step 6: Summary and agent context
 
 Once worktrees are created, display a summary:
+
+- Source: Jira or GitHub (owner/repo)
 - Ticket: [ID] - [Title]
-- Type: [Bug/Feature/Task...]
+- Type: [Bug/Feature/Task...] (Jira) or Labels (GitHub)
 - Scope: [BACK/FRONT/BOTH]
 - Worktree(s) created: [paths]
 
 Then generate a contextual prompt to start working on the task, based on:
-- The ticket description
-- The acceptance criteria
+- The ticket/issue description
+- The acceptance criteria (if present)
 - The expected type of modification
 SLASH_CMD
 
@@ -599,7 +680,8 @@ echo "  2. On first /start, an OAuth window will open"
 echo "     to connect your Atlassian account"
 echo ""
 echo "  3. Launch Claude Code and use:"
-echo "     /start PROJ-1234    → Start a Jira task"
+echo "     /start PROJ-1234    → Start from a Jira ticket"
+echo "     /start 42           → Start from a GitHub issue"
 echo "     /commit             → Commit with conventional message"
 echo "     /done               → Push, PR and update Jira"
 echo ""

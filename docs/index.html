@@ -2461,11 +2461,11 @@
           <p>
             <span data-lang="fr"
               >Trois slash commands qui automatisent ton workflow : de la
-              récupération du ticket Jira jusqu'au push de la PR.</span
+              récupération du ticket Jira ou de l'issue GitHub jusqu'au push de la PR.</span
             >
             <span data-lang="en"
               >Three slash commands that automate your workflow: from fetching
-              the Jira ticket to pushing the PR.</span
+              the Jira ticket or GitHub issue to pushing the PR.</span
             >
           </p>
 
@@ -2506,9 +2506,9 @@
               <p>
                 <span data-lang="fr"
                   >D&eacute;marre une nouvelle t&acirc;che depuis un ticket
-                  Jira.</span
+                  Jira ou une issue GitHub.</span
                 >
-                <span data-lang="en">Start a new task from a Jira ticket.</span>
+                <span data-lang="en">Start a new task from a Jira ticket or GitHub issue.</span>
               </p>
               <ul>
                 <li>
@@ -2928,20 +2928,23 @@
               <h4>/start &lt;TICKET-ID&gt;</h4>
               <p>
                 <span data-lang="fr"
-                  >Démarre une nouvelle tâche à partir d'un ticket Jira.</span
+                  >Démarre une nouvelle tâche à partir d'un ticket Jira ou d'une issue GitHub.</span
                 ><span data-lang="en"
-                  >Starts a new task from a Jira ticket.</span
+                  >Starts a new task from a Jira ticket or GitHub issue.</span
                 >
               </p>
+              <p><strong>Formats :</strong></p>
+              <ul>
+                <li><code>/start PROJ-123</code> → Jira ticket</li>
+                <li><code>/start 42</code> ou <code>/start #42</code> → GitHub issue</li>
+              </ul>
               <p><strong>Workflow :</strong></p>
               <ol>
                 <li>
                   <span data-lang="fr"
-                    >Récupère les détails du ticket via l'API Jira (titre,
-                    description, labels, composants)</span
+                    >Détecte le type de ticket (Jira ou GitHub) et récupère les détails</span
                   ><span data-lang="en"
-                    >Fetches ticket details via Jira API (title, description,
-                    labels, components)</span
+                    >Detects ticket type (Jira or GitHub) and fetches details</span
                   >
                 </li>
                 <li>
@@ -3150,10 +3153,10 @@
                 <span
                   ><strong>MCP GitHub</strong> —
                   <span data-lang="fr"
-                    >Permet de créer des Pull Requests et gérer les
+                    >Permet de récupérer les issues GitHub, créer des Pull Requests et gérer les
                     repositories</span
                   ><span data-lang="en"
-                    >Creates Pull Requests and manages repositories</span
+                    >Fetches GitHub issues, creates Pull Requests and manages repositories</span
                   ></span
                 >
               </li>
@@ -3205,19 +3208,19 @@
                 <div class="doc-timeline-dot">3</div>
                 <div class="doc-timeline-content">
                   <div class="doc-timeline-title">
-                    <span data-lang="fr">Appel MCP Atlassian</span
-                    ><span data-lang="en">MCP Atlassian call</span>
+                    <span data-lang="fr">Appel MCP (Atlassian ou GitHub)</span
+                    ><span data-lang="en">MCP call (Atlassian or GitHub)</span>
                   </div>
                   <div class="doc-timeline-desc">
                     <span data-lang="fr"
-                      >Via le serveur MCP Atlassian, Claude récupère les détails
-                      du ticket : titre, description, labels, composants. Il
-                      analyse ensuite le scope (Backend, Frontend, ou les
+                      >Selon le format de l'ID (PROJ-123 pour Jira, #42 pour GitHub),
+                      Claude utilise le MCP approprié pour récupérer les détails
+                      du ticket/issue. Il analyse ensuite le scope (Backend, Frontend, ou les
                       deux).</span
                     ><span data-lang="en"
-                      >Via the MCP Atlassian server, Claude fetches ticket
-                      details: title, description, labels, components. It then
-                      analyzes the scope (Backend, Frontend, or both).</span
+                      >Based on the ID format (PROJ-123 for Jira, #42 for GitHub),
+                      Claude uses the appropriate MCP to fetch ticket/issue
+                      details. It then analyzes the scope (Backend, Frontend, or both).</span
                     >
                   </div>
                 </div>
@@ -3556,9 +3559,9 @@
               <h4>
                 <i data-feather="git-commit"></i>
                 <span data-lang="fr"
-                  >Puis-je utiliser /commit sans ticket Jira ?</span
+                  >Puis-je utiliser /commit sans ticket Jira ou issue GitHub ?</span
                 ><span data-lang="en"
-                  >Can I use /commit without a Jira ticket?</span
+                  >Can I use /commit without a Jira ticket or GitHub issue?</span
                 >
               </h4>
               <p data-lang="fr">
@@ -3611,18 +3614,18 @@
               <h4>
                 <i data-feather="layers"></i>
                 <span data-lang="fr"
-                  >Comment travailler sur plusieurs tickets en parallèle ?</span
+                  >Comment travailler sur plusieurs tickets/issues en parallèle ?</span
                 ><span data-lang="en"
-                  >How to work on multiple tickets in parallel?</span
+                  >How to work on multiple tickets/issues in parallel?</span
                 >
               </h4>
               <p data-lang="fr">
                 Chaque <code>/start</code> crée un worktree séparé, permettant
-                de switcher entre tickets.
+                de switcher entre tickets Jira et issues GitHub.
               </p>
               <p data-lang="en">
                 Each <code>/start</code> creates a separate worktree, allowing
-                switching between tickets.
+                switching between Jira tickets and GitHub issues.
               </p>
             </div>
 
