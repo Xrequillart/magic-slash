@@ -4076,6 +4076,7 @@
       let isInZoomZone = true;
 
       let terminalAnimationStarted = false;
+      let terminalAnimationComplete = false;
       let showScrollIndicatorEarly = false;
 
       // Initialisation
@@ -4390,7 +4391,6 @@
       const terminalContent = document.getElementById("terminal-content");
       const phaseDots = document.querySelectorAll(".phase-dot");
       const replayBtn = document.querySelector(".replay-btn");
-      let terminalAnimationComplete = false;
 
       function setPhase(phaseNum) {
         phaseDots.forEach((dot, i) => {
@@ -4527,6 +4527,9 @@
       }
 
       function animateTerminal() {
+        // Reset scroll position to top before starting animation
+        terminalContent.scrollTop = 0;
+
         workflowDemo.classList.add("visible");
         setPhase(1);
 
