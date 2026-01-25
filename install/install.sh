@@ -4,18 +4,156 @@
 
 set -e
 
-echo ""
-echo "  __  __             _        _____ _           _     "
-echo " |  \/  |           (_)      / ____| |         | |    "
-echo " | \  / | __ _  __ _ _  ___ | (___ | | __ _ ___| |__  "
-echo " | |\/| |/ _\` |/ _\` | |/ __|  \___ \| |/ _\` / __| '_ \ "
-echo " | |  | | (_| | (_| | | (__  ____) | | (_| \__ \ | | |"
-echo " |_|  |_|\__,_|\__, |_|\___||_____/|_|\__,_|___/_| |_|"
-echo "                __/ |                                 "
-echo "               |___/                                  "
-echo ""
+# ============================================
+# COLORS AND HELPERS
+# ============================================
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+DIM='\033[2m'
+NC='\033[0m'
+
+hide_cursor() { printf '\033[?25l'; }
+show_cursor() { printf '\033[?25h'; }
+
+cleanup() {
+  show_cursor
+  echo ""
+}
+trap cleanup EXIT INT TERM
+
+# Arrow key selection menu
+# Usage: select_option "Option1" "Option2" ...
+# Returns: selected index (0-based) in SELECT_RESULT
+select_option() {
+  local options=("$@")
+  local selected=0
+  local count=${#options[@]}
+
+  hide_cursor
+
+  # Save cursor position
+  printf '\033[s'
+
+  while true; do
+    # Restore cursor position
+    printf '\033[u'
+
+    # Display options
+    for i in "${!options[@]}"; do
+      if [ $i -eq $selected ]; then
+        echo -e "   ${GREEN}→ ${BOLD}${options[$i]}${NC}   "
+      else
+        echo -e "     ${DIM}${options[$i]}${NC}   "
+      fi
+    done
+
+    echo -e "\n   ${DIM}Use ↑/↓ to navigate, Enter to select${NC}   "
+
+    # Read key
+    local key
+    read -rsn1 key < /dev/tty
+
+    if [[ $key == $'\x1b' ]]; then
+      read -rsn2 key < /dev/tty
+      case $key in
+        '[A') # Up
+          ((selected--))
+          [ $selected -lt 0 ] && selected=$((count - 1))
+          ;;
+        '[B') # Down
+          ((selected++))
+          [ $selected -ge $count ] && selected=0
+          ;;
+      esac
+    elif [[ $key == '' ]]; then # Enter
+      break
+    fi
+  done
+
+  show_cursor
+  SELECT_RESULT=$selected
+}
+
+# Logo color
+PURPLE='\033[0;35m'
+
+print_logo() {
+  echo ""
+  echo -e "   ${BOLD}                    _        ${NC}"
+  echo -e "   ${BOLD} _ __ ___   __ _  __ _(_) ___  ${NC}"
+  echo -e "   ${BOLD}| '_ \` _ \\ / _\` |/ _\` | |/ __| ${NC}"
+  echo -e "   ${BOLD}| | | | | | (_| | (_| | | (__  ${NC}"
+  echo -e "   ${BOLD}|_| |_| |_|\\__,_|\\__, |_|\\___| ${NC}"
+  echo -e "   ${PURPLE}    __${NC}${BOLD}           |___/      ${NC}"
+  echo -e "   ${PURPLE}   / /${NC}${BOLD}__| | __ _ ___| |__   ${NC}"
+  echo -e "   ${PURPLE}  / /${NC}${BOLD}/ __| |/ _\` / __| '_ \\  ${NC}"
+  echo -e "   ${PURPLE} / /${NC}${BOLD}\\__ \\ | (_| \\__ \\ | | | ${NC}"
+  echo -e "   ${PURPLE}/_/ ${NC}${BOLD}|___/_|\\__,_|___/_| |_| ${NC}"
+  echo ""
+}
+
+print_logo
 echo "  Installing /start, /commit and /done commands"
 echo ""
+
+# ============================================
+# VERSION CHECK
+# ============================================
+
+# Get current version from package.json or use default
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/../package.json" ]; then
+  CURRENT_VERSION=$(jq -r '.version' "$SCRIPT_DIR/../package.json")
+else
+  CURRENT_VERSION="0.4.0"
+fi
+
+CONFIG_DIR="$HOME/.config/magic-slash"
+CONFIG_FILE="$CONFIG_DIR/config.json"
+
+# Check if already installed
+if [ -f "$CONFIG_FILE" ]; then
+  INSTALLED_VERSION=$(jq -r '.version // "unknown"' "$CONFIG_FILE" 2>/dev/null)
+
+  if [ "$INSTALLED_VERSION" != "unknown" ] && [ "$INSTALLED_VERSION" != "null" ]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    if [ "$INSTALLED_VERSION" = "$CURRENT_VERSION" ]; then
+      echo -e "   ${GREEN}✅ Magic Slash v$INSTALLED_VERSION is already installed and up to date!${NC}"
+      echo ""
+      echo -e "   ${DIM}What would you like to do?${NC}"
+      echo ""
+
+      select_option "Reconfigure (GitHub auth, repositories...)" "Cancel"
+
+      if [ $SELECT_RESULT -eq 1 ]; then
+        echo ""
+        echo -e "   ${DIM}Installation cancelled. You're all set!${NC}"
+        echo ""
+        exit 0
+      fi
+    else
+      echo -e "   📦 Magic Slash ${CYAN}v$INSTALLED_VERSION${NC} is installed"
+      echo -e "   🆕 New version available: ${GREEN}v$CURRENT_VERSION${NC}"
+      echo ""
+      echo -e "   ${DIM}What would you like to do?${NC}"
+      echo ""
+
+      select_option "Update to v$CURRENT_VERSION" "Keep v$INSTALLED_VERSION"
+
+      if [ $SELECT_RESULT -eq 1 ]; then
+        echo ""
+        echo -e "   ${DIM}Update cancelled. Keeping v$INSTALLED_VERSION${NC}"
+        echo ""
+        exit 0
+      fi
+    fi
+    echo ""
+  fi
+fi
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -157,9 +295,6 @@ echo ""
 echo "4. Repositories configuration"
 echo ""
 
-CONFIG_DIR="$HOME/.config/magic-slash"
-CONFIG_FILE="$CONFIG_DIR/config.json"
-
 # Check if already configured
 SKIP_REPOS=false
 if [ -f "$CONFIG_FILE" ]; then
@@ -214,6 +349,7 @@ if [ "$SKIP_REPOS" = false ]; then
   mkdir -p "$CONFIG_DIR"
   cat > "$CONFIG_FILE" <<EOF
 {
+  "version": "$CURRENT_VERSION",
   "repositories": {
     "backend": "$BACKEND_PATH",
     "frontend": "$FRONTEND_PATH"
@@ -223,6 +359,9 @@ EOF
 
   echo "   ✅ Repositories configured"
 else
+  # Update version in existing config file
+  TMP_FILE=$(mktemp)
+  jq --arg version "$CURRENT_VERSION" '.version = $version' "$CONFIG_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$CONFIG_FILE"
   echo "   ✅ Repositories kept"
 fi
 
@@ -627,22 +766,14 @@ CLI_PATH="$CLI_DIR/magic-slash"
 # Create directory if needed
 mkdir -p "$CLI_DIR"
 
-# Get version from package.json (if available) or use default
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/../package.json" ]; then
-  VERSION=$(jq -r '.version' "$SCRIPT_DIR/../package.json")
-else
-  VERSION="0.0.1"
-fi
-
 # Copy CLI script and inject version
 if [ -f "$SCRIPT_DIR/magic-slash" ]; then
   # Local installation
-  sed "s/__VERSION__/$VERSION/g" "$SCRIPT_DIR/magic-slash" > "$CLI_PATH"
+  sed "s/__VERSION__/$CURRENT_VERSION/g" "$SCRIPT_DIR/magic-slash" > "$CLI_PATH"
 else
   # Remote installation - download from GitHub
   curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/install/magic-slash" | \
-    sed "s/__VERSION__/$VERSION/g" > "$CLI_PATH"
+    sed "s/__VERSION__/$CURRENT_VERSION/g" > "$CLI_PATH"
 fi
 
 chmod +x "$CLI_PATH"
@@ -668,7 +799,7 @@ echo ""
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "🎉 Installation complete!"
+echo "🎉 Magic Slash v$CURRENT_VERSION installed!"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""

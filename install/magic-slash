@@ -37,17 +37,22 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
+# Logo color
+PURPLE='\033[0;35m'
+
 # Print logo
 print_logo() {
   echo ""
-  echo "  __  __             _        _____ _           _     "
-  echo " |  \/  |           (_)      / ____| |         | |    "
-  echo " | \  / | __ _  __ _ _  ___ | (___ | | __ _ ___| |__  "
-  echo " | |\/| |/ _\` |/ _\` | |/ __|  \\___ \\| |/ _\` / __| '_ \\ "
-  echo " | |  | | (_| | (_| | | (__  ____) | | (_| \\__ \\ | | |"
-  echo " |_|  |_|\\__,_|\\__, |_|\\___||_____/|_|\\__,_|___/_| |_|"
-  echo "                __/ |                                 "
-  echo "               |___/                                  "
+  echo -e "   ${BOLD}                    _        ${NC}"
+  echo -e "   ${BOLD} _ __ ___   __ _  __ _(_) ___  ${NC}"
+  echo -e "   ${BOLD}| '_ \` _ \\ / _\` |/ _\` | |/ __| ${NC}"
+  echo -e "   ${BOLD}| | | | | | (_| | (_| | | (__  ${NC}"
+  echo -e "   ${BOLD}|_| |_| |_|\\__,_|\\__, |_|\\___| ${NC}"
+  echo -e "   ${PURPLE}    __${NC}${BOLD}           |___/      ${NC}"
+  echo -e "   ${PURPLE}   / /${NC}${BOLD}__| | __ _ ___| |__   ${NC}"
+  echo -e "   ${PURPLE}  / /${NC}${BOLD}/ __| |/ _\` / __| '_ \\  ${NC}"
+  echo -e "   ${PURPLE} / /${NC}${BOLD}\\__ \\ | (_| \\__ \\ | | | ${NC}"
+  echo -e "   ${PURPLE}/_/ ${NC}${BOLD}|___/_|\\__,_|___/_| |_| ${NC}"
   echo ""
 }
 

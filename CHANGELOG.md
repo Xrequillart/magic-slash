@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-01-25
+
+### Added
+
+- **Version tracking**: Installation version is now saved in `~/.config/magic-slash/config.json`
+- **Smart update detection**: `install.sh` now detects previously installed versions
+  - Shows "already up to date" message when same version is installed
+  - Shows update prompt when a newer version is available
+  - Arrow key navigation menu for update/cancel choices (consistent with CLI UX)
+
+### Changed
+
+- **Installer UX**: Replaced y/N prompts with arrow key selection menus for version choices
+- **Config file structure**: Added `version` field to track installed version
+- **ASCII logo**: New logo matching the brand identity (magic + /slash) with purple colored slash
+  - Updated in `install.sh`, `uninstall.sh`, and `magic-slash` CLI
+
 ## [0.3.0] - 2025-01-25
 
 ### Added
@@ -87,6 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.4.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.4.0
 [0.3.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.3.0
 [0.2.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.2.1
 [0.2.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.2.0
