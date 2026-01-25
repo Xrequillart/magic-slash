@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-01-25
+
+### Added
+
+- **Landing page multi-terminal animation**: Display 7 terminals during scroll to showcase parallel task execution
+  - Central terminal with original animation
+  - 6 side terminals (left, right, top-left, top-right, bottom-left, bottom-right) appearing sequentially
+  - Each terminal displays a different Jira ticket ID (PROJ-42, PROJ-18, PROJ-95, PROJ-7, PROJ-156, PROJ-63, PROJ-204)
+  - Terminals slide in from their respective directions with smooth animations
+
+### Changed
+
+- **Landing page scroll behavior**: Terminals now stay in position after zoom animation ends
+  and scroll naturally with the page
+- **Terminal appearance timing**: Increased spacing between terminal appearances for better visual effect
+- **Install box styling**: Updated border-radius to 50px to match floating header, circular copy button
+
+### Fixed
+
+- **Terminal animation targeting**: Fixed animation selectors to target only the central terminal,
+  preventing conflicts with cloned terminals
+
 ## [0.2.1] - 2025-01-25
 
 ### Fixed
@@ -65,6 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.3.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.3.0
 [0.2.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.2.1
 [0.2.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.2.0
 [0.1.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.1.0
