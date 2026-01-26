@@ -2,8 +2,15 @@
 # Magic Slash CLI
 # Manage your Magic Slash configuration
 
-VERSION="__VERSION__"
+# Config file path
 CONFIG_FILE="$HOME/.config/magic-slash/config.json"
+
+# Read version from config file (set during installation)
+if [ -f "$CONFIG_FILE" ]; then
+  VERSION=$(jq -r '.version // "unknown"' "$CONFIG_FILE" 2>/dev/null)
+else
+  VERSION="unknown"
+fi
 
 # Colors
 RED='\033[0;31m'

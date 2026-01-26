@@ -101,12 +101,14 @@ echo ""
 # VERSION CHECK
 # ============================================
 
-# Get current version from package.json or use default
+# Get current version from GitHub API (latest release)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/../package.json" ]; then
+  # Local development: read from package.json
   CURRENT_VERSION=$(jq -r '.version' "$SCRIPT_DIR/../package.json")
 else
-  CURRENT_VERSION="0.6.0"
+  # Remote install: fetch latest version from GitHub API
+  CURRENT_VERSION=$(curl -s https://api.github.com/repos/xrequillart/magic-slash/releases/latest | jq -r '.tag_name // "v0.6.1"' | sed 's/^v//')
 fi
 
 CONFIG_DIR="$HOME/.config/magic-slash"
@@ -839,14 +841,13 @@ CLI_PATH="$CLI_DIR/magic-slash"
 # Create directory if needed
 mkdir -p "$CLI_DIR"
 
-# Copy CLI script and inject version
+# Copy CLI script (version is read from config.json at runtime)
 if [ -f "$SCRIPT_DIR/magic-slash" ]; then
   # Local installation
-  sed "s/__VERSION__/$CURRENT_VERSION/g" "$SCRIPT_DIR/magic-slash" > "$CLI_PATH"
+  cp "$SCRIPT_DIR/magic-slash" "$CLI_PATH"
 else
   # Remote installation - download from GitHub
-  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/install/magic-slash" | \
-    sed "s/__VERSION__/$CURRENT_VERSION/g" > "$CLI_PATH"
+  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/install/magic-slash" > "$CLI_PATH"
 fi
 
 chmod +x "$CLI_PATH"
