@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-01-26
+
+### Added
+
+- **Multi-repository support**: Configure 1 to N repositories instead of hardcoded backend/frontend
+  - Each repository now has a `path` and optional `keywords` array for smart detection
+  - Keywords default to the repository name if not specified
+- **Smart repository selection in `/start`**: Keyword-based scoring system
+  - Labels/Components matching keywords: +10 points
+  - Keywords found in title: +5 points
+  - Keywords found in description: +2 points
+  - Single high-score repo is auto-selected, multiple matches prompt user choice
+- **CLI repository management**: New `magic-slash` CLI features
+  - Dynamic menu showing all configured repositories
+  - Add new repository with name, path, and keywords
+  - Remove existing repositories
+  - Edit repository path and keywords
+- **Backward compatibility**: Automatically reads legacy v1 config format
+
+### Changed
+
+- **Installation flow**: Now asks "How many repositories?" (1-10) instead of hardcoded backend/frontend prompts
+- **Configuration schema**: New format with structured repository objects
+
+  ```json
+  {
+    "repositories": {
+      "api": {"path": "/path/to/api", "keywords": ["backend", "api"]},
+      "web": {"path": "/path/to/web", "keywords": ["frontend", "ui"]}
+    }
+  }
+  ```
+
+- **`/start` command**: Iterates over N configured repos instead of just backend/frontend
+- **Scope detection**: Uses keyword scoring instead of simple BACK/FRONT/BOTH logic
+
 ## [0.5.0] - 2025-01-26
 
 ### Added
@@ -120,6 +156,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.6.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.6.0
 [0.5.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.5.0
 [0.4.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.4.0
 [0.3.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.3.0

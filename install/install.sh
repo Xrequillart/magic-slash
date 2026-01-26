@@ -106,7 +106,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/../package.json" ]; then
   CURRENT_VERSION=$(jq -r '.version' "$SCRIPT_DIR/../package.json")
 else
-  CURRENT_VERSION="0.4.0"
+  CURRENT_VERSION="0.6.0"
 fi
 
 CONFIG_DIR="$HOME/.config/magic-slash"
@@ -298,12 +298,8 @@ echo ""
 # Check if already configured
 SKIP_REPOS=false
 if [ -f "$CONFIG_FILE" ]; then
-  BACKEND=$(jq -r '.repositories.backend // "not configured"' "$CONFIG_FILE")
-  FRONTEND=$(jq -r '.repositories.frontend // "not configured"' "$CONFIG_FILE")
-
   echo "   Repositories already configured:"
-  echo "   • Backend  : $BACKEND"
-  echo "   • Frontend : $FRONTEND"
+  jq -r '.repositories | to_entries[] | "   • \(.key): \(.value.path)"' "$CONFIG_FILE"
   echo ""
   read -p "   Reconfigure? (y/N) " RECONFIG_REPOS < /dev/tty
   [ "$RECONFIG_REPOS" != "y" ] && SKIP_REPOS=true
@@ -311,51 +307,69 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 if [ "$SKIP_REPOS" = false ]; then
-  read -p "   BACKEND repo path (e.g.: ~/projects/my-api): " BACKEND_PATH < /dev/tty
-  read -p "   FRONTEND repo path (e.g.: ~/projects/my-app): " FRONTEND_PATH < /dev/tty
+  echo "   Magic Slash now supports multiple repositories!"
+  echo ""
+  read -p "   How many repositories do you want to configure? (1-10): " REPO_COUNT < /dev/tty
   echo ""
 
-  # Expand ~
-  BACKEND_PATH="${BACKEND_PATH/#\~/$HOME}"
-  FRONTEND_PATH="${FRONTEND_PATH/#\~/$HOME}"
-
-  # Check that paths exist
-  if [ ! -d "$BACKEND_PATH" ]; then
-    echo "   ⚠️  Backend directory does not exist: $BACKEND_PATH"
-    read -p "   Continue anyway? (y/N) " CONTINUE < /dev/tty
-    [ "$CONTINUE" != "y" ] && exit 1
+  # Validate input
+  if ! [[ "$REPO_COUNT" =~ ^[0-9]+$ ]] || [ "$REPO_COUNT" -lt 1 ] || [ "$REPO_COUNT" -gt 10 ]; then
+    echo "   ⚠️  Invalid number. Please enter a number between 1 and 10."
+    exit 1
   fi
 
-  if [ ! -d "$FRONTEND_PATH" ]; then
-    echo "   ⚠️  Frontend directory does not exist: $FRONTEND_PATH"
-    read -p "   Continue anyway? (y/N) " CONTINUE < /dev/tty
-    [ "$CONTINUE" != "y" ] && exit 1
-  fi
+  # Initialize repositories JSON
+  REPOS_JSON="{}"
 
-  # Check that they are git repos
-  if [ ! -d "$BACKEND_PATH/.git" ]; then
-    echo "   ⚠️  $BACKEND_PATH is not a git repo"
-    read -p "   Continue anyway? (y/N) " CONTINUE < /dev/tty
-    [ "$CONTINUE" != "y" ] && exit 1
-  fi
+  for ((i=1; i<=REPO_COUNT; i++)); do
+    echo "   ━━━ Repository $i/$REPO_COUNT ━━━"
+    echo ""
 
-  if [ ! -d "$FRONTEND_PATH/.git" ]; then
-    echo "   ⚠️  $FRONTEND_PATH is not a git repo"
-    read -p "   Continue anyway? (y/N) " CONTINUE < /dev/tty
-    [ "$CONTINUE" != "y" ] && exit 1
-  fi
+    read -p "   Name (e.g.: api, web, mobile): " REPO_NAME < /dev/tty
+
+    # Validate name (alphanumeric and hyphens only)
+    if ! [[ "$REPO_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+      echo "   ⚠️  Invalid name. Use only letters, numbers, hyphens and underscores."
+      exit 1
+    fi
+
+    read -p "   Path (e.g.: ~/projects/my-$REPO_NAME): " REPO_PATH < /dev/tty
+
+    # Expand ~
+    REPO_PATH="${REPO_PATH/#\~/$HOME}"
+
+    # Check that path exists
+    if [ ! -d "$REPO_PATH" ]; then
+      echo "   ⚠️  Directory does not exist: $REPO_PATH"
+      read -p "   Continue anyway? (y/N) " CONTINUE < /dev/tty
+      [ "$CONTINUE" != "y" ] && exit 1
+    elif [ ! -d "$REPO_PATH/.git" ]; then
+      echo "   ⚠️  $REPO_PATH is not a git repo"
+      read -p "   Continue anyway? (y/N) " CONTINUE < /dev/tty
+      [ "$CONTINUE" != "y" ] && exit 1
+    fi
+
+    read -p "   Keywords for auto-detection (comma-separated, optional): " KEYWORDS_INPUT < /dev/tty
+
+    # Convert comma-separated keywords to JSON array, use repo name as default
+    if [ -z "$KEYWORDS_INPUT" ]; then
+      KEYWORDS_JSON="[\"$REPO_NAME\"]"
+    else
+      # Convert "a, b, c" to ["a","b","c"]
+      KEYWORDS_JSON=$(echo "$KEYWORDS_INPUT" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R . | jq -s .)
+    fi
+
+    # Add repo to JSON
+    REPOS_JSON=$(echo "$REPOS_JSON" | jq --arg name "$REPO_NAME" --arg path "$REPO_PATH" --argjson keywords "$KEYWORDS_JSON" \
+      '.[$name] = {"path": $path, "keywords": $keywords}')
+
+    echo ""
+  done
 
   # Create config file
   mkdir -p "$CONFIG_DIR"
-  cat > "$CONFIG_FILE" <<EOF
-{
-  "version": "$CURRENT_VERSION",
-  "repositories": {
-    "backend": "$BACKEND_PATH",
-    "frontend": "$FRONTEND_PATH"
-  }
-}
-EOF
+  jq -n --arg version "$CURRENT_VERSION" --argjson repos "$REPOS_JSON" \
+    '{"version": $version, "repositories": $repos}' > "$CONFIG_FILE"
 
   echo "   ✅ Repositories configured"
 else
@@ -436,7 +450,16 @@ Note: If you don't know the `cloudId`, first use `mcp__atlassian__getAccessibleA
 cat ~/.config/magic-slash/config.json
 ```
 
-Get the paths of configured repos (backend and frontend).
+Get the paths of all configured repos:
+
+```json
+{
+  "repositories": {
+    "api": {"path": "/path/to/api", "keywords": ["backend", "api"]},
+    "web": {"path": "/path/to/web", "keywords": ["frontend", "ui"]}
+  }
+}
+```
 
 ### 2B.2: Identify GitHub repositories
 
@@ -462,52 +485,94 @@ Collect all found issues.
 
 - **No issue found**: Inform the user that no issue with this number exists in configured repos.
 
-- **Single issue found**: Use this issue and continue.
+- **Single issue found**: Use this issue and continue. The scope is automatically this repo.
 
 - **Multiple issues found**: Display options and ask the user to choose:
   ```
   Multiple issues #123 found:
 
-  1. owner1/repo-backend : "Backend issue title"
-  2. owner2/repo-frontend : "Frontend issue title"
+  1. owner1/repo-api : "API issue title"
+  2. owner2/repo-web : "Web issue title"
 
-  Which one do you want to use?
+  Which one do you want to use? (or 'all')
   ```
 
 → Continue to **Step 3**.
 
-## Step 3: Analyze ticket scope
+## Step 3: Analyze ticket scope (Smart repository selection)
 
-Determine the ticket scope (BACK, FRONT, or BOTH) by analyzing:
+### 3.1: Read configuration
 
-**For Jira:**
-- **Labels**: "backend", "frontend", "fullstack", "api", "ui"...
-- **Jira Components**: if defined in the project
-
-**For GitHub:**
-- **Labels**: "backend", "frontend", "fullstack", "api", "ui"...
-- **Assignees** and **Milestone** can provide hints
-
-**For both:**
-- **Keywords in title/description**:
-  - BACK: API, endpoint, database, migration, service, controller, model, query
-  - FRONT: component, UI, style, CSS, page, form, button, view, screen
-
-If no clear indication, ask the user: "Does this ticket concern BACKEND, FRONTEND, or BOTH?"
-
-**GitHub special case**: If the issue was found in only one repo during step 2B, the scope is automatically determined by that repo (BACK if backend, FRONT if frontend).
-
-## Step 4: Read configuration
-
-If not already done in step 2B, read the configuration file to get repo paths:
+If not already done, read the configuration file:
 
 ```bash
 cat ~/.config/magic-slash/config.json
 ```
 
-## Step 5: Create worktrees
+### 3.2: Extract ticket information
 
-For each relevant repo (based on step 3 analysis):
+**For Jira**, collect:
+- The ticket **labels**
+- The Jira **components** (if defined)
+- The **title** and **description**
+
+**For GitHub**, collect:
+- The issue **labels**
+- The **title** and **description**
+
+### 3.3: Calculate relevance score for each repo
+
+For each configured repo, calculate a score based on its defined keywords:
+
+| Match source | Points |
+|--------------|--------|
+| Jira Label/Component matching a keyword | +10 |
+| GitHub Label matching a keyword | +10 |
+| Keyword found in title | +5 |
+| Keyword found in description | +2 |
+
+**Example calculation**:
+```
+Ticket: "Add API endpoint for users"
+Labels: ["backend"]
+
+Configured repos:
+- api: keywords=["backend", "api", "server"] → score = 10 (label) + 5 (title "API") = 15
+- web: keywords=["frontend", "ui", "react"] → score = 0
+- mobile: keywords=["mobile", "ios", "android"] → score = 0
+```
+
+### 3.4: Scope resolution
+
+- **Single repo with score > 0**: Use that repo directly
+
+- **Multiple repos with scores > 0**: Display options with scores and ask:
+  ```
+  This ticket seems to concern multiple repositories:
+
+  1. api (score: 15) - matched keywords: "backend", "api"
+  2. web (score: 5) - matched keywords: "frontend"
+
+  Which one do you want to use? (1, 2, or 'all')
+  ```
+
+- **No match (all scores = 0)**: List all repos and ask:
+  ```
+  Cannot automatically determine the relevant repository.
+
+  Available repositories:
+  1. api (/path/to/api)
+  2. web (/path/to/web)
+  3. mobile (/path/to/mobile)
+
+  Which one do you want to use? (1, 2, 3, or 'all')
+  ```
+
+**GitHub special case**: If the issue was found in only one repo during step 2B, the scope is automatically that repo (no scoring needed).
+
+## Step 4: Create worktrees
+
+For each selected repo:
 
 1. Go to the repo directory
 2. Get the repo folder name
@@ -527,15 +592,23 @@ git worktree add -b feature/$TICKET_ID ../${REPO_NAME}-$TICKET_ID origin/main
 
 Example: If the repo is `/projects/my-api`, the worktree will be `/projects/my-api-PROJ-1234` (Jira) or `/projects/my-api-123` (GitHub)
 
-## Step 6: Summary and agent context
+## Step 5: Summary and agent context
 
 Once worktrees are created, display a summary:
 
-- Source: Jira or GitHub (owner/repo)
-- Ticket: [ID] - [Title]
-- Type: [Bug/Feature/Task...] (Jira) or Labels (GitHub)
-- Scope: [BACK/FRONT/BOTH]
-- Worktree(s) created: [paths]
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 Source    : Jira / GitHub (owner/repo)
+🎫 Ticket    : [ID] - [Title]
+📋 Type      : [Bug/Feature/Task...] or Labels
+🎯 Scope     : [List of selected repos]
+
+📁 Worktree(s) created:
+   • /path/to/repo-TICKET-ID
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
 
 Then generate a contextual prompt to start working on the task, based on:
 - The ticket/issue description

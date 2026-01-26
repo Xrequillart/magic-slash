@@ -46,7 +46,7 @@ curl -fsSL https://magic-slash.io/install.sh | bash
 
 1. Configures Atlassian MCP (prompts for OAuth authentication)
 2. Configures GitHub MCP (prompts for your token)
-3. Configures paths to your BACKEND / FRONTEND repos
+3. Configures your repositories (1 to N repos with optional keywords for smart detection)
 4. Installs the 3 slash commands
 
 ## Usage
@@ -61,11 +61,28 @@ curl -fsSL https://magic-slash.io/install.sh | bash
 
 1. Detects the ticket type (Jira or GitHub) based on format
 2. Fetches ticket/issue details (title, description, labels)
-3. Analyzes the scope: BACKEND / FRONTEND / BOTH
-4. Creates Git worktrees automatically
+3. Analyzes the scope using keyword-based scoring to select relevant repositories
+4. Creates Git worktrees automatically for selected repos
 5. Generates an agent context to start coding
 
-**Jira example:**
+**Jira example (single repo detected):**
+
+```text
+> /start PROJ-42
+
+Source: Jira
+Ticket: PROJ-42 - Add API endpoint for users
+Type: Feature
+Scope: api (score: 15) - matched keywords: "backend", "api"
+
+Worktree created:
+✓ /projects/my-api-PROJ-42
+
+Context:
+You need to implement the new API endpoint for users...
+```
+
+**Jira example (multiple repos detected):**
 
 ```text
 > /start PROJ-42
@@ -73,14 +90,17 @@ curl -fsSL https://magic-slash.io/install.sh | bash
 Source: Jira
 Ticket: PROJ-42 - Add pagination on /users
 Type: Feature
-Scope: BOTH
+
+This ticket seems to concern multiple repositories:
+1. api (score: 15) - matched keywords: "backend", "api"
+2. web (score: 10) - matched keywords: "frontend"
+
+Which one do you want to use? (1, 2, or 'all')
+> all
 
 Worktrees created:
-✓ /projects/project-back-PROJ-42
-✓ /projects/project-front-PROJ-42
-
-Context:
-You need to implement pagination on the GET /users endpoint...
+✓ /projects/my-api-PROJ-42
+✓ /projects/my-web-PROJ-42
 ```
 
 **GitHub example:**
@@ -88,13 +108,13 @@ You need to implement pagination on the GET /users endpoint...
 ```text
 > /start 123
 
-Source: GitHub (owner/repo-backend)
+Source: GitHub (owner/my-api)
 Issue: #123 - Fix authentication bug
 Labels: bug, backend
-Scope: BACK
+Scope: api (found in this repo)
 
 Worktree created:
-✓ /projects/project-back-123
+✓ /projects/my-api-123
 
 Context:
 You need to fix the authentication bug in the login flow...
@@ -109,10 +129,10 @@ If the same issue number exists in multiple configured repositories, you'll be p
 
 Multiple issues #42 found:
 
-1. owner/repo-backend : "Add caching layer"
-2. owner/repo-frontend : "Add loading spinner"
+1. owner/my-api : "Add caching layer"
+2. owner/my-web : "Add loading spinner"
 
-Which one do you want to use?
+Which one do you want to use? (or 'all')
 ```
 
 ### /commit - Create a commit
@@ -167,19 +187,54 @@ Next steps:
 | File                                | Description                          |
 | ----------------------------------- | ------------------------------------ |
 | `~/.claude/settings.json`           | Atlassian & GitHub MCP configuration |
-| `~/.config/magic-slash/config.json` | Repository paths                     |
+| `~/.config/magic-slash/config.json` | Repository paths and keywords        |
 | `~/.local/bin/magic-slash`          | CLI command to manage configuration  |
 | `~/.claude/commands/start.md`       | Slash command /start                 |
 | `~/.claude/commands/commit.md`      | Slash command /commit                |
 | `~/.claude/commands/done.md`        | Slash command /done                  |
 
-### Modify repositories
+### Configuration schema
 
-Run the `magic-slash` command to modify your repository paths:
+```json
+{
+  "version": "0.6.0",
+  "repositories": {
+    "api": {
+      "path": "/Users/dev/projects/my-api",
+      "keywords": ["backend", "api", "server"]
+    },
+    "web": {
+      "path": "/Users/dev/projects/my-web",
+      "keywords": ["frontend", "ui", "react"]
+    },
+    "mobile": {
+      "path": "/Users/dev/projects/my-mobile",
+      "keywords": ["mobile", "ios", "android"]
+    }
+  }
+}
+```
+
+**Keywords** are used for smart repository selection:
+
+- When a Jira ticket has labels/components matching keywords → +10 points
+- When keywords are found in the ticket title → +5 points
+- When keywords are found in the description → +2 points
+- If no keywords are specified, the repository name is used as default
+
+### Manage repositories
+
+Run the `magic-slash` command to manage your repositories:
 
 ```bash
 magic-slash
 ```
+
+The interactive menu allows you to:
+
+- **Edit** existing repositories (path and keywords)
+- **Add** new repositories
+- **Remove** existing repositories
 
 Use the arrow keys to navigate and Enter to select. You can also edit the config file directly:
 

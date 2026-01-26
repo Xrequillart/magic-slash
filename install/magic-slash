@@ -13,10 +13,13 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 DIM='\033[2m'
 NC='\033[0m' # No Color
+PURPLE='\033[0;35m'
 
-# Menu options
-OPTIONS=("Edit BACKEND path" "Edit FRONTEND path" "Quit")
+# Menu state
 SELECTED=0
+declare -a REPO_NAMES
+declare -a REPO_PATHS
+declare -a MENU_OPTIONS
 
 # Hide cursor
 hide_cursor() {
@@ -37,9 +40,6 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-# Logo color
-PURPLE='\033[0;35m'
-
 # Print logo
 print_logo() {
   echo ""
@@ -56,15 +56,35 @@ print_logo() {
   echo ""
 }
 
-# Read configuration
+# Read configuration and populate arrays
 read_config() {
+  REPO_NAMES=()
+  REPO_PATHS=()
+
   if [ -f "$CONFIG_FILE" ]; then
-    BACKEND=$(jq -r '.repositories.backend // "not configured"' "$CONFIG_FILE")
-    FRONTEND=$(jq -r '.repositories.frontend // "not configured"' "$CONFIG_FILE")
-  else
-    BACKEND="not configured"
-    FRONTEND="not configured"
+    while IFS= read -r name; do
+      REPO_NAMES+=("$name")
+      path=$(jq -r ".repositories[\"$name\"].path" "$CONFIG_FILE")
+      REPO_PATHS+=("$path")
+    done < <(jq -r '.repositories | keys[]' "$CONFIG_FILE")
   fi
+}
+
+# Build menu options dynamically
+build_menu_options() {
+  MENU_OPTIONS=()
+
+  # Add edit options for each repo
+  for name in "${REPO_NAMES[@]}"; do
+    MENU_OPTIONS+=("Edit $name")
+  done
+
+  # Add management options
+  MENU_OPTIONS+=("Add new repository")
+  if [ ${#REPO_NAMES[@]} -gt 0 ]; then
+    MENU_OPTIONS+=("Remove repository")
+  fi
+  MENU_OPTIONS+=("Quit")
 }
 
 # Display header
@@ -75,9 +95,28 @@ display_header() {
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-  echo -e "${DIM}Current configuration:${NC}"
-  echo -e "  Backend:  ${CYAN}${BACKEND}${NC}"
-  echo -e "  Frontend: ${CYAN}${FRONTEND}${NC}"
+  echo -e "${DIM}Configured repositories:${NC}"
+
+  if [ ${#REPO_NAMES[@]} -eq 0 ]; then
+    echo -e "  ${DIM}(none)${NC}"
+  else
+    for i in "${!REPO_NAMES[@]}"; do
+      local name="${REPO_NAMES[$i]}"
+      local path="${REPO_PATHS[$i]}"
+      local keywords=""
+
+      # Get keywords
+      if [ -f "$CONFIG_FILE" ]; then
+        keywords=$(jq -r ".repositories[\"$name\"].keywords // [] | join(\", \")" "$CONFIG_FILE" 2>/dev/null)
+      fi
+
+      echo -e "  ${BOLD}$name${NC}: ${CYAN}$path${NC}"
+      if [ -n "$keywords" ]; then
+        echo -e "    ${DIM}keywords: $keywords${NC}"
+      fi
+    done
+  fi
+
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
@@ -87,72 +126,75 @@ display_header() {
 
 # Display menu
 display_menu() {
-  for i in "${!OPTIONS[@]}"; do
+  for i in "${!MENU_OPTIONS[@]}"; do
     if [ $i -eq $SELECTED ]; then
-      echo -e "  ${GREEN}→ ${BOLD}${OPTIONS[$i]}${NC}"
+      echo -e "  ${GREEN}→ ${BOLD}${MENU_OPTIONS[$i]}${NC}"
     else
-      echo -e "    ${DIM}${OPTIONS[$i]}${NC}"
+      echo -e "    ${DIM}${MENU_OPTIONS[$i]}${NC}"
     fi
   done
 }
 
-# Validate path
-validate_path() {
-  local path="$1"
-
-  # Expand ~
-  path="${path/#\~/$HOME}"
-
-  if [ ! -d "$path" ]; then
-    echo -e "  ${YELLOW}⚠️  Directory does not exist: $path${NC}"
-    read -p "  Continue anyway? (y/N) " confirm < /dev/tty
-    [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && return 1
-  elif [ ! -d "$path/.git" ]; then
-    echo -e "  ${YELLOW}⚠️  $path is not a git repository${NC}"
-    read -p "  Continue anyway? (y/N) " confirm < /dev/tty
-    [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && return 1
-  fi
-
-  echo "$path"
-  return 0
-}
-
-# Update configuration
-update_config() {
-  local key="$1"
-  local value="$2"
-
-  # Create config directory if needed
+# Update configuration (create or update config file)
+save_config() {
   mkdir -p "$(dirname "$CONFIG_FILE")"
 
-  # Create config file if it doesn't exist
-  if [ ! -f "$CONFIG_FILE" ]; then
-    echo '{"repositories": {}}' > "$CONFIG_FILE"
-  fi
+  # Build repositories JSON
+  local repos_json="{}"
+  for i in "${!REPO_NAMES[@]}"; do
+    local name="${REPO_NAMES[$i]}"
+    local path="${REPO_PATHS[$i]}"
 
-  # Update the value
-  jq ".repositories.$key = \"$value\"" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+    # Get existing keywords or default to repo name
+    local keywords_json="[\"$name\"]"
+    if [ -f "$CONFIG_FILE" ]; then
+      local existing=$(jq -r ".repositories[\"$name\"].keywords // null" "$CONFIG_FILE" 2>/dev/null)
+      if [ "$existing" != "null" ]; then
+        keywords_json=$(jq -c ".repositories[\"$name\"].keywords" "$CONFIG_FILE")
+      fi
+    fi
+
+    repos_json=$(echo "$repos_json" | jq --arg name "$name" --arg path "$path" --argjson keywords "$keywords_json" \
+      '.[$name] = {"path": $path, "keywords": $keywords}')
+  done
+
+  # Write config file
+  jq -n --arg version "$VERSION" --argjson repos "$repos_json" \
+    '{"version": $version, "repositories": $repos}' > "$CONFIG_FILE"
 }
 
-# Edit path
-edit_path() {
-  local field="$1"
-  local display_name="$2"
-
+# Add a new repository
+add_repository() {
   show_cursor
   echo ""
-  echo -e "  ${BOLD}Edit $display_name path${NC}"
+  echo -e "  ${BOLD}Add new repository${NC}"
   echo ""
 
-  if [ "$field" = "backend" ]; then
-    current="$BACKEND"
-  else
-    current="$FRONTEND"
+  read -p "  Name (e.g.: api, web, mobile): " new_name < /dev/tty
+
+  if [ -z "$new_name" ]; then
+    echo -e "  ${DIM}Cancelled${NC}"
+    sleep 1
+    return
   fi
 
-  echo -e "  Current value: ${CYAN}$current${NC}"
-  echo ""
-  read -p "  New path (empty to cancel): " new_path < /dev/tty
+  # Validate name
+  if ! [[ "$new_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo -e "  ${RED}Invalid name. Use only letters, numbers, hyphens and underscores.${NC}"
+    sleep 2
+    return
+  fi
+
+  # Check if name already exists
+  for name in "${REPO_NAMES[@]}"; do
+    if [ "$name" = "$new_name" ]; then
+      echo -e "  ${RED}A repository named '$new_name' already exists.${NC}"
+      sleep 2
+      return
+    fi
+  done
+
+  read -p "  Path (e.g.: ~/projects/my-$new_name): " new_path < /dev/tty
 
   if [ -z "$new_path" ]; then
     echo -e "  ${DIM}Cancelled${NC}"
@@ -163,7 +205,7 @@ edit_path() {
   # Expand ~
   new_path="${new_path/#\~/$HOME}"
 
-  # Validate
+  # Validate path
   if [ ! -d "$new_path" ]; then
     echo -e "  ${YELLOW}⚠️  Directory does not exist: $new_path${NC}"
     read -p "  Continue anyway? (y/N) " confirm < /dev/tty
@@ -182,13 +224,165 @@ edit_path() {
     fi
   fi
 
-  # Update config
-  update_config "$field" "$new_path"
-  echo -e "  ${GREEN}✅ $display_name path updated${NC}"
+  read -p "  Keywords for auto-detection (comma-separated, optional): " keywords_input < /dev/tty
+
+  # Add to arrays
+  REPO_NAMES+=("$new_name")
+  REPO_PATHS+=("$new_path")
+
+  # Prepare keywords JSON
+  local keywords_json
+  if [ -z "$keywords_input" ]; then
+    keywords_json="[\"$new_name\"]"
+  else
+    keywords_json=$(echo "$keywords_input" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R . | jq -s .)
+  fi
+
+  # Save to config with keywords
+  mkdir -p "$(dirname "$CONFIG_FILE")"
+
+  if [ ! -f "$CONFIG_FILE" ]; then
+    echo '{"version": "'"$VERSION"'", "repositories": {}}' > "$CONFIG_FILE"
+  fi
+
+  local tmp_file=$(mktemp)
+  jq --arg name "$new_name" --arg path "$new_path" --argjson keywords "$keywords_json" \
+    '.repositories[$name] = {"path": $path, "keywords": $keywords}' "$CONFIG_FILE" > "$tmp_file" && mv "$tmp_file" "$CONFIG_FILE"
+
+  echo -e "  ${GREEN}✅ Repository '$new_name' added${NC}"
   sleep 1
 
-  # Reload config
+  # Rebuild menu
+  build_menu_options
+  SELECTED=0
+}
+
+# Remove a repository
+remove_repository() {
+  if [ ${#REPO_NAMES[@]} -eq 0 ]; then
+    echo -e "  ${DIM}No repositories to remove${NC}"
+    sleep 1
+    return
+  fi
+
+  show_cursor
+  echo ""
+  echo -e "  ${BOLD}Remove repository${NC}"
+  echo ""
+  echo "  Select repository to remove:"
+  echo ""
+
+  for i in "${!REPO_NAMES[@]}"; do
+    echo -e "  $((i+1)). ${REPO_NAMES[$i]} (${REPO_PATHS[$i]})"
+  done
+  echo -e "  0. Cancel"
+  echo ""
+
+  read -p "  Choice: " choice < /dev/tty
+
+  if [ "$choice" = "0" ] || [ -z "$choice" ]; then
+    echo -e "  ${DIM}Cancelled${NC}"
+    sleep 1
+    return
+  fi
+
+  # Validate choice
+  if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt ${#REPO_NAMES[@]} ]; then
+    echo -e "  ${RED}Invalid choice${NC}"
+    sleep 1
+    return
+  fi
+
+  local index=$((choice - 1))
+  local name_to_remove="${REPO_NAMES[$index]}"
+
+  echo ""
+  read -p "  Are you sure you want to remove '$name_to_remove'? (y/N) " confirm < /dev/tty
+
+  if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+    echo -e "  ${DIM}Cancelled${NC}"
+    sleep 1
+    return
+  fi
+
+  # Remove from config file
+  local tmp_file=$(mktemp)
+  jq --arg name "$name_to_remove" 'del(.repositories[$name])' "$CONFIG_FILE" > "$tmp_file" && mv "$tmp_file" "$CONFIG_FILE"
+
+  echo -e "  ${GREEN}✅ Repository '$name_to_remove' removed${NC}"
+  sleep 1
+
+  # Reload config and rebuild menu
   read_config
+  build_menu_options
+  SELECTED=0
+}
+
+# Edit repository (path and keywords)
+edit_repository() {
+  local index=$1
+  local name="${REPO_NAMES[$index]}"
+  local current_path="${REPO_PATHS[$index]}"
+
+  show_cursor
+  echo ""
+  echo -e "  ${BOLD}Edit $name${NC}"
+  echo ""
+  echo -e "  Current path: ${CYAN}$current_path${NC}"
+
+  # Get current keywords
+  local current_keywords=""
+  if [ -f "$CONFIG_FILE" ]; then
+    current_keywords=$(jq -r ".repositories[\"$name\"].keywords // [] | join(\", \")" "$CONFIG_FILE" 2>/dev/null)
+  fi
+  echo -e "  Current keywords: ${CYAN}${current_keywords:-$name}${NC}"
+  echo ""
+
+  read -p "  New path (empty to keep current): " new_path < /dev/tty
+
+  if [ -n "$new_path" ]; then
+    # Expand ~
+    new_path="${new_path/#\~/$HOME}"
+
+    # Validate
+    if [ ! -d "$new_path" ]; then
+      echo -e "  ${YELLOW}⚠️  Directory does not exist: $new_path${NC}"
+      read -p "  Continue anyway? (y/N) " confirm < /dev/tty
+      if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+        new_path="$current_path"
+      fi
+    elif [ ! -d "$new_path/.git" ]; then
+      echo -e "  ${YELLOW}⚠️  $new_path is not a git repository${NC}"
+      read -p "  Continue anyway? (y/N) " confirm < /dev/tty
+      if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+        new_path="$current_path"
+      fi
+    fi
+  else
+    new_path="$current_path"
+  fi
+
+  read -p "  New keywords (empty to keep current): " new_keywords < /dev/tty
+
+  # Prepare keywords JSON
+  local keywords_json
+  if [ -n "$new_keywords" ]; then
+    keywords_json=$(echo "$new_keywords" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R . | jq -s .)
+  else
+    # Keep existing keywords
+    keywords_json=$(jq -c ".repositories[\"$name\"].keywords // [\"$name\"]" "$CONFIG_FILE")
+  fi
+
+  # Update config
+  local tmp_file=$(mktemp)
+  jq --arg name "$name" --arg path "$new_path" --argjson keywords "$keywords_json" \
+    '.repositories[$name].path = $path | .repositories[$name].keywords = $keywords' "$CONFIG_FILE" > "$tmp_file" && mv "$tmp_file" "$CONFIG_FILE"
+
+  # Update local array
+  REPO_PATHS[$index]="$new_path"
+
+  echo -e "  ${GREEN}✅ Repository '$name' updated${NC}"
+  sleep 1
 }
 
 # Handle key press
@@ -204,17 +398,17 @@ handle_input() {
     case $key in
       '[A') # Up arrow
         ((SELECTED--))
-        [ $SELECTED -lt 0 ] && SELECTED=$((${#OPTIONS[@]} - 1))
+        [ $SELECTED -lt 0 ] && SELECTED=$((${#MENU_OPTIONS[@]} - 1))
         ;;
       '[B') # Down arrow
         ((SELECTED++))
-        [ $SELECTED -ge ${#OPTIONS[@]} ] && SELECTED=0
+        [ $SELECTED -ge ${#MENU_OPTIONS[@]} ] && SELECTED=0
         ;;
     esac
   elif [[ $key == '' ]]; then # Enter key
     return 1 # Signal selection made
   elif [[ $key == 'q' ]] || [[ $key == 'Q' ]]; then
-    SELECTED=$((${#OPTIONS[@]} - 1)) # Select "Quitter"
+    SELECTED=$((${#MENU_OPTIONS[@]} - 1)) # Select "Quit"
     return 1
   fi
 
@@ -230,19 +424,35 @@ main_menu() {
     display_menu
 
     if ! handle_input; then
-      case $SELECTED in
-        0) # Backend
-          edit_path "backend" "BACKEND"
-          hide_cursor
-          ;;
-        1) # Frontend
-          edit_path "frontend" "FRONTEND"
-          hide_cursor
-          ;;
-        2) # Quit
-          break
-          ;;
-      esac
+      local option="${MENU_OPTIONS[$SELECTED]}"
+
+      # Check if it's an "Edit X" option
+      if [[ "$option" == Edit\ * ]]; then
+        local repo_name="${option#Edit }"
+        # Find index of this repo
+        for i in "${!REPO_NAMES[@]}"; do
+          if [ "${REPO_NAMES[$i]}" = "$repo_name" ]; then
+            edit_repository "$i"
+            read_config
+            build_menu_options
+            break
+          fi
+        done
+        hide_cursor
+      elif [ "$option" = "Add new repository" ]; then
+        add_repository
+        hide_cursor
+      elif [ "$option" = "Remove repository" ]; then
+        remove_repository
+        hide_cursor
+      elif [ "$option" = "Quit" ]; then
+        break
+      fi
+
+      # Reset selection if it's now out of bounds
+      if [ $SELECTED -ge ${#MENU_OPTIONS[@]} ]; then
+        SELECTED=$((${#MENU_OPTIONS[@]} - 1))
+      fi
     fi
   done
 }
@@ -256,6 +466,7 @@ fi
 
 # Main
 read_config
+build_menu_options
 main_menu
 echo ""
 echo -e "${GREEN}Goodbye!${NC}"

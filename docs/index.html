@@ -438,10 +438,10 @@
                   <i data-feather="check"></i>
                   <span>
                     <span data-lang="fr"
-                      >Analyse le scope (Backend/Frontend)</span
+                      >Sélectionne les repos via scoring par mots-clés</span
                     >
                     <span data-lang="en"
-                      >Analyzes scope (Backend/Frontend)</span
+                      >Selects repos via keyword-based scoring</span
                     >
                   </span>
                 </li>
@@ -737,12 +737,12 @@
             <p>
               <span data-lang="fr"
                 >Le script configure automatiquement les serveurs MCP Atlassian
-                et GitHub, puis te demande les chemins de tes repositories
-                backend et frontend.</span
+                et GitHub, puis te demande de configurer tes repositories
+                (1 à N repos avec des mots-clés optionnels pour la détection intelligente).</span
               ><span data-lang="en"
                 >The script automatically configures Atlassian and GitHub MCP
-                servers, then asks for your backend and frontend repository
-                paths.</span
+                servers, then asks you to configure your repositories
+                (1 to N repos with optional keywords for smart detection).</span
               >
             </p>
             <p>
@@ -863,11 +863,11 @@
                 </li>
                 <li>
                   <span data-lang="fr"
-                    >Analyse le contenu pour déterminer le scope : BACKEND,
-                    FRONTEND, ou BOTH</span
+                    >Calcule un score de pertinence pour chaque repo configuré
+                    en fonction des mots-clés</span
                   ><span data-lang="en"
-                    >Analyzes content to determine scope: BACKEND, FRONTEND, or
-                    BOTH</span
+                    >Calculates a relevance score for each configured repo
+                    based on keywords</span
                   >
                 </li>
                 <li>
@@ -1122,19 +1122,22 @@
                 <div class="doc-timeline-dot">3</div>
                 <div class="doc-timeline-content">
                   <div class="doc-timeline-title">
-                    <span data-lang="fr">Appel MCP (Atlassian ou GitHub)</span
-                    ><span data-lang="en">MCP call (Atlassian or GitHub)</span>
+                    <span data-lang="fr">Appel MCP et scoring des repos</span
+                    ><span data-lang="en">MCP call and repo scoring</span>
                   </div>
                   <div class="doc-timeline-desc">
                     <span data-lang="fr"
                       >Selon le format de l'ID (PROJ-123 pour Jira, #42 pour GitHub),
                       Claude utilise le MCP approprié pour récupérer les détails
-                      du ticket/issue. Il analyse ensuite le scope (Backend, Frontend, ou les
-                      deux).</span
+                      du ticket/issue. Il calcule ensuite un score de pertinence
+                      pour chaque repo configuré en fonction des mots-clés matchés
+                      (labels, titre, description).</span
                     ><span data-lang="en"
                       >Based on the ID format (PROJ-123 for Jira, #42 for GitHub),
                       Claude uses the appropriate MCP to fetch ticket/issue
-                      details. It then analyzes the scope (Backend, Frontend, or both).</span
+                      details. It then calculates a relevance score for each
+                      configured repo based on matched keywords (labels, title,
+                      description).</span
                     >
                   </div>
                 </div>
@@ -1149,12 +1152,13 @@
                   <div class="doc-timeline-desc">
                     <span data-lang="fr"
                       >Claude crée les branches Git nécessaires via des
-                      worktrees. Cela permet de travailler sur plusieurs repos
-                      en parallèle sans changer de dossier.</span
+                      worktrees pour les repos sélectionnés. Si plusieurs repos
+                      ont un score élevé, il te demande de choisir ou de
+                      travailler sur tous.</span
                     ><span data-lang="en"
-                      >Claude creates the necessary Git branches via worktrees.
-                      This allows working on multiple repos in parallel without
-                      changing directories.</span
+                      >Claude creates the necessary Git branches via worktrees
+                      for the selected repos. If multiple repos have high scores,
+                      it asks you to choose or work on all of them.</span
                     >
                   </div>
                 </div>
@@ -1206,8 +1210,8 @@
                 <i data-feather="check"></i>
                 <span
                   ><code>~/.config/magic-slash/config.json</code> —
-                  <span data-lang="fr">Chemins des repositories</span
-                  ><span data-lang="en">Repository paths</span></span
+                  <span data-lang="fr">Repositories et mots-clés</span
+                  ><span data-lang="en">Repositories and keywords</span></span
                 >
               </li>
             </ul>
@@ -1545,6 +1549,54 @@
 
             <div class="doc-faq-item">
               <h4>
+                <i data-feather="target"></i>
+                <span data-lang="fr"
+                  >Comment fonctionne la sélection intelligente des repos ?</span
+                ><span data-lang="en"
+                  >How does smart repo selection work?</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Chaque repo a des mots-clés associés (ex: "backend", "api" pour un repo API).
+                Quand tu lances <code>/start</code>, Magic Slash calcule un score pour chaque repo :
+                +10 pts si un label/composant matche, +5 pts si un mot-clé est dans le titre,
+                +2 pts dans la description. Le repo avec le meilleur score est sélectionné
+                automatiquement. Si plusieurs repos ont un score > 0, tu choisis lequel utiliser.
+              </p>
+              <p data-lang="en">
+                Each repo has associated keywords (e.g., "backend", "api" for an API repo).
+                When you run <code>/start</code>, Magic Slash calculates a score for each repo:
+                +10 pts if a label/component matches, +5 pts if a keyword is in the title,
+                +2 pts in the description. The repo with the highest score is automatically
+                selected. If multiple repos have a score > 0, you choose which one to use.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="plus-square"></i>
+                <span data-lang="fr"
+                  >Puis-je configurer plus de 2 repositories ?</span
+                ><span data-lang="en"
+                  >Can I configure more than 2 repositories?</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Oui ! Depuis la version 0.6.0, Magic Slash supporte de 1 à N repositories.
+                Utilisez la commande <code>magic-slash</code> pour ajouter autant de repos
+                que nécessaire (api, web, mobile, admin, etc.). Chaque repo peut avoir
+                ses propres mots-clés pour la détection automatique.
+              </p>
+              <p data-lang="en">
+                Yes! Since version 0.6.0, Magic Slash supports 1 to N repositories.
+                Use the <code>magic-slash</code> command to add as many repos as needed
+                (api, web, mobile, admin, etc.). Each repo can have its own keywords
+                for automatic detection.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
                 <i data-feather="plus-circle"></i>
                 <span data-lang="fr"
                   >Puis-je créer mes propres slash commands ?</span
@@ -1573,14 +1625,16 @@
               </h4>
               <p data-lang="fr">
                 Tapez simplement <code>magic-slash</code> dans votre terminal.
-                Un menu interactif s'affiche avec la configuration actuelle.
-                Utilisez les flèches ↑/↓ pour naviguer et Entrée pour
+                Un menu interactif s'affiche avec tous vos repositories configurés
+                et leurs mots-clés. Vous pouvez ajouter, modifier ou supprimer
+                des repos. Utilisez les flèches ↑/↓ pour naviguer et Entrée pour
                 sélectionner une option.
               </p>
               <p data-lang="en">
                 Simply type <code>magic-slash</code> in your terminal. An
-                interactive menu displays your current configuration. Use ↑/↓
-                arrows to navigate and Enter to select an option.
+                interactive menu displays all your configured repositories
+                and their keywords. You can add, edit, or remove repos.
+                Use ↑/↓ arrows to navigate and Enter to select an option.
               </p>
             </div>
 
@@ -1767,12 +1821,36 @@
                 ~/.config/magic-slash/config.json
               </div>
               <div class="doc-config-content"><pre>{
+  "version": "0.6.0",
   "repositories": {
-    "backend": "/path/to/your/backend-repo",
-    "frontend": "/path/to/your/frontend-repo"
+    "api": {
+      "path": "/path/to/your/api-repo",
+      "keywords": ["backend", "api", "server"]
+    },
+    "web": {
+      "path": "/path/to/your/web-repo",
+      "keywords": ["frontend", "ui", "react"]
+    },
+    "mobile": {
+      "path": "/path/to/your/mobile-repo",
+      "keywords": ["mobile", "ios", "android"]
+    }
   }
 }</pre></div>
             </div>
+
+            <p data-lang="fr">
+              Les <strong>keywords</strong> sont utilisés pour la sélection intelligente :
+              labels/composants matchés (+10 pts), mots-clés dans le titre (+5 pts),
+              dans la description (+2 pts). Si aucun keyword n'est spécifié, le nom
+              du repo est utilisé par défaut.
+            </p>
+            <p data-lang="en">
+              <strong>Keywords</strong> are used for smart selection:
+              matched labels/components (+10 pts), keywords in title (+5 pts),
+              in description (+2 pts). If no keywords are specified, the repo
+              name is used as default.
+            </p>
 
             <h4 data-lang="fr">Reconfigurer les serveurs MCP</h4>
             <h4 data-lang="en">Reconfigure MCP servers</h4>
@@ -1834,9 +1912,9 @@
                 <span
                   ><code>~/.config/magic-slash/config.json</code> —
                   <span data-lang="fr"
-                    >Configuration Magic Slash (chemins des repos)</span
+                    >Configuration Magic Slash (repos et mots-clés)</span
                   ><span data-lang="en"
-                    >Magic Slash configuration (repo paths)</span
+                    >Magic Slash configuration (repos and keywords)</span
                   ></span
                 >
               </li>

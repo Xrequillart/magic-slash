@@ -38,7 +38,16 @@ Note : Si tu ne connais pas le `cloudId`, utilise d'abord `mcp__atlassian__getAc
 cat ~/.config/magic-slash/config.json
 ```
 
-Récupère les chemins des repos (backend et frontend).
+Récupère les chemins de tous les repos configurés :
+
+```json
+{
+  "repositories": {
+    "api": {"path": "/path/to/api", "keywords": ["backend", "api"]},
+    "web": {"path": "/path/to/web", "keywords": ["frontend", "ui"]}
+  }
+}
+```
 
 ### 2B.2 : Identifier les repos GitHub
 
@@ -64,57 +73,101 @@ Collecte toutes les issues trouvées.
 
 - **Aucune issue trouvée** : Informe l'utilisateur qu'aucune issue avec ce numéro n'existe dans les repos configurés.
 
-- **Une seule issue trouvée** : Utilise cette issue et continue.
+- **Une seule issue trouvée** : Utilise cette issue et continue. Le scope est automatiquement le repo où l'issue a été trouvée.
 
 - **Plusieurs issues trouvées** : Affiche les options et demande à l'utilisateur de choisir :
 
   ```text
   Plusieurs issues #123 trouvées :
 
-  1. owner1/repo-backend : "Titre de l'issue backend"
-  2. owner2/repo-frontend : "Titre de l'issue frontend"
+  1. owner1/repo-api : "Titre de l'issue API"
+  2. owner2/repo-web : "Titre de l'issue Web"
 
-  Laquelle voulez-vous utiliser ?
+  Laquelle voulez-vous utiliser ? (ou 'toutes')
   ```
 
 → Continue à l'**Étape 3**.
 
-## Étape 3 : Analyser le scope du ticket
+## Étape 3 : Analyser le scope du ticket (Sélection intelligente des repos)
 
-Détermine le scope du ticket (BACK, FRONT, ou BOTH) en analysant :
+### 3.1 : Lire la configuration
 
-**Pour Jira :**
-
-- **Labels** : "backend", "frontend", "fullstack", "api", "ui"...
-- **Composants Jira** : si définis dans le projet
-
-**Pour GitHub :**
-
-- **Labels** : "backend", "frontend", "fullstack", "api", "ui"...
-- **Assignees** et **Milestone** peuvent donner des indices
-
-**Pour les deux :**
-
-- **Mots-clés dans le titre/description** :
-  - BACK : API, endpoint, database, migration, service, controller, model, query
-  - FRONT : component, UI, style, CSS, page, form, button, view, screen
-
-Si aucun indice clair, demande à l'utilisateur : "Ce ticket concerne le BACKEND, FRONTEND, ou les DEUX ?"
-
-**Cas particulier GitHub** : Si l'issue a été trouvée dans un seul repo lors de l'étape 2B,
-le scope est automatiquement déterminé par ce repo (BACK si backend, FRONT si frontend).
-
-## Étape 4 : Lire la configuration
-
-Si ce n'est pas déjà fait à l'étape 2B, lis le fichier de configuration pour obtenir les chemins des repos :
+Si ce n'est pas déjà fait, lis le fichier de configuration :
 
 ```bash
 cat ~/.config/magic-slash/config.json
 ```
 
-## Étape 5 : Créer les worktrees
+### 3.2 : Extraire les informations du ticket
 
-Pour chaque repo concerné (selon l'analyse à l'étape 3) :
+**Pour Jira**, collecte :
+
+- Les **labels** du ticket
+- Les **composants** Jira (si définis)
+- Le **titre** et la **description**
+
+**Pour GitHub**, collecte :
+
+- Les **labels** de l'issue
+- Le **titre** et la **description**
+
+### 3.3 : Calculer un score de pertinence pour chaque repo
+
+Pour chaque repo configuré, calcule un score basé sur les keywords définis :
+
+| Source du match | Points |
+|-----------------|--------|
+| Label/Composant Jira matchant un keyword | +10 |
+| Label GitHub matchant un keyword | +10 |
+| Keyword trouvé dans le titre | +5 |
+| Keyword trouvé dans la description | +2 |
+
+**Exemple de calcul** :
+
+```text
+Ticket: "Ajouter un endpoint API pour les utilisateurs"
+Labels: ["backend"]
+
+Repos configurés:
+- api: keywords=["backend", "api", "server"] → score = 10 (label) + 5 (titre "API") = 15
+- web: keywords=["frontend", "ui", "react"] → score = 0
+- mobile: keywords=["mobile", "ios", "android"] → score = 0
+```
+
+### 3.4 : Résolution du scope
+
+- **Un seul repo avec score > 0** : Utilise directement ce repo
+
+- **Plusieurs repos avec scores > 0** : Affiche les options avec les scores et demande à l'utilisateur :
+
+  ```text
+  Ce ticket semble concerner plusieurs repositories :
+
+  1. api (score: 15) - mots-clés matchés: "backend", "api"
+  2. web (score: 5) - mots-clés matchés: "frontend"
+
+  Lequel voulez-vous utiliser ? (1, 2, ou 'tous')
+  ```
+
+- **Aucun match (tous les scores = 0)** : Liste tous les repos et demande à l'utilisateur :
+
+  ```text
+  Impossible de déterminer automatiquement le repo concerné.
+
+  Repositories disponibles :
+  1. api (/path/to/api)
+  2. web (/path/to/web)
+  3. mobile (/path/to/mobile)
+
+  Lequel voulez-vous utiliser ? (1, 2, 3, ou 'tous')
+  ```
+
+**Cas particulier GitHub** : Si l'issue a été trouvée dans un seul repo lors de l'étape 2B,
+le scope est automatiquement ce repo (pas besoin de scoring).
+
+## Étape 4 : Créer les worktrees
+
+Pour chaque repo sélectionné :
 
 1. Va dans le répertoire du repo
 2. Récupère le nom du dossier du repo
@@ -133,18 +186,26 @@ git worktree add -b feature/$TICKET_ID ../${REPO_NAME}-$TICKET_ID origin/main
 - Pour Jira : utilise l'ID tel quel (ex: `feature/PROJ-1234`)
 - Pour GitHub : préfixe avec le nom du repo pour éviter les conflits (ex: `feature/repo-name-123`)
 
-Exemple : Si le repo est `/projects/my-api`, le worktree sera
-`/projects/my-api-PROJ-1234` (Jira) ou `/projects/my-api-123` (GitHub)
+Exemple : Si le repo est `/projects/my-api`, le worktree sera `/projects/my-api-PROJ-1234` (Jira)
+ou `/projects/my-api-123` (GitHub)
 
-## Étape 6 : Résumé et contexte agent
+## Étape 5 : Résumé et contexte agent
 
 Une fois les worktrees créés, affiche un résumé :
 
-- Source : Jira ou GitHub (owner/repo)
-- Ticket : [ID] - [Titre]
-- Type : [Bug/Feature/Task...] (Jira) ou Labels (GitHub)
-- Scope : [BACK/FRONT/BOTH]
-- Worktree(s) créé(s) : [chemins]
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 Source    : Jira / GitHub (owner/repo)
+🎫 Ticket    : [ID] - [Titre]
+📋 Type      : [Bug/Feature/Task...] ou Labels
+🎯 Scope     : [Liste des repos sélectionnés]
+
+📁 Worktree(s) créé(s) :
+   • /path/to/repo-TICKET-ID
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
 
 Puis génère un prompt contextuel pour commencer à travailler sur la tâche, basé sur :
 
