@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-01-26
+
+### Added
+
+- **Version badge in header**: Dynamic version display in the floating navigation
+  - Fetches version from `package.json` via GitHub raw content
+  - Links to CHANGELOG.md for release notes
+
+### Changed
+
+- **Landing page code structure**: Extracted inline CSS and JavaScript into separate files
+  - `styles.css`: All styling rules (~2300 lines)
+  - `script.js`: All JavaScript logic (~1400 lines)
+  - Reduces `index.html` from ~3300 to ~1900 lines for better maintainability
+- **Install command styling**: Increased font-size from 13px to 17px for better readability
+
 ## [0.4.0] - 2025-01-25
 
 ### Added
@@ -104,6 +120,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.5.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.5.0
 [0.4.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.4.0
 [0.3.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.3.0
 [0.2.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.2.1
