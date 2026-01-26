@@ -121,12 +121,12 @@ cat ~/.config/magic-slash/config.json
 
 Pour chaque repo configuré, calcule un score basé sur les keywords définis :
 
-| Source du match | Points |
-|-----------------|--------|
-| Label/Composant Jira matchant un keyword | +10 |
-| Label GitHub matchant un keyword | +10 |
-| Keyword trouvé dans le titre | +5 |
-| Keyword trouvé dans la description | +2 |
+| Source du match                          | Points |
+| ---------------------------------------- | ------ |
+| Label/Composant Jira matchant un keyword | +10    |
+| Label GitHub matchant un keyword         | +10    |
+| Keyword trouvé dans le titre             | +5     |
+| Keyword trouvé dans la description       | +2     |
 
 **Exemple de calcul** :
 
