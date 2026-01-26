@@ -668,6 +668,11 @@
                 <span data-lang="fr">Configuration avancée</span>
                 <span data-lang="en">Advanced config</span>
               </a>
+              <a href="#doc-languages" class="doc-sidebar-link">
+                <i data-feather="globe"></i>
+                <span data-lang="fr">Langues</span>
+                <span data-lang="en">Languages</span>
+              </a>
             </div>
           </nav>
         </aside>
@@ -1640,6 +1645,35 @@
 
             <div class="doc-faq-item">
               <h4>
+                <i data-feather="globe"></i>
+                <span data-lang="fr"
+                  >Comment changer la langue des messages ?</span
+                ><span data-lang="en"
+                  >How to change the language of messages?</span
+                >
+              </h4>
+              <p data-lang="fr">
+                Lancez <code>magic-slash</code> et sélectionnez "Language settings".
+                Vous pouvez configurer séparément :
+                <strong>Commit language</strong> (langue des messages de commit),
+                <strong>Pull Request language</strong> (langue du titre/description des PRs),
+                <strong>Jira comment language</strong> (langue des commentaires Jira),
+                <strong>Discussion language</strong> (langue des interactions avec Claude Code).
+                Les options disponibles sont English et Français.
+              </p>
+              <p data-lang="en">
+                Run <code>magic-slash</code> and select "Language settings".
+                You can configure separately:
+                <strong>Commit language</strong> (language for commit messages),
+                <strong>Pull Request language</strong> (language for PR title/description),
+                <strong>Jira comment language</strong> (language for Jira comments),
+                <strong>Discussion language</strong> (language for Claude Code interactions).
+                Available options are English and Français.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
                 <i data-feather="alert-circle"></i>
                 <span data-lang="fr"
                   >La commande magic-slash n'est pas trouvée</span
@@ -1830,11 +1864,13 @@
     "web": {
       "path": "/path/to/your/web-repo",
       "keywords": ["frontend", "ui", "react"]
-    },
-    "mobile": {
-      "path": "/path/to/your/mobile-repo",
-      "keywords": ["mobile", "ios", "android"]
     }
+  },
+  "languages": {
+    "commit": "en",
+    "pullRequest": "en",
+    "jiraComment": "en",
+    "discussion": "en"
   }
 }</pre></div>
             </div>
@@ -1850,6 +1886,23 @@
               matched labels/components (+10 pts), keywords in title (+5 pts),
               in description (+2 pts). If no keywords are specified, the repo
               name is used as default.
+            </p>
+
+            <p data-lang="fr">
+              Les <strong>languages</strong> permettent de configurer la langue de chaque fonctionnalité :
+              <code>commit</code> pour les messages de commit,
+              <code>pullRequest</code> pour le titre/description des PRs,
+              <code>jiraComment</code> pour les commentaires Jira,
+              <code>discussion</code> pour les interactions avec Claude Code.
+              Valeurs possibles : <code>"en"</code> (English) ou <code>"fr"</code> (Français).
+            </p>
+            <p data-lang="en">
+              <strong>Languages</strong> allow you to configure the language for each feature:
+              <code>commit</code> for commit messages,
+              <code>pullRequest</code> for PR title/description,
+              <code>jiraComment</code> for Jira comments,
+              <code>discussion</code> for Claude Code interactions.
+              Possible values: <code>"en"</code> (English) or <code>"fr"</code> (Français).
             </p>
 
             <h4 data-lang="fr">Reconfigurer les serveurs MCP</h4>
@@ -1965,6 +2018,155 @@
         "GITHUB_PERSONAL_ACCESS_TOKEN": "..."
       }
     }
+  }
+}</pre></div>
+            </div>
+          </div>
+
+          <!-- Languages -->
+          <div class="doc-section" id="doc-languages">
+            <h3>
+              <i data-feather="globe"></i>
+              <span data-lang="fr">Configuration des langues</span
+              ><span data-lang="en">Language Configuration</span>
+            </h3>
+
+            <p data-lang="fr">
+              Magic Slash permet de configurer la langue de sortie pour chaque
+              fonctionnalité. Utilisez la commande <code>magic-slash</code> et
+              sélectionnez "Language settings" pour accéder au sous-menu.
+            </p>
+            <p data-lang="en">
+              Magic Slash allows you to configure the output language for each
+              feature. Use the <code>magic-slash</code> command and select
+              "Language settings" to access the submenu.
+            </p>
+
+            <h4 data-lang="fr">Options disponibles</h4>
+            <h4 data-lang="en">Available options</h4>
+
+            <ul>
+              <li>
+                <i data-feather="git-commit"></i>
+                <span>
+                  <strong>Commit language</strong> —
+                  <span data-lang="fr"
+                    >Langue des messages de commit générés par <code>/commit</code></span
+                  ><span data-lang="en"
+                    >Language for commit messages generated by <code>/commit</code></span
+                  >
+                </span>
+              </li>
+              <li>
+                <i data-feather="git-pull-request"></i>
+                <span>
+                  <strong>Pull Request language</strong> —
+                  <span data-lang="fr"
+                    >Langue du titre et de la description des PRs créées par <code>/done</code></span
+                  ><span data-lang="en"
+                    >Language for PR title and description created by <code>/done</code></span
+                  >
+                </span>
+              </li>
+              <li>
+                <i data-feather="bookmark"></i>
+                <span>
+                  <strong>Jira comment language</strong> —
+                  <span data-lang="fr"
+                    >Langue des commentaires ajoutés aux tickets Jira par <code>/done</code></span
+                  ><span data-lang="en"
+                    >Language for comments added to Jira tickets by <code>/done</code></span
+                  >
+                </span>
+              </li>
+              <li>
+                <i data-feather="message-circle"></i>
+                <span>
+                  <strong>Discussion language</strong> —
+                  <span data-lang="fr"
+                    >Langue des interactions avec Claude Code (<code>/start</code>, <code>/done</code>)</span
+                  ><span data-lang="en"
+                    >Language for Claude Code interactions (<code>/start</code>, <code>/done</code>)</span
+                  >
+                </span>
+              </li>
+            </ul>
+
+            <h4 data-lang="fr">Langues supportées</h4>
+            <h4 data-lang="en">Supported languages</h4>
+
+            <ul>
+              <li>
+                <i data-feather="check"></i>
+                <span><strong>English</strong> (<code>"en"</code>)</span>
+              </li>
+              <li>
+                <i data-feather="check"></i>
+                <span><strong>Français</strong> (<code>"fr"</code>)</span>
+              </li>
+            </ul>
+
+            <h4 data-lang="fr">Valeurs par défaut</h4>
+            <h4 data-lang="en">Default values</h4>
+
+            <p data-lang="fr">
+              Si aucune langue n'est configurée, les valeurs par défaut sont :
+            </p>
+            <p data-lang="en">
+              If no language is configured, the default values are:
+            </p>
+
+            <ul>
+              <li>
+                <i data-feather="chevron-right"></i>
+                <span>
+                  <code>commit</code>: <strong>English</strong> —
+                  <span data-lang="fr">Convention internationale pour les commits</span
+                  ><span data-lang="en">International convention for commits</span>
+                </span>
+              </li>
+              <li>
+                <i data-feather="chevron-right"></i>
+                <span>
+                  <code>pullRequest</code>: <strong>English</strong> —
+                  <span data-lang="fr">Suit généralement la langue des commits</span
+                  ><span data-lang="en">Usually follows commit language</span>
+                </span>
+              </li>
+              <li>
+                <i data-feather="chevron-right"></i>
+                <span>
+                  <code>jiraComment</code>: <strong>English</strong> —
+                  <span data-lang="fr">Suit généralement la langue des PRs</span
+                  ><span data-lang="en">Usually follows PR language</span>
+                </span>
+              </li>
+              <li>
+                <i data-feather="chevron-right"></i>
+                <span>
+                  <code>discussion</code>: <strong>English</strong> —
+                  <span data-lang="fr">Convention internationale</span
+                  ><span data-lang="en">International convention</span>
+                </span>
+              </li>
+            </ul>
+
+            <h4 data-lang="fr">Exemple de configuration</h4>
+            <h4 data-lang="en">Configuration example</h4>
+
+            <div class="doc-config-block">
+              <div class="doc-config-header">
+                <i data-feather="file-text"></i>
+                ~/.config/magic-slash/config.json
+              </div>
+              <div class="doc-config-content"><pre>{
+  "version": "0.6.0",
+  "repositories": { ... },
+  "languages": {
+    "commit": "en",
+    "pullRequest": "en",
+    "jiraComment": "en",
+    "discussion": "en"
   }
 }</pre></div>
             </div>

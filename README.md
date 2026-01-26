@@ -206,11 +206,13 @@ Next steps:
     "web": {
       "path": "/Users/dev/projects/my-web",
       "keywords": ["frontend", "ui", "react"]
-    },
-    "mobile": {
-      "path": "/Users/dev/projects/my-mobile",
-      "keywords": ["mobile", "ios", "android"]
     }
+  },
+  "languages": {
+    "commit": "en",
+    "pullRequest": "en",
+    "jiraComment": "en",
+    "discussion": "en"
   }
 }
 ```
@@ -222,9 +224,16 @@ Next steps:
 - When keywords are found in the description → +2 points
 - If no keywords are specified, the repository name is used as default
 
-### Manage repositories
+**Languages** configure the output language for each feature:
 
-Run the `magic-slash` command to manage your repositories:
+- `commit`: Language for commit messages (`"en"` or `"fr"`)
+- `pullRequest`: Language for PR title and description (`"en"` or `"fr"`)
+- `jiraComment`: Language for Jira comments (`"en"` or `"fr"`)
+- `discussion`: Language for Claude Code interactions (`"en"` or `"fr"`)
+
+### Manage configuration
+
+Run the `magic-slash` command to manage your configuration:
 
 ```bash
 magic-slash
@@ -235,6 +244,7 @@ The interactive menu allows you to:
 - **Edit** existing repositories (path and keywords)
 - **Add** new repositories
 - **Remove** existing repositories
+- **Language settings** - Configure language for commits, PRs, and discussions
 
 Use the arrow keys to navigate and Enter to select. You can also edit the config file directly:
 

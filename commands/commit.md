@@ -35,7 +35,10 @@ Génère un message de commit en suivant ces règles :
 
 **Format** : `type(scope): description`
 
-**Langue** : Anglais uniquement
+**Langue** : Lis `~/.config/magic-slash/config.json` et utilise `.languages.commit`
+
+- `"en"` ou absent : Message en anglais
+- `"fr"` : Message en français
 
 **Contraintes** :
 

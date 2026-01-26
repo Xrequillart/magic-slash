@@ -7,6 +7,14 @@ allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 
 Tu es un assistant qui finalise une tâche en pushant les commits, créant une PR et mettant à jour le ticket Jira.
 
+## Configuration de langue
+
+Lis `~/.config/magic-slash/config.json` pour récupérer les préférences de langue :
+
+- `.languages.pullRequest` : Langue du template de PR (`"en"` par défaut, ou `"fr"`)
+- `.languages.jiraComment` : Langue du commentaire ajouté au ticket Jira (`"en"` par défaut, ou `"fr"`)
+- `.languages.discussion` : Langue de tes réponses à l'utilisateur (`"en"` par défaut, ou `"fr"`)
+
 ## Étape 1 : Récupérer la branche actuelle
 
 ```bash
@@ -38,9 +46,46 @@ Utilise l'outil MCP GitHub `mcp__github__create_pull_request` pour créer la PR 
 
 - **Titre** : Basé sur le nom de la branche ou le premier commit
   - Si la branche contient un ticket ID (ex: `feature/PROJ-123`), utilise le format : `[PROJ-123] Description`
-- **Description** : Générée à partir des commits
-  - Liste les commits avec leurs messages
-  - Ajoute une section "Changes" résumant les modifications
+- **Description** : Utilise le template correspondant à `.languages.pullRequest`
+
+### Template PR en anglais (pullRequest: "en" ou absent)
+
+```markdown
+## Summary
+
+[Concise summary of changes in 2-3 sentences]
+
+## Changes
+
+[List of commits with their messages]
+
+## How to test
+
+[Step-by-step instructions to test the changes:
+1. Step 1
+2. Step 2
+3. Expected result]
+```
+
+### Template PR en français (pullRequest: "fr")
+
+```markdown
+## Résumé
+
+[Résumé concis des changements en 2-3 phrases]
+
+## Changements
+
+[Liste des commits avec leurs messages]
+
+## Comment tester
+
+[Instructions étape par étape pour tester les changements :
+1. Étape 1
+2. Étape 2
+3. Résultat attendu]
+```
+
 - **Base** : `main` (ou `master` selon le repo)
 - **Head** : La branche actuelle
 
@@ -62,6 +107,24 @@ Note : Si tu ne connais pas le `cloudId`, utilise d'abord `mcp__atlassian__getAc
 1. **Récupérer les transitions disponibles** avec `mcp__atlassian__getTransitionsForJiraIssue`
 2. **Changer le statut** vers "To be reviewed" (ou équivalent) avec `mcp__atlassian__transitionJiraIssue`
 3. **Ajouter un commentaire** avec le lien vers la PR via `mcp__atlassian__addCommentToJiraIssue`
+
+### Format du commentaire Jira selon `.languages.jiraComment`
+
+**En anglais (jiraComment: "en" ou absent) :**
+
+```text
+🔗 Pull Request created: [PR_URL]
+
+Ready for code review.
+```
+
+**En français (jiraComment: "fr") :**
+
+```text
+🔗 Pull Request créée : [PR_URL]
+
+Prêt pour la revue de code.
+```
 
 Si le statut "To be reviewed" n'existe pas, essaie :
 

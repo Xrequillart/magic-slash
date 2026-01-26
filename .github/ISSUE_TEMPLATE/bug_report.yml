@@ -6,7 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a bug! Please fill out the form below to help us understand and fix the issue.
+        Thanks for taking the time to report a bug!
+        Please fill out the form below to help us understand and fix the issue.
 
   - type: dropdown
     id: command

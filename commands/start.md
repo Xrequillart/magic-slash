@@ -8,6 +8,12 @@ allowed-tools: Bash(*), mcp__atlassian__*, mcp__github__*
 
 Tu es un assistant qui aide à démarrer une tâche de développement depuis un ticket Jira ou une issue GitHub.
 
+## Configuration de langue
+
+Lis `~/.config/magic-slash/config.json` pour récupérer la préférence de langue :
+
+- `.languages.discussion` : Langue de tes réponses et du prompt de l'agent (`"en"` par défaut, ou `"fr"`)
+
 ## Étape 1 : Détecter le type de ticket
 
 Analyse l'argument fourni : `$ARGUMENTS`
@@ -189,9 +195,9 @@ git worktree add -b feature/$TICKET_ID ../${REPO_NAME}-$TICKET_ID origin/main
 Exemple : Si le repo est `/projects/my-api`, le worktree sera `/projects/my-api-PROJ-1234` (Jira)
 ou `/projects/my-api-123` (GitHub)
 
-## Étape 5 : Résumé et contexte agent
+## Étape 5 : Résumé et lancement de l'agent
 
-Une fois les worktrees créés, affiche un résumé :
+Une fois les worktrees créés, affiche un bref résumé :
 
 ```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -199,16 +205,123 @@ Une fois les worktrees créés, affiche un résumé :
 📌 Source    : Jira / GitHub (owner/repo)
 🎫 Ticket    : [ID] - [Titre]
 📋 Type      : [Bug/Feature/Task...] ou Labels
-🎯 Scope     : [Liste des repos sélectionnés]
+📁 Worktree  : /path/to/repo-TICKET-ID
 
-📁 Worktree(s) créé(s) :
-   • /path/to/repo-TICKET-ID
+🚀 Lancement de l'agent...
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-Puis génère un prompt contextuel pour commencer à travailler sur la tâche, basé sur :
+### 5.1 : Préparer le contexte pour l'agent
 
-- La description du ticket/issue
-- Les acceptance criteria (si présents)
-- Le type de modification attendue
+Construis un prompt détaillé incluant :
+
+- **Titre du ticket** : Le titre complet
+- **Description** : La description complète du ticket/issue
+- **Acceptance criteria** : Si présents dans le ticket
+- **Type** : Bug fix, feature, refactoring, etc.
+- **Chemin du worktree** : Le chemin absolu où travailler
+
+### 5.2 : Lancer l'agent automatiquement
+
+**IMPORTANT** : Lance immédiatement un agent avec l'outil `Task` en utilisant :
+
+- `subagent_type` : `"general-purpose"`
+- `description` : Une courte description (3-5 mots) du ticket
+- `prompt` : Un prompt structuré selon `.languages.discussion`
+
+#### Prompt en anglais (discussion: "en" ou absent)
+
+```text
+You are working on ticket [ID]: "[Title]"
+
+## Context
+[Full ticket description]
+
+## Acceptance criteria
+[If present, otherwise "Not specified - use your judgment"]
+
+## Working environment
+- Worktree: [absolute path to worktree]
+- Branch: feature/[TICKET-ID]
+
+## Instructions
+1. Change directory to the worktree: cd [worktree path]
+2. Explore the codebase to understand the existing architecture
+3. Implement the solution following existing patterns
+4. Make sure the code compiles/works
+5. DO NOT commit - the user will use /commit afterwards
+
+## At the end
+Provide a structured summary of what you did:
+- Files created/modified
+- Main changes
+- Points of attention or decisions made
+```
+
+#### Prompt en français (discussion: "fr")
+
+```text
+Tu travailles sur le ticket [ID] : "[Titre]"
+
+## Contexte
+[Description complète du ticket]
+
+## Critères d'acceptation
+[Si présents, sinon "Non spécifiés - utilise ton jugement"]
+
+## Environnement de travail
+- Worktree : [chemin absolu du worktree]
+- Branche : feature/[TICKET-ID]
+
+## Instructions
+1. Change de répertoire vers le worktree : cd [chemin du worktree]
+2. Explore le codebase pour comprendre l'architecture existante
+3. Implémente la solution en respectant les patterns existants
+4. Assure-toi que le code compile/fonctionne
+5. NE PAS faire de commit - l'utilisateur utilisera /commit ensuite
+
+## À la fin
+Fournis un résumé structuré de ce que tu as fait :
+- Fichiers créés/modifiés
+- Changements principaux
+- Points d'attention ou décisions prises
+```
+
+### 5.3 : Afficher le résumé final
+
+Une fois l'agent terminé, affiche son résumé selon `.languages.discussion` :
+
+#### Résumé en anglais (discussion: "en" ou absent)
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Work completed on [TICKET-ID]
+
+[Summary provided by the agent]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 Next steps:
+   • Test the changes
+   • Run /commit to create a commit
+   • Run /done to finalize (PR + ticket update)
+```
+
+#### Résumé en français (discussion: "fr")
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Travail terminé sur [TICKET-ID]
+
+[Résumé fourni par l'agent]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 Prochaines étapes :
+   • Teste les changements
+   • Lance /commit pour créer un commit
+   • Lance /done pour finaliser (PR + mise à jour du ticket)
+```

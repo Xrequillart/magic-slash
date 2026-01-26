@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Multi-repository support**: Configure 1 to N repositories instead of hardcoded backend/frontend
   - Each repository now has a `path` and optional `keywords` array for smart detection
   - Keywords default to the repository name if not specified
+- **Language settings**: Configure language preferences for each feature via `magic-slash` CLI
+  - `Commit language`: Language for commit messages (English/Français)
+  - `Pull Request language`: Language for PR title and description (English/Français)
+  - `Jira comment language`: Language for Jira comments when PR is created (English/Français)
+  - `Discussion language`: Language for Claude Code interactions (English/Français)
+- **Language submenu in CLI**: New "Language settings" option in the main menu
+  - Interactive language selection with arrow keys
+  - Settings persisted in `~/.config/magic-slash/config.json`
 - **Smart repository selection in `/start`**: Keyword-based scoring system
   - Labels/Components matching keywords: +10 points
   - Keywords found in title: +5 points

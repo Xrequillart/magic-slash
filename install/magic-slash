@@ -21,6 +21,10 @@ declare -a REPO_NAMES
 declare -a REPO_PATHS
 declare -a MENU_OPTIONS
 
+# Language submenu state
+LANG_SUBMENU_SELECTED=0
+declare -a LANG_MENU_OPTIONS
+
 # Hide cursor
 hide_cursor() {
   printf '\033[?25l'
@@ -70,6 +74,31 @@ read_config() {
   fi
 }
 
+# Get language setting from config
+get_language_setting() {
+  local key="$1"
+  local default="$2"
+  if [ -f "$CONFIG_FILE" ]; then
+    local value
+    value=$(jq -r ".languages.$key // \"\"" "$CONFIG_FILE" 2>/dev/null)
+    if [ -n "$value" ] && [ "$value" != "null" ]; then
+      echo "$value"
+      return
+    fi
+  fi
+  echo "$default"
+}
+
+# Convert language code to display name
+get_language_display_name() {
+  local code="$1"
+  case "$code" in
+    en) echo "English" ;;
+    fr) echo "Français" ;;
+    *) echo "$code" ;;
+  esac
+}
+
 # Build menu options dynamically
 build_menu_options() {
   MENU_OPTIONS=()
@@ -84,6 +113,7 @@ build_menu_options() {
   if [ ${#REPO_NAMES[@]} -gt 0 ]; then
     MENU_OPTIONS+=("Remove repository")
   fi
+  MENU_OPTIONS+=("Language settings")
   MENU_OPTIONS+=("Quit")
 }
 
@@ -148,7 +178,8 @@ save_config() {
     # Get existing keywords or default to repo name
     local keywords_json="[\"$name\"]"
     if [ -f "$CONFIG_FILE" ]; then
-      local existing=$(jq -r ".repositories[\"$name\"].keywords // null" "$CONFIG_FILE" 2>/dev/null)
+      local existing
+      existing=$(jq -r ".repositories[\"$name\"].keywords // null" "$CONFIG_FILE" 2>/dev/null)
       if [ "$existing" != "null" ]; then
         keywords_json=$(jq -c ".repositories[\"$name\"].keywords" "$CONFIG_FILE")
       fi
@@ -158,9 +189,18 @@ save_config() {
       '.[$name] = {"path": $path, "keywords": $keywords}')
   done
 
+  # Preserve existing language settings
+  local languages_json="{}"
+  if [ -f "$CONFIG_FILE" ]; then
+    languages_json=$(jq -c '.languages // {}' "$CONFIG_FILE" 2>/dev/null)
+    if [ -z "$languages_json" ] || [ "$languages_json" = "null" ]; then
+      languages_json="{}"
+    fi
+  fi
+
   # Write config file
-  jq -n --arg version "$VERSION" --argjson repos "$repos_json" \
-    '{"version": $version, "repositories": $repos}' > "$CONFIG_FILE"
+  jq -n --arg version "$VERSION" --argjson repos "$repos_json" --argjson languages "$languages_json" \
+    '{"version": $version, "repositories": $repos, "languages": $languages}' > "$CONFIG_FILE"
 }
 
 # Add a new repository
@@ -245,7 +285,8 @@ add_repository() {
     echo '{"version": "'"$VERSION"'", "repositories": {}}' > "$CONFIG_FILE"
   fi
 
-  local tmp_file=$(mktemp)
+  local tmp_file
+  tmp_file=$(mktemp)
   jq --arg name "$new_name" --arg path "$new_path" --argjson keywords "$keywords_json" \
     '.repositories[$name] = {"path": $path, "keywords": $keywords}' "$CONFIG_FILE" > "$tmp_file" && mv "$tmp_file" "$CONFIG_FILE"
 
@@ -306,7 +347,8 @@ remove_repository() {
   fi
 
   # Remove from config file
-  local tmp_file=$(mktemp)
+  local tmp_file
+  tmp_file=$(mktemp)
   jq --arg name "$name_to_remove" 'del(.repositories[$name])' "$CONFIG_FILE" > "$tmp_file" && mv "$tmp_file" "$CONFIG_FILE"
 
   echo -e "  ${GREEN}✅ Repository '$name_to_remove' removed${NC}"
@@ -374,7 +416,8 @@ edit_repository() {
   fi
 
   # Update config
-  local tmp_file=$(mktemp)
+  local tmp_file
+  tmp_file=$(mktemp)
   jq --arg name "$name" --arg path "$new_path" --argjson keywords "$keywords_json" \
     '.repositories[$name].path = $path | .repositories[$name].keywords = $keywords' "$CONFIG_FILE" > "$tmp_file" && mv "$tmp_file" "$CONFIG_FILE"
 
@@ -383,6 +426,219 @@ edit_repository() {
 
   echo -e "  ${GREEN}✅ Repository '$name' updated${NC}"
   sleep 1
+}
+
+# Build language menu options with current values
+build_language_menu_options() {
+  LANG_MENU_OPTIONS=()
+
+  local commit_lang pr_lang jira_lang discussion_lang
+  commit_lang=$(get_language_setting "commit" "en")
+  pr_lang=$(get_language_setting "pullRequest" "en")
+  jira_lang=$(get_language_setting "jiraComment" "en")
+  discussion_lang=$(get_language_setting "discussion" "en")
+
+  LANG_MENU_OPTIONS+=("Commit language ($(get_language_display_name "$commit_lang"))")
+  LANG_MENU_OPTIONS+=("Pull Request language ($(get_language_display_name "$pr_lang"))")
+  LANG_MENU_OPTIONS+=("Jira comment language ($(get_language_display_name "$jira_lang"))")
+  LANG_MENU_OPTIONS+=("Discussion language ($(get_language_display_name "$discussion_lang"))")
+  LANG_MENU_OPTIONS+=("Back")
+}
+
+# Display language submenu header
+display_language_header() {
+  clear
+  print_logo
+  echo -e "${BOLD}  Language Settings${NC}"
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo -e "${DIM}Configure the language for each feature:${NC}"
+  echo ""
+  echo -e "  ${DIM}• Commit: Language for commit messages${NC}"
+  echo -e "  ${DIM}• Pull Request: Language for PR title/description${NC}"
+  echo -e "  ${DIM}• Jira comment: Language for Jira comments${NC}"
+  echo -e "  ${DIM}• Discussion: Language for Claude Code interactions${NC}"
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo -e "${DIM}Use ↑/↓ to navigate, Enter to select${NC}"
+  echo ""
+}
+
+# Display language menu
+display_language_menu() {
+  for i in "${!LANG_MENU_OPTIONS[@]}"; do
+    if [ $i -eq $LANG_SUBMENU_SELECTED ]; then
+      echo -e "  ${GREEN}→ ${BOLD}${LANG_MENU_OPTIONS[$i]}${NC}"
+    else
+      echo -e "    ${DIM}${LANG_MENU_OPTIONS[$i]}${NC}"
+    fi
+  done
+}
+
+# Handle language menu input
+handle_language_input() {
+  local key
+
+  read -rsn1 key
+
+  if [[ $key == $'\x1b' ]]; then
+    read -rsn2 key
+    case $key in
+      '[A') # Up arrow
+        ((LANG_SUBMENU_SELECTED--))
+        [ $LANG_SUBMENU_SELECTED -lt 0 ] && LANG_SUBMENU_SELECTED=$((${#LANG_MENU_OPTIONS[@]} - 1))
+        ;;
+      '[B') # Down arrow
+        ((LANG_SUBMENU_SELECTED++))
+        [ $LANG_SUBMENU_SELECTED -ge ${#LANG_MENU_OPTIONS[@]} ] && LANG_SUBMENU_SELECTED=0
+        ;;
+    esac
+  elif [[ $key == '' ]]; then # Enter key
+    return 1
+  elif [[ $key == 'q' ]] || [[ $key == 'Q' ]]; then
+    LANG_SUBMENU_SELECTED=$((${#LANG_MENU_OPTIONS[@]} - 1)) # Select "Back"
+    return 1
+  fi
+
+  return 0
+}
+
+# Interactive language selection
+select_language() {
+  local current="$1"
+  local lang_selected=0
+  local lang_options=("English" "Français")
+
+  # Set initial selection based on current value
+  if [ "$current" = "fr" ]; then
+    lang_selected=1
+  fi
+
+  while true; do
+    # Redraw selection - output to /dev/tty to avoid capture by subshell
+    # Use printf to avoid extra newline from echo
+    printf '\033[2A\033[J' > /dev/tty  # Move up 2 lines and clear
+    for i in "${!lang_options[@]}"; do
+      if [ $i -eq $lang_selected ]; then
+        printf "    ${GREEN}→ ${BOLD}%s${NC}\n" "${lang_options[$i]}" > /dev/tty
+      else
+        printf "      ${DIM}%s${NC}\n" "${lang_options[$i]}" > /dev/tty
+      fi
+    done
+
+    local key
+    read -rsn1 key < /dev/tty
+
+    if [[ $key == $'\x1b' ]]; then
+      read -rsn2 key < /dev/tty
+      case $key in
+        '[A') # Up
+          ((lang_selected--))
+          [ $lang_selected -lt 0 ] && lang_selected=$((${#lang_options[@]} - 1))
+          ;;
+        '[B') # Down
+          ((lang_selected++))
+          [ $lang_selected -ge ${#lang_options[@]} ] && lang_selected=0
+          ;;
+      esac
+    elif [[ $key == '' ]]; then # Enter
+      if [ $lang_selected -eq 0 ]; then
+        echo "en"
+      else
+        echo "fr"
+      fi
+      return
+    elif [[ $key == 'q' ]] || [[ $key == 'Q' ]]; then
+      echo "$current"  # Return current value (cancelled)
+      return
+    fi
+  done
+}
+
+# Save a language setting
+save_language_setting() {
+  local key="$1"
+  local value="$2"
+
+  mkdir -p "$(dirname "$CONFIG_FILE")"
+
+  if [ ! -f "$CONFIG_FILE" ]; then
+    echo '{"version": "'"$VERSION"'", "repositories": {}, "languages": {}}' > "$CONFIG_FILE"
+  fi
+
+  local tmp_file
+  tmp_file=$(mktemp)
+  jq --arg key "$key" --arg value "$value" \
+    '.languages[$key] = $value' "$CONFIG_FILE" > "$tmp_file" && mv "$tmp_file" "$CONFIG_FILE"
+}
+
+# Change a language setting
+change_language_setting() {
+  local setting_key="$1"
+  local setting_name="$2"
+  local default_value="$3"
+
+  local current
+  current=$(get_language_setting "$setting_key" "$default_value")
+
+  show_cursor
+  echo ""
+  echo -e "  ${BOLD}$setting_name${NC}"
+  echo ""
+  echo -e "  ${DIM}Current: $(get_language_display_name "$current")${NC}"
+  echo ""
+  echo "  Select new language:"
+  echo ""  # Placeholder line 1 (English)
+  echo ""  # Placeholder line 2 (Français)
+
+  hide_cursor
+  local new_value
+  new_value=$(select_language "$current")
+
+  if [ "$new_value" != "$current" ]; then
+    save_language_setting "$setting_key" "$new_value"
+    show_cursor
+    echo ""
+    echo -e "  ${GREEN}✅ $setting_name set to $(get_language_display_name "$new_value")${NC}"
+    sleep 1
+  fi
+}
+
+# Language settings submenu loop
+language_settings_menu() {
+  LANG_SUBMENU_SELECTED=0
+  build_language_menu_options
+
+  while true; do
+    display_language_header
+    display_language_menu
+
+    if ! handle_language_input; then
+      local option="${LANG_MENU_OPTIONS[$LANG_SUBMENU_SELECTED]}"
+
+      if [[ "$option" == Commit\ language* ]]; then
+        change_language_setting "commit" "Commit language" "en"
+        build_language_menu_options
+        hide_cursor
+      elif [[ "$option" == Pull\ Request\ language* ]]; then
+        change_language_setting "pullRequest" "Pull Request language" "en"
+        build_language_menu_options
+        hide_cursor
+      elif [[ "$option" == Jira\ comment\ language* ]]; then
+        change_language_setting "jiraComment" "Jira comment language" "en"
+        build_language_menu_options
+        hide_cursor
+      elif [[ "$option" == Discussion\ language* ]]; then
+        change_language_setting "discussion" "Discussion language" "en"
+        build_language_menu_options
+        hide_cursor
+      elif [ "$option" = "Back" ]; then
+        break
+      fi
+    fi
+  done
 }
 
 # Handle key press
@@ -444,6 +700,9 @@ main_menu() {
         hide_cursor
       elif [ "$option" = "Remove repository" ]; then
         remove_repository
+        hide_cursor
+      elif [ "$option" = "Language settings" ]; then
+        language_settings_menu
         hide_cursor
       elif [ "$option" = "Quit" ]; then
         break
