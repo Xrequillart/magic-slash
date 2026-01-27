@@ -67,7 +67,7 @@ const introTagline = document.querySelector(".intro-tagline");
 // Configuration
 const startScale = 5; // Zoom max (en haut) - très zoomé
 const endScale = 1; // Zoom normal (après scroll)
-const scrollDistance = window.innerHeight * 3; // 3x la hauteur pour plus de scroll
+const scrollDistance = window.innerHeight * 9; // 9x la hauteur pour une animation beaucoup plus lente au scroll
 
 // Phases de l'animation (en % du scroll total)
 const PHASE_LOGO_END = 0.2; // Logo visible jusqu'à 20%

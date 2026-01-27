@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2025-01-27
+
+### Changed
+
+- **Landing page scroll animation**: Tripled scroll distance for intro animation (logo → tagline → terminal)
+  - Animation now requires 9x viewport height instead of 3x for smoother experience
+  - Prevents animation from feeling rushed when scrolling quickly
+
 ## [0.7.0] - 2025-01-27
 
 ### Added
@@ -188,6 +196,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.7.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.7.1
 [0.7.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.7.0
 [0.6.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.6.1
 [0.6.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.6.0

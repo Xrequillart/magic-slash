@@ -1340,7 +1340,7 @@ footer a:hover {
 
 /* Zoom Effect */
 .zoom-spacer {
-  height: 300vh;
+  height: 900vh;
   position: relative;
   pointer-events: none;
 }
