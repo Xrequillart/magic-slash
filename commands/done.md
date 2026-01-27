@@ -40,15 +40,27 @@ git log origin/main..HEAD --oneline
 
 Récupère la liste des commits qui seront inclus dans la PR.
 
-## Étape 4 : Créer la Pull Request via MCP GitHub
+## Étape 4 : Récupérer le template de PR du projet
+
+Cherche si un template de PR existe dans le projet :
+
+```bash
+cat .github/PULL_REQUEST_TEMPLATE.md 2>/dev/null || cat .github/pull_request_template.md 2>/dev/null || cat docs/pull_request_template.md 2>/dev/null || echo ""
+```
+
+Si un template existe, tu dois **impérativement le respecter** et remplir ses sections.
+
+## Étape 5 : Créer la Pull Request via MCP GitHub
 
 Utilise l'outil MCP GitHub `mcp__github__create_pull_request` pour créer la PR :
 
 - **Titre** : Basé sur le nom de la branche ou le premier commit
   - Si la branche contient un ticket ID (ex: `feature/PROJ-123`), utilise le format : `[PROJ-123] Description`
-- **Description** : Utilise le template correspondant à `.languages.pullRequest`
+- **Description** :
+  - **Si un template de PR existe** : Utilise-le et remplis toutes ses sections
+  - **Sinon** : Utilise le template par défaut correspondant à `.languages.pullRequest`
 
-### Template PR en anglais (pullRequest: "en" ou absent)
+### Template PR en anglais (pullRequest: "en" ou absent) - utilisé uniquement si aucun template projet
 
 ```markdown
 ## Summary
@@ -67,7 +79,7 @@ Utilise l'outil MCP GitHub `mcp__github__create_pull_request` pour créer la PR 
 3. Expected result]
 ```
 
-### Template PR en français (pullRequest: "fr")
+### Template PR en français (pullRequest: "fr") - utilisé uniquement si aucun template projet
 
 ```markdown
 ## Résumé
@@ -89,7 +101,7 @@ Utilise l'outil MCP GitHub `mcp__github__create_pull_request` pour créer la PR 
 - **Base** : `main` (ou `master` selon le repo)
 - **Head** : La branche actuelle
 
-## Étape 5 : Extraire le ticket ID
+## Étape 6 : Extraire le ticket ID
 
 Analyse le nom de la branche pour extraire l'ID du ticket Jira :
 
@@ -98,7 +110,7 @@ Analyse le nom de la branche pour extraire l'ID du ticket Jira :
 
 Si aucun ticket ID n'est trouvé, demande à l'utilisateur s'il veut quand même mettre à jour un ticket Jira.
 
-## Étape 6 : Mettre à jour le ticket Jira
+## Étape 7 : Mettre à jour le ticket Jira
 
 Si un ticket ID est trouvé, utilise les outils MCP Atlassian :
 
@@ -132,7 +144,7 @@ Si le statut "To be reviewed" n'existe pas, essaie :
 - "Code Review"
 - "Review"
 
-## Étape 7 : Résumé final
+## Étape 8 : Résumé final
 
 Affiche un résumé de ce qui a été fait :
 

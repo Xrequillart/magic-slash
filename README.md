@@ -162,6 +162,8 @@ Which one do you want to use? (or 'all')
 
 1. Push the branch to origin
 2. Create a Pull Request (via GitHub MCP)
+   - **Uses your project's PR template** if one exists (`.github/PULL_REQUEST_TEMPLATE.md`)
+   - Falls back to a default template otherwise
 3. Extract ticket ID from branch name
 4. Update Jira ticket → "To be reviewed"
 
@@ -197,7 +199,7 @@ Next steps:
 
 ```json
 {
-  "version": "0.6.1",
+  "version": "0.7.0",
   "repositories": {
     "api": {
       "path": "/Users/dev/projects/my-api",

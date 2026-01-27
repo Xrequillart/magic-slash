@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-01-27
+
+### Added
+
+- **PR template support in `/done`**: Now automatically detects and uses the project's PR template
+  - Searches for templates in `.github/PULL_REQUEST_TEMPLATE.md`, `.github/pull_request_template.md`, or `docs/pull_request_template.md`
+  - Fills all template sections when a project template is found
+  - Falls back to default template if no project template exists
+
+### Fixed
+
+- **Landing page terminal animation**: Animation now properly resets when scrolling back up
+  - Added timeout tracking system to cancel pending animations on reset
+  - Prevents visual glitches with pre-checked steps when replaying animation
+- **Terminal appearance timing**: Increased spacing between secondary terminal appearances (3% → 4% scroll intervals)
+
 ## [0.6.1] - 2025-01-26
 
 ### Fixed
@@ -172,6 +188,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.7.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.7.0
 [0.6.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.6.1
 [0.6.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.6.0
 [0.5.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.5.0
