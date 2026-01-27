@@ -586,6 +586,12 @@ h1 {
   text-align: left;
   height: 380px;
   overflow-y: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.workflow-content::-webkit-scrollbar {
+  display: none;
 }
 
 .workflow-line {

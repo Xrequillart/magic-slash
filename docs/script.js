@@ -77,12 +77,12 @@ const PHASE_TAGLINE_VISIBLE = 0.4; // Tagline complètement visible à 40%
 const PHASE_TAGLINE_END = 0.55; // Tagline visible jusqu'à 55%
 const PHASE_TAGLINE_FADE = 0.65; // Tagline complètement disparu à 65%
 // Phases d'apparition des terminaux (un par un, espacés)
-const PHASE_TERMINAL_LEFT = 0.77;       // 1er: gauche
+const PHASE_TERMINAL_LEFT = 0.76;       // 1er: gauche
 const PHASE_TERMINAL_RIGHT = 0.80;      // 2ème: droite
-const PHASE_TERMINAL_TOP_LEFT = 0.83;   // 3ème: haut-gauche
-const PHASE_TERMINAL_TOP_RIGHT = 0.86;  // 4ème: haut-droite
-const PHASE_TERMINAL_BOTTOM_LEFT = 0.89;  // 5ème: bas-gauche
-const PHASE_TERMINAL_BOTTOM_RIGHT = 0.92; // 6ème: bas-droite
+const PHASE_TERMINAL_TOP_LEFT = 0.84;   // 3ème: haut-gauche
+const PHASE_TERMINAL_TOP_RIGHT = 0.88;  // 4ème: haut-droite
+const PHASE_TERMINAL_BOTTOM_LEFT = 0.92;  // 5ème: bas-gauche
+const PHASE_TERMINAL_BOTTOM_RIGHT = 0.96; // 6ème: bas-droite
 
 const PHASE_ZOOM_START = 0.6; // Dézoom commence à 60%
 const PHASE_TERMINAL_PIN_START = 0.75; // Terminal ralentit à cette phase
@@ -95,6 +95,8 @@ let isInZoomZone = true;
 let terminalAnimationStarted = false;
 let terminalAnimationComplete = false;
 let showScrollIndicatorEarly = false;
+let lastScrollProgress = 0; // Pour détecter le scroll vers le haut
+let animationTimeouts = []; // Pour stocker et annuler les timeouts
 
 // Multi-terminal mode variables
 let multiTerminalMode = false;
@@ -452,10 +454,78 @@ function animateTerminalInstance(terminalElement) {
   }, p3Response + 3200);
 }
 
+// Fonction pour réinitialiser l'animation du terminal central
+function resetTerminalAnimation() {
+  // Annuler tous les timeouts en cours
+  animationTimeouts.forEach(id => clearTimeout(id));
+  animationTimeouts = [];
+
+  terminalAnimationStarted = false;
+  terminalAnimationComplete = false;
+
+  // Reset multi-terminal mode
+  if (multiTerminalMode) {
+    multiTerminalMode = false;
+    terminalsContainer.classList.remove('multi-mode');
+    // Reset tous les slots
+    Object.keys(terminalSlots).forEach(slotName => {
+      terminalSlots[slotName].created = false;
+      const slotElement = document.querySelector(`.terminal-${slotName}`);
+      slotElement.innerHTML = '';
+      slotElement.classList.remove('visible');
+    });
+  }
+
+  // Reset tous les éléments visuels du terminal central uniquement
+  const centerTerminalEl = document.querySelector(".terminal-center");
+  centerTerminalEl
+    .querySelectorAll(
+      ".cli-prompt, .cli-response, .cli-status, .cli-section-title, .cli-item, .cli-agents, .cli-success-banner",
+    )
+    .forEach((el) => {
+      el.classList.remove("visible");
+      el.classList.remove("completed");
+    });
+  centerTerminalEl
+    .querySelectorAll(".loader")
+    .forEach((el) => el.classList.remove("done"));
+  centerTerminalEl
+    .querySelectorAll(".checkmark")
+    .forEach((el) => el.classList.remove("visible"));
+  centerTerminalEl
+    .querySelectorAll(".result")
+    .forEach((el) => el.classList.remove("visible"));
+  centerTerminalEl.querySelectorAll(".command").forEach((cmd) => {
+    cmd.textContent = "";
+    cmd.classList.remove("typing");
+  });
+  const agentsText = centerTerminalEl.querySelector(".agents-text");
+  if (agentsText) agentsText.textContent = "2 agents coding...";
+  const diffContainer = centerTerminalEl.querySelector(
+    ".agents-diff-container",
+  );
+  if (diffContainer) diffContainer.classList.remove("visible");
+  centerTerminalEl
+    .querySelectorAll(".diff-file")
+    .forEach((el) => el.classList.remove("visible"));
+  centerTerminalEl
+    .querySelectorAll(".diff-line")
+    .forEach((el) => el.classList.remove("visible"));
+  const replayBtnEl = centerTerminalEl.querySelector(".replay-btn");
+  if (replayBtnEl) replayBtnEl.classList.remove("visible");
+  terminalContent.scrollTop = 0;
+}
+
 // Gérer le scroll pour l'effet de zoom (bidirectionnel) avec phases
 function handleZoomScroll() {
   const scrollY = window.scrollY;
   const progress = Math.min(Math.max(scrollY / scrollDistance, 0), 1);
+
+  // Détecter le scroll vers le haut et reset l'animation si on remonte assez
+  if (terminalAnimationStarted && progress < PHASE_ZOOM_START && lastScrollProgress >= PHASE_ZOOM_START) {
+    resetTerminalAnimation();
+  }
+  lastScrollProgress = progress;
 
   // Zone de zoom (progress < 1)
   if (progress < 1) {
@@ -483,60 +553,7 @@ function handleZoomScroll() {
 
       // Reset l'animation du terminal pour qu'elle puisse redémarrer
       if (terminalAnimationStarted && progress < PHASE_ZOOM_START) {
-        terminalAnimationStarted = false;
-        terminalAnimationComplete = false;
-
-        // Reset multi-terminal mode
-        if (multiTerminalMode) {
-          multiTerminalMode = false;
-          terminalsContainer.classList.remove('multi-mode');
-          // Reset tous les slots
-          Object.keys(terminalSlots).forEach(slotName => {
-            terminalSlots[slotName].created = false;
-            const slotElement = document.querySelector(`.terminal-${slotName}`);
-            slotElement.innerHTML = '';
-            slotElement.classList.remove('visible');
-          });
-        }
-
-        // Reset tous les éléments visuels du terminal central uniquement
-        const centerTerminalEl = document.querySelector(".terminal-center");
-        centerTerminalEl
-          .querySelectorAll(
-            ".cli-prompt, .cli-response, .cli-status, .cli-section-title, .cli-item, .cli-agents, .cli-success-banner",
-          )
-          .forEach((el) => {
-            el.classList.remove("visible");
-            el.classList.remove("completed");
-          });
-        centerTerminalEl
-          .querySelectorAll(".loader")
-          .forEach((el) => el.classList.remove("done"));
-        centerTerminalEl
-          .querySelectorAll(".checkmark")
-          .forEach((el) => el.classList.remove("visible"));
-        centerTerminalEl
-          .querySelectorAll(".result")
-          .forEach((el) => el.classList.remove("visible"));
-        centerTerminalEl.querySelectorAll(".command").forEach((cmd) => {
-          cmd.textContent = "";
-          cmd.classList.remove("typing");
-        });
-        const agentsText = centerTerminalEl.querySelector(".agents-text");
-        if (agentsText) agentsText.textContent = "2 agents coding...";
-        const diffContainer = centerTerminalEl.querySelector(
-          ".agents-diff-container",
-        );
-        if (diffContainer) diffContainer.classList.remove("visible");
-        centerTerminalEl
-          .querySelectorAll(".diff-file")
-          .forEach((el) => el.classList.remove("visible"));
-        centerTerminalEl
-          .querySelectorAll(".diff-line")
-          .forEach((el) => el.classList.remove("visible"));
-        const replayBtnEl = centerTerminalEl.querySelector(".replay-btn");
-        if (replayBtnEl) replayBtnEl.classList.remove("visible");
-        terminalContent.scrollTop = 0;
+        resetTerminalAnimation();
       }
     }
 
@@ -869,7 +886,8 @@ function typeText(element, text, speed = 50) {
       if (i < text.length) {
         element.textContent += text.charAt(i);
         i++;
-        setTimeout(type, speed);
+        const id = setTimeout(type, speed);
+        animationTimeouts.push(id);
       } else {
         element.classList.remove("typing");
         resolve();
@@ -907,13 +925,14 @@ function scrollToElement(el) {
 
 // Fonction pour afficher un élément avec animation (dans le terminal central)
 function showElement(selector, delay) {
-  setTimeout(() => {
+  const id = setTimeout(() => {
     const el = centralTerminal.querySelector(selector);
     if (el) {
       el.classList.add("visible");
       scrollToElement(el);
     }
   }, delay);
+  animationTimeouts.push(id);
 }
 
 // Fonction pour créer l'effet de paillettes
@@ -972,7 +991,7 @@ function createSparkles(element) {
 
 // Fonction pour terminer un loader et afficher le checkmark (dans le terminal central)
 function completeStatus(selector, delay, showResult = false) {
-  setTimeout(() => {
+  const id = setTimeout(() => {
     const el = centralTerminal.querySelector(selector);
     if (el) {
       const loader = el.querySelector(".loader");
@@ -984,6 +1003,7 @@ function completeStatus(selector, delay, showResult = false) {
       scrollToElement(el);
     }
   }, delay);
+  animationTimeouts.push(id);
 }
 
 function animateTerminal() {
@@ -1003,7 +1023,7 @@ function animateTerminal() {
   const p1 = 400; // Début phase 1
 
   // Afficher le prompt et taper la commande
-  setTimeout(() => {
+  animationTimeouts.push(setTimeout(() => {
     const prompt1 = centralTerminal.querySelector(".phase-1-line.cli-prompt");
     const response1 = centralTerminal.querySelector(
       ".phase-1-line.cli-response",
@@ -1019,13 +1039,13 @@ function animateTerminal() {
     }
 
     // Afficher la réponse après la frappe
-    setTimeout(() => {
+    animationTimeouts.push(setTimeout(() => {
       if (response1) {
         response1.classList.add("visible");
         scrollToElement(response1);
       }
-    }, startCmdDuration + 200);
-  }, p1);
+    }, startCmdDuration + 200));
+  }, p1));
 
   // Animations des statuts phase 1
   const p1Response = p1 + startCmdDuration + 400;
@@ -1047,7 +1067,7 @@ function animateTerminal() {
   showElement(".phase-1-status-7", p1Response + 4300);
 
   // Afficher le container de diffs et animer les fichiers
-  setTimeout(() => {
+  animationTimeouts.push(setTimeout(() => {
     const diffContainer = centralTerminal.querySelector(
       ".agents-diff-container",
     );
@@ -1060,27 +1080,27 @@ function animateTerminal() {
       let fileDelay = 0;
 
       diffFiles.forEach((file, fileIndex) => {
-        setTimeout(() => {
+        animationTimeouts.push(setTimeout(() => {
           file.classList.add("visible");
           scrollToElement(file);
 
           // Animer chaque ligne de diff dans le fichier
           const diffLines = file.querySelectorAll(".diff-line");
           diffLines.forEach((line, lineIndex) => {
-            setTimeout(() => {
+            animationTimeouts.push(setTimeout(() => {
               line.classList.add("visible");
               scrollToElement(line);
-            }, lineIndex * 150);
+            }, lineIndex * 150));
           });
-        }, fileDelay);
+        }, fileDelay));
 
         fileDelay += 1500; // Délai entre chaque fichier
       });
     }
-  }, p1Response + 4800);
+  }, p1Response + 4800));
 
   // Compléter "2 agents coding..." après un moment
-  setTimeout(() => {
+  animationTimeouts.push(setTimeout(() => {
     const agentsEl = centralTerminal.querySelector(".phase-1-status-7");
     const diffContainer = centralTerminal.querySelector(
       ".agents-diff-container",
@@ -1098,13 +1118,13 @@ function animateTerminal() {
       agentsEl.querySelector(".agents-text").textContent =
         `2 agents done (${fileCount} files updated)`;
     }
-  }, p1Response + 9500);
+  }, p1Response + 9500));
 
   // ===== PHASE 2: /commit =====
   const p2 = p1Response + 10500;
   setPhase(2);
 
-  setTimeout(() => {
+  animationTimeouts.push(setTimeout(() => {
     setPhase(2);
     const prompt2 = centralTerminal.querySelector(".phase-2-line.cli-prompt");
     const response2 = centralTerminal.querySelector(
@@ -1120,13 +1140,13 @@ function animateTerminal() {
       typeText(cmd2, cmd2.dataset.text, typeSpeed);
     }
 
-    setTimeout(() => {
+    animationTimeouts.push(setTimeout(() => {
       if (response2) {
         response2.classList.add("visible");
         scrollToElement(response2);
       }
-    }, commitCmdDuration + 200);
-  }, p2);
+    }, commitCmdDuration + 200));
+  }, p2));
 
   const p2Response = p2 + commitCmdDuration + 400;
 
@@ -1159,7 +1179,7 @@ function animateTerminal() {
   // ===== PHASE 3: /done =====
   const p3 = p2Response + 7500;
 
-  setTimeout(() => {
+  animationTimeouts.push(setTimeout(() => {
     setPhase(3);
     const prompt3 = centralTerminal.querySelector(".phase-3-line.cli-prompt");
     const response3 = centralTerminal.querySelector(
@@ -1175,13 +1195,13 @@ function animateTerminal() {
       typeText(cmd3, cmd3.dataset.text, typeSpeed);
     }
 
-    setTimeout(() => {
+    animationTimeouts.push(setTimeout(() => {
       if (response3) {
         response3.classList.add("visible");
         scrollToElement(response3);
       }
-    }, doneCmdDuration + 200);
-  }, p3);
+    }, doneCmdDuration + 200));
+  }, p3));
 
   const p3Response = p3 + doneCmdDuration + 400;
   showElement(".phase-3-status-1", p3Response);
@@ -1194,17 +1214,17 @@ function animateTerminal() {
   completeStatus(".phase-3-status-3", p3Response + 2800, true);
 
   // Afficher "Task complete!" avec paillettes
-  setTimeout(() => {
+  animationTimeouts.push(setTimeout(() => {
     const successBanner = centralTerminal.querySelector(".phase-3-status-4");
     if (successBanner) {
       successBanner.classList.add("visible");
       scrollToElement(successBanner);
       createSparkles(successBanner);
     }
-  }, p3Response + 3200);
+  }, p3Response + 3200));
 
   // Bouton replay et afficher l'indicateur de scroll
-  setTimeout(() => {
+  animationTimeouts.push(setTimeout(() => {
     replayBtn.classList.add("visible");
     terminalAnimationComplete = true;
     // N'afficher l'indicateur que si on est en haut de page (pas scrollé)
@@ -1213,10 +1233,14 @@ function animateTerminal() {
       scrollIndicator.classList.remove("hidden");
       scrollIndicator.style.opacity = 1;
     }
-  }, p3Response + 4000);
+  }, p3Response + 4000));
 }
 
 function replayTerminal() {
+  // Annuler tous les timeouts en cours
+  animationTimeouts.forEach(id => clearTimeout(id));
+  animationTimeouts = [];
+
   replayBtn.classList.remove("visible");
   terminalAnimationComplete = false;
 
