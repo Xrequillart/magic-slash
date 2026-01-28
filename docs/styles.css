@@ -45,16 +45,20 @@ html[lang="en"] [data-lang="fr"] {
   display: none;
 }
 
-.block[data-lang="en"] {
+.block[data-lang="en"],
+ul[data-lang="en"] {
   display: none;
 }
-.block[data-lang="fr"] {
+.block[data-lang="fr"],
+ul[data-lang="fr"] {
   display: block;
 }
-html[lang="en"] .block[data-lang="en"] {
+html[lang="en"] .block[data-lang="en"],
+html[lang="en"] ul[data-lang="en"] {
   display: block;
 }
-html[lang="en"] .block[data-lang="fr"] {
+html[lang="en"] .block[data-lang="fr"],
+html[lang="en"] ul[data-lang="fr"] {
   display: none;
 }
 
@@ -448,6 +452,15 @@ h1 {
   color: var(--text-secondary);
   max-width: 650px;
   margin: 0 auto 40px;
+}
+
+.hero p code {
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--text);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px;
 }
 
 /* Install Box */
@@ -1131,8 +1144,23 @@ h1 {
 
 .command-card h3 {
   font-size: 22px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-family: "JetBrains Mono", monospace;
+}
+
+.command-card .natural-invoke {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  font-style: italic;
+}
+
+.command-card .natural-invoke code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-style: normal;
 }
 
 .command-card.start h3 {
@@ -1236,6 +1264,15 @@ h1 {
   color: var(--text-secondary);
   margin-bottom: 32px;
   position: relative;
+}
+
+.cta p code {
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px;
 }
 
 .cta-buttons {

@@ -384,445 +384,40 @@ fi
 echo ""
 
 # ============================================
-# 5. SLASH COMMANDS INSTALLATION
+# 5. SKILLS INSTALLATION (Commands + Natural Language)
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "5. Installing /start, /commit and /done commands"
+echo "5. Installing /start, /commit and /done skills"
 echo ""
 
-COMMANDS_DIR="$HOME/.claude/commands"
-mkdir -p "$COMMANDS_DIR"
+SKILLS_DIR="$HOME/.claude/skills"
+mkdir -p "$SKILLS_DIR"
 
-# --- /start installation ---
-START_CMD="$COMMANDS_DIR/start.md"
-SKIP_START=false
+# Copy skills from local or download from GitHub
+if [ -d "$SCRIPT_DIR/../skills" ]; then
+  # Local installation
+  cp -r "$SCRIPT_DIR/../skills/"* "$SKILLS_DIR/"
+else
+  # Remote installation - download from GitHub
+  for skill in start commit done; do
+    mkdir -p "$SKILLS_DIR/$skill"
+    curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/SKILL.md" > "$SKILLS_DIR/$skill/SKILL.md"
+  done
+fi
 
-if [ -f "$START_CMD" ]; then
-  echo "   ⚠️  The /start command already exists"
-  read -p "   Overwrite? (y/N) " OVERWRITE < /dev/tty
-  if [ "$OVERWRITE" != "y" ]; then
-    echo "   ✅ /start command kept"
-    SKIP_START=true
-  else
-    cp "$START_CMD" "$START_CMD.backup.$(date +%s)"
+echo "   ✅ Skills installed (start, commit, done)"
+echo "   → Use /start, /commit, /done or natural language"
+echo "   → Examples: 'démarre PROJ-123', 'ready to commit', 'create the PR'"
+
+# Note: Old commands in ~/.claude/commands/ are no longer used
+# Skills in ~/.claude/skills/ replace them completely
+if [ -d "$HOME/.claude/commands" ]; then
+  if [ -f "$HOME/.claude/commands/start.md" ] || [ -f "$HOME/.claude/commands/commit.md" ] || [ -f "$HOME/.claude/commands/done.md" ]; then
+    echo ""
+    echo "   ℹ️  Old commands found in ~/.claude/commands/"
+    echo "   → You can safely delete them (skills replace commands)"
   fi
-  echo ""
-fi
-
-if [ "$SKIP_START" != true ]; then
-  cat > "$START_CMD" << 'SLASH_CMD'
----
-description: Start a task from a Jira ticket or GitHub issue
-argument-hint: <TICKET-ID>
-allowed-tools: Bash(*), mcp__atlassian__*, mcp__github__*
----
-
-# Magic Slash - /start
-
-You are an assistant that helps start a development task from a Jira ticket or GitHub issue.
-
-## Step 1: Detect ticket type
-
-Analyze the provided argument: `$ARGUMENTS`
-
-- **Jira format**: Contains an alphabetic prefix followed by a hyphen and digits (e.g., `PROJ-123`, `ABC-456`)
-  - Regex: `^[A-Z]+-\d+$`
-  - → Go to **Step 2A** (Jira)
-
-- **GitHub format**: A simple number, with or without `#` (e.g., `123`, `#456`)
-  - Regex: `^#?\d+$`
-  - → Go to **Step 2B** (GitHub)
-
-If format is not recognized, ask the user to clarify.
-
-## Step 2A: Retrieve Jira ticket
-
-Use the MCP Atlassian tool `mcp__atlassian__getJiraIssue` to retrieve ticket details.
-
-Note: If you don't know the `cloudId`, first use `mcp__atlassian__getAccessibleAtlassianResources` to get it.
-
-→ Continue to **Step 3**.
-
-## Step 2B: Retrieve GitHub issue
-
-### 2B.1: Read repository configuration
-
-```bash
-cat ~/.config/magic-slash/config.json
-```
-
-Get the paths of all configured repos:
-
-```json
-{
-  "repositories": {
-    "api": {"path": "/path/to/api", "keywords": ["backend", "api"]},
-    "web": {"path": "/path/to/web", "keywords": ["frontend", "ui"]}
-  }
-}
-```
-
-### 2B.2: Identify GitHub repositories
-
-For each configured repo, get the owner and repo name:
-
-```bash
-cd {REPO_PATH} && git remote get-url origin
-```
-
-Parse the URL to extract `owner/repo` (possible formats: `git@github.com:owner/repo.git` or `https://github.com/owner/repo.git`).
-
-### 2B.3: Search for issue in each repo
-
-For each identified repo, use `mcp__github__get_issue` to check if the issue exists:
-
-- `owner`: The repository owner
-- `repo`: The repository name
-- `issue_number`: The issue number (without `#`)
-
-Collect all found issues.
-
-### 2B.4: Resolution
-
-- **No issue found**: Inform the user that no issue with this number exists in configured repos.
-
-- **Single issue found**: Use this issue and continue. The scope is automatically this repo.
-
-- **Multiple issues found**: Display options and ask the user to choose:
-  ```
-  Multiple issues #123 found:
-
-  1. owner1/repo-api : "API issue title"
-  2. owner2/repo-web : "Web issue title"
-
-  Which one do you want to use? (or 'all')
-  ```
-
-→ Continue to **Step 3**.
-
-## Step 3: Analyze ticket scope (Smart repository selection)
-
-### 3.1: Read configuration
-
-If not already done, read the configuration file:
-
-```bash
-cat ~/.config/magic-slash/config.json
-```
-
-### 3.2: Extract ticket information
-
-**For Jira**, collect:
-- The ticket **labels**
-- The Jira **components** (if defined)
-- The **title** and **description**
-
-**For GitHub**, collect:
-- The issue **labels**
-- The **title** and **description**
-
-### 3.3: Calculate relevance score for each repo
-
-For each configured repo, calculate a score based on its defined keywords:
-
-| Match source | Points |
-|--------------|--------|
-| Jira Label/Component matching a keyword | +10 |
-| GitHub Label matching a keyword | +10 |
-| Keyword found in title | +5 |
-| Keyword found in description | +2 |
-
-**Example calculation**:
-```
-Ticket: "Add API endpoint for users"
-Labels: ["backend"]
-
-Configured repos:
-- api: keywords=["backend", "api", "server"] → score = 10 (label) + 5 (title "API") = 15
-- web: keywords=["frontend", "ui", "react"] → score = 0
-- mobile: keywords=["mobile", "ios", "android"] → score = 0
-```
-
-### 3.4: Scope resolution
-
-- **Single repo with score > 0**: Use that repo directly
-
-- **Multiple repos with scores > 0**: Display options with scores and ask:
-  ```
-  This ticket seems to concern multiple repositories:
-
-  1. api (score: 15) - matched keywords: "backend", "api"
-  2. web (score: 5) - matched keywords: "frontend"
-
-  Which one do you want to use? (1, 2, or 'all')
-  ```
-
-- **No match (all scores = 0)**: List all repos and ask:
-  ```
-  Cannot automatically determine the relevant repository.
-
-  Available repositories:
-  1. api (/path/to/api)
-  2. web (/path/to/web)
-  3. mobile (/path/to/mobile)
-
-  Which one do you want to use? (1, 2, 3, or 'all')
-  ```
-
-**GitHub special case**: If the issue was found in only one repo during step 2B, the scope is automatically that repo (no scoring needed).
-
-## Step 4: Create worktrees
-
-For each selected repo:
-
-1. Go to the repo directory
-2. Get the repo folder name
-3. Fetch latest changes
-4. Create the worktree AT THE SAME LEVEL as the main repo
-
-```bash
-cd {REPO_PATH}
-REPO_NAME=$(basename "$PWD")
-git fetch origin
-git worktree add -b feature/$TICKET_ID ../${REPO_NAME}-$TICKET_ID origin/main
-```
-
-**Branch naming note**:
-- For Jira: use the ID as-is (e.g., `feature/PROJ-1234`)
-- For GitHub: prefix with repo name to avoid conflicts (e.g., `feature/repo-name-123`)
-
-Example: If the repo is `/projects/my-api`, the worktree will be `/projects/my-api-PROJ-1234` (Jira) or `/projects/my-api-123` (GitHub)
-
-## Step 5: Summary and agent context
-
-Once worktrees are created, display a summary:
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📌 Source    : Jira / GitHub (owner/repo)
-🎫 Ticket    : [ID] - [Title]
-📋 Type      : [Bug/Feature/Task...] or Labels
-🎯 Scope     : [List of selected repos]
-
-📁 Worktree(s) created:
-   • /path/to/repo-TICKET-ID
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-Then generate a contextual prompt to start working on the task, based on:
-- The ticket/issue description
-- The acceptance criteria (if present)
-- The expected type of modification
-SLASH_CMD
-
-  echo "   ✅ /start command installed"
-fi
-
-# --- /commit installation ---
-COMMIT_CMD="$COMMANDS_DIR/commit.md"
-SKIP_COMMIT=false
-
-if [ -f "$COMMIT_CMD" ]; then
-  echo "   ⚠️  The /commit command already exists"
-  read -p "   Overwrite? (y/N) " OVERWRITE_COMMIT < /dev/tty
-  if [ "$OVERWRITE_COMMIT" != "y" ]; then
-    echo "   ✅ /commit command kept"
-    SKIP_COMMIT=true
-  else
-    cp "$COMMIT_CMD" "$COMMIT_CMD.backup.$(date +%s)"
-  fi
-  echo ""
-fi
-
-if [ "$SKIP_COMMIT" != true ]; then
-  cat > "$COMMIT_CMD" << 'SLASH_CMD_COMMIT'
----
-description: Create an atomic commit with a conventional message
-allowed-tools: Bash(*)
----
-
-# Magic Slash - /commit
-
-You are an assistant that creates atomic commits with conventional messages.
-
-## Step 1: Check repository status
-
-```bash
-git status
-```
-
-If no changes are detected, inform the user that there is nothing to commit.
-
-## Step 2: Stage changes
-
-```bash
-git add -A
-```
-
-## Step 3: Analyze changes
-
-```bash
-git diff --cached
-```
-
-Analyze modified files to understand the nature of changes.
-
-## Step 4: Generate commit message
-
-Generate a commit message following these rules:
-
-**Format**: `type(scope): description`
-
-**Language**: English only
-
-**Constraints**:
-- Single line
-- No Co-Authored-By
-- Concise and descriptive
-
-**Available types**:
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation only
-- `style`: Formatting, missing semicolons, etc. (no code change)
-- `refactor`: Code refactoring (neither new feature nor bug fix)
-- `test`: Adding or modifying tests
-- `chore`: Maintenance, dependencies, configuration
-
-**Scope**: The main file or modified component (e.g.: `auth`, `api`, `user-service`)
-
-**Examples**:
-- `feat(auth): add JWT token refresh mechanism`
-- `fix(api): handle null response from payment gateway`
-- `refactor(user-service): extract validation logic`
-- `chore(deps): update axios to 1.6.0`
-
-## Step 5: Create the commit
-
-```bash
-git commit -m "generated message"
-```
-
-## Step 6: Confirm
-
-```bash
-git log -1 --oneline
-```
-
-Display the created commit for confirmation.
-SLASH_CMD_COMMIT
-
-  echo "   ✅ /commit command installed"
-fi
-
-# --- /done installation ---
-DONE_CMD="$COMMANDS_DIR/done.md"
-SKIP_DONE=false
-
-if [ -f "$DONE_CMD" ]; then
-  echo "   ⚠️  The /done command already exists"
-  read -p "   Overwrite? (y/N) " OVERWRITE_DONE < /dev/tty
-  if [ "$OVERWRITE_DONE" != "y" ]; then
-    echo "   ✅ /done command kept"
-    SKIP_DONE=true
-  else
-    cp "$DONE_CMD" "$DONE_CMD.backup.$(date +%s)"
-  fi
-  echo ""
-fi
-
-if [ "$SKIP_DONE" != true ]; then
-  cat > "$DONE_CMD" << 'SLASH_CMD_DONE'
----
-description: Push commits, create PR and update Jira ticket
-allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
----
-
-# Magic Slash - /done
-
-You are an assistant that finalizes a task by pushing commits, creating a PR and updating the Jira ticket.
-
-## Step 1: Get current branch
-
-```bash
-git branch --show-current
-```
-
-Verify you are not on `main` or `master`. If so, inform the user they must be on a feature branch.
-
-## Step 2: Push to remote
-
-```bash
-git push -u origin <branch-name>
-```
-
-If push fails, display the error and stop the process.
-
-## Step 3: List commits for PR
-
-```bash
-git log origin/main..HEAD --oneline
-```
-
-Retrieve the list of commits that will be included in the PR.
-
-## Step 4: Create Pull Request via MCP GitHub
-
-Use the MCP GitHub tool `mcp__github__create_pull_request` to create the PR:
-
-- **Title**: Based on branch name or first commit
-  - If branch contains a ticket ID (e.g.: `feature/PROJ-123`), use format: `[PROJ-123] Description`
-- **Description**: Generated from commits
-  - List commits with their messages
-  - Add a "Changes" section summarizing modifications
-- **Base**: `main` (or `master` depending on repo)
-- **Head**: Current branch
-
-## Step 5: Extract ticket ID
-
-Analyze branch name to extract Jira ticket ID:
-- Pattern: `feature/PROJ-123`, `fix/PROJ-456`, `PROJ-789-description`
-- Regex: `[A-Z]+-\d+`
-
-If no ticket ID is found, ask the user if they still want to update a Jira ticket.
-
-## Step 6: Update Jira ticket
-
-If a ticket ID is found, use MCP Atlassian tools:
-
-Note: If you don't know the `cloudId`, first use `mcp__atlassian__getAccessibleAtlassianResources` to get it.
-
-1. **Get available transitions** with `mcp__atlassian__getTransitionsForJiraIssue`
-2. **Change status** to "To be reviewed" (or equivalent) with `mcp__atlassian__transitionJiraIssue`
-3. **Add a comment** with the PR link via `mcp__atlassian__addCommentToJiraIssue`
-
-If "To be reviewed" status doesn't exist, try:
-- "In Review"
-- "Code Review"
-- "Review"
-
-## Step 7: Final summary
-
-Display a summary of what was done:
-
-```
-✅ Task completed!
-
-📌 Branch  : feature/PROJ-123
-🔗 PR      : https://github.com/org/repo/pull/42
-🎫 Ticket  : PROJ-123 → To be reviewed
-
-Next steps:
-1. Request a review from your colleagues
-2. Wait for approval and CI checks
-3. Merge the PR once approved
-```
-SLASH_CMD_DONE
-
-  echo "   ✅ /done command installed"
 fi
 
 echo ""
@@ -851,19 +446,14 @@ else
 fi
 
 chmod +x "$CLI_PATH"
-
-echo "   ✅ magic-slash CLI installed at $CLI_PATH"
+echo "   ✅ CLI installed at $CLI_PATH"
 
 # Check if ~/.local/bin is in PATH
-if [[ ":$PATH:" != *":$CLI_DIR:"* ]]; then
+if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
   echo ""
-  echo "   ⚠️  $CLI_DIR is not in your PATH"
-  echo ""
-  echo "   Add this line to your shell config (~/.bashrc, ~/.zshrc, etc.):"
-  echo ""
-  echo "      export PATH=\"\$HOME/.local/bin:\$PATH\""
-  echo ""
-  echo "   Then restart your terminal or run: source ~/.bashrc"
+  echo "   ⚠️  ~/.local/bin is not in your PATH"
+  echo "   Add this line to your ~/.bashrc or ~/.zshrc:"
+  echo "   export PATH=\"\$HOME/.local/bin:\$PATH\""
 fi
 
 echo ""
@@ -873,33 +463,28 @@ echo ""
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "🎉 Magic Slash v$CURRENT_VERSION installed!"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Next steps:"
-echo ""
-echo "  1. Restart Claude Code (to load MCPs)"
-echo ""
-echo "  2. On first /start, an OAuth window will open"
-echo "     to connect your Atlassian account"
-echo ""
-echo "  3. Launch Claude Code and use:"
-echo "     /start PROJ-1234    → Start from a Jira ticket"
-echo "     /start 42           → Start from a GitHub issue"
-echo "     /commit             → Commit with conventional message"
-echo "     /done               → Push, PR and update Jira"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ Magic Slash v$CURRENT_VERSION installed successfully!"
 echo ""
 echo "Created files:"
 echo "  • MCP Atlassian  : ~/.claude.json (OAuth - Jira + Confluence)"
 echo "  • MCP GitHub     : ~/.claude.json"
 echo "  • Repos config   : ~/.config/magic-slash/config.json"
-echo "  • /start command : ~/.claude/commands/start.md"
-echo "  • /commit command: ~/.claude/commands/commit.md"
-echo "  • /done command  : ~/.claude/commands/done.md"
+echo "  • Skills         : ~/.claude/skills/{start,commit,done}/SKILL.md"
 echo "  • CLI command    : ~/.local/bin/magic-slash"
 echo ""
 echo "Run 'magic-slash' anytime to update your configuration."
 echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "🚀 You're ready! Try these commands:"
+echo ""
+echo "   /start PROJ-123     Start a Jira ticket"
+echo "   /start #42          Start a GitHub issue"
+echo "   /commit             Create a commit"
+echo "   /done               Push, create PR, update Jira"
+echo ""
+echo "   Or use natural language:"
+echo "   'démarre PROJ-123'  'ready to commit'  'create the PR'"
+echo ""
+
+# END_OF_INSTALL_SCRIPT

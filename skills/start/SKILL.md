@@ -1,5 +1,6 @@
 ---
-description: Démarre une tâche depuis un ticket Jira ou une issue GitHub
+name: start
+description: This skill should be used when the user mentions a ticket ID like "PROJ-123", "#456", says "start", "commencer", "travailler sur", "je vais bosser sur", "begin work on", "work on ticket", "work on issue", "démarre", "démarrer", or indicates they want to start working on a specific task.
 argument-hint: <TICKET-ID>
 allowed-tools: Bash(*), mcp__atlassian__*, mcp__github__*
 ---

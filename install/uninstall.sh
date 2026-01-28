@@ -31,9 +31,9 @@ echo ""
 # ============================================
 echo "This script will remove:"
 echo ""
-echo "  • ~/.claude/commands/start.md"
-echo "  • ~/.claude/commands/commit.md"
-echo "  • ~/.claude/commands/done.md"
+echo "  • ~/.claude/skills/start/"
+echo "  • ~/.claude/skills/commit/"
+echo "  • ~/.claude/skills/done/"
 echo "  • ~/.config/magic-slash/ (entire folder)"
 echo "  • MCP Atlassian (via claude mcp remove)"
 echo "  • MCP GitHub (via claude mcp remove)"
@@ -51,19 +51,28 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ============================================
-# 1. SLASH COMMANDS REMOVAL
+# 1. SKILLS REMOVAL
 # ============================================
-echo "1. Removing slash commands..."
+echo "1. Removing skills..."
 echo ""
 
-COMMANDS_DIR="$HOME/.claude/commands"
+SKILLS_DIR="$HOME/.claude/skills"
 
+for skill in start commit done; do
+  if [ -d "$SKILLS_DIR/$skill" ]; then
+    rm -rf "$SKILLS_DIR/$skill"
+    echo "   ✓ Removed: $SKILLS_DIR/$skill/"
+  else
+    echo "   - Not found: $SKILLS_DIR/$skill/"
+  fi
+done
+
+# Also remove old commands if they exist (legacy cleanup)
+COMMANDS_DIR="$HOME/.claude/commands"
 for cmd in start.md commit.md done.md; do
   if [ -f "$COMMANDS_DIR/$cmd" ]; then
     rm "$COMMANDS_DIR/$cmd"
-    echo "   ✓ Removed: $COMMANDS_DIR/$cmd"
-  else
-    echo "   - Not found: $COMMANDS_DIR/$cmd"
+    echo "   ✓ Removed legacy: $COMMANDS_DIR/$cmd"
   fi
 done
 

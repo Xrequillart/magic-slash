@@ -1,5 +1,6 @@
 ---
-description: Create an atomic commit with a conventional message
+name: commit
+description: This skill should be used when the user says "commit", "je suis prêt à committer", "on commit", "create a commit", "faire un commit", "committer les changements", "save my changes", "enregistrer mes changements", "prêt à committer", "ready to commit", or indicates they want to save their current changes as a commit.
 allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep
 ---
 
@@ -142,6 +143,12 @@ Génère un message de commit en suivant ces règles :
 
 **Format** : `type(scope): description`
 
+**⚠️ RÈGLE ABSOLUE : Le message de commit doit tenir sur UNE SEULE LIGNE.**
+- PAS de saut de ligne
+- PAS de liste à puces
+- PAS de description détaillée sur plusieurs lignes
+- JUSTE : `type(scope): description courte`
+
 **Langue** : Lis `~/.config/magic-slash/config.json` et utilise `.languages.commit`
 
 - `"en"` ou absent : Message en anglais
@@ -149,9 +156,9 @@ Génère un message de commit en suivant ces règles :
 
 **Contraintes** :
 
-- Une seule ligne
+- **UNE SEULE LIGNE** (jamais de multi-lignes, jamais de body)
 - Pas de Co-Authored-By
-- Description concise et descriptive
+- Description concise (max ~72 caractères)
 
 **Types disponibles** :
 

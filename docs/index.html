@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Magic Slash - Slash Commands pour Claude Code</title>
+    <title>Magic Slash - Commandes slash et langage naturel pour Claude Code</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -23,12 +23,10 @@
     </div>
     <div class="intro-tagline">
       <h2 data-lang="fr">
-        <span class="highlight">Trois slash commands</span> qui automatisent ton
-        workflow
+        <span class="highlight">Trois commandes</span> en slash ou en langage naturel
       </h2>
       <h2 data-lang="en">
-        <span class="highlight">Three slash commands</span> that automate your
-        workflow
+        <span class="highlight">Three commands</span> via slash or natural language
       </h2>
     </div>
 
@@ -374,12 +372,12 @@
           </h1>
           <p>
             <span data-lang="fr"
-              >Trois slash commands qui automatisent ton workflow : de la
-              récupération du ticket Jira ou de l'issue GitHub jusqu'au push de la PR.</span
+              >Trois commandes qui automatisent ton workflow, utilisables en slash
+              <code>/start</code> ou en langage naturel <code>"démarre PROJ-123"</code>.</span
             >
             <span data-lang="en"
-              >Three slash commands that automate your workflow: from fetching
-              the Jira ticket or GitHub issue to pushing the PR.</span
+              >Three commands that automate your workflow, usable via slash
+              <code>/start</code> or natural language <code>"work on PROJ-123"</code>.</span
             >
           </p>
 
@@ -402,11 +400,10 @@
           </h2>
           <p>
             <span data-lang="fr"
-              >Chaque commande g&egrave;re une &eacute;tape cl&eacute; de ton
-              d&eacute;veloppement.</span
+              >Tape <code>/start</code> ou dis simplement <code>"démarre PROJ-123"</code>.</span
             >
             <span data-lang="en"
-              >Each command handles a key step of your development.</span
+              >Type <code>/start</code> or just say <code>"work on PROJ-123"</code>.</span
             >
           </p>
 
@@ -417,6 +414,14 @@
                 <i data-feather="play-circle"></i>
               </div>
               <h3>/start</h3>
+              <p class="natural-invoke">
+                <span data-lang="fr"
+                  >ou <code>"démarre PROJ-123"</code>, <code>"je vais bosser sur #42"</code></span
+                >
+                <span data-lang="en"
+                  >or <code>"work on PROJ-123"</code>, <code>"start issue #42"</code></span
+                >
+              </p>
               <p>
                 <span data-lang="fr"
                   >D&eacute;marre une nouvelle t&acirc;che depuis un ticket
@@ -470,6 +475,14 @@
                 <i data-feather="git-commit"></i>
               </div>
               <h3>/commit</h3>
+              <p class="natural-invoke">
+                <span data-lang="fr"
+                  >ou <code>"je suis prêt à committer"</code>, <code>"on commit"</code></span
+                >
+                <span data-lang="en"
+                  >or <code>"ready to commit"</code>, <code>"save my changes"</code></span
+                >
+              </p>
               <p>
                 <span data-lang="fr"
                   >Cr&eacute;e un commit avec un message conventionnel.</span
@@ -524,6 +537,14 @@
                 <i data-feather="check-circle"></i>
               </div>
               <h3>/done</h3>
+              <p class="natural-invoke">
+                <span data-lang="fr"
+                  >ou <code>"j'ai terminé"</code>, <code>"on peut créer la PR"</code></span
+                >
+                <span data-lang="en"
+                  >or <code>"I'm done"</code>, <code>"create the PR"</code></span
+                >
+              </p>
               <p>
                 <span data-lang="fr">Finalise ta t&acirc;che en un geste.</span>
                 <span data-lang="en">Finalize your task in one gesture.</span>
@@ -791,12 +812,10 @@
             </h2>
             <p>
               <span data-lang="fr"
-                >Installe Magic Slash en une commande et commence &agrave; coder
-                plus vite.</span
+                >Installe Magic Slash et dis simplement <code>"démarre PROJ-123"</code> pour commencer.</span
               >
               <span data-lang="en"
-                >Install Magic Slash with one command and start coding
-                faster.</span
+                >Install Magic Slash and just say <code>"work on PROJ-123"</code> to get started.</span
               >
             </p>
             <div class="install-box">
@@ -869,6 +888,11 @@
                 <span data-lang="fr">Commandes</span>
                 <span data-lang="en">Commands</span>
               </a>
+              <a href="#doc-skills" class="doc-sidebar-link">
+                <i data-feather="message-circle"></i>
+                <span data-lang="fr">Invocation naturelle</span>
+                <span data-lang="en">Natural invocation</span>
+              </a>
               <a href="#doc-how-it-works" class="doc-sidebar-link">
                 <i data-feather="cpu"></i>
                 <span data-lang="fr">Comment ça marche</span>
@@ -883,6 +907,10 @@
               <a href="#doc-faq" class="doc-sidebar-link">
                 <i data-feather="help-circle"></i>
                 <span>FAQ</span>
+              </a>
+              <a href="#doc-troubleshooting" class="doc-sidebar-link">
+                <i data-feather="alert-triangle"></i>
+                <span>Troubleshooting</span>
               </a>
               <a href="#doc-conventional-commits" class="doc-sidebar-link">
                 <i data-feather="git-commit"></i>
@@ -1020,15 +1048,15 @@
             <ul>
               <li class="red">
                 <i data-feather="x"></i>
-                <span><code>~/.claude/commands/start.md</code></span>
+                <span><code>~/.claude/skills/start/</code></span>
               </li>
               <li class="red">
                 <i data-feather="x"></i>
-                <span><code>~/.claude/commands/commit.md</code></span>
+                <span><code>~/.claude/skills/commit/</code></span>
               </li>
               <li class="red">
                 <i data-feather="x"></i>
-                <span><code>~/.claude/commands/done.md</code></span>
+                <span><code>~/.claude/skills/done/</code></span>
               </li>
               <li class="red">
                 <i data-feather="x"></i>
@@ -1217,6 +1245,108 @@
             </div>
           </div>
 
+          <!-- Skills / Invocation naturelle -->
+          <div class="doc-section" id="doc-skills">
+            <h3>
+              <i data-feather="message-circle"></i>
+              <span data-lang="fr">Invocation naturelle</span>
+              <span data-lang="en">Natural invocation</span>
+            </h3>
+
+            <p>
+              <span data-lang="fr">
+                Magic Slash propose trois commandes (<code>/start</code>, <code>/commit</code>, <code>/done</code>)
+                utilisables de deux façons : en tapant la commande directement, ou en
+                <strong>langage naturel</strong>. Claude Code reconnaît automatiquement votre intention.
+              </span>
+              <span data-lang="en">
+                Magic Slash provides three commands (<code>/start</code>, <code>/commit</code>, <code>/done</code>)
+                usable in two ways: by typing the command directly, or using
+                <strong>natural language</strong>. Claude Code automatically recognizes your intent.
+              </span>
+            </p>
+
+            <h4>
+              <span data-lang="fr">Exemples d'invocations naturelles</span>
+              <span data-lang="en">Natural invocation examples</span>
+            </h4>
+
+            <div class="doc-command-detail start">
+              <h4>/start</h4>
+              <ul data-lang="fr">
+                <li><code>"Démarre PROJ-123"</code></li>
+                <li><code>"Je vais bosser sur DATA-42"</code></li>
+                <li><code>"Commencer la tâche FEAT-99"</code></li>
+                <li><code>"Travailler sur #78"</code></li>
+              </ul>
+              <ul data-lang="en">
+                <li><code>"Work on PROJ-123"</code></li>
+                <li><code>"Start ticket DATA-42"</code></li>
+                <li><code>"Begin work on #78"</code></li>
+                <li><code>"I'll work on FEAT-99"</code></li>
+              </ul>
+            </div>
+
+            <div class="doc-command-detail commit">
+              <h4>/commit</h4>
+              <ul data-lang="fr">
+                <li><code>"Je suis prêt à committer"</code></li>
+                <li><code>"On commit"</code></li>
+                <li><code>"Faire un commit"</code></li>
+                <li><code>"Enregistre mes changements"</code></li>
+              </ul>
+              <ul data-lang="en">
+                <li><code>"Ready to commit"</code></li>
+                <li><code>"Create a commit"</code></li>
+                <li><code>"Save my changes"</code></li>
+                <li><code>"Let's commit"</code></li>
+              </ul>
+            </div>
+
+            <div class="doc-command-detail done">
+              <h4>/done</h4>
+              <ul data-lang="fr">
+                <li><code>"Terminé"</code></li>
+                <li><code>"On peut créer la PR"</code></li>
+                <li><code>"J'ai fini"</code></li>
+                <li><code>"Pousse et crée la PR"</code></li>
+              </ul>
+              <ul data-lang="en">
+                <li><code>"I'm done"</code></li>
+                <li><code>"Create the pull request"</code></li>
+                <li><code>"Push and create PR"</code></li>
+                <li><code>"Finish the task"</code></li>
+              </ul>
+            </div>
+
+            <h4>
+              <span data-lang="fr">Comment ça fonctionne</span>
+              <span data-lang="en">How it works</span>
+            </h4>
+            <p>
+              <span data-lang="fr">
+                Magic Slash installe des fichiers <strong>SKILL.md</strong> dans <code>~/.claude/skills/</code>.
+                Ces fichiers contiennent les instructions complètes et des "trigger phrases" qui permettent
+                à Claude Code de reconnaître l'intention de l'utilisateur.
+              </span>
+              <span data-lang="en">
+                Magic Slash installs <strong>SKILL.md</strong> files in <code>~/.claude/skills/</code>.
+                These files contain complete instructions and "trigger phrases" that allow Claude Code
+                to recognize the user's intent.
+              </span>
+            </p>
+            <p>
+              <span data-lang="fr">
+                L'invocation naturelle supporte les deux langues (français et anglais) et fonctionne aussi bien
+                avec les tickets Jira qu'avec les issues GitHub.
+              </span>
+              <span data-lang="en">
+                Natural invocation supports both languages (French and English) and works with both Jira tickets
+                and GitHub issues.
+              </span>
+            </p>
+          </div>
+
           <!-- Comment ça marche -->
           <div class="doc-section" id="doc-how-it-works">
             <h3>
@@ -1237,30 +1367,29 @@
               >
             </p>
 
-            <h4>Slash Commands</h4>
+            <h4>Skills</h4>
             <p>
               <span data-lang="fr"
-                >Les slash commands sont des fichiers Markdown stockés dans
-                <code>~/.claude/commands/</code>. Quand tu tapes
-                <code>/start</code>, Claude Code lit le fichier
-                <code>start.md</code> et exécute les instructions qu'il
-                contient.</span
+                >Les skills sont des fichiers Markdown stockés dans
+                <code>~/.claude/skills/</code>. Quand tu tapes
+                <code>/start</code> ou dis "démarre PROJ-42", Claude Code
+                charge le skill correspondant et exécute les instructions.</span
               ><span data-lang="en"
-                >Slash commands are Markdown files stored in
-                <code>~/.claude/commands/</code>. When you type
-                <code>/start</code>, Claude Code reads the
-                <code>start.md</code> file and executes the instructions it
-                contains.</span
+                >Skills are Markdown files stored in
+                <code>~/.claude/skills/</code>. When you type
+                <code>/start</code> or say "work on PROJ-42", Claude Code
+                loads the corresponding skill and executes its instructions.</span
               >
             </p>
             <p>
               <span data-lang="fr"
-                >Chaque commande Magic Slash est un prompt pré-configuré qui
+                >Chaque skill Magic Slash est un prompt pré-configuré qui
                 guide Claude pour effectuer une série d'actions
-                automatisées.</span
+                automatisées, invocable par commande ou en langage naturel.</span
               ><span data-lang="en"
-                >Each Magic Slash command is a pre-configured prompt that guides
-                Claude to perform a series of automated actions.</span
+                >Each Magic Slash skill is a pre-configured prompt that guides
+                Claude to perform a series of automated actions, invocable
+                by command or natural language.</span
               >
             </p>
 
@@ -1317,13 +1446,13 @@
                   <div class="doc-timeline-title">/start PROJ-42</div>
                   <div class="doc-timeline-desc">
                     <span data-lang="fr"
-                      >Tu tapes la commande dans Claude Code. Le système détecte
-                      la slash command et charge le fichier
-                      <code>start.md</code> correspondant.</span
+                      >Tu tapes la commande ou dis "démarre PROJ-42".
+                      Claude Code reconnaît l'intention et charge le
+                      skill <code>start</code>.</span
                     ><span data-lang="en"
-                      >You type the command in Claude Code. The system detects
-                      the slash command and loads the corresponding
-                      <code>start.md</code> file.</span
+                      >You type the command or say "work on PROJ-42".
+                      Claude Code recognizes the intent and loads the
+                      <code>start</code> skill.</span
                     >
                   </div>
                 </div>
@@ -1423,9 +1552,9 @@
               <li>
                 <i data-feather="check"></i>
                 <span
-                  ><code>~/.claude/commands/*.md</code> —
-                  <span data-lang="fr">Les slash commands</span
-                  ><span data-lang="en">Slash commands</span></span
+                  ><code>~/.claude/skills/*/SKILL.md</code> —
+                  <span data-lang="fr">Les skills Magic Slash</span
+                  ><span data-lang="en">Magic Slash skills</span></span
                 >
               </li>
               <li>
@@ -1829,18 +1958,20 @@
               <h4>
                 <i data-feather="plus-circle"></i>
                 <span data-lang="fr"
-                  >Puis-je créer mes propres slash commands ?</span
+                  >Puis-je créer mes propres skills ?</span
                 ><span data-lang="en"
-                  >Can I create my own slash commands?</span
+                  >Can I create my own skills?</span
                 >
               </h4>
               <p data-lang="fr">
-                Oui, créez un fichier <code>.md</code> dans le dossier skills de
-                Claude Code.
+                Oui, créez un dossier dans <code>~/.claude/skills/</code> avec un fichier
+                <code>SKILL.md</code>. Ajoutez un frontmatter avec <code>name</code> et
+                <code>description</code> pour l'invocation naturelle.
               </p>
               <p data-lang="en">
-                Yes, create a <code>.md</code> file in Claude Code's skills
-                folder.
+                Yes, create a folder in <code>~/.claude/skills/</code> with a
+                <code>SKILL.md</code> file. Add a frontmatter with <code>name</code> and
+                <code>description</code> for natural invocation.
               </p>
             </div>
 
@@ -1917,6 +2048,194 @@
                 line to your shell config file (~/.bashrc, ~/.zshrc):
                 <code>export PATH="$HOME/.local/bin:$PATH"</code>. Then restart
                 your terminal or run <code>source ~/.bashrc</code>.
+              </p>
+            </div>
+          </div>
+
+          <!-- Troubleshooting -->
+          <div class="doc-section" id="doc-troubleshooting">
+            <h3>
+              <i data-feather="alert-triangle"></i>
+              <span>Troubleshooting</span>
+            </h3>
+
+            <h4>
+              <span data-lang="fr">Erreurs MCP courantes</span>
+              <span data-lang="en">Common MCP errors</span>
+            </h4>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="server"></i>
+                <span>"MCP server not responding"</span>
+              </h4>
+              <p data-lang="fr">
+                Cette erreur indique que le serveur MCP ne répond pas. Vérifiez que Node.js est installé
+                (<code>node --version</code>) et redémarrez Claude Code. Si le problème persiste,
+                relancez l'installation avec <code>curl -fsSL https://magic-slash.io/install.sh | bash</code>.
+              </p>
+              <p data-lang="en">
+                This error indicates the MCP server is not responding. Check that Node.js is installed
+                (<code>node --version</code>) and restart Claude Code. If the issue persists,
+                re-run installation with <code>curl -fsSL https://magic-slash.io/install.sh | bash</code>.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="wifi-off"></i>
+                <span>"Connection refused" / "ECONNREFUSED"</span>
+              </h4>
+              <p data-lang="fr">
+                Le serveur MCP ne peut pas être atteint. Vérifiez votre connexion internet et que
+                les ports nécessaires ne sont pas bloqués par un pare-feu. Pour le MCP Atlassian,
+                assurez-vous que <code>mcp.atlassian.com</code> est accessible.
+              </p>
+              <p data-lang="en">
+                The MCP server cannot be reached. Check your internet connection and that required
+                ports are not blocked by a firewall. For Atlassian MCP, make sure
+                <code>mcp.atlassian.com</code> is accessible.
+              </p>
+            </div>
+
+            <h4>
+              <span data-lang="fr">Problèmes d'authentification</span>
+              <span data-lang="en">Authentication issues</span>
+            </h4>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="unlock"></i>
+                <span data-lang="fr">OAuth Atlassian expiré</span>
+                <span data-lang="en">Atlassian OAuth expired</span>
+              </h4>
+              <p data-lang="fr">
+                Si vous recevez une erreur d'authentification Atlassian, le token OAuth a peut-être expiré.
+                Supprimez le cache OAuth avec <code>rm -rf ~/.mcp-atlassian</code> puis relancez une commande
+                Magic Slash. Une nouvelle fenêtre d'autorisation s'ouvrira dans votre navigateur.
+              </p>
+              <p data-lang="en">
+                If you receive an Atlassian authentication error, the OAuth token may have expired.
+                Delete the OAuth cache with <code>rm -rf ~/.mcp-atlassian</code> then run a Magic Slash
+                command again. A new authorization window will open in your browser.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="key"></i>
+                <span data-lang="fr">Token GitHub invalide</span>
+                <span data-lang="en">Invalid GitHub token</span>
+              </h4>
+              <p data-lang="fr">
+                Si les opérations GitHub échouent, votre token est peut-être expiré ou n'a pas les bonnes permissions.
+                Générez un nouveau token sur <code>GitHub &gt; Settings &gt; Developer settings &gt; Personal access tokens</code>
+                avec les permissions <code>repo</code> et <code>read:org</code>, puis relancez l'installation.
+              </p>
+              <p data-lang="en">
+                If GitHub operations fail, your token may be expired or lack proper permissions.
+                Generate a new token at <code>GitHub &gt; Settings &gt; Developer settings &gt; Personal access tokens</code>
+                with <code>repo</code> and <code>read:org</code> permissions, then re-run installation.
+              </p>
+            </div>
+
+            <h4>
+              <span data-lang="fr">Problèmes de worktrees</span>
+              <span data-lang="en">Worktree issues</span>
+            </h4>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="git-branch"></i>
+                <span data-lang="fr">Worktree déjà existant</span>
+                <span data-lang="en">Worktree already exists</span>
+              </h4>
+              <p data-lang="fr">
+                Si un worktree pour le même ticket existe déjà, Git refusera d'en créer un nouveau.
+                Listez les worktrees existants avec <code>git worktree list</code>, puis supprimez celui
+                concerné avec <code>git worktree remove &lt;path&gt;</code> ou naviguez simplement vers
+                le worktree existant.
+              </p>
+              <p data-lang="en">
+                If a worktree for the same ticket already exists, Git will refuse to create a new one.
+                List existing worktrees with <code>git worktree list</code>, then remove the relevant one
+                with <code>git worktree remove &lt;path&gt;</code> or simply navigate to the existing worktree.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="folder-minus"></i>
+                <span data-lang="fr">Worktree orphelin</span>
+                <span data-lang="en">Orphaned worktree</span>
+              </h4>
+              <p data-lang="fr">
+                Si vous avez supprimé manuellement un dossier worktree sans utiliser <code>git worktree remove</code>,
+                Git peut garder une référence obsolète. Nettoyez avec <code>git worktree prune</code> pour
+                supprimer les références vers des worktrees inexistants.
+              </p>
+              <p data-lang="en">
+                If you manually deleted a worktree folder without using <code>git worktree remove</code>,
+                Git may keep a stale reference. Clean up with <code>git worktree prune</code> to remove
+                references to non-existent worktrees.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="hard-drive"></i>
+                <span data-lang="fr">Espace disque insuffisant</span>
+                <span data-lang="en">Insufficient disk space</span>
+              </h4>
+              <p data-lang="fr">
+                Les worktrees partagent le répertoire <code>.git</code> principal mais peuvent prendre de l'espace
+                pour les fichiers de travail. Si l'espace est limité, supprimez les anciens worktrees avec
+                <code>git worktree list</code> puis <code>git worktree remove &lt;path&gt;</code>.
+              </p>
+              <p data-lang="en">
+                Worktrees share the main <code>.git</code> directory but can take space for working files.
+                If space is limited, remove old worktrees with <code>git worktree list</code> then
+                <code>git worktree remove &lt;path&gt;</code>.
+              </p>
+            </div>
+
+            <h4>
+              <span data-lang="fr">Autres problèmes</span>
+              <span data-lang="en">Other issues</span>
+            </h4>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="file-text"></i>
+                <span data-lang="fr">Commande non reconnue</span>
+                <span data-lang="en">Command not recognized</span>
+              </h4>
+              <p data-lang="fr">
+                Si <code>/start</code>, <code>/commit</code> ou <code>/done</code> ne sont pas reconnus,
+                vérifiez que les dossiers sont présents dans <code>~/.claude/skills/</code>.
+                Relancez l'installation si nécessaire.
+              </p>
+              <p data-lang="en">
+                If <code>/start</code>, <code>/commit</code> or <code>/done</code> are not recognized,
+                check that folders are present in <code>~/.claude/skills/</code>.
+                Re-run installation if needed.
+              </p>
+            </div>
+
+            <div class="doc-faq-item">
+              <h4>
+                <i data-feather="message-circle"></i>
+                <span data-lang="fr">Invocation naturelle ne fonctionne pas</span>
+                <span data-lang="en">Natural invocation not working</span>
+              </h4>
+              <p data-lang="fr">
+                Si les phrases comme "je suis prêt à committer" ne déclenchent pas la commande,
+                vérifiez que les fichiers <code>SKILL.md</code> sont présents dans <code>~/.claude/skills/</code>.
+                Relancez l'installation pour les recréer.
+              </p>
+              <p data-lang="en">
+                If phrases like "ready to commit" don't trigger the command, check that SKILL.md
+                files are present in <code>~/.claude/skills/</code>. Re-run installation to recreate them.
               </p>
             </div>
           </div>
@@ -2164,13 +2483,13 @@
               <li>
                 <i data-feather="folder"></i>
                 <span
-                  ><code>~/.claude/commands/</code> —
+                  ><code>~/.claude/skills/</code> —
                   <span data-lang="fr"
-                    >Dossier contenant les slash commands (start.md, commit.md,
-                    done.md)</span
+                    >Dossier contenant les skills (start/, commit/,
+                    done/)</span
                   ><span data-lang="en"
-                    >Folder containing slash commands (start.md, commit.md,
-                    done.md)</span
+                    >Folder containing skills (start/, commit/,
+                    done/)</span
                   ></span
                 >
               </li>

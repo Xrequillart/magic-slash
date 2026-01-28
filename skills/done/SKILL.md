@@ -1,5 +1,6 @@
 ---
-description: Push commits, create PR and update Jira ticket
+name: done
+description: This skill should be used when the user says "done", "terminé", "on peut créer la PR", "push and create PR", "finaliser la tâche", "pousser les changements", "create the pull request", "finish the task", "c'est fini", "j'ai fini", "I'm done", "finalize", "push my changes", or indicates they have finished coding and want to create a pull request.
 allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 ---
 

@@ -138,14 +138,48 @@ function initZoomEffect() {
   }, 2000);
 }
 
-// IDs de tickets Jira différents pour chaque terminal
-const terminalTicketIds = {
-  'left': 'PROJ-18',
-  'right': 'PROJ-95',
-  'top-left': 'PROJ-7',
-  'top-right': 'PROJ-156',
-  'bottom-left': 'PROJ-63',
-  'bottom-right': 'PROJ-204'
+// Configuration différenciée pour chaque terminal secondaire
+// Mix de slash-commands et invocations naturelles, Jira et GitHub
+const terminalConfigs = {
+  'left': {
+    ticketId: 'PROJ-18',
+    prompt: '/start PROJ-18',
+    type: 'jira',
+    fetchMessage: 'Fetching Jira ticket PROJ-18...'
+  },
+  'right': {
+    ticketId: 'PROJ-674',
+    prompt: 'Work on ticket PROJ-674',
+    type: 'jira',
+    fetchMessage: 'Fetching Jira ticket PROJ-674...',
+    naturalInvocation: true
+  },
+  'top-left': {
+    ticketId: 'DATA-42',
+    prompt: 'Je vais bosser sur DATA-42',
+    type: 'jira',
+    fetchMessage: 'Fetching Jira ticket DATA-42...',
+    naturalInvocation: true
+  },
+  'top-right': {
+    ticketId: '#156',
+    prompt: '/start #156',
+    type: 'github',
+    fetchMessage: 'Fetching GitHub issue #156...'
+  },
+  'bottom-left': {
+    ticketId: '#63',
+    prompt: 'Start working on #63',
+    type: 'github',
+    fetchMessage: 'Fetching GitHub issue #63...',
+    naturalInvocation: true
+  },
+  'bottom-right': {
+    ticketId: 'PROJ-204',
+    prompt: '/start PROJ-204',
+    type: 'jira',
+    fetchMessage: 'Fetching Jira ticket PROJ-204...'
+  }
 };
 
 // Clone un terminal pour un slot latéral
@@ -162,29 +196,51 @@ function cloneTerminalForSlot(suffix) {
   const replayBtnClone = clone.querySelector('.replay-btn');
   if (replayBtnClone) replayBtnClone.remove();
 
-  // Changer l'ID du ticket Jira partout dans ce terminal
-  const ticketId = terminalTicketIds[suffix] || 'PROJ-42';
+  // Récupérer la configuration pour ce terminal
+  const config = terminalConfigs[suffix] || { ticketId: 'PROJ-42', prompt: '/start PROJ-42', type: 'jira', fetchMessage: 'Fetching Jira ticket PROJ-42...' };
+  const ticketId = config.ticketId;
+  const ticketIdClean = ticketId.replace('#', ''); // Pour les GitHub issues, enlever le #
 
-  // Commande /start
+  // Commande /start - utiliser le prompt configuré
   const commandEl = clone.querySelector('.phase-1-line.cli-prompt .command');
   if (commandEl) {
-    commandEl.dataset.text = `/start ${ticketId}`;
+    commandEl.dataset.text = config.prompt;
+  }
+
+  // Mettre à jour le message de fetch
+  const fetchStatus = clone.querySelector('.phase-1-status-1 .cli-status-text');
+  if (fetchStatus) {
+    fetchStatus.textContent = config.fetchMessage;
+  }
+
+  // Mettre à jour le message d'analyse selon le type
+  const analyseStatus = clone.querySelector('.phase-1-status-2 .cli-status-text');
+  if (analyseStatus) {
+    analyseStatus.textContent = config.type === 'github' ? 'Analysing issue...' : 'Analysing ticket...';
   }
 
   // Remplacer PROJ-42 par le nouveau ticket ID dans tout le contenu textuel
   const replaceTicketId = (element) => {
     if (element.nodeType === Node.TEXT_NODE) {
-      element.textContent = element.textContent.replace(/PROJ-42/g, ticketId);
+      element.textContent = element.textContent.replace(/PROJ-42/g, ticketIdClean);
     } else if (element.nodeType === Node.ELEMENT_NODE) {
-      // Pour les attributs data-text
-      if (element.dataset && element.dataset.text) {
-        element.dataset.text = element.dataset.text.replace(/PROJ-42/g, ticketId);
+      // Pour les attributs data-text (mais pas la commande qu'on a déjà modifiée)
+      if (element.dataset && element.dataset.text && !element.classList.contains('command')) {
+        element.dataset.text = element.dataset.text.replace(/PROJ-42/g, ticketIdClean);
       }
       // Récursion sur les enfants
       element.childNodes.forEach(replaceTicketId);
     }
   };
   replaceTicketId(clone);
+
+  // Pour GitHub, adapter le message de branche
+  if (config.type === 'github') {
+    const branchResult = clone.querySelector('.phase-3-status-1 .cli-status-result');
+    if (branchResult) {
+      branchResult.textContent = `origin/feature/${ticketIdClean}`;
+    }
+  }
 
   // Reset l'état visuel du clone
   clone.querySelectorAll('.visible, .completed').forEach(el => {
@@ -843,8 +899,15 @@ function copyCommand(elementId) {
   });
 }
 
-// Animated title with commands
-const commands = ["/start PROJ-42", "/commit", "/done"];
+// Animated title with commands (mix slash and natural invocations)
+const commands = [
+  "/start PROJ-42",
+  "work on DATA-18",
+  "/commit",
+  "ready to commit",
+  "/done",
+  "create the PR"
+];
 let cmdIndex = 0;
 let charIndex = 0;
 let isDeleting = false;
