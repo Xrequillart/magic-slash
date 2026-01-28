@@ -1,11 +1,96 @@
 ---
 description: Create an atomic commit with a conventional message
-allowed-tools: Bash(*)
+allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep
 ---
 
 # Magic Slash - /commit
 
 Tu es un assistant qui crée des commits atomiques avec des messages conventionnels.
+
+## Étape 0 : Détecter les worktrees multi-repo
+
+### 0.1 : Extraire l'ID du ticket depuis le worktree actuel
+
+Récupère le nom du répertoire courant et extrait l'ID du ticket :
+
+```bash
+basename "$PWD"
+```
+
+Le nom du worktree suit le pattern `{repo-name}-{TICKET-ID}` (ex: `my-api-PROJ-123`, `my-web-PROJ-123`).
+
+Extrait le TICKET-ID en utilisant le pattern :
+- **Jira** : `[A-Z]+-\d+` (ex: `PROJ-123`, `ABC-456`)
+- **GitHub** : le dernier segment numérique après le nom du repo (ex: `123` dans `my-api-123`)
+
+Si aucun ID n'est détecté (tu es dans un repo normal, pas un worktree), passe directement à l'**Étape 1**.
+
+### 0.2 : Lire la configuration des repos
+
+```bash
+cat ~/.config/magic-slash/config.json
+```
+
+Récupère la liste des repos configurés avec leurs chemins :
+
+```json
+{
+  "repositories": {
+    "api": {"path": "/path/to/api", "keywords": [...]},
+    "web": {"path": "/path/to/web", "keywords": [...]}
+  }
+}
+```
+
+### 0.3 : Chercher les worktrees associés
+
+Pour chaque repo configuré, vérifie si un worktree avec le même TICKET-ID existe :
+
+```bash
+ls -d {REPO_PATH}-{TICKET_ID} 2>/dev/null
+```
+
+Par exemple, si TICKET-ID = `PROJ-123` et les repos sont `/projects/api` et `/projects/web`, cherche :
+- `/projects/api-PROJ-123`
+- `/projects/web-PROJ-123`
+
+Collecte tous les worktrees trouvés.
+
+### 0.4 : Vérifier les changements dans chaque worktree
+
+Pour chaque worktree trouvé, vérifie s'il y a des changements :
+
+```bash
+git -C {WORKTREE_PATH} status --porcelain
+```
+
+Garde uniquement les worktrees qui ont des modifications.
+
+### 0.5 : Résumé et confirmation
+
+Si plusieurs worktrees ont des changements, affiche un résumé :
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 Commits multi-repo détectés pour {TICKET-ID}
+
+Worktrees avec des changements :
+  • /projects/api-PROJ-123 (3 fichiers modifiés)
+  • /projects/web-PROJ-123 (5 fichiers modifiés)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Puis exécute les **Étapes 1 à 6** pour CHAQUE worktree ayant des changements, en changeant de répertoire avant chaque cycle :
+
+```bash
+cd {WORKTREE_PATH}
+```
+
+À la fin de chaque commit, affiche une confirmation avant de passer au worktree suivant.
+
+---
 
 ## Étape 1 : Vérifier l'état du repository
 
@@ -93,6 +178,58 @@ Génère un message de commit en suivant ces règles :
 git commit -m "message généré"
 ```
 
+### 5.1 : Gestion des erreurs de pre-commit hooks
+
+Si le commit échoue (code de sortie non-zéro), analyse l'erreur :
+
+**Erreurs courantes et actions** :
+
+| Type d'erreur | Exemples | Action |
+|---------------|----------|--------|
+| **Linter** | ESLint, Pylint, Flake8, Rubocop | Corrige les erreurs de lint dans les fichiers concernés |
+| **Formatter** | Prettier, Black, gofmt | Applique le formatage requis |
+| **Type check** | TypeScript, mypy | Corrige les erreurs de typage |
+| **Tests** | Jest, pytest (si en pre-commit) | Corrige les tests cassés |
+| **Autres** | Secrets détectés, fichiers trop gros | Informe l'utilisateur et demande comment procéder |
+
+**Processus de correction automatique** :
+
+1. **Analyse l'output d'erreur** pour identifier :
+   - Les fichiers concernés
+   - Les lignes problématiques
+   - Le type d'erreur (lint, format, type, etc.)
+
+2. **Corrige le code** :
+   - Lis les fichiers en erreur
+   - Applique les corrections nécessaires
+   - Pour le formatage, lance le formatter si disponible : `npx prettier --write`, `black`, etc.
+
+3. **Re-stage les fichiers corrigés** :
+   ```bash
+   git add -A
+   ```
+
+4. **Réessaie le commit** avec le même message :
+   ```bash
+   git commit -m "message généré"
+   ```
+
+5. **Répète jusqu'à 3 fois maximum**. Si le commit échoue toujours après 3 tentatives, affiche un message d'erreur détaillé et demande à l'utilisateur d'intervenir.
+
+**Exemple de flow** :
+
+```text
+❌ Commit échoué - ESLint errors détectées
+
+Correction automatique en cours...
+  • src/auth.ts:42 - Missing semicolon → Corrigé
+  • src/auth.ts:58 - Unexpected console.log → Supprimé
+
+🔄 Nouvelle tentative de commit...
+
+✅ Commit réussi après correction
+```
+
 ## Étape 6 : Confirmer
 
 ```bash
@@ -100,3 +237,18 @@ git log -1 --oneline
 ```
 
 Affiche le commit créé pour confirmation.
+
+## Étape 7 : Résumé multi-repo (si applicable)
+
+Si tu as commité dans plusieurs worktrees, affiche un résumé final :
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Commits créés pour {TICKET-ID}
+
+  • api-PROJ-123 : feat(auth): add token refresh
+  • web-PROJ-123 : feat(login): update UI for refresh flow
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
