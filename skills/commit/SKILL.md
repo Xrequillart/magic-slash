@@ -21,6 +21,7 @@ basename "$PWD"
 Le nom du worktree suit le pattern `{repo-name}-{TICKET-ID}` (ex: `my-api-PROJ-123`, `my-web-PROJ-123`).
 
 Extrait le TICKET-ID en utilisant le pattern :
+
 - **Jira** : `[A-Z]+-\d+` (ex: `PROJ-123`, `ABC-456`)
 - **GitHub** : le dernier segment numérique après le nom du repo (ex: `123` dans `my-api-123`)
 
@@ -52,6 +53,7 @@ ls -d {REPO_PATH}-{TICKET_ID} 2>/dev/null
 ```
 
 Par exemple, si TICKET-ID = `PROJ-123` et les repos sont `/projects/api` et `/projects/web`, cherche :
+
 - `/projects/api-PROJ-123`
 - `/projects/web-PROJ-123`
 
@@ -83,7 +85,8 @@ Worktrees avec des changements :
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-Puis exécute les **Étapes 1 à 6** pour CHAQUE worktree ayant des changements, en changeant de répertoire avant chaque cycle :
+Puis exécute les **Étapes 1 à 6** pour CHAQUE worktree ayant des changements.
+Change de répertoire avant chaque cycle :
 
 ```bash
 cd {WORKTREE_PATH}
@@ -144,6 +147,7 @@ Génère un message de commit en suivant ces règles :
 **Format** : `type(scope): description`
 
 **⚠️ RÈGLE ABSOLUE : Le message de commit doit tenir sur UNE SEULE LIGNE.**
+
 - PAS de saut de ligne
 - PAS de liste à puces
 - PAS de description détaillée sur plusieurs lignes
@@ -192,7 +196,7 @@ Si le commit échoue (code de sortie non-zéro), analyse l'erreur :
 **Erreurs courantes et actions** :
 
 | Type d'erreur | Exemples | Action |
-|---------------|----------|--------|
+| ------------- | -------- | ------ |
 | **Linter** | ESLint, Pylint, Flake8, Rubocop | Corrige les erreurs de lint dans les fichiers concernés |
 | **Formatter** | Prettier, Black, gofmt | Applique le formatage requis |
 | **Type check** | TypeScript, mypy | Corrige les erreurs de typage |
@@ -212,16 +216,19 @@ Si le commit échoue (code de sortie non-zéro), analyse l'erreur :
    - Pour le formatage, lance le formatter si disponible : `npx prettier --write`, `black`, etc.
 
 3. **Re-stage les fichiers corrigés** :
+
    ```bash
    git add -A
    ```
 
 4. **Réessaie le commit** avec le même message :
+
    ```bash
    git commit -m "message généré"
    ```
 
-5. **Répète jusqu'à 3 fois maximum**. Si le commit échoue toujours après 3 tentatives, affiche un message d'erreur détaillé et demande à l'utilisateur d'intervenir.
+5. **Répète jusqu'à 3 fois maximum**. Si le commit échoue toujours après 3 tentatives,
+   affiche un message d'erreur détaillé et demande à l'utilisateur d'intervenir.
 
 **Exemple de flow** :
 

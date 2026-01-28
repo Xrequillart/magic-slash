@@ -400,7 +400,7 @@ if [ -d "$SCRIPT_DIR/../skills" ]; then
   cp -r "$SCRIPT_DIR/../skills/"* "$SKILLS_DIR/"
 else
   # Remote installation - download from GitHub
-  for skill in start commit done; do
+  for skill in start commit "done"; do
     mkdir -p "$SKILLS_DIR/$skill"
     curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/SKILL.md" > "$SKILLS_DIR/$skill/SKILL.md"
   done

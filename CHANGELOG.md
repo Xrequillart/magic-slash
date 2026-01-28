@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2025-01-28
+
+### Added
+
+- **Natural language invocation**: Invoke commands using natural language instead of slash commands
+  - Say "démarre PROJ-123" or "work on PROJ-123" instead of `/start PROJ-123`
+  - Say "je suis prêt à committer" or "ready to commit" instead of `/commit`
+  - Say "on peut créer la PR" or "create the PR" instead of `/done`
+  - Supports both French and English trigger phrases
+- **Skills architecture**: Commands are now "skills" installed in `~/.claude/skills/`
+  - Each skill contains full instructions + trigger phrases for natural invocation
+  - Replaces the old `~/.claude/commands/` structure
+- **Multi-repo commit support**: `/commit` now detects and commits across multiple worktrees
+  - Automatically finds all worktrees for the same ticket ID
+  - Shows summary of changes in each worktree before committing
+- **Auto-fix for pre-commit hooks**: `/commit` automatically fixes linting/formatting errors
+  - Detects ESLint, Prettier, Black, and other common pre-commit hooks
+  - Automatically corrects issues and retries commit (up to 3 attempts)
+- **Landing page improvements**:
+  - Differentiated terminal animations showing both Jira and GitHub workflows
+  - Mix of slash commands and natural language invocations in demo
+  - New "Skills / Natural invocation" documentation section
+  - New "Troubleshooting" documentation section with common issues and fixes
+  - Language-aware examples (FR/EN) throughout documentation
+
+### Changed
+
+- **Simplified installation**: `install.sh` reduced from ~940 to ~490 lines
+  - Skills are now the single source of truth (no separate commands)
+  - Cleaner installation process with better feedback
+- **Updated uninstall**: Now removes skills from `~/.claude/skills/` and cleans up legacy commands
+
+### Performance
+
+- **Optimized intro animation**: Improved performance on low-end devices
+
 ## [0.8.0] - 2025-01-28
 
 ### Added

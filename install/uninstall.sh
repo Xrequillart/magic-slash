@@ -58,9 +58,9 @@ echo ""
 
 SKILLS_DIR="$HOME/.claude/skills"
 
-for skill in start commit done; do
+for skill in start commit "done"; do
   if [ -d "$SKILLS_DIR/$skill" ]; then
-    rm -rf "$SKILLS_DIR/$skill"
+    rm -rf "${SKILLS_DIR:?}/${skill:?}"
     echo "   ✓ Removed: $SKILLS_DIR/$skill/"
   else
     echo "   - Not found: $SKILLS_DIR/$skill/"
