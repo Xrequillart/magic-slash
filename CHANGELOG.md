@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2025-01-28
+
+### Added
+
+- **Commit split evaluation in `/commit`**: New step that evaluates if staged changes should be split
+  into multiple atomic commits
+  - Detects when changes span multiple distinct features
+  - Identifies mixed commit types (e.g., `feat` + `fix` + `chore`)
+  - Recognizes independent scopes/modules that should be committed separately
+  - Proposes split with description of each commit, asks for user confirmation
+  - If accepted: unstages all, then stages and commits each logical group separately
+- **Stats section on landing page**: New "Gagnez du temps" / "Save time" section showcasing productivity gains
+  - Timeline comparing before/after times for each command (/start: 5min→30s, /commit: 2min→10s, /done: 5min→20s)
+  - Detailed comparison table showing manual workflow steps vs Magic Slash automation
+  - Bilingual support (FR/EN) consistent with rest of the site
+- **Install box in CTA section**: Added curl install command directly in the "Ready to automate?" call-to-action
+
 ## [0.7.1] - 2025-01-27
 
 ### Changed
@@ -196,6 +213,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.8.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.8.0
 [0.7.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.7.1
 [0.7.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.7.0
 [0.6.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.6.1
