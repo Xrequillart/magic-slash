@@ -29,6 +29,28 @@ git diff --cached
 
 Analyse les fichiers modifiés pour comprendre la nature des changements.
 
+## Étape 3.1 : Évaluer si un split est recommandé
+
+Évalue si les changements stagés devraient être divisés en plusieurs commits atomiques. Un split est recommandé si :
+
+- Les modifications concernent plusieurs fonctionnalités distinctes
+- Il y a un mix de types différents (ex: `feat` + `fix` + `chore`)
+- Les changements touchent des scopes/modules indépendants
+- La cohésion logique des changements est faible
+
+**Si un split est recommandé** :
+
+1. Propose à l'utilisateur de diviser en plusieurs commits
+2. Décris brièvement chaque commit proposé (type, scope, description)
+3. Demande confirmation avant de procéder
+4. Si l'utilisateur accepte :
+   - Unstage tous les fichiers : `git reset HEAD`
+   - Pour chaque commit logique :
+     - Stage uniquement les fichiers concernés : `git add <fichiers>`
+     - Crée le commit avec son message approprié
+   - Continue jusqu'à ce que tous les changements soient commités
+5. Si l'utilisateur refuse : Continue à l'étape 4 pour créer un seul commit
+
 ## Étape 4 : Générer le message de commit
 
 Génère un message de commit en suivant ces règles :
