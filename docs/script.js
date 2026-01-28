@@ -1,6 +1,15 @@
 // Initialize Feather Icons
 feather.replace();
 
+// Pause animations when tab is inactive (performance optimization)
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    document.body.classList.add("tab-hidden");
+  } else {
+    document.body.classList.remove("tab-hidden");
+  }
+});
+
 // Fetch version from package.json
 const versionBadge = document.getElementById("version-badge");
 fetch("https://raw.githubusercontent.com/xrequillart/magic-slash/main/package.json")
@@ -807,7 +816,17 @@ window.scrollTo(0, 0);
 initZoomEffect();
 
 // Écouter le scroll
-window.addEventListener("scroll", handleZoomScroll);
+// Throttle scroll handler with requestAnimationFrame
+let scrollTicking = false;
+window.addEventListener("scroll", () => {
+  if (!scrollTicking) {
+    requestAnimationFrame(() => {
+      handleZoomScroll();
+      scrollTicking = false;
+    });
+    scrollTicking = true;
+  }
+}, { passive: true });
 
 // Copy Command
 function copyCommand(elementId) {
