@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2025-01-29
+
+### Changed
+
+- **Commit settings enforcement**: `/commit` now strictly respects `coAuthor` and `includeTicketId` configuration
+  - Co-author line only added when `coAuthor: true` is set
+  - Ticket ID only included in commit message when `includeTicketId: true` is set
+
 ## [0.11.0] - 2025-01-29
 
 ### Added
@@ -291,6 +299,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.11.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.11.1
 [0.11.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.11.0
 [0.10.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.10.0
 [0.9.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.9.0

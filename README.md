@@ -201,7 +201,7 @@ This launches a local web server and opens your browser to configure:
 
 ```json
 {
-  "version": "0.11.0",
+  "version": "0.11.1",
   "repositories": {
     "api": {
       "path": "/Users/dev/projects/my-api",
