@@ -8,6 +8,17 @@ allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep
 
 Tu es un assistant qui crée des commits atomiques avec des messages conventionnels.
 
+## Configuration de langue
+
+Lis `~/.config/magic-slash/config.json` et détermine la langue pour tes réponses :
+
+1. Identifie le repo actuel en comparant `$PWD` avec les chemins dans `.repositories`
+2. Vérifie s'il a une valeur custom dans `.repositories.<name>.languages.discussion`
+3. Sinon, utilise la valeur globale dans `.languages.discussion`
+4. Si aucune valeur n'est définie : anglais par défaut
+
+- `discussion` : Langue de tes réponses à l'utilisateur (`"en"` ou `"fr"`)
+
 ## Étape 0 : Détecter les worktrees multi-repo
 
 ### 0.1 : Extraire l'ID du ticket depuis le worktree actuel
@@ -71,7 +82,23 @@ Garde uniquement les worktrees qui ont des modifications.
 
 ### 0.5 : Résumé et confirmation
 
-Si plusieurs worktrees ont des changements, affiche un résumé :
+Si plusieurs worktrees ont des changements, affiche un résumé selon `.languages.discussion` :
+
+#### En anglais (discussion: "en" ou absent)
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 Multi-repo commits detected for {TICKET-ID}
+
+Worktrees with changes:
+  • /projects/api-PROJ-123 (3 files modified)
+  • /projects/web-PROJ-123 (5 files modified)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+#### En français (discussion: "fr")
 
 ```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -127,7 +154,22 @@ Analyse les fichiers modifiés pour comprendre la nature des changements.
 - Les changements touchent des scopes/modules indépendants
 - La cohésion logique des changements est faible
 
-**Si un split est recommandé** :
+**Si un split est recommandé**, propose selon `.languages.discussion` :
+
+### En anglais (discussion: "en" ou absent)
+
+1. Suggest to the user to split into multiple commits
+2. Briefly describe each proposed commit (type, scope, description)
+3. Ask for confirmation before proceeding
+4. If the user accepts:
+   - Unstage all files: `git reset HEAD`
+   - For each logical commit:
+     - Stage only the relevant files: `git add <files>`
+     - Create the commit with its appropriate message
+   - Continue until all changes are committed
+5. If the user refuses: Continue to step 4 to create a single commit
+
+### En français (discussion: "fr")
 
 1. Propose à l'utilisateur de diviser en plusieurs commits
 2. Décris brièvement chaque commit proposé (type, scope, description)
@@ -300,7 +342,23 @@ Si le commit échoue (code de sortie non-zéro), analyse l'erreur :
 5. **Répète jusqu'à 3 fois maximum**. Si le commit échoue toujours après 3 tentatives,
    affiche un message d'erreur détaillé et demande à l'utilisateur d'intervenir.
 
-**Exemple de flow** :
+**Exemple de flow** selon `.languages.discussion` :
+
+#### En anglais (discussion: "en" ou absent)
+
+```text
+❌ Commit failed - ESLint errors detected
+
+Automatic correction in progress...
+  • src/auth.ts:42 - Missing semicolon → Fixed
+  • src/auth.ts:58 - Unexpected console.log → Removed
+
+🔄 Retrying commit...
+
+✅ Commit successful after correction
+```
+
+#### En français (discussion: "fr")
 
 ```text
 ❌ Commit échoué - ESLint errors détectées
@@ -320,11 +378,38 @@ Correction automatique en cours...
 git log -1 --oneline
 ```
 
-Affiche le commit créé pour confirmation.
+Affiche le commit créé pour confirmation selon `.languages.discussion` :
+
+### En anglais (discussion: "en" ou absent)
+
+```text
+✅ Commit created: <commit hash and message>
+```
+
+### En français (discussion: "fr")
+
+```text
+✅ Commit créé : <hash et message du commit>
+```
 
 ## Étape 7 : Résumé multi-repo (si applicable)
 
-Si tu as commité dans plusieurs worktrees, affiche un résumé final :
+Si tu as commité dans plusieurs worktrees, affiche un résumé final selon `.languages.discussion` :
+
+### En anglais (discussion: "en" ou absent)
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Commits created for {TICKET-ID}
+
+  • api-PROJ-123: feat(auth): add token refresh
+  • web-PROJ-123: feat(login): update UI for refresh flow
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### En français (discussion: "fr")
 
 ```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

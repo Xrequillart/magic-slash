@@ -192,7 +192,24 @@ Si le statut "To be reviewed" n'existe pas, essaie :
 
 ## Étape 8 : Résumé final
 
-Affiche un résumé de ce qui a été fait :
+Affiche un résumé de ce qui a été fait selon `.languages.discussion` :
+
+### En anglais (discussion: "en" ou absent)
+
+```text
+✅ Task completed!
+
+📌 Branch   : feature/PROJ-123
+🔗 PR       : https://github.com/org/repo/pull/42
+🎫 Ticket   : PROJ-123 → To be reviewed
+
+Next steps:
+1. Request a review from your colleagues
+2. Wait for approval and CI checks
+3. Merge the PR once approved
+```
+
+### En français (discussion: "fr")
 
 ```text
 ✅ Tâche terminée !
