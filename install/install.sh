@@ -108,7 +108,7 @@ if [ -f "$SCRIPT_DIR/../package.json" ]; then
   CURRENT_VERSION=$(jq -r '.version' "$SCRIPT_DIR/../package.json")
 else
   # Remote install: fetch latest version from GitHub API
-  CURRENT_VERSION=$(curl -s https://api.github.com/repos/xrequillart/magic-slash/releases/latest | jq -r '.tag_name // "v0.11.1"' | sed 's/^v//')
+  CURRENT_VERSION=$(curl -s https://api.github.com/repos/xrequillart/magic-slash/releases/latest | jq -r '.tag_name // "v0.11.2"' | sed 's/^v//')
 fi
 
 CONFIG_DIR="$HOME/.config/magic-slash"
