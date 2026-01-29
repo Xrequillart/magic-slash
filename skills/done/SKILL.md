@@ -8,13 +8,34 @@ allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 
 Tu es un assistant qui finalise une tâche en pushant les commits, créant une PR et mettant à jour le ticket Jira.
 
-## Configuration de langue
+## Configuration
 
-Lis `~/.config/magic-slash/config.json` pour récupérer les préférences de langue :
+Lis `~/.config/magic-slash/config.json` et détermine les paramètres en fonction du repo actuel :
 
-- `.languages.pullRequest` : Langue du template de PR (`"en"` par défaut, ou `"fr"`)
-- `.languages.jiraComment` : Langue du commentaire ajouté au ticket Jira (`"en"` par défaut, ou `"fr"`)
-- `.languages.discussion` : Langue de tes réponses à l'utilisateur (`"en"` par défaut, ou `"fr"`)
+1. Identifie le repo actuel en comparant `$PWD` avec les chemins dans `.repositories`
+2. Pour chaque paramètre, vérifie d'abord si le repo a une valeur custom
+3. Sinon, utilise la valeur globale (si elle existe)
+4. Sinon, utilise la valeur par défaut
+
+### Paramètres de langue
+
+| Paramètre         | Chemin repo                                  | Chemin global            | Défaut |
+| ----------------- | -------------------------------------------- | ------------------------ | ------ |
+| Langue PR         | `.repositories.<name>.languages.pullRequest` | `.languages.pullRequest` | `"en"` |
+| Langue Jira       | `.repositories.<name>.languages.jiraComment` | `.languages.jiraComment` | `"en"` |
+| Langue discussion | `.repositories.<name>.languages.discussion`  | `.languages.discussion`  | `"en"` |
+
+### Paramètres Pull Request
+
+| Paramètre         | Chemin repo                                        | Défaut | Description                                |
+| ----------------- | -------------------------------------------------- | ------ | ------------------------------------------ |
+| Auto-link tickets | `.repositories.<name>.pullRequest.autoLinkTickets` | `true` | Ajouter les liens Jira/GitHub dans la PR   |
+
+### Paramètres Issues
+
+| Paramètre     | Chemin repo                               | Défaut | Description                                    |
+| ------------- | ----------------------------------------- | ------ | ---------------------------------------------- |
+| Comment on PR | `.repositories.<name>.issues.commentOnPR` | `true` | Ajouter un commentaire avec le lien de la PR   |
 
 ## Étape 1 : Récupérer la branche actuelle
 
@@ -60,6 +81,29 @@ Utilise l'outil MCP GitHub `mcp__github__create_pull_request` pour créer la PR 
 - **Description** :
   - **Si un template de PR existe** : Utilise-le et remplis toutes ses sections
   - **Sinon** : Utilise le template par défaut correspondant à `.languages.pullRequest`
+  - **Ajoute une section "Linked Issues"** avec le lien vers le ticket (sauf si `autoLinkTickets` est `false`)
+
+### Section Linked Issues (par défaut, sauf si autoLinkTickets: false)
+
+Ajoute cette section à la fin de la description de la PR :
+
+**En anglais :**
+
+```markdown
+## Linked Issues
+
+- Jira: [PROJ-123](https://your-domain.atlassian.net/browse/PROJ-123)
+```
+
+**En français :**
+
+```markdown
+## Tickets liés
+
+- Jira : [PROJ-123](https://your-domain.atlassian.net/browse/PROJ-123)
+```
+
+Note : Adapte l'URL Jira en fonction du domaine de l'utilisateur (récupéré via `mcp__atlassian__getAccessibleAtlassianResources`).
 
 ### Template PR en anglais (pullRequest: "en" ou absent) - utilisé uniquement si aucun template projet
 
@@ -120,6 +164,7 @@ Note : Si tu ne connais pas le `cloudId`, utilise d'abord `mcp__atlassian__getAc
 1. **Récupérer les transitions disponibles** avec `mcp__atlassian__getTransitionsForJiraIssue`
 2. **Changer le statut** vers "To be reviewed" (ou équivalent) avec `mcp__atlassian__transitionJiraIssue`
 3. **Ajouter un commentaire** avec le lien vers la PR via `mcp__atlassian__addCommentToJiraIssue`
+   (sauf si `commentOnPR` est `false`)
 
 ### Format du commentaire Jira selon `.languages.jiraComment`
 

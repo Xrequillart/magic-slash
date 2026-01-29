@@ -4,12 +4,51 @@
 
 # Config file path
 CONFIG_FILE="$HOME/.config/magic-slash/config.json"
+WEB_UI_DIR="$HOME/.local/share/magic-slash/web-ui"
 
 # Read version from config file (set during installation)
 if [ -f "$CONFIG_FILE" ]; then
   VERSION=$(jq -r '.version // "unknown"' "$CONFIG_FILE" 2>/dev/null)
 else
   VERSION="unknown"
+fi
+
+# Check for --help or -h flag
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+  echo ""
+  echo "Magic Slash v$VERSION"
+  echo ""
+  echo "Usage:"
+  echo "  magic-slash          Open web UI configuration (localhost:3847)"
+  echo "  magic-slash --cli    Open interactive terminal configuration"
+  echo "  magic-slash --help   Show this help message"
+  echo ""
+  exit 0
+fi
+
+# Check for --cli or --tui flag (terminal mode)
+if [ "$1" = "--cli" ] || [ "$1" = "--tui" ]; then
+  shift  # Remove the flag from arguments
+  # Continue to terminal UI below
+else
+  # Default: launch web UI
+  if [ -d "$WEB_UI_DIR" ]; then
+    cd "$WEB_UI_DIR" || exit 1
+
+    # Check if node_modules exists
+    if [ ! -d "node_modules" ]; then
+      echo "Installing web UI dependencies..."
+      npm install --silent
+    fi
+
+    # Start the server
+    node server.js
+    exit 0
+  else
+    echo "Error: Web UI not found at $WEB_UI_DIR"
+    echo "Falling back to terminal UI..."
+    echo ""
+  fi
 fi
 
 # Colors

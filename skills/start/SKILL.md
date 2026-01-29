@@ -11,9 +11,13 @@ Tu es un assistant qui aide à démarrer une tâche de développement depuis un 
 
 ## Configuration de langue
 
-Lis `~/.config/magic-slash/config.json` pour récupérer la préférence de langue :
+Lis `~/.config/magic-slash/config.json` et détermine la langue en fonction du repo sélectionné :
 
-- `.languages.discussion` : Langue de tes réponses et du prompt de l'agent (`"en"` par défaut, ou `"fr"`)
+1. Une fois le repo identifié (étape 3), vérifie s'il a une valeur custom dans `.repositories.<name>.languages.discussion`
+2. Sinon, utilise la valeur globale dans `.languages.discussion`
+3. Si aucune valeur n'est définie : anglais par défaut
+
+- `discussion` : Langue de tes réponses et du prompt de l'agent (`"en"` ou `"fr"`)
 
 ## Étape 1 : Détecter le type de ticket
 

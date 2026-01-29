@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2025-01-29
+
+### Added
+
+- **Web UI for configuration**: `magic-slash` now launches a local web interface instead of CLI menu
+  - Modern dark theme with animated background orbs
+  - Add, edit, and delete repositories with live path validation
+  - Per-repository settings for commit, PR, and issues behavior
+  - PR template detection and inline editing
+  - Global language defaults configuration
+- **Per-repository commit settings**:
+  - `style`: Single-line or multi-line with body
+  - `format`: Conventional, Angular, Gitmoji, or none
+  - `coAuthor`: Add Claude as co-author in commits
+  - `includeTicketId`: Add ticket ID from branch name in commit message
+- **Per-repository PR settings**:
+  - `autoLinkTickets`: Auto-link Jira/GitHub tickets in PR description (default: true)
+- **Per-repository issues settings**:
+  - `commentOnPR`: Add comment with PR link on Jira when creating PR (default: true)
+- **PR template management**: View, edit, and generate PR templates directly from web UI
+
+### Changed
+
+- **`magic-slash` command**: Now launches web UI by default (use `--cli` for legacy terminal menu)
+- **Skills updated**: `/commit` and `/done` now respect all per-repository settings
+- **Default behaviors**: Auto-link tickets and comment on PR are now enabled by default
+
 ## [0.9.0] - 2025-01-28
 
 ### Added
@@ -249,6 +276,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.10.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.10.0
+[0.9.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.9.0
 [0.8.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.8.0
 [0.7.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.7.1
 [0.7.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.7.0

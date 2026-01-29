@@ -459,6 +459,43 @@ fi
 echo ""
 
 # ============================================
+# 6b. WEB UI INSTALLATION
+# ============================================
+echo "   Installing web UI..."
+
+WEB_UI_DIR="$HOME/.local/share/magic-slash/web-ui"
+mkdir -p "$WEB_UI_DIR"
+
+if [ -d "$SCRIPT_DIR/../web-ui" ]; then
+  # Local installation - copy web-ui folder
+  cp -r "$SCRIPT_DIR/../web-ui/"* "$WEB_UI_DIR/"
+else
+  # Remote installation - download from GitHub
+  mkdir -p "$WEB_UI_DIR/public" "$WEB_UI_DIR/lib"
+
+  # Download server and package files
+  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/server.js" > "$WEB_UI_DIR/server.js"
+  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/package.json" > "$WEB_UI_DIR/package.json"
+
+  # Download lib files
+  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/lib/config.js" > "$WEB_UI_DIR/lib/config.js"
+  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/lib/validation.js" > "$WEB_UI_DIR/lib/validation.js"
+
+  # Download public files
+  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/public/index.html" > "$WEB_UI_DIR/public/index.html"
+  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/public/styles.css" > "$WEB_UI_DIR/public/styles.css"
+  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/public/app.js" > "$WEB_UI_DIR/public/app.js"
+fi
+
+# Install npm dependencies for web UI
+cd "$WEB_UI_DIR" && npm install --silent 2>/dev/null
+cd - > /dev/null
+
+echo "   ✅ Web UI installed at $WEB_UI_DIR"
+echo "   → Run 'magic-slash' to open the web interface"
+echo ""
+
+# ============================================
 # 7. DONE
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -471,8 +508,11 @@ echo "  • MCP GitHub     : ~/.claude.json"
 echo "  • Repos config   : ~/.config/magic-slash/config.json"
 echo "  • Skills         : ~/.claude/skills/{start,commit,done}/SKILL.md"
 echo "  • CLI command    : ~/.local/bin/magic-slash"
+echo "  • Web UI         : ~/.local/share/magic-slash/web-ui/"
 echo ""
-echo "Run 'magic-slash' anytime to update your configuration."
+echo "Configuration:"
+echo "  • magic-slash         Web UI (localhost:3847)"
+echo "  • magic-slash --cli   Terminal UI (interactive)"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""

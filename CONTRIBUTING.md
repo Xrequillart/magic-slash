@@ -94,6 +94,14 @@ Before contributing, make sure you understand:
   npm run lint
   ```
 
+- **Web UI**: Test the configuration interface locally
+
+  ```bash
+  cd web-ui
+  npm install
+  npm start
+  ```
+
 ## How Can I Contribute?
 
 ### Reporting Bugs
@@ -142,12 +150,13 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 - Keep lines under 120 characters when possible
 - Use reference-style links for repeated URLs
 
-### Slash Commands (.md files in commands/)
+### Skills (.md files in skills/)
 
-- Include frontmatter with `description` and `allowed-tools`
+- Include frontmatter with `name`, `description`, and `allowed-tools`
 - Use clear step-by-step instructions
 - Include example commands and expected outputs
 - Document any prerequisites or assumptions
+- Support both French and English trigger phrases for natural language invocation
 
 ## Commit Messages
 

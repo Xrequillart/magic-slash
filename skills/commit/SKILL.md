@@ -144,44 +144,98 @@ Analyse les fichiers modifiés pour comprendre la nature des changements.
 
 Génère un message de commit en suivant ces règles :
 
-**Format** : `type(scope): description`
+### 4.1 : Lire la configuration
 
-**⚠️ RÈGLE ABSOLUE : Le message de commit doit tenir sur UNE SEULE LIGNE.**
+Lis `~/.config/magic-slash/config.json` et identifie le repo actuel en comparant `$PWD` avec les chemins dans `.repositories`.
 
-- PAS de saut de ligne
-- PAS de liste à puces
-- PAS de description détaillée sur plusieurs lignes
-- JUSTE : `type(scope): description courte`
+Pour chaque paramètre, vérifie d'abord la config du repo, puis la config globale :
 
-**Langue** : Lis `~/.config/magic-slash/config.json` et utilise `.languages.commit`
+| Paramètre         | Chemin repo                                   | Chemin global             | Défaut          |
+| ----------------- | --------------------------------------------- | ------------------------- | --------------- |
+| Langue            | `.repositories.<name>.languages.commit`       | `.languages.commit`       | `"en"`          |
+| Style             | `.repositories.<name>.commit.style`           | `.commit.style`           | `"single-line"` |
+| Format            | `.repositories.<name>.commit.format`          | `.commit.format`          | `"angular"`     |
+| Co-Author         | `.repositories.<name>.commit.coAuthor`        | `.commit.coAuthor`        | `false`         |
+| Include Ticket ID | `.repositories.<name>.commit.includeTicketId` | `.commit.includeTicketId` | `false`         |
 
-- `"en"` ou absent : Message en anglais
+### 4.2 : Appliquer le style
+
+**Style `single-line`** (défaut) :
+
+- Message sur UNE SEULE LIGNE
+- Pas de saut de ligne, pas de body
+- Max ~72 caractères
+
+**Style `multi-line`** :
+
+- Première ligne : titre court (max 50 caractères)
+- Ligne vide
+- Body : description détaillée, liste des changements, etc.
+
+### 4.3 : Appliquer le format
+
+**Format `conventional`** :
+
+- `type: description`
+- Types : `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+
+**Format `angular`** (défaut) :
+
+- `type(scope): description`
+- Scope = fichier principal ou composant modifié (ex: `auth`, `api`, `user-service`)
+
+**Format `gitmoji`** :
+
+- `emoji description`
+- Emojis : ✨ (feat), 🐛 (fix), 📝 (docs), 💄 (style), ♻️ (refactor), ✅ (test), 🔧 (chore)
+
+**Format `none`** :
+
+- Forme libre, pas de convention imposée
+
+### 4.4 : Appliquer la langue
+
+- `"en"` : Message en anglais
 - `"fr"` : Message en français
 
-**Contraintes** :
+### 4.5 : Ajouter le Co-Author (si activé)
 
-- **UNE SEULE LIGNE** (jamais de multi-lignes, jamais de body)
-- Pas de Co-Authored-By
-- Description concise (max ~72 caractères)
+Si `coAuthor` est `true`, ajoute à la fin du message (après une ligne vide) :
 
-**Types disponibles** :
+```text
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
 
-- `feat` : Nouvelle fonctionnalité
-- `fix` : Correction de bug
-- `docs` : Documentation uniquement
-- `style` : Formatage, points-virgules manquants, etc. (pas de changement de code)
-- `refactor` : Refactoring du code (ni nouvelle fonctionnalité, ni correction de bug)
-- `test` : Ajout ou modification de tests
-- `chore` : Maintenance, dépendances, configuration
+### 4.6 : Ajouter le Ticket ID (si activé)
 
-**Scope** : Le fichier principal ou composant modifié (ex: `auth`, `api`, `user-service`)
+Si `includeTicketId` est `true` :
 
-**Exemples** :
+1. Récupère le nom de la branche actuelle :
 
-- `feat(auth): add JWT token refresh mechanism`
-- `fix(api): handle null response from payment gateway`
-- `refactor(user-service): extract validation logic`
-- `chore(deps): update axios to 1.6.0`
+   ```bash
+   git branch --show-current
+   ```
+
+2. Extrait le ticket ID en utilisant les patterns :
+   - **Jira** : `[A-Z]+-\d+` (ex: `PROJ-123`, `ABC-456`)
+   - **GitHub** : `#\d+` (ex: `#123`)
+
+3. Ajoute le ticket ID au début du message de commit :
+   - Format : `[TICKET-ID] message`
+   - Exemple : `[PROJ-123] feat(auth): add login validation`
+
+Si aucun ticket ID n'est trouvé dans le nom de la branche, ne modifie pas le message.
+
+### Exemples selon la config
+
+| Style       | Format       | Include Ticket ID | Exemple                                                  |
+| ----------- | ------------ | ----------------- | -------------------------------------------------------- |
+| single-line | conventional | false             | `feat: add JWT token refresh mechanism`                  |
+| single-line | angular      | false             | `feat(auth): add JWT token refresh mechanism`            |
+| single-line | angular      | true              | `[PROJ-123] feat(auth): add JWT token refresh mechanism` |
+| single-line | gitmoji      | false             | `✨ add JWT token refresh mechanism`                     |
+| single-line | gitmoji      | true              | `[PROJ-123] ✨ add JWT token refresh mechanism`          |
+| multi-line  | angular      | false             | Titre + body détaillé                                    |
 
 ## Étape 5 : Créer le commit
 

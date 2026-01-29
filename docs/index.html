@@ -1006,10 +1006,10 @@
             <p>
               <span data-lang="fr"
                 >La commande <code>magic-slash</code> est également installée
-                pour gérer facilement votre configuration.</span
+                pour ouvrir l'interface web de configuration.</span
               ><span data-lang="en"
                 >The <code>magic-slash</code> command is also installed to
-                easily manage your configuration.</span
+                open the configuration web interface.</span
               >
             </p>
           </div>
@@ -1081,8 +1081,8 @@
                 <i data-feather="x"></i>
                 <span
                   ><code>~/.local/bin/magic-slash</code>
-                  <span data-lang="fr">(commande CLI)</span
-                  ><span data-lang="en">(CLI command)</span></span
+                  <span data-lang="fr">(lance l'interface web)</span
+                  ><span data-lang="en">(launches web interface)</span></span
                 >
               </li>
             </ul>
@@ -1941,16 +1941,16 @@
                 >
               </h4>
               <p data-lang="fr">
-                Oui ! Depuis la version 0.6.0, Magic Slash supporte de 1 à N repositories.
-                Utilisez la commande <code>magic-slash</code> pour ajouter autant de repos
-                que nécessaire (api, web, mobile, admin, etc.). Chaque repo peut avoir
-                ses propres mots-clés pour la détection automatique.
+                Oui ! Magic Slash supporte de 1 à N repositories.
+                Lancez <code>magic-slash</code> pour ouvrir l'interface web et
+                ajouter autant de repos que nécessaire (api, web, mobile, admin, etc.).
+                Chaque repo peut avoir ses propres paramètres de commit, PR et langues.
               </p>
               <p data-lang="en">
-                Yes! Since version 0.6.0, Magic Slash supports 1 to N repositories.
-                Use the <code>magic-slash</code> command to add as many repos as needed
-                (api, web, mobile, admin, etc.). Each repo can have its own keywords
-                for automatic detection.
+                Yes! Magic Slash supports 1 to N repositories.
+                Run <code>magic-slash</code> to open the web interface and add
+                as many repos as needed (api, web, mobile, admin, etc.).
+                Each repo can have its own commit, PR, and language settings.
               </p>
             </div>
 
@@ -1986,16 +1986,16 @@
               </h4>
               <p data-lang="fr">
                 Tapez simplement <code>magic-slash</code> dans votre terminal.
-                Un menu interactif s'affiche avec tous vos repositories configurés
-                et leurs mots-clés. Vous pouvez ajouter, modifier ou supprimer
-                des repos. Utilisez les flèches ↑/↓ pour naviguer et Entrée pour
-                sélectionner une option.
+                Une interface web s'ouvre dans votre navigateur pour configurer
+                vos repositories et leurs paramètres. Vous pouvez ajouter, modifier
+                ou supprimer des repos, et personnaliser les paramètres de commit,
+                PR et langues pour chaque projet.
               </p>
               <p data-lang="en">
-                Simply type <code>magic-slash</code> in your terminal. An
-                interactive menu displays all your configured repositories
-                and their keywords. You can add, edit, or remove repos.
-                Use ↑/↓ arrows to navigate and Enter to select an option.
+                Simply type <code>magic-slash</code> in your terminal. A web
+                interface opens in your browser to configure your repositories
+                and their settings. You can add, edit, or remove repos, and
+                customize commit, PR, and language settings for each project.
               </p>
             </div>
 
@@ -2009,22 +2009,21 @@
                 >
               </h4>
               <p data-lang="fr">
-                Lancez <code>magic-slash</code> et sélectionnez "Language settings".
-                Vous pouvez configurer séparément :
-                <strong>Commit language</strong> (langue des messages de commit),
-                <strong>Pull Request language</strong> (langue du titre/description des PRs),
-                <strong>Jira comment language</strong> (langue des commentaires Jira),
-                <strong>Discussion language</strong> (langue des interactions avec Claude Code).
-                Les options disponibles sont English et Français.
+                Lancez <code>magic-slash</code> pour ouvrir l'interface web.
+                Cliquez sur "Default Languages" pour les paramètres globaux, ou
+                sur un repository pour configurer ses langues spécifiques.
+                Vous pouvez configurer :
+                <strong>Commit</strong>, <strong>Pull Request</strong>,
+                <strong>Jira comments</strong>, et <strong>Discussion</strong>.
+                Chaque repo peut avoir ses propres paramètres.
               </p>
               <p data-lang="en">
-                Run <code>magic-slash</code> and select "Language settings".
-                You can configure separately:
-                <strong>Commit language</strong> (language for commit messages),
-                <strong>Pull Request language</strong> (language for PR title/description),
-                <strong>Jira comment language</strong> (language for Jira comments),
-                <strong>Discussion language</strong> (language for Claude Code interactions).
-                Available options are English and Français.
+                Run <code>magic-slash</code> to open the web interface.
+                Click "Default Languages" for global settings, or click on a
+                repository to configure its specific languages. You can configure:
+                <strong>Commit</strong>, <strong>Pull Request</strong>,
+                <strong>Jira comments</strong>, and <strong>Discussion</strong>.
+                Each repo can have its own settings.
               </p>
             </div>
 
@@ -2357,15 +2356,14 @@
               ><span data-lang="en">Advanced Configuration</span>
             </h3>
 
-            <h4 data-lang="fr">Modifier les chemins des repositories</h4>
-            <h4 data-lang="en">Modify repository paths</h4>
+            <h4 data-lang="fr">Interface Web de configuration</h4>
+            <h4 data-lang="en">Web Configuration Interface</h4>
 
             <p data-lang="fr">
-              Utilisez la commande <code>magic-slash</code> pour modifier les
-              chemins :
+              Lancez <code>magic-slash</code> pour ouvrir l'interface web :
             </p>
             <p data-lang="en">
-              Use the <code>magic-slash</code> command to modify paths:
+              Run <code>magic-slash</code> to open the web interface:
             </p>
 
             <div class="doc-code-block">
@@ -2384,13 +2382,15 @@
             </div>
 
             <p data-lang="fr">
-              L'interface interactive vous permet de naviguer avec les flèches
-              et de modifier les chemins. Vous pouvez aussi éditer le fichier
-              manuellement :
+              L'interface web s'ouvre automatiquement dans votre navigateur.
+              Vous pouvez configurer les repositories, les paramètres de commit,
+              les paramètres de PR, et les langues. Vous pouvez aussi éditer
+              le fichier manuellement :
             </p>
             <p data-lang="en">
-              The interactive interface lets you navigate with arrow keys and
-              modify paths. You can also edit the file manually:
+              The web interface opens automatically in your browser. You can
+              configure repositories, commit settings, PR settings, and languages.
+              You can also edit the file manually:
             </p>
 
             <div class="doc-config-block">
@@ -2399,15 +2399,18 @@
                 ~/.config/magic-slash/config.json
               </div>
               <div class="doc-config-content"><pre>{
-  "version": "0.9.0",
+  "version": "0.10.0",
   "repositories": {
     "api": {
       "path": "/path/to/your/api-repo",
-      "keywords": ["backend", "api", "server"]
-    },
-    "web": {
-      "path": "/path/to/your/web-repo",
-      "keywords": ["frontend", "ui", "react"]
+      "keywords": ["backend", "api", "server"],
+      "languages": { "commit": "en" },
+      "commit": {
+        "format": "angular",
+        "includeTicketId": true
+      },
+      "pullRequest": { "autoLinkTickets": true },
+      "issues": { "commentOnPR": true }
     }
   },
   "languages": {
@@ -2419,34 +2422,54 @@
 }</pre></div>
             </div>
 
+            <h4 data-lang="fr">Paramètres par repository</h4>
+            <h4 data-lang="en">Per-repository settings</h4>
+
+            <p data-lang="fr">
+              Chaque repository peut avoir ses propres paramètres qui surchargent les valeurs globales :
+            </p>
+            <p data-lang="en">
+              Each repository can have its own settings that override global defaults:
+            </p>
+
+            <ul>
+              <li>
+                <strong>commit.style</strong>: <code>single-line</code> ou <code>multi-line</code>
+              </li>
+              <li>
+                <strong>commit.format</strong>: <code>conventional</code>, <code>angular</code>, <code>gitmoji</code>, <code>none</code>
+              </li>
+              <li>
+                <strong>commit.coAuthor</strong>:
+                <span data-lang="fr">Ajouter Claude comme co-auteur</span>
+                <span data-lang="en">Add Claude as co-author</span>
+              </li>
+              <li>
+                <strong>commit.includeTicketId</strong>:
+                <span data-lang="fr">Ajouter l'ID du ticket dans le message</span>
+                <span data-lang="en">Add ticket ID in commit message</span>
+              </li>
+              <li>
+                <strong>pullRequest.autoLinkTickets</strong>:
+                <span data-lang="fr">Ajouter les liens tickets dans la PR (défaut: true)</span>
+                <span data-lang="en">Add ticket links in PR description (default: true)</span>
+              </li>
+              <li>
+                <strong>issues.commentOnPR</strong>:
+                <span data-lang="fr">Commenter sur le ticket Jira avec le lien PR (défaut: true)</span>
+                <span data-lang="en">Comment on Jira ticket with PR link (default: true)</span>
+              </li>
+            </ul>
+
             <p data-lang="fr">
               Les <strong>keywords</strong> sont utilisés pour la sélection intelligente :
               labels/composants matchés (+10 pts), mots-clés dans le titre (+5 pts),
-              dans la description (+2 pts). Si aucun keyword n'est spécifié, le nom
-              du repo est utilisé par défaut.
+              dans la description (+2 pts).
             </p>
             <p data-lang="en">
               <strong>Keywords</strong> are used for smart selection:
               matched labels/components (+10 pts), keywords in title (+5 pts),
-              in description (+2 pts). If no keywords are specified, the repo
-              name is used as default.
-            </p>
-
-            <p data-lang="fr">
-              Les <strong>languages</strong> permettent de configurer la langue de chaque fonctionnalité :
-              <code>commit</code> pour les messages de commit,
-              <code>pullRequest</code> pour le titre/description des PRs,
-              <code>jiraComment</code> pour les commentaires Jira,
-              <code>discussion</code> pour les interactions avec Claude Code.
-              Valeurs possibles : <code>"en"</code> (English) ou <code>"fr"</code> (Français).
-            </p>
-            <p data-lang="en">
-              <strong>Languages</strong> allow you to configure the language for each feature:
-              <code>commit</code> for commit messages,
-              <code>pullRequest</code> for PR title/description,
-              <code>jiraComment</code> for Jira comments,
-              <code>discussion</code> for Claude Code interactions.
-              Possible values: <code>"en"</code> (English) or <code>"fr"</code> (Français).
+              in description (+2 pts).
             </p>
 
             <h4 data-lang="fr">Reconfigurer les serveurs MCP</h4>
@@ -2520,9 +2543,9 @@
                 <span
                   ><code>~/.local/bin/magic-slash</code> —
                   <span data-lang="fr"
-                    >Commande CLI pour gérer la configuration</span
+                    >Commande pour lancer l'interface web</span
                   ><span data-lang="en"
-                    >CLI command to manage configuration</span
+                    >Command to launch web interface</span
                   ></span
                 >
               </li>
@@ -2577,13 +2600,15 @@
 
             <p data-lang="fr">
               Magic Slash permet de configurer la langue de sortie pour chaque
-              fonctionnalité. Utilisez la commande <code>magic-slash</code> et
-              sélectionnez "Language settings" pour accéder au sous-menu.
+              fonctionnalité. Lancez <code>magic-slash</code> pour ouvrir
+              l'interface web, puis cliquez sur "Default Languages" ou sur un
+              repository spécifique pour configurer ses langues.
             </p>
             <p data-lang="en">
               Magic Slash allows you to configure the output language for each
-              feature. Use the <code>magic-slash</code> command and select
-              "Language settings" to access the submenu.
+              feature. Run <code>magic-slash</code> to open the web interface,
+              then click "Default Languages" or on a specific repository to
+              configure its languages.
             </p>
 
             <h4 data-lang="fr">Options disponibles</h4>
@@ -2704,7 +2729,7 @@
                 ~/.config/magic-slash/config.json
               </div>
               <div class="doc-config-content"><pre>{
-  "version": "0.9.0",
+  "version": "0.10.0",
   "repositories": { ... },
   "languages": {
     "commit": "en",

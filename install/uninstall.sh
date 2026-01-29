@@ -35,6 +35,7 @@ echo "  • ~/.claude/skills/start/"
 echo "  • ~/.claude/skills/commit/"
 echo "  • ~/.claude/skills/done/"
 echo "  • ~/.config/magic-slash/ (entire folder)"
+echo "  • ~/.local/share/magic-slash/ (web UI)"
 echo "  • MCP Atlassian (via claude mcp remove)"
 echo "  • MCP GitHub (via claude mcp remove)"
 echo "  • magic-slash CLI command"
@@ -96,9 +97,26 @@ fi
 echo ""
 
 # ============================================
-# 3. MCP SERVERS CLEANUP
+# 3. WEB UI REMOVAL
 # ============================================
-echo "3. Removing MCP servers (Atlassian & GitHub)..."
+echo "3. Removing web UI..."
+echo ""
+
+WEB_UI_DIR="$HOME/.local/share/magic-slash"
+
+if [ -d "$WEB_UI_DIR" ]; then
+  rm -rf "$WEB_UI_DIR"
+  echo "   ✓ Removed: $WEB_UI_DIR"
+else
+  echo "   - Not found: $WEB_UI_DIR"
+fi
+
+echo ""
+
+# ============================================
+# 4. MCP SERVERS CLEANUP
+# ============================================
+echo "4. Removing MCP servers (Atlassian & GitHub)..."
 echo ""
 
 # Remove MCP Atlassian
@@ -118,9 +136,9 @@ fi
 echo ""
 
 # ============================================
-# 4. CLI REMOVAL
+# 5. CLI REMOVAL
 # ============================================
-echo "4. Removing magic-slash CLI..."
+echo "5. Removing magic-slash CLI..."
 echo ""
 
 CLI_REMOVED=false
@@ -140,11 +158,11 @@ fi
 echo ""
 
 # ============================================
-# 5. BACKUP CLEANUP (OPTIONAL)
+# 6. BACKUP CLEANUP (OPTIONAL)
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "5. Cleaning up backup files..."
+echo "6. Cleaning up backup files..."
 echo ""
 
 BACKUP_COUNT=$(find "$HOME/.claude" -name "*.backup.*" 2>/dev/null | wc -l | tr -d ' ')

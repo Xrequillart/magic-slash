@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magic Slash - Configuration</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%A8%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <!-- Background orbs -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="header-content">
+        <div class="header-left">
+          <a href="#/" class="logo-link">
+            <img src="logo.svg" alt="magic/slash" class="logo">
+          </a>
+          <span class="header-title">Settings</span>
+          <span id="version-badge" class="version-badge">v0.0.0</span>
+        </div>
+        <button id="close-btn" class="close-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+          Close
+        </button>
+      </div>
+    </header>
+
+    <!-- Main content - pages will be rendered here -->
+    <main id="app">
+      <div class="loading">
+        <div class="spinner"></div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      <p>
+        <a href="https://github.com/xrequillart/magic-slash" target="_blank">GitHub</a>
+        &nbsp;&bull;&nbsp;
+        <a href="https://magic-slash.io" target="_blank">Documentation</a>
+      </p>
+    </footer>
+  </div>
+
+  <!-- Add Repository Modal -->
+  <div id="add-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Add repository</h3>
+        <button class="modal-close" id="add-modal-close">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form id="add-form">
+          <div class="form-group">
+            <label class="form-label" for="add-name">Name</label>
+            <input type="text" id="add-name" class="form-input" placeholder="api, web, mobile..." autocomplete="off">
+            <p class="form-hint">Letters, numbers, hyphens and underscores only</p>
+            <p class="form-error" id="add-name-error"></p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="add-path">Path</label>
+            <input type="text" id="add-path" class="form-input" placeholder="~/projects/my-repo" autocomplete="off">
+            <div id="add-path-status" class="path-status" style="display: none;"></div>
+            <p class="form-error" id="add-path-error"></p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="add-keywords">Keywords (optional)</label>
+            <input type="text" id="add-keywords" class="form-input" placeholder="keyword1, keyword2, ..." autocomplete="off">
+            <p class="form-hint">Comma-separated keywords for auto-detection</p>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="add-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="add-save">Add repository</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="delete-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Delete repository</h3>
+        <button class="modal-close" id="delete-modal-close">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p>Are you sure you want to delete <strong id="delete-repo-name"></strong>?</p>
+        <p style="color: var(--text-secondary); margin-top: 8px;">This action cannot be undone.</p>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="delete-cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" id="delete-confirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

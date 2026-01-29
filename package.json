@@ -1,7 +1,7 @@
 {
   "name": "magic-slash",
-  "version": "0.9.0",
-  "description": "3 slash commands for Claude Code that automate the entire development cycle with Jira Tickets and GitHub repositories.",
+  "version": "0.10.0",
+  "description": "3 skills for Claude Code that automate the entire development cycle with Jira Tickets and GitHub repositories.",
   "keywords": [
     "claude",
     "claude-code",
@@ -24,9 +24,11 @@
   "author": "xrequillart",
   "scripts": {
     "lint": "npm run lint:md && npm run lint:yaml",
-    "lint:md": "markdownlint '**/*.md' --ignore node_modules",
+    "lint:md": "markdownlint '**/*.md' --ignore node_modules --ignore web-ui/node_modules",
     "lint:yaml": "yamllint -c .yamllint.yml .",
-    "lint:fix": "markdownlint '**/*.md' --ignore node_modules --fix"
+    "lint:fix": "markdownlint '**/*.md' --ignore node_modules --ignore web-ui/node_modules --fix",
+    "web": "node web-ui/server.js",
+    "web:install": "cd web-ui && npm install"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.3.1",
