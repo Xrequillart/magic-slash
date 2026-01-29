@@ -264,6 +264,74 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function generateCommitExample(format, style, includeTicketId) {
+  const examples = {
+    'conventional': { type: 'feat', msg: 'add user authentication' },
+    'angular': { type: 'feat', scope: 'auth', msg: 'add user authentication' },
+    'gitmoji': { emoji: '\u2728', msg: 'add user authentication' },
+    'none': { msg: 'Add user authentication' }
+  };
+
+  const bodyText = 'Implement login flow with session management';
+  const ticketId = '[PROJ-123]';
+
+  // Get the example data for this format
+  const example = examples[format] || examples['conventional'];
+
+  // Build the first line based on format
+  let firstLine = '';
+  switch (format) {
+    case 'angular':
+      firstLine = `${example.type}(${example.scope}): ${example.msg}`;
+      break;
+    case 'gitmoji':
+      firstLine = `${example.emoji} ${example.msg}`;
+      break;
+    case 'none':
+      firstLine = example.msg;
+      break;
+    case 'conventional':
+    default:
+      firstLine = `${example.type}: ${example.msg}`;
+      break;
+  }
+
+  // Add ticket ID if enabled
+  if (includeTicketId) {
+    firstLine += ` ${ticketId}`;
+  }
+
+  // Add body for multi-line style
+  if (style === 'multi-line') {
+    return `${firstLine}\n\n${bodyText}`;
+  }
+
+  return firstLine;
+}
+
+function updateCommitPreview() {
+  const previewEl = document.getElementById('commit-preview-content');
+  if (!previewEl) return;
+
+  const styleSelect = document.getElementById('commit-style');
+  const formatSelect = document.getElementById('commit-format');
+  const ticketIdToggle = document.getElementById('commit-ticket-id');
+
+  if (!styleSelect || !formatSelect || !ticketIdToggle) return;
+
+  // Get values, handling 'default' values
+  let style = styleSelect.value;
+  if (style === 'default') style = 'single-line';
+
+  let format = formatSelect.value;
+  if (format === 'default') format = 'angular';
+
+  const includeTicketId = ticketIdToggle.checked;
+
+  const example = generateCommitExample(format, style, includeTicketId);
+  previewEl.textContent = example;
+}
+
 function getLanguageLabel(code) {
   return code === 'fr' ? 'Français' : 'English';
 }
@@ -521,7 +589,7 @@ function renderRepoPage(name) {
           </div>
           <div class="setting-control">
             <select class="setting-select" id="commit-format" data-commit-key="format">
-              <option value="default" ${formatVal === 'default' ? 'selected' : ''}>Default (Conventional)</option>
+              <option value="default" ${formatVal === 'default' ? 'selected' : ''}>Default (Angular)</option>
               <option value="conventional" ${formatVal === 'conventional' ? 'selected' : ''}>Conventional (type: description)</option>
               <option value="angular" ${formatVal === 'angular' ? 'selected' : ''}>Angular (type(scope): description)</option>
               <option value="gitmoji" ${formatVal === 'gitmoji' ? 'selected' : ''}>Gitmoji (emoji + description)</option>
@@ -554,6 +622,13 @@ function renderRepoPage(name) {
               <span class="toggle-slider"></span>
             </label>
           </div>
+        </div>
+
+        <div class="commit-preview">
+          <div class="commit-preview-header">
+            <span class="commit-preview-label">Example</span>
+          </div>
+          <code class="commit-preview-content" id="commit-preview-content"></code>
         </div>
       </section>
 
@@ -775,6 +850,7 @@ function renderRepoPage(name) {
         const result = await api.updateRepositoryCommitSettings(name, { [key]: value });
         config = result.config;
         showToast('Setting updated');
+        updateCommitPreview();
       } catch (error) {
         showToast(error.message, 'error');
       }
@@ -792,6 +868,7 @@ function renderRepoPage(name) {
         const result = await api.updateRepositoryCommitSettings(name, { [key]: value });
         config = result.config;
         showToast('Setting updated');
+        updateCommitPreview();
       } catch (error) {
         showToast(error.message, 'error');
         toggle.checked = !toggle.checked; // Revert on error
@@ -842,6 +919,9 @@ function renderRepoPage(name) {
 
   // Load PR template
   loadPRTemplate(name);
+
+  // Initialize commit preview
+  updateCommitPreview();
 }
 
 // Load and display PR template
