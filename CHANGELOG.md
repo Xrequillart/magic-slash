@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2025-01-29
+
+### Added
+
+- **Auto-permissions for /start**: Automatically adds required Bash permissions when starting a task
+  - Permissions for creating worktrees, switching branches, and other git operations
+  - Jira ticket status is now automatically updated to "In Progress" when starting a task
+- **Local /release skill**: New internal skill for preparing Magic Slash releases
+  - Updates version in all project files (package.json, README, docs, install script)
+  - Manages CHANGELOG.md with proper formatting
+  - Provides step-by-step release workflow guidance
+- **Commit message preview in Web UI**: Shows a preview of the commit message format
+  - Displays example commit message based on current settings (format, style, co-author, ticket ID)
+  - Updates dynamically when settings change
+
 ## [0.10.0] - 2025-01-29
 
 ### Added
@@ -276,6 +291,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.11.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.11.0
 [0.10.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.10.0
 [0.9.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.9.0
 [0.8.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.8.0

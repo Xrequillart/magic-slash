@@ -1,6 +1,6 @@
 {
   "name": "magic-slash",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "3 skills for Claude Code that automate the entire development cycle with Jira Tickets and GitHub repositories.",
   "keywords": [
     "claude",
