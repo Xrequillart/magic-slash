@@ -2,7 +2,7 @@
 name: start
 description: This skill should be used when the user mentions a ticket ID like "PROJ-123", "#456", says "start", "commencer", "travailler sur", "je vais bosser sur", "begin work on", "work on ticket", "work on issue", "démarre", "démarrer", or indicates they want to start working on a specific task.
 argument-hint: <TICKET-ID>
-allowed-tools: Bash(*), mcp__atlassian__*, mcp__github__*
+allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Task, mcp__atlassian__*, mcp__github__*
 ---
 
 # Magic Slash - /start
@@ -39,7 +39,7 @@ Utilise l'outil MCP Atlassian `mcp__atlassian__getJiraIssue` pour récupérer le
 
 Note : Si tu ne connais pas le `cloudId`, utilise d'abord `mcp__atlassian__getAccessibleAtlassianResources` pour l'obtenir.
 
-→ Continue à l'**Étape 3**.
+→ Continue à l'**Étape 2.5**.
 
 ## Étape 2B : Récupérer l'issue GitHub
 
@@ -96,6 +96,47 @@ Collecte toutes les issues trouvées.
 
   Laquelle voulez-vous utiliser ? (ou 'toutes')
   ```
+
+→ Continue à l'**Étape 2.5**.
+
+## Étape 2.5 : Mettre à jour le statut du ticket en "In Progress"
+
+Avant de continuer, mets à jour le statut du ticket pour indiquer que le travail a commencé.
+
+**IMPORTANT** : Cette étape ne doit jamais bloquer le processus. En cas d'échec, affiche un warning et continue.
+
+### 2.5A : Pour un ticket Jira (si tu viens de l'étape 2A)
+
+1. **Récupérer les transitions disponibles** avec `mcp__atlassian__getTransitionsForJiraIssue`
+
+2. **Chercher une transition vers "In Progress"** parmi les transitions disponibles :
+   - Cherche d'abord : "In Progress"
+   - Si non trouvé, essaie : "En cours", "In Development", "Started", "In Work"
+
+3. **Appliquer la transition** avec `mcp__atlassian__transitionJiraIssue`
+
+4. **En cas d'échec** : Affiche un warning mais continue le processus
+
+   ```text
+   ⚠️ Impossible de passer le ticket en "In Progress" (transition non disponible ou permissions insuffisantes)
+   ```
+
+### 2.5B : Pour une issue GitHub (si tu viens de l'étape 2B)
+
+1. **Récupérer les labels de l'issue** (déjà disponibles depuis l'étape 2B)
+
+2. **Vérifier si un label de progression existe** dans les labels actuels du repo :
+   - Cherche un label existant parmi : "in-progress", "wip", "in progress", "working"
+
+3. **Si un label approprié existe** : Ajoute-le à l'issue via `mcp__github__update_issue` en conservant les labels existants
+
+4. **Si aucun label approprié n'existe** : Continue sans modification (ne pas créer de label automatiquement)
+
+5. **En cas d'échec** : Affiche un warning mais continue le processus
+
+   ```text
+   ⚠️ Impossible d'ajouter le label "in-progress" (label non trouvé ou permissions insuffisantes)
+   ```
 
 → Continue à l'**Étape 3**.
 
