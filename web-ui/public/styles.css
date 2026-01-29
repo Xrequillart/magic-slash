@@ -460,9 +460,39 @@ header {
   border-bottom: 1px solid var(--border);
 }
 
-.setting-row:last-child {
+.setting-row:last-child:not(:has(+ .commit-preview)) {
   border-bottom: none;
   padding-bottom: 0;
+}
+
+/* Commit Preview */
+.commit-preview {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.commit-preview-header {
+  margin-bottom: 8px;
+}
+
+.commit-preview-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.commit-preview-content {
+  display: block;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 13px;
+  color: var(--text);
+  white-space: pre-wrap;
+  line-height: 1.5;
 }
 
 .setting-row:first-child {
