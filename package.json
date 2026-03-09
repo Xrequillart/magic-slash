@@ -31,9 +31,9 @@
     "web:install": "cd web-ui && npm install"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.3.1",
-    "@commitlint/config-conventional": "^20.3.1",
-    "markdownlint-cli": "^0.47.0"
+    "@commitlint/cli": "^20.4.3",
+    "@commitlint/config-conventional": "^20.4.3",
+    "markdownlint-cli": "^0.48.0"
   },
   "engines": {
     "node": ">=18.0.0"
