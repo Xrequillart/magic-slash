@@ -1,5 +1,7 @@
 import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater'
 import { BrowserWindow, ipcMain, app } from 'electron'
+import { cleanupAllTerminals } from './pty/terminal-manager'
+import { stopStatusServer } from './hooks/status-server'
 
 export type UpdateStatus =
   | { type: 'checking' }
@@ -43,8 +45,14 @@ export function setupAutoUpdater() {
 
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
     sendStatus({ type: 'downloaded', version: info.version })
-    // Auto restart after 3 seconds
-    setTimeout(() => {
+    // Clean up resources then restart
+    setTimeout(async () => {
+      try {
+        cleanupAllTerminals()
+        await stopStatusServer()
+      } catch (err) {
+        console.error('[Updater] Pre-install cleanup error:', err)
+      }
       autoUpdater.quitAndInstall(false, true)
     }, 3000)
   })
