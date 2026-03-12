@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-03-12
+
+### Added
+
+- **Desktop application**: Native Electron app for Magic Slash with integrated Claude Code terminals
+  - Multiple concurrent Claude Code agents (up to 12) with state tracking (idle, working, waiting, completed, error)
+  - Integrated xterm.js terminal emulation with terminal persistence across app restarts
+  - Agent naming, metadata editing (title, description, ticket info), and resizable info sidebar
+  - Multi-repository support with visual color coding per project
+  - Built-in and custom skills management with creation, import/export, and sharing
+  - Package manager auto-detection (npm, yarn, pnpm, bun) with one-click script execution
+  - Automatic background app updates with progress tracking and auto-restart
+  - Automatic skills synchronization between Claude Code and desktop app
+  - Claude Code hooks integration for real-time terminal state and metadata tracking
+  - Keyboard shortcuts for agent management (Cmd+N, Cmd+W, Cmd+B)
+  - Multi-page UI (Terminals, Settings, Skills) with dark theme
+
 ## [0.11.2] - 2025-01-29
 
 ### Added
@@ -307,6 +324,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.12.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.0
 [0.11.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.11.2
 [0.11.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.11.1
 [0.11.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.11.0

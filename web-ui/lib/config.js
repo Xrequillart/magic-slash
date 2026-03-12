@@ -20,8 +20,8 @@ function readConfig() {
     }
     const content = fs.readFileSync(CONFIG_FILE, 'utf8');
     return JSON.parse(content);
-  } catch (error) {
-    console.error('Error reading config:', error);
+  } catch (_error) {
+    console.error('Error reading config:', _error);
     return {
       version: 'unknown',
       repositories: {},

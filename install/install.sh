@@ -9,6 +9,7 @@ set -e
 # ============================================
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
 BOLD='\033[1m'
 DIM='\033[2m'
 NC='\033[0m'
@@ -108,7 +109,7 @@ if [ -f "$SCRIPT_DIR/../package.json" ]; then
   CURRENT_VERSION=$(jq -r '.version' "$SCRIPT_DIR/../package.json")
 else
   # Remote install: fetch latest version from GitHub API
-  CURRENT_VERSION=$(curl -s https://api.github.com/repos/xrequillart/magic-slash/releases/latest | jq -r '.tag_name // "v0.11.2"' | sed 's/^v//')
+  CURRENT_VERSION=$(curl -s https://api.github.com/repos/xrequillart/magic-slash/releases/latest | jq -r '.tag_name // "v0.12.0"' | sed 's/^v//')
 fi
 
 CONFIG_DIR="$HOME/.config/magic-slash"
@@ -197,6 +198,32 @@ fi
 
 echo "✅ All prerequisites are installed"
 echo ""
+
+# ============================================
+# 1b. INSTALLATION MODE SELECTION
+# ============================================
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Choose installation mode:"
+echo ""
+
+select_installation_mode() {
+  echo ""
+  select_option "Desktop App (recommended)" "Standalone (CLI only)"
+
+  if [ $SELECT_RESULT -eq 0 ]; then
+    INSTALL_MODE="desktop"
+    echo ""
+    echo -e "   ${GREEN}→ Desktop App${NC}: Full visual interface with terminal management"
+  else
+    INSTALL_MODE="standalone"
+    echo ""
+    echo -e "   ${GREEN}→ Standalone${NC}: Terminal-based configuration, no desktop app"
+  fi
+  echo ""
+}
+
+select_installation_mode
 
 # ============================================
 # 2. MCP ATLASSIAN CONFIGURATION (JIRA + CONFLUENCE)
@@ -290,105 +317,11 @@ fi
 echo ""
 
 # ============================================
-# 4. REPOSITORIES CONFIGURATION
+# 4. SKILLS INSTALLATION (Commands + Natural Language)
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "4. Repositories configuration"
-echo ""
-
-# Check if already configured
-SKIP_REPOS=false
-if [ -f "$CONFIG_FILE" ]; then
-  echo "   Repositories already configured:"
-  jq -r '.repositories | to_entries[] | "   • \(.key): \(.value.path)"' "$CONFIG_FILE"
-  echo ""
-  read -p "   Reconfigure? (y/N) " RECONFIG_REPOS < /dev/tty
-  [ "$RECONFIG_REPOS" != "y" ] && SKIP_REPOS=true
-  echo ""
-fi
-
-if [ "$SKIP_REPOS" = false ]; then
-  echo "   Magic Slash now supports multiple repositories!"
-  echo ""
-  read -p "   How many repositories do you want to configure? (1-10): " REPO_COUNT < /dev/tty
-  echo ""
-
-  # Validate input
-  if ! [[ "$REPO_COUNT" =~ ^[0-9]+$ ]] || [ "$REPO_COUNT" -lt 1 ] || [ "$REPO_COUNT" -gt 10 ]; then
-    echo "   ⚠️  Invalid number. Please enter a number between 1 and 10."
-    exit 1
-  fi
-
-  # Initialize repositories JSON
-  REPOS_JSON="{}"
-
-  for ((i=1; i<=REPO_COUNT; i++)); do
-    echo "   ━━━ Repository $i/$REPO_COUNT ━━━"
-    echo ""
-
-    read -p "   Name (e.g.: api, web, mobile): " REPO_NAME < /dev/tty
-
-    # Validate name (alphanumeric and hyphens only)
-    if ! [[ "$REPO_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-      echo "   ⚠️  Invalid name. Use only letters, numbers, hyphens and underscores."
-      exit 1
-    fi
-
-    read -p "   Path (e.g.: ~/projects/my-$REPO_NAME): " REPO_PATH < /dev/tty
-
-    # Expand ~
-    REPO_PATH="${REPO_PATH/#\~/$HOME}"
-
-    # Check that path exists
-    if [ ! -d "$REPO_PATH" ]; then
-      echo "   ⚠️  Directory does not exist: $REPO_PATH"
-      read -p "   Continue anyway? (y/N) " CONTINUE < /dev/tty
-      [ "$CONTINUE" != "y" ] && exit 1
-    elif [ ! -d "$REPO_PATH/.git" ]; then
-      echo "   ⚠️  $REPO_PATH is not a git repo"
-      read -p "   Continue anyway? (y/N) " CONTINUE < /dev/tty
-      [ "$CONTINUE" != "y" ] && exit 1
-    fi
-
-    read -p "   Keywords for auto-detection (comma-separated, optional): " KEYWORDS_INPUT < /dev/tty
-
-    # Convert comma-separated keywords to JSON array, use repo name as default
-    if [ -z "$KEYWORDS_INPUT" ]; then
-      KEYWORDS_JSON="[\"$REPO_NAME\"]"
-    else
-      # Convert "a, b, c" to ["a","b","c"]
-      KEYWORDS_JSON=$(echo "$KEYWORDS_INPUT" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R . | jq -s .)
-    fi
-
-    # Add repo to JSON
-    REPOS_JSON=$(echo "$REPOS_JSON" | jq --arg name "$REPO_NAME" --arg path "$REPO_PATH" --argjson keywords "$KEYWORDS_JSON" \
-      '.[$name] = {"path": $path, "keywords": $keywords}')
-
-    echo ""
-  done
-
-  # Create config file
-  mkdir -p "$CONFIG_DIR"
-  jq -n --arg version "$CURRENT_VERSION" --argjson repos "$REPOS_JSON" \
-    '{"version": $version, "repositories": $repos}' > "$CONFIG_FILE"
-
-  echo "   ✅ Repositories configured"
-else
-  # Update version in existing config file
-  TMP_FILE=$(mktemp)
-  jq --arg version "$CURRENT_VERSION" '.version = $version' "$CONFIG_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$CONFIG_FILE"
-  echo "   ✅ Repositories kept"
-fi
-
-echo ""
-
-# ============================================
-# 5. SKILLS INSTALLATION (Commands + Natural Language)
-# ============================================
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "5. Installing /start, /commit and /done skills"
+echo "4. Installing /start, /commit and /done skills"
 echo ""
 
 SKILLS_DIR="$HOME/.claude/skills"
@@ -403,6 +336,7 @@ else
   for skill in start commit "done"; do
     mkdir -p "$SKILLS_DIR/$skill"
     curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/SKILL.md" > "$SKILLS_DIR/$skill/SKILL.md"
+    curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/image.png" -o "$SKILLS_DIR/$skill/image.png" 2>/dev/null || true
   done
 fi
 
@@ -422,81 +356,185 @@ fi
 
 echo ""
 
+# Create initial config file (repositories will be configured in desktop app or TUI)
+mkdir -p "$CONFIG_DIR"
+if [ ! -f "$CONFIG_FILE" ]; then
+  jq -n --arg version "$CURRENT_VERSION" --arg mode "$INSTALL_MODE" \
+    '{"version": $version, "installationMode": $mode, "repositories": {}}' > "$CONFIG_FILE"
+else
+  # Update version and installationMode in existing config file
+  TMP_FILE=$(mktemp)
+  jq --arg version "$CURRENT_VERSION" --arg mode "$INSTALL_MODE" \
+    '.version = $version | .installationMode = $mode' "$CONFIG_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$CONFIG_FILE"
+fi
+
 # ============================================
-# 6. CLI INSTALLATION
+# 5. DESKTOP APP OR CLI INSTALLATION
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "6. Installing magic-slash CLI command"
-echo ""
 
-CLI_DIR="$HOME/.local/bin"
-CLI_PATH="$CLI_DIR/magic-slash"
-
-# Create directory if needed
-mkdir -p "$CLI_DIR"
-
-# Copy CLI script (version is read from config.json at runtime)
-if [ -f "$SCRIPT_DIR/magic-slash" ]; then
-  # Local installation
-  cp "$SCRIPT_DIR/magic-slash" "$CLI_PATH"
-else
-  # Remote installation - download from GitHub
-  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/install/magic-slash" > "$CLI_PATH"
-fi
-
-chmod +x "$CLI_PATH"
-echo "   ✅ CLI installed at $CLI_PATH"
-
-# Check if ~/.local/bin is in PATH
-if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+if [ "$INSTALL_MODE" = "desktop" ]; then
+  echo "5. Installing Magic Slash Desktop app"
   echo ""
-  echo "   ⚠️  ~/.local/bin is not in your PATH"
-  echo "   Add this line to your ~/.bashrc or ~/.zshrc:"
-  echo "   export PATH=\"\$HOME/.local/bin:\$PATH\""
-fi
 
-echo ""
+  # Check if already installed in /Applications
+  SKIP_DESKTOP=false
+  if [ -d "/Applications/Magic Slash.app" ]; then
+    INSTALLED_APP_VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "/Applications/Magic Slash.app/Contents/Info.plist" 2>/dev/null || echo "unknown")
+    echo "   Magic Slash Desktop already installed (v$INSTALLED_APP_VERSION)"
+    echo ""
+    read -p "   Reinstall/Update? (y/N) " REINSTALL_DESKTOP < /dev/tty
+    [ "$REINSTALL_DESKTOP" != "y" ] && SKIP_DESKTOP=true
+    echo ""
+  fi
 
-# ============================================
-# 6b. WEB UI INSTALLATION
-# ============================================
-echo "   Installing web UI..."
+  if [ "$SKIP_DESKTOP" = false ]; then
+    # Detect architecture
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "arm64" ]; then
+      DMG_SUFFIX="arm64"
+    else
+      DMG_SUFFIX="x64"
+    fi
 
-WEB_UI_DIR="$HOME/.local/share/magic-slash/web-ui"
-mkdir -p "$WEB_UI_DIR"
+    DMG_NAME="Magic Slash-${CURRENT_VERSION}-${DMG_SUFFIX}.dmg"
+    DMG_URL="https://github.com/xrequillart/magic-slash/releases/download/v${CURRENT_VERSION}/${DMG_NAME}"
+    TMP_DMG="/tmp/${DMG_NAME}"
 
-if [ -d "$SCRIPT_DIR/../web-ui" ]; then
-  # Local installation - copy web-ui folder
-  cp -r "$SCRIPT_DIR/../web-ui/"* "$WEB_UI_DIR/"
+    echo "   Downloading Magic Slash Desktop v${CURRENT_VERSION}..."
+    echo "   Architecture: ${ARCH}"
+    echo ""
+
+    # Download DMG from GitHub releases
+    if curl -fsSL -o "$TMP_DMG" "$DMG_URL"; then
+      echo "   ✅ Downloaded successfully"
+      echo ""
+      echo "   Opening DMG installer..."
+      echo "   → Drag 'Magic Slash' to Applications folder"
+      echo ""
+
+      # Mount and open DMG
+      open "$TMP_DMG"
+
+      echo "   ⏳ Waiting for installation..."
+      echo "   Press Enter once you've dragged the app to Applications"
+      read -r < /dev/tty
+
+      # Cleanup
+      rm -f "$TMP_DMG" 2>/dev/null
+
+      echo "   ✅ Desktop app installation initiated"
+    else
+      echo "   ⚠️  Could not download DMG from GitHub releases"
+      echo "   → Download manually: https://github.com/xrequillart/magic-slash/releases"
+    fi
+  else
+    echo "   ✅ Desktop app kept"
+  fi
+
 else
-  # Remote installation - download from GitHub
-  mkdir -p "$WEB_UI_DIR/public" "$WEB_UI_DIR/lib"
+  # Standalone mode - install CLI
+  echo "5. Installing Magic Slash CLI"
+  echo ""
 
-  # Download server and package files
-  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/server.js" > "$WEB_UI_DIR/server.js"
-  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/package.json" > "$WEB_UI_DIR/package.json"
+  CLI_DIR="$HOME/.local/bin"
+  CLI_PATH="$CLI_DIR/magic-slash"
 
-  # Download lib files
-  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/lib/config.js" > "$WEB_UI_DIR/lib/config.js"
-  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/lib/validation.js" > "$WEB_UI_DIR/lib/validation.js"
+  # Create directory if needed
+  mkdir -p "$CLI_DIR"
 
-  # Download public files
-  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/public/index.html" > "$WEB_UI_DIR/public/index.html"
-  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/public/styles.css" > "$WEB_UI_DIR/public/styles.css"
-  curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/web-ui/public/app.js" > "$WEB_UI_DIR/public/app.js"
+  # Copy CLI from local or download from GitHub
+  if [ -f "$SCRIPT_DIR/magic-slash" ]; then
+    # Local installation
+    cp "$SCRIPT_DIR/magic-slash" "$CLI_PATH"
+  else
+    # Remote installation - download from GitHub
+    curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/install/magic-slash" > "$CLI_PATH"
+  fi
+
+  chmod +x "$CLI_PATH"
+  echo "   ✅ CLI installed at $CLI_PATH"
+
+  # Check if ~/.local/bin is in PATH
+  if [[ ":$PATH:" != *":$CLI_DIR:"* ]]; then
+    echo ""
+    echo -e "   ${YELLOW}⚠️  $CLI_DIR is not in your PATH${NC}"
+    echo ""
+    echo "   Add this line to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
+    echo ""
+    echo -e "   ${CYAN}export PATH=\"\$HOME/.local/bin:\$PATH\"${NC}"
+    echo ""
+  fi
+
+  # ============================================
+  # 5b. REPOSITORY CONFIGURATION (Standalone only)
+  # ============================================
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "6. Configure repositories"
+  echo ""
+  echo "   Add at least one repository so /start can match tickets to projects."
+  echo ""
+
+  REPO_INDEX=0
+  ADD_MORE=true
+
+  while [ "$ADD_MORE" = true ]; do
+    REPO_INDEX=$((REPO_INDEX + 1))
+    echo -e "   ${BOLD}Repository #$REPO_INDEX${NC}"
+    echo ""
+
+    # Repository name
+    read -p "   Name (e.g. api, web, mobile): " REPO_NAME < /dev/tty
+    echo ""
+
+    # Repository path
+    read -p "   Absolute path (e.g. /Users/dev/projects/my-api): " REPO_PATH < /dev/tty
+    echo ""
+
+    # Validate path exists
+    if [ ! -d "$REPO_PATH" ]; then
+      echo -e "   ${YELLOW}⚠️  Directory not found: $REPO_PATH${NC}"
+      echo "   → The path will be saved anyway. Make sure it exists before using /start."
+      echo ""
+    fi
+
+    # Keywords
+    read -p "   Keywords, comma-separated (e.g. backend,api,server): " REPO_KEYWORDS_RAW < /dev/tty
+    echo ""
+
+    # Convert comma-separated keywords to JSON array
+    KEYWORDS_JSON=$(echo "$REPO_KEYWORDS_RAW" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R . | jq -s .)
+
+    # Add repository to config
+    TMP_FILE=$(mktemp)
+    jq --arg name "$REPO_NAME" --arg path "$REPO_PATH" --argjson keywords "$KEYWORDS_JSON" \
+      '.repositories[$name] = {"path": $path, "keywords": $keywords}' "$CONFIG_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$CONFIG_FILE"
+
+    echo -e "   ${GREEN}✅ Repository '$REPO_NAME' added${NC}"
+    echo ""
+
+    # Ask to add another
+    echo -e "   ${DIM}Add another repository?${NC}"
+    echo ""
+    select_option "Add another repository" "Done, continue installation"
+
+    if [ $SELECT_RESULT -eq 1 ]; then
+      ADD_MORE=false
+    fi
+    echo ""
+  done
+
+  echo "   ✅ $REPO_INDEX repository(ies) configured"
+  echo ""
 fi
 
-# Install npm dependencies for web UI
-cd "$WEB_UI_DIR" && npm install --silent 2>/dev/null
-cd - > /dev/null
-
-echo "   ✅ Web UI installed at $WEB_UI_DIR"
-echo "   → Run 'magic-slash' to open the web interface"
 echo ""
 
 # ============================================
-# 7. DONE
+# 6. DONE
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
@@ -505,18 +543,27 @@ echo ""
 echo "Created files:"
 echo "  • MCP Atlassian  : ~/.claude.json (OAuth - Jira + Confluence)"
 echo "  • MCP GitHub     : ~/.claude.json"
-echo "  • Repos config   : ~/.config/magic-slash/config.json"
+echo "  • Config         : ~/.config/magic-slash/config.json"
 echo "  • Skills         : ~/.claude/skills/{start,commit,done}/SKILL.md"
-echo "  • CLI command    : ~/.local/bin/magic-slash"
-echo "  • Web UI         : ~/.local/share/magic-slash/web-ui/"
-echo ""
-echo "Configuration:"
-echo "  • magic-slash         Web UI (localhost:3847)"
-echo "  • magic-slash --cli   Terminal UI (interactive)"
+
+if [ "$INSTALL_MODE" = "desktop" ]; then
+  echo "  • Desktop app    : /Applications/Magic Slash.app"
+  echo ""
+  echo "Configuration:"
+  echo "  • Open 'Magic Slash' app from Applications"
+  echo "  • Or use Spotlight: Cmd+Space → 'Magic Slash'"
+else
+  echo "  • CLI            : ~/.local/bin/magic-slash"
+  echo ""
+  echo "Configuration:"
+  echo "  • Run 'magic-slash' to modify repositories or settings"
+  echo "  • Or 'magic-slash --help' for more options"
+fi
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "🚀 You're ready! Try these commands:"
+echo "🚀 You're ready! Try these commands in Claude Code:"
 echo ""
 echo "   /start PROJ-123     Start a Jira ticket"
 echo "   /start #42          Start a GitHub issue"

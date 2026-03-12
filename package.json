@@ -1,6 +1,6 @@
 {
   "name": "magic-slash",
-  "version": "0.11.2",
+  "version": "0.12.0",
   "description": "3 skills for Claude Code that automate the entire development cycle with Jira Tickets and GitHub repositories.",
   "keywords": [
     "claude",
@@ -23,17 +23,26 @@
   "license": "MIT",
   "author": "xrequillart",
   "scripts": {
-    "lint": "npm run lint:md && npm run lint:yaml",
-    "lint:md": "markdownlint '**/*.md' --ignore node_modules --ignore web-ui/node_modules",
+    "lint": "npm run lint:yaml && npm run lint:js",
+    "lint:js": "eslint web-ui/ desktop/src/",
     "lint:yaml": "yamllint -c .yamllint.yml .",
-    "lint:fix": "markdownlint '**/*.md' --ignore node_modules --ignore web-ui/node_modules --fix",
     "web": "node web-ui/server.js",
-    "web:install": "cd web-ui && npm install"
+    "web:install": "cd web-ui && npm install",
+    "desktop": "cd desktop && npm run dev",
+    "desktop:install": "cd desktop && npm install",
+    "desktop:build": "cd desktop && npm run build",
+    "desktop:package": "cd desktop && npm run package:mac",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.3.1",
     "@commitlint/config-conventional": "^20.3.1",
-    "markdownlint-cli": "^0.47.0"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.3",
+    "globals": "^17.4.0",
+    "typescript-eslint": "^8.57.0",
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=18.0.0"

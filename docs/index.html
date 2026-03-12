@@ -1,2768 +1,829 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Magic Slash - Commandes slash et langage naturel pour Claude Code</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
-    <link href="fonts/Avenir/font.css" rel="stylesheet" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>magic-slash</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Modak&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/feather-icons"></script>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body class="zoom-active">
-    <div class="zoom-overlay"></div>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Logo symbol (inline to avoid CORS issues with file://) -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden">
+        <defs>
+            <filter id="logo-texture" x="392.89" y="6.09042" width="84.9628" height="140.264" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                <feTurbulence type="fractalNoise" baseFrequency="0.66666668653488159 0.66666668653488159" numOctaves="3" seed="8916"/>
+                <feDisplacementMap in="shape" scale="8" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%"/>
+                <feMerge result="effect1_texture"><feMergeNode in="displacedImage"/></feMerge>
+            </filter>
+        </defs>
+        <symbol id="magic-slash-logo" viewBox="0 0 844 152">
+            <path d="M826.097 121.973C822.868 121.973 819.908 121.166 817.217 119.551C814.527 117.937 812.374 115.784 810.76 113.093C809.253 110.403 808.499 107.497 808.499 104.375C808.499 101.146 809.253 98.2404 810.76 95.6572C812.374 92.9664 814.527 90.8138 817.217 89.1994C819.908 87.5849 822.814 86.7776 825.936 86.7776C829.38 86.7776 832.393 87.5849 834.977 89.1994C837.667 90.8138 839.766 92.9664 841.273 95.6572C842.888 98.2404 843.695 101.146 843.695 104.375C843.695 107.497 842.888 110.403 841.273 113.093C839.766 115.784 837.667 117.937 834.977 119.551C832.393 121.166 829.434 121.973 826.097 121.973Z" fill="currentColor"/>
+            <path d="M734.284 120.036C727.061 120.036 721.207 114.182 721.207 106.958V23.1676C721.207 15.9452 727.061 10.0904 734.284 10.0904C741.506 10.0904 747.361 15.9452 747.361 23.1676V106.958C747.361 114.182 741.506 120.036 734.284 120.036ZM783.364 120.036C776.141 120.036 770.287 114.182 770.287 106.958V74.5077C770.287 70.4177 769.641 67.7269 768.35 66.4354C767.058 65.1438 765.174 64.498 762.699 64.498C760.869 64.498 758.932 64.8747 756.887 65.6281C754.842 66.2739 752.797 67.2964 750.752 68.6956C747.646 70.7658 743.243 70.046 741.548 66.7196L739.173 62.0595C737.394 58.5665 737.897 54.2814 740.831 51.6815C742.32 50.363 743.904 49.0916 745.586 47.869C749.245 45.1782 753.174 43.0256 757.371 41.4111C761.676 39.689 766.197 38.8279 770.933 38.8279C776.207 38.8279 780.512 39.7428 783.848 41.5726C787.185 43.4023 789.768 45.8778 791.598 48.9991C793.428 52.0128 794.665 55.457 795.311 59.3317C796.065 63.2064 796.441 67.2426 796.441 71.4402V106.958C796.441 114.182 790.585 120.036 783.364 120.036Z" fill="currentColor"/>
+            <path d="M677.612 122.619C671.046 122.619 664.911 121.435 659.207 119.067C656.001 117.649 652.903 115.65 649.91 113.068C645.852 109.567 646.195 103.405 649.918 99.5504C653.975 95.3528 660.542 95.4941 665.572 98.4573C666.47 98.9871 667.363 99.4529 668.248 99.8548C671.907 101.469 675.674 102.277 679.549 102.277C681.486 102.277 683.101 101.9 684.392 101.146C685.684 100.285 686.33 99.2629 686.33 98.0789C686.33 97.0026 685.899 96.0877 685.038 95.3343C684.285 94.5809 682.67 93.8275 680.195 93.0741C677.827 92.3207 674.329 91.352 669.701 90.168C661.198 88.0154 654.955 84.9479 650.973 80.9656C646.99 76.8756 644.999 71.5478 644.999 64.9823C644.999 60.1389 646.291 55.726 648.874 51.7437C651.457 47.6537 655.17 44.4248 660.014 42.0569C664.857 39.5814 670.562 38.3436 677.127 38.3436C684.984 38.3436 691.657 39.7966 697.147 42.7027C699.101 43.7369 700.941 44.8486 702.663 46.0325C707.632 49.4515 707.225 56.4559 702.732 60.4769C698.621 64.1549 692.423 64.0254 687.354 61.8509C687.016 61.7063 686.674 61.5667 686.33 61.4305C682.885 60.0313 679.118 59.3317 675.028 59.3317C672.876 59.3317 671.1 59.7084 669.701 60.4618C668.301 61.1076 667.602 62.0763 667.602 63.3679C667.602 64.5518 668.517 65.6281 670.346 66.5968C672.284 67.4578 676.212 68.588 682.132 69.9872C691.926 72.3551 699.03 75.6378 703.443 79.8354C707.856 83.9254 710.062 89.4684 710.062 96.4644C710.062 101.631 708.663 106.205 705.865 110.187C703.174 114.062 699.353 117.13 694.402 119.39C689.559 121.543 683.962 122.619 677.612 122.619Z" fill="currentColor"/>
+            <path d="M588.7 122.135C583.103 122.135 578.152 121.058 573.847 118.906C569.541 116.645 566.151 113.524 563.675 109.542C561.308 105.452 560.124 100.824 560.124 95.6572C560.124 90.0604 561.415 85.3247 563.998 81.4499C566.689 77.4676 570.187 74.4539 574.492 72.4089C578.905 70.2563 583.749 69.18 589.023 69.18C596.88 69.18 603.284 71.0097 608.235 74.6692C611.412 76.9479 613.88 79.9364 615.638 83.6345C617.089 86.6835 614.151 89.6349 610.86 88.8866C608.758 88.409 607.266 86.5389 607.266 84.3846V70.1487C607.266 67.4579 606.297 65.1438 604.36 63.2064C602.423 61.2691 599.409 60.3004 595.319 60.3004C592.413 60.3004 589.076 60.6771 585.309 61.4305C584.69 61.555 584.067 61.6946 583.436 61.8543C577.792 63.2737 571.521 61.0269 569.36 55.6218C567.424 50.7834 569.508 45.2119 574.417 43.4628C576.719 42.6438 579.11 41.9056 581.596 41.2497C587.301 39.6352 593.22 38.828 599.355 38.828C606.782 38.828 613.024 40.1734 618.083 42.8641C623.249 45.5549 627.124 49.3758 629.707 54.3269C632.29 59.1703 633.582 64.9285 633.582 71.6017V107.345C633.582 114.355 627.899 120.036 620.892 120.036H618.544C614.422 120.036 610.773 117.372 609.518 113.445L607.922 108.452C607.204 106.203 608.45 103.8 610.702 103.092C613.869 102.097 616.827 104.956 615.291 107.9C613.539 111.26 611.186 114.123 608.235 116.484C603.499 120.251 596.987 122.135 588.7 122.135ZM597.579 104.375C600.593 104.375 603.015 103.568 604.844 101.954C606.674 100.339 607.589 98.2404 607.589 95.6572C607.589 93.1817 606.674 91.1367 604.844 89.5223C603.015 87.9078 600.593 87.1006 597.579 87.1006C594.35 87.1006 591.821 87.9078 589.991 89.5223C588.269 91.1367 587.408 93.1817 587.408 95.6572C587.408 98.2404 588.269 100.339 589.991 101.954C591.821 103.568 594.35 104.375 597.579 104.375Z" fill="currentColor"/>
+            <path d="M544.887 120.843C540.582 120.843 536.546 120.036 532.778 118.421C529.011 116.699 525.944 113.955 523.576 110.187C521.316 106.42 520.187 101.415 520.187 95.1729V23.0869C520.187 15.9091 526.004 10.0904 533.184 10.0904C540.361 10.0904 546.18 15.9091 546.18 23.0869V85.9704C546.18 90.0604 546.826 92.6974 548.118 93.8813C550.736 95.896 553.768 98.1748 553.768 101.481V115.968C553.768 118.44 552.036 120.537 549.571 120.681C547.849 120.789 546.286 120.843 544.887 120.843Z" fill="currentColor"/>
+            <path d="M476.591 122.619C470.025 122.619 463.89 121.435 458.186 119.067C454.981 117.649 451.882 115.65 448.889 113.068C444.832 109.567 445.174 103.405 448.898 99.5504C452.955 95.3528 459.522 95.4941 464.552 98.4573C465.45 98.9871 466.342 99.4529 467.227 99.8548C470.886 101.469 474.654 102.277 478.528 102.277C480.466 102.277 482.08 101.9 483.372 101.146C484.663 100.285 485.309 99.2629 485.309 98.0789C485.309 97.0026 484.878 96.0877 484.017 95.3343C483.264 94.5809 481.65 93.8275 479.174 93.0741C476.806 92.3207 473.308 91.352 468.68 90.168C460.177 88.0154 453.935 84.9479 449.952 80.9656C445.97 76.8756 443.979 71.5478 443.979 64.9823C443.979 60.1389 445.27 55.726 447.853 51.7437C450.437 47.6537 454.15 44.4248 458.993 42.0569C463.837 39.5814 469.541 38.3436 476.107 38.3436C483.964 38.3436 490.637 39.7966 496.126 42.7027C498.081 43.7369 499.92 44.8486 501.643 46.0325C506.611 49.4515 506.206 56.4559 501.712 60.4769C497.601 64.1549 491.402 64.0254 486.333 61.8509C485.996 61.7063 485.655 61.5667 485.309 61.4305C481.865 60.0313 478.098 59.3317 474.008 59.3317C471.855 59.3317 470.079 59.7084 468.68 60.4618C467.281 61.1076 466.581 62.0763 466.581 63.3679C466.581 64.5518 467.496 65.6281 469.326 66.5968C471.263 67.4578 475.192 68.588 481.111 69.9872C490.906 72.3551 498.009 75.6378 502.422 79.8354C506.835 83.9254 509.043 89.4684 509.043 96.4644C509.043 101.631 507.642 106.205 504.844 110.187C502.153 114.062 498.332 117.13 493.381 119.39C488.538 121.543 482.941 122.619 476.591 122.619Z" fill="currentColor"/>
+            <path d="M388.537 121.408C380.465 121.408 373.361 119.632 367.226 116.08C361.199 112.528 356.463 107.577 353.019 101.227C349.574 94.8769 347.852 87.6656 347.852 79.5933C347.852 71.6286 349.574 64.5249 353.019 58.2823C356.463 52.0397 361.199 47.1425 367.226 43.5906C373.361 39.9312 380.465 38.1014 388.537 38.1014C397.686 38.1014 405.543 40.3079 412.108 44.7208C415.113 46.7404 417.723 49.0758 419.938 51.7267C424.444 57.115 421.188 64.7403 414.796 67.6497L410.791 69.4729C406.336 71.5001 401.332 69.1292 397.416 66.1932C395.264 64.4711 392.412 63.61 388.86 63.61C384.662 63.61 381.11 65.0631 378.204 67.9691C375.406 70.8751 374.007 74.7499 374.007 79.5933C374.007 84.6519 375.406 88.6343 378.204 91.5403C381.11 94.3387 384.662 95.738 388.86 95.738C392.412 95.738 395.264 94.9307 397.416 93.3162C401.3 90.4035 406.269 88.0911 410.711 90.0513L414.579 91.7593C421.073 94.6253 424.397 102.323 419.822 107.751C417.596 110.395 414.969 112.741 411.947 114.789C405.381 119.202 397.578 121.408 388.537 121.408Z" fill="currentColor"/>
+            <path d="M336.916 106.151C336.916 113.418 331.025 119.309 323.758 119.309C316.491 119.309 310.6 113.418 310.6 106.151V53.3582C310.6 46.0912 316.491 40.2003 323.758 40.2003C331.025 40.2003 336.916 46.0912 336.916 53.3582V106.151ZM308.663 15.176C308.663 10.5479 310.062 6.8884 312.86 4.19762C315.659 1.3992 319.318 0 323.839 0C328.467 0 332.126 1.3992 334.817 4.19762C337.508 6.8884 338.853 10.5479 338.853 15.176C338.853 19.5889 337.508 23.1945 334.817 25.9929C332.126 28.6837 328.467 30.0291 323.839 30.0291C319.318 30.0291 315.659 28.6837 312.86 25.9929C310.062 23.1945 308.663 19.5889 308.663 15.176Z" fill="currentColor"/>
+            <path d="M253.251 151.76C249.053 151.76 244.694 151.114 240.174 149.823C235.761 148.531 231.617 146.378 227.742 143.365C223.975 140.459 220.908 136.476 218.54 131.418C217.738 129.814 218.392 127.865 219.998 127.069L227.256 123.471C232.127 121.057 237.848 122.628 241.728 126.436C242.343 127.04 242.918 127.543 243.403 127.866C246.094 129.588 249.484 130.449 253.574 130.449C257.987 130.449 261.592 128.996 264.391 126.09C267.297 123.292 268.75 119.04 268.75 113.336V90.5716H270.364V61.6727H268.75L273.064 48.0136C274.532 43.3624 278.847 40.2002 283.724 40.2002C289.898 40.2002 294.904 45.2058 294.904 51.3803V107.524C294.904 116.887 293.29 124.852 290.061 131.418C286.832 137.983 282.096 142.988 275.854 146.432C269.719 149.984 262.184 151.76 253.251 151.76ZM249.699 115.273C242.703 115.273 236.461 113.659 230.971 110.43C225.482 107.093 221.177 102.519 218.056 96.7066C214.934 90.8945 213.374 84.2752 213.374 76.8487C213.374 69.4221 214.88 62.8028 217.894 56.9907C221.015 51.071 225.267 46.4429 230.648 43.1063C236.03 39.7697 242.219 38.1014 249.215 38.1014C255.673 38.1014 261.323 39.7697 266.167 43.1063C271.01 46.3352 274.777 50.8557 277.468 56.6678C280.266 62.3723 281.666 69.0992 281.666 76.8487C281.666 84.921 280.32 91.8632 277.629 97.6753C275.046 103.38 271.333 107.739 266.49 110.753C261.754 113.766 256.157 115.273 249.699 115.273ZM255.027 92.3476C259.332 92.3476 262.884 90.8945 265.682 87.9885C268.588 84.9748 270.041 81.2615 270.041 76.8487C270.041 72.2205 268.588 68.4534 265.682 65.5474C262.884 62.5337 259.332 61.0269 255.027 61.0269C250.614 61.0269 246.955 62.5337 244.049 65.5474C241.25 68.4534 239.851 72.2205 239.851 76.8487C239.851 81.2615 241.25 84.9748 244.049 87.9885C246.955 90.8945 250.614 92.3476 255.027 92.3476Z" fill="currentColor"/>
+            <path d="M158.854 121.408C153.257 121.408 148.306 120.332 144.001 118.179C139.695 115.919 136.305 112.797 133.829 108.815C131.462 104.725 130.278 100.097 130.278 94.9307C130.278 89.3339 131.569 84.5981 134.152 80.7234C136.843 76.741 140.341 73.7274 144.646 71.6824C149.059 69.5298 153.903 68.4534 159.177 68.4534C167.034 68.4534 173.438 70.2832 178.389 73.9426C183.34 77.4945 186.569 82.7684 188.076 89.7644L177.42 87.3427V69.4221C177.42 66.7313 176.451 64.4173 174.514 62.4799C172.577 60.5425 169.563 59.5739 165.473 59.5739C162.567 59.5739 159.23 59.9506 155.463 60.704C154.845 60.8276 154.221 60.9687 153.591 61.1273C147.946 62.5473 141.675 60.2997 139.514 54.8951C137.578 50.0569 139.663 44.486 144.572 42.7372C146.873 41.9175 149.265 41.1795 151.75 40.5231C157.454 38.9087 163.374 38.1014 169.509 38.1014C176.936 38.1014 183.178 39.4468 188.237 42.1376C193.403 44.8284 197.278 48.6493 199.861 53.6003C202.444 58.4437 203.736 64.202 203.736 70.8751V106.619C203.736 113.628 198.055 119.309 191.045 119.309C185.526 119.309 180.639 115.741 178.959 110.482L176.774 103.649L188.076 100.097C186.461 106.663 183.232 111.883 178.389 115.757C173.653 119.524 167.141 121.408 158.854 121.408ZM167.733 103.649C170.747 103.649 173.169 102.842 174.998 101.227C176.828 99.6127 177.743 97.5139 177.743 94.9307C177.743 92.4552 176.828 90.4102 174.998 88.7957C173.169 87.1813 170.747 86.374 167.733 86.374C164.504 86.374 161.975 87.1813 160.145 88.7957C158.423 90.4102 157.562 92.4552 157.562 94.9307C157.562 97.5139 158.423 99.6127 160.145 101.227C161.975 102.842 164.504 103.649 167.733 103.649Z" fill="currentColor"/>
+            <path d="M13.0772 119.309C5.85485 119.309 0 113.454 0 106.232V57.0176C0 47.7297 7.52939 40.2002 16.8174 40.2002H19.3736L24.5399 56.5064L15.0146 55.5377C17.7053 52.524 20.7728 49.7256 24.217 47.1425C27.7688 44.4517 31.6436 42.2991 35.8412 40.6846C40.0388 38.9625 44.4517 38.1014 49.0798 38.1014C54.2461 38.1014 58.3899 39.0163 61.5112 40.846C64.7402 42.6758 67.2157 45.1513 68.9378 48.2726C70.6599 51.2863 71.8438 54.7305 72.4896 58.6052C73.243 62.4799 73.6197 66.5161 73.6197 70.7137V106.232C73.6197 113.454 67.7649 119.309 60.5425 119.309C53.3202 119.309 47.4654 113.454 47.4654 106.232V73.7812C47.4654 69.6912 46.8196 67.0004 45.528 65.7088C44.2364 64.4173 42.5681 63.7715 40.5231 63.7715C37.6171 63.7715 34.7649 64.5787 31.9665 66.1932C29.2757 67.7 26.5311 69.8526 23.7327 72.6511L18.082 59.5739H26.1544V106.232C26.1544 113.454 20.2996 119.309 13.0772 119.309ZM107.766 119.309C100.499 119.309 94.6078 113.418 94.6078 106.151V73.7812C94.6078 69.6912 93.962 67.0004 92.6705 65.7088C91.4865 64.4173 89.872 63.7715 87.8271 63.7715C85.0286 63.7715 82.2302 64.5787 79.4318 66.1932C76.6334 67.7 73.835 69.8526 71.0366 72.6511L62.4799 55.5377C65.1707 52.524 68.2382 49.7256 71.6824 47.1425C75.2342 44.4517 79.1089 42.2991 83.3065 40.6846C87.5042 38.9625 91.8632 38.1014 96.3837 38.1014C101.55 38.1014 105.748 39.0163 108.977 40.846C112.206 42.6758 114.681 45.1513 116.403 48.2726C118.125 51.2863 119.309 54.7305 119.955 58.6052C120.601 62.4799 120.924 66.5161 120.924 70.7137V106.151C120.924 113.418 115.033 119.309 107.766 119.309Z" fill="currentColor"/>
+            <g filter="url(#logo-texture)">
+                <path d="M420.001 135.516C417.102 141.461 409.987 144.002 403.978 141.239C397.774 138.386 395.131 130.988 398.124 124.85L450.742 16.9292C453.641 10.9844 460.756 8.44297 466.765 11.2061C472.969 14.059 475.612 21.4574 472.619 27.5954L420.001 135.516Z" fill="#FF0000"/>
+            </g>
+        </symbol>
+    </svg>
 
-    <!-- Intro Elements -->
-    <div class="intro-logo">
-      <img src="logo.svg" alt="Magic Slash" />
-    </div>
-    <div class="intro-tagline">
-      <h2 data-lang="fr">
-        <span class="highlight">Trois commandes</span> en slash ou en langage naturel
-      </h2>
-      <h2 data-lang="en">
-        <span class="highlight">Three commands</span> via slash or natural language
-      </h2>
-    </div>
-
-    <div class="scroll-indicator hidden">
-      <div class="mouse"></div>
-      <span data-lang="fr">Scrollez</span>
-      <span data-lang="en">Scroll</span>
-    </div>
-    <div class="zoom-spacer"></div>
-    <div class="bg-orbs">
-      <div class="orb orb-1"></div>
-      <div class="orb orb-2"></div>
-      <div class="orb orb-3"></div>
-      <div class="orb orb-4"></div>
-    </div>
-
-    <header>
-      <div class="header-content">
-        <a href="index.html" class="logo">
-          <img src="logo.svg" alt="Magic Slash" class="logo-img" />
-        </a>
-        <nav class="nav-menu">
-          <a href="index.html" class="nav-link active">
-            <span data-lang="fr">Accueil</span>
-            <span data-lang="en">Home</span>
-          </a>
-          <a href="#" class="nav-link" id="doc-link">Documentation</a>
-          <a
-            href="https://github.com/xrequillart/magic-slash"
-            class="nav-link"
-            target="_blank"
-            >GitHub</a
-          >
-          <a
-            href="https://github.com/xrequillart/magic-slash/blob/main/CHANGELOG.md"
-            class="nav-version"
-            id="version-badge"
-            target="_blank"
-            ></a
-          >
+    <header class="site-header header-fade">
+        <div class="header-inner">
+        <a href="index.html" class="header-logo-link"><svg class="header-logo" viewBox="0 0 844 152"><use href="#magic-slash-logo"/></svg></a>
+        <nav class="header-nav">
+            <div class="header-nav-item">
+                <span data-i18n="nav.resources">Resources</span> <i data-feather="chevron-down"></i>
+                <div class="header-dropdown dropdown-columns">
+                    <div class="dropdown-column">
+                        <span class="dropdown-category-title" data-i18n="nav.documentationCategory" data-i18n-html><i data-feather="book"></i> Documentation</span>
+                        <a href="documentation.html#quick-start" class="dropdown-item secondary">
+                            <span class="dropdown-item-text">
+                                <span class="dropdown-item-title" data-i18n="nav.gettingStarted">Getting Started</span>
+                            </span>
+                        </a>
+                        <a href="documentation.html#skills" class="dropdown-item secondary">
+                            <span class="dropdown-item-text">
+                                <span class="dropdown-item-title" data-i18n="nav.skillsReference">Skills Reference</span>
+                            </span>
+                        </a>
+                        <a href="documentation.html#configuration" class="dropdown-item secondary">
+                            <span class="dropdown-item-text">
+                                <span class="dropdown-item-title" data-i18n="nav.configuration">Configuration</span>
+                            </span>
+                        </a>
+                        <a href="documentation.html" class="dropdown-viewall" data-i18n="nav.viewAllDocs" data-i18n-html>View all docs <i data-feather="arrow-right"></i></a>
+                    </div>
+                    <div class="dropdown-column">
+                        <span class="dropdown-category-title" data-i18n="nav.communityCategory" data-i18n-html><i data-feather="users"></i> Community</span>
+                        <a href="https://github.com/Xrequillart/magic-slash" target="_blank" class="dropdown-item secondary">
+                            <span class="dropdown-item-text">
+                                <span class="dropdown-item-title">GitHub</span>
+                            </span>
+                        </a>
+                        <a href="documentation.html#troubleshooting" class="dropdown-item secondary">
+                            <span class="dropdown-item-text">
+                                <span class="dropdown-item-title" data-i18n="nav.faq">FAQ</span>
+                            </span>
+                        </a>
+                    </div>
+                    <div class="dropdown-column">
+                        <span class="dropdown-category-title" data-i18n="nav.updatesCategory" data-i18n-html><i data-feather="zap"></i> Updates</span>
+                        <a href="#" class="dropdown-item secondary">
+                            <span class="dropdown-item-text">
+                                <span class="dropdown-item-title" data-i18n="nav.changelog" data-i18n-html>Changelog <span class="version-badge" id="latestVersion"></span></span>
+                            </span>
+                        </a>
+                    </div>
+                </div>
+            </div>
         </nav>
-        <div class="lang-selector" id="lang-selector">
-          <button class="lang-selector-btn" id="lang-selector-btn">
-            <span data-lang="fr">FR</span>
-            <span data-lang="en">EN</span>
-            <i data-feather="chevron-down"></i>
-          </button>
-          <div class="lang-selector-dropdown">
-            <button class="lang-option" data-value="fr">Français</button>
-            <button class="lang-option" data-value="en">English</button>
-          </div>
+        <div class="header-right">
+            <a href="#" class="header-version-badge" id="headerVersion"></a>
+            <div style="position: relative;">
+                <button class="header-lang-toggle" id="langToggle">
+                    <i data-feather="globe"></i>
+                    <span id="langLabel">EN</span>
+                    <i data-feather="chevron-down" class="chevron"></i>
+                </button>
+                <div class="header-lang-dropdown" id="langDropdown">
+                    <a href="#" class="lang-option" data-lang="en">English</a>
+                    <a href="#" class="lang-option" data-lang="fr">Français</a>
+                </div>
+            </div>
+            <a href="documentation.html#quick-start" class="header-cta-btn" data-i18n="nav.getStarted">Get started</a>
         </div>
-      </div>
+        </div>
     </header>
 
-    <!-- Message mobile -->
-    <div class="mobile-message">
-      <h2>Magic Slash</h2>
-      <p>Ce site est optimisé pour une expérience desktop.<br>Veuillez le consulter sur un ordinateur.</p>
+    <div class="page-wrapper">
+        <svg class="hero-bg-svg" width="2109" height="1549" viewBox="0 0 2109 1549" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <mask id="mask0_63_138" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="2109" height="1549">
+                <rect width="2108.71" height="1549" fill="white"/>
+            </mask>
+            <g mask="url(#mask0_63_138)">
+                <rect width="2108.71" height="1549" fill="#FFC8E6"/>
+                <g class="trail" data-draw-order="1" data-draw-delay="1200" filter="url(#filter0_g_63_138)">
+                    <path d="M2155.7 -428.285C2123.74 -199.834 1098.86 251.267 1188.18 421.156C1277.51 591.045 2671.93 -285.76 2671.93 -285.76" stroke="#FF0000" stroke-width="140" stroke-linecap="round"/>
+                </g>
+                <g class="trail" data-draw-order="3" filter="url(#filter1_g_63_138)">
+                    <path d="M313.642 1632.5C401.63 1419.27 1445.43 1025.09 1401.36 838.278C1357.28 651.467 -211.9 1152.33 -211.9 1152.33" stroke="#393BFF" stroke-width="140" stroke-linecap="round"/>
+                </g>
+                <g class="trail" data-draw-order="0" filter="url(#filter2_g_63_138)">
+                    <path d="M1554.68 -519.16C1522.72 -290.709 497.846 160.392 587.169 330.281C676.493 500.17 2070.91 -376.635 2070.91 -376.635" stroke="#FF0000" stroke-width="140" stroke-linecap="round"/>
+                </g>
+                <g class="trail" data-draw-order="2" data-draw-delay="1200" filter="url(#filter3_g_63_138)">
+                    <path d="M2851.71 -333.28C2819.75 -104.829 1884.2 101.822 1884.2 516.161C1884.2 930.5 2746 1385 2746 1385" stroke="#FF0000" stroke-width="140" stroke-linecap="round"/>
+                </g>
+            </g>
+            <defs>
+                <filter id="filter0_g_63_138" x="1012.53" y="-598.294" width="1829.41" height="1211.29" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                    <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                    <feTurbulence type="fractalNoise" baseFrequency="0.5 0.5" numOctaves="3" seed="8827"/>
+                    <feDisplacementMap in="shape" scale="200" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%"/>
+                    <feMerge result="effect1_texture_63_138"><feMergeNode in="displacedImage"/></feMerge>
+                </filter>
+                <filter id="filter1_g_63_138" x="-381.919" y="626.547" width="1954.69" height="1175.97" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                    <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                    <feTurbulence type="fractalNoise" baseFrequency="0.5 0.5" numOctaves="3" seed="8827"/>
+                    <feDisplacementMap in="shape" scale="200" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%"/>
+                    <feMerge result="effect1_texture_63_138"><feMergeNode in="displacedImage"/></feMerge>
+                </filter>
+                <filter id="filter2_g_63_138" x="411.516" y="-689.168" width="1829.41" height="1211.29" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                    <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                    <feTurbulence type="fractalNoise" baseFrequency="0.5 0.5" numOctaves="3" seed="8827"/>
+                    <feDisplacementMap in="shape" scale="200" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%"/>
+                    <feMerge result="effect1_texture_63_138"><feMergeNode in="displacedImage"/></feMerge>
+                </filter>
+                <filter id="filter3_g_63_138" x="1714.2" y="-503.288" width="1307.52" height="2058.3" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                    <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                    <feTurbulence type="fractalNoise" baseFrequency="0.5 0.5" numOctaves="3" seed="8827"/>
+                    <feDisplacementMap in="shape" scale="200" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%"/>
+                    <feMerge result="effect1_texture_63_138"><feMergeNode in="displacedImage"/></feMerge>
+                </filter>
+            </defs>
+        </svg>
+        <svg class="hero-bg-svg hero-bg-svg-bottom" width="2109" height="2200" viewBox="0 0 2109 2200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <mask id="mask0_66_163" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="2109" height="2200">
+                <rect width="2109" height="2200" fill="white"/>
+            </mask>
+            <g mask="url(#mask0_66_163)">
+                <rect width="2109" height="2200" fill="#FFC8E6"/>
+                <g class="trail trail-reverse" filter="url(#filter0_g_66_163)">
+                    <path d="M1921.51 1635C1841.01 1118 394.507 1519.5 153.507 831.501C-87.492 143.5 691.506 -216.498 691.506 -216.498" stroke="#393BFF" stroke-width="140" stroke-linecap="round"/>
+                </g>
+                <g class="trail" filter="url(#filter1_g_66_163)">
+                    <path d="M2694.46 -60.0013C2662.5 168.45 1726.94 375.1 1726.94 789.439C1726.94 1203.78 2588.74 1658.28 2588.74 1658.28" stroke="#FF0000" stroke-width="140" stroke-linecap="round"/>
+                </g>
+            </g>
+            <defs>
+                <filter id="filter0_g_66_163" x="-62.8557" y="-386.515" width="2154.37" height="2191.53" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                    <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                    <feTurbulence type="fractalNoise" baseFrequency="0.5 0.5" numOctaves="3" seed="8827"/>
+                    <feDisplacementMap in="shape" scale="200" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%"/>
+                    <feMerge result="effect1_texture_66_163"><feMergeNode in="displacedImage"/></feMerge>
+                </filter>
+                <filter id="filter1_g_66_163" x="1556.94" y="-230.01" width="1307.52" height="2058.3" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                    <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                    <feTurbulence type="fractalNoise" baseFrequency="0.5 0.5" numOctaves="3" seed="8827"/>
+                    <feDisplacementMap in="shape" scale="200" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%"/>
+                    <feMerge result="effect1_texture_66_163"><feMergeNode in="displacedImage"/></feMerge>
+                </filter>
+            </defs>
+        </svg>
+        <svg class="hero-bg-svg hero-bg-svg-third" width="2109" height="4200" viewBox="0 0 2109 4200" fill="none" overflow="visible" xmlns="http://www.w3.org/2000/svg">
+            <mask id="mask0_78_206" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="2109" height="4200">
+                <rect width="2109" height="4200" fill="white"/>
+            </mask>
+            <g mask="url(#mask0_78_206)">
+                <rect width="2109" height="4200" fill="#FFC8E6"/>
+                <g class="trail" filter="url(#filter0_g_78_206)">
+                    <path d="M2694.51 -60C2662.55 168.451 1727 375.102 1727 789.441C1727 1203.78 2588.8 1658.28 2588.8 1658.28" stroke="#393BFF" stroke-width="140" stroke-linecap="round"/>
+                </g>
+                <g class="trail trail-reverse" filter="url(#filter4_g_78_206)">
+                    <path d="M-422.813 2451.31C-416.275 2608.7 823.598 2897.75 756.565 3173.83C689.531 3449.91 1418.57 3683 1418.57 3683" stroke="#393BFF" stroke-width="140" stroke-linecap="round"/>
+                </g>
+            </g>
+            <defs>
+                <filter id="filter0_g_78_206" x="1557" y="-230.009" width="1307.52" height="2058.3" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                    <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                    <feTurbulence type="fractalNoise" baseFrequency="0.5 0.5" numOctaves="3" seed="8827"/>
+                    <feDisplacementMap in="shape" scale="200" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%"/>
+                    <feMerge result="effect1_texture_78_206"><feMergeNode in="displacedImage"/></feMerge>
+                </filter>
+                <filter id="filter4_g_78_206" x="-592.814" y="2281.31" width="2181.41" height="1571.71" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                    <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                    <feTurbulence type="fractalNoise" baseFrequency="0.5 0.5" numOctaves="3" seed="8827"/>
+                    <feDisplacementMap in="shape" scale="200" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%"/>
+                    <feMerge result="effect1_texture_78_206"><feMergeNode in="displacedImage"/></feMerge>
+                </filter>
+            </defs>
+        </svg>
+        <svg class="hero-bg-svg hero-bg-svg-fourth" width="3502" height="1500" viewBox="-664 -120 3502 1500" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g class="trail" filter="url(#filter0_g_85_233)">
+                <path d="M2668 51.0004C2674.54 208.391 -607.001 69.5784 1116.03 685.08C2839.05 1300.58 -493.5 874.5 -493.5 874.5" stroke="#393BFF" stroke-width="140" stroke-linecap="round"/>
+            </g>
+            <defs>
+                <filter id="filter0_g_85_233" x="-663.507" y="-119.001" width="3501.52" height="1307.14" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                    <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                    <feTurbulence type="fractalNoise" baseFrequency="0.5 0.5" numOctaves="3" seed="8827"/>
+                    <feDisplacementMap in="shape" scale="200" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%"/>
+                    <feMerge result="effect1_texture_85_233"><feMergeNode in="displacedImage"/></feMerge>
+                </filter>
+            </defs>
+        </svg>
+    <div class="hero">
+        <div class="hero-inner">
+            <div class="hero-content">
+                <h1 data-i18n="hero.title" data-i18n-html>Just start<br>build faster</h1>
+                <p class="hero-fade" data-i18n="hero.subtitle">AI-powered skills for Claude Code — from Jira tickets to pull requests.</p>
+                <div class="hero-cta hero-fade">
+                    <a href="documentation.html#quick-start" class="btn-get-started" data-i18n="hero.cta">Get started</a>
+                    <div class="install-box">
+                        <code id="install-cmd">curl -fsSL https://magic-slash.io/install.sh | bash</code>
+                        <button class="copy-btn" onclick="copyCommand(this)">
+                            <i data-feather="copy"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <!-- ── Desktop App Mockup ── -->
+    <div class="desktop-mockup-section hero-fade">
+        <div class="desktop-frame reveal">
+
+            <!-- Title bar -->
+            <div class="desktop-titlebar">
+                <div class="desktop-titlebar-dots">
+                    <span></span><span></span><span></span>
+                </div>
+                <span class="desktop-titlebar-btn active"><i data-feather="sidebar"></i></span>
+                <div class="desktop-titlebar-center"></div>
+                <div class="desktop-titlebar-actions">
+                    <span class="desktop-titlebar-btn active"><i data-feather="sidebar" style="transform: rotate(180deg)"></i></span>
+                </div>
+            </div>
+
+            <!-- Body: 3 columns -->
+            <div class="desktop-body">
+
+                <!-- Left sidebar -->
+                <div class="desktop-sidebar">
+                    <div class="desktop-menu">
+                        <div class="desktop-menu-item">
+                            <i data-feather="plus"></i> <span data-i18n="desktop.newAgent">New agent</span>
+                        </div>
+                        <div class="desktop-menu-item">
+                            <i data-feather="zap"></i> <span data-i18n="desktop.skills">Skills</span>
+                        </div>
+                        <div class="desktop-menu-item">
+                            <i data-feather="settings"></i> <span data-i18n="desktop.settings">Settings</span>
+                        </div>
+                    </div>
+
+                    <div class="desktop-agents-header">
+                        <span class="desktop-agents-label" data-i18n="desktop.agents">Agents</span>
+                    </div>
+
+                    <div class="desktop-agent-list">
+                        <div class="desktop-project-group">
+                            <span class="dot" style="background:#6366f1"></span>
+                            stellar-api
+                            <i data-feather="chevron-down"></i>
+                        </div>
+                        <div class="desktop-agent-item selected sub" id="desktop-agent-auth">
+                            <span class="dot blue" id="desktop-agent-auth-dot"></span>
+                            <span class="desktop-agent-name">auth-middleware</span>
+                            <span class="desktop-agent-spinner" id="desktop-agent-auth-spinner"></span>
+                            <span class="desktop-agent-status desktop-agent-check" id="desktop-agent-auth-check" style="color:#22c55e"><i data-feather="check"></i></span>
+                        </div>
+                        <div class="desktop-agent-item sub">
+                            <span class="dot green"></span>
+                            <span class="desktop-agent-name">api-refactor</span>
+                            <span class="desktop-agent-status" style="color:#22c55e"><i data-feather="check"></i></span>
+                        </div>
+                        <div class="desktop-agent-item sub">
+                            <span class="dot green"></span>
+                            <span class="desktop-agent-name">fix-tests</span>
+                            <span class="desktop-agent-status" style="color:#22c55e"><i data-feather="check"></i></span>
+                        </div>
+                        <div class="desktop-project-group">
+                            <span class="dot" style="background:#a855f7"></span>
+                            acme-app
+                            <i data-feather="chevron-down"></i>
+                        </div>
+                        <div class="desktop-agent-item sub">
+                            <span class="dot yellow"></span>
+                            <span class="desktop-agent-name">db-migration</span>
+                            <span class="desktop-agent-status" style="color:#eab308"><i data-feather="clock"></i></span>
+                        </div>
+                        <div class="desktop-agent-item sub">
+                            <span class="dot gray"></span>
+                            <span class="desktop-agent-name">seed-data</span>
+                        </div>
+                        <div class="desktop-agent-item">
+                            <span class="dot green"></span>
+                            <span class="desktop-agent-name">ci-pipeline</span>
+                            <span class="desktop-agent-status" style="color:#22c55e"><i data-feather="check"></i></span>
+                        </div>
+                    </div>
+
+                    <div class="desktop-sidebar-footer">
+                        <a href="#">Docs</a>
+                        <a href="#">GitHub</a>
+                    </div>
+                </div>
+
+                <!-- Main panel -->
+                <div class="desktop-main">
+                    <div class="desktop-main-terminal">
+                        <div class="desktop-main-inner">
+                            <div class="desktop-main-header">
+                                <div class="desktop-main-logo-row">
+                                    <img class="desktop-main-logo" src="claudecode-color.png" alt="Claude Code">
+                                    <span class="desktop-main-name">Claude Code</span>
+
+                                </div>
+                                <div class="desktop-main-meta">claude-opus-4-20250514 &middot; /auth-middleware</div>
+                                <div class="desktop-main-path">~/projects/stellar-api</div>
+                            </div>
+                            <div class="desktop-terminal-content" id="desktop-terminal-content">
+                                <!-- Phase 1: /start PROJ-142 -->
+                                <div class="workflow-line phase-1-line cli-prompt">
+                                    <span class="cli-prompt-icon">❯</span>
+                                    <span class="command" data-text="/start PROJ-142"></span>
+                                </div>
+                                <div class="workflow-line phase-1-line cli-response">
+                                    <div class="cli-status phase-1-status-1">
+                                        <span class="cli-status-icon"><span class="loader"></span><span class="checkmark"><i data-feather="check"></i></span></span>
+                                        <span class="cli-status-text">Fetching Jira ticket PROJ-142...</span>
+                                    </div>
+                                    <div class="cli-status phase-1-status-2">
+                                        <span class="cli-status-icon"><span class="loader"></span><span class="checkmark"><i data-feather="check"></i></span></span>
+                                        <span class="cli-status-text">Analysing ticket...</span>
+                                        <span class="cli-status-result result">BACKEND</span>
+                                    </div>
+                                    <div class="cli-status phase-1-status-3">
+                                        <span class="cli-status-icon"><span class="loader"></span><span class="checkmark"><i data-feather="check"></i></span></span>
+                                        <span class="cli-status-text">Creating worktree...</span>
+                                        <span class="cli-status-result result">stellar-api/feature/PROJ-142</span>
+                                    </div>
+                                    <div class="cli-status phase-1-status-4" style="margin-top: 8px">
+                                        <span class="cli-status-icon success"><i data-feather="check"></i></span>
+                                        <span class="cli-status-text">Ready! Starting work...</span>
+                                    </div>
+                                    <div class="cli-agents phase-1-status-5">
+                                        <span class="cli-status-icon"><span class="loader"></span><span class="checkmark"><i data-feather="check"></i></span></span>
+                                        <span class="agents-text">1 agent coding...</span>
+                                    </div>
+                                    <div class="agents-diff-container">
+                                        <div class="diff-file" data-diff-file="1">
+                                            <div class="diff-filename">src/middleware/auth.ts</div>
+                                            <div class="diff-line added">+export function verifyToken(req: Request, res: Response, next: NextFunction) {</div>
+                                            <div class="diff-line added">+  const token = req.headers.authorization?.split(' ')[1];</div>
+                                            <div class="diff-line added">+  if (!token) return res.status(401).json({ error: 'Unauthorized' });</div>
+                                            <div class="diff-line added">+}</div>
+                                        </div>
+                                        <div class="diff-file" data-diff-file="2">
+                                            <div class="diff-filename">src/middleware/refresh.ts</div>
+                                            <div class="diff-line added">+export async function refreshToken(token: string): Promise&lt;string&gt; {</div>
+                                            <div class="diff-line added">+  const decoded = jwt.verify(token, SECRET);</div>
+                                            <div class="diff-line added">+  return jwt.sign({ sub: decoded.sub }, SECRET, { expiresIn: '1h' });</div>
+                                            <div class="diff-line added">+}</div>
+                                        </div>
+                                        <div class="diff-file" data-diff-file="3">
+                                            <div class="diff-filename">src/routes/index.ts</div>
+                                            <div class="diff-line removed">- router.get('/users', getUsers);</div>
+                                            <div class="diff-line added">+ router.get('/users', verifyToken, getUsers);</div>
+                                            <div class="diff-line added">+ router.post('/auth/refresh', refreshToken);</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Phase 2: /commit -->
+                                <div class="workflow-line phase-2-line cli-prompt" style="margin-top: 16px">
+                                    <span class="cli-prompt-icon purple">❯</span>
+                                    <span class="command purple" data-text="/commit"></span>
+                                </div>
+                                <div class="workflow-line phase-2-line cli-response purple">
+                                    <div class="cli-status phase-2-status-1">
+                                        <span class="cli-status-icon"><span class="loader purple"></span><span class="checkmark"><i data-feather="check"></i></span></span>
+                                        <span class="cli-status-text">Staging changes...</span>
+                                        <span class="cli-status-result result">3 files staged</span>
+                                    </div>
+                                    <div class="cli-status phase-2-status-2">
+                                        <span class="cli-status-icon"><span class="loader purple"></span><span class="checkmark"><i data-feather="check"></i></span></span>
+                                        <span class="cli-status-text">Generating commit message...</span>
+                                    </div>
+                                    <div class="cli-status phase-2-status-3">
+                                        <span class="cli-status-icon success"><i data-feather="check"></i></span>
+                                        <span class="cli-status-text" style="color: #fff">feat(auth): add JWT middleware</span>
+                                    </div>
+                                    <div class="cli-status phase-2-status-4">
+                                        <span class="cli-status-icon"><span class="loader purple"></span><span class="checkmark"><i data-feather="check"></i></span></span>
+                                        <span class="cli-status-text">Committing...</span>
+                                        <span class="cli-status-result result">Commit created!</span>
+                                    </div>
+                                </div>
+
+                                <!-- Phase 3: /done -->
+                                <div class="workflow-line phase-3-line cli-prompt" style="margin-top: 16px">
+                                    <span class="cli-prompt-icon green">❯</span>
+                                    <span class="command green" data-text="/done"></span>
+                                </div>
+                                <div class="workflow-line phase-3-line cli-response green">
+                                    <div class="cli-status phase-3-status-1">
+                                        <span class="cli-status-icon"><span class="loader green"></span><span class="checkmark"><i data-feather="check"></i></span></span>
+                                        <span class="cli-status-text">Pushing to remote...</span>
+                                        <span class="cli-status-result result">origin/feature/PROJ-142</span>
+                                    </div>
+                                    <div class="cli-status phase-3-status-2">
+                                        <span class="cli-status-icon"><span class="loader green"></span><span class="checkmark"><i data-feather="check"></i></span></span>
+                                        <span class="cli-status-text">Creating pull request...</span>
+                                        <span class="cli-status-result result">PR #87 created</span>
+                                    </div>
+                                    <div class="cli-status phase-3-status-3">
+                                        <span class="cli-status-icon"><span class="loader green"></span><span class="checkmark"><i data-feather="check"></i></span></span>
+                                        <span class="cli-status-text">Updating Jira ticket...</span>
+                                        <span class="cli-status-result result">PROJ-142 → "To be reviewed"</span>
+                                    </div>
+                                    <div class="cli-success-banner phase-3-status-4">
+                                        <span class="success-check"><i data-feather="check"></i></span>
+                                        <span>Task complete!</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="desktop-replay-btn" onclick="replayDesktopTerminal()">
+                                <i data-feather="rotate-cw"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right panel -->
+                <div class="desktop-right">
+                    <div class="desktop-right-header">
+                        <i data-feather="info"></i>
+                        <span class="desktop-right-title">auth-middleware</span>
+                        <span class="desktop-right-close"><i data-feather="x"></i></span>
+                    </div>
+                    <div class="desktop-right-body">
+                        <!-- Ticket card -->
+                        <div class="desktop-right-ticket">
+                            <div class="desktop-right-ticket-head">
+                                <span class="desktop-right-ticket-id">PROJ-142</span>
+                                <span class="desktop-right-ticket-badge in-progress" data-i18n="desktop.inProgress">In Progress</span>
+                            </div>
+                            <div class="desktop-right-ticket-title" data-i18n="desktop.ticketTitle">Add JWT auth middleware</div>
+                            <div class="desktop-right-ticket-desc" data-i18n="desktop.ticketDesc">Implement token validation and refresh logic for the API gateway.</div>
+                        </div>
+
+                        <!-- Repositories -->
+                        <div class="desktop-right-section-head">
+                            <span class="desktop-right-section-label" data-i18n="desktop.repositories">Repositories</span>
+                            <span class="desktop-right-section-action"><i data-feather="edit-2"></i> &#8984;P</span>
+                        </div>
+                        <div class="desktop-right-repo-card">
+                            <div class="desktop-right-repo-name">stellar-api</div>
+                            <div class="desktop-right-branch">
+                                <i data-feather="git-branch"></i>
+                                <span>feature/PROJ-142</span>
+                            </div>
+                            <div class="desktop-right-changes" id="desktop-right-changes">
+                                <div class="desktop-right-changes-head" id="desktop-right-changes-head">
+                                    <span class="desktop-right-changes-count" id="desktop-right-changes-count"></span>
+                                    <div class="desktop-right-changes-gauge" id="desktop-right-gauge"></div>
+                                </div>
+                                <div class="desktop-right-change-files" id="desktop-right-files"></div>
+                                <div class="desktop-right-no-changes" id="desktop-right-no-changes">No uncommitted changes</div>
+                            </div>
+                            <div class="desktop-right-commits" id="desktop-right-commits"></div>
+                            <span class="desktop-right-commit-ahead" id="desktop-right-ahead"></span>
+                            <a class="desktop-right-pr-link" id="desktop-right-pr-link">
+                                <i data-feather="git-pull-request"></i>
+                                <span>PR #87</span>
+                                <span class="desktop-right-pr-status">Open</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
     </div>
 
-    <main>
-      <!-- Terminal Section - Full Screen -->
-      <section class="terminal-hero">
-        <section class="workflow">
-          <div class="terminals-container">
-            <!-- Ligne du haut -->
-            <div class="terminal-slot terminal-top-left"></div>
-            <div class="terminal-slot terminal-top-right"></div>
-            <!-- Ligne du milieu -->
-            <div class="terminal-slot terminal-left"></div>
-            <div class="terminal-slot terminal-center">
-              <div class="workflow-demo">
-            <div class="workflow-header">
-              <span class="workflow-dot red"></span>
-              <span class="workflow-dot yellow"></span>
-              <span class="workflow-dot green"></span>
+    <!-- ── Feature Sections ── -->
+    <div class="content-sections">
+
+        <!-- Section 1 — Three Commands (text LEFT, illustration RIGHT) -->
+        <div class="section-glass-frame">
+        <section class="section">
+            <div class="split-layout">
+                <div class="split-text reveal-left">
+                    <h2 class="section-header" data-i18n="section1.title" data-i18n-html>3 skills.<br>Entire workflow.</h2>
+                    <p data-i18n="section1.subtitle">From ticket to pull request in three slash commands.</p>
+                    <ul>
+                        <li data-i18n="section1.startDesc" data-i18n-html><b style="color:#000">/start</b> grabs your ticket and creates the branch.</li>
+                        <li data-i18n="section1.commitDesc" data-i18n-html><b style="color:#000">/commit</b> stages, splits, and writes your commit message.</li>
+                        <li data-i18n="section1.doneDesc" data-i18n-html><b style="color:#000">/done</b> pushes and creates the PR.</li>
+                    </ul>
+                    <p data-i18n="section1.noContext">No context switching. No copy-pasting ticket IDs. Just flow.</p>
+                    <a href="documentation.html" class="btn-get-started" style="margin-top: 1.5rem;" data-i18n="section1.seeDocs">See docs</a>
+                </div>
+                <div class="reveal-right cmd-terminal-wrapper-col">
+                    <div class="cmd-terminal-wrapper">
+                    <div class="cmd-terminal">
+                        <div class="cmd-terminal-bar">
+                            <span class="cmd-terminal-dot"></span>
+                            <span class="cmd-terminal-dot"></span>
+                            <span class="cmd-terminal-dot"></span>
+                        </div>
+                        <div class="cmd-terminal-body">
+                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/start</span> <span class="cmd-arg">PROJ-142</span></div>
+                            <div class="cmd-line"><span class="cmd-output">&#10003; Branch feature/PROJ-142 created</span></div>
+                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/commit</span></div>
+                            <div class="cmd-line"><span class="cmd-output">&#10003; feat: add user authentication</span></div>
+                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/done</span></div>
+                            <div class="cmd-line"><span class="cmd-output">&#10003; PR #87 created &mdash; linked to PROJ-142</span></div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
             </div>
-            <div class="workflow-content" id="terminal-content">
-              <!-- Phase 1: /start -->
-              <div class="workflow-line phase-1-line cli-prompt">
-                <span class="cli-prompt-icon">❯</span>
-                <span class="command" data-text="/start PROJ-42"></span>
-              </div>
-
-              <div class="workflow-line phase-1-line cli-response">
-                <div class="cli-status phase-1-status-1">
-                  <span class="cli-status-icon"
-                    ><span class="loader"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span class="cli-status-text"
-                    >Fetching Jira ticket PROJ-42...</span
-                  >
-                </div>
-                <div class="cli-status phase-1-status-2">
-                  <span class="cli-status-icon"
-                    ><span class="loader"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span class="cli-status-text">Analysing ticket...</span>
-                  <span class="cli-status-result result"
-                    >BOTH (Backend + Frontend)</span
-                  >
-                </div>
-                <div class="cli-section-title phase-1-status-3">
-                  Creating worktrees:
-                </div>
-                <div class="cli-item phase-1-status-4">
-                  <span class="cli-status-icon"
-                    ><span class="loader"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span>/projects/project-back-PROJ-42</span>
-                </div>
-                <div class="cli-item phase-1-status-5">
-                  <span class="cli-status-icon"
-                    ><span class="loader"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span>/projects/project-front-PROJ-42</span>
-                </div>
-                <div
-                  class="cli-status phase-1-status-6"
-                  style="margin-top: 8px"
-                >
-                  <span class="cli-status-icon success"
-                    ><i data-feather="check"></i
-                  ></span>
-                  <span class="cli-status-text">Ready! Starting work...</span>
-                </div>
-                <div class="cli-agents phase-1-status-7">
-                  <span class="cli-status-icon"
-                    ><span class="loader"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span class="agents-text">2 agents coding...</span>
-                </div>
-                <div class="agents-diff-container">
-                  <div class="diff-file" data-diff-file="1">
-                    <div class="diff-filename">src/api/users.ts</div>
-                    <div class="diff-line removed">
-                      - return users.slice(0, 10);
-                    </div>
-                    <div class="diff-line added">
-                      + return paginate(users, page, limit);
-                    </div>
-                  </div>
-                  <div class="diff-file" data-diff-file="2">
-                    <div class="diff-filename">src/api/pagination.ts</div>
-                    <div class="diff-line added">
-                      +export function paginate&lt;T&gt;(items: T[], page:
-                      number, limit: number): T[] {
-                    </div>
-                    <div class="diff-line added">
-                      + const start = (page - 1) * limit;
-                    </div>
-                    <div class="diff-line added">
-                      + return items.slice(start, start + limit);
-                    </div>
-                    <div class="diff-line added">+}</div>
-                  </div>
-                  <div class="diff-file" data-diff-file="3">
-                    <div class="diff-filename">src/components/UserList.tsx</div>
-                    <div class="diff-line removed">
-                      - const users = await fetchUsers();
-                    </div>
-                    <div class="diff-line added">
-                      + const { users, total } = await fetchUsers(page);
-                    </div>
-                    <div class="diff-line added">
-                      + &lt;Pagination total={total} current={page} /&gt;
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Phase 2: /commit (Back) -->
-              <div
-                class="workflow-line phase-2-line cli-prompt"
-                style="margin-top: 16px"
-              >
-                <span class="cli-prompt-icon purple">❯</span>
-                <span class="command purple" data-text="/commit"></span>
-              </div>
-
-              <div class="workflow-line phase-2-line cli-response purple">
-                <div
-                  class="cli-section-title phase-2-status-0"
-                  style="margin-top: 0"
-                >
-                  project-back-PROJ-42
-                </div>
-                <div class="cli-status phase-2-status-1">
-                  <span class="cli-status-icon"
-                    ><span class="loader purple"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span class="cli-status-text">Staging changes...</span>
-                  <span class="cli-status-result result">3 files staged</span>
-                </div>
-                <div class="cli-status phase-2-status-2">
-                  <span class="cli-status-icon"
-                    ><span class="loader purple"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span class="cli-status-text"
-                    >Generating commit message...</span
-                  >
-                </div>
-                <div class="cli-status phase-2-status-3">
-                  <span class="cli-status-icon success"
-                    ><i data-feather="check"></i
-                  ></span>
-                  <span class="cli-status-text" style="color: var(--text)"
-                    >feat(api): add user pagination endpoint</span
-                  >
-                </div>
-                <div class="cli-status phase-2-status-4">
-                  <span class="cli-status-icon"
-                    ><span class="loader purple"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span class="cli-status-text">Committing...</span>
-                  <span class="cli-status-result result">Commit created!</span>
-                </div>
-
-                <div
-                  class="cli-section-title phase-2-status-5"
-                  style="margin-top: 16px"
-                >
-                  project-front-PROJ-42
-                </div>
-                <div class="cli-status phase-2-status-6">
-                  <span class="cli-status-icon"
-                    ><span class="loader purple"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span class="cli-status-text">Staging changes...</span>
-                  <span class="cli-status-result result">2 files staged</span>
-                </div>
-                <div class="cli-status phase-2-status-7">
-                  <span class="cli-status-icon"
-                    ><span class="loader purple"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span class="cli-status-text"
-                    >Generating commit message...</span
-                  >
-                </div>
-                <div class="cli-status phase-2-status-8">
-                  <span class="cli-status-icon success"
-                    ><i data-feather="check"></i
-                  ></span>
-                  <span class="cli-status-text" style="color: var(--text)"
-                    >feat(ui): add pagination component</span
-                  >
-                </div>
-                <div class="cli-status phase-2-status-9">
-                  <span class="cli-status-icon"
-                    ><span class="loader purple"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span class="cli-status-text">Committing...</span>
-                  <span class="cli-status-result result">Commit created!</span>
-                </div>
-              </div>
-
-              <!-- Phase 3: /done -->
-              <div
-                class="workflow-line phase-3-line cli-prompt"
-                style="margin-top: 16px"
-              >
-                <span class="cli-prompt-icon green">❯</span>
-                <span class="command green" data-text="/done"></span>
-              </div>
-
-              <div class="workflow-line phase-3-line cli-response green">
-                <div class="cli-status phase-3-status-1">
-                  <span class="cli-status-icon"
-                    ><span class="loader green"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span class="cli-status-text">Pushing to remote...</span>
-                  <span class="cli-status-result result"
-                    >origin/feature/PROJ-42</span
-                  >
-                </div>
-                <div class="cli-status phase-3-status-2">
-                  <span class="cli-status-icon"
-                    ><span class="loader green"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span class="cli-status-text">Creating pull request...</span>
-                  <span class="cli-status-result result">PR #123 created</span>
-                </div>
-                <div class="cli-status phase-3-status-3">
-                  <span class="cli-status-icon"
-                    ><span class="loader green"></span
-                    ><span class="checkmark"><i data-feather="check"></i></span
-                  ></span>
-                  <span class="cli-status-text">Updating Jira ticket...</span>
-                  <span class="cli-status-result result"
-                    >PROJ-42 → "To be reviewed"</span
-                  >
-                </div>
-                <div class="cli-success-banner phase-3-status-4">
-                  <span class="success-check"
-                    ><i data-feather="check"></i
-                  ></span>
-                  <span>🎉</span>
-                  <span>Task complete!</span>
-                </div>
-              </div>
-            </div>
-            <button class="replay-btn" onclick="replayTerminal()">
-              <i data-feather="rotate-cw"></i>
-            </button>
-              </div><!-- workflow-demo -->
-            </div><!-- terminal-center -->
-            <div class="terminal-slot terminal-right"></div>
-            <!-- Ligne du bas -->
-            <div class="terminal-slot terminal-bottom-left"></div>
-            <div class="terminal-slot terminal-bottom-right"></div>
-          </div><!-- terminals-container -->
         </section>
-      </section>
-
-      <!-- Hero Section -->
-      <section class="hero">
-        <div class="container">
-          <span class="badge">
-            <span data-lang="fr">Pour Claude Code</span>
-            <span data-lang="en">For Claude Code</span>
-          </span>
-          <h1>
-            <span data-lang="fr">Le workflow dev parfait avec</span>
-            <span data-lang="en">The perfect dev workflow with</span>
-            <br />
-            <span class="gradient-text"
-              ><span class="title-commands">/start PROJ-42</span></span
-            >
-          </h1>
-          <p>
-            <span data-lang="fr"
-              >Trois commandes qui automatisent ton workflow, utilisables en slash
-              <code>/start</code> ou en langage naturel <code>"démarre PROJ-123"</code>.</span
-            >
-            <span data-lang="en"
-              >Three commands that automate your workflow, usable via slash
-              <code>/start</code> or natural language <code>"work on PROJ-123"</code>.</span
-            >
-          </p>
-
-          <div class="install-box">
-            <code id="install-cmd"
-              >curl -fsSL https://magic-slash.io/install.sh | bash</code
-            >
-            <button class="copy-btn" onclick="copyCommand('install-cmd')">
-              <i data-feather="copy"></i>
-            </button>
-          </div>
         </div>
-      </section>
 
-      <section class="commands">
-        <div class="container">
-          <h2>
-            <span data-lang="fr"><span class="gradient-text">Trois commandes</span>, un workflow</span>
-            <span data-lang="en"><span class="gradient-text">Three commands</span>, one workflow</span>
-          </h2>
-          <p>
-            <span data-lang="fr"
-              >Tape <code>/start</code> ou dis simplement <code>"démarre PROJ-123"</code>.</span
-            >
-            <span data-lang="en"
-              >Type <code>/start</code> or just say <code>"work on PROJ-123"</code>.</span
-            >
-          </p>
-
-          <div class="commands-grid">
-            <!-- /start Card -->
-            <div class="command-card start">
-              <div class="command-card-icon">
-                <i data-feather="play-circle"></i>
-              </div>
-              <h3>/start</h3>
-              <p class="natural-invoke">
-                <span data-lang="fr"
-                  >ou <code>"démarre PROJ-123"</code>, <code>"je vais bosser sur #42"</code></span
-                >
-                <span data-lang="en"
-                  >or <code>"work on PROJ-123"</code>, <code>"start issue #42"</code></span
-                >
-              </p>
-              <p>
-                <span data-lang="fr"
-                  >D&eacute;marre une nouvelle t&acirc;che depuis un ticket
-                  Jira ou une issue GitHub.</span
-                >
-                <span data-lang="en">Start a new task from a Jira ticket or GitHub issue.</span>
-              </p>
-              <ul>
-                <li>
-                  <i data-feather="check"></i>
-                  <span>
-                    <span data-lang="fr"
-                      >R&eacute;cup&egrave;re les d&eacute;tails du ticket</span
-                    >
-                    <span data-lang="en">Fetches ticket details</span>
-                  </span>
-                </li>
-                <li>
-                  <i data-feather="check"></i>
-                  <span>
-                    <span data-lang="fr"
-                      >Sélectionne les repos via scoring par mots-clés</span
-                    >
-                    <span data-lang="en"
-                      >Selects repos via keyword-based scoring</span
-                    >
-                  </span>
-                </li>
-                <li>
-                  <i data-feather="check"></i>
-                  <span>
-                    <span data-lang="fr">Cr&eacute;e les worktrees Git</span>
-                    <span data-lang="en">Creates Git worktrees</span>
-                  </span>
-                </li>
-                <li>
-                  <i data-feather="check"></i>
-                  <span>
-                    <span data-lang="fr"
-                      >G&eacute;n&egrave;re le contexte agent</span
-                    >
-                    <span data-lang="en">Generates agent context</span>
-                  </span>
-                </li>
-              </ul>
+        <!-- Section 2 — Skills Manager (illustration LEFT, text RIGHT) -->
+        <div class="section-glass-frame">
+        <section class="section">
+            <div class="split-layout">
+                <div class="skills-manager-wrapper reveal-left">
+                    <div class="skills-manager">
+                        <div class="skills-manager-header">
+                            <span class="skills-manager-title" data-i18n="section2.skillsTitle">Skills</span>
+                            <div class="skills-manager-add">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                <span data-i18n="section2.newSkill">New skill</span>
+                            </div>
+                        </div>
+                        <div class="skills-file-list">
+                            <div class="skills-file">
+                                <div class="skills-file-icon"><img src="skill-start.png" alt="start"></div>
+                                <div class="skills-file-info">
+                                    <span class="skills-file-name">start.md</span>
+                                    <span class="skills-file-desc" data-i18n="section2.startDesc">Fetch ticket and create branch</span>
+                                </div>
+                                <span class="skills-file-badge built-in">built-in</span>
+                            </div>
+                            <div class="skills-file">
+                                <div class="skills-file-icon"><img src="skill-commit.png" alt="commit"></div>
+                                <div class="skills-file-info">
+                                    <span class="skills-file-name">commit.md</span>
+                                    <span class="skills-file-desc" data-i18n="section2.commitDesc">Smart commit with context</span>
+                                </div>
+                                <span class="skills-file-badge built-in">built-in</span>
+                            </div>
+                            <div class="skills-file">
+                                <div class="skills-file-icon"><img src="skill-done.png" alt="done"></div>
+                                <div class="skills-file-info">
+                                    <span class="skills-file-name">done.md</span>
+                                    <span class="skills-file-desc" data-i18n="section2.doneDesc">Push and create pull request</span>
+                                </div>
+                                <span class="skills-file-badge built-in">built-in</span>
+                            </div>
+                            <div class="skills-file">
+                                <div class="skills-file-icon"></div>
+                                <div class="skills-file-info">
+                                    <span class="skills-file-name">deploy.md</span>
+                                    <span class="skills-file-desc" data-i18n="section2.deployDesc">Build, test and deploy to staging</span>
+                                </div>
+                                <span class="skills-file-badge custom">custom</span>
+                            </div>
+                            <div class="skills-file">
+                                <div class="skills-file-icon"></div>
+                                <div class="skills-file-info">
+                                    <span class="skills-file-name">code-review.md</span>
+                                    <span class="skills-file-desc" data-i18n="section2.reviewDesc">Review PR with team conventions</span>
+                                </div>
+                                <span class="skills-file-badge custom">custom</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="split-text reveal-right">
+                    <h2 class="section-header" data-i18n="section2.title">Manage Claude Code skills.</h2>
+                    <p data-i18n="section2.p1">Add, edit and organize your Claude Code skills directly from the desktop app. Each skill is a simple markdown file — no config files to hunt down.</p>
+                    <p data-i18n="section2.p2">Built-in skills get you started instantly. Create custom ones for your team's workflows, deploy pipelines, or code standards.</p>
+                    <a href="documentation.html" class="btn-get-started" style="margin-top: 1.5rem;" data-i18n="section2.seeDocs">See docs</a>
+                </div>
             </div>
-
-            <!-- /commit Card -->
-            <div class="command-card commit">
-              <div class="command-card-icon">
-                <i data-feather="git-commit"></i>
-              </div>
-              <h3>/commit</h3>
-              <p class="natural-invoke">
-                <span data-lang="fr"
-                  >ou <code>"je suis prêt à committer"</code>, <code>"on commit"</code></span
-                >
-                <span data-lang="en"
-                  >or <code>"ready to commit"</code>, <code>"save my changes"</code></span
-                >
-              </p>
-              <p>
-                <span data-lang="fr"
-                  >Cr&eacute;e un commit avec un message conventionnel.</span
-                >
-                <span data-lang="en"
-                  >Create a commit with a conventional message.</span
-                >
-              </p>
-              <ul>
-                <li>
-                  <i data-feather="check"></i>
-                  <span>
-                    <span data-lang="fr">Analyse les changements</span>
-                    <span data-lang="en">Analyzes changes</span>
-                  </span>
-                </li>
-                <li>
-                  <i data-feather="check"></i>
-                  <span>
-                    <span data-lang="fr"
-                      >Stage les fichiers modifi&eacute;s</span
-                    >
-                    <span data-lang="en">Stages modified files</span>
-                  </span>
-                </li>
-                <li>
-                  <i data-feather="check"></i>
-                  <span>
-                    <span data-lang="fr"
-                      >G&eacute;n&egrave;re le message de commit</span
-                    >
-                    <span data-lang="en">Generates commit message</span>
-                  </span>
-                </li>
-                <li>
-                  <i data-feather="check"></i>
-                  <span>
-                    <span data-lang="fr"
-                      >Format conventionnel (feat/fix/...)</span
-                    >
-                    <span data-lang="en"
-                      >Conventional format (feat/fix/...)</span
-                    >
-                  </span>
-                </li>
-              </ul>
-            </div>
-
-            <!-- /done Card -->
-            <div class="command-card done">
-              <div class="command-card-icon">
-                <i data-feather="check-circle"></i>
-              </div>
-              <h3>/done</h3>
-              <p class="natural-invoke">
-                <span data-lang="fr"
-                  >ou <code>"j'ai terminé"</code>, <code>"on peut créer la PR"</code></span
-                >
-                <span data-lang="en"
-                  >or <code>"I'm done"</code>, <code>"create the PR"</code></span
-                >
-              </p>
-              <p>
-                <span data-lang="fr">Finalise ta t&acirc;che en un geste.</span>
-                <span data-lang="en">Finalize your task in one gesture.</span>
-              </p>
-              <ul>
-                <li>
-                  <i data-feather="check"></i>
-                  <span>
-                    <span data-lang="fr">Push vers le remote</span>
-                    <span data-lang="en">Push to remote</span>
-                  </span>
-                </li>
-                <li>
-                  <i data-feather="check"></i>
-                  <span>
-                    <span data-lang="fr">Cr&eacute;e la Pull Request</span>
-                    <span data-lang="en">Creates Pull Request</span>
-                  </span>
-                </li>
-                <li>
-                  <i data-feather="check"></i>
-                  <span>
-                    <span data-lang="fr">Met &agrave; jour le ticket Jira</span>
-                    <span data-lang="en">Updates Jira ticket</span>
-                  </span>
-                </li>
-                <li>
-                  <i data-feather="check"></i>
-                  <span>
-                    <span data-lang="fr">Statut &rarr; "To be reviewed"</span>
-                    <span data-lang="en">Status &rarr; "To be reviewed"</span>
-                  </span>
-                </li>
-              </ul>
-            </div>
-          </div>
+        </section>
         </div>
-      </section>
 
-      <!-- Stats Section - Chiffres Clés -->
-      <section class="stats">
-        <div class="container">
-          <div class="stats-header">
-            <h2>
-              <span data-lang="fr">Gagnez du temps, <span class="gradient-text">vraiment</span></span>
-              <span data-lang="en">Save time, <span class="gradient-text">for real</span></span>
-            </h2>
-            <p>
-              <span data-lang="fr">Magic Slash automatise les tâches répétitives pour que tu puisses te concentrer sur le code.</span>
-              <span data-lang="en">Magic Slash automates repetitive tasks so you can focus on code.</span>
-            </p>
-          </div>
-
-          <!-- Timeline -->
-          <div class="stats-timeline">
-            <div class="timeline-container">
-              <div class="timeline-step">
-                <div class="timeline-icon start">
-                  <i data-feather="play-circle"></i>
+        <!-- Section 3 — Smart Configuration (text LEFT, illustration RIGHT) -->
+        <div class="section-glass-frame">
+        <section class="section">
+            <div class="split-layout">
+                <div class="split-text reveal-left">
+                    <h2 class="section-header" data-i18n="section3.title" data-i18n-html>One config.<br>Every repo.</h2>
+                    <p data-i18n="section3.p1">Tailor commit style, PR templates, and language per repository. Choose between Conventional Commits, Angular, Gitmoji, or free-form formats.</p>
+                    <p data-i18n="section3.p2">Write commits in English or French. Auto-sync Jira tickets and use your own PR templates with AI-powered summaries.</p>
+                    <a href="documentation.html" class="btn-get-started" style="margin-top: 1.5rem;" data-i18n="section3.seeDocs">See docs</a>
                 </div>
-                <div class="timeline-command">/start</div>
-                <div class="timeline-label">
-                  <span data-lang="fr">Ouvrir Jira, lire, créer branche...</span>
-                  <span data-lang="en">Open Jira, read, create branch...</span>
+                <div class="glass-card-wrapper config-bg reveal-right">
+                <div class="glass-card">
+                    <div class="settings-panel">
+                        <div class="settings-row">
+                            <span class="settings-label" data-i18n="section3.commitFormat">Commit format</span>
+                            <div class="settings-pills">
+                                <span class="settings-pill active">Conventional</span>
+                                <span class="settings-pill">Gitmoji</span>
+                                <span class="settings-pill">Angular</span>
+                            </div>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-label" data-i18n="section3.language">Language</span>
+                            <div class="settings-pills">
+                                <span class="settings-pill active">EN</span>
+                                <span class="settings-pill">FR</span>
+                            </div>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-label" data-i18n="section3.jiraSync">Jira sync</span>
+                            <div class="settings-switch">
+                                <div class="switch-thumb"></div>
+                            </div>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-label" data-i18n="section3.prTemplate">PR template</span>
+                            <span class="settings-file">template.md</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="timeline-times">
-                  <div class="timeline-before">
-                    <span class="time-value">5 min</span>
-                  </div>
-                  <div class="timeline-arrow">
-                    <i data-feather="arrow-right"></i>
-                  </div>
-                  <div class="timeline-after">
-                    <span class="time-value">30s</span>
-                  </div>
                 </div>
-              </div>
-              <div class="timeline-connector"></div>
-              <div class="timeline-step">
-                <div class="timeline-icon commit">
-                  <i data-feather="git-commit"></i>
-                </div>
-                <div class="timeline-command">/commit</div>
-                <div class="timeline-label">
-                  <span data-lang="fr">git add, git diff, rédiger message...</span>
-                  <span data-lang="en">git add, git diff, write message...</span>
-                </div>
-                <div class="timeline-times">
-                  <div class="timeline-before">
-                    <span class="time-value">2 min</span>
-                  </div>
-                  <div class="timeline-arrow">
-                    <i data-feather="arrow-right"></i>
-                  </div>
-                  <div class="timeline-after">
-                    <span class="time-value">10s</span>
-                  </div>
-                </div>
-              </div>
-              <div class="timeline-connector"></div>
-              <div class="timeline-step">
-                <div class="timeline-icon done">
-                  <i data-feather="check-circle"></i>
-                </div>
-                <div class="timeline-command">/done</div>
-                <div class="timeline-label">
-                  <span data-lang="fr">push, créer PR, mettre à jour Jira...</span>
-                  <span data-lang="en">push, create PR, update Jira...</span>
-                </div>
-                <div class="timeline-times">
-                  <div class="timeline-before">
-                    <span class="time-value">5 min</span>
-                  </div>
-                  <div class="timeline-arrow">
-                    <i data-feather="arrow-right"></i>
-                  </div>
-                  <div class="timeline-after">
-                    <span class="time-value">20s</span>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
-
-          <!-- Comparison Table -->
-          <div class="stats-comparison">
-            <h3>
-              <span data-lang="fr">Comparaison détaillée</span>
-              <span data-lang="en">Detailed comparison</span>
-            </h3>
-            <div class="comparison-table">
-              <div class="comparison-header">
-                <div class="comparison-col without">
-                  <span data-lang="fr">Sans Magic Slash</span>
-                  <span data-lang="en">Without Magic Slash</span>
-                </div>
-                <div class="comparison-col with">
-                  <span data-lang="fr">Avec Magic Slash</span>
-                  <span data-lang="en">With Magic Slash</span>
-                </div>
-              </div>
-              <div class="comparison-row">
-                <div class="comparison-col without">
-                  <span>
-                    <span data-lang="fr">Ouvrir Jira dans le navigateur</span>
-                    <span data-lang="en">Open Jira in browser</span>
-                  </span>
-                </div>
-                <div class="comparison-col with">
-                  <code>/start PROJ-42</code>
-                </div>
-              </div>
-              <div class="comparison-row">
-                <div class="comparison-col without">
-                  <span>
-                    <span data-lang="fr">Chercher dans quel(s) repo(s) travailler</span>
-                    <span data-lang="en">Find which repo(s) to work in</span>
-                  </span>
-                </div>
-                <div class="comparison-col with">
-                  <span class="auto-label"><i data-feather="check"></i> <span data-lang="fr">Sélection par mots-clés</span><span data-lang="en">Keyword-based selection</span></span>
-                </div>
-              </div>
-              <div class="comparison-row">
-                <div class="comparison-col without">
-                  <span>
-                    <span data-lang="fr">Copier le titre du ticket</span>
-                    <span data-lang="en">Copy ticket title</span>
-                  </span>
-                </div>
-                <div class="comparison-col with">
-                  <span class="auto-label"><i data-feather="check"></i> <span data-lang="fr">Automatique</span><span data-lang="en">Automatic</span></span>
-                </div>
-              </div>
-              <div class="comparison-row">
-                <div class="comparison-col without">
-                  <span>
-                    <span data-lang="fr">Créer la branche manuellement</span>
-                    <span data-lang="en">Create branch manually</span>
-                  </span>
-                </div>
-                <div class="comparison-col with">
-                  <span class="auto-label"><i data-feather="check"></i> <span data-lang="fr">Automatique</span><span data-lang="en">Automatic</span></span>
-                </div>
-              </div>
-              <div class="comparison-row">
-                <div class="comparison-col without">
-                  <span>
-                    <span data-lang="fr">Switcher entre repos (multi-repo)</span>
-                    <span data-lang="en">Switch between repos (multi-repo)</span>
-                  </span>
-                </div>
-                <div class="comparison-col with">
-                  <span class="auto-label"><i data-feather="check"></i> <span data-lang="fr">Worktrees prêts</span><span data-lang="en">Worktrees ready</span></span>
-                </div>
-              </div>
-              <div class="comparison-row">
-                <div class="comparison-col without">
-                  <span>
-                    <span data-lang="fr">Réfléchir et rédiger un prompt selon la description</span>
-                    <span data-lang="en">Think and write a prompt based on description</span>
-                  </span>
-                </div>
-                <div class="comparison-col with">
-                  <span class="auto-label"><i data-feather="check"></i> <span data-lang="fr">Contexte généré</span><span data-lang="en">Context generated</span></span>
-                </div>
-              </div>
-              <div class="comparison-row">
-                <div class="comparison-col without">
-                  <span>
-                    <span data-lang="fr">git add, git diff, écrire le message</span>
-                    <span data-lang="en">git add, git diff, write message</span>
-                  </span>
-                </div>
-                <div class="comparison-col with">
-                  <code>/commit</code>
-                </div>
-              </div>
-              <div class="comparison-row">
-                <div class="comparison-col without">
-                  <span>
-                    <span data-lang="fr">git push, ouvrir GitHub, créer PR</span>
-                    <span data-lang="en">git push, open GitHub, create PR</span>
-                  </span>
-                </div>
-                <div class="comparison-col with">
-                  <code>/done</code>
-                </div>
-              </div>
-              <div class="comparison-row">
-                <div class="comparison-col without">
-                  <span>
-                    <span data-lang="fr">Remplir la description de la PR</span>
-                    <span data-lang="en">Fill in PR description</span>
-                  </span>
-                </div>
-                <div class="comparison-col with">
-                  <span class="auto-label"><i data-feather="check"></i> <span data-lang="fr">Générée automatiquement</span><span data-lang="en">Auto-generated</span></span>
-                </div>
-              </div>
-              <div class="comparison-row">
-                <div class="comparison-col without">
-                  <span>
-                    <span data-lang="fr">Retourner sur Jira, changer le statut</span>
-                    <span data-lang="en">Go back to Jira, change status</span>
-                  </span>
-                </div>
-                <div class="comparison-col with">
-                  <span class="auto-label"><i data-feather="check"></i> <span data-lang="fr">Automatique</span><span data-lang="en">Automatic</span></span>
-                </div>
-              </div>
-            </div>
-          </div>
+        </section>
         </div>
-      </section>
 
-      <section class="cta">
-        <div class="container">
-          <div class="cta-box">
-            <h2>
-              <span data-lang="fr"
-                >Pr&ecirc;t &agrave; automatiser ton workflow ?</span
-              >
-              <span data-lang="en">Ready to automate your workflow?</span>
-            </h2>
-            <p>
-              <span data-lang="fr"
-                >Installe Magic Slash et dis simplement <code>"démarre PROJ-123"</code> pour commencer.</span
-              >
-              <span data-lang="en"
-                >Install Magic Slash and just say <code>"work on PROJ-123"</code> to get started.</span
-              >
-            </p>
-            <div class="install-box">
-              <code id="install-cmd-cta"
-                >curl -fsSL https://magic-slash.io/install.sh | bash</code
-              >
-              <button class="copy-btn" onclick="copyCommand('install-cmd-cta')">
-                <i data-feather="copy"></i>
-              </button>
+        <!-- Section 4 — Multi-Agent Terminal (illustration LEFT, text RIGHT) -->
+        <div class="section-glass-frame">
+        <section class="section">
+            <div class="split-layout">
+                <div class="sidebar-card-wrapper reveal-left sidebar-card-wrapper-col">
+                <div class="sidebar-card">
+                    <div class="sidebar-section-label" data-i18n="section4.agents">Agents</div>
+                    <div class="sidebar-mock">
+                        <div class="sidebar-mock-item">
+                            <span class="sidebar-agent-name">api-refactor</span>
+                        </div>
+                        <div class="sidebar-mock-item active state-working">
+                            <span class="sidebar-agent-name">auth-middleware</span>
+                            <span class="sidebar-spinner"></span>
+                        </div>
+                        <div class="sidebar-mock-item">
+                            <span class="sidebar-agent-name">db-migration</span>
+                            <i data-feather="clock" class="sidebar-status-icon icon-waiting"></i>
+                        </div>
+                        <div class="sidebar-mock-item">
+                            <span class="sidebar-agent-name">fix-tests</span>
+                            <i data-feather="check" class="sidebar-status-icon icon-completed"></i>
+                        </div>
+                        <div class="sidebar-mock-item">
+                            <span class="sidebar-agent-name">ci-pipeline</span>
+                            <i data-feather="check" class="sidebar-status-icon icon-completed"></i>
+                        </div>
+                    </div>
+                </div>
+                </div>
+                <div class="split-text reveal-right">
+                    <h2 class="section-header" data-i18n="section4.title" data-i18n-html>12 agents.<br>One window.</h2>
+                    <p data-i18n="section4.p1">Launch parallel Claude Code instances and see everything at a glance. Visual status per agent, macOS native notifications, and drag-and-drop to reorder.</p>
+                    <p data-i18n="section4.p2">Info sidebar with full agent context. Color-coded projects for instant recognition.</p>
+                    <a href="documentation.html" class="btn-get-started" style="margin-top: 1.5rem;" data-i18n="section4.seeDocs">See docs</a>
+                </div>
             </div>
-            <div class="cta-buttons">
-              <a href="#" class="btn btn-primary" id="doc-link-cta">
-                <i data-feather="book-open"></i>
-                <span data-lang="fr">Voir la documentation</span>
-                <span data-lang="en">View documentation</span>
-              </a>
-              <a
-                href="https://github.com/xrequillart/magic-slash"
-                class="btn btn-secondary"
-                target="_blank"
-              >
-                <i data-feather="github"></i>
-                <span data-lang="fr">Voir sur GitHub</span>
-                <span data-lang="en">View on GitHub</span>
-              </a>
-            </div>
-          </div>
+        </section>
         </div>
-      </section>
-    </main>
 
-    <!-- Documentation Modal -->
-    <div class="doc-modal-overlay" id="doc-modal-overlay"></div>
-    <div class="doc-modal" id="doc-modal">
-      <div class="doc-modal-header">
-        <h2>Documentation</h2>
-        <button class="doc-modal-close" id="doc-modal-close">
-          <i data-feather="x"></i>
-        </button>
-      </div>
-      <div class="doc-modal-container">
-        <aside class="doc-sidebar">
-          <div class="doc-sidebar-title">
-            <span data-lang="fr">Sommaire</span
-            ><span data-lang="en">Contents</span>
-          </div>
-          <nav class="doc-sidebar-nav">
-            <div class="doc-nav-group">
-              <div class="doc-nav-group-title">
-                <span data-lang="fr">Démarrage</span>
-                <span data-lang="en">Get started</span>
-              </div>
-              <a href="#doc-installation" class="doc-sidebar-link active">
-                <i data-feather="download"></i>
-                <span>Installation</span>
-              </a>
-              <a href="#doc-uninstall" class="doc-sidebar-link">
-                <i data-feather="trash-2"></i>
-                <span data-lang="fr">Désinstallation</span>
-                <span data-lang="en">Uninstall</span>
-              </a>
+        <!-- Section 5 — Deep Integrations (text LEFT, illustration RIGHT) -->
+        <div class="section-glass-frame">
+        <section class="section">
+            <div class="split-layout">
+                <div class="split-text reveal-left">
+                    <h2 class="section-header" data-i18n="section5.title">Plugs into your stack.</h2>
+                    <p data-i18n="section5.p1">Native integrations with GitHub for PRs, issues, and reviews. Jira for tickets and status sync. VS Code to open files and projects.</p>
+                    <p data-i18n="section5.p2">Full Git support with worktrees and branches. Everything connected, nothing manual.</p>
+                    <a href="documentation.html" class="btn-get-started" style="margin-top: 1.5rem;" data-i18n="section5.seeDocs">See docs</a>
+                </div>
+                <div class="integrations-orbit reveal-right">
+                    <div class="orbit-ring orbit-ring-1"></div>
+                    <div class="orbit-ring orbit-ring-2"></div>
+                    <div class="orbit-line orbit-line-1"></div>
+                    <div class="orbit-line orbit-line-2"></div>
+                    <div class="orbit-line orbit-line-3"></div>
+                    <div class="orbit-line orbit-line-4"></div>
+                    <div class="orbit-center">
+                        <img src="app-icon.png" alt="magic-slash">
+                    </div>
+                    <div class="orbit-item orbit-item-1">
+                        <img src="github-logo.png" alt="GitHub">
+                    </div>
+                    <div class="orbit-item orbit-item-2">
+                        <img src="jira-logo.png" alt="Jira">
+                    </div>
+                    <div class="orbit-item orbit-item-3">
+                        <img src="git-logo.png" alt="Git">
+                    </div>
+                    <div class="orbit-item orbit-item-4">
+                        <img src="claude-logo.png" alt="Claude">
+                    </div>
+                </div>
             </div>
-            <div class="doc-nav-group">
-              <div class="doc-nav-group-title">
-                <span data-lang="fr">Utilisation</span>
-                <span data-lang="en">Usage</span>
-              </div>
-              <a href="#doc-commands" class="doc-sidebar-link">
-                <i data-feather="terminal"></i>
-                <span data-lang="fr">Commandes</span>
-                <span data-lang="en">Commands</span>
-              </a>
-              <a href="#doc-skills" class="doc-sidebar-link">
-                <i data-feather="message-circle"></i>
-                <span data-lang="fr">Invocation naturelle</span>
-                <span data-lang="en">Natural invocation</span>
-              </a>
-              <a href="#doc-how-it-works" class="doc-sidebar-link">
-                <i data-feather="cpu"></i>
-                <span data-lang="fr">Comment ça marche</span>
-                <span data-lang="en">How it works</span>
-              </a>
-            </div>
-            <div class="doc-nav-group">
-              <div class="doc-nav-group-title">
-                <span data-lang="fr">Référence</span>
-                <span data-lang="en">Reference</span>
-              </div>
-              <a href="#doc-faq" class="doc-sidebar-link">
-                <i data-feather="help-circle"></i>
-                <span>FAQ</span>
-              </a>
-              <a href="#doc-troubleshooting" class="doc-sidebar-link">
-                <i data-feather="alert-triangle"></i>
-                <span>Troubleshooting</span>
-              </a>
-              <a href="#doc-conventional-commits" class="doc-sidebar-link">
-                <i data-feather="git-commit"></i>
-                <span>Conventional Commits</span>
-              </a>
-              <a href="#doc-advanced-config" class="doc-sidebar-link">
-                <i data-feather="settings"></i>
-                <span data-lang="fr">Configuration avancée</span>
-                <span data-lang="en">Advanced config</span>
-              </a>
-              <a href="#doc-languages" class="doc-sidebar-link">
-                <i data-feather="globe"></i>
-                <span data-lang="fr">Langues</span>
-                <span data-lang="en">Languages</span>
-              </a>
-            </div>
-          </nav>
-        </aside>
-        <div class="doc-modal-body">
-          <!-- Installation -->
-          <div class="doc-section" id="doc-installation">
-            <h3><i data-feather="download"></i> Installation</h3>
+        </section>
+        </div>
 
-            <h4>
-              <span data-lang="fr">Prérequis</span
-              ><span data-lang="en">Prerequisites</span>
-            </h4>
-            <ul>
-              <li>
-                <i data-feather="check"></i>
-                <span
-                  ><strong>Claude Code</strong> -
-                  <span data-lang="fr">installé et configuré</span
-                  ><span data-lang="en">installed and configured</span></span
-                >
-              </li>
-              <li>
-                <i data-feather="check"></i>
-                <span><strong>Node.js</strong> - v18+</span>
-              </li>
-              <li>
-                <i data-feather="check"></i>
-                <span
-                  ><strong>Git</strong> -
-                  <span data-lang="fr">avec support des worktrees</span
-                  ><span data-lang="en">with worktrees support</span></span
-                >
-              </li>
-              <li>
-                <i data-feather="check"></i>
-                <span
-                  ><strong>jq</strong> -
-                  <span data-lang="fr">pour le parsing JSON</span
-                  ><span data-lang="en">for JSON parsing</span></span
-                >
-              </li>
-            </ul>
+        <!-- Section 6 — Ticket Context (illustration LEFT, text RIGHT) -->
+        <div class="section-glass-frame">
+        <section class="section">
+            <div class="split-layout">
+                <div class="reveal-left">
+                    <div class="ticket-frame">
+                        <div class="ticket-frame-titlebar">
+                            <div class="ticket-frame-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <span class="ticket-frame-title" data-i18n="section6.agentInfo">Agent info</span>
+                            <div style="width:42px"></div>
+                        </div>
+                        <div class="ticket-frame-body">
+                            <div class="ticket-card">
+                                <div class="ticket-header">
+                                    <span class="ticket-badge">PROJ-142</span>
+                                    <span class="ticket-status" data-i18n="section6.inProgress">In Progress</span>
+                                </div>
+                                <div class="ticket-title" data-i18n="section6.ticketTitle">Add user authentication flow</div>
+                                <div class="ticket-description" data-i18n="section6.ticketDesc">Implement OAuth 2.0 login with Google and GitHub providers. Add session management and token refresh logic.</div>
+                            </div>
+                            <div class="ticket-branch">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+                                <span>feature/PROJ-142</span>
+                            </div>
+                            <div class="ticket-changes">
+                                <div class="ticket-changes-head">
+                                    <span data-i18n="section6.filesChanged">3 files changed</span>
+                                    <div class="ticket-changes-gauge">
+                                        <span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="r"></span><span class="n"></span><span class="n"></span><span class="n"></span>
+                                    </div>
+                                </div>
+                                <div class="ticket-change-file">src/auth/middleware.ts <span class="added">+42</span> <span class="removed">-3</span></div>
+                                <div class="ticket-change-file">src/auth/utils.ts <span class="added">+18</span></div>
+                                <div class="ticket-change-file">tests/auth.test.ts <span class="added">+25</span> <span class="removed">-1</span></div>
+                            </div>
+                            <div class="ticket-no-commits" data-i18n="section6.noCommits">No committed changes</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="split-text reveal-right">
+                    <h2 class="section-header" data-i18n="section6.title">Your ticket, always in context.</h2>
+                    <p data-i18n="section6.p1" data-i18n-html>When you <b style="color:#000">/start</b> a ticket, magic-slash fetches the title, description, and metadata from Jira or GitHub Issues. Every command you run knows what you're working on.</p>
+                    <p data-i18n="section6.p2">Commit messages reference the right ticket. PRs include the full context. No more tab-switching to copy-paste issue details.</p>
+                    <a href="documentation.html" class="btn-get-started" style="margin-top: 1.5rem;" data-i18n="section6.seeDocs">See docs</a>
+                </div>
+            </div>
+        </section>
+        </div>
 
-            <h4>
-              <span data-lang="fr">Commande d'installation</span
-              ><span data-lang="en">Installation command</span>
-            </h4>
-            <p>
-              <span data-lang="fr"
-                >Exécute cette commande dans ton terminal :</span
-              ><span data-lang="en">Run this command in your terminal:</span>
-            </p>
-            <div class="doc-code-block">
-              <div class="doc-code-header">
-                <span>Terminal</span>
-                <button
-                  class="copy-btn"
-                  onclick="copyDocCode('doc-install-code')"
-                >
-                  <i data-feather="copy"></i>
+        <!-- Section 7 — Final CTA -->
+        <div class="section-glass-frame cta-section-frame">
+        <section class="section cta-section">
+            <h2 class="section-header reveal" data-i18n="cta.title">Start in 30 seconds.</h2>
+            <p class="section-subtitle reveal" data-i18n="cta.subtitle">Install magic-slash and transform your workflow.</p>
+            <div class="install-box reveal">
+                <code>curl -fsSL https://magic-slash.io/install.sh | bash</code>
+                <button class="copy-btn" onclick="copyCommand(this)">
+                    <i data-feather="copy"></i>
                 </button>
-              </div>
-              <div class="doc-code-content" id="doc-install-code">
-                curl -fsSL https://magic-slash.io/install.sh | bash
-              </div>
             </div>
-            <p>
-              <span data-lang="fr"
-                >Le script configure automatiquement les serveurs MCP Atlassian
-                et GitHub, puis te demande de configurer tes repositories
-                (1 à N repos avec des mots-clés optionnels pour la détection intelligente).</span
-              ><span data-lang="en"
-                >The script automatically configures Atlassian and GitHub MCP
-                servers, then asks you to configure your repositories
-                (1 to N repos with optional keywords for smart detection).</span
-              >
-            </p>
-            <p>
-              <span data-lang="fr"
-                >La commande <code>magic-slash</code> est également installée
-                pour ouvrir l'interface web de configuration.</span
-              ><span data-lang="en"
-                >The <code>magic-slash</code> command is also installed to
-                open the configuration web interface.</span
-              >
-            </p>
-          </div>
-
-          <!-- Désinstallation -->
-          <div class="doc-section" id="doc-uninstall">
-            <h3>
-              <i data-feather="trash-2"></i>
-              <span data-lang="fr">Désinstallation</span
-              ><span data-lang="en">Uninstall</span>
-            </h3>
-            <p>
-              <span data-lang="fr"
-                >Pour désinstaller Magic Slash complètement :</span
-              ><span data-lang="en">To completely uninstall Magic Slash:</span>
-            </p>
-            <div class="doc-code-block">
-              <div class="doc-code-header">
-                <span>Terminal</span>
-                <button
-                  class="copy-btn"
-                  onclick="copyDocCode('doc-uninstall-code')"
-                >
-                  <i data-feather="copy"></i>
-                </button>
-              </div>
-              <div class="doc-code-content" id="doc-uninstall-code">
-                curl -fsSL https://magic-slash.io/uninstall.sh | bash
-              </div>
-            </div>
-
-            <h4>
-              <span data-lang="fr">Fichiers supprimés</span
-              ><span data-lang="en">Deleted files</span>
-            </h4>
-            <ul>
-              <li class="red">
-                <i data-feather="x"></i>
-                <span><code>~/.claude/skills/start/</code></span>
-              </li>
-              <li class="red">
-                <i data-feather="x"></i>
-                <span><code>~/.claude/skills/commit/</code></span>
-              </li>
-              <li class="red">
-                <i data-feather="x"></i>
-                <span><code>~/.claude/skills/done/</code></span>
-              </li>
-              <li class="red">
-                <i data-feather="x"></i>
-                <span
-                  ><code>~/.config/magic-slash/</code>
-                  <span data-lang="fr">(dossier de configuration)</span
-                  ><span data-lang="en">(configuration folder)</span></span
-                >
-              </li>
-              <li class="red">
-                <i data-feather="x"></i>
-                <span
-                  ><span data-lang="fr"
-                    >Configuration MCP Atlassian & GitHub dans</span
-                  ><span data-lang="en"
-                    >MCP Atlassian & GitHub configuration in</span
-                  >
-                  <code>~/.claude/settings.json</code></span
-                >
-              </li>
-              <li class="red">
-                <i data-feather="x"></i>
-                <span
-                  ><code>~/.local/bin/magic-slash</code>
-                  <span data-lang="fr">(lance l'interface web)</span
-                  ><span data-lang="en">(launches web interface)</span></span
-                >
-              </li>
-            </ul>
-          </div>
-
-          <!-- Commandes -->
-          <div class="doc-section" id="doc-commands">
-            <h3>
-              <i data-feather="terminal"></i>
-              <span data-lang="fr">Commandes détaillées</span
-              ><span data-lang="en">Detailed commands</span>
-            </h3>
-
-            <div class="doc-command-detail start">
-              <h4>/start &lt;TICKET-ID&gt;</h4>
-              <p>
-                <span data-lang="fr"
-                  >Démarre une nouvelle tâche à partir d'un ticket Jira ou d'une issue GitHub.</span
-                ><span data-lang="en"
-                  >Starts a new task from a Jira ticket or GitHub issue.</span
-                >
-              </p>
-              <p><strong>Formats :</strong></p>
-              <ul>
-                <li><code>/start PROJ-123</code> → Jira ticket</li>
-                <li><code>/start 42</code> ou <code>/start #42</code> → GitHub issue</li>
-              </ul>
-              <p><strong>Workflow :</strong></p>
-              <ol>
-                <li>
-                  <span data-lang="fr"
-                    >Détecte le type de ticket (Jira ou GitHub) et récupère les détails</span
-                  ><span data-lang="en"
-                    >Detects ticket type (Jira or GitHub) and fetches details</span
-                  >
-                </li>
-                <li>
-                  <span data-lang="fr"
-                    >Calcule un score de pertinence pour chaque repo configuré
-                    en fonction des mots-clés</span
-                  ><span data-lang="en"
-                    >Calculates a relevance score for each configured repo
-                    based on keywords</span
-                  >
-                </li>
-                <li>
-                  <span data-lang="fr"
-                    >Crée les worktrees Git nécessaires avec le bon nom de
-                    branche</span
-                  ><span data-lang="en"
-                    >Creates necessary Git worktrees with the correct branch
-                    name</span
-                  >
-                </li>
-                <li>
-                  <span data-lang="fr"
-                    >Génère un contexte agent personnalisé avec les informations
-                    du ticket</span
-                  ><span data-lang="en"
-                    >Generates a custom agent context with ticket
-                    information</span
-                  >
-                </li>
-                <li>
-                  <span data-lang="fr"
-                    >Lance l'agent Claude pour commencer le développement</span
-                  ><span data-lang="en"
-                    >Launches Claude agent to start development</span
-                  >
-                </li>
-              </ol>
-            </div>
-
-            <div class="doc-command-detail commit">
-              <h4>/commit</h4>
-              <p>
-                <span data-lang="fr"
-                  >Crée un commit avec un message conventionnel généré
-                  automatiquement.</span
-                ><span data-lang="en"
-                  >Creates a commit with an automatically generated conventional
-                  message.</span
-                >
-              </p>
-              <p><strong>Workflow :</strong></p>
-              <ol>
-                <li>
-                  <span data-lang="fr"
-                    >Détecte les fichiers modifiés dans le repository
-                    courant</span
-                  ><span data-lang="en"
-                    >Detects modified files in the current repository</span
-                  >
-                </li>
-                <li>
-                  <span data-lang="fr">Stage les changements (git add)</span
-                  ><span data-lang="en">Stages changes (git add)</span>
-                </li>
-                <li>
-                  <span data-lang="fr"
-                    >Analyse le diff pour comprendre les modifications</span
-                  ><span data-lang="en"
-                    >Analyzes diff to understand changes</span
-                  >
-                </li>
-                <li>
-                  <span data-lang="fr"
-                    >Génère un message de commit au format conventionnel
-                    (feat/fix/refactor/...)</span
-                  ><span data-lang="en"
-                    >Generates a commit message in conventional format
-                    (feat/fix/refactor/...)</span
-                  >
-                </li>
-                <li>
-                  <span data-lang="fr">Exécute le commit</span
-                  ><span data-lang="en">Executes the commit</span>
-                </li>
-              </ol>
-            </div>
-
-            <div class="doc-command-detail done">
-              <h4>/done</h4>
-              <p>
-                <span data-lang="fr"
-                  >Finalise la tâche : push, PR, et mise à jour Jira.</span
-                ><span data-lang="en"
-                  >Finalizes the task: push, PR, and Jira update.</span
-                >
-              </p>
-              <p><strong>Workflow :</strong></p>
-              <ol>
-                <li>
-                  <span data-lang="fr"
-                    >Push les commits vers le remote (origin)</span
-                  ><span data-lang="en">Pushes commits to remote (origin)</span>
-                </li>
-                <li>
-                  <span data-lang="fr"
-                    >Crée une Pull Request en utilisant le template PR du projet
-                    (si présent)</span
-                  ><span data-lang="en"
-                    >Creates a Pull Request using the project's PR template
-                    (if present)</span
-                  >
-                </li>
-                <li>
-                  <span data-lang="fr">Lie la PR au ticket Jira</span
-                  ><span data-lang="en">Links PR to Jira ticket</span>
-                </li>
-                <li>
-                  <span data-lang="fr"
-                    >Met à jour le statut du ticket Jira vers "To be
-                    reviewed"</span
-                  ><span data-lang="en"
-                    >Updates Jira ticket status to "To be reviewed"</span
-                  >
-                </li>
-              </ol>
-            </div>
-          </div>
-
-          <!-- Skills / Invocation naturelle -->
-          <div class="doc-section" id="doc-skills">
-            <h3>
-              <i data-feather="message-circle"></i>
-              <span data-lang="fr">Invocation naturelle</span>
-              <span data-lang="en">Natural invocation</span>
-            </h3>
-
-            <p>
-              <span data-lang="fr">
-                Magic Slash propose trois commandes (<code>/start</code>, <code>/commit</code>, <code>/done</code>)
-                utilisables de deux façons : en tapant la commande directement, ou en
-                <strong>langage naturel</strong>. Claude Code reconnaît automatiquement votre intention.
-              </span>
-              <span data-lang="en">
-                Magic Slash provides three commands (<code>/start</code>, <code>/commit</code>, <code>/done</code>)
-                usable in two ways: by typing the command directly, or using
-                <strong>natural language</strong>. Claude Code automatically recognizes your intent.
-              </span>
-            </p>
-
-            <h4>
-              <span data-lang="fr">Exemples d'invocations naturelles</span>
-              <span data-lang="en">Natural invocation examples</span>
-            </h4>
-
-            <div class="doc-command-detail start">
-              <h4>/start</h4>
-              <ul data-lang="fr">
-                <li><code>"Démarre PROJ-123"</code></li>
-                <li><code>"Je vais bosser sur DATA-42"</code></li>
-                <li><code>"Commencer la tâche FEAT-99"</code></li>
-                <li><code>"Travailler sur #78"</code></li>
-              </ul>
-              <ul data-lang="en">
-                <li><code>"Work on PROJ-123"</code></li>
-                <li><code>"Start ticket DATA-42"</code></li>
-                <li><code>"Begin work on #78"</code></li>
-                <li><code>"I'll work on FEAT-99"</code></li>
-              </ul>
-            </div>
-
-            <div class="doc-command-detail commit">
-              <h4>/commit</h4>
-              <ul data-lang="fr">
-                <li><code>"Je suis prêt à committer"</code></li>
-                <li><code>"On commit"</code></li>
-                <li><code>"Faire un commit"</code></li>
-                <li><code>"Enregistre mes changements"</code></li>
-              </ul>
-              <ul data-lang="en">
-                <li><code>"Ready to commit"</code></li>
-                <li><code>"Create a commit"</code></li>
-                <li><code>"Save my changes"</code></li>
-                <li><code>"Let's commit"</code></li>
-              </ul>
-            </div>
-
-            <div class="doc-command-detail done">
-              <h4>/done</h4>
-              <ul data-lang="fr">
-                <li><code>"Terminé"</code></li>
-                <li><code>"On peut créer la PR"</code></li>
-                <li><code>"J'ai fini"</code></li>
-                <li><code>"Pousse et crée la PR"</code></li>
-              </ul>
-              <ul data-lang="en">
-                <li><code>"I'm done"</code></li>
-                <li><code>"Create the pull request"</code></li>
-                <li><code>"Push and create PR"</code></li>
-                <li><code>"Finish the task"</code></li>
-              </ul>
-            </div>
-
-            <h4>
-              <span data-lang="fr">Comment ça fonctionne</span>
-              <span data-lang="en">How it works</span>
-            </h4>
-            <p>
-              <span data-lang="fr">
-                Magic Slash installe des fichiers <strong>SKILL.md</strong> dans <code>~/.claude/skills/</code>.
-                Ces fichiers contiennent les instructions complètes et des "trigger phrases" qui permettent
-                à Claude Code de reconnaître l'intention de l'utilisateur.
-              </span>
-              <span data-lang="en">
-                Magic Slash installs <strong>SKILL.md</strong> files in <code>~/.claude/skills/</code>.
-                These files contain complete instructions and "trigger phrases" that allow Claude Code
-                to recognize the user's intent.
-              </span>
-            </p>
-            <p>
-              <span data-lang="fr">
-                L'invocation naturelle supporte les deux langues (français et anglais) et fonctionne aussi bien
-                avec les tickets Jira qu'avec les issues GitHub.
-              </span>
-              <span data-lang="en">
-                Natural invocation supports both languages (French and English) and works with both Jira tickets
-                and GitHub issues.
-              </span>
-            </p>
-          </div>
-
-          <!-- Comment ça marche -->
-          <div class="doc-section" id="doc-how-it-works">
-            <h3>
-              <i data-feather="cpu"></i>
-              <span data-lang="fr">Comment ça marche</span
-              ><span data-lang="en">How it works</span>
-            </h3>
-
-            <p>
-              <span data-lang="fr"
-                >Magic Slash repose sur deux mécanismes clés de Claude Code :
-                les <strong>Slash Commands</strong> et les
-                <strong>serveurs MCP</strong>.</span
-              ><span data-lang="en"
-                >Magic Slash relies on two key Claude Code mechanisms:
-                <strong>Slash Commands</strong> and
-                <strong>MCP servers</strong>.</span
-              >
-            </p>
-
-            <h4>Skills</h4>
-            <p>
-              <span data-lang="fr"
-                >Les skills sont des fichiers Markdown stockés dans
-                <code>~/.claude/skills/</code>. Quand tu tapes
-                <code>/start</code> ou dis "démarre PROJ-42", Claude Code
-                charge le skill correspondant et exécute les instructions.</span
-              ><span data-lang="en"
-                >Skills are Markdown files stored in
-                <code>~/.claude/skills/</code>. When you type
-                <code>/start</code> or say "work on PROJ-42", Claude Code
-                loads the corresponding skill and executes its instructions.</span
-              >
-            </p>
-            <p>
-              <span data-lang="fr"
-                >Chaque skill Magic Slash est un prompt pré-configuré qui
-                guide Claude pour effectuer une série d'actions
-                automatisées, invocable par commande ou en langage naturel.</span
-              ><span data-lang="en"
-                >Each Magic Slash skill is a pre-configured prompt that guides
-                Claude to perform a series of automated actions, invocable
-                by command or natural language.</span
-              >
-            </p>
-
-            <h4>
-              <span data-lang="fr">Serveurs MCP (Model Context Protocol)</span
-              ><span data-lang="en">MCP Servers (Model Context Protocol)</span>
-            </h4>
-            <p>
-              <span data-lang="fr"
-                >Les serveurs MCP permettent à Claude d'interagir avec des
-                services externes. Magic Slash configure deux serveurs :</span
-              ><span data-lang="en"
-                >MCP servers allow Claude to interact with external services.
-                Magic Slash configures two servers:</span
-              >
-            </p>
-            <ul>
-              <li>
-                <i data-feather="check"></i>
-                <span
-                  ><strong>MCP Atlassian</strong> —
-                  <span data-lang="fr"
-                    >Permet de lire les tickets Jira, récupérer les détails,
-                    mettre à jour les statuts, et interagir avec
-                    Confluence</span
-                  ><span data-lang="en"
-                    >Reads Jira tickets, fetches details, updates statuses, and
-                    interacts with Confluence</span
-                  ></span
-                >
-              </li>
-              <li>
-                <i data-feather="check"></i>
-                <span
-                  ><strong>MCP GitHub</strong> —
-                  <span data-lang="fr"
-                    >Permet de récupérer les issues GitHub, créer des Pull Requests et gérer les
-                    repositories</span
-                  ><span data-lang="en"
-                    >Fetches GitHub issues, creates Pull Requests and manages repositories</span
-                  ></span
-                >
-              </li>
-            </ul>
-
-            <h4>
-              <span data-lang="fr">Flux d'exécution</span
-              ><span data-lang="en">Execution flow</span>
-            </h4>
-            <div class="doc-timeline">
-              <div class="doc-timeline-item">
-                <div class="doc-timeline-dot">1</div>
-                <div class="doc-timeline-content">
-                  <div class="doc-timeline-title">/start PROJ-42</div>
-                  <div class="doc-timeline-desc">
-                    <span data-lang="fr"
-                      >Tu tapes la commande ou dis "démarre PROJ-42".
-                      Claude Code reconnaît l'intention et charge le
-                      skill <code>start</code>.</span
-                    ><span data-lang="en"
-                      >You type the command or say "work on PROJ-42".
-                      Claude Code recognizes the intent and loads the
-                      <code>start</code> skill.</span
-                    >
-                  </div>
-                </div>
-              </div>
-              <div class="doc-timeline-item">
-                <div class="doc-timeline-dot">2</div>
-                <div class="doc-timeline-content">
-                  <div class="doc-timeline-title">
-                    <span data-lang="fr">Lecture du prompt</span
-                    ><span data-lang="en">Reading the prompt</span>
-                  </div>
-                  <div class="doc-timeline-desc">
-                    <span data-lang="fr"
-                      >Claude Code lit les instructions contenues dans le
-                      fichier Markdown. Ce prompt lui indique exactement quoi
-                      faire et dans quel ordre.</span
-                    ><span data-lang="en"
-                      >Claude Code reads the instructions in the Markdown file.
-                      This prompt tells it exactly what to do and in what
-                      order.</span
-                    >
-                  </div>
-                </div>
-              </div>
-              <div class="doc-timeline-item">
-                <div class="doc-timeline-dot">3</div>
-                <div class="doc-timeline-content">
-                  <div class="doc-timeline-title">
-                    <span data-lang="fr">Appel MCP et scoring des repos</span
-                    ><span data-lang="en">MCP call and repo scoring</span>
-                  </div>
-                  <div class="doc-timeline-desc">
-                    <span data-lang="fr"
-                      >Selon le format de l'ID (PROJ-123 pour Jira, #42 pour GitHub),
-                      Claude utilise le MCP approprié pour récupérer les détails
-                      du ticket/issue. Il calcule ensuite un score de pertinence
-                      pour chaque repo configuré en fonction des mots-clés matchés
-                      (labels, titre, description).</span
-                    ><span data-lang="en"
-                      >Based on the ID format (PROJ-123 for Jira, #42 for GitHub),
-                      Claude uses the appropriate MCP to fetch ticket/issue
-                      details. It then calculates a relevance score for each
-                      configured repo based on matched keywords (labels, title,
-                      description).</span
-                    >
-                  </div>
-                </div>
-              </div>
-              <div class="doc-timeline-item">
-                <div class="doc-timeline-dot">4</div>
-                <div class="doc-timeline-content">
-                  <div class="doc-timeline-title">
-                    <span data-lang="fr">Création des worktrees</span
-                    ><span data-lang="en">Worktree creation</span>
-                  </div>
-                  <div class="doc-timeline-desc">
-                    <span data-lang="fr"
-                      >Claude crée les branches Git nécessaires via des
-                      worktrees pour les repos sélectionnés. Si plusieurs repos
-                      ont un score élevé, il te demande de choisir ou de
-                      travailler sur tous.</span
-                    ><span data-lang="en"
-                      >Claude creates the necessary Git branches via worktrees
-                      for the selected repos. If multiple repos have high scores,
-                      it asks you to choose or work on all of them.</span
-                    >
-                  </div>
-                </div>
-              </div>
-              <div class="doc-timeline-item">
-                <div class="doc-timeline-dot">5</div>
-                <div class="doc-timeline-content">
-                  <div class="doc-timeline-title">
-                    <span data-lang="fr">Agents au travail</span
-                    ><span data-lang="en">Agents at work</span>
-                  </div>
-                  <div class="doc-timeline-desc">
-                    <span data-lang="fr"
-                      >Claude lance un ou plusieurs agents qui commencent à
-                      coder. Chaque agent a le contexte du ticket et sait
-                      exactement quoi implémenter.</span
-                    ><span data-lang="en"
-                      >Claude launches one or more agents that start coding.
-                      Each agent has the ticket context and knows exactly what
-                      to implement.</span
-                    >
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <h4>
-              <span data-lang="fr">Fichiers de configuration</span
-              ><span data-lang="en">Configuration files</span>
-            </h4>
-            <ul>
-              <li>
-                <i data-feather="check"></i>
-                <span
-                  ><code>~/.claude/skills/*/SKILL.md</code> —
-                  <span data-lang="fr">Les skills Magic Slash</span
-                  ><span data-lang="en">Magic Slash skills</span></span
-                >
-              </li>
-              <li>
-                <i data-feather="check"></i>
-                <span
-                  ><code>~/.claude/settings.json</code> —
-                  <span data-lang="fr">Configuration des serveurs MCP</span
-                  ><span data-lang="en">MCP servers configuration</span></span
-                >
-              </li>
-              <li>
-                <i data-feather="check"></i>
-                <span
-                  ><code>~/.config/magic-slash/config.json</code> —
-                  <span data-lang="fr">Repositories et mots-clés</span
-                  ><span data-lang="en">Repositories and keywords</span></span
-                >
-              </li>
-            </ul>
-          </div>
-
-          <!-- FAQ / Troubleshooting -->
-          <div class="doc-section" id="doc-faq">
-            <h3>
-              <i data-feather="help-circle"></i>
-              <span data-lang="fr">FAQ / Troubleshooting</span
-              ><span data-lang="en">FAQ / Troubleshooting</span>
-            </h3>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="key"></i>
-                <span data-lang="fr">Comment autoriser le MCP Atlassian ?</span
-                ><span data-lang="en">How to authorize the Atlassian MCP?</span>
-              </h4>
-              <p data-lang="fr">
-                Lors de la première utilisation d'un outil Atlassian (Jira ou
-                Confluence), Claude Code vous demandera d'autoriser l'accès. Un
-                lien s'affichera dans le terminal : cliquez dessus pour ouvrir
-                votre navigateur et connectez-vous avec votre compte Atlassian.
-                Une fois l'autorisation accordée, le token OAuth sera
-                automatiquement sauvegardé.
-              </p>
-              <p data-lang="en">
-                On the first use of an Atlassian tool (Jira or Confluence),
-                Claude Code will ask you to authorize access. A link will appear
-                in the terminal: click on it to open your browser and log in
-                with your Atlassian account. Once authorization is granted, the
-                OAuth token will be automatically saved.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="github"></i>
-                <span data-lang="fr"
-                  >Comment générer un token GitHub (Personal Access Token)
-                  ?</span
-                ><span data-lang="en"
-                  >How to generate a GitHub Personal Access Token?</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Allez sur
-                <code
-                  >GitHub &gt; Settings &gt; Developer settings &gt; Personal
-                  access tokens &gt; Tokens (classic)</code
-                >. Créez un nouveau token avec les permissions
-                <code>repo</code> (accès complet aux repositories). Copiez le
-                token, il ne sera affiché qu'une seule fois.
-              </p>
-              <p data-lang="en">
-                Go to
-                <code
-                  >GitHub &gt; Settings &gt; Developer settings &gt; Personal
-                  access tokens &gt; Tokens (classic)</code
-                >. Create a new token with <code>repo</code> permissions (full
-                repository access). Copy the token, it will only be displayed
-                once.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="alert-triangle"></i>
-                <span data-lang="fr">Erreur "MCP server not found"</span
-                ><span data-lang="en">"MCP server not found" error</span>
-              </h4>
-              <p data-lang="fr">
-                Cette erreur indique que Node.js n'est pas correctement installé
-                ou n'est pas dans le PATH. Vérifiez avec
-                <code>node --version</code> que Node.js v18+ est installé. Si ce
-                n'est pas le cas, installez-le via
-                <code>brew install node</code> ou depuis nodejs.org.
-              </p>
-              <p data-lang="en">
-                This error indicates that Node.js is not properly installed or
-                not in the PATH. Check with <code>node --version</code> that
-                Node.js v18+ is installed. If not, install it via
-                <code>brew install node</code> or from nodejs.org.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="git-branch"></i>
-                <span data-lang="fr">Le worktree ne se crée pas</span
-                ><span data-lang="en">Worktree doesn't get created</span>
-              </h4>
-              <p data-lang="fr">
-                Vérifiez que vous avez les droits d'écriture sur le dossier
-                parent des repositories. Assurez-vous aussi que le chemin dans
-                <code>~/.config/magic-slash/config.json</code> est correct et
-                que le repository Git existe bien à cet emplacement.
-              </p>
-              <p data-lang="en">
-                Check that you have write permissions on the parent folder of
-                the repositories. Also make sure the path in
-                <code>~/.config/magic-slash/config.json</code> is correct and
-                the Git repository exists at that location.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="search"></i>
-                <span data-lang="fr">Le ticket Jira n'est pas trouvé</span
-                ><span data-lang="en">Jira ticket not found</span>
-              </h4>
-              <p data-lang="fr">
-                Vérifiez que l'URL Jira dans la configuration est correcte
-                (format: <code>https://votre-domaine.atlassian.net</code>).
-                Assurez-vous que vos credentials (email + API token) sont
-                valides et que vous avez accès au projet contenant le ticket.
-              </p>
-              <p data-lang="en">
-                Check that the Jira URL in the configuration is correct (format:
-                <code>https://your-domain.atlassian.net</code>). Make sure your
-                credentials (email + API token) are valid and you have access to
-                the project containing the ticket.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="refresh-cw"></i>
-                <span data-lang="fr">Le statut Jira ne se met pas à jour</span
-                ><span data-lang="en">Jira status doesn't update</span>
-              </h4>
-              <p data-lang="fr">
-                Le workflow Jira peut restreindre certaines transitions de
-                statut. Vérifiez dans Jira que la transition vers "To be
-                reviewed" est autorisée depuis le statut actuel du ticket.
-                Contactez votre administrateur Jira si nécessaire.
-              </p>
-              <p data-lang="en">
-                The Jira workflow may restrict certain status transitions. Check
-                in Jira that the transition to "To be reviewed" is allowed from
-                the ticket's current status. Contact your Jira administrator if
-                needed.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="alert-octagon"></i>
-                <span data-lang="fr"
-                  >Le commit échoue avec une erreur pre-commit hook</span
-                ><span data-lang="en"
-                  >Commit fails with a pre-commit hook error</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Les hooks pre-commit peuvent bloquer un commit si le code ne
-                respecte pas certaines règles (linting, formatage, tests).
-                Lisez le message d'erreur pour identifier le problème, puis
-                corrigez-le (ex: <code>npm run lint:fix</code> ou
-                <code>npm run format</code>). Relancez ensuite
-                <code>/commit</code>. Si vous devez absolument bypasser le hook,
-                utilisez <code>git commit --no-verify</code>, mais c'est
-                déconseillé.
-              </p>
-              <p data-lang="en">
-                Pre-commit hooks can block a commit if the code doesn't follow
-                certain rules (linting, formatting, tests). Read the error
-                message to identify the problem, then fix it (e.g.,
-                <code>npm run lint:fix</code> or <code>npm run format</code>).
-                Then run <code>/commit</code> again. If you absolutely need to
-                bypass the hook, use <code>git commit --no-verify</code>, but
-                this is not recommended.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="download"></i>
-                <span data-lang="fr"
-                  >Comment mettre à jour Magic Slash ?</span
-                ><span data-lang="en">How to update Magic Slash?</span>
-              </h4>
-              <p data-lang="fr">
-                Pour mettre à jour Magic Slash vers la dernière version,
-                relancez simplement la commande d'installation :
-                <code
-                  >curl -fsSL https://magic-slash.io/install.sh | bash</code
-                >. Le script détectera l'installation existante et la mettra à
-                jour automatiquement. Vos configurations personnelles seront
-                préservées.
-              </p>
-              <p data-lang="en">
-                To update Magic Slash to the latest version, simply run the
-                installation command again:
-                <code
-                  >curl -fsSL https://magic-slash.io/install.sh | bash</code
-                >. The script will detect the existing installation and update
-                it automatically. Your personal configurations will be
-                preserved.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="lock"></i>
-                <span data-lang="fr"
-                  >Où sont stockés mes tokens et credentials ?</span
-                ><span data-lang="en"
-                  >Where are my tokens and credentials stored?</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Les tokens sont stockés dans
-                <code>~/.config/magic-slash/</code> et le keychain système pour
-                OAuth.
-              </p>
-              <p data-lang="en">
-                Tokens are stored in <code>~/.config/magic-slash/</code> and the
-                system keychain for OAuth.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="user-x"></i>
-                <span data-lang="fr"
-                  >Comment révoquer l'accès OAuth Atlassian ?</span
-                ><span data-lang="en"
-                  >How to revoke Atlassian OAuth access?</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Allez sur Atlassian > Account Settings > Connected Apps >
-                Révoquer Magic Slash.
-              </p>
-              <p data-lang="en">
-                Go to Atlassian > Account Settings > Connected Apps > Revoke
-                Magic Slash.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="clock"></i>
-                <span data-lang="fr"
-                  >Mon token GitHub a expiré, que faire ?</span
-                ><span data-lang="en"
-                  >My GitHub token has expired, what to do?</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Générez un nouveau token sur GitHub et mettez à jour la
-                configuration.
-              </p>
-              <p data-lang="en">
-                Generate a new token on GitHub and update the configuration.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="git-commit"></i>
-                <span data-lang="fr"
-                  >Puis-je utiliser /commit sans ticket Jira ou issue GitHub ?</span
-                ><span data-lang="en"
-                  >Can I use /commit without a Jira ticket or GitHub issue?</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Oui, <code>/commit</code> fonctionne indépendamment, il crée un
-                commit conventionnel.
-              </p>
-              <p data-lang="en">
-                Yes, <code>/commit</code> works independently, it creates a
-                conventional commit.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="x-circle"></i>
-                <span data-lang="fr">Comment annuler un /start en cours ?</span
-                ><span data-lang="en">How to cancel an ongoing /start?</span>
-              </h4>
-              <p data-lang="fr">
-                Utilisez Ctrl+C pour interrompre, puis supprimez le worktree
-                manuellement si créé.
-              </p>
-              <p data-lang="en">
-                Use Ctrl+C to interrupt, then manually delete the worktree if
-                created.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="trash-2"></i>
-                <span data-lang="fr"
-                  >Le worktree prend beaucoup de place, comment nettoyer ?</span
-                ><span data-lang="en"
-                  >The worktree takes up a lot of space, how to clean up?</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Utilisez <code>git worktree remove &lt;path&gt;</code> ou
-                supprimez le dossier et lancez
-                <code>git worktree prune</code>.
-              </p>
-              <p data-lang="en">
-                Use <code>git worktree remove &lt;path&gt;</code> or delete the
-                folder and run <code>git worktree prune</code>.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="layers"></i>
-                <span data-lang="fr"
-                  >Comment travailler sur plusieurs tickets/issues en parallèle ?</span
-                ><span data-lang="en"
-                  >How to work on multiple tickets/issues in parallel?</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Chaque <code>/start</code> crée un worktree séparé, permettant
-                de switcher entre tickets Jira et issues GitHub.
-              </p>
-              <p data-lang="en">
-                Each <code>/start</code> creates a separate worktree, allowing
-                switching between Jira tickets and GitHub issues.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="target"></i>
-                <span data-lang="fr"
-                  >Comment fonctionne la sélection intelligente des repos ?</span
-                ><span data-lang="en"
-                  >How does smart repo selection work?</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Chaque repo a des mots-clés associés (ex: "backend", "api" pour un repo API).
-                Quand tu lances <code>/start</code>, Magic Slash calcule un score pour chaque repo :
-                +10 pts si un label/composant matche, +5 pts si un mot-clé est dans le titre,
-                +2 pts dans la description. Le repo avec le meilleur score est sélectionné
-                automatiquement. Si plusieurs repos ont un score > 0, tu choisis lequel utiliser.
-              </p>
-              <p data-lang="en">
-                Each repo has associated keywords (e.g., "backend", "api" for an API repo).
-                When you run <code>/start</code>, Magic Slash calculates a score for each repo:
-                +10 pts if a label/component matches, +5 pts if a keyword is in the title,
-                +2 pts in the description. The repo with the highest score is automatically
-                selected. If multiple repos have a score > 0, you choose which one to use.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="plus-square"></i>
-                <span data-lang="fr"
-                  >Puis-je configurer plus de 2 repositories ?</span
-                ><span data-lang="en"
-                  >Can I configure more than 2 repositories?</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Oui ! Magic Slash supporte de 1 à N repositories.
-                Lancez <code>magic-slash</code> pour ouvrir l'interface web et
-                ajouter autant de repos que nécessaire (api, web, mobile, admin, etc.).
-                Chaque repo peut avoir ses propres paramètres de commit, PR et langues.
-              </p>
-              <p data-lang="en">
-                Yes! Magic Slash supports 1 to N repositories.
-                Run <code>magic-slash</code> to open the web interface and add
-                as many repos as needed (api, web, mobile, admin, etc.).
-                Each repo can have its own commit, PR, and language settings.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="plus-circle"></i>
-                <span data-lang="fr"
-                  >Puis-je créer mes propres skills ?</span
-                ><span data-lang="en"
-                  >Can I create my own skills?</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Oui, créez un dossier dans <code>~/.claude/skills/</code> avec un fichier
-                <code>SKILL.md</code>. Ajoutez un frontmatter avec <code>name</code> et
-                <code>description</code> pour l'invocation naturelle.
-              </p>
-              <p data-lang="en">
-                Yes, create a folder in <code>~/.claude/skills/</code> with a
-                <code>SKILL.md</code> file. Add a frontmatter with <code>name</code> and
-                <code>description</code> for natural invocation.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="terminal"></i>
-                <span data-lang="fr"
-                  >Comment utiliser la commande magic-slash ?</span
-                ><span data-lang="en"
-                  >How to use the magic-slash command?</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Tapez simplement <code>magic-slash</code> dans votre terminal.
-                Une interface web s'ouvre dans votre navigateur pour configurer
-                vos repositories et leurs paramètres. Vous pouvez ajouter, modifier
-                ou supprimer des repos, et personnaliser les paramètres de commit,
-                PR et langues pour chaque projet.
-              </p>
-              <p data-lang="en">
-                Simply type <code>magic-slash</code> in your terminal. A web
-                interface opens in your browser to configure your repositories
-                and their settings. You can add, edit, or remove repos, and
-                customize commit, PR, and language settings for each project.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="globe"></i>
-                <span data-lang="fr"
-                  >Comment changer la langue des messages ?</span
-                ><span data-lang="en"
-                  >How to change the language of messages?</span
-                >
-              </h4>
-              <p data-lang="fr">
-                Lancez <code>magic-slash</code> pour ouvrir l'interface web.
-                Cliquez sur "Default Languages" pour les paramètres globaux, ou
-                sur un repository pour configurer ses langues spécifiques.
-                Vous pouvez configurer :
-                <strong>Commit</strong>, <strong>Pull Request</strong>,
-                <strong>Jira comments</strong>, et <strong>Discussion</strong>.
-                Chaque repo peut avoir ses propres paramètres.
-              </p>
-              <p data-lang="en">
-                Run <code>magic-slash</code> to open the web interface.
-                Click "Default Languages" for global settings, or click on a
-                repository to configure its specific languages. You can configure:
-                <strong>Commit</strong>, <strong>Pull Request</strong>,
-                <strong>Jira comments</strong>, and <strong>Discussion</strong>.
-                Each repo can have its own settings.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="alert-circle"></i>
-                <span data-lang="fr"
-                  >La commande magic-slash n'est pas trouvée</span
-                ><span data-lang="en">magic-slash command not found</span>
-              </h4>
-              <p data-lang="fr">
-                Vérifiez que <code>~/.local/bin</code> est dans votre PATH.
-                Ajoutez cette ligne à votre fichier de configuration shell
-                (~/.bashrc, ~/.zshrc) :
-                <code>export PATH="$HOME/.local/bin:$PATH"</code>. Puis
-                relancez votre terminal ou exécutez
-                <code>source ~/.bashrc</code>.
-              </p>
-              <p data-lang="en">
-                Make sure <code>~/.local/bin</code> is in your PATH. Add this
-                line to your shell config file (~/.bashrc, ~/.zshrc):
-                <code>export PATH="$HOME/.local/bin:$PATH"</code>. Then restart
-                your terminal or run <code>source ~/.bashrc</code>.
-              </p>
-            </div>
-          </div>
-
-          <!-- Troubleshooting -->
-          <div class="doc-section" id="doc-troubleshooting">
-            <h3>
-              <i data-feather="alert-triangle"></i>
-              <span>Troubleshooting</span>
-            </h3>
-
-            <h4>
-              <span data-lang="fr">Erreurs MCP courantes</span>
-              <span data-lang="en">Common MCP errors</span>
-            </h4>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="server"></i>
-                <span>"MCP server not responding"</span>
-              </h4>
-              <p data-lang="fr">
-                Cette erreur indique que le serveur MCP ne répond pas. Vérifiez que Node.js est installé
-                (<code>node --version</code>) et redémarrez Claude Code. Si le problème persiste,
-                relancez l'installation avec <code>curl -fsSL https://magic-slash.io/install.sh | bash</code>.
-              </p>
-              <p data-lang="en">
-                This error indicates the MCP server is not responding. Check that Node.js is installed
-                (<code>node --version</code>) and restart Claude Code. If the issue persists,
-                re-run installation with <code>curl -fsSL https://magic-slash.io/install.sh | bash</code>.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="wifi-off"></i>
-                <span>"Connection refused" / "ECONNREFUSED"</span>
-              </h4>
-              <p data-lang="fr">
-                Le serveur MCP ne peut pas être atteint. Vérifiez votre connexion internet et que
-                les ports nécessaires ne sont pas bloqués par un pare-feu. Pour le MCP Atlassian,
-                assurez-vous que <code>mcp.atlassian.com</code> est accessible.
-              </p>
-              <p data-lang="en">
-                The MCP server cannot be reached. Check your internet connection and that required
-                ports are not blocked by a firewall. For Atlassian MCP, make sure
-                <code>mcp.atlassian.com</code> is accessible.
-              </p>
-            </div>
-
-            <h4>
-              <span data-lang="fr">Problèmes d'authentification</span>
-              <span data-lang="en">Authentication issues</span>
-            </h4>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="unlock"></i>
-                <span data-lang="fr">OAuth Atlassian expiré</span>
-                <span data-lang="en">Atlassian OAuth expired</span>
-              </h4>
-              <p data-lang="fr">
-                Si vous recevez une erreur d'authentification Atlassian, le token OAuth a peut-être expiré.
-                Supprimez le cache OAuth avec <code>rm -rf ~/.mcp-atlassian</code> puis relancez une commande
-                Magic Slash. Une nouvelle fenêtre d'autorisation s'ouvrira dans votre navigateur.
-              </p>
-              <p data-lang="en">
-                If you receive an Atlassian authentication error, the OAuth token may have expired.
-                Delete the OAuth cache with <code>rm -rf ~/.mcp-atlassian</code> then run a Magic Slash
-                command again. A new authorization window will open in your browser.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="key"></i>
-                <span data-lang="fr">Token GitHub invalide</span>
-                <span data-lang="en">Invalid GitHub token</span>
-              </h4>
-              <p data-lang="fr">
-                Si les opérations GitHub échouent, votre token est peut-être expiré ou n'a pas les bonnes permissions.
-                Générez un nouveau token sur <code>GitHub &gt; Settings &gt; Developer settings &gt; Personal access tokens</code>
-                avec les permissions <code>repo</code> et <code>read:org</code>, puis relancez l'installation.
-              </p>
-              <p data-lang="en">
-                If GitHub operations fail, your token may be expired or lack proper permissions.
-                Generate a new token at <code>GitHub &gt; Settings &gt; Developer settings &gt; Personal access tokens</code>
-                with <code>repo</code> and <code>read:org</code> permissions, then re-run installation.
-              </p>
-            </div>
-
-            <h4>
-              <span data-lang="fr">Problèmes de worktrees</span>
-              <span data-lang="en">Worktree issues</span>
-            </h4>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="git-branch"></i>
-                <span data-lang="fr">Worktree déjà existant</span>
-                <span data-lang="en">Worktree already exists</span>
-              </h4>
-              <p data-lang="fr">
-                Si un worktree pour le même ticket existe déjà, Git refusera d'en créer un nouveau.
-                Listez les worktrees existants avec <code>git worktree list</code>, puis supprimez celui
-                concerné avec <code>git worktree remove &lt;path&gt;</code> ou naviguez simplement vers
-                le worktree existant.
-              </p>
-              <p data-lang="en">
-                If a worktree for the same ticket already exists, Git will refuse to create a new one.
-                List existing worktrees with <code>git worktree list</code>, then remove the relevant one
-                with <code>git worktree remove &lt;path&gt;</code> or simply navigate to the existing worktree.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="folder-minus"></i>
-                <span data-lang="fr">Worktree orphelin</span>
-                <span data-lang="en">Orphaned worktree</span>
-              </h4>
-              <p data-lang="fr">
-                Si vous avez supprimé manuellement un dossier worktree sans utiliser <code>git worktree remove</code>,
-                Git peut garder une référence obsolète. Nettoyez avec <code>git worktree prune</code> pour
-                supprimer les références vers des worktrees inexistants.
-              </p>
-              <p data-lang="en">
-                If you manually deleted a worktree folder without using <code>git worktree remove</code>,
-                Git may keep a stale reference. Clean up with <code>git worktree prune</code> to remove
-                references to non-existent worktrees.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="hard-drive"></i>
-                <span data-lang="fr">Espace disque insuffisant</span>
-                <span data-lang="en">Insufficient disk space</span>
-              </h4>
-              <p data-lang="fr">
-                Les worktrees partagent le répertoire <code>.git</code> principal mais peuvent prendre de l'espace
-                pour les fichiers de travail. Si l'espace est limité, supprimez les anciens worktrees avec
-                <code>git worktree list</code> puis <code>git worktree remove &lt;path&gt;</code>.
-              </p>
-              <p data-lang="en">
-                Worktrees share the main <code>.git</code> directory but can take space for working files.
-                If space is limited, remove old worktrees with <code>git worktree list</code> then
-                <code>git worktree remove &lt;path&gt;</code>.
-              </p>
-            </div>
-
-            <h4>
-              <span data-lang="fr">Autres problèmes</span>
-              <span data-lang="en">Other issues</span>
-            </h4>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="file-text"></i>
-                <span data-lang="fr">Commande non reconnue</span>
-                <span data-lang="en">Command not recognized</span>
-              </h4>
-              <p data-lang="fr">
-                Si <code>/start</code>, <code>/commit</code> ou <code>/done</code> ne sont pas reconnus,
-                vérifiez que les dossiers sont présents dans <code>~/.claude/skills/</code>.
-                Relancez l'installation si nécessaire.
-              </p>
-              <p data-lang="en">
-                If <code>/start</code>, <code>/commit</code> or <code>/done</code> are not recognized,
-                check that folders are present in <code>~/.claude/skills/</code>.
-                Re-run installation if needed.
-              </p>
-            </div>
-
-            <div class="doc-faq-item">
-              <h4>
-                <i data-feather="message-circle"></i>
-                <span data-lang="fr">Invocation naturelle ne fonctionne pas</span>
-                <span data-lang="en">Natural invocation not working</span>
-              </h4>
-              <p data-lang="fr">
-                Si les phrases comme "je suis prêt à committer" ne déclenchent pas la commande,
-                vérifiez que les fichiers <code>SKILL.md</code> sont présents dans <code>~/.claude/skills/</code>.
-                Relancez l'installation pour les recréer.
-              </p>
-              <p data-lang="en">
-                If phrases like "ready to commit" don't trigger the command, check that SKILL.md
-                files are present in <code>~/.claude/skills/</code>. Re-run installation to recreate them.
-              </p>
-            </div>
-          </div>
-
-          <!-- Conventional Commits -->
-          <div class="doc-section" id="doc-conventional-commits">
-            <h3><i data-feather="git-commit"></i> Conventional Commits</h3>
-
-            <p data-lang="fr">
-              Magic Slash utilise le format
-              <strong>Conventional Commits</strong> pour générer automatiquement
-              des messages de commit cohérents et lisibles.
-            </p>
-            <p data-lang="en">
-              Magic Slash uses the <strong>Conventional Commits</strong> format
-              to automatically generate consistent and readable commit messages.
-            </p>
-
-            <h4>Format</h4>
-            <div class="doc-commit-example">type(scope): description</div>
-
-            <h4 data-lang="fr">Types disponibles</h4>
-            <h4 data-lang="en">Available types</h4>
-
-            <div class="doc-commit-type">
-              <code>feat</code>
-              <span data-lang="fr"
-                >Nouvelle fonctionnalité — Ajout d'une nouvelle feature au
-                produit</span
-              >
-              <span data-lang="en"
-                >New feature — Adding a new feature to the product</span
-              >
-            </div>
-
-            <div class="doc-commit-type">
-              <code>fix</code>
-              <span data-lang="fr"
-                >Correction de bug — Résolution d'un problème existant</span
-              >
-              <span data-lang="en">Bug fix — Fixing an existing issue</span>
-            </div>
-
-            <div class="doc-commit-type">
-              <code>docs</code>
-              <span data-lang="fr"
-                >Documentation — Modifications de la documentation
-                uniquement</span
-              >
-              <span data-lang="en"
-                >Documentation — Documentation changes only</span
-              >
-            </div>
-
-            <div class="doc-commit-type">
-              <code>style</code>
-              <span data-lang="fr"
-                >Formatage — Changements de style (sans modification de la
-                logique)</span
-              >
-              <span data-lang="en"
-                >Formatting — Style changes (no logic modification)</span
-              >
-            </div>
-
-            <div class="doc-commit-type">
-              <code>refactor</code>
-              <span data-lang="fr"
-                >Refactoring — Restructuration du code sans changer le
-                comportement</span
-              >
-              <span data-lang="en"
-                >Refactoring — Code restructuring without changing
-                behavior</span
-              >
-            </div>
-
-            <div class="doc-commit-type">
-              <code>test</code>
-              <span data-lang="fr">Tests — Ajout ou modification de tests</span>
-              <span data-lang="en">Tests — Adding or modifying tests</span>
-            </div>
-
-            <div class="doc-commit-type">
-              <code>chore</code>
-              <span data-lang="fr"
-                >Maintenance — Tâches de maintenance, dépendances, config</span
-              >
-              <span data-lang="en"
-                >Maintenance — Maintenance tasks, dependencies, config</span
-              >
-            </div>
-
-            <h4 data-lang="fr">Exemples</h4>
-            <h4 data-lang="en">Examples</h4>
-
-            <div class="doc-commit-example">
-              feat(auth): add OAuth2 login with Google
-            </div>
-            <div class="doc-commit-example">
-              fix(api): resolve null pointer in user endpoint
-            </div>
-            <div class="doc-commit-example">
-              docs(readme): update installation instructions
-            </div>
-            <div class="doc-commit-example">
-              refactor(utils): simplify date formatting logic
-            </div>
-            <div class="doc-commit-example">
-              chore(deps): upgrade React to v18.2
-            </div>
-          </div>
-
-          <!-- Configuration avancée -->
-          <div class="doc-section" id="doc-advanced-config">
-            <h3>
-              <i data-feather="settings"></i>
-              <span data-lang="fr">Configuration avancée</span
-              ><span data-lang="en">Advanced Configuration</span>
-            </h3>
-
-            <h4 data-lang="fr">Interface Web de configuration</h4>
-            <h4 data-lang="en">Web Configuration Interface</h4>
-
-            <p data-lang="fr">
-              Lancez <code>magic-slash</code> pour ouvrir l'interface web :
-            </p>
-            <p data-lang="en">
-              Run <code>magic-slash</code> to open the web interface:
-            </p>
-
-            <div class="doc-code-block">
-              <div class="doc-code-header">
-                <span>Terminal</span>
-                <button
-                  class="copy-btn"
-                  onclick="copyDocCode('doc-magic-slash-cmd')"
-                >
-                  <i data-feather="copy"></i>
-                </button>
-              </div>
-              <div class="doc-code-content" id="doc-magic-slash-cmd">
-                magic-slash
-              </div>
-            </div>
-
-            <p data-lang="fr">
-              L'interface web s'ouvre automatiquement dans votre navigateur.
-              Vous pouvez configurer les repositories, les paramètres de commit,
-              les paramètres de PR, et les langues. Vous pouvez aussi éditer
-              le fichier manuellement :
-            </p>
-            <p data-lang="en">
-              The web interface opens automatically in your browser. You can
-              configure repositories, commit settings, PR settings, and languages.
-              You can also edit the file manually:
-            </p>
-
-            <div class="doc-config-block">
-              <div class="doc-config-header">
-                <i data-feather="file-text"></i>
-                ~/.config/magic-slash/config.json
-              </div>
-              <div class="doc-config-content"><pre>{
-  "version": "0.11.2",
-  "repositories": {
-    "api": {
-      "path": "/path/to/your/api-repo",
-      "keywords": ["backend", "api", "server"],
-      "languages": { "commit": "en" },
-      "commit": {
-        "format": "angular",
-        "includeTicketId": true
-      },
-      "pullRequest": { "autoLinkTickets": true },
-      "issues": { "commentOnPR": true }
-    }
-  },
-  "languages": {
-    "commit": "en",
-    "pullRequest": "en",
-    "jiraComment": "en",
-    "discussion": "en"
-  }
-}</pre></div>
-            </div>
-
-            <h4 data-lang="fr">Paramètres par repository</h4>
-            <h4 data-lang="en">Per-repository settings</h4>
-
-            <p data-lang="fr">
-              Chaque repository peut avoir ses propres paramètres qui surchargent les valeurs globales :
-            </p>
-            <p data-lang="en">
-              Each repository can have its own settings that override global defaults:
-            </p>
-
-            <ul>
-              <li>
-                <strong>commit.style</strong>: <code>single-line</code> ou <code>multi-line</code>
-              </li>
-              <li>
-                <strong>commit.format</strong>: <code>conventional</code>, <code>angular</code>, <code>gitmoji</code>, <code>none</code>
-              </li>
-              <li>
-                <strong>commit.coAuthor</strong>:
-                <span data-lang="fr">Ajouter Claude comme co-auteur</span>
-                <span data-lang="en">Add Claude as co-author</span>
-              </li>
-              <li>
-                <strong>commit.includeTicketId</strong>:
-                <span data-lang="fr">Ajouter l'ID du ticket dans le message</span>
-                <span data-lang="en">Add ticket ID in commit message</span>
-              </li>
-              <li>
-                <strong>pullRequest.autoLinkTickets</strong>:
-                <span data-lang="fr">Ajouter les liens tickets dans la PR (défaut: true)</span>
-                <span data-lang="en">Add ticket links in PR description (default: true)</span>
-              </li>
-              <li>
-                <strong>issues.commentOnPR</strong>:
-                <span data-lang="fr">Commenter sur le ticket Jira avec le lien PR (défaut: true)</span>
-                <span data-lang="en">Comment on Jira ticket with PR link (default: true)</span>
-              </li>
-            </ul>
-
-            <p data-lang="fr">
-              Les <strong>keywords</strong> sont utilisés pour la sélection intelligente :
-              labels/composants matchés (+10 pts), mots-clés dans le titre (+5 pts),
-              dans la description (+2 pts).
-            </p>
-            <p data-lang="en">
-              <strong>Keywords</strong> are used for smart selection:
-              matched labels/components (+10 pts), keywords in title (+5 pts),
-              in description (+2 pts).
-            </p>
-
-            <h4 data-lang="fr">Reconfigurer les serveurs MCP</h4>
-            <h4 data-lang="en">Reconfigure MCP servers</h4>
-
-            <p data-lang="fr">
-              Pour mettre à jour vos tokens Jira ou GitHub, ou reconfigurer les
-              serveurs MCP, relancez simplement le script d'installation :
-            </p>
-            <p data-lang="en">
-              To update your Jira or GitHub tokens, or reconfigure the MCP
-              servers, simply re-run the installation script:
-            </p>
-
-            <div class="doc-code-block">
-              <div class="doc-code-header">
-                <span>Terminal</span>
-                <button
-                  class="copy-btn"
-                  onclick="copyDocCode('doc-reinstall-code')"
-                >
-                  <i data-feather="copy"></i>
-                </button>
-              </div>
-              <div class="doc-code-content" id="doc-reinstall-code">
-                curl -fsSL https://magic-slash.io/install.sh | bash
-              </div>
-            </div>
-
-            <h4 data-lang="fr">Emplacements des fichiers importants</h4>
-            <h4 data-lang="en">Important file locations</h4>
-
-            <ul>
-              <li>
-                <i data-feather="folder"></i>
-                <span
-                  ><code>~/.claude/skills/</code> —
-                  <span data-lang="fr"
-                    >Dossier contenant les skills (start/, commit/,
-                    done/)</span
-                  ><span data-lang="en"
-                    >Folder containing skills (start/, commit/,
-                    done/)</span
-                  ></span
-                >
-              </li>
-              <li>
-                <i data-feather="file-text"></i>
-                <span
-                  ><code>~/.claude/settings.json</code> —
-                  <span data-lang="fr"
-                    >Configuration Claude Code incluant les serveurs MCP</span
-                  ><span data-lang="en"
-                    >Claude Code configuration including MCP servers</span
-                  ></span
-                >
-              </li>
-              <li>
-                <i data-feather="settings"></i>
-                <span
-                  ><code>~/.config/magic-slash/config.json</code> —
-                  <span data-lang="fr"
-                    >Configuration Magic Slash (repos et mots-clés)</span
-                  ><span data-lang="en"
-                    >Magic Slash configuration (repos and keywords)</span
-                  ></span
-                >
-              </li>
-              <li>
-                <i data-feather="terminal"></i>
-                <span
-                  ><code>~/.local/bin/magic-slash</code> —
-                  <span data-lang="fr"
-                    >Commande pour lancer l'interface web</span
-                  ><span data-lang="en"
-                    >Command to launch web interface</span
-                  ></span
-                >
-              </li>
-            </ul>
-
-            <h4 data-lang="fr">Structure du fichier settings.json</h4>
-            <h4 data-lang="en">settings.json file structure</h4>
-
-            <p data-lang="fr">
-              Le fichier <code>~/.claude/settings.json</code> contient la
-              configuration des serveurs MCP. Magic Slash y ajoute
-              automatiquement les entrées pour Atlassian et GitHub :
-            </p>
-            <p data-lang="en">
-              The <code>~/.claude/settings.json</code> file contains the MCP
-              servers configuration. Magic Slash automatically adds entries for
-              Atlassian and GitHub:
-            </p>
-
-            <div class="doc-config-block">
-              <div class="doc-config-header">
-                <i data-feather="file-text"></i>
-                ~/.claude/settings.json <span data-lang="fr">(extrait)</span
-                ><span data-lang="en">(excerpt)</span>
-              </div>
-              <div class="doc-config-content"><pre>{
-  "mcpServers": {
-    "atlassian": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "..."],
-      "env": { ... }
-    },
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "..."
-      }
-    }
-  }
-}</pre></div>
-            </div>
-          </div>
-
-          <!-- Languages -->
-          <div class="doc-section" id="doc-languages">
-            <h3>
-              <i data-feather="globe"></i>
-              <span data-lang="fr">Configuration des langues</span
-              ><span data-lang="en">Language Configuration</span>
-            </h3>
-
-            <p data-lang="fr">
-              Magic Slash permet de configurer la langue de sortie pour chaque
-              fonctionnalité. Lancez <code>magic-slash</code> pour ouvrir
-              l'interface web, puis cliquez sur "Default Languages" ou sur un
-              repository spécifique pour configurer ses langues.
-            </p>
-            <p data-lang="en">
-              Magic Slash allows you to configure the output language for each
-              feature. Run <code>magic-slash</code> to open the web interface,
-              then click "Default Languages" or on a specific repository to
-              configure its languages.
-            </p>
-
-            <h4 data-lang="fr">Options disponibles</h4>
-            <h4 data-lang="en">Available options</h4>
-
-            <ul>
-              <li>
-                <i data-feather="git-commit"></i>
-                <span>
-                  <strong>Commit language</strong> —
-                  <span data-lang="fr"
-                    >Langue des messages de commit générés par <code>/commit</code></span
-                  ><span data-lang="en"
-                    >Language for commit messages generated by <code>/commit</code></span
-                  >
-                </span>
-              </li>
-              <li>
-                <i data-feather="git-pull-request"></i>
-                <span>
-                  <strong>Pull Request language</strong> —
-                  <span data-lang="fr"
-                    >Langue du titre et de la description des PRs créées par <code>/done</code></span
-                  ><span data-lang="en"
-                    >Language for PR title and description created by <code>/done</code></span
-                  >
-                </span>
-              </li>
-              <li>
-                <i data-feather="bookmark"></i>
-                <span>
-                  <strong>Jira comment language</strong> —
-                  <span data-lang="fr"
-                    >Langue des commentaires ajoutés aux tickets Jira par <code>/done</code></span
-                  ><span data-lang="en"
-                    >Language for comments added to Jira tickets by <code>/done</code></span
-                  >
-                </span>
-              </li>
-              <li>
-                <i data-feather="message-circle"></i>
-                <span>
-                  <strong>Discussion language</strong> —
-                  <span data-lang="fr"
-                    >Langue des interactions avec Claude Code (<code>/start</code>, <code>/done</code>)</span
-                  ><span data-lang="en"
-                    >Language for Claude Code interactions (<code>/start</code>, <code>/done</code>)</span
-                  >
-                </span>
-              </li>
-            </ul>
-
-            <h4 data-lang="fr">Langues supportées</h4>
-            <h4 data-lang="en">Supported languages</h4>
-
-            <ul>
-              <li>
-                <i data-feather="check"></i>
-                <span><strong>English</strong> (<code>"en"</code>)</span>
-              </li>
-              <li>
-                <i data-feather="check"></i>
-                <span><strong>Français</strong> (<code>"fr"</code>)</span>
-              </li>
-            </ul>
-
-            <h4 data-lang="fr">Valeurs par défaut</h4>
-            <h4 data-lang="en">Default values</h4>
-
-            <p data-lang="fr">
-              Si aucune langue n'est configurée, les valeurs par défaut sont :
-            </p>
-            <p data-lang="en">
-              If no language is configured, the default values are:
-            </p>
-
-            <ul>
-              <li>
-                <i data-feather="chevron-right"></i>
-                <span>
-                  <code>commit</code>: <strong>English</strong> —
-                  <span data-lang="fr">Convention internationale pour les commits</span
-                  ><span data-lang="en">International convention for commits</span>
-                </span>
-              </li>
-              <li>
-                <i data-feather="chevron-right"></i>
-                <span>
-                  <code>pullRequest</code>: <strong>English</strong> —
-                  <span data-lang="fr">Suit généralement la langue des commits</span
-                  ><span data-lang="en">Usually follows commit language</span>
-                </span>
-              </li>
-              <li>
-                <i data-feather="chevron-right"></i>
-                <span>
-                  <code>jiraComment</code>: <strong>English</strong> —
-                  <span data-lang="fr">Suit généralement la langue des PRs</span
-                  ><span data-lang="en">Usually follows PR language</span>
-                </span>
-              </li>
-              <li>
-                <i data-feather="chevron-right"></i>
-                <span>
-                  <code>discussion</code>: <strong>English</strong> —
-                  <span data-lang="fr">Convention internationale</span
-                  ><span data-lang="en">International convention</span>
-                </span>
-              </li>
-            </ul>
-
-            <h4 data-lang="fr">Exemple de configuration</h4>
-            <h4 data-lang="en">Configuration example</h4>
-
-            <div class="doc-config-block">
-              <div class="doc-config-header">
-                <i data-feather="file-text"></i>
-                ~/.config/magic-slash/config.json
-              </div>
-              <div class="doc-config-content"><pre>{
-  "version": "0.11.2",
-  "repositories": { ... },
-  "languages": {
-    "commit": "en",
-    "pullRequest": "en",
-    "jiraComment": "en",
-    "discussion": "en"
-  }
-}</pre></div>
-            </div>
-          </div>
+        </section>
         </div>
-      </div>
+
+        <!-- Section 8 — Footer -->
+        <footer class="site-footer">
+            <svg class="footer-logo" viewBox="0 0 844 152"><use href="#magic-slash-logo"/></svg>
+            <div class="footer-links">
+                <a href="https://github.com/Xrequillart/magic-slash" target="_blank">GitHub</a>
+            </div>
+            <div class="footer-tagline" data-i18n="footer.tagline">Made for developers who ship.</div>
+        </footer>
+
     </div>
-
-    <footer>
-      <div class="container">
-        <div class="footer-links">
-          <a href="#" id="doc-link-footer">Documentation</a>
-          <a href="https://github.com/xrequillart/magic-slash" target="_blank"
-            >GitHub</a
-          >
-        </div>
-        <p>
-          <span data-lang="fr">Fait avec &hearts; &agrave; Paris</span>
-          <span data-lang="en">Made with &hearts; in Paris</span>
-          &mdash;
-          <a href="https://github.com/xrequillart/magic-slash" target="_blank"
-            >xrequillart/magic-slash</a
-          >
-        </p>
-      </div>
-    </footer>
+    </div>
 
     <script src="script.js"></script>
-  </body>
+</body>
 </html>

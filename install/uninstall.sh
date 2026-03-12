@@ -27,6 +27,15 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ============================================
+# READ INSTALLATION MODE
+# ============================================
+CONFIG_FILE="$HOME/.config/magic-slash/config.json"
+INSTALL_MODE="unknown"
+if [ -f "$CONFIG_FILE" ]; then
+  INSTALL_MODE=$(jq -r '.installationMode // "unknown"' "$CONFIG_FILE" 2>/dev/null)
+fi
+
+# ============================================
 # CONFIRMATION
 # ============================================
 echo "This script will remove:"
@@ -35,10 +44,16 @@ echo "  • ~/.claude/skills/start/"
 echo "  • ~/.claude/skills/commit/"
 echo "  • ~/.claude/skills/done/"
 echo "  • ~/.config/magic-slash/ (entire folder)"
-echo "  • ~/.local/share/magic-slash/ (web UI)"
+if [ "$INSTALL_MODE" = "standalone" ]; then
+  echo "  • ~/.local/bin/magic-slash (CLI)"
+elif [ "$INSTALL_MODE" = "desktop" ]; then
+  echo "  • /Applications/Magic Slash.app (desktop app)"
+else
+  echo "  • /Applications/Magic Slash.app (desktop app, if present)"
+  echo "  • ~/.local/bin/magic-slash (CLI, if present)"
+fi
 echo "  • MCP Atlassian (via claude mcp remove)"
 echo "  • MCP GitHub (via claude mcp remove)"
-echo "  • magic-slash CLI command"
 echo ""
 read -p "Continue? (y/N) " CONFIRM < /dev/tty
 echo ""
@@ -97,18 +112,40 @@ fi
 echo ""
 
 # ============================================
-# 3. WEB UI REMOVAL
+# 3. DESKTOP APP / CLI REMOVAL
 # ============================================
-echo "3. Removing web UI..."
+echo "3. Removing Magic Slash app/CLI..."
 echo ""
 
-WEB_UI_DIR="$HOME/.local/share/magic-slash"
+# Remove desktop app (if installed in desktop mode or for safety)
+APP_PATH="/Applications/Magic Slash.app"
+if [ -d "$APP_PATH" ]; then
+  rm -rf "$APP_PATH"
+  echo "   ✓ Removed: $APP_PATH"
+elif [ "$INSTALL_MODE" = "desktop" ]; then
+  echo "   - Not found: $APP_PATH"
+fi
 
+# Remove CLI (if installed in standalone mode or for safety)
+CLI_PATH="$HOME/.local/bin/magic-slash"
+if [ -f "$CLI_PATH" ]; then
+  rm "$CLI_PATH"
+  echo "   ✓ Removed: $CLI_PATH"
+elif [ "$INSTALL_MODE" = "standalone" ]; then
+  echo "   - Not found: $CLI_PATH"
+fi
+
+# Also clean up legacy web UI if it exists
+WEB_UI_DIR="$HOME/.local/share/magic-slash"
 if [ -d "$WEB_UI_DIR" ]; then
   rm -rf "$WEB_UI_DIR"
-  echo "   ✓ Removed: $WEB_UI_DIR"
-else
-  echo "   - Not found: $WEB_UI_DIR"
+  echo "   ✓ Removed legacy: $WEB_UI_DIR"
+fi
+
+# Also clean up CLI in /usr/local/bin if it exists (legacy location)
+if [ -f "/usr/local/bin/magic-slash" ]; then
+  rm "/usr/local/bin/magic-slash"
+  echo "   ✓ Removed legacy: /usr/local/bin/magic-slash"
 fi
 
 echo ""
@@ -136,33 +173,11 @@ fi
 echo ""
 
 # ============================================
-# 5. CLI REMOVAL
-# ============================================
-echo "5. Removing magic-slash CLI..."
-echo ""
-
-CLI_REMOVED=false
-for dir in "$HOME/.local/bin" "/usr/local/bin"; do
-  if [ -f "$dir/magic-slash" ]; then
-    rm "$dir/magic-slash"
-    echo "   ✓ Removed: $dir/magic-slash"
-    CLI_REMOVED=true
-    break
-  fi
-done
-
-if [ "$CLI_REMOVED" = false ]; then
-  echo "   - magic-slash CLI not found"
-fi
-
-echo ""
-
-# ============================================
-# 6. BACKUP CLEANUP (OPTIONAL)
+# 5. BACKUP CLEANUP (OPTIONAL)
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "6. Cleaning up backup files..."
+echo "5. Cleaning up backup files..."
 echo ""
 
 BACKUP_COUNT=$(find "$HOME/.claude" -name "*.backup.*" 2>/dev/null | wc -l | tr -d ' ')

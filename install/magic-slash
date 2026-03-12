@@ -4,13 +4,16 @@
 
 # Config file path
 CONFIG_FILE="$HOME/.config/magic-slash/config.json"
+DESKTOP_APP_DIR="$HOME/.local/share/magic-slash/desktop"
 WEB_UI_DIR="$HOME/.local/share/magic-slash/web-ui"
 
-# Read version from config file (set during installation)
+# Read version and installation mode from config file (set during installation)
 if [ -f "$CONFIG_FILE" ]; then
   VERSION=$(jq -r '.version // "unknown"' "$CONFIG_FILE" 2>/dev/null)
+  INSTALL_MODE=$(jq -r '.installationMode // "desktop"' "$CONFIG_FILE" 2>/dev/null)
 else
   VERSION="unknown"
+  INSTALL_MODE="desktop"
 fi
 
 # Check for --help or -h flag
@@ -19,7 +22,8 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
   echo "Magic Slash v$VERSION"
   echo ""
   echo "Usage:"
-  echo "  magic-slash          Open web UI configuration (localhost:3847)"
+  echo "  magic-slash          Open desktop app (or web UI if desktop not installed)"
+  echo "  magic-slash --web    Open web UI configuration (localhost:3847)"
   echo "  magic-slash --cli    Open interactive terminal configuration"
   echo "  magic-slash --help   Show this help message"
   echo ""
@@ -30,8 +34,8 @@ fi
 if [ "$1" = "--cli" ] || [ "$1" = "--tui" ]; then
   shift  # Remove the flag from arguments
   # Continue to terminal UI below
-else
-  # Default: launch web UI
+elif [ "$1" = "--web" ]; then
+  # Launch web UI
   if [ -d "$WEB_UI_DIR" ]; then
     cd "$WEB_UI_DIR" || exit 1
 
@@ -46,8 +50,40 @@ else
     exit 0
   else
     echo "Error: Web UI not found at $WEB_UI_DIR"
-    echo "Falling back to terminal UI..."
-    echo ""
+    exit 1
+  fi
+else
+  # Default behavior depends on installation mode
+  if [ "$INSTALL_MODE" = "standalone" ]; then
+    # Standalone mode: go directly to terminal UI
+    # Fall through to terminal UI below
+    :
+  else
+    # Desktop mode: try desktop app first, then web UI, then terminal UI
+    if [ -d "/Applications/Magic Slash.app" ]; then
+      open -a "Magic Slash"
+      exit 0
+    elif [ -d "$DESKTOP_APP_DIR" ]; then
+      cd "$DESKTOP_APP_DIR" || exit 1
+      npm start
+      exit 0
+    elif [ -d "$WEB_UI_DIR" ]; then
+      cd "$WEB_UI_DIR" || exit 1
+
+      # Check if node_modules exists
+      if [ ! -d "node_modules" ]; then
+        echo "Installing web UI dependencies..."
+        npm install --silent
+      fi
+
+      # Start the server
+      node server.js
+      exit 0
+    else
+      echo "Error: No UI found. Please reinstall Magic Slash."
+      echo "Falling back to terminal UI..."
+      echo ""
+    fi
   fi
 fi
 

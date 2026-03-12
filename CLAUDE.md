@@ -1,0 +1,75 @@
+# Magic Slash
+
+3 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/start`, `/commit`, `/done`.
+
+## Project Structure
+
+```text
+magic-slash/
+├── skills/            # Claude Code skills (start, commit, done) - SKILL.md files
+│   ├── start/         #   Start a task from a Jira ticket or GitHub issue
+│   ├── commit/        #   Create atomic commits with conventional messages
+│   └── done/          #   Push, create PR and update Jira
+├── desktop/           # Native desktop app (Electron + React + TypeScript)
+│   ├── src/main/      #   Electron main process (config, IPC, PTY, hooks, updater)
+│   ├── src/preload/   #   Secure bridge main <-> renderer
+│   └── src/renderer/  #   React UI (pages, components, hooks, Zustand store)
+├── web-ui/            # Web configuration interface (Express + Vanilla JS)
+│   ├── lib/           #   Backend: config I/O, validation
+│   ├── public/        #   Frontend: vanilla SPA (index.html, app.js, styles.css)
+│   └── server.js      #   Express server (port 3847)
+├── docs/              # Static landing page (GitHub Pages)
+├── install/           # Installation scripts and CLI (bash)
+│   ├── install.sh     #   Setup Atlassian/GitHub MCP, repos, skills, CLI
+│   ├── uninstall.sh   #   Full uninstallation
+│   └── magic-slash    #   CLI wrapper
+└── .github/           # CI/CD workflows and issue templates
+```
+
+## Tech Stack
+
+| Component | Technologies |
+|-----------|-------------|
+| Root | Node.js 18+, ESLint, commitlint, Vitest |
+| Desktop | Electron 28, React 18, TypeScript, Tailwind CSS, Zustand, xterm.js + node-pty, Vite, electron-builder |
+| Web UI | Express 4, Vanilla JS/CSS |
+| Skills | Markdown (SKILL.md) |
+| Docs | Static HTML/CSS/JS, GitHub Pages |
+| Install | Bash |
+
+## Useful Commands
+
+```bash
+# Linting
+npm run lint          # All linters (md + yaml + js)
+npm run lint:js       # ESLint only (web-ui/ + desktop/src/)
+
+# Tests
+npm test              # Vitest (run)
+npm run test:watch    # Vitest (watch)
+
+# Web UI
+npm run web:install   # Install web-ui dependencies
+npm run web           # Start web server (port 3847)
+
+# Desktop
+npm run desktop:install  # Install desktop dependencies
+npm run desktop          # Start in dev mode
+npm run desktop:build    # Production build
+npm run desktop:package  # Package for macOS (.dmg, .zip)
+```
+
+## Conventions
+
+- **Commits**: conventional commits (commitlint), format `type(scope): subject`
+  - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`, `revert`
+  - Scopes: `start`, `commit`, `done`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`
+  - Subject: lower-case, no trailing period, max 100 characters
+- **Node**: v20 (see `.nvmrc`)
+- **Formatting**: UTF-8, LF, 2-space indentation (see `.editorconfig`)
+
+## User Configuration
+
+Config file: `~/.config/magic-slash/config.json`
+
+Contains configured repositories, each with: path, keywords, languages (commit/PR/Jira), commit format (angular), and PR/issues options.

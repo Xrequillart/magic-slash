@@ -33,6 +33,7 @@ module.exports = {
         'landing',
         'slides',
         'community',
+        'desktop',
       ],
     ],
     'subject-case': [2, 'always', 'lower-case'],

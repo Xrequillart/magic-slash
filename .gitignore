@@ -32,6 +32,7 @@ pnpm-debug.log*
 dist/
 build/
 out/
+desktop/release/
 .next/
 .nuxt/
 .output/

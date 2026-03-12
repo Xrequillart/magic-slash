@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="docs/logo.svg" alt="Magic Slash" height="80">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo-readme-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/logo-readme-light.svg">
+    <img src="docs/logo-readme-light.svg" alt="Magic Slash" height="80">
+  </picture>
 </p>
 
 <p align="center">
@@ -124,11 +128,11 @@ Worktrees created:
 
 **Format examples:**
 
-| Format       | Example                                           |
-| ------------ | ------------------------------------------------- |
-| conventional | `feat: add JWT token refresh mechanism`           |
-| angular      | `feat(auth): add JWT token refresh mechanism`     |
-| gitmoji      | `✨ add JWT token refresh mechanism`              |
+| Format       | Example                                       |
+| ------------ | --------------------------------------------- |
+| conventional | `feat: add JWT token refresh mechanism`       |
+| angular      | `feat(auth): add JWT token refresh mechanism` |
+| gitmoji      | `✨ add JWT token refresh mechanism`          |
 
 **With ticket ID (if enabled):**
 
@@ -188,6 +192,24 @@ This launches a local web server and opens your browser to configure:
   <img src="docs/web-ui-preview.png" alt="Magic Slash Web UI" width="600">
 </p>
 
+### Desktop App
+
+Magic Slash also ships a native desktop application built with Electron, featuring integrated Claude Code terminals and project management.
+
+```bash
+# Install desktop dependencies
+npm run desktop:install
+
+# Run in development mode
+npm run desktop
+
+# Build for production
+npm run desktop:build
+
+# Package for macOS
+npm run desktop:package
+```
+
 ### Files
 
 | File                                | Description                            |
@@ -201,7 +223,7 @@ This launches a local web server and opens your browser to configure:
 
 ```json
 {
-  "version": "0.11.2",
+  "version": "0.12.0",
   "repositories": {
     "api": {
       "path": "/Users/dev/projects/my-api",
@@ -243,12 +265,12 @@ Each repository can have its own settings that override global defaults:
 
 #### Languages
 
-| Setting       | Description                              | Default |
-| ------------- | ---------------------------------------- | ------- |
-| `commit`      | Language for commit messages             | `en`    |
-| `pullRequest` | Language for PR title and description    | `en`    |
-| `jiraComment` | Language for Jira comments               | `en`    |
-| `discussion`  | Language for Claude Code interactions    | `en`    |
+| Setting       | Description                           | Default |
+| ------------- | ------------------------------------- | ------- |
+| `commit`      | Language for commit messages          | `en`    |
+| `pullRequest` | Language for PR title and description | `en`    |
+| `jiraComment` | Language for Jira comments            | `en`    |
+| `discussion`  | Language for Claude Code interactions | `en`    |
 
 #### Commit settings
 
@@ -261,15 +283,15 @@ Each repository can have its own settings that override global defaults:
 
 #### Pull Request settings
 
-| Setting           | Description                                      | Default |
-| ----------------- | ------------------------------------------------ | ------- |
-| `autoLinkTickets` | Add Jira/GitHub ticket links in PR description   | `true`  |
+| Setting           | Description                                    | Default |
+| ----------------- | ---------------------------------------------- | ------- |
+| `autoLinkTickets` | Add Jira/GitHub ticket links in PR description | `true`  |
 
 #### Issues settings
 
-| Setting       | Description                                    | Default |
-| ------------- | ---------------------------------------------- | ------- |
-| `commentOnPR` | Add comment with PR link when creating the PR  | `true`  |
+| Setting       | Description                                   | Default |
+| ------------- | --------------------------------------------- | ------- |
+| `commentOnPR` | Add comment with PR link when creating the PR | `true`  |
 
 ### Keywords
 
@@ -289,6 +311,13 @@ magic-slash/
 │   ├── workflows/        # CI and release workflows
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── dependabot.yml
+├── desktop/               # Electron desktop app
+│   ├── src/
+│   │   ├── main/          # Main process (config, PTY, IPC)
+│   │   ├── preload/       # Secure bridge
+│   │   └── renderer/      # React UI (pages, components, hooks)
+│   ├── resources/         # App icons & logo
+│   └── package.json
 ├── skills/
 │   ├── commit/SKILL.md   # Skill /commit
 │   ├── start/SKILL.md    # Skill /start
@@ -315,7 +344,9 @@ magic-slash/
 ├── README.md             # This file
 ├── SECURITY.md           # Security policy
 ├── commitlint.config.js  # Commit message linting
-└── package.json          # Dev dependencies (linters)
+├── eslint.config.mjs     # ESLint configuration
+├── vitest.config.ts      # Test configuration
+└── package.json          # Dev dependencies (linters, tests)
 ```
 
 ## Contributing
@@ -342,8 +373,14 @@ pip install yamllint
 # Run linters
 npm run lint
 
+# Run tests
+npm test
+
 # Test the web UI locally
 cd web-ui && npm install && npm start
+
+# Run the desktop app in dev mode
+cd desktop && npm install && npm run dev
 ```
 
 ## Acknowledgments
@@ -354,6 +391,9 @@ Magic Slash is built with and for:
 - [Atlassian MCP](https://mcp.atlassian.com) - Jira and Confluence integration
 - [GitHub MCP](https://github.com/modelcontextprotocol/server-github) - GitHub integration
 - [Conventional Commits](https://www.conventionalcommits.org/) - Commit message standard
+- [Electron](https://www.electronjs.org/) - Desktop application framework
+- [React](https://react.dev/) - UI library for desktop app
+- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
 
 ## License
 
