@@ -1,0 +1,91 @@
+{
+  "name": "magic-slash-desktop",
+  "version": "0.12.0",
+  "description": "Magic Slash Desktop - Configuration and Claude Code terminals",
+  "main": "dist/main/index.js",
+  "author": "xrequillart",
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "electron-rebuild",
+    "dev": "vite",
+    "build": "vite build",
+    "start": "electron dist/main/index.js",
+    "rebuild": "electron-rebuild",
+    "package": "npm run build && electron-builder",
+    "package:mac": "npm run build && electron-builder --mac",
+    "release": "npm run build && electron-builder --mac --publish always",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/xterm": "^5.5.0",
+    "adm-zip": "^0.5.16",
+    "electron-updater": "^6.7.3",
+    "lucide-react": "^0.563.0",
+    "node-pty": "^1.0.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "concurrently": "^8.2.2",
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1",
+    "esbuild": "^0.20.0",
+    "postcss": "^8.4.33",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.12",
+    "vite-plugin-electron": "^0.28.2",
+    "vite-plugin-electron-renderer": "^0.14.5"
+  },
+  "build": {
+    "appId": "io.magic-slash.desktop",
+    "productName": "Magic Slash",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "resources/**/*"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "xrequillart",
+      "repo": "magic-slash",
+      "releaseType": "release"
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "resources/icon.png",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "dmg": {
+      "title": "Magic Slash",
+      "icon": "resources/icon_dmg.png",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
+  }
+}

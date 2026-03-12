@@ -5,7 +5,7 @@ argument-hint: <VERSION>
 allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep
 ---
 
-# Magic Slash - /release
+# magic-slash v0.11.2 - /release
 
 Tu es un assistant qui prepare les releases du projet Magic Slash en mettant a jour tous les fichiers contenant des references de version.
 
@@ -70,6 +70,14 @@ Mets a jour la version dans `/web-ui/package.json` :
 "version": "X.Y.Z"
 ```
 
+### 2.3 : desktop/package.json
+
+Mets a jour la version dans `/desktop/package.json` :
+
+```json
+"version": "X.Y.Z"
+```
+
 Affiche une confirmation pour chaque fichier mis a jour.
 
 ## Etape 3 : Mettre a jour la documentation
@@ -84,9 +92,9 @@ Mets a jour la version dans l'exemple de configuration (~ligne 204) :
 
 Cherche la ligne contenant `"version":` dans le bloc de configuration JSON du README.
 
-### 3.2 : docs/index.html
+### 3.2 : docs/documentation.html
 
-Mets a jour les 2 occurrences de version (~lignes 2402 et 2732) :
+Mets a jour les 2 occurrences de version (~lignes 982 et 1460) :
 
 ```json
 "version": "X.Y.Z"
@@ -96,9 +104,38 @@ Ces lignes se trouvent dans les blocs `<pre>` de la documentation.
 
 Affiche une confirmation pour chaque fichier mis a jour.
 
-## Etape 4 : Mettre a jour le script d'installation
+## Etape 4 : Mettre a jour les skills et l'interface desktop
 
-### 4.1 : install/install.sh
+### 4.1 : Fichiers SKILL.md (4 fichiers)
+
+Mets a jour le titre de version dans les 4 fichiers de skills :
+
+- `skills/start/SKILL.md`
+- `skills/commit/SKILL.md`
+- `skills/done/SKILL.md`
+- `.claude/skills/release/SKILL.md`
+
+Pattern a mettre a jour dans chaque fichier :
+
+```markdown
+# magic-slash vX.Y.Z - /nom-du-skill
+```
+
+Remplace l'ancien numero de version par le nouveau dans chaque titre.
+
+### 4.2 : desktop/src/renderer/components/Sidebar.tsx
+
+Mets a jour la version affichee dans la sidebar (~ligne 584) :
+
+```tsx
+<span className="opacity-60">vX.Y.Z</span>
+```
+
+Affiche une confirmation pour chaque fichier mis a jour.
+
+## Etape 5 : Mettre a jour le script d'installation
+
+### 5.1 : install/install.sh
 
 Mets a jour la version fallback a la ligne 111. Cherche la ligne contenant le fallback de version dans la commande curl/jq et remplace la valeur par defaut.
 
@@ -111,9 +148,9 @@ Remplace `"v0.X.Y"` par `"v{NOUVELLE_VERSION}"`.
 
 Affiche une confirmation.
 
-## Etape 5 : Mettre a jour le CHANGELOG.md
+## Etape 6 : Mettre a jour le CHANGELOG.md
 
-### 5.1 : Creer une nouvelle section
+### 6.1 : Creer une nouvelle section
 
 Ajoute une nouvelle section en haut du changelog (apres l'entete), avec le format suivant :
 
@@ -135,7 +172,7 @@ Ajoute une nouvelle section en haut du changelog (apres l'entete), avec le forma
 
 Utilise la date du jour au format `YYYY-MM-DD`.
 
-### 5.2 : Ajouter le lien de release
+### 6.2 : Ajouter le lien de release
 
 Ajoute un nouveau lien en bas du fichier, juste apres les autres liens :
 
@@ -145,7 +182,7 @@ Ajoute un nouveau lien en bas du fichier, juste apres les autres liens :
 
 Assure-toi que le nouveau lien est ajoute AVANT les liens existants (le plus recent en premier dans la liste).
 
-### 5.3 : Demander les changements
+### 6.3 : Demander les changements
 
 Apres avoir cree la structure de la nouvelle section, demande a l'utilisateur :
 
@@ -164,24 +201,30 @@ Si l'utilisateur repond 'oui', demande-lui de decrire :
 
 Et mets a jour le CHANGELOG en consequence.
 
-## Etape 6 : Verification et resume
+## Etape 7 : Verification et resume
 
-### 6.1 : Verifier les modifications
+### 7.1 : Verifier les modifications
 
 Affiche un resume de tous les fichiers modifies avec leur statut :
 
 ```text
 Resume des modifications pour la version X.Y.Z :
 
-  package.json                  {VERSION_ACTUELLE} -> X.Y.Z
-  web-ui/package.json           {VERSION_ACTUELLE} -> X.Y.Z
-  README.md                     {VERSION_ACTUELLE} -> X.Y.Z
-  docs/index.html               {VERSION_ACTUELLE} -> X.Y.Z (2 occurrences)
-  install/install.sh            v{VERSION_ACTUELLE} -> vX.Y.Z
-  CHANGELOG.md                  Nouvelle section ajoutee
+  package.json                                  {VERSION_ACTUELLE} -> X.Y.Z
+  web-ui/package.json                           {VERSION_ACTUELLE} -> X.Y.Z
+  desktop/package.json                          {VERSION_ACTUELLE} -> X.Y.Z
+  README.md                                     {VERSION_ACTUELLE} -> X.Y.Z
+  docs/documentation.html                       {VERSION_ACTUELLE} -> X.Y.Z (2 occurrences)
+  skills/start/SKILL.md                         v{VERSION_ACTUELLE} -> vX.Y.Z
+  skills/commit/SKILL.md                        v{VERSION_ACTUELLE} -> vX.Y.Z
+  skills/done/SKILL.md                          v{VERSION_ACTUELLE} -> vX.Y.Z
+  .claude/skills/release/SKILL.md               v{VERSION_ACTUELLE} -> vX.Y.Z
+  desktop/src/renderer/components/Sidebar.tsx    v{VERSION_ACTUELLE} -> vX.Y.Z
+  install/install.sh                            v{VERSION_ACTUELLE} -> vX.Y.Z
+  CHANGELOG.md                                  Nouvelle section ajoutee
 ```
 
-### 6.2 : Rappeler les etapes manuelles
+### 7.2 : Rappeler les etapes manuelles
 
 ```text
 Prochaines etapes manuelles :

@@ -88,10 +88,22 @@ Before contributing, make sure you understand:
   npm run lint:yaml
   ```
 
+- **JavaScript/TypeScript**: Run ESLint
+
+  ```bash
+  npm run lint:js
+  ```
+
 - **All linters**:
 
   ```bash
   npm run lint
+  ```
+
+- **Unit tests**: Run the test suite
+
+  ```bash
+  npm test
   ```
 
 - **Web UI**: Test the configuration interface locally
@@ -100,6 +112,13 @@ Before contributing, make sure you understand:
   cd web-ui
   npm install
   npm start
+  ```
+
+- **Desktop app**: Run the Electron app in development mode
+
+  ```bash
+  npm run desktop:install
+  npm run desktop
   ```
 
 ## How Can I Contribute?
@@ -232,6 +251,7 @@ Before submitting your PR, ensure:
 
 - [ ] Code follows the style guidelines
 - [ ] All linters pass (`npm run lint`)
+- [ ] All tests pass (`npm test`)
 - [ ] Documentation is updated if needed
 - [ ] Commit messages follow conventional commits
 - [ ] PR description clearly explains the changes

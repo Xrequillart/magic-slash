@@ -18,7 +18,7 @@ app.get('/api/config', (req, res) => {
   try {
     const configData = config.readConfig();
     res.json(configData);
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ error: 'Failed to read configuration' });
   }
 });

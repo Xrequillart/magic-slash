@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Cera Pro font faces */
+@font-face {
+  font-family: "Cera Pro";
+  src: url("./fonts/Cera Pro Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cera Pro";
+  src: url("./fonts/Cera Pro Regular Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cera Pro";
+  src: url("./fonts/Cera Pro Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cera Pro";
+  src: url("./fonts/Cera Pro Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cera Pro";
+  src: url("./fonts/Cera Pro Black.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cera Pro";
+  src: url("./fonts/Cera Pro Black Italic.otf") format("opentype");
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
+  background: rgba(0, 0, 0, 0.3);
+  color: #ffffff;
+  line-height: 1.6;
+  overflow: hidden;
+}
+
+/* Hide scrollbars globally while keeping scroll functionality */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Selection */
+::selection {
+  background: rgba(99, 102, 241, 0.3);
+}
+
+/* Custom checkbox/toggle styles */
+input[type="checkbox"] {
+  cursor: pointer;
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+/* xterm overrides */
+.xterm {
+  padding: 8px;
+  background: transparent !important;
+}
+
+.xterm .xterm-viewport {
+  background: transparent !important;
+}
+
+.xterm .xterm-screen {
+  background: transparent !important;
+}
+
+.xterm-viewport::-webkit-scrollbar {
+  width: 0;
+  display: none;
+}
+
+/* Electron specific - hide scrollbar in drag regions */
+.electron-drag {
+  -webkit-app-region: drag;
+}
+
+.electron-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Animation utilities */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Loader spinner */
+.loader-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #27272a;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loader-spinner-small {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid #27272a;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loader-spinner-md {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #27272a;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Modal animations */
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-content-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-backdrop {
+  animation: modal-backdrop-in 0.2s ease-out forwards;
+}
+
+.animate-modal-content {
+  animation: modal-content-in 0.2s ease-out forwards;
+}
+
+/* Drop overlay animation */
+@keyframes dropzone-pulse {
+  0%, 100% { border-color: rgba(99, 102, 241, 0.5); background-color: rgba(99, 102, 241, 0.05); }
+  50% { border-color: rgba(99, 102, 241, 0.8); background-color: rgba(99, 102, 241, 0.1); }
+}
+.drop-overlay {
+  animation: dropzone-pulse 1.5s ease-in-out infinite;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

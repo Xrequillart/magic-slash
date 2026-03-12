@@ -9,6 +9,7 @@ let config = {
   languages: {}
 };
 
+// eslint-disable-next-line no-unused-vars
 let currentPage = 'home';
 let currentRepo = null;
 let pathValidationTimeout = null;
@@ -279,7 +280,7 @@ function generateCommitExample(format, style, includeTicketId) {
   const example = examples[format] || examples['conventional'];
 
   // Build the first line based on format
-  let firstLine = '';
+  let firstLine;
   switch (format) {
     case 'angular':
       firstLine = `${example.type}(${example.scope}): ${example.msg}`;
@@ -336,6 +337,7 @@ function getLanguageLabel(code) {
   return code === 'fr' ? 'Français' : 'English';
 }
 
+// eslint-disable-next-line no-unused-vars
 function countCustomLanguages(repoName) {
   const repo = config.repositories[repoName];
   return Object.keys(repo?.languages || {}).length;
@@ -362,6 +364,7 @@ function countCustomSettings(repoName) {
   return count;
 }
 
+// eslint-disable-next-line no-unused-vars
 function hasCustomSettings(repoName) {
   return countCustomSettings(repoName) > 0;
 }
@@ -465,6 +468,7 @@ function renderRepoPage(name) {
   const globalLangs = config.languages || {};
   const repoLangs = repo.languages || {};
   const commitSettings = repo.commit || {};
+  // eslint-disable-next-line no-unused-vars
   const globalCommit = config.commit || {};
 
   const langOptions = (key) => {
@@ -998,7 +1002,7 @@ async function loadPRTemplate(repoName) {
         }
       });
     }
-  } catch (error) {
+  } catch (_error) {
     statusEl.className = 'template-status error';
     statusEl.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1162,7 +1166,7 @@ async function validateAddPath(path) {
       elements.addPathStatus.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg><span>Valid git repository</span>`;
     }
     return true;
-  } catch (error) {
+  } catch (_error) {
     return true;
   }
 }
@@ -1246,7 +1250,7 @@ async function handleClose() {
 
     // Try to close (works only if opened via window.open)
     setTimeout(() => window.close(), 100);
-  } catch (error) {
+  } catch (_error) {
     showToast('Failed to shutdown server', 'error');
   }
 }

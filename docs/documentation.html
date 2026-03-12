@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - magic-slash</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Modak&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ── Theme variables ── */
+        :root {
+            --bg: #ffffff;
+            --bg-sidebar: #fafafa;
+            --border: rgba(0, 0, 0, 0.08);
+            --text: #000;
+            --text-secondary: rgba(0, 0, 0, 0.6);
+            --text-muted: rgba(0, 0, 0, 0.4);
+            --card-bg: rgba(0, 0, 0, 0.03);
+            --card-border: rgba(0, 0, 0, 0.06);
+            --code-bg: rgba(0, 0, 0, 0.05);
+            --code-color: #393BFF;
+            --pre-bg: #0a0a0b;
+            --pre-code: #a1a1aa;
+            --pre-border: rgba(255, 255, 255, 0.08);
+            --sidebar-hover: rgba(0, 0, 0, 0.04);
+            --sidebar-active: rgba(57, 59, 255, 0.08);
+            --sidebar-active-text: #393BFF;
+            --logo-color: #000;
+            --toggle-bg: rgba(0, 0, 0, 0.06);
+            --toggle-hover: rgba(0, 0, 0, 0.1);
+        }
+        [data-theme="dark"] {
+            --bg: #0a0a0b;
+            --bg-sidebar: #111113;
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #f0f0f0;
+            --text-secondary: rgba(255, 255, 255, 0.55);
+            --text-muted: rgba(255, 255, 255, 0.3);
+            --card-bg: rgba(255, 255, 255, 0.04);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --code-bg: rgba(255, 255, 255, 0.08);
+            --code-color: #818cf8;
+            --pre-bg: #141416;
+            --pre-code: #a1a1aa;
+            --pre-border: rgba(255, 255, 255, 0.06);
+            --sidebar-hover: rgba(255, 255, 255, 0.05);
+            --sidebar-active: rgba(99, 102, 241, 0.15);
+            --sidebar-active-text: #818cf8;
+            --logo-color: #fff;
+            --toggle-bg: rgba(255, 255, 255, 0.06);
+            --toggle-hover: rgba(255, 255, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* ── Layout ── */
+        .doc-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── Sidebar ── */
+        .doc-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 260px;
+            height: 100vh;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+            transition: background 0.3s, border-color 0.3s;
+        }
+        .doc-sidebar-logo {
+            padding: 1.5rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: border-color 0.3s;
+        }
+        .doc-sidebar-logo a {
+            display: flex;
+            flex-shrink: 0;
+        }
+        .doc-sidebar-logo svg {
+            height: 22px;
+            color: var(--logo-color);
+            transition: color 0.3s;
+        }
+        .doc-sidebar-logo-label {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1rem;
+            font-weight: 400;
+            color: var(--text-muted);
+            transition: color 0.3s;
+        }
+        .doc-sidebar-nav {
+            flex: 1;
+            padding: 0.75rem 0.75rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .doc-sidebar-section {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 1rem 0.75rem 0.4rem;
+            transition: color 0.3s;
+        }
+        .doc-sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: background 0.15s, color 0.15s;
+        }
+        .doc-sidebar-link:hover {
+            background: var(--sidebar-hover);
+            color: var(--text);
+        }
+        .doc-sidebar-link.active {
+            background: var(--sidebar-active);
+            color: var(--sidebar-active-text);
+        }
+        .doc-sidebar-link svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+        .doc-sidebar-back {
+            margin-bottom: 0.5rem;
+        }
+        .doc-external-icon {
+            width: 12px;
+            height: 12px;
+            margin-left: auto;
+            opacity: 0.4;
+            flex-shrink: 0;
+        }
+
+        /* ── Sidebar footer ── */
+        .doc-sidebar-footer {
+            padding: 0.75rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: border-color 0.3s;
+        }
+        .doc-lang-select {
+            flex: 1;
+            height: 36px;
+            padding: 0 28px 0 10px;
+            border-radius: 10px;
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            background: var(--toggle-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.15s, color 0.15s;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        .doc-lang-select:hover {
+            color: var(--text);
+        }
+
+        /* ── Theme toggle ── */
+        .theme-toggle {
+            margin-left: auto;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 10px;
+            background: var(--toggle-bg);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, color 0.2s;
+            flex-shrink: 0;
+        }
+        .theme-toggle:hover {
+            background: var(--toggle-hover);
+            color: var(--text);
+        }
+        .theme-toggle svg {
+            width: 18px;
+            height: 18px;
+        }
+        .theme-toggle .icon-sun,
+        .theme-toggle .icon-moon {
+            display: none;
+        }
+        [data-theme="light"] .theme-toggle .icon-moon { display: block; }
+        [data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+
+        /* ── Main content ── */
+        .doc-main {
+            margin-left: 260px;
+            flex: 1;
+            min-height: 100vh;
+        }
+        .doc-page {
+            max-width: 1024px;
+            margin: 0 auto;
+            padding: 3rem 3rem 4rem;
+        }
+        .doc-page h1 {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: var(--text);
+            opacity: 1;
+            transform: none;
+            margin-bottom: 0.5rem;
+            transition: color 0.3s;
+        }
+        .doc-page .doc-subtitle {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            transition: color 0.3s;
+        }
+        .doc-section {
+            padding: 4rem 0;
+            margin-bottom: 0;
+        }
+
+        /* ── Trail separators ── */
+        .doc-trail {
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 0;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+        .doc-trail svg {
+            width: 100%;
+            max-width: 700px;
+            height: auto;
+        }
+        [data-theme="dark"] .doc-trail {
+            opacity: 0.35;
+        }
+        .doc-section h2 {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 1rem;
+            scroll-margin-top: 2rem;
+            transition: color 0.3s;
+        }
+        .doc-section h3 {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            transition: color 0.3s;
+        }
+        .doc-section p {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 1rem;
+            transition: color 0.3s;
+        }
+        .doc-section code {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.88rem;
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--code-color);
+            transition: background 0.3s, color 0.3s;
+        }
+        .doc-section pre {
+            background: var(--pre-bg);
+            border-radius: 12px;
+            padding: 1.25rem;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            border: 1px solid var(--pre-border);
+            transition: background 0.3s, border-color 0.3s;
+            position: relative;
+        }
+        .doc-section pre code {
+            background: none;
+            padding: 0;
+            color: var(--pre-code);
+            font-size: 0.85rem;
+            line-height: 1.8;
+        }
+        .doc-card-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .doc-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.3s;
+        }
+        .doc-card:hover {
+            border-color: rgba(57, 59, 255, 0.2);
+            box-shadow: 0 4px 16px rgba(57, 59, 255, 0.06);
+        }
+        .doc-card h3 {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-top: 0;
+            margin-bottom: 0.4rem;
+            transition: color 0.3s;
+        }
+        .doc-card p {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin: 0;
+            transition: color 0.3s;
+        }
+
+        /* ── Skill cards ── */
+        .doc-skill {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.75rem;
+            margin-bottom: 1.25rem;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.3s;
+        }
+        .doc-skill:hover {
+            border-color: rgba(57, 59, 255, 0.15);
+            box-shadow: 0 4px 20px rgba(57, 59, 255, 0.05);
+        }
+        .doc-skill h3 {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: color 0.3s;
+        }
+        .doc-skill h3 code {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.95rem;
+            font-weight: 500;
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .doc-skill-name {
+            font-family: "JetBrains Mono", monospace;
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+        .doc-skill-tag {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--sidebar-active-text);
+            background: var(--sidebar-active);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+        .doc-skill-img {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+
+        .doc-skill-desc {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1.25rem;
+            transition: color 0.3s;
+        }
+        .doc-skill-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        .doc-skill-col h4 {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+            transition: color 0.3s;
+        }
+        .doc-skill-col h4 + h4,
+        .doc-skill-col ul + h4,
+        .doc-skill-col p + h4 {
+            margin-top: 1rem;
+        }
+        .doc-skill-col ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 1rem;
+        }
+        .doc-skill-col ul li {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            padding-left: 1rem;
+            position: relative;
+            transition: color 0.3s;
+        }
+        .doc-skill-col ul li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0.6em;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+        .doc-skill-col p {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 0 0 0.75rem;
+            transition: color 0.3s;
+        }
+        .doc-skill-col p:last-child {
+            margin-bottom: 0;
+        }
+        .doc-skill-col code {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.8rem;
+            background: var(--code-bg);
+            padding: 1px 5px;
+            border-radius: 4px;
+            color: var(--code-color);
+            transition: background 0.3s, color 0.3s;
+        }
+        .doc-skill-col pre {
+            background: var(--pre-bg);
+            border-radius: 10px;
+            padding: 1rem;
+            overflow-x: auto;
+            margin-top: 0.5rem;
+            border: 1px solid var(--pre-border);
+            transition: background 0.3s, border-color 0.3s;
+            position: relative;
+        }
+        .doc-skill-col pre code {
+            background: none;
+            padding: 0;
+            color: var(--pre-code);
+            font-size: 0.8rem;
+            line-height: 1.7;
+        }
+        .doc-skill code {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.8rem;
+            background: var(--code-bg);
+            padding: 1px 5px;
+            border-radius: 4px;
+            color: var(--code-color);
+            transition: background 0.3s, color 0.3s;
+        }
+        .doc-skill-desc code {
+            font-size: 0.85rem;
+        }
+        .doc-skill-source {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: auto;
+            opacity: 0.6;
+            transition: opacity 0.2s, color 0.2s;
+        }
+        .doc-skill-source:hover {
+            opacity: 1;
+            color: var(--text);
+        }
+        .doc-skill-source svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* ── Copy button ── */
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.35);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, color 0.15s, opacity 0.15s;
+            opacity: 0;
+            padding: 0;
+        }
+        pre:hover .copy-btn {
+            opacity: 1;
+        }
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .copy-btn svg {
+            width: 15px;
+            height: 15px;
+        }
+        .copy-btn.copied {
+            color: #4ade80;
+        }
+        .copy-btn.copied:hover {
+            color: #4ade80;
+        }
+
+        @media (max-width: 768px) {
+            .doc-skill-details {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .doc-sidebar {
+                width: 220px;
+            }
+            .doc-main {
+                margin-left: 220px;
+            }
+        }
+        @media (max-width: 768px) {
+            .doc-sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            .doc-main {
+                margin-left: 0;
+            }
+            .doc-page {
+                padding: 2rem 1.5rem 3rem;
+            }
+            .doc-page h1 {
+                font-size: 2rem;
+            }
+            .doc-card-grid {
+                grid-template-columns: 1fr;
+            }
+            .doc-sidebar-nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+                overflow-y: visible;
+                padding: 0.5rem 0.75rem;
+            }
+            .doc-sidebar-section {
+                width: 100%;
+                padding: 0.5rem 0.75rem 0.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Shared SVG symbols & filters -->
+    <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <!-- Trail texture filters (objectBoundingBox, default region) -->
+            <filter id="trail-texture-1" color-interpolation-filters="sRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" seed="4421" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="12" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+            <filter id="trail-texture-2" color-interpolation-filters="sRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="3" seed="7712" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+            <filter id="trail-texture-3" color-interpolation-filters="sRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" seed="3309" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+            <filter id="trail-texture-4" color-interpolation-filters="sRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.58" numOctaves="3" seed="5590" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="11" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+
+        </defs>
+    </svg>
+    <!-- Logo symbol (inline to avoid CORS issues with file://) -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden">
+        <defs>
+            <filter id="logo-texture" x="392.89" y="6.09042" width="84.9628" height="140.264" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                <feTurbulence type="fractalNoise" baseFrequency="0.66666668653488159 0.66666668653488159" numOctaves="3" seed="8916"/>
+                <feDisplacementMap in="shape" scale="8" xChannelSelector="R" yChannelSelector="G" result="displacedImage" width="100%" height="100%"/>
+                <feMerge result="effect1_texture"><feMergeNode in="displacedImage"/></feMerge>
+            </filter>
+        </defs>
+        <symbol id="magic-slash-logo" viewBox="0 0 844 152">
+            <path d="M826.097 121.973C822.868 121.973 819.908 121.166 817.217 119.551C814.527 117.937 812.374 115.784 810.76 113.093C809.253 110.403 808.499 107.497 808.499 104.375C808.499 101.146 809.253 98.2404 810.76 95.6572C812.374 92.9664 814.527 90.8138 817.217 89.1994C819.908 87.5849 822.814 86.7776 825.936 86.7776C829.38 86.7776 832.393 87.5849 834.977 89.1994C837.667 90.8138 839.766 92.9664 841.273 95.6572C842.888 98.2404 843.695 101.146 843.695 104.375C843.695 107.497 842.888 110.403 841.273 113.093C839.766 115.784 837.667 117.937 834.977 119.551C832.393 121.166 829.434 121.973 826.097 121.973Z" fill="currentColor"/>
+            <path d="M734.284 120.036C727.061 120.036 721.207 114.182 721.207 106.958V23.1676C721.207 15.9452 727.061 10.0904 734.284 10.0904C741.506 10.0904 747.361 15.9452 747.361 23.1676V106.958C747.361 114.182 741.506 120.036 734.284 120.036ZM783.364 120.036C776.141 120.036 770.287 114.182 770.287 106.958V74.5077C770.287 70.4177 769.641 67.7269 768.35 66.4354C767.058 65.1438 765.174 64.498 762.699 64.498C760.869 64.498 758.932 64.8747 756.887 65.6281C754.842 66.2739 752.797 67.2964 750.752 68.6956C747.646 70.7658 743.243 70.046 741.548 66.7196L739.173 62.0595C737.394 58.5665 737.897 54.2814 740.831 51.6815C742.32 50.363 743.904 49.0916 745.586 47.869C749.245 45.1782 753.174 43.0256 757.371 41.4111C761.676 39.689 766.197 38.8279 770.933 38.8279C776.207 38.8279 780.512 39.7428 783.848 41.5726C787.185 43.4023 789.768 45.8778 791.598 48.9991C793.428 52.0128 794.665 55.457 795.311 59.3317C796.065 63.2064 796.441 67.2426 796.441 71.4402V106.958C796.441 114.182 790.585 120.036 783.364 120.036Z" fill="currentColor"/>
+            <path d="M677.612 122.619C671.046 122.619 664.911 121.435 659.207 119.067C656.001 117.649 652.903 115.65 649.91 113.068C645.852 109.567 646.195 103.405 649.918 99.5504C653.975 95.3528 660.542 95.4941 665.572 98.4573C666.47 98.9871 667.363 99.4529 668.248 99.8548C671.907 101.469 675.674 102.277 679.549 102.277C681.486 102.277 683.101 101.9 684.392 101.146C685.684 100.285 686.33 99.2629 686.33 98.0789C686.33 97.0026 685.899 96.0877 685.038 95.3343C684.285 94.5809 682.67 93.8275 680.195 93.0741C677.827 92.3207 674.329 91.352 669.701 90.168C661.198 88.0154 654.955 84.9479 650.973 80.9656C646.99 76.8756 644.999 71.5478 644.999 64.9823C644.999 60.1389 646.291 55.726 648.874 51.7437C651.457 47.6537 655.17 44.4248 660.014 42.0569C664.857 39.5814 670.562 38.3436 677.127 38.3436C684.984 38.3436 691.657 39.7966 697.147 42.7027C699.101 43.7369 700.941 44.8486 702.663 46.0325C707.632 49.4515 707.225 56.4559 702.732 60.4769C698.621 64.1549 692.423 64.0254 687.354 61.8509C687.016 61.7063 686.674 61.5667 686.33 61.4305C682.885 60.0313 679.118 59.3317 675.028 59.3317C672.876 59.3317 671.1 59.7084 669.701 60.4618C668.301 61.1076 667.602 62.0763 667.602 63.3679C667.602 64.5518 668.517 65.6281 670.346 66.5968C672.284 67.4578 676.212 68.588 682.132 69.9872C691.926 72.3551 699.03 75.6378 703.443 79.8354C707.856 83.9254 710.062 89.4684 710.062 96.4644C710.062 101.631 708.663 106.205 705.865 110.187C703.174 114.062 699.353 117.13 694.402 119.39C689.559 121.543 683.962 122.619 677.612 122.619Z" fill="currentColor"/>
+            <path d="M588.7 122.135C583.103 122.135 578.152 121.058 573.847 118.906C569.541 116.645 566.151 113.524 563.675 109.542C561.308 105.452 560.124 100.824 560.124 95.6572C560.124 90.0604 561.415 85.3247 563.998 81.4499C566.689 77.4676 570.187 74.4539 574.492 72.4089C578.905 70.2563 583.749 69.18 589.023 69.18C596.88 69.18 603.284 71.0097 608.235 74.6692C611.412 76.9479 613.88 79.9364 615.638 83.6345C617.089 86.6835 614.151 89.6349 610.86 88.8866C608.758 88.409 607.266 86.5389 607.266 84.3846V70.1487C607.266 67.4579 606.297 65.1438 604.36 63.2064C602.423 61.2691 599.409 60.3004 595.319 60.3004C592.413 60.3004 589.076 60.6771 585.309 61.4305C584.69 61.555 584.067 61.6946 583.436 61.8543C577.792 63.2737 571.521 61.0269 569.36 55.6218C567.424 50.7834 569.508 45.2119 574.417 43.4628C576.719 42.6438 579.11 41.9056 581.596 41.2497C587.301 39.6352 593.22 38.828 599.355 38.828C606.782 38.828 613.024 40.1734 618.083 42.8641C623.249 45.5549 627.124 49.3758 629.707 54.3269C632.29 59.1703 633.582 64.9285 633.582 71.6017V107.345C633.582 114.355 627.899 120.036 620.892 120.036H618.544C614.422 120.036 610.773 117.372 609.518 113.445L607.922 108.452C607.204 106.203 608.45 103.8 610.702 103.092C613.869 102.097 616.827 104.956 615.291 107.9C613.539 111.26 611.186 114.123 608.235 116.484C603.499 120.251 596.987 122.135 588.7 122.135ZM597.579 104.375C600.593 104.375 603.015 103.568 604.844 101.954C606.674 100.339 607.589 98.2404 607.589 95.6572C607.589 93.1817 606.674 91.1367 604.844 89.5223C603.015 87.9078 600.593 87.1006 597.579 87.1006C594.35 87.1006 591.821 87.9078 589.991 89.5223C588.269 91.1367 587.408 93.1817 587.408 95.6572C587.408 98.2404 588.269 100.339 589.991 101.954C591.821 103.568 594.35 104.375 597.579 104.375Z" fill="currentColor"/>
+            <path d="M544.887 120.843C540.582 120.843 536.546 120.036 532.778 118.421C529.011 116.699 525.944 113.955 523.576 110.187C521.316 106.42 520.187 101.415 520.187 95.1729V23.0869C520.187 15.9091 526.004 10.0904 533.184 10.0904C540.361 10.0904 546.18 15.9091 546.18 23.0869V85.9704C546.18 90.0604 546.826 92.6974 548.118 93.8813C550.736 95.896 553.768 98.1748 553.768 101.481V115.968C553.768 118.44 552.036 120.537 549.571 120.681C547.849 120.789 546.286 120.843 544.887 120.843Z" fill="currentColor"/>
+            <path d="M476.591 122.619C470.025 122.619 463.89 121.435 458.186 119.067C454.981 117.649 451.882 115.65 448.889 113.068C444.832 109.567 445.174 103.405 448.898 99.5504C452.955 95.3528 459.522 95.4941 464.552 98.4573C465.45 98.9871 466.342 99.4529 467.227 99.8548C470.886 101.469 474.654 102.277 478.528 102.277C480.466 102.277 482.08 101.9 483.372 101.146C484.663 100.285 485.309 99.2629 485.309 98.0789C485.309 97.0026 484.878 96.0877 484.017 95.3343C483.264 94.5809 481.65 93.8275 479.174 93.0741C476.806 92.3207 473.308 91.352 468.68 90.168C460.177 88.0154 453.935 84.9479 449.952 80.9656C445.97 76.8756 443.979 71.5478 443.979 64.9823C443.979 60.1389 445.27 55.726 447.853 51.7437C450.437 47.6537 454.15 44.4248 458.993 42.0569C463.837 39.5814 469.541 38.3436 476.107 38.3436C483.964 38.3436 490.637 39.7966 496.126 42.7027C498.081 43.7369 499.92 44.8486 501.643 46.0325C506.611 49.4515 506.206 56.4559 501.712 60.4769C497.601 64.1549 491.402 64.0254 486.333 61.8509C485.996 61.7063 485.655 61.5667 485.309 61.4305C481.865 60.0313 478.098 59.3317 474.008 59.3317C471.855 59.3317 470.079 59.7084 468.68 60.4618C467.281 61.1076 466.581 62.0763 466.581 63.3679C466.581 64.5518 467.496 65.6281 469.326 66.5968C471.263 67.4578 475.192 68.588 481.111 69.9872C490.906 72.3551 498.009 75.6378 502.422 79.8354C506.835 83.9254 509.043 89.4684 509.043 96.4644C509.043 101.631 507.642 106.205 504.844 110.187C502.153 114.062 498.332 117.13 493.381 119.39C488.538 121.543 482.941 122.619 476.591 122.619Z" fill="currentColor"/>
+            <path d="M388.537 121.408C380.465 121.408 373.361 119.632 367.226 116.08C361.199 112.528 356.463 107.577 353.019 101.227C349.574 94.8769 347.852 87.6656 347.852 79.5933C347.852 71.6286 349.574 64.5249 353.019 58.2823C356.463 52.0397 361.199 47.1425 367.226 43.5906C373.361 39.9312 380.465 38.1014 388.537 38.1014C397.686 38.1014 405.543 40.3079 412.108 44.7208C415.113 46.7404 417.723 49.0758 419.938 51.7267C424.444 57.115 421.188 64.7403 414.796 67.6497L410.791 69.4729C406.336 71.5001 401.332 69.1292 397.416 66.1932C395.264 64.4711 392.412 63.61 388.86 63.61C384.662 63.61 381.11 65.0631 378.204 67.9691C375.406 70.8751 374.007 74.7499 374.007 79.5933C374.007 84.6519 375.406 88.6343 378.204 91.5403C381.11 94.3387 384.662 95.738 388.86 95.738C392.412 95.738 395.264 94.9307 397.416 93.3162C401.3 90.4035 406.269 88.0911 410.711 90.0513L414.579 91.7593C421.073 94.6253 424.397 102.323 419.822 107.751C417.596 110.395 414.969 112.741 411.947 114.789C405.381 119.202 397.578 121.408 388.537 121.408Z" fill="currentColor"/>
+            <path d="M336.916 106.151C336.916 113.418 331.025 119.309 323.758 119.309C316.491 119.309 310.6 113.418 310.6 106.151V53.3582C310.6 46.0912 316.491 40.2003 323.758 40.2003C331.025 40.2003 336.916 46.0912 336.916 53.3582V106.151ZM308.663 15.176C308.663 10.5479 310.062 6.8884 312.86 4.19762C315.659 1.3992 319.318 0 323.839 0C328.467 0 332.126 1.3992 334.817 4.19762C337.508 6.8884 338.853 10.5479 338.853 15.176C338.853 19.5889 337.508 23.1945 334.817 25.9929C332.126 28.6837 328.467 30.0291 323.839 30.0291C319.318 30.0291 315.659 28.6837 312.86 25.9929C310.062 23.1945 308.663 19.5889 308.663 15.176Z" fill="currentColor"/>
+            <path d="M253.251 151.76C249.053 151.76 244.694 151.114 240.174 149.823C235.761 148.531 231.617 146.378 227.742 143.365C223.975 140.459 220.908 136.476 218.54 131.418C217.738 129.814 218.392 127.865 219.998 127.069L227.256 123.471C232.127 121.057 237.848 122.628 241.728 126.436C242.343 127.04 242.918 127.543 243.403 127.866C246.094 129.588 249.484 130.449 253.574 130.449C257.987 130.449 261.592 128.996 264.391 126.09C267.297 123.292 268.75 119.04 268.75 113.336V90.5716H270.364V61.6727H268.75L273.064 48.0136C274.532 43.3624 278.847 40.2002 283.724 40.2002C289.898 40.2002 294.904 45.2058 294.904 51.3803V107.524C294.904 116.887 293.29 124.852 290.061 131.418C286.832 137.983 282.096 142.988 275.854 146.432C269.719 149.984 262.184 151.76 253.251 151.76ZM249.699 115.273C242.703 115.273 236.461 113.659 230.971 110.43C225.482 107.093 221.177 102.519 218.056 96.7066C214.934 90.8945 213.374 84.2752 213.374 76.8487C213.374 69.4221 214.88 62.8028 217.894 56.9907C221.015 51.071 225.267 46.4429 230.648 43.1063C236.03 39.7697 242.219 38.1014 249.215 38.1014C255.673 38.1014 261.323 39.7697 266.167 43.1063C271.01 46.3352 274.777 50.8557 277.468 56.6678C280.266 62.3723 281.666 69.0992 281.666 76.8487C281.666 84.921 280.32 91.8632 277.629 97.6753C275.046 103.38 271.333 107.739 266.49 110.753C261.754 113.766 256.157 115.273 249.699 115.273ZM255.027 92.3476C259.332 92.3476 262.884 90.8945 265.682 87.9885C268.588 84.9748 270.041 81.2615 270.041 76.8487C270.041 72.2205 268.588 68.4534 265.682 65.5474C262.884 62.5337 259.332 61.0269 255.027 61.0269C250.614 61.0269 246.955 62.5337 244.049 65.5474C241.25 68.4534 239.851 72.2205 239.851 76.8487C239.851 81.2615 241.25 84.9748 244.049 87.9885C246.955 90.8945 250.614 92.3476 255.027 92.3476Z" fill="currentColor"/>
+            <path d="M158.854 121.408C153.257 121.408 148.306 120.332 144.001 118.179C139.695 115.919 136.305 112.797 133.829 108.815C131.462 104.725 130.278 100.097 130.278 94.9307C130.278 89.3339 131.569 84.5981 134.152 80.7234C136.843 76.741 140.341 73.7274 144.646 71.6824C149.059 69.5298 153.903 68.4534 159.177 68.4534C167.034 68.4534 173.438 70.2832 178.389 73.9426C183.34 77.4945 186.569 82.7684 188.076 89.7644L177.42 87.3427V69.4221C177.42 66.7313 176.451 64.4173 174.514 62.4799C172.577 60.5425 169.563 59.5739 165.473 59.5739C162.567 59.5739 159.23 59.9506 155.463 60.704C154.845 60.8276 154.221 60.9687 153.591 61.1273C147.946 62.5473 141.675 60.2997 139.514 54.8951C137.578 50.0569 139.663 44.486 144.572 42.7372C146.873 41.9175 149.265 41.1795 151.75 40.5231C157.454 38.9087 163.374 38.1014 169.509 38.1014C176.936 38.1014 183.178 39.4468 188.237 42.1376C193.403 44.8284 197.278 48.6493 199.861 53.6003C202.444 58.4437 203.736 64.202 203.736 70.8751V106.619C203.736 113.628 198.055 119.309 191.045 119.309C185.526 119.309 180.639 115.741 178.959 110.482L176.774 103.649L188.076 100.097C186.461 106.663 183.232 111.883 178.389 115.757C173.653 119.524 167.141 121.408 158.854 121.408ZM167.733 103.649C170.747 103.649 173.169 102.842 174.998 101.227C176.828 99.6127 177.743 97.5139 177.743 94.9307C177.743 92.4552 176.828 90.4102 174.998 88.7957C173.169 87.1813 170.747 86.374 167.733 86.374C164.504 86.374 161.975 87.1813 160.145 88.7957C158.423 90.4102 157.562 92.4552 157.562 94.9307C157.562 97.5139 158.423 99.6127 160.145 101.227C161.975 102.842 164.504 103.649 167.733 103.649Z" fill="currentColor"/>
+            <path d="M13.0772 119.309C5.85485 119.309 0 113.454 0 106.232V57.0176C0 47.7297 7.52939 40.2002 16.8174 40.2002H19.3736L24.5399 56.5064L15.0146 55.5377C17.7053 52.524 20.7728 49.7256 24.217 47.1425C27.7688 44.4517 31.6436 42.2991 35.8412 40.6846C40.0388 38.9625 44.4517 38.1014 49.0798 38.1014C54.2461 38.1014 58.3899 39.0163 61.5112 40.846C64.7402 42.6758 67.2157 45.1513 68.9378 48.2726C70.6599 51.2863 71.8438 54.7305 72.4896 58.6052C73.243 62.4799 73.6197 66.5161 73.6197 70.7137V106.232C73.6197 113.454 67.7649 119.309 60.5425 119.309C53.3202 119.309 47.4654 113.454 47.4654 106.232V73.7812C47.4654 69.6912 46.8196 67.0004 45.528 65.7088C44.2364 64.4173 42.5681 63.7715 40.5231 63.7715C37.6171 63.7715 34.7649 64.5787 31.9665 66.1932C29.2757 67.7 26.5311 69.8526 23.7327 72.6511L18.082 59.5739H26.1544V106.232C26.1544 113.454 20.2996 119.309 13.0772 119.309ZM107.766 119.309C100.499 119.309 94.6078 113.418 94.6078 106.151V73.7812C94.6078 69.6912 93.962 67.0004 92.6705 65.7088C91.4865 64.4173 89.872 63.7715 87.8271 63.7715C85.0286 63.7715 82.2302 64.5787 79.4318 66.1932C76.6334 67.7 73.835 69.8526 71.0366 72.6511L62.4799 55.5377C65.1707 52.524 68.2382 49.7256 71.6824 47.1425C75.2342 44.4517 79.1089 42.2991 83.3065 40.6846C87.5042 38.9625 91.8632 38.1014 96.3837 38.1014C101.55 38.1014 105.748 39.0163 108.977 40.846C112.206 42.6758 114.681 45.1513 116.403 48.2726C118.125 51.2863 119.309 54.7305 119.955 58.6052C120.601 62.4799 120.924 66.5161 120.924 70.7137V106.151C120.924 113.418 115.033 119.309 107.766 119.309Z" fill="currentColor"/>
+            <g filter="url(#logo-texture)">
+                <path d="M420.001 135.516C417.102 141.461 409.987 144.002 403.978 141.239C397.774 138.386 395.131 130.988 398.124 124.85L450.742 16.9292C453.641 10.9844 460.756 8.44297 466.765 11.2061C472.969 14.059 475.612 21.4574 472.619 27.5954L420.001 135.516Z" fill="#FF0000"/>
+            </g>
+        </symbol>
+    </svg>
+
+    <div class="doc-layout">
+
+        <!-- ── Sidebar ── -->
+        <aside class="doc-sidebar">
+            <div class="doc-sidebar-logo">
+                <a href="index.html">
+                    <svg viewBox="0 0 844 152"><use href="#magic-slash-logo"/></svg>
+                </a>
+                <span class="doc-sidebar-logo-label">Docs</span>
+            </div>
+
+            <nav class="doc-sidebar-nav">
+                <a href="#" class="doc-sidebar-link" id="docVersionBadge" style="justify-content: space-between;"><span id="docVersionText"></span><i data-feather="external-link" style="width: 14px; height: 14px;"></i></a>
+                <a href="index.html" class="doc-sidebar-link doc-sidebar-back">
+                    <i data-feather="arrow-left"></i> Back to home
+                </a>
+
+                <span class="doc-sidebar-section">Getting Started</span>
+                <a href="#quick-start" class="doc-sidebar-link active">
+                    <i data-feather="zap"></i> Quick Start
+                </a>
+                <a href="#usage" class="doc-sidebar-link">
+                    <i data-feather="terminal"></i> Usage
+                </a>
+                <a href="#skills" class="doc-sidebar-link">
+                    <i data-feather="command"></i> Skills
+                </a>
+
+                <span class="doc-sidebar-section">Reference</span>
+                <a href="#configuration" class="doc-sidebar-link">
+                    <i data-feather="settings"></i> Configuration
+                </a>
+                <a href="#integrations" class="doc-sidebar-link">
+                    <i data-feather="git-pull-request"></i> Integrations
+                </a>
+                <a href="#multi-repo" class="doc-sidebar-link">
+                    <i data-feather="layers"></i> Multi-repo
+                </a>
+                <a href="#desktop" class="doc-sidebar-link">
+                    <i data-feather="monitor"></i> Desktop App
+                </a>
+
+                <span class="doc-sidebar-section">Help</span>
+                <a href="#troubleshooting" class="doc-sidebar-link">
+                    <i data-feather="life-buoy"></i> Troubleshooting
+                </a>
+
+                <span class="doc-sidebar-section">Links</span>
+                <a href="https://github.com/Xrequillart/magic-slash" target="_blank" class="doc-sidebar-link">
+                    <i data-feather="github"></i> GitHub <i data-feather="external-link" class="doc-external-icon"></i>
+                </a>
+            </nav>
+
+            <div class="doc-sidebar-footer">
+                <select class="doc-lang-select" id="docLangSelect">
+                    <option value="en" selected>English</option>
+                </select>
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                    <i data-feather="moon" class="icon-moon"></i>
+                    <i data-feather="sun" class="icon-sun"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ── Main content ── -->
+        <div class="doc-main">
+            <main class="doc-page">
+                <h1>Documentation</h1>
+                <p class="doc-subtitle">Everything you need to get started with magic-slash.</p>
+
+                <div class="doc-section" id="quick-start">
+                    <h2>Quick Start</h2>
+                    <p>Install magic-slash with a single command:</p>
+                    <pre><code>curl -fsSL https://magic-slash.io/install.sh | bash</code></pre>
+                    <p>The installer checks prerequisites, configures MCP servers (Jira &amp; GitHub), and installs the three core skills into <code>~/.claude/skills/</code>.</p>
+
+                    <h3>Prerequisites</h3>
+                    <div class="doc-card-grid">
+                        <div class="doc-card">
+                            <h3>Claude Code</h3>
+                            <p>The Anthropic CLI must be installed and authenticated.</p>
+                        </div>
+                        <div class="doc-card">
+                            <h3>Node.js &ge; 18</h3>
+                            <p>Required for MCP servers (Atlassian &amp; GitHub).</p>
+                        </div>
+                        <div class="doc-card">
+                            <h3>Git + jq</h3>
+                            <p>Git for version control, jq for JSON processing.</p>
+                        </div>
+                    </div>
+
+                    <h3>Installation modes</h3>
+                    <p>The installer offers two modes:</p>
+                    <div class="doc-card-grid" style="grid-template-columns: 1fr 1fr;">
+                        <div class="doc-card">
+                            <h3>Standalone CLI</h3>
+                            <p>Installs the 3 skills only. Use magic-slash directly inside any Claude Code session.</p>
+                        </div>
+                        <div class="doc-card">
+                            <h3>Desktop App</h3>
+                            <p>Includes a native Electron app with integrated terminals, visual ticket tracking, and repo grouping.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trail 1 -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-1)">
+                            <path d="M-20 35C80 10 180 55 300 30C420 5 520 50 620 25C680 12 720 30 720 30" stroke="#FF0000" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <div class="doc-section" id="usage">
+                    <h2>Usage</h2>
+                    <p>The typical workflow follows three steps. Start by referencing your ticket ID &mdash; magic-slash handles the rest.</p>
+                    <pre><code>&gt; /start PROJ-142
+&#10003; Fetched ticket: "Add JWT auth middleware"
+&#10003; Created worktree: /projects/api-PROJ-142
+&#10003; Branch feature/PROJ-142 created
+&#10003; Ticket moved to "In Progress"
+
+  ... you write code ...
+
+&gt; /commit
+&#10003; Staged 4 files (excluded .env.local)
+&#10003; feat(auth): add JWT token refresh mechanism
+
+&gt; /done
+&#10003; Pushed to origin/feature/PROJ-142
+&#10003; PR #87 created — linked to PROJ-142
+&#10003; Ticket moved to "To be reviewed"</code></pre>
+
+                    <h3>Ticket formats</h3>
+                    <p>magic-slash accepts both Jira and GitHub ticket identifiers:</p>
+                    <div class="doc-card-grid" style="grid-template-columns: 1fr 1fr;">
+                        <div class="doc-card">
+                            <h3>Jira</h3>
+                            <p>Alphabetic prefix + hyphen + digits: <code>PROJ-123</code>, <code>ABC-456</code>. Uses the MCP Atlassian server to fetch ticket data.</p>
+                        </div>
+                        <div class="doc-card">
+                            <h3>GitHub</h3>
+                            <p>A number, optionally prefixed with <code>#</code>: <code>123</code>, <code>#456</code>. Searches all configured repos for the matching issue.</p>
+                        </div>
+                    </div>
+
+                    <h3>Bilingual support</h3>
+                    <p>Every user-facing message supports English and French. You can configure the language independently for each context:</p>
+                    <pre><code>{
+  "languages": {
+    "discussion": "fr",    // Agent responses
+    "commit": "en",        // Commit messages
+    "pullRequest": "fr",   // PR descriptions
+    "jiraComment": "en"    // Jira comments
+  }
+}</code></pre>
+                </div>
+
+                <!-- Trail 2 -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-2)">
+                            <path d="M-20 25C100 55 200 5 350 35C500 65 580 15 720 28" stroke="#393BFF" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <div class="doc-section" id="skills">
+                    <h2>Built-in Skills Reference</h2>
+                    <p>magic-slash ships with three built-in skills that cover the full development lifecycle. Each skill is invoked as a slash command inside Claude Code and handles multi-repo worktrees automatically.</p>
+
+                    <div class="doc-skill">
+                        <h3><img src="skill-start.png" alt="skill /start icon" class="doc-skill-img"><span class="doc-skill-name">/start</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/start/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <p class="doc-skill-desc">Bootstraps a development task from a Jira ticket or GitHub issue. Say <code>/start PROJ-123</code> or <code>/start #456</code>.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>What it does</h4>
+                                <ul>
+                                    <li>Detects ticket type (Jira or GitHub) and fetches metadata</li>
+                                    <li>Scores configured repos by keyword relevance to pick the right one</li>
+                                    <li>Creates a Git worktree and feature branch (<code>feature/PROJ-123</code>)</li>
+                                    <li>Moves the ticket to "In Progress"</li>
+                                    <li>Explores the codebase, generates an implementation plan, and waits for your approval before coding</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Trigger phrases</h4>
+                                <ul>
+                                    <li><code>/start &lt;ID&gt;</code></li>
+                                    <li>"start", "begin work on", "work on ticket"</li>
+                                    <li>"commencer", "travailler sur", "demarre"</li>
+                                </ul>
+                                <h4>Multi-repo</h4>
+                                <p>If the ticket spans multiple repos, magic-slash creates worktrees for each and links them together with a shared context file.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3><img src="skill-commit.png" alt="skill /commit icon" class="doc-skill-img"><span class="doc-skill-name">/commit</span> <span class="doc-skill-tag">Git</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/commit/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <p class="doc-skill-desc">Creates atomic, conventional commits by analyzing your staged changes. Just say <code>/commit</code>.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>What it does</h4>
+                                <ul>
+                                    <li>Stages all safe files (excludes <code>.env</code>, credentials, keys)</li>
+                                    <li>Analyzes the diff and detects if changes should be split into multiple atomic commits</li>
+                                    <li>Generates a message following your configured format (angular, conventional, gitmoji, or freeform)</li>
+                                    <li>Handles pre-commit hook failures with automatic corrections (formatting, linting)</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Configuration</h4>
+                                <ul>
+                                    <li><code>commit.format</code> &mdash; angular, conventional, gitmoji, none</li>
+                                    <li><code>commit.style</code> &mdash; single-line or multi-line</li>
+                                    <li><code>languages.commit</code> &mdash; en or fr</li>
+                                    <li><code>commit.coAuthor</code> &mdash; add Co-Authored-By trailer</li>
+                                    <li><code>commit.includeTicketId</code> &mdash; append ticket ID</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3><img src="skill-done.png" alt="skill /done icon" class="doc-skill-img"><span class="doc-skill-name">/done</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/done/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <p class="doc-skill-desc">Finalizes your task: pushes commits, creates a pull request, and updates the ticket. Say <code>/done</code> when you are finished coding.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>What it does</h4>
+                                <ul>
+                                    <li>Pushes the feature branch to the remote</li>
+                                    <li>Creates a PR using your project template or a default one</li>
+                                    <li>Auto-links the Jira/GitHub ticket in the PR description</li>
+                                    <li>Transitions the ticket to "To be reviewed"</li>
+                                    <li>Adds a comment on the ticket with the PR link</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Configuration</h4>
+                                <ul>
+                                    <li><code>languages.pullRequest</code> &mdash; PR language (en / fr)</li>
+                                    <li><code>languages.jiraComment</code> &mdash; Jira comment language</li>
+                                    <li><code>pullRequest.autoLinkTickets</code> &mdash; add ticket links</li>
+                                    <li><code>issues.commentOnPR</code> &mdash; comment on the ticket</li>
+                                </ul>
+                                <h4>Multi-repo</h4>
+                                <p>Creates one PR per worktree, then updates the ticket once with links to all PRs.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Custom Skills</h3>
+                    <p>Beyond the built-in skills, you can create your own custom skills directly from the magic-slash desktop app. This lets you tailor your workflow with personalized slash commands.</p>
+
+                    <div class="doc-skill">
+                        <h3>Create your own <span class="doc-skill-tag">Custom</span></h3>
+                        <p class="doc-skill-desc">Open the desktop app, navigate to the <strong>Skills</strong> tab, and click <strong>New skill</strong> to create a custom slash command. Fill in the form, hit <strong>Save</strong>, and your skill is instantly available in Claude Code as <code>/your-skill</code>.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>How to add a skill</h4>
+                                <ul>
+                                    <li>Open the magic-slash desktop app</li>
+                                    <li>Go to the <strong>Skills</strong> tab</li>
+                                    <li>Click <strong>New skill</strong> (or the empty-state placeholder)</li>
+                                    <li>Fill in the fields and write your instructions</li>
+                                    <li>Click <strong>Save</strong> — immediately usable as <code>/your-skill</code></li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Fields</h4>
+                                <ul>
+                                    <li><code>name</code> — the slash command name (lowercase, numbers, hyphens only)</li>
+                                    <li><code>description</code> — when the skill should be triggered</li>
+                                    <li><code>allowed tools</code> — which tools the skill can use (e.g. <code>Bash(*), Read, Edit</code>)</li>
+                                    <li><code>content</code> — the instruction prompt in Markdown</li>
+                                    <li><code>image</code> — an optional icon for the skill card (png, jpg, svg, webp)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trail 3 -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-3)">
+                            <path d="M-20 30C60 50 160 8 280 40C400 72 480 15 600 30C660 38 720 20 720 20" stroke="#FF0000" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <div class="doc-section" id="configuration">
+                    <h2>Configuration</h2>
+                    <p>magic-slash is configured via a single JSON file at <code>~/.config/magic-slash/config.json</code>. Settings can be defined globally or overridden per repository.</p>
+
+                    <h3>Full config example</h3>
+                    <pre><code>{
+  "version": "0.11.2",
+  "installationMode": "desktop",
+  "repositories": {
+    "my-frontend": {
+      "path": "/Users/dev/projects/my-frontend",
+      "keywords": ["frontend", "ui", "react", "amplify"],
+      "color": "#3B82F6",
+      "languages": {
+        "discussion": "fr",
+        "pullRequest": "fr",
+        "jiraComment": "fr"
+      },
+      "commit": {
+        "coAuthor": false,
+        "includeTicketId": true
+      },
+      "branches": {
+        "development": "develop"
+      },
+      "issues": {
+        "jiraUrl": "https://myteam.atlassian.net/browse/"
+      }
+    },
+    "my-api": {
+      "path": "/Users/dev/projects/my-api",
+      "keywords": ["backend", "api", "lambda", "serverless"],
+      "color": "#EF4444",
+      "languages": {
+        "discussion": "fr",
+        "pullRequest": "fr",
+        "jiraComment": "fr"
+      },
+      "commit": {
+        "includeTicketId": true,
+        "coAuthor": false
+      },
+      "branches": {
+        "development": "develop"
+      },
+      "issues": {
+        "jiraUrl": "https://myteam.atlassian.net/browse/"
+      }
+    },
+    "my-tools": {
+      "path": "/Users/dev/projects/my-tools",
+      "keywords": ["tools", "cli", "scripts"],
+      "color": "#8B5CF6",
+      "languages": {
+        "discussion": "fr"
+      },
+      "commit": {
+        "coAuthor": false
+      },
+      "branches": {
+        "development": "main"
+      },
+      "issues": {
+        "commentOnPR": false,
+        "githubIssuesUrl": "https://github.com/myorg/my-tools"
+      }
+    }
+  },
+  "agents": [
+    {
+      "id": "claude-1770400971763",
+      "name": "Claude 1",
+      "repositories": ["/Users/dev/projects/my-frontend"],
+      "tsCreate": 1770400971818,
+      "metadata": {
+        "title": "Add user dashboard",
+        "branchName": "feature/PROJ-42-user-dashboard",
+        "ticketId": "PROJ-42",
+        "description": "Create the main user dashboard with activity feed and stats.",
+        "status": "PR created",
+        "fullStackTaskId": "",
+        "relatedWorktrees": [],
+        "repositoryMetadata": {
+          "/Users/dev/projects/my-frontend": {
+            "prUrl": "https://github.com/myorg/my-frontend/pull/156"
+          }
+        }
+      }
+    },
+    {
+      "id": "claude-1770589955009",
+      "name": "Claude 2",
+      "repositories": [],
+      "tsCreate": 1770589955032,
+      "metadata": {
+        "title": "",
+        "branchName": "",
+        "ticketId": "",
+        "description": "",
+        "status": "",
+        "fullStackTaskId": "",
+        "relatedWorktrees": [],
+        "repositoryMetadata": {}
+      }
+    }
+  ]
+}</code></pre>
+
+                    <h3>Repository settings</h3>
+                    <p>Each repository entry defines its local path and keyword list. Keywords are used by <code>/start</code> to automatically match tickets to the right repo.</p>
+                    <div class="doc-skill">
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Repository fields</h4>
+                                <ul>
+                                    <li><code>path</code> &mdash; Absolute path to the repo root</li>
+                                    <li><code>keywords</code> &mdash; Array of terms matched against ticket labels, components, title, and description</li>
+                                    <li><code>color</code> &mdash; Hex color for the repo badge in the desktop app (e.g. <code>"#3B82F6"</code>)</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Scoring algorithm</h4>
+                                <ul>
+                                    <li>Jira label/component match &rarr; +10 points</li>
+                                    <li>GitHub label match &rarr; +10 points</li>
+                                    <li>Keyword in title &rarr; +5 points</li>
+                                    <li>Keyword in description &rarr; +2 points</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Commit settings</h3>
+                    <div class="doc-skill">
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Options</h4>
+                                <ul>
+                                    <li><code>commit.format</code> &mdash; <code>angular</code> (default), <code>conventional</code>, <code>gitmoji</code>, or <code>none</code></li>
+                                    <li><code>commit.style</code> &mdash; <code>single-line</code> (default) or <code>multi-line</code></li>
+                                    <li><code>commit.coAuthor</code> &mdash; Add a Co-Authored-By trailer (<code>false</code> by default)</li>
+                                    <li><code>commit.includeTicketId</code> &mdash; Append <code>[PROJ-123]</code> to the message (<code>false</code> by default)</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Format examples</h4>
+                                <ul>
+                                    <li><strong>angular</strong> &mdash; <code>feat(auth): add login</code></li>
+                                    <li><strong>conventional</strong> &mdash; <code>feat: add login</code></li>
+                                    <li><strong>gitmoji</strong> &mdash; <code>&#10024; add login</code></li>
+                                    <li><strong>none</strong> &mdash; free-form text</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Language settings</h3>
+                    <p>Each language key can be set globally or per repository. Per-repo values always take priority.</p>
+                    <div class="doc-skill">
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Keys</h4>
+                                <ul>
+                                    <li><code>languages.discussion</code> &mdash; Agent responses and prompts</li>
+                                    <li><code>languages.commit</code> &mdash; Commit message language</li>
+                                    <li><code>languages.pullRequest</code> &mdash; PR title and description</li>
+                                    <li><code>languages.jiraComment</code> &mdash; Comments posted on Jira tickets</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Supported values</h4>
+                                <ul>
+                                    <li><code>"en"</code> &mdash; English (default for all keys)</li>
+                                    <li><code>"fr"</code> &mdash; French</li>
+                                </ul>
+                                <h4>Priority order</h4>
+                                <ul>
+                                    <li>1. Per-repo value (<code>.repositories.api.languages.commit</code>)</li>
+                                    <li>2. Global value (<code>.languages.commit</code>)</li>
+                                    <li>3. Default (<code>"en"</code>)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Pull request &amp; issue settings</h3>
+                    <div class="doc-skill">
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Pull request</h4>
+                                <ul>
+                                    <li><code>pullRequest.autoLinkTickets</code> &mdash; Add a "Linked Issues" section with the Jira/GitHub URL (<code>true</code> by default)</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Issues</h4>
+                                <ul>
+                                    <li><code>issues.commentOnPR</code> &mdash; Post a comment on the ticket with the PR link (<code>true</code> by default)</li>
+                                    <li><code>issues.jiraUrl</code> &mdash; Base URL for Jira (e.g. <code>"https://myteam.atlassian.net"</code>)</li>
+                                    <li><code>issues.githubIssuesUrl</code> &mdash; Base URL for GitHub issues (e.g. <code>"https://github.com/myorg/my-api"</code>)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Branch settings</h3>
+                    <div class="doc-skill">
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Options</h4>
+                                <ul>
+                                    <li><code>branches.development</code> &mdash; Name of the development branch used as the base for feature branches (defaults to <code>"develop"</code>)</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Example</h4>
+                                <pre><code>"branches": {
+  "development": "develop"
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>File locations</h3>
+                    <pre><code>~/.config/magic-slash/config.json   # Main configuration
+~/.claude/skills/start/SKILL.md     # /start skill definition
+~/.claude/skills/commit/SKILL.md    # /commit skill definition
+~/.claude/skills/done/SKILL.md      # /done skill definition
+~/.claude.json                      # MCP server settings (Jira &amp; GitHub)</code></pre>
+                </div>
+
+                <!-- Trail 4 -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-4)">
+                            <path d="M-20 20C120 55 220 10 360 45C500 80 560 15 650 30C690 36 720 25 720 25" stroke="#393BFF" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <div class="doc-section" id="integrations">
+                    <h2>Integrations</h2>
+                    <p>magic-slash connects to your existing tools through MCP (Model Context Protocol) servers configured during installation.</p>
+
+                    <div class="doc-skill">
+                        <h3>GitHub <span class="doc-skill-tag">MCP</span></h3>
+                        <p class="doc-skill-desc">Full GitHub integration via a personal access token. Configured in <code>~/.claude.json</code>.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Capabilities</h4>
+                                <ul>
+                                    <li>Create and manage pull requests</li>
+                                    <li>Fetch issue details and labels</li>
+                                    <li>Search issues across multiple repos</li>
+                                    <li>Add comments and update issue state</li>
+                                    <li>Branch and repository management</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Setup</h4>
+                                <p>The installer prompts for a GitHub personal access token with <code>repo</code> scope. The token is stored in the MCP server config at <code>~/.claude.json</code>.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Jira <span class="doc-skill-tag">MCP</span></h3>
+                        <p class="doc-skill-desc">Atlassian integration via OAuth for Jira Cloud. Supports ticket fetching, status transitions, and comments.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Capabilities</h4>
+                                <ul>
+                                    <li>Fetch ticket title, description, labels, and components</li>
+                                    <li>Transition tickets between statuses (In Progress, To be reviewed, etc.)</li>
+                                    <li>Add comments with PR links</li>
+                                    <li>Retrieve available transitions dynamically</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Setup</h4>
+                                <p>The installer guides you through Atlassian OAuth authentication. It opens a browser window to authorize access, then stores the tokens in the MCP config.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Git <span class="doc-skill-tag">Native</span></h3>
+                        <p class="doc-skill-desc">Direct Git operations via the CLI. No additional configuration needed.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Capabilities</h4>
+                                <ul>
+                                    <li>Worktree creation at the same level as the main repo</li>
+                                    <li>Feature branch creation (<code>feature/PROJ-123</code>)</li>
+                                    <li>Atomic commit splitting</li>
+                                    <li>Pre-commit hook error detection and auto-fix</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Branch naming</h4>
+                                <ul>
+                                    <li>Jira: <code>feature/PROJ-123</code></li>
+                                    <li>GitHub: <code>feature/repo-name-123</code></li>
+                                </ul>
+                                <h4>Worktree location</h4>
+                                <p>Worktrees are created alongside the main repo: <code>../my-api-PROJ-123</code></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trail 5 -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-1)">
+                            <path d="M-20 28C90 55 190 12 320 38C450 64 540 18 640 32C690 38 720 22 720 22" stroke="#FF0000" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <div class="doc-section" id="multi-repo">
+                    <h2>Multi-repo &amp; Full-stack</h2>
+                    <p>magic-slash natively supports full-stack development across multiple repositories. When a ticket spans several repos, each skill adapts automatically.</p>
+
+                    <h3>How it works</h3>
+                    <div class="doc-skill">
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>/start</h4>
+                                <ul>
+                                    <li>Scores all configured repos against the ticket keywords</li>
+                                    <li>If multiple repos match, asks you to choose or select "all"</li>
+                                    <li>Creates a worktree in each selected repo</li>
+                                    <li>Generates a <code>CLAUDE.local.md</code> context file in each worktree listing all related paths</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>/commit &amp; /done</h4>
+                                <ul>
+                                    <li>Detects all worktrees sharing the same ticket ID</li>
+                                    <li><code>/commit</code> iterates over each worktree that has changes</li>
+                                    <li><code>/done</code> creates one PR per repo, then updates the ticket once with all PR links</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Example: full-stack task</h3>
+                    <pre><code>&gt; /start PROJ-200
+&#10003; Ticket: "Add user avatar upload"
+&#10003; Matched repos: api (score: 15), web (score: 12)
+
+  Which repos? &gt; all
+
+&#10003; Created /projects/api-PROJ-200
+&#10003; Created /projects/web-PROJ-200
+
+  ... you implement backend + frontend ...
+
+&gt; /commit
+&#10003; api-PROJ-200: feat(upload): add avatar endpoint
+&#10003; web-PROJ-200: feat(profile): add avatar picker component
+
+&gt; /done
+&#10003; PR #42 created on org/api
+&#10003; PR #43 created on org/web
+&#10003; Jira PROJ-200 updated with both PR links</code></pre>
+
+                    <h3>Context file</h3>
+                    <p>When working on a full-stack task, each worktree gets a <code>CLAUDE.local.md</code> file so Claude keeps context across repos, even when resuming a conversation:</p>
+                    <pre><code># Full-Stack Context
+
+You are working on ticket **PROJ-200** which spans multiple repos.
+
+## Worktrees for this task
+- **Backend**: /projects/api-PROJ-200
+- **Frontend**: /projects/web-PROJ-200
+
+## Instructions
+- Use `cd` to navigate to the appropriate worktree
+- You can work on both repos in a single session
+- Make sure changes are consistent across repos</code></pre>
+                </div>
+
+                <!-- Trail 6 -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-3)">
+                            <path d="M-20 35C70 12 170 52 310 28C450 4 530 48 630 22C680 12 720 32 720 32" stroke="#FF0000" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <div class="doc-section" id="desktop">
+                    <h2>Desktop App</h2>
+                    <p>magic-slash Desktop is an optional Electron app that provides a visual interface on top of the CLI skills.</p>
+
+                    <div class="doc-card-grid">
+                        <div class="doc-card">
+                            <h3>Integrated terminals</h3>
+                            <p>Embedded Claude Code terminals with full PTY support (xterm.js + node-pty).</p>
+                        </div>
+                        <div class="doc-card">
+                            <h3>Visual tracking</h3>
+                            <p>See each agent's status in real time: Idle, Working, Waiting, Completed, or Error.</p>
+                        </div>
+                        <div class="doc-card">
+                            <h3>Repo grouping</h3>
+                            <p>Agents are grouped by repository in the sidebar for multi-repo visibility.</p>
+                        </div>
+                    </div>
+
+                    <h3>Tech stack</h3>
+                    <div class="doc-skill">
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Frontend</h4>
+                                <ul>
+                                    <li>Electron 28+</li>
+                                    <li>React 18 with Vite</li>
+                                    <li>Tailwind CSS</li>
+                                    <li>Zustand for state management</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Terminal</h4>
+                                <ul>
+                                    <li>xterm.js for rendering</li>
+                                    <li>node-pty for PTY spawning</li>
+                                    <li>Local HTTP API for metadata sync between Claude and the UI</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Desktop API endpoints</h3>
+                    <p>The desktop app exposes a local HTTP API that skills use to update the UI in real time:</p>
+                    <div class="doc-skill">
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4><code>GET /metadata</code></h4>
+                                <ul>
+                                    <li><code>title</code> &mdash; Sidebar title</li>
+                                    <li><code>ticketId</code> &mdash; Ticket identifier</li>
+                                    <li><code>description</code> &mdash; Short description</li>
+                                    <li><code>status</code> &mdash; in progress, committed, PR created</li>
+                                    <li><code>prUrl</code> &mdash; Link to the created PR</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4><code>GET /repositories</code></h4>
+                                <ul>
+                                    <li><code>repos</code> &mdash; JSON array of absolute paths</li>
+                                </ul>
+                                <p>Attaches worktrees to the agent for sidebar grouping. Called automatically by <code>/start</code> after creating a worktree.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trail 7 -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-2)">
+                            <path d="M-20 32C100 8 200 52 340 25C480 -2 560 45 660 28C700 22 720 30 720 30" stroke="#393BFF" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <div class="doc-section" id="troubleshooting">
+                    <h2>Troubleshooting</h2>
+                    <p>Common issues and how to resolve them.</p>
+
+                    <div class="doc-skill">
+                        <h3>Configuration not found</h3>
+                        <p class="doc-skill-desc">Every skill checks for <code>~/.config/magic-slash/config.json</code> before running. If missing, you will see an error.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Fix</h4>
+                                <p>Re-run the installer or create the file manually with at least one repository entry.</p>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Minimal config</h4>
+                                <pre style="margin:0"><code>{
+  "version": "0.11.2",
+  "repositories": {
+    "my-repo": {
+      "path": "/path/to/repo",
+      "keywords": ["backend"]
+    }
+  }
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Worktree already exists</h3>
+                        <p class="doc-skill-desc"><code>/start</code> detects existing worktrees and offers three options: reuse, recreate, or abort.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Options</h4>
+                                <ul>
+                                    <li><strong>Reuse</strong> (recommended) &mdash; cd into the existing worktree and continue</li>
+                                    <li><strong>Recreate</strong> &mdash; Remove and recreate the worktree from a fresh branch</li>
+                                    <li><strong>Abort</strong> &mdash; Cancel the operation</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Manual cleanup</h4>
+                                <pre style="margin:0"><code>cd /path/to/main-repo
+git worktree remove ../repo-PROJ-123</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Pre-commit hook failures</h3>
+                        <p class="doc-skill-desc"><code>/commit</code> handles hook errors automatically based on severity.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Auto-fixed (level 1-2)</h4>
+                                <ul>
+                                    <li>Formatters (Prettier, Black, gofmt)</li>
+                                    <li>Linters with auto-fix (ESLint --fix, Rubocop)</li>
+                                </ul>
+                                <p>Re-staged and retried automatically up to 3 times.</p>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Manual intervention (level 3)</h4>
+                                <ul>
+                                    <li>Type errors (TypeScript, mypy)</li>
+                                    <li>Failing tests</li>
+                                    <li>Secrets detected, files too large</li>
+                                </ul>
+                                <p>You are prompted to fix manually, skip the check, or abort.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Jira transition not available</h3>
+                        <p class="doc-skill-desc">If magic-slash cannot move a ticket to "In Progress" or "To be reviewed", it displays a warning and continues without blocking.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Common causes</h4>
+                                <ul>
+                                    <li>The transition name differs in your Jira workflow</li>
+                                    <li>Insufficient permissions on the project</li>
+                                    <li>The ticket is already in the target status</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Fallback names</h4>
+                                <p>magic-slash tries these names in order:</p>
+                                <ul>
+                                    <li>"In Progress", "En cours", "In Development", "Started"</li>
+                                    <li>"To be reviewed", "In Review", "Code Review", "Review"</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+    </div>
+
+    <script>
+        feather.replace();
+
+        // Theme toggle
+        const toggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+
+        // Restore saved theme
+        const saved = localStorage.getItem('doc-theme');
+        if (saved) {
+            html.setAttribute('data-theme', saved);
+        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            html.setAttribute('data-theme', 'dark');
+        }
+
+        toggle.addEventListener('click', () => {
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('doc-theme', next);
+        });
+
+        // Copy buttons on code blocks
+        const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+        const checkIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+        document.querySelectorAll('pre').forEach(pre => {
+            const btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.innerHTML = copyIcon;
+            btn.setAttribute('aria-label', 'Copy code');
+            btn.addEventListener('click', () => {
+                const code = pre.querySelector('code');
+                const text = code ? code.textContent : pre.textContent;
+                navigator.clipboard.writeText(text).then(() => {
+                    btn.innerHTML = checkIcon;
+                    btn.classList.add('copied');
+                    setTimeout(() => {
+                        btn.innerHTML = copyIcon;
+                        btn.classList.remove('copied');
+                    }, 2000);
+                });
+            });
+            pre.appendChild(btn);
+        });
+
+        // Fetch version badge
+        fetch('https://api.github.com/repos/Xrequillart/magic-slash/releases/latest')
+            .then(r => r.json())
+            .then(data => {
+                if (data.tag_name) {
+                    const badge = document.getElementById('docVersionBadge');
+                    document.getElementById('docVersionText').textContent = 'Current version : ' + data.tag_name;
+                    badge.href = data.html_url;
+                    badge.target = '_blank';
+                }
+            })
+            .catch(() => {});
+
+        // Active sidebar link on scroll
+        const sections = document.querySelectorAll('.doc-section[id], .doc-card-grid[id]');
+        const links = document.querySelectorAll('.doc-sidebar-link[href^="#"]');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(s => {
+                if (window.scrollY >= s.offsetTop - 100) current = s.id;
+            });
+            links.forEach(l => {
+                l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+            });
+        });
+    </script>
+</body>
+</html>
