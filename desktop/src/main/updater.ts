@@ -3,6 +3,13 @@ import { BrowserWindow, ipcMain, app } from 'electron'
 import { cleanupAllTerminals } from './pty/terminal-manager'
 import { stopStatusServer } from './hooks/status-server'
 
+function forceCloseAllWindows() {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.removeAllListeners('close')
+    win.destroy()
+  }
+}
+
 export type UpdateStatus =
   | { type: 'checking' }
   | { type: 'available'; version: string }
@@ -60,23 +67,20 @@ export function setupAutoUpdater() {
       }
 
       try {
-        autoUpdater.quitAndInstall(false, true)
+        // On macOS, open windows can prevent app.quit() from completing.
+        // Destroy all windows before calling quitAndInstall to ensure clean exit.
+        forceCloseAllWindows()
+        autoUpdater.quitAndInstall(true, true)
       } catch (err) {
         console.error('[Updater] quitAndInstall failed:', err)
-        // Fallback: relaunch manually
-        try {
-          app.relaunch()
-          app.exit(0)
-        } catch (fallbackErr) {
-          console.error('[Updater] Fallback relaunch failed:', fallbackErr)
-          isUpdating = false
-          sendStatus({
-            type: 'error',
-            message: 'Update downloaded but restart failed. Please restart manually.',
-            phase: 'install'
-          })
-        }
       }
+
+      // Safety net: if quitAndInstall didn't exit the process, force relaunch
+      setTimeout(() => {
+        console.error('[Updater] quitAndInstall did not exit, forcing relaunch')
+        app.relaunch()
+        app.exit(0)
+      }, 1000)
     }, 3000)
   })
 
