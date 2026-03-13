@@ -398,9 +398,8 @@ if [ "$INSTALL_MODE" = "desktop" ]; then
       DMG_SUFFIX="x64"
     fi
 
-    DMG_NAME="Magic Slash-${CURRENT_VERSION}-${DMG_SUFFIX}.dmg"
-    DMG_NAME_ENCODED="${DMG_NAME// /%20}"
-    DMG_URL="https://github.com/xrequillart/magic-slash/releases/download/v${CURRENT_VERSION}/${DMG_NAME_ENCODED}"
+    DMG_NAME="Magic-Slash-${CURRENT_VERSION}-${DMG_SUFFIX}.dmg"
+    DMG_URL="https://github.com/xrequillart/magic-slash/releases/download/v${CURRENT_VERSION}/${DMG_NAME}"
     TMP_DMG="/tmp/${DMG_NAME}"
 
     echo "   Downloading Magic Slash Desktop v${CURRENT_VERSION}..."
