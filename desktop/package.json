@@ -70,14 +70,13 @@
       "gatekeeperAssess": false,
       "entitlements": "resources/entitlements.mac.plist",
       "entitlementsInherit": "resources/entitlements.mac.plist",
+      "notarize": false,
       "target": [
         "dmg",
         "zip"
       ]
     },
-    "notarize": {
-      "teamId": "${env.APPLE_TEAM_ID}"
-    },
+    "afterSign": "scripts/notarize.js",
     "dmg": {
       "title": "Magic Slash",
       "icon": "resources/icon_dmg.png",
