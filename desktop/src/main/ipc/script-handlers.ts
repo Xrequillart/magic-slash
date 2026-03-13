@@ -2,6 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import { createTerminal, killTerminal, writeToTerminal } from '../pty/terminal-manager'
+import { getNodeActivationPrefix } from '../pty/node-version'
 import type { PackageManager, ScriptCategory, PackageScript, ProjectScripts } from '../../types'
 
 let getMainWindow: () => BrowserWindow | null
@@ -73,9 +74,11 @@ export function setupScriptHandlers(mainWindowGetter: () => BrowserWindow | null
     // Write the run command with `exec` so the shell is replaced by the command.
     // When the command exits (including via Ctrl+C), the PTY exits and terminal:exit fires.
     const runCommand = packageManager === 'npm' ? `npm run ${scriptName}` : `${packageManager} ${scriptName}`
+    const nodePrefix = getNodeActivationPrefix(repoPath)
+    const fullCommand = nodePrefix ? `${nodePrefix} && exec ${runCommand}` : `exec ${runCommand}`
     // Small delay to let the shell initialize
     setTimeout(() => {
-      writeToTerminal(id, `exec ${runCommand}\r`)
+      writeToTerminal(id, `${fullCommand}\r`)
     }, 500)
 
     return { id }

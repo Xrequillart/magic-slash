@@ -24,6 +24,7 @@ function getShellPath(): string {
     path.join(home, '.local/bin'),           // claude CLI location
     path.join(home, '.npm-global/bin'),      // npm global
     path.join(home, '.nvm/versions/node'),   // nvm (will be expanded below)
+    path.join(home, '.volta/bin'),           // Volta shims
     '/opt/homebrew/bin',                     // Homebrew on Apple Silicon
     '/opt/homebrew/sbin',
     '/usr/local/bin',                        // Homebrew on Intel / system
@@ -33,11 +34,19 @@ function getShellPath(): string {
     '/sbin'
   ]
 
-  // Try to find nvm node path
+  // Try to find nvm node path (use semver sort instead of alphabetical)
   try {
     const nvmDir = path.join(home, '.nvm/versions/node')
     if (fs.existsSync(nvmDir)) {
-      const versions = fs.readdirSync(nvmDir).sort().reverse()
+      const versions = fs.readdirSync(nvmDir).sort((a, b) => {
+        const parseVer = (v: string) => v.replace(/^v/, '').split('.').map(Number)
+        const pa = parseVer(a)
+        const pb = parseVer(b)
+        for (let i = 0; i < 3; i++) {
+          if ((pa[i] || 0) !== (pb[i] || 0)) return (pb[i] || 0) - (pa[i] || 0)
+        }
+        return 0
+      })
       if (versions.length > 0) {
         commonPaths.unshift(path.join(nvmDir, versions[0], 'bin'))
       }
