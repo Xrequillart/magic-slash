@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.5] - 2026-03-13
+
+### Fixed
+
+- **Auto-update**: Fix restart failure on macOS by force-closing windows before `quitAndInstall` and adding safety net relaunch
+
 ## [0.12.4] - 2026-03-13
 
 ### Changed
@@ -358,6 +364,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.12.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.5
 [0.12.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.4
 [0.12.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.3
 [0.12.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.2
