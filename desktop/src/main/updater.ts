@@ -73,14 +73,8 @@ export function setupAutoUpdater() {
         autoUpdater.quitAndInstall(true, true)
       } catch (err) {
         console.error('[Updater] quitAndInstall failed:', err)
+        isUpdating = false
       }
-
-      // Safety net: if quitAndInstall didn't exit the process, force relaunch
-      setTimeout(() => {
-        console.error('[Updater] quitAndInstall did not exit, forcing relaunch')
-        app.relaunch()
-        app.exit(0)
-      }, 1000)
     }, 3000)
   })
 
