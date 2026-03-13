@@ -5,8 +5,7 @@
 // ===========================================
 let config = {
   version: 'unknown',
-  repositories: {},
-  languages: {}
+  repositories: {}
 };
 
 // eslint-disable-next-line no-unused-vars
@@ -78,17 +77,6 @@ const api = {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Failed to delete repository');
-    return data;
-  },
-
-  async updateLanguages(languages) {
-    const response = await fetch('/api/languages', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(languages)
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Failed to update languages');
     return data;
   },
 
@@ -197,10 +185,6 @@ function parseRoute() {
     return { page: 'repo', params: { name: decodeURIComponent(repoMatch[1]) } };
   }
 
-  if (hash === '#/settings') {
-    return { page: 'settings', params: {} };
-  }
-
   return { page: 'home', params: {} };
 }
 
@@ -214,9 +198,6 @@ function handleRoute() {
   } else if (route.page === 'repo') {
     currentRepo = route.params.name;
     renderRepoPage(route.params.name);
-  } else if (route.page === 'settings') {
-    currentRepo = null;
-    renderSettingsPage();
   }
 }
 
@@ -333,16 +314,6 @@ function updateCommitPreview() {
   previewEl.textContent = example;
 }
 
-function getLanguageLabel(code) {
-  return code === 'fr' ? 'Français' : 'English';
-}
-
-// eslint-disable-next-line no-unused-vars
-function countCustomLanguages(repoName) {
-  const repo = config.repositories[repoName];
-  return Object.keys(repo?.languages || {}).length;
-}
-
 function countCustomSettings(repoName) {
   const repo = config.repositories[repoName];
   if (!repo) return 0;
@@ -424,23 +395,6 @@ function renderHomePage() {
         </div>
       `}
 
-      <div class="settings-link-card">
-        <a href="#/settings" class="settings-link">
-          <div class="settings-link-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/>
-              <path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>
-            </svg>
-          </div>
-          <div class="settings-link-content">
-            <div class="settings-link-title">Default Languages</div>
-            <div class="settings-link-desc">Configure global language settings</div>
-          </div>
-          <svg class="settings-link-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m9 18 6-6-6-6"/>
-          </svg>
-        </a>
-      </div>
     </div>
   `;
 
@@ -465,19 +419,13 @@ function renderRepoPage(name) {
     return;
   }
 
-  const globalLangs = config.languages || {};
   const repoLangs = repo.languages || {};
   const commitSettings = repo.commit || {};
-  // eslint-disable-next-line no-unused-vars
-  const globalCommit = config.commit || {};
 
   const langOptions = (key) => {
-    const globalVal = globalLangs[key] || 'en';
-    const globalLabel = getLanguageLabel(globalVal);
-    const currentVal = repoLangs[key] || 'default';
+    const currentVal = repoLangs[key] || 'en';
 
     return `
-      <option value="default" ${currentVal === 'default' ? 'selected' : ''}>Default (${globalLabel})</option>
       <option value="en" ${currentVal === 'en' ? 'selected' : ''}>English</option>
       <option value="fr" ${currentVal === 'fr' ? 'selected' : ''}>Français</option>
     `;
@@ -991,8 +939,7 @@ async function loadPRTemplate(repoName) {
       // Generate button handler
       document.getElementById('btn-generate-template').addEventListener('click', async () => {
         try {
-          const lang = config.repositories[repoName]?.languages?.pullRequest ||
-                       config.languages?.pullRequest || 'en';
+          const lang = config.repositories[repoName]?.languages?.pullRequest || 'en';
           await api.createPRTemplate(repoName, lang);
           showToast('PR template created');
           // Reload the template section
@@ -1013,84 +960,6 @@ async function loadPRTemplate(repoName) {
       <span>Error loading template</span>
     `;
   }
-}
-
-// ===========================================
-// Settings Page
-// ===========================================
-function renderSettingsPage() {
-  const langs = config.languages || {};
-
-  elements.app.innerHTML = `
-    <div class="page page-settings">
-      <div class="page-breadcrumb">
-        <a href="#/" class="breadcrumb-link">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m15 18-6-6 6-6"/>
-          </svg>
-          Repositories
-        </a>
-      </div>
-
-      <div class="page-header">
-        <h1 class="page-title">Default Languages</h1>
-      </div>
-
-      <p class="page-description">These settings apply to all repositories unless overridden individually.</p>
-
-      <section class="detail-section">
-        <div class="lang-grid">
-          <div class="lang-item">
-            <label class="lang-label" for="global-commit">Commit messages</label>
-            <select class="lang-select" id="global-commit" data-key="commit">
-              <option value="en" ${langs.commit !== 'fr' ? 'selected' : ''}>English</option>
-              <option value="fr" ${langs.commit === 'fr' ? 'selected' : ''}>Français</option>
-            </select>
-          </div>
-
-          <div class="lang-item">
-            <label class="lang-label" for="global-pr">Pull Request</label>
-            <select class="lang-select" id="global-pr" data-key="pullRequest">
-              <option value="en" ${langs.pullRequest !== 'fr' ? 'selected' : ''}>English</option>
-              <option value="fr" ${langs.pullRequest === 'fr' ? 'selected' : ''}>Français</option>
-            </select>
-          </div>
-
-          <div class="lang-item">
-            <label class="lang-label" for="global-jira">Jira comments</label>
-            <select class="lang-select" id="global-jira" data-key="jiraComment">
-              <option value="en" ${langs.jiraComment !== 'fr' ? 'selected' : ''}>English</option>
-              <option value="fr" ${langs.jiraComment === 'fr' ? 'selected' : ''}>Français</option>
-            </select>
-          </div>
-
-          <div class="lang-item">
-            <label class="lang-label" for="global-discussion">Discussion (Claude)</label>
-            <select class="lang-select" id="global-discussion" data-key="discussion">
-              <option value="en" ${langs.discussion !== 'fr' ? 'selected' : ''}>English</option>
-              <option value="fr" ${langs.discussion === 'fr' ? 'selected' : ''}>Français</option>
-            </select>
-          </div>
-        </div>
-      </section>
-    </div>
-  `;
-
-  // Language select handlers
-  document.querySelectorAll('.lang-select').forEach(select => {
-    select.addEventListener('change', async () => {
-      const key = select.dataset.key;
-      const value = select.value;
-
-      try {
-        const result = await api.updateLanguages({ [key]: value });
-        config = result.config;
-        showToast('Language updated');
-      } catch (error) {
-        showToast(error.message, 'error');
-      }
-    });
-  });
 }
 
 // ===========================================

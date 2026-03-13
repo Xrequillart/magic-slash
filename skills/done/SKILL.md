@@ -21,17 +21,16 @@ You are an assistant that finalizes a task by pushing commits, creating a PR and
 Read `~/.config/magic-slash/config.json` and determine the parameters based on the current repo:
 
 1. Identify the current repo by comparing `$PWD` with the paths in `.repositories`
-2. For each parameter, first check if the repo has a custom value
-3. Otherwise, use the global value (if it exists)
-4. Otherwise, use the default value
+2. For each parameter, check the repo config
+3. If no value is defined, use the default value
 
 ### Language parameters
 
-| Parameter         | Repo path                                    | Global path              | Default |
-| ----------------- | -------------------------------------------- | ------------------------ | ------ |
-| PR language       | `.repositories.<name>.languages.pullRequest` | `.languages.pullRequest` | `"en"` |
-| Jira language     | `.repositories.<name>.languages.jiraComment` | `.languages.jiraComment` | `"en"` |
-| Discussion language | `.repositories.<name>.languages.discussion`  | `.languages.discussion`  | `"en"` |
+| Parameter         | Repo path                                    | Default |
+| ----------------- | -------------------------------------------- | ------ |
+| PR language       | `.repositories.<name>.languages.pullRequest` | `"en"` |
+| Jira language     | `.repositories.<name>.languages.jiraComment` | `"en"` |
+| Discussion language | `.repositories.<name>.languages.discussion` | `"en"` |
 
 ### Pull Request parameters
 

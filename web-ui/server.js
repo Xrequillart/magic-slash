@@ -117,18 +117,6 @@ app.delete('/api/repositories/:name', (req, res) => {
   }
 });
 
-// PUT /api/languages - Update global language settings
-app.put('/api/languages', (req, res) => {
-  try {
-    const languages = req.body;
-    const updatedConfig = config.updateLanguages(languages);
-    res.json({ success: true, config: updatedConfig });
-  } catch (error) {
-    console.error('Error updating languages:', error);
-    res.status(500).json({ error: 'Failed to update language settings' });
-  }
-});
-
 // PUT /api/repositories/:name/languages - Update repository-specific language settings
 app.put('/api/repositories/:name/languages', (req, res) => {
   try {

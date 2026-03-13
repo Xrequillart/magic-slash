@@ -53,12 +53,10 @@ Voir la documentation : https://github.com/magic-slash/config
 Read `~/.config/magic-slash/config.json` and determine the language for your responses:
 
 1. Identify the current repo by comparing `$PWD` with the paths in `.repositories`
-2. Check if it has a custom value in `.repositories.<name>.languages.discussion`
-3. Otherwise, use the global value in `.languages.discussion`
-4. If no value is defined: English by default
+2. Read `.repositories.<name>.languages.discussion`, default `"en"`
 
 - `discussion`: Language for your responses to the user (`"en"` or `"fr"`)
-- `commit`: Language for commit messages (`.languages.commit` or `"en"`)
+- `commit`: Language for commit messages (`.repositories.<name>.languages.commit` or `"en"`)
 
 ## Step 0: Detect multi-repo worktrees
 
@@ -315,13 +313,13 @@ Read `~/.config/magic-slash/config.json` and identify the current repo by compar
 
 For each parameter, check the repo config first, then the global config:
 
-| Parameter         | Repo path                                     | Global path               | Default         |
-| ----------------- | --------------------------------------------- | ------------------------- | --------------- |
-| Language          | `.repositories.<name>.languages.commit`       | `.languages.commit`       | `"en"`          |
-| Style             | `.repositories.<name>.commit.style`           | `.commit.style`           | `"single-line"` |
-| Format            | `.repositories.<name>.commit.format`          | `.commit.format`          | `"angular"`     |
-| Co-Author         | `.repositories.<name>.commit.coAuthor`        | `.commit.coAuthor`        | `false`         |
-| Include Ticket ID | `.repositories.<name>.commit.includeTicketId` | `.commit.includeTicketId` | `false`         |
+| Parameter         | Repo path                                     | Default         |
+| ----------------- | --------------------------------------------- | --------------- |
+| Language          | `.repositories.<name>.languages.commit`       | `"en"`          |
+| Style             | `.repositories.<name>.commit.style`           | `"single-line"` |
+| Format            | `.repositories.<name>.commit.format`          | `"angular"`     |
+| Co-Author         | `.repositories.<name>.commit.coAuthor`        | `false`         |
+| Include Ticket ID | `.repositories.<name>.commit.includeTicketId` | `false`         |
 
 ### 4.2: Apply the style
 

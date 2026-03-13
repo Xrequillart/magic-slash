@@ -14,8 +14,7 @@ function readConfig() {
     if (!fs.existsSync(CONFIG_FILE)) {
       return {
         version: 'unknown',
-        repositories: {},
-        languages: {}
+        repositories: {}
       };
     }
     const content = fs.readFileSync(CONFIG_FILE, 'utf8');
@@ -24,8 +23,7 @@ function readConfig() {
     console.error('Error reading config:', _error);
     return {
       version: 'unknown',
-      repositories: {},
-      languages: {}
+      repositories: {}
     };
   }
 }
@@ -57,7 +55,8 @@ function addRepository(name, repoPath, keywords = []) {
   config.repositories = config.repositories || {};
   config.repositories[name] = {
     path: repoPath,
-    keywords: keywords.length > 0 ? keywords : [name]
+    keywords: keywords.length > 0 ? keywords : [name],
+    languages: { commit: 'en', pullRequest: 'en', jiraComment: 'en', discussion: 'en' }
   };
   writeConfig(config);
   return config;
@@ -259,34 +258,12 @@ function deleteRepository(name) {
   return config;
 }
 
-/**
- * Update language settings
- * @param {Object} languages Language settings object
- */
-function updateLanguages(languages) {
-  const config = readConfig();
-  config.languages = config.languages || {};
-
-  const validKeys = ['commit', 'pullRequest', 'jiraComment', 'discussion'];
-  const validValues = ['en', 'fr'];
-
-  for (const [key, value] of Object.entries(languages)) {
-    if (validKeys.includes(key) && validValues.includes(value)) {
-      config.languages[key] = value;
-    }
-  }
-
-  writeConfig(config);
-  return config;
-}
-
 module.exports = {
   readConfig,
   writeConfig,
   addRepository,
   updateRepository,
   deleteRepository,
-  updateLanguages,
   updateRepositoryLanguages,
   updateRepositoryCommitSettings,
   updateRepositoryPullRequestSettings,

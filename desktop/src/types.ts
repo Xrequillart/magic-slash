@@ -66,12 +66,6 @@ export interface Agent {
 export interface Config {
   version: string
   repositories: Record<string, RepositoryConfig>
-  languages: {
-    commit?: string
-    pullRequest?: string
-    jiraComment?: string
-    discussion?: string
-  }
   agents?: Agent[]
   snippets?: Snippet[]
 }

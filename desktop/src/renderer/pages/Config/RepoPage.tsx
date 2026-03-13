@@ -224,8 +224,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const handleGenerateTemplate = async () => {
     if (!repo?.path) return
     try {
-      const globalLangs = config?.languages || {}
-      const lang = repo.languages?.pullRequest || globalLangs.pullRequest || 'en'
+      const lang = repo.languages?.pullRequest || 'en'
       await createPRTemplate(repo.path, lang)
       showToast('PR template created')
       // Reload template

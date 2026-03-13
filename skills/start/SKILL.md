@@ -55,9 +55,8 @@ Voir la documentation : https://github.com/magic-slash/config
 
 Read `~/.config/magic-slash/config.json` and determine the language based on the selected repo:
 
-1. Once the repo is identified (step 3), check if it has a custom value in `.repositories.<name>.languages.discussion`
-2. Otherwise, use the global value in `.languages.discussion`
-3. If no value is defined: English by default
+1. Once the repo is identified (step 3), read `.repositories.<name>.languages.discussion`
+2. If no value is defined: English by default
 
 - `discussion`: Language for your responses and the agent prompt (`"en"` or `"fr"`)
 

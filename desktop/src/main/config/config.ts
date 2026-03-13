@@ -98,7 +98,8 @@ export function addRepository(name: string, repoPath: string, keywords: string[]
   config.repositories = config.repositories || {}
   config.repositories[name] = {
     path: repoPath,
-    keywords: keywords.length > 0 ? keywords : [name]
+    keywords: keywords.length > 0 ? keywords : [name],
+    languages: { commit: 'en', pullRequest: 'en', jiraComment: 'en', discussion: 'en' }
   }
   writeConfig(config)
   return config
