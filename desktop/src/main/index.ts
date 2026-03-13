@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, nativeImage, ipcMain, dialog, Menu, shell } from 'electron'
+import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell } from 'electron'
 import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupTerminalHandlers, cleanupTerminals, restoreAgents } from './ipc/terminal-handlers'
@@ -158,8 +158,7 @@ function setupHandlers() {
     // Notification callback - only show when window is not focused
     (title: string, body: string) => {
       if (Notification.isSupported() && mainWindow && !mainWindow.isFocused()) {
-        const icon = nativeImage.createFromPath(join(__dirname, '../../resources/icon.png'))
-        new Notification({ title, body, icon }).show()
+        new Notification({ title, body }).show()
       }
     }
   )
