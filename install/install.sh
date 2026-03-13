@@ -410,21 +410,36 @@ if [ "$INSTALL_MODE" = "desktop" ]; then
     if curl -fsSL -o "$TMP_DMG" "$DMG_URL"; then
       echo "   ✅ Downloaded successfully"
       echo ""
-      echo "   Opening DMG installer..."
-      echo "   → Drag 'Magic Slash' to Applications folder"
-      echo ""
+      echo "   Installing to /Applications..."
 
-      # Mount and open DMG
-      open "$TMP_DMG"
+      # Mount DMG silently
+      MOUNT_POINT=$(hdiutil attach "$TMP_DMG" -nobrowse -noautoopen -quiet 2>/dev/null | grep "/Volumes" | awk -F'\t' '{print $NF}')
 
-      echo "   ⏳ Waiting for installation..."
-      echo "   Press Enter once you've dragged the app to Applications"
-      read -r < /dev/tty
+      if [ -n "$MOUNT_POINT" ] && [ -d "$MOUNT_POINT/Magic Slash.app" ]; then
+        # Remove old version if present
+        rm -rf "/Applications/Magic Slash.app" 2>/dev/null
 
-      # Cleanup
-      rm -f "$TMP_DMG" 2>/dev/null
+        # Copy app to /Applications
+        cp -R "$MOUNT_POINT/Magic Slash.app" "/Applications/"
 
-      echo "   ✅ Desktop app installation initiated"
+        # Unmount DMG
+        hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null
+
+        # Cleanup
+        rm -f "$TMP_DMG" 2>/dev/null
+
+        echo "   ✅ Desktop app installed"
+      else
+        # Fallback: open DMG manually if mount failed
+        echo "   ⚠️  Could not mount DMG automatically"
+        echo "   → Opening DMG for manual installation..."
+        open "$TMP_DMG"
+        echo "   → Drag 'Magic Slash' to Applications folder"
+        echo "   Press Enter once done"
+        read -r < /dev/tty
+        rm -f "$TMP_DMG" 2>/dev/null
+        echo "   ✅ Desktop app installation initiated"
+      fi
     else
       echo "   ⚠️  Could not download DMG from GitHub releases"
       echo "   → Download manually: https://github.com/xrequillart/magic-slash/releases"
