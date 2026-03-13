@@ -75,7 +75,9 @@
         "zip"
       ]
     },
-    "afterSign": "scripts/notarize.js",
+    "notarize": {
+      "teamId": "${env.APPLE_TEAM_ID}"
+    },
     "dmg": {
       "title": "Magic Slash",
       "icon": "resources/icon_dmg.png",
