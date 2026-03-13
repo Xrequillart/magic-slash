@@ -211,7 +211,8 @@ export function createTerminal(
   onBranchChange?: (branchName: string | null) => void,
   onMetadataChange?: (metadata: TerminalMetadata) => void,
   onRepositoriesChange?: (repositories: string[]) => void,
-  initialRepositories?: string[]
+  initialRepositories?: string[],
+  options?: { loginShell?: boolean }
 ): Terminal {
   const shell = getDefaultShell()
   const expandedCwd = expandPath(cwd)
@@ -220,9 +221,10 @@ export function createTerminal(
   const defaultDir = path.join(os.homedir(), 'Documents')
   const workingDir = fs.existsSync(expandedCwd) ? expandedCwd : (fs.existsSync(defaultDir) ? defaultDir : os.homedir())
 
-  // Use -l flag to spawn a login shell that loads the user's profile (.zshrc, .bashrc, etc.)
-  // This enables zsh plugins like autosuggestions
-  const ptyProcess = pty.spawn(shell, ['-l'], {
+  // Use -l flag for login shells to load the user's profile (.zshrc, .bashrc, etc.)
+  // Script terminals use a plain shell to avoid background job notifications from profile hooks
+  const shellArgs = (options?.loginShell ?? true) ? ['-l'] : []
+  const ptyProcess = pty.spawn(shell, shellArgs, {
     name: 'xterm-256color',
     cols: 120,
     rows: 30,

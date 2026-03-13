@@ -68,7 +68,9 @@ export function setupScriptHandlers(mainWindowGetter: () => BrowserWindow | null
         if (mainWindow) {
           mainWindow.webContents.send('terminal:exit', { id, exitCode })
         }
-      }
+      },
+      undefined, undefined, undefined, undefined,
+      { loginShell: false }
     )
 
     // Write the run command with `exec` so the shell is replaced by the command.
