@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.4] - 2026-03-13
+
+### Changed
+
+- **Languages configuration**: Remove global languages, move all language settings to repo-level only
+  - Each repository now has its own `languages` object (`commit`, `pullRequest`, `jiraComment`, `discussion`)
+  - New repositories are created with default languages (`en` for all)
+  - Remove global "Default Languages" settings page from Web UI
+  - Remove `PUT /api/languages` endpoint from Web UI server
+  - Remove "Default (English/Francais)" option from repo language selects
+  - Update `/start`, `/commit`, `/done` skills to read languages from repo config only
+
 ## [0.12.3] - 2026-03-13
 
 ### Added
@@ -346,6 +358,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.12.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.4
 [0.12.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.3
 [0.12.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.2
 [0.12.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.1
