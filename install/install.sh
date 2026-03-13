@@ -412,8 +412,12 @@ if [ "$INSTALL_MODE" = "desktop" ]; then
       echo ""
       echo "   Installing to /Applications..."
 
-      # Mount DMG silently
-      MOUNT_POINT=$(hdiutil attach "$TMP_DMG" -nobrowse -noautoopen -quiet 2>/dev/null | grep "/Volumes" | awk -F'\t' '{print $NF}')
+      # Remove quarantine attribute (prevents silent mount failure on macOS)
+      xattr -d com.apple.quarantine "$TMP_DMG" 2>/dev/null
+
+      # Mount DMG
+      MOUNT_OUTPUT=$(hdiutil attach "$TMP_DMG" -nobrowse -noautoopen 2>&1)
+      MOUNT_POINT=$(echo "$MOUNT_OUTPUT" | grep "/Volumes" | awk -F'\t' '{print $NF}' | xargs)
 
       if [ -n "$MOUNT_POINT" ] && [ -d "$MOUNT_POINT/Magic Slash.app" ]; then
         # Remove old version if present
