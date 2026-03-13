@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.13] - 2026-03-13
+
+### Fixed
+
+- **Desktop notifications**: Remove duplicate icon in macOS notifications — the `icon` parameter was adding a second image (right side) alongside the app bundle icon (left side), causing the old cached icon and the new icon to both appear
+
 ## [0.12.12] - 2026-03-13
 
 ### Fixed
@@ -406,6 +412,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.12.13]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.13
 [0.12.12]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.12
 [0.12.11]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.11
 [0.12.10]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.10
