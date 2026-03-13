@@ -165,7 +165,7 @@ const MultiProjectGroup = memo(function MultiProjectGroup({
         onClick={onToggle}
         className="flex items-center gap-2 px-2 py-1.5 text-sm text-text-secondary/50 hover:text-white transition-colors w-full"
       >
-        <span className="font-medium truncate">Multi-projets</span>
+        <span className="font-medium truncate">Multi-projects</span>
         <span className="ml-auto">
           {isCollapsed ? (
             <ChevronLeft className="w-3 h-3" />
