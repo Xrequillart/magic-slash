@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.11] - 2026-03-13
+
+### Fixed
+
+- **Install**: Strip quarantine attribute from downloaded DMG before mounting to fix silent `hdiutil attach` failure on macOS
+
 ## [0.12.10] - 2026-03-13
 
 ### Fixed
@@ -394,6 +400,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.12.11]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.11
 [0.12.10]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.10
 [0.12.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.9
 [0.12.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.8
