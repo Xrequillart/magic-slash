@@ -2408,6 +2408,41 @@ h1.typewriter-done::after {
     margin-left: auto;
 }
 
+/* ── Mobile/Tablet blocker ── */
+.mobile-blocker {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: #FFC8E6;
+    color: #000000;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+.mobile-blocker h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+.mobile-blocker p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    opacity: 0.9;
+}
+
+@media (max-width: 775px) {
+    .mobile-blocker {
+        display: flex;
+    }
+    body {
+        overflow: hidden;
+    }
+}
+
 /* ── Responsive ── */
 @media (max-width: 1024px) {
     .hero-inner {
