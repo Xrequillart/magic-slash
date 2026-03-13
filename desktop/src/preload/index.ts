@@ -241,7 +241,7 @@ export type UpdateStatus =
   | { type: 'not-available' }
   | { type: 'downloading'; progress: number }
   | { type: 'downloaded'; version: string }
-  | { type: 'error'; message: string }
+  | { type: 'error'; message: string; phase?: 'check' | 'download' | 'install' }
 
 // Updater API
 const updaterApi = {

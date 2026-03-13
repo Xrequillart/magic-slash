@@ -6,7 +6,7 @@ import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallb
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks } from './hooks/claude-hooks-config'
 import { setStatusServerPort, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalRepositoriesFromHook } from './pty/terminal-manager'
-import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup } from './updater'
+import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpdating } from './updater'
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
@@ -341,6 +341,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', async () => {
+  if (isUpdating) return
   cleanupTerminals()
   await stopStatusServer()
 })

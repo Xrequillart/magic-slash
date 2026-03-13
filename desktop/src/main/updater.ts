@@ -9,8 +9,10 @@ export type UpdateStatus =
   | { type: 'not-available' }
   | { type: 'downloading'; progress: number }
   | { type: 'downloaded'; version: string }
-  | { type: 'error'; message: string }
+  | { type: 'error'; message: string; phase?: 'check' | 'download' | 'install' }
 
+export let isUpdating = false
+let currentPhase: 'check' | 'download' | 'install' = 'check'
 let mainWindow: BrowserWindow | null = null
 
 function sendStatus(status: UpdateStatus) {
@@ -30,6 +32,7 @@ export function setupAutoUpdater() {
   })
 
   autoUpdater.on('update-available', (info: UpdateInfo) => {
+    currentPhase = 'download'
     sendStatus({ type: 'available', version: info.version })
     // Start download automatically
     autoUpdater.downloadUpdate()
@@ -44,22 +47,42 @@ export function setupAutoUpdater() {
   })
 
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
+    currentPhase = 'install'
     sendStatus({ type: 'downloaded', version: info.version })
     // Clean up resources then restart
     setTimeout(async () => {
+      isUpdating = true
       try {
         cleanupAllTerminals()
         await stopStatusServer()
       } catch (err) {
         console.error('[Updater] Pre-install cleanup error:', err)
       }
-      autoUpdater.quitAndInstall(false, true)
+
+      try {
+        autoUpdater.quitAndInstall(false, true)
+      } catch (err) {
+        console.error('[Updater] quitAndInstall failed:', err)
+        // Fallback: relaunch manually
+        try {
+          app.relaunch()
+          app.exit(0)
+        } catch (fallbackErr) {
+          console.error('[Updater] Fallback relaunch failed:', fallbackErr)
+          isUpdating = false
+          sendStatus({
+            type: 'error',
+            message: 'Update downloaded but restart failed. Please restart manually.',
+            phase: 'install'
+          })
+        }
+      }
     }, 3000)
   })
 
   autoUpdater.on('error', (err: Error) => {
     console.error('[Updater] Error:', err.message)
-    sendStatus({ type: 'error', message: err.message })
+    sendStatus({ type: 'error', message: err.message, phase: currentPhase })
   })
 
   // IPC handlers

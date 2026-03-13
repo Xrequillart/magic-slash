@@ -7,7 +7,7 @@ type UpdateStatus =
   | { type: 'not-available' }
   | { type: 'downloading'; progress: number }
   | { type: 'downloaded'; version: string }
-  | { type: 'error'; message: string }
+  | { type: 'error'; message: string; phase?: 'check' | 'download' | 'install' }
 
 export function UpdateOverlay() {
   const [status, setStatus] = useState<UpdateStatus | null>(null)
@@ -34,8 +34,11 @@ export function UpdateOverlay() {
       }
 
       if (newStatus.type === 'error') {
-        // Hide after 3 seconds on error
-        setTimeout(() => setVisible(false), 3000)
+        // Install errors stay visible (user needs to restart manually)
+        // Other errors auto-hide after 3 seconds
+        if (newStatus.phase !== 'install') {
+          setTimeout(() => setVisible(false), 3000)
+        }
       }
     })
 
@@ -97,7 +100,11 @@ export function UpdateOverlay() {
             <p className="text-green text-lg">Restarting...</p>
           )}
           {status.type === 'error' && (
-            <p className="text-red text-sm">Update check failed. Continuing...</p>
+            <p className="text-red text-sm">
+              {status.phase === 'install'
+                ? 'Update downloaded but restart failed. Please quit and reopen the app.'
+                : 'Update check failed. Continuing...'}
+            </p>
           )}
         </div>
       </div>
