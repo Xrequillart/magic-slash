@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.9] - 2026-03-13
+
+### Fixed
+
+- **Install**: Fix DMG filename mismatch — use hyphen (`Magic-Slash`) instead of space to match electron-builder output (`curl: (56) 404`)
+
 ## [0.12.8] - 2026-03-13
 
 ### Fixed
@@ -382,6 +388,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.12.9]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.9
 [0.12.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.8
 [0.12.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.7
 [0.12.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.6
