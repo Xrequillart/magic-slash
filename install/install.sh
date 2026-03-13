@@ -95,7 +95,7 @@ print_logo() {
 }
 
 print_logo
-echo "  Installing /start, /commit and /done commands"
+echo "  Installing /start, /continue, /commit and /done commands"
 echo ""
 
 # ============================================
@@ -321,7 +321,7 @@ echo ""
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "4. Installing /start, /commit and /done skills"
+echo "4. Installing /start, /continue, /commit and /done skills"
 echo ""
 
 SKILLS_DIR="$HOME/.claude/skills"
@@ -333,15 +333,15 @@ if [ -d "$SCRIPT_DIR/../skills" ]; then
   cp -r "$SCRIPT_DIR/../skills/"* "$SKILLS_DIR/"
 else
   # Remote installation - download from GitHub
-  for skill in start commit "done"; do
+  for skill in start "continue" commit "done"; do
     mkdir -p "$SKILLS_DIR/$skill"
     curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/SKILL.md" > "$SKILLS_DIR/$skill/SKILL.md"
     curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/image.png" -o "$SKILLS_DIR/$skill/image.png" 2>/dev/null || true
   done
 fi
 
-echo "   ✅ Skills installed (start, commit, done)"
-echo "   → Use /start, /commit, /done or natural language"
+echo "   ✅ Skills installed (start, continue, commit, done)"
+echo "   → Use /start, /continue, /commit, /done or natural language"
 echo "   → Examples: 'démarre PROJ-123', 'ready to commit', 'create the PR'"
 
 # Note: Old commands in ~/.claude/commands/ are no longer used
@@ -566,7 +566,7 @@ echo "Created files:"
 echo "  • MCP Atlassian  : ~/.claude.json (OAuth - Jira + Confluence)"
 echo "  • MCP GitHub     : ~/.claude.json"
 echo "  • Config         : ~/.config/magic-slash/config.json"
-echo "  • Skills         : ~/.claude/skills/{start,commit,done}/SKILL.md"
+echo "  • Skills         : ~/.claude/skills/{start,continue,commit,done}/SKILL.md"
 
 if [ "$INSTALL_MODE" = "desktop" ]; then
   echo "  • Desktop app    : /Applications/Magic Slash.app"

@@ -796,7 +796,7 @@
 
                 <div class="doc-section" id="usage">
                     <h2>Usage</h2>
-                    <p>The typical workflow follows three steps. Start by referencing your ticket ID &mdash; magic-slash handles the rest.</p>
+                    <p>The typical workflow follows four steps. Start by referencing your ticket ID &mdash; magic-slash handles the rest.</p>
                     <pre><code>&gt; /start PROJ-142
 &#10003; Fetched ticket: "Add JWT auth middleware"
 &#10003; Created worktree: /projects/api-PROJ-142
@@ -813,6 +813,15 @@
 &#10003; Pushed to origin/feature/PROJ-142
 &#10003; PR #87 created — linked to PROJ-142
 &#10003; Ticket moved to "To be reviewed"</code></pre>
+
+                    <h3>Resuming work</h3>
+                    <p>Already started a ticket? Use <code>/continue</code> to pick up where you left off.</p>
+                    <pre><code>&gt; /continue PROJ-142
+&#10003; Worktree found: /projects/api-PROJ-142
+&#10003; Branch: feature/PROJ-142 (3 commits ahead)
+&#10003; PR #87 (open)
+
+Ready to continue. What would you like to do?</code></pre>
 
                     <h3>Ticket formats</h3>
                     <p>magic-slash accepts both Jira and GitHub ticket identifiers:</p>
@@ -850,7 +859,7 @@
 
                 <div class="doc-section" id="skills">
                     <h2>Built-in Skills Reference</h2>
-                    <p>magic-slash ships with three built-in skills that cover the full development lifecycle. Each skill is invoked as a slash command inside Claude Code and handles multi-repo worktrees automatically.</p>
+                    <p>magic-slash ships with four built-in skills that cover the full development lifecycle. Each skill is invoked as a slash command inside Claude Code and handles multi-repo worktrees automatically.</p>
 
                     <div class="doc-skill">
                         <h3><img src="skill-start.png" alt="skill /start icon" class="doc-skill-img"><span class="doc-skill-name">/start</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/start/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
@@ -875,6 +884,34 @@
                                 </ul>
                                 <h4>Multi-repo</h4>
                                 <p>If the ticket spans multiple repos, magic-slash creates worktrees for each and links them together with a shared context file.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3><img src="skill-continue.png" alt="skill /continue icon" class="doc-skill-img"><span class="doc-skill-name">/continue</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/continue/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <p class="doc-skill-desc">Resumes work on an existing Jira ticket or GitHub issue. Say <code>/continue PROJ-123</code> or <code>/continue #456</code>.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>What it does</h4>
+                                <ul>
+                                    <li>Detects ticket type (Jira or GitHub) and fetches metadata</li>
+                                    <li>Searches for existing worktrees across all configured repos</li>
+                                    <li>Falls back to branch search (local then remote) if no worktree found</li>
+                                    <li>Creates a worktree from the branch if needed</li>
+                                    <li>Checks for an existing open PR and reports its status</li>
+                                    <li>Displays a quick summary: commits, modified files, PR link</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Trigger phrases</h4>
+                                <ul>
+                                    <li><code>/continue &lt;ID&gt;</code></li>
+                                    <li>"continue", "resume work on", "switch to"</li>
+                                    <li>"reprendre", "je reprends", "basculer sur"</li>
+                                </ul>
+                                <h4>Multi-repo</h4>
+                                <p>If worktrees exist in multiple repos for the same ticket, asks which one or "all" and links them with full-stack context.</p>
                             </div>
                         </div>
                     </div>
@@ -1199,6 +1236,7 @@
                     <h3>File locations</h3>
                     <pre><code>~/.config/magic-slash/config.json   # Main configuration
 ~/.claude/skills/start/SKILL.md     # /start skill definition
+~/.claude/skills/continue/SKILL.md  # /continue skill definition
 ~/.claude/skills/commit/SKILL.md    # /commit skill definition
 ~/.claude/skills/done/SKILL.md      # /done skill definition
 ~/.claude.json                      # MCP server settings (Jira &amp; GitHub)</code></pre>
@@ -1307,6 +1345,15 @@
                                     <li>If multiple repos match, asks you to choose or select "all"</li>
                                     <li>Creates a worktree in each selected repo</li>
                                     <li>Generates a <code>CLAUDE.local.md</code> context file in each worktree listing all related paths</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>/continue</h4>
+                                <ul>
+                                    <li>Searches all configured repos for worktrees matching the ticket ID</li>
+                                    <li>If multiple worktrees found, asks to choose or select "all"</li>
+                                    <li>Falls back to branch search if no worktree exists</li>
+                                    <li>Detects existing PRs and reports their status</li>
                                 </ul>
                             </div>
                             <div class="doc-skill-col">

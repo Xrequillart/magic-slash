@@ -41,6 +41,7 @@ fi
 echo "This script will remove:"
 echo ""
 echo "  • ~/.claude/skills/start/"
+echo "  • ~/.claude/skills/continue/"
 echo "  • ~/.claude/skills/commit/"
 echo "  • ~/.claude/skills/done/"
 echo "  • ~/.config/magic-slash/ (entire folder)"
@@ -74,7 +75,7 @@ echo ""
 
 SKILLS_DIR="$HOME/.claude/skills"
 
-for skill in start commit "done"; do
+for skill in start "continue" commit "done"; do
   if [ -d "$SKILLS_DIR/$skill" ]; then
     rm -rf "${SKILLS_DIR:?}/${skill:?}"
     echo "   ✓ Removed: $SKILLS_DIR/$skill/"
@@ -85,7 +86,7 @@ done
 
 # Also remove old commands if they exist (legacy cleanup)
 COMMANDS_DIR="$HOME/.claude/commands"
-for cmd in start.md commit.md done.md; do
+for cmd in start.md continue.md commit.md done.md; do
   if [ -f "$COMMANDS_DIR/$cmd" ]; then
     rm "$COMMANDS_DIR/$cmd"
     echo "   ✓ Removed legacy: $COMMANDS_DIR/$cmd"

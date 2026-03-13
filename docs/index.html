@@ -527,10 +527,11 @@
         <section class="section">
             <div class="split-layout">
                 <div class="split-text reveal-left">
-                    <h2 class="section-header" data-i18n="section1.title" data-i18n-html>3 skills.<br>Entire workflow.</h2>
-                    <p data-i18n="section1.subtitle">From ticket to pull request in three slash commands.</p>
+                    <h2 class="section-header" data-i18n="section1.title" data-i18n-html>4 skills.<br>Entire workflow.</h2>
+                    <p data-i18n="section1.subtitle">From ticket to pull request in four slash commands.</p>
                     <ul>
                         <li data-i18n="section1.startDesc" data-i18n-html><b style="color:#000">/start</b> grabs your ticket and creates the branch.</li>
+                        <li data-i18n="section1.continueDesc" data-i18n-html><b style="color:#000">/continue</b> resumes work on an existing ticket.</li>
                         <li data-i18n="section1.commitDesc" data-i18n-html><b style="color:#000">/commit</b> stages, splits, and writes your commit message.</li>
                         <li data-i18n="section1.doneDesc" data-i18n-html><b style="color:#000">/done</b> pushes and creates the PR.</li>
                     </ul>
@@ -548,6 +549,8 @@
                         <div class="cmd-terminal-body">
                             <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/start</span> <span class="cmd-arg">PROJ-142</span></div>
                             <div class="cmd-line"><span class="cmd-output">&#10003; Branch feature/PROJ-142 created</span></div>
+                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/continue</span> <span class="cmd-arg">PROJ-142</span></div>
+                            <div class="cmd-line"><span class="cmd-output">&#10003; Resuming — worktree found at api-PROJ-142</span></div>
                             <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/commit</span></div>
                             <div class="cmd-line"><span class="cmd-output">&#10003; feat: add user authentication</span></div>
                             <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/done</span></div>
@@ -579,6 +582,14 @@
                                 <div class="skills-file-info">
                                     <span class="skills-file-name">start.md</span>
                                     <span class="skills-file-desc" data-i18n="section2.startDesc">Fetch ticket and create branch</span>
+                                </div>
+                                <span class="skills-file-badge built-in">built-in</span>
+                            </div>
+                            <div class="skills-file">
+                                <div class="skills-file-icon"><img src="skill-continue.png" alt="continue"></div>
+                                <div class="skills-file-info">
+                                    <span class="skills-file-name">continue.md</span>
+                                    <span class="skills-file-desc" data-i18n="section2.continueDesc">Resume work on existing ticket</span>
                                 </div>
                                 <span class="skills-file-badge built-in">built-in</span>
                             </div>

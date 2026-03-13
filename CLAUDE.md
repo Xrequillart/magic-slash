@@ -1,13 +1,14 @@
 # Magic Slash
 
-3 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/start`, `/commit`, `/done`.
+4 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/start`, `/continue`, `/commit`, `/done`.
 
 ## Project Structure
 
 ```text
 magic-slash/
-├── skills/            # Claude Code skills (start, commit, done) - SKILL.md files
+├── skills/            # Claude Code skills (start, continue, commit, done) - SKILL.md files
 │   ├── start/         #   Start a task from a Jira ticket or GitHub issue
+│   ├── continue/      #   Resume work on an existing ticket
 │   ├── commit/        #   Create atomic commits with conventional messages
 │   └── done/          #   Push, create PR and update Jira
 ├── desktop/           # Native desktop app (Electron + React + TypeScript)
@@ -63,7 +64,7 @@ npm run desktop:package  # Package for macOS (.dmg, .zip)
 
 - **Commits**: conventional commits (commitlint), format `type(scope): subject`
   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`, `revert`
-  - Scopes: `start`, `commit`, `done`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`
+  - Scopes: `start`, `continue`, `commit`, `done`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`
   - Subject: lower-case, no trailing period, max 100 characters
 - **Node**: v20 (see `.nvmrc`)
 - **Formatting**: UTF-8, LF, 2-space indentation (see `.editorconfig`)
