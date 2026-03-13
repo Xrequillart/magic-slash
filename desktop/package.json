@@ -66,11 +66,16 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "resources/icon.png",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "resources/entitlements.mac.plist",
+      "entitlementsInherit": "resources/entitlements.mac.plist",
       "target": [
         "dmg",
         "zip"
       ]
     },
+    "afterSign": "scripts/notarize.js",
     "dmg": {
       "title": "Magic Slash",
       "icon": "resources/icon_dmg.png",
