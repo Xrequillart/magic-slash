@@ -34,8 +34,16 @@ module.exports = {
         'fade-in': 'fadeIn 0.2s ease',
         'slide-in': 'slideIn 0.3s ease',
         'slide-out': 'slideOut 0.3s ease forwards',
+        'tada': 'tada 0.8s ease-in-out',
       },
       keyframes: {
+        tada: {
+          '0%': { transform: 'scale(1)' },
+          '10%, 20%': { transform: 'scale(0.95) rotate(-3deg)' },
+          '30%, 50%, 70%, 90%': { transform: 'scale(1.05) rotate(3deg)' },
+          '40%, 60%, 80%': { transform: 'scale(1.05) rotate(-3deg)' },
+          '100%': { transform: 'scale(1) rotate(0)' },
+        },
         float1: {
           '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
           '50%': { transform: 'translate(-30px, 30px) scale(1.05)' },
