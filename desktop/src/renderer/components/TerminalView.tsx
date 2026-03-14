@@ -16,6 +16,7 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
   const xtermRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
+  const commandRunningRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const dragCounterRef = useRef(0)
 
@@ -142,6 +143,27 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
       return buf.viewportY >= buf.baseY - 3
     }
 
+    // Lock scroll when a command is running
+    const scrollHandler = xterm.onScroll(() => {
+      if (commandRunningRef.current) {
+        xterm.scrollToBottom()
+      }
+    })
+
+    // Track command start/end to control scroll behavior
+    const unsubStart = window.electronAPI.terminal.onCommandStart(({ id }) => {
+      if (id === terminal.id) {
+        commandRunningRef.current = true
+        xterm.scrollToBottom()
+      }
+    })
+
+    const unsubEnd = window.electronAPI.terminal.onCommandEnd(({ id }) => {
+      if (id === terminal.id) {
+        commandRunningRef.current = false
+      }
+    })
+
     // First, restore the buffer BEFORE attaching the live data listener
     // This ensures we get the historical data first, then live updates
     window.electronAPI.terminal.getBuffer(terminal.id).then((buffer) => {
@@ -154,13 +176,19 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
       const unsubscribe = window.electronAPI.terminal.onData(({ id, data }) => {
         if (id === terminal.id) {
           xterm.write(data)
-          if (isNearBottom(xterm)) {
+          // Force scroll to bottom when command is running, otherwise only if near bottom
+          if (commandRunningRef.current || isNearBottom(xterm)) {
             xterm.scrollToBottom()
           }
         }
       })
 
-      cleanupRef.current = unsubscribe
+      cleanupRef.current = () => {
+        unsubscribe()
+        unsubStart()
+        unsubEnd()
+        scrollHandler.dispose()
+      }
     }).catch((error) => {
       console.error('Failed to restore terminal buffer:', error)
 
@@ -168,13 +196,18 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
       const unsubscribe = window.electronAPI.terminal.onData(({ id, data }) => {
         if (id === terminal.id) {
           xterm.write(data)
-          if (isNearBottom(xterm)) {
+          if (commandRunningRef.current || isNearBottom(xterm)) {
             xterm.scrollToBottom()
           }
         }
       })
 
-      cleanupRef.current = unsubscribe
+      cleanupRef.current = () => {
+        unsubscribe()
+        unsubStart()
+        unsubEnd()
+        scrollHandler.dispose()
+      }
     })
 
     return () => {
