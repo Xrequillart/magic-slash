@@ -98,6 +98,9 @@ export function TerminalPane({ terminal, isActive }: TerminalPaneProps) {
   const [commandHistory, setCommandHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
 
+  // Scroll tracking
+  const userScrolledUpRef = useRef(false)
+
   // Drag & drop state
   const [isDragOver, setIsDragOver] = useState(false)
   const dragCounterRef = useRef(0)
@@ -139,9 +142,17 @@ export function TerminalPane({ terminal, isActive }: TerminalPaneProps) {
     }
   }, [])
 
-  // Scroll to bottom when blocks change
+  // Track whether the user has scrolled up
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current) return
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+    userScrolledUpRef.current = distanceFromBottom > 50
+  }, [])
+
+  // Scroll to bottom when blocks change (only if user hasn't scrolled up)
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && !userScrolledUpRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [blocks])
@@ -436,6 +447,7 @@ export function TerminalPane({ terminal, isActive }: TerminalPaneProps) {
       {/* Command blocks area - Warp-inspired design */}
       <div
         ref={scrollRef}
+        onScroll={handleScroll}
         className="flex-1 overflow-y-auto p-3 space-y-2"
       >
         {blocks.length === 0 ? (
