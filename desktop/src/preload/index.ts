@@ -247,6 +247,9 @@ export type UpdateStatus =
 const updaterApi = {
   check: () => ipcRenderer.invoke('updater:check'),
   getVersion: (): Promise<string> => ipcRenderer.invoke('updater:getVersion'),
+  getPendingWhatsNew: (): Promise<{ version: string; releaseNotes: string } | null> =>
+    ipcRenderer.invoke('updater:getPendingWhatsNew'),
+  clearPendingWhatsNew: (): Promise<void> => ipcRenderer.invoke('updater:clearPendingWhatsNew'),
   onStatus: (callback: (status: UpdateStatus) => void) => {
     const listener = (_event: any, status: UpdateStatus) => callback(status)
     ipcRenderer.on('updater:status', listener)

@@ -1,44 +1,61 @@
 import { useEffect, useState } from 'react'
 import { Sparkles } from 'lucide-react'
-import { useStore } from '../store'
 import { Modal } from './Modal'
 
 export function WhatsNewModal() {
-  const pendingWhatsNew = useStore((s) => s.pendingWhatsNew)
-  const setPendingWhatsNew = useStore((s) => s.setPendingWhatsNew)
+  const [data, setData] = useState<{ version: string; releaseNotes: string } | null>(null)
   const [isOpen, setIsOpen] = useState(false)
 
+  // Production: read from main process file on mount
   useEffect(() => {
-    if (!pendingWhatsNew) return
+    if (import.meta.env.DEV) return
 
-    // In dev mode, skip version check to allow debug testing
-    if (import.meta.env.DEV) {
-      setIsOpen(true)
-      return
+    window.electronAPI.updater.getPendingWhatsNew().then((pending) => {
+      if (!pending) return
+
+      window.electronAPI.updater.getVersion().then((currentVersion) => {
+        if (currentVersion === pending.version) {
+          setData(pending)
+          setIsOpen(true)
+        } else {
+          // Stale data (version mismatch) — clean up
+          window.electronAPI.updater.clearPendingWhatsNew()
+        }
+      })
+    })
+  }, [])
+
+  // Dev: listen for debug trigger from UpdateOverlay
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+
+    function handleDebug(e: Event) {
+      const detail = (e as CustomEvent).detail
+      if (detail?.version && detail?.releaseNotes) {
+        setData(detail)
+        setIsOpen(true)
+      }
     }
 
-    window.electronAPI.updater.getVersion().then((currentVersion) => {
-      if (currentVersion === pendingWhatsNew.version) {
-        setIsOpen(true)
-      } else {
-        // Stale data (version mismatch) — clean up
-        setPendingWhatsNew(null)
-      }
-    })
-  }, [pendingWhatsNew, setPendingWhatsNew])
+    window.addEventListener('debug:whats-new', handleDebug)
+    return () => window.removeEventListener('debug:whats-new', handleDebug)
+  }, [])
 
   function handleClose() {
     setIsOpen(false)
-    setPendingWhatsNew(null)
+    setData(null)
+    if (!import.meta.env.DEV) {
+      window.electronAPI.updater.clearPendingWhatsNew()
+    }
   }
 
-  if (!isOpen || !pendingWhatsNew) return null
+  if (!isOpen || !data) return null
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={`What's New in v${pendingWhatsNew.version}`}
+      title={`What's New in v${data.version}`}
       maxWidth="max-w-lg"
       footer={
         <button
@@ -55,7 +72,7 @@ export function WhatsNewModal() {
       </div>
       <div
         className="whats-new-content text-sm text-text-secondary leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: pendingWhatsNew.releaseNotes }}
+        dangerouslySetInnerHTML={{ __html: data.releaseNotes }}
       />
     </Modal>
   )

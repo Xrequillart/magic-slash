@@ -1,7 +1,40 @@
 import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater'
 import { BrowserWindow, ipcMain, app } from 'electron'
+import { writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs'
+import { join } from 'path'
 import { cleanupAllTerminals } from './pty/terminal-manager'
 import { stopStatusServer } from './hooks/status-server'
+
+function getPendingWhatsNewPath() {
+  return join(app.getPath('userData'), 'pending-whats-new.json')
+}
+
+function savePendingWhatsNew(version: string, releaseNotes: string) {
+  try {
+    writeFileSync(getPendingWhatsNewPath(), JSON.stringify({ version, releaseNotes }), 'utf-8')
+  } catch (err) {
+    console.error('[Updater] Failed to save pending what\'s new:', err)
+  }
+}
+
+function readPendingWhatsNew(): { version: string; releaseNotes: string } | null {
+  try {
+    const filePath = getPendingWhatsNewPath()
+    if (!existsSync(filePath)) return null
+    return JSON.parse(readFileSync(filePath, 'utf-8'))
+  } catch {
+    return null
+  }
+}
+
+function clearPendingWhatsNew() {
+  try {
+    const filePath = getPendingWhatsNewPath()
+    if (existsSync(filePath)) unlinkSync(filePath)
+  } catch {
+    // ignore
+  }
+}
 
 function forceCloseAllWindows() {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -61,6 +94,12 @@ export function setupAutoUpdater() {
         ? info.releaseNotes.map(n => typeof n === 'string' ? n : n.note).join('\n')
         : undefined
     sendStatus({ type: 'downloaded', version: info.version, releaseNotes: notes || undefined })
+    // Persist to disk (main process) so the renderer can read it after restart.
+    // We cannot rely on the renderer's localStorage because forceCloseAllWindows()
+    // destroys the renderer before Chromium may have flushed LevelDB to disk.
+    if (notes) {
+      savePendingWhatsNew(info.version, notes)
+    }
     // Clean up resources then restart
     setTimeout(async () => {
       isUpdating = true
@@ -100,6 +139,14 @@ export function setupAutoUpdater() {
 
   ipcMain.handle('updater:getVersion', () => {
     return app.getVersion()
+  })
+
+  ipcMain.handle('updater:getPendingWhatsNew', () => {
+    return readPendingWhatsNew()
+  })
+
+  ipcMain.handle('updater:clearPendingWhatsNew', () => {
+    clearPendingWhatsNew()
   })
 }
 

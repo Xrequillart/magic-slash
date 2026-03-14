@@ -38,9 +38,6 @@ interface AppState {
   // No repos warning modal
   noReposWarningShown: boolean
 
-  // What's New modal (after auto-update)
-  pendingWhatsNew: { version: string; releaseNotes: string } | null
-
   // Actions
   setConfig: (config: Config) => void
   setConfigLoading: (loading: boolean) => void
@@ -77,9 +74,6 @@ interface AppState {
 
   // No repos warning modal actions
   setNoReposWarningShown: (shown: boolean) => void
-
-  // What's New modal actions
-  setPendingWhatsNew: (data: { version: string; releaseNotes: string } | null) => void
 }
 
 export const useStore = create<AppState>()(
@@ -107,7 +101,6 @@ export const useStore = create<AppState>()(
 
         closeAgentModal: null,
         noReposWarningShown: false,
-        pendingWhatsNew: null,
 
         // Actions
         setConfig: (config) => set({ config, configLoading: false, configError: null }),
@@ -223,9 +216,6 @@ export const useStore = create<AppState>()(
 
         // No repos warning modal actions
         setNoReposWarningShown: (noReposWarningShown) => set({ noReposWarningShown }),
-
-        // What's New modal actions
-        setPendingWhatsNew: (pendingWhatsNew) => set({ pendingWhatsNew }),
       }),
       // Session storage persist for activeTerminalId (cleared on app close)
       {
@@ -243,7 +233,6 @@ export const useStore = create<AppState>()(
         leftSidebarVisible: state.leftSidebarVisible,
         iconSidebarVisible: state.iconSidebarVisible,
         workspaceLayout: state.workspaceLayout,
-        pendingWhatsNew: state.pendingWhatsNew,
       }),
     }
   )

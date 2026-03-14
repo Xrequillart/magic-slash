@@ -119,10 +119,12 @@ export function UpdateOverlay() {
 
   function showWhatsNew() {
     setDebugMenuOpen(false)
-    useStore.getState().setPendingWhatsNew({
-      version: '1.0.0',
-      releaseNotes: '<h3>🚀 New Features</h3><ul><li><strong>What\'s New modal</strong> — See release notes after each update</li><li>Improved terminal performance</li></ul><h3>🐛 Bug Fixes</h3><ul><li>Fixed sidebar toggle on small screens</li><li>Resolved config sync issue</li></ul>',
-    })
+    window.dispatchEvent(new CustomEvent('debug:whats-new', {
+      detail: {
+        version: '1.0.0',
+        releaseNotes: '<h3>🚀 New Features</h3><ul><li><strong>What\'s New modal</strong> — See release notes after each update</li><li>Improved terminal performance</li></ul><h3>🐛 Bug Fixes</h3><ul><li>Fixed sidebar toggle on small screens</li><li>Resolved config sync issue</li></ul>',
+      },
+    }))
   }
 
   const triggerConfetti = useCallback(() => {
@@ -182,14 +184,6 @@ export function UpdateOverlay() {
   useEffect(() => {
     const unsubscribe = window.electronAPI.updater.onStatus((newStatus) => {
       setStatus(newStatus)
-
-      // Save release notes for What's New modal (before quitAndInstall)
-      if (newStatus.type === 'downloaded' && newStatus.releaseNotes) {
-        useStore.getState().setPendingWhatsNew({
-          version: newStatus.version,
-          releaseNotes: newStatus.releaseNotes,
-        })
-      }
 
       // Show overlay for active states
       if (
