@@ -323,6 +323,13 @@ export function AgentInfoSidebar() {
     setIsEditingDescription(false)
   }, [activeTerminalId, editDescription, metadata?.description, updateTerminalMetadata])
 
+  // Change status
+  const handleStatusChange = useCallback((status: string) => {
+    if (activeTerminalId) {
+      updateTerminalMetadata(activeTerminalId, { status })
+    }
+  }, [activeTerminalId, updateTerminalMetadata])
+
   // Cancel editing when switching terminals
   useEffect(() => {
     setIsEditingTitle(false)
@@ -416,6 +423,7 @@ export function AgentInfoSidebar() {
               setIsEditingDescription={setIsEditingDescription}
               titleInputRef={titleInputRef}
               descriptionInputRef={descriptionInputRef}
+              onStatusChange={handleStatusChange}
             />
 
             {/* Repositories Section Header */}
