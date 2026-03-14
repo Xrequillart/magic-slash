@@ -119,7 +119,7 @@ export function UpdateOverlay() {
 
   function showWhatsNew() {
     setDebugMenuOpen(false)
-    window.dispatchEvent(new CustomEvent('debug:whats-new', {
+    window.dispatchEvent(new CustomEvent('show:whats-new', {
       detail: {
         version: '1.0.0',
         releaseNotes: '<h3>🚀 New Features</h3><ul><li><strong>What\'s New modal</strong> — See release notes after each update</li><li>Improved terminal performance</li></ul><h3>🐛 Bug Fixes</h3><ul><li>Fixed sidebar toggle on small screens</li><li>Resolved config sync issue</li></ul>',

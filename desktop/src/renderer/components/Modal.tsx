@@ -7,10 +7,11 @@ interface ModalProps {
   title: string
   children: ReactNode
   footer?: ReactNode
+  hero?: ReactNode
   maxWidth?: string
 }
 
-export function Modal({ isOpen, onClose, title, children, footer, maxWidth = 'max-w-md' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth = 'max-w-md' }: ModalProps) {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose()
@@ -34,15 +35,30 @@ export function Modal({ isOpen, onClose, title, children, footer, maxWidth = 'ma
       }}
     >
       <div className={`bg-bg-secondary border border-white/10 rounded-xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto backdrop-blur-2xl`}>
+        {/* Hero */}
+        {hero && (
+          <div className="relative">
+            {hero}
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 p-1.5 text-white/70 hover:text-white bg-black/30 hover:bg-black/50 rounded-lg transition-all"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
           <h3 className="text-base font-semibold">{title}</h3>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-text-secondary hover:text-white hover:bg-white/10 rounded-lg transition-all"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {!hero && (
+            <button
+              onClick={onClose}
+              className="p-1.5 text-text-secondary hover:text-white hover:bg-white/10 rounded-lg transition-all"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Body */}
