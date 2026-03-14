@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.2] - 2026-03-14
+
+### Added
+
+- **Desktop**: "What's New" button in Settings page (About section) — fetches release notes from GitHub API and opens the modal on demand
+- **Desktop**: Hero image banner at the top of the What's New modal with close button overlaid
+
+### Changed
+
+- **Desktop**: What's New modal now filters release notes HTML to only show the "What's Changed" section (removes Installation, Full Changelog, etc.)
+- **Desktop**: Removed "Release Notes" label from the modal for a cleaner design
+
 ## [0.16.1] - 2026-03-14
 
 ### Fixed
@@ -518,6 +530,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.16.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.16.2
 [0.16.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.16.1
 [0.16.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.16.0
 [0.15.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.15.1
