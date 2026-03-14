@@ -15,7 +15,7 @@ export type UpdateStatus =
   | { type: 'available'; version: string }
   | { type: 'not-available' }
   | { type: 'downloading'; progress: number }
-  | { type: 'downloaded'; version: string }
+  | { type: 'downloaded'; version: string; releaseNotes?: string }
   | { type: 'error'; message: string; phase?: 'check' | 'download' | 'install' }
 
 export let isUpdating = false
@@ -55,7 +55,12 @@ export function setupAutoUpdater() {
 
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
     currentPhase = 'install'
-    sendStatus({ type: 'downloaded', version: info.version })
+    const notes = typeof info.releaseNotes === 'string'
+      ? info.releaseNotes
+      : Array.isArray(info.releaseNotes)
+        ? info.releaseNotes.map(n => typeof n === 'string' ? n : n.note).join('\n')
+        : undefined
+    sendStatus({ type: 'downloaded', version: info.version, releaseNotes: notes || undefined })
     // Clean up resources then restart
     setTimeout(async () => {
       isUpdating = true

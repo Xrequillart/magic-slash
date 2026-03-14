@@ -240,7 +240,7 @@ export type UpdateStatus =
   | { type: 'available'; version: string }
   | { type: 'not-available' }
   | { type: 'downloading'; progress: number }
-  | { type: 'downloaded'; version: string }
+  | { type: 'downloaded'; version: string; releaseNotes?: string }
   | { type: 'error'; message: string; phase?: 'check' | 'download' | 'install' }
 
 // Updater API

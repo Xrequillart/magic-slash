@@ -7,9 +7,10 @@ interface ModalProps {
   title: string
   children: ReactNode
   footer?: ReactNode
+  maxWidth?: string
 }
 
-export function Modal({ isOpen, onClose, title, children, footer }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, footer, maxWidth = 'max-w-md' }: ModalProps) {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose()
@@ -32,7 +33,7 @@ export function Modal({ isOpen, onClose, title, children, footer }: ModalProps) 
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="bg-bg-secondary border border-white/10 rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto backdrop-blur-2xl">
+      <div className={`bg-bg-secondary border border-white/10 rounded-xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto backdrop-blur-2xl`}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
           <h3 className="text-base font-semibold">{title}</h3>

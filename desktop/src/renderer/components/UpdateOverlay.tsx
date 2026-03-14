@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bug, Download, CheckCircle, Loader2, Play, ScrollText } from 'lucide-react'
+import { Bug, Download, CheckCircle, Loader2, Play, ScrollText, Sparkles } from 'lucide-react'
 import { useStore } from '../store'
 
 type UpdateStatus =
@@ -7,7 +7,7 @@ type UpdateStatus =
   | { type: 'available'; version: string }
   | { type: 'not-available' }
   | { type: 'downloading'; progress: number }
-  | { type: 'downloaded'; version: string }
+  | { type: 'downloaded'; version: string; releaseNotes?: string }
   | { type: 'error'; message: string; phase?: 'check' | 'download' | 'install' }
 
 const DEBUG_SEQUENCE: UpdateStatus[] = [
@@ -18,7 +18,7 @@ const DEBUG_SEQUENCE: UpdateStatus[] = [
   { type: 'downloading', progress: 50 },
   { type: 'downloading', progress: 75 },
   { type: 'downloading', progress: 100 },
-  { type: 'downloaded', version: '1.0.0' },
+  { type: 'downloaded', version: '1.0.0', releaseNotes: '<h3>🚀 New Features</h3><ul><li><strong>What\'s New modal</strong> — See release notes after each update</li><li>Improved terminal performance</li></ul><h3>🐛 Bug Fixes</h3><ul><li>Fixed sidebar toggle on small screens</li><li>Resolved config sync issue</li></ul>' },
 ]
 
 const CONFETTI_COLORS = ['#393BFF', '#6366f1', '#22c55e', '#eab308', '#ef4444', '#a855f7', '#3b82f6', '#f97316']
@@ -117,6 +117,14 @@ export function UpdateOverlay() {
     window.electronAPI.terminal.write(activeTerminalId, prompt)
   }
 
+  function showWhatsNew() {
+    setDebugMenuOpen(false)
+    useStore.getState().setPendingWhatsNew({
+      version: '1.0.0',
+      releaseNotes: '<h3>🚀 New Features</h3><ul><li><strong>What\'s New modal</strong> — See release notes after each update</li><li>Improved terminal performance</li></ul><h3>🐛 Bug Fixes</h3><ul><li>Fixed sidebar toggle on small screens</li><li>Resolved config sync issue</li></ul>',
+    })
+  }
+
   const triggerConfetti = useCallback(() => {
     setShowConfetti(true)
     requestAnimationFrame(() => {
@@ -175,6 +183,14 @@ export function UpdateOverlay() {
     const unsubscribe = window.electronAPI.updater.onStatus((newStatus) => {
       setStatus(newStatus)
 
+      // Save release notes for What's New modal (before quitAndInstall)
+      if (newStatus.type === 'downloaded' && newStatus.releaseNotes) {
+        useStore.getState().setPendingWhatsNew({
+          version: newStatus.version,
+          releaseNotes: newStatus.releaseNotes,
+        })
+      }
+
       // Show overlay for active states
       if (
         newStatus.type === 'checking' ||
@@ -219,6 +235,13 @@ export function UpdateOverlay() {
                 >
                   <Play className="w-3.5 h-3.5" />
                   Auto update steps
+                </button>
+                <button
+                  onClick={showWhatsNew}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-white hover:bg-bg-tertiary transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  What&apos;s New modal
                 </button>
                 <button
                   onClick={floodTerminal}

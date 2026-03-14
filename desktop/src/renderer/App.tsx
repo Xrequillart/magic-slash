@@ -8,6 +8,7 @@ import { Sidebar } from './components/Sidebar'
 import { AgentInfoSidebar } from './components/AgentInfoSidebar'
 import { ToastContainer } from './components/Toast'
 import { UpdateOverlay } from './components/UpdateOverlay'
+import { WhatsNewModal } from './components/WhatsNewModal'
 import { ConfigPage } from './pages/Config'
 import { TerminalsPage } from './pages/Terminals'
 import { SkillsPage } from './pages/Skills'
@@ -277,6 +278,9 @@ export function App() {
           </div>
         </div>
       )}
+
+      {/* What's New Modal (after auto-update) */}
+      <WhatsNewModal />
 
       {/* Update Overlay */}
       <UpdateOverlay />

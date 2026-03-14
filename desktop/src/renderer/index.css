@@ -206,6 +206,26 @@ input[type="checkbox"] {
   animation: dropzone-pulse 1.5s ease-in-out infinite;
 }
 
+/* What's New modal - release notes HTML styling */
+.whats-new-content h3 {
+  @apply text-white font-semibold text-sm mt-4 mb-2 first:mt-0;
+}
+.whats-new-content ul {
+  @apply list-disc list-inside space-y-1 mb-3;
+}
+.whats-new-content li {
+  @apply text-text-secondary text-sm;
+}
+.whats-new-content strong {
+  @apply text-white font-medium;
+}
+.whats-new-content p {
+  @apply mb-2;
+}
+.whats-new-content a {
+  @apply text-accent hover:underline;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,
