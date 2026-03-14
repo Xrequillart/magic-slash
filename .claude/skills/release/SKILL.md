@@ -110,9 +110,10 @@ Affiche une confirmation pour chaque fichier mis a jour.
 
 Mets a jour le titre de version dans les 4 fichiers de skills :
 
-- `skills/start/SKILL.md`
-- `skills/commit/SKILL.md`
-- `skills/done/SKILL.md`
+- `skills/magic-start/SKILL.md`
+- `skills/magic-continue/SKILL.md`
+- `skills/magic-commit/SKILL.md`
+- `skills/magic-done/SKILL.md`
 - `.claude/skills/release/SKILL.md`
 
 Pattern a mettre a jour dans chaque fichier :
@@ -215,9 +216,10 @@ Resume des modifications pour la version X.Y.Z :
   desktop/package.json                          {VERSION_ACTUELLE} -> X.Y.Z
   README.md                                     {VERSION_ACTUELLE} -> X.Y.Z
   docs/documentation.html                       {VERSION_ACTUELLE} -> X.Y.Z (2 occurrences)
-  skills/start/SKILL.md                         v{VERSION_ACTUELLE} -> vX.Y.Z
-  skills/commit/SKILL.md                        v{VERSION_ACTUELLE} -> vX.Y.Z
-  skills/done/SKILL.md                          v{VERSION_ACTUELLE} -> vX.Y.Z
+  skills/magic-start/SKILL.md                   v{VERSION_ACTUELLE} -> vX.Y.Z
+  skills/magic-continue/SKILL.md                v{VERSION_ACTUELLE} -> vX.Y.Z
+  skills/magic-commit/SKILL.md                  v{VERSION_ACTUELLE} -> vX.Y.Z
+  skills/magic-done/SKILL.md                    v{VERSION_ACTUELLE} -> vX.Y.Z
   .claude/skills/release/SKILL.md               v{VERSION_ACTUELLE} -> vX.Y.Z
   desktop/src/renderer/components/Sidebar.tsx    v{VERSION_ACTUELLE} -> vX.Y.Z
   install/install.sh                            v{VERSION_ACTUELLE} -> vX.Y.Z

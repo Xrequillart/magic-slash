@@ -33,10 +33,11 @@ var i18n = {
         // Section 1 — Three Commands
         'section1.title': '4 skills.<br>Entire workflow.',
         'section1.subtitle': 'From ticket to pull request in four slash commands.',
-        'section1.startDesc': '<b style="color:#000">/start</b> grabs your ticket and creates the branch.',
-        'section1.continueDesc': '<b style="color:#000">/continue</b> resumes work on an existing ticket.',
-        'section1.commitDesc': '<b style="color:#000">/commit</b> stages, splits, and writes your commit message.',
-        'section1.doneDesc': '<b style="color:#000">/done</b> pushes and creates the PR.',
+        'section1.startDesc': '<b style="color:#000">/magic-start</b> grabs your ticket and creates the branch.',
+        'section1.continueDesc': '<b style="color:#000">/magic-continue</b> resumes work on an existing ticket.',
+        'section1.commitDesc': '<b style="color:#000">/magic-commit</b> stages, splits, and writes your commit message.',
+        'section1.doneDesc': '<b style="color:#000">/magic-done</b> pushes and creates the PR.',
+        'section1.prefixHint': 'Type <b style="color:#000">/magic-</b> to find all commands at once.',
         'section1.noContext': 'No context switching. No copy-pasting ticket IDs. Just flow.',
         'section1.seeDocs': 'See docs',
         // Section 2 — Skills Manager
@@ -80,7 +81,7 @@ var i18n = {
         'section6.filesChanged': '3 files changed',
         'section6.noCommits': 'No committed changes',
         'section6.title': 'Your ticket, always in context.',
-        'section6.p1': 'When you <b style="color:#000">/start</b> a ticket, magic-slash fetches the title, description, and metadata from Jira or GitHub Issues. Every command you run knows what you\'re working on.',
+        'section6.p1': 'When you <b style="color:#000">/magic-start</b> a ticket, magic-slash fetches the title, description, and metadata from Jira or GitHub Issues. Every command you run knows what you\'re working on.',
         'section6.p2': 'Commit messages reference the right ticket. PRs include the full context. No more tab-switching to copy-paste issue details.',
         'section6.seeDocs': 'See docs',
         // CTA
@@ -120,10 +121,11 @@ var i18n = {
         // Section 1 — Three Commands
         'section1.title': '4 skills.<br>Tout le workflow.',
         'section1.subtitle': 'Du ticket à la pull request en quatre commandes slash.',
-        'section1.startDesc': '<b style="color:#000">/start</b> récupère votre ticket et crée la branche.',
-        'section1.continueDesc': '<b style="color:#000">/continue</b> reprend le travail sur un ticket existant.',
-        'section1.commitDesc': '<b style="color:#000">/commit</b> indexe, découpe et rédige votre message de commit.',
-        'section1.doneDesc': '<b style="color:#000">/done</b> pousse et crée la PR.',
+        'section1.startDesc': '<b style="color:#000">/magic-start</b> récupère votre ticket et crée la branche.',
+        'section1.continueDesc': '<b style="color:#000">/magic-continue</b> reprend le travail sur un ticket existant.',
+        'section1.commitDesc': '<b style="color:#000">/magic-commit</b> indexe, découpe et rédige votre message de commit.',
+        'section1.doneDesc': '<b style="color:#000">/magic-done</b> pousse et crée la PR.',
+        'section1.prefixHint': 'Tapez <b style="color:#000">/magic-</b> pour retrouver toutes les commandes.',
         'section1.noContext': 'Pas de changement de contexte. Pas de copier-coller d\'identifiants. Juste du flow.',
         'section1.seeDocs': 'Voir la doc',
         // Section 2 — Skills Manager
@@ -167,7 +169,7 @@ var i18n = {
         'section6.filesChanged': '3 fichiers modifiés',
         'section6.noCommits': 'Aucun commit',
         'section6.title': 'Votre ticket, toujours en contexte.',
-        'section6.p1': 'Quand vous faites <b style="color:#000">/start</b> sur un ticket, magic-slash récupère le titre, la description et les métadonnées depuis Jira ou GitHub Issues. Chaque commande que vous lancez sait sur quoi vous travaillez.',
+        'section6.p1': 'Quand vous faites <b style="color:#000">/magic-start</b> sur un ticket, magic-slash récupère le titre, la description et les métadonnées depuis Jira ou GitHub Issues. Chaque commande que vous lancez sait sur quoi vous travaillez.',
         'section6.p2': 'Les messages de commit référencent le bon ticket. Les PRs incluent le contexte complet. Fini les allers-retours entre onglets pour copier-coller les détails des issues.',
         'section6.seeDocs': 'Voir la doc',
         // CTA
@@ -621,10 +623,10 @@ fetch('https://api.github.com/repos/Xrequillart/magic-slash/releases/latest')
     function startDesktopTerminalAnimation() {
         lockScroll();
         var typeSpeed = 60;
-        var startCmdText = '/start PROJ-142';
+        var startCmdText = '/magic-start PROJ-142';
         var startCmdDuration = startCmdText.length * typeSpeed;
-        var commitCmdDuration = '/commit'.length * typeSpeed;
-        var doneCmdDuration = '/done'.length * typeSpeed;
+        var commitCmdDuration = '/magic-commit'.length * typeSpeed;
+        var doneCmdDuration = '/magic-done'.length * typeSpeed;
 
         // ===== PHASE 1: /start =====
         var p1 = 400;

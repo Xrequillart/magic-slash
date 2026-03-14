@@ -27,17 +27,20 @@
 
 ## Skills
 
-| Skill     | Description                                       |
-| --------- | ------------------------------------------------- |
-| `/start`  | Start a task from a Jira ticket or GitHub issue   |
-| `/commit` | Create an atomic commit with conventional message |
-| `/done`   | Push, create PR and update Jira                   |
+| Skill              | Description                                       |
+| ------------------ | ------------------------------------------------- |
+| `/magic-start`     | Start a task from a Jira ticket or GitHub issue   |
+| `/magic-continue`  | Resume work on an existing ticket                 |
+| `/magic-commit`    | Create an atomic commit with conventional message |
+| `/magic-done`      | Push, create PR and update Jira                   |
+
+> Type `/magic-` to quickly find all commands.
 
 You can also invoke skills using natural language:
 
-- "démarre PROJ-123" or "work on PROJ-123" → `/start`
-- "je suis prêt à committer" or "ready to commit" → `/commit`
-- "on peut créer la PR" or "create the PR" → `/done`
+- "démarre PROJ-123" or "work on PROJ-123" → `/magic-start`
+- "je suis prêt à committer" or "ready to commit" → `/magic-commit`
+- "on peut créer la PR" or "create the PR" → `/magic-done`
 
 ## Installation
 
@@ -61,12 +64,12 @@ curl -fsSL https://magic-slash.io/install.sh | bash
 
 ## Usage
 
-### /start - Start a task
+### /magic-start - Start a task
 
 ```bash
-/start PROJ-1234    # Jira ticket
-/start 42           # GitHub issue
-/start #42          # GitHub issue (with #)
+/magic-start PROJ-1234    # Jira ticket
+/magic-start 42           # GitHub issue
+/magic-start #42          # GitHub issue (with #)
 ```
 
 1. Detects the ticket type (Jira or GitHub) based on format
@@ -78,7 +81,7 @@ curl -fsSL https://magic-slash.io/install.sh | bash
 **Jira example (single repo detected):**
 
 ```text
-> /start PROJ-42
+> /magic-start PROJ-42
 
 Source: Jira
 Ticket: PROJ-42 - Add API endpoint for users
@@ -95,7 +98,7 @@ You need to implement the new API endpoint for users...
 **Jira example (multiple repos detected):**
 
 ```text
-> /start PROJ-42
+> /magic-start PROJ-42
 
 Source: Jira
 Ticket: PROJ-42 - Add pagination on /users
@@ -113,10 +116,10 @@ Worktrees created:
 ✓ /projects/my-web-PROJ-42
 ```
 
-### /commit - Create a commit
+### /magic-commit - Create a commit
 
 ```bash
-/commit
+/magic-commit
 ```
 
 1. Stage all changes
@@ -141,12 +144,12 @@ Worktrees created:
 ```
 
 **Multi-repo support:** If you're in a worktree associated with a ticket that spans multiple repos,
-`/commit` will detect all related worktrees and commit changes in each one.
+`/magic-commit` will detect all related worktrees and commit changes in each one.
 
-### /done - Finalize the task
+### /magic-done - Finalize the task
 
 ```bash
-/done
+/magic-done
 ```
 
 1. Push the branch to origin
@@ -319,9 +322,10 @@ magic-slash/
 │   ├── resources/         # App icons & logo
 │   └── package.json
 ├── skills/
-│   ├── commit/SKILL.md   # Skill /commit
-│   ├── start/SKILL.md    # Skill /start
-│   └── done/SKILL.md     # Skill /done
+│   ├── magic-start/SKILL.md      # Skill /magic-start
+│   ├── magic-continue/SKILL.md   # Skill /magic-continue
+│   ├── magic-commit/SKILL.md     # Skill /magic-commit
+│   └── magic-done/SKILL.md       # Skill /magic-done
 ├── web-ui/               # Configuration web interface
 │   ├── server.js         # Express server
 │   ├── package.json      # Dependencies

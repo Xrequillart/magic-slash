@@ -40,10 +40,10 @@ fi
 # ============================================
 echo "This script will remove:"
 echo ""
-echo "  • ~/.claude/skills/start/"
-echo "  • ~/.claude/skills/continue/"
-echo "  • ~/.claude/skills/commit/"
-echo "  • ~/.claude/skills/done/"
+echo "  • ~/.claude/skills/magic-start/"
+echo "  • ~/.claude/skills/magic-continue/"
+echo "  • ~/.claude/skills/magic-commit/"
+echo "  • ~/.claude/skills/magic-done/"
 echo "  • ~/.config/magic-slash/ (entire folder)"
 if [ "$INSTALL_MODE" = "standalone" ]; then
   echo "  • ~/.local/bin/magic-slash (CLI)"
@@ -75,12 +75,20 @@ echo ""
 
 SKILLS_DIR="$HOME/.claude/skills"
 
-for skill in start "continue" commit "done"; do
+for skill in magic-start magic-continue magic-commit magic-done; do
   if [ -d "$SKILLS_DIR/$skill" ]; then
     rm -rf "${SKILLS_DIR:?}/${skill:?}"
     echo "   ✓ Removed: $SKILLS_DIR/$skill/"
   else
     echo "   - Not found: $SKILLS_DIR/$skill/"
+  fi
+done
+
+# Also remove old unprefixed skills if they exist (legacy cleanup)
+for skill in start "continue" commit "done"; do
+  if [ -d "$SKILLS_DIR/$skill" ]; then
+    rm -rf "${SKILLS_DIR:?}/${skill:?}"
+    echo "   ✓ Removed legacy: $SKILLS_DIR/$skill/"
   fi
 done
 
