@@ -95,7 +95,7 @@ print_logo() {
 }
 
 print_logo
-echo "  Installing /start, /continue, /commit and /done commands"
+echo "  Installing /magic-start, /magic-continue, /magic-commit and /magic-done"
 echo ""
 
 # ============================================
@@ -321,11 +321,19 @@ echo ""
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "4. Installing /start, /continue, /commit and /done skills"
+echo "4. Installing /magic-start, /magic-continue, /magic-commit and /magic-done skills"
 echo ""
 
 SKILLS_DIR="$HOME/.claude/skills"
 mkdir -p "$SKILLS_DIR"
+
+# Remove old unprefixed skills from previous versions
+for skill in start "continue" commit "done"; do
+  if [ -d "$SKILLS_DIR/$skill" ]; then
+    rm -rf "${SKILLS_DIR:?}/${skill:?}"
+    echo "   ↗️  Migrated: /$skill → /magic-$skill"
+  fi
+done
 
 # Copy skills from local or download from GitHub
 if [ -d "$SCRIPT_DIR/../skills" ]; then
@@ -333,19 +341,18 @@ if [ -d "$SCRIPT_DIR/../skills" ]; then
   cp -r "$SCRIPT_DIR/../skills/"* "$SKILLS_DIR/"
 else
   # Remote installation - download from GitHub
-  for skill in start "continue" commit "done"; do
+  for skill in magic-start magic-continue magic-commit magic-done; do
     mkdir -p "$SKILLS_DIR/$skill"
     curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/SKILL.md" > "$SKILLS_DIR/$skill/SKILL.md"
     curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/image.png" -o "$SKILLS_DIR/$skill/image.png" 2>/dev/null || true
   done
 fi
 
-echo "   ✅ Skills installed (start, continue, commit, done)"
-echo "   → Use /start, /continue, /commit, /done or natural language"
-echo "   → Examples: 'démarre PROJ-123', 'ready to commit', 'create the PR'"
+echo "   ✅ Skills installed (magic-start, magic-continue, magic-commit, magic-done)"
+echo "   → Type /magic- to quickly find all commands"
+echo "   → Or use natural language: 'démarre PROJ-123', 'ready to commit', 'create the PR'"
 
 # Note: Old commands in ~/.claude/commands/ are no longer used
-# Skills in ~/.claude/skills/ replace them completely
 if [ -d "$HOME/.claude/commands" ]; then
   if [ -f "$HOME/.claude/commands/start.md" ] || [ -f "$HOME/.claude/commands/commit.md" ] || [ -f "$HOME/.claude/commands/done.md" ]; then
     echo ""
@@ -566,7 +573,7 @@ echo "Created files:"
 echo "  • MCP Atlassian  : ~/.claude.json (OAuth - Jira + Confluence)"
 echo "  • MCP GitHub     : ~/.claude.json"
 echo "  • Config         : ~/.config/magic-slash/config.json"
-echo "  • Skills         : ~/.claude/skills/{start,continue,commit,done}/SKILL.md"
+echo "  • Skills         : ~/.claude/skills/{magic-start,magic-continue,magic-commit,magic-done}/SKILL.md"
 
 if [ "$INSTALL_MODE" = "desktop" ]; then
   echo "  • Desktop app    : /Applications/Magic Slash.app"
@@ -587,10 +594,12 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "🚀 You're ready! Try these commands in Claude Code:"
 echo ""
-echo "   /start PROJ-123     Start a Jira ticket"
-echo "   /start #42          Start a GitHub issue"
-echo "   /commit             Create a commit"
-echo "   /done               Push, create PR, update Jira"
+echo "   /magic-start PROJ-123   Start a Jira ticket"
+echo "   /magic-start #42       Start a GitHub issue"
+echo "   /magic-commit          Create a commit"
+echo "   /magic-done            Push, create PR, update Jira"
+echo ""
+echo "   💡 Type /magic- to see all commands"
 echo ""
 echo "   Or use natural language:"
 echo "   'démarre PROJ-123'  'ready to commit'  'create the PR'"
