@@ -226,7 +226,7 @@ npm run desktop:package
 
 ```json
 {
-  "version": "0.14.0",
+  "version": "0.14.1",
   "repositories": {
     "api": {
       "path": "/Users/dev/projects/my-api",

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] - 2026-03-14
+
+### Fixed
+
+- **Desktop**: Update `BUILT_IN_SKILLS` and `SKILLS` constants to use `magic-*` prefix — skills were no longer recognized as built-in after the rename in v0.14.0, making them editable in the app
+
 ## [0.14.0] - 2026-03-14
 
 ### Changed
@@ -449,6 +455,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.14.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.1
 [0.14.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.0
 [0.13.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.13.0
 [0.12.14]: https://github.com/xrequillart/magic-slash/releases/tag/v0.12.14
