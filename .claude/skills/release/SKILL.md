@@ -5,7 +5,7 @@ argument-hint: <VERSION>
 allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep
 ---
 
-# magic-slash v0.11.2 - /release
+# magic-slash v0.14.2 - /release
 
 Tu es un assistant qui prepare les releases du projet Magic Slash en mettant a jour tous les fichiers contenant des references de version.
 
@@ -204,9 +204,51 @@ Et mets a jour le CHANGELOG en consequence.
 
 ## Etape 7 : Verification et resume
 
-### 7.1 : Verifier les modifications
+### 7.1 : Verifier les modifications avec grep
 
-Affiche un resume de tous les fichiers modifies avec leur statut :
+**CRITIQUE** : Cette etape est obligatoire. Tu dois verifier que CHAQUE fichier contient bien la nouvelle version.
+
+Execute la commande suivante pour verifier que tous les fichiers ont ete mis a jour :
+
+```bash
+echo "=== Verification de la version X.Y.Z ===" && \
+ERRORS=0 && \
+for f in package.json web-ui/package.json desktop/package.json; do
+  if grep -q "\"version\": \"X.Y.Z\"" "$f"; then
+    echo "  OK  $f"
+  else
+    echo "  ERREUR  $f - version X.Y.Z NON trouvee"
+    ERRORS=$((ERRORS+1))
+  fi
+done && \
+for f in skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md skills/magic-done/SKILL.md .claude/skills/release/SKILL.md; do
+  if grep -q "magic-slash vX.Y.Z" "$f"; then
+    echo "  OK  $f"
+  else
+    echo "  ERREUR  $f - version X.Y.Z NON trouvee"
+    ERRORS=$((ERRORS+1))
+  fi
+done && \
+if grep -q "vX.Y.Z" desktop/src/renderer/components/Sidebar.tsx; then
+  echo "  OK  desktop/src/renderer/components/Sidebar.tsx"
+else
+  echo "  ERREUR  desktop/src/renderer/components/Sidebar.tsx - version X.Y.Z NON trouvee"
+  ERRORS=$((ERRORS+1))
+fi && \
+if grep -q "vX.Y.Z" install/install.sh; then
+  echo "  OK  install/install.sh"
+else
+  echo "  ERREUR  install/install.sh - version X.Y.Z NON trouvee"
+  ERRORS=$((ERRORS+1))
+fi && \
+echo "=== $ERRORS erreur(s) detectee(s) ==="
+```
+
+**Si des erreurs sont detectees** : corrige immediatement les fichiers concernes et relance la verification jusqu'a ce que toutes les verifications passent (0 erreurs).
+
+### 7.2 : Afficher le resume
+
+Affiche un resume de tous les fichiers modifies :
 
 ```text
 Resume des modifications pour la version X.Y.Z :
@@ -226,7 +268,7 @@ Resume des modifications pour la version X.Y.Z :
   CHANGELOG.md                                  Nouvelle section ajoutee
 ```
 
-### 7.2 : Rappeler les etapes manuelles
+### 7.3 : Rappeler les etapes manuelles
 
 ```text
 Prochaines etapes manuelles :
