@@ -3,7 +3,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 
-const BUILT_IN_SKILLS = ['start', 'continue', 'commit', 'done']
+const BUILT_IN_SKILLS = ['magic-start', 'magic-continue', 'magic-commit', 'magic-done']
 
 interface SkillInfo {
   name: string
