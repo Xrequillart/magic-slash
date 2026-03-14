@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.3] - 2026-03-14
+
+### Changed
+
+- **Release**: Add post-release grep verification step in `/release` skill to automatically detect files not updated during a release
+
+### Fixed
+
+- **Release**: Align `magic-continue` (was v0.14.1) and `release` skill (was v0.11.2) versions that were missed during 0.14.2 release
+
 ## [0.14.2] - 2026-03-14
 
 ### Fixed
@@ -461,6 +471,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.14.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.3
 [0.14.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.2
 [0.14.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.1
 [0.14.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.0
