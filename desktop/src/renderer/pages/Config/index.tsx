@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Github, Plus, ChevronRight, Folder } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles } from 'lucide-react'
 import { RepoPage } from './RepoPage'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
@@ -11,6 +11,8 @@ function WelcomePage() {
   const { addRepository } = useConfig()
   const [githubStatus, setGithubStatus] = useState<Record<string, boolean>>({})
   const [isAdding, setIsAdding] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
+  const [loadingWhatsNew, setLoadingWhatsNew] = useState(false)
 
   const repos = Object.entries(config?.repositories || {})
   const projectNames = repos.map(([name]) => name)
@@ -35,6 +37,30 @@ function WelcomePage() {
     }
     return counts
   }, [terminals, repos])
+
+  // Fetch app version
+  useEffect(() => {
+    window.electronAPI.updater.getVersion().then(setAppVersion)
+  }, [])
+
+  const handleWhatsNew = async () => {
+    if (loadingWhatsNew || !appVersion) return
+    setLoadingWhatsNew(true)
+    try {
+      const html = await window.electronAPI.updater.getReleaseNotes(appVersion)
+      if (!html) {
+        showToast('Could not load release notes', 'error')
+        return
+      }
+      window.dispatchEvent(new CustomEvent('show:whats-new', {
+        detail: { version: appVersion, releaseNotes: html },
+      }))
+    } catch {
+      showToast('Could not load release notes', 'error')
+    } finally {
+      setLoadingWhatsNew(false)
+    }
+  }
 
   // Check GitHub remote status for all repos
   useEffect(() => {
@@ -182,7 +208,7 @@ function WelcomePage() {
       </div>
 
       {/* Keyboard Shortcuts Section */}
-      <div>
+      <div className="mb-8">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Keyboard Shortcuts</h2>
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
           <div className="grid grid-cols-2 gap-3 text-sm">
@@ -211,6 +237,25 @@ function WelcomePage() {
               <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> B</kbd>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* About Section */}
+      <div>
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">About</h2>
+        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <div className="font-medium">Magic Slash</div>
+            <div className="text-xs text-text-secondary/50 mt-0.5">v{appVersion}</div>
+          </div>
+          <button
+            onClick={handleWhatsNew}
+            disabled={loadingWhatsNew}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-accent bg-accent/10 border border-accent/20 rounded-lg hover:bg-accent/20 transition-colors disabled:opacity-50"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            {loadingWhatsNew ? 'Loading...' : "What's New"}
+          </button>
         </div>
       </div>
     </div>

@@ -148,6 +148,20 @@ export function setupAutoUpdater() {
   ipcMain.handle('updater:clearPendingWhatsNew', () => {
     clearPendingWhatsNew()
   })
+
+  ipcMain.handle('updater:getReleaseNotes', async (_event, version: string) => {
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/xrequillart/magic-slash/releases/tags/v${version}`,
+        { headers: { Accept: 'application/vnd.github.html+json' } }
+      )
+      if (!response.ok) return null
+      const data = await response.json()
+      return data.body_html || null
+    } catch {
+      return null
+    }
+  })
 }
 
 export function setUpdaterMainWindow(window: BrowserWindow) {

@@ -250,6 +250,8 @@ const updaterApi = {
   getPendingWhatsNew: (): Promise<{ version: string; releaseNotes: string } | null> =>
     ipcRenderer.invoke('updater:getPendingWhatsNew'),
   clearPendingWhatsNew: (): Promise<void> => ipcRenderer.invoke('updater:clearPendingWhatsNew'),
+  getReleaseNotes: (version: string): Promise<string | null> =>
+    ipcRenderer.invoke('updater:getReleaseNotes', version),
   onStatus: (callback: (status: UpdateStatus) => void) => {
     const listener = (_event: any, status: UpdateStatus) => callback(status)
     ipcRenderer.on('updater:status', listener)
