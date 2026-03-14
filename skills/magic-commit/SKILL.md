@@ -4,7 +4,7 @@ description: This skill should be used when the user says "commit", "je suis prÃ
 allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep
 ---
 
-# magic-slash v0.14.3 - /commit
+# magic-slash v0.14.4 - /commit
 
 > **IMPORTANT**: You MUST follow EACH step of this skill in order. Do not skip any step and do not take shortcuts. Each step is essential for the proper functioning of the workflow.
 >

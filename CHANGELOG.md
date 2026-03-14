@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.4] - 2026-03-14
+
+### Added
+
+- **Desktop**: Add dev-only debug menu (Bug icon) with "Auto update steps" simulation and "Flood terminal" option for testing scroll behavior
+
+### Changed
+
+- **Desktop**: Restyle `UpdateOverlay` with glassmorphism (backdrop-blur, semi-transparent card, shadow), fixed card size, tada animation and confetti on download completion
+- **Desktop**: Replace purple accent color with blue `#393BFF` for all update overlay states (spinner, download icon, check, progress bar, text)
+
+### Fixed
+
+- **Desktop**: Lock terminal scroll to bottom while a command is running — user can only scroll freely once the command finishes
+
 ## [0.14.3] - 2026-03-14
 
 ### Changed
@@ -471,6 +486,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.14.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.4
 [0.14.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.3
 [0.14.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.2
 [0.14.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.1
