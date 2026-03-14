@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-03-14
+
+### Added
+
+- **Desktop**: "What's New" modal displayed after an auto-update, showing the release notes from the GitHub Release. The modal appears once on restart after the update, and is dismissed permanently until the next update.
+- **Desktop**: "What's New modal" option in the dev debug menu to preview the modal without triggering an update
+- **Desktop**: `maxWidth` prop on the `Modal` component for flexible sizing
+
 ## [0.14.5] - 2026-03-14
 
 ### Fixed
@@ -492,6 +500,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.15.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.15.0
 [0.14.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.5
 [0.14.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.4
 [0.14.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.3
