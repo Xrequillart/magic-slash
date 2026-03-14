@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.2] - 2026-03-14
+
+### Fixed
+
+- **Desktop**: Prevent scroll from jumping back up during conversation in `TerminalPane` — auto-scroll now only fires when the user is near the bottom, matching the existing `TerminalView` behavior
+
 ## [0.14.1] - 2026-03-14
 
 ### Fixed
@@ -455,6 +461,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.14.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.2
 [0.14.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.1
 [0.14.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.14.0
 [0.13.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.13.0
