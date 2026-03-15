@@ -124,6 +124,17 @@ const api = {
     return data;
   },
 
+  async updateRepositoryBranchSettings(name, settings) {
+    const response = await fetch(`/api/repositories/${encodeURIComponent(name)}/branches`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to update branch settings');
+    return data;
+  },
+
   async validatePath(path) {
     const response = await fetch('/api/validate-path', {
       method: 'POST',
@@ -444,6 +455,9 @@ function renderRepoPage(name) {
   // Default is true for commentOnPR
   const commentOnPRVal = issuesSettings.commentOnPR !== undefined ? issuesSettings.commentOnPR : true;
 
+  const branchSettings = repo.branches || {};
+  const devBranchVal = branchSettings.development || '';
+
   elements.app.innerHTML = `
     <div class="page page-repo">
       <div class="page-breadcrumb">
@@ -697,6 +711,30 @@ function renderRepoPage(name) {
           </div>
         </div>
       </section>
+
+      <!-- Branches -->
+      <section class="settings-section">
+        <h2 class="section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="6" x2="6" y1="3" y2="15"/>
+            <circle cx="18" cy="6" r="3"/>
+            <circle cx="6" cy="18" r="3"/>
+            <path d="M18 9a9 9 0 0 1-9 9"/>
+          </svg>
+          Branches
+        </h2>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <label class="setting-label">Development Branch</label>
+            <p class="setting-desc">Base branch for worktrees and PRs (e.g., main, develop, staging). If empty, the skill will ask each time.</p>
+          </div>
+          <div class="setting-control" style="display: flex; gap: 8px; align-items: center;">
+            <input type="text" class="setting-input" id="branch-development" value="${escapeHtml(devBranchVal)}" placeholder="main" style="width: 160px;">
+            <button class="btn btn-primary btn-sm" id="btn-save-branch" style="display: none;">Save</button>
+          </div>
+        </div>
+      </section>
     </div>
   `;
 
@@ -862,6 +900,29 @@ function renderRepoPage(name) {
         toggle.checked = !toggle.checked; // Revert on error
       }
     });
+  });
+
+  // Branch settings
+  const branchInput = document.getElementById('branch-development');
+  const saveBranchBtn = document.getElementById('btn-save-branch');
+  let originalBranch = devBranchVal;
+
+  branchInput.addEventListener('input', () => {
+    const changed = branchInput.value !== originalBranch;
+    saveBranchBtn.style.display = changed ? 'inline-flex' : 'none';
+  });
+
+  saveBranchBtn.addEventListener('click', async () => {
+    try {
+      const value = branchInput.value.trim();
+      const result = await api.updateRepositoryBranchSettings(name, { development: value || null });
+      config = result.config;
+      originalBranch = value;
+      saveBranchBtn.style.display = 'none';
+      showToast('Branch setting updated');
+    } catch (error) {
+      showToast(error.message, 'error');
+    }
   });
 
   // Delete button
