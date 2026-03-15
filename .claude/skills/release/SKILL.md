@@ -116,13 +116,19 @@ Mets a jour le titre de version dans les 4 fichiers de skills :
 - `skills/magic-done/SKILL.md`
 - `.claude/skills/release/SKILL.md`
 
-Pattern a mettre a jour dans chaque fichier :
+Dans chaque fichier, cherche le titre avec un pattern regex generique (pour eviter les desynchronisations de version) :
+
+```regex
+# magic-slash v[0-9]+\.[0-9]+\.[0-9]+ - /nom-du-skill
+```
+
+Remplace par :
 
 ```markdown
 # magic-slash vX.Y.Z - /nom-du-skill
 ```
 
-Remplace l'ancien numero de version par le nouveau dans chaque titre.
+**IMPORTANT** : Ne cherche PAS la version actuelle (`VERSION_ACTUELLE`) dans ces fichiers. Utilise toujours le pattern regex generique ci-dessus pour trouver la ligne, car un fichier peut avoir rate une mise a jour precedente et contenir une version differente.
 
 ### 4.2 : desktop/src/renderer/components/Sidebar.tsx
 

@@ -5,7 +5,7 @@ argument-hint: <TICKET-ID>
 allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, mcp__atlassian__*, mcp__github__*
 ---
 
-# magic-slash v0.15.0 - /continue
+# magic-slash v0.17.1 - /continue
 
 > **IMPORTANT**: You MUST follow EACH step in order. Do not skip any step.
 >
