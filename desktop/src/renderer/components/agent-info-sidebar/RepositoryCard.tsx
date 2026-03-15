@@ -1,4 +1,4 @@
-import { GitBranch, Copy, Check, ExternalLink } from 'lucide-react'
+import { GitBranch, Copy, Check, ExternalLink, ArrowRight } from 'lucide-react'
 import { GitHubIcon, VSCodeIcon } from './icons'
 import { ScriptsDropdown } from './ScriptsDropdown'
 import { formatRelativeDate } from './utils'
@@ -10,6 +10,7 @@ interface RepositoryCardProps {
   agentId: string
   agentName: string
   gitData: RepoGitData | undefined
+  baseBranch: string | undefined
   prUrl: string | undefined
   copiedCommitHash: string | null
   copiedBranch: string | null
@@ -23,6 +24,7 @@ export function RepositoryCard({
   agentId,
   agentName,
   gitData,
+  baseBranch,
   prUrl,
   copiedCommitHash,
   copiedBranch,
@@ -31,6 +33,7 @@ export function RepositoryCard({
 }: RepositoryCardProps) {
   const hasChanges = gitData?.stats?.isGitRepo && gitData.stats.filesChanged > 0
   const hasCommits = gitData?.commits && gitData.commits.commits.length > 0
+  const resolvedBaseBranch = baseBranch || gitData?.commits?.baseBranch
 
   return (
     <div className="bg-bg-tertiary/40 rounded-lg p-3 border border-border/30">
@@ -54,25 +57,43 @@ export function RepositoryCard({
 
       {/* Branch block */}
       {gitData?.branch && (
-        <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-bg-tertiary/60 border border-border/30 rounded-md">
-          <GitBranch className="w-3.5 h-3.5 text-green/70 flex-shrink-0" />
-          <span
-            className="text-green text-[13px] font-medium truncate"
-            title={gitData.branch}
-          >
-            {gitData.branch}
-          </span>
-          <button
-            onClick={() => onCopyBranchName(gitData.branch!)}
-            className="p-1 ml-auto rounded hover:bg-white/10 transition-colors group"
-            title="Copy branch name"
-          >
-            {copiedBranch === gitData.branch ? (
-              <Check className="w-3 h-3 text-green" />
-            ) : (
-              <Copy className="w-3 h-3 text-text-secondary/50 group-hover:text-white transition-colors" />
-            )}
-          </button>
+        <div className="flex items-center gap-1.5 mb-2">
+          {/* Base branch (left) */}
+          {resolvedBaseBranch && (
+            <>
+              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-bg-tertiary/60 border border-border/30 rounded-md min-w-0">
+                <GitBranch className="w-3 h-3 text-text-secondary/50 flex-shrink-0" />
+                <span
+                  className="text-text-secondary/70 text-[12px] font-medium truncate"
+                  title={resolvedBaseBranch}
+                >
+                  {resolvedBaseBranch}
+                </span>
+              </div>
+              <ArrowRight className="w-3 h-3 text-text-secondary/30 flex-shrink-0" />
+            </>
+          )}
+          {/* Current branch (right) */}
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1.5 bg-bg-tertiary/60 border border-border/30 rounded-md">
+            <GitBranch className="w-3.5 h-3.5 text-green/70 flex-shrink-0" />
+            <span
+              className="text-green text-[13px] font-medium truncate"
+              title={gitData.branch}
+            >
+              {gitData.branch}
+            </span>
+            <button
+              onClick={() => onCopyBranchName(gitData.branch!)}
+              className="p-1 ml-auto rounded hover:bg-white/10 transition-colors group flex-shrink-0"
+              title="Copy branch name"
+            >
+              {copiedBranch === gitData.branch ? (
+                <Check className="w-3 h-3 text-green" />
+              ) : (
+                <Copy className="w-3 h-3 text-text-secondary/50 group-hover:text-white transition-colors" />
+              )}
+            </button>
+          </div>
         </div>
       )}
 
