@@ -10,6 +10,7 @@ export interface TerminalMetadata {
   ticketId?: string
   description?: string
   status?: string
+  baseBranch?: string
   fullStackTaskId?: string
   relatedWorktrees?: string[]
   repositoryMetadata?: Record<string, RepositoryMetadata>

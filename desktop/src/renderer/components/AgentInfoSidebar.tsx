@@ -459,6 +459,7 @@ export function AgentInfoSidebar() {
                     agentId={activeTerminalId!}
                     agentName={activeTerminal!.metadata?.title || activeTerminal!.name}
                     gitData={repoGitData[repoPath]}
+                    baseBranch={metadata?.baseBranch}
                     prUrl={getRepoPrUrl(repoPath)}
                     copiedCommitHash={copiedCommitHash}
                     copiedBranch={copiedBranch}

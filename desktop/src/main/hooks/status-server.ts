@@ -87,6 +87,7 @@ export function startStatusServer(): Promise<number> {
           const ticketId = url.searchParams.get('ticketId')
           const description = url.searchParams.get('description')
           const status = url.searchParams.get('status')
+          const baseBranch = url.searchParams.get('baseBranch')
           const prUrl = url.searchParams.get('prUrl')
           const prRepo = url.searchParams.get('prRepo')  // Repository path for the PR
           const fullStackTaskId = url.searchParams.get('fullStackTaskId')
@@ -99,6 +100,7 @@ export function startStatusServer(): Promise<number> {
             if (ticketId) metadata.ticketId = ticketId
             if (description) metadata.description = description
             if (status) metadata.status = status
+            if (baseBranch) metadata.baseBranch = baseBranch
             if (prUrl && prRepo) {
               // Store PR URL per repository
               metadata.repositoryMetadata = { [prRepo]: { prUrl } }
