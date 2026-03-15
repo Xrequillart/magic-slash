@@ -16,7 +16,8 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
   const xtermRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
-  const commandRunningRef = useRef(false)
+  const userScrolledUpRef = useRef(false)
+  const writingRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const dragCounterRef = useRef(0)
 
@@ -143,24 +144,10 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
       return buf.viewportY >= buf.baseY - 3
     }
 
-    // Lock scroll when a command is running
+    // Track whether user has scrolled away from bottom
     const scrollHandler = xterm.onScroll(() => {
-      if (commandRunningRef.current) {
-        xterm.scrollToBottom()
-      }
-    })
-
-    // Track command start/end to control scroll behavior
-    const unsubStart = window.electronAPI.terminal.onCommandStart(({ id }) => {
-      if (id === terminal.id) {
-        commandRunningRef.current = true
-        xterm.scrollToBottom()
-      }
-    })
-
-    const unsubEnd = window.electronAPI.terminal.onCommandEnd(({ id }) => {
-      if (id === terminal.id) {
-        commandRunningRef.current = false
+      if (!writingRef.current) {
+        userScrolledUpRef.current = !isNearBottom(xterm)
       }
     })
 
@@ -168,16 +155,21 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
     // This ensures we get the historical data first, then live updates
     window.electronAPI.terminal.getBuffer(terminal.id).then((buffer) => {
       if (buffer && buffer.length > 0) {
-        xterm.write(buffer)
+        writingRef.current = true
+        xterm.write(buffer, () => {
+          writingRef.current = false
+        })
         xterm.scrollToBottom() // Always scroll on initial restore
       }
 
       // Now attach the live data listener AFTER buffer is restored
       const unsubscribe = window.electronAPI.terminal.onData(({ id, data }) => {
         if (id === terminal.id) {
-          xterm.write(data)
-          // Force scroll to bottom when command is running, otherwise only if near bottom
-          if (commandRunningRef.current || isNearBottom(xterm)) {
+          writingRef.current = true
+          xterm.write(data, () => {
+            writingRef.current = false
+          })
+          if (!userScrolledUpRef.current) {
             xterm.scrollToBottom()
           }
         }
@@ -185,8 +177,6 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
 
       cleanupRef.current = () => {
         unsubscribe()
-        unsubStart()
-        unsubEnd()
         scrollHandler.dispose()
       }
     }).catch((error) => {
@@ -195,8 +185,11 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
       // Even if buffer fails, still attach the listener
       const unsubscribe = window.electronAPI.terminal.onData(({ id, data }) => {
         if (id === terminal.id) {
-          xterm.write(data)
-          if (commandRunningRef.current || isNearBottom(xterm)) {
+          writingRef.current = true
+          xterm.write(data, () => {
+            writingRef.current = false
+          })
+          if (!userScrolledUpRef.current) {
             xterm.scrollToBottom()
           }
         }
@@ -204,8 +197,6 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
 
       cleanupRef.current = () => {
         unsubscribe()
-        unsubStart()
-        unsubEnd()
         scrollHandler.dispose()
       }
     })
@@ -267,6 +258,7 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
     if (isActive && xtermRef.current) {
       xtermRef.current.focus()
       xtermRef.current.scrollToBottom()
+      userScrolledUpRef.current = false
     }
   }, [isActive])
 
