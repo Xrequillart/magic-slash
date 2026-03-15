@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-03-15
+
+### Added
+
+- **Skills**: Configurable base branch per repository — `/magic-start`, `/magic-done`, and `/magic-continue` now read `branches.development` from config and always ask the user to confirm the base branch (showing the configured default if available)
+- **Desktop**: Display base branch alongside current branch in the agent sidebar — two side-by-side boxes with an arrow separator (e.g., `develop → feature/PROJ-123`)
+- **Desktop**: `baseBranch` field in agent metadata, sent by skills via `/metadata` endpoint and displayed in the sidebar
+- **Web UI**: "Branches" settings section in repository detail page with a "Development Branch" text input
+
+### Changed
+
+- **Skills**: `origin/main` is no longer hardcoded — all git commands (`git worktree add`, `git log`, `git diff`) now use `origin/$DEV_BRANCH`
+- **Skills**: `/magic-done` Step 5.0 now prioritizes `$DEV_BRANCH` for PR base branch, with fallback to dynamic detection
+
 ## [0.16.2] - 2026-03-14
 
 ### Added
@@ -530,6 +544,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.17.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.17.0
 [0.16.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.16.2
 [0.16.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.16.1
 [0.16.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.16.0
