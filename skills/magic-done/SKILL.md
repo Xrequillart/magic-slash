@@ -32,6 +32,33 @@ Read `~/.config/magic-slash/config.json` and determine the parameters based on t
 | Jira language     | `.repositories.<name>.languages.jiraComment` | `"en"` |
 | Discussion language | `.repositories.<name>.languages.discussion` | `"en"` |
 
+## Branch configuration
+
+Read `~/.config/magic-slash/config.json` to determine the development branch:
+
+1. Once the repo is identified, read `.repositories.<name>.branches.development`
+2. **Always ask the user for confirmation**, showing the configured default if available:
+
+#### If a default is configured (e.g., `"develop"`)
+
+##### In English
+> The configured base branch is **{branch}**. Use it, or specify another? (press Enter to confirm)
+
+##### In French
+> La branche de base configurée est **{branch}**. L'utiliser, ou en spécifier une autre ? (appuie sur Entrée pour confirmer)
+
+#### If no default is configured
+
+##### In English
+> No development branch configured for this repository.
+> Which branch should I use as the base? (e.g., main, develop, staging)
+
+##### In French
+> Aucune branche de développement configurée pour ce repository.
+> Quelle branche dois-je utiliser comme base ? (ex : main, develop, staging)
+
+3. Store the result as `$DEV_BRANCH`.
+
 ### Pull Request parameters
 
 | Parameter         | Repo path                                          | Default | Description                              |
@@ -206,7 +233,7 @@ If the push fails, display the error and stop the process.
 ## Step 3: List commits for the PR
 
 ```bash
-git log origin/main..HEAD --oneline
+git log origin/$DEV_BRANCH..HEAD --oneline
 ```
 
 Retrieve the list of commits that will be included in the PR.
@@ -214,12 +241,12 @@ Retrieve the list of commits that will be included in the PR.
 ## Step 3.1: Retrieve the full diff for testing instructions
 
 ```bash
-git diff origin/main..HEAD
+git diff origin/$DEV_BRANCH..HEAD
 ```
 
 This diff will be used in Step 5 to generate concrete testing instructions in the PR description.
 
-If the diff is too large (>500 lines), also run `git diff origin/main..HEAD --stat` to get an overview, then read the key modified files individually to understand the changes.
+If the diff is too large (>500 lines), also run `git diff origin/$DEV_BRANCH..HEAD --stat` to get an overview, then read the key modified files individually to understand the changes.
 
 ## Step 4: Retrieve the project's PR template
 
@@ -235,9 +262,11 @@ If a template exists, you must **strictly follow it** and fill in its sections. 
 
 > ⚠️ **MANDATORY**: This step is critical. You MUST create the PR.
 
-### 5.0: Detect the main branch
+### 5.0: Detect the base branch
 
-Automatically determine the repo's main branch:
+Use `$DEV_BRANCH` (resolved from the branch configuration above) as the base branch for the PR.
+
+If `$DEV_BRANCH` was not resolved earlier (e.g., the branch configuration section was skipped), fall back to dynamic detection:
 
 ```bash
 BASE_BRANCH=$(git remote show origin | grep 'HEAD branch' | cut -d: -f2 | xargs)
@@ -253,6 +282,8 @@ if ! git rev-parse --verify origin/$BASE_BRANCH >/dev/null 2>&1; then
   BASE_BRANCH="master"
 fi
 ```
+
+Otherwise, set `BASE_BRANCH=$DEV_BRANCH`.
 
 Use the MCP GitHub tool `mcp__github__create_pull_request` to create the PR:
 

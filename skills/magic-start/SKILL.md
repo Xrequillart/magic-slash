@@ -60,6 +60,33 @@ Read `~/.config/magic-slash/config.json` and determine the language based on the
 
 - `discussion`: Language for your responses and the agent prompt (`"en"` or `"fr"`)
 
+## Branch configuration
+
+Read `~/.config/magic-slash/config.json` to determine the development branch:
+
+1. Once the repo is identified, read `.repositories.<name>.branches.development`
+2. **Always ask the user for confirmation**, showing the configured default if available:
+
+#### If a default is configured (e.g., `"develop"`)
+
+##### In English
+> The configured base branch is **{branch}**. Use it, or specify another? (press Enter to confirm)
+
+##### In French
+> La branche de base configurée est **{branch}**. L'utiliser, ou en spécifier une autre ? (appuie sur Entrée pour confirmer)
+
+#### If no default is configured
+
+##### In English
+> No development branch configured for this repository.
+> Which branch should I use as the base? (e.g., main, develop, staging)
+
+##### In French
+> Aucune branche de développement configurée pour ce repository.
+> Quelle branche dois-je utiliser comme base ? (ex : main, develop, staging)
+
+3. Store the result as `$DEV_BRANCH`.
+
 ## Step 1: Detect ticket type
 
 Analyze the provided argument: `$ARGUMENTS`
@@ -170,13 +197,14 @@ Implémenter le mécanisme de rafraîchissement des tokens JWT. Ajouter le renou
 Execute this command to update the title, ticket ID, description and agent status:
 
 ```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(echo -n '{TICKET_ID}: {TICKET_TITLE}' | jq -sRr @uri)&ticketId={TICKET_ID}&description=$(echo -n '{DESCRIPTION}' | jq -sRr @uri)&status=in%20progress" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(echo -n '{TICKET_ID}: {TICKET_TITLE}' | jq -sRr @uri)&ticketId={TICKET_ID}&description=$(echo -n '{DESCRIPTION}' | jq -sRr @uri)&status=in%20progress&baseBranch={DEV_BRANCH}" > /dev/null 2>&1 || true
 ```
 
 Replace:
 - `{TICKET_ID}`: The ticket ID (e.g.: `PROJ-123` or `#456`)
 - `{TICKET_TITLE}`: The ticket title (short version, max 30 characters)
 - `{DESCRIPTION}`: The description generated in step 2.5.1
+- `{DEV_BRANCH}`: The development branch chosen by the user (e.g.: `main`, `develop`)
 
 Note: We use `jq -sRr @uri` to properly encode special characters in the URL.
 
@@ -362,7 +390,7 @@ For each selected repo:
 cd {REPO_PATH}
 REPO_NAME=$(basename "$PWD")
 git fetch origin
-git worktree add -b feature/$TICKET_ID ../${REPO_NAME}-$TICKET_ID origin/main
+git worktree add -b feature/$TICKET_ID ../${REPO_NAME}-$TICKET_ID origin/$DEV_BRANCH
 # IMPORTANT: Immediately change to the created worktree
 cd ../${REPO_NAME}-$TICKET_ID
 ```
@@ -1075,6 +1103,7 @@ Updates the agent metadata in the UI.
 | `ticketId` | string | No | Ticket ID (e.g.: `PROJ-123`, `#456`) |
 | `description` | string | No | Short ticket description (URL-encoded) |
 | `status` | string | No | Status: `"in progress"`, `"committed"`, `"PR created"` |
+| `baseBranch` | string | No | Development base branch (e.g.: `main`, `develop`) |
 | `fullStackTaskId` | string | No | Full-stack task ID (to link multiple worktrees) |
 | `relatedWorktrees` | JSON array | No | Absolute paths of related worktrees (URL-encoded) |
 | `prUrl` | string | No | URL of the created PR |
