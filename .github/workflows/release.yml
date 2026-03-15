@@ -61,7 +61,7 @@ jobs:
 
   build-desktop:
     name: Build Desktop App
-    runs-on: macos-latest
+    runs-on: macos-14
     needs: release
 
     steps:
