@@ -212,8 +212,8 @@ export function RepositoryCard({
 
       {/* No changes state */}
       {gitData && !gitData.error && !hasChanges && !hasCommits && gitData.branch && (
-        <div className="text-xs text-text-secondary/40 italic">
-          No uncommitted changes
+        <div className="bg-bg-tertiary/60 border border-border/30 rounded-md p-2 mb-2">
+          <span className="text-xs text-text-secondary/40 italic">No uncommitted changes</span>
         </div>
       )}
 
