@@ -185,6 +185,23 @@ app.put('/api/repositories/:name/issues', (req, res) => {
   }
 });
 
+// PUT /api/repositories/:name/branches - Update repository-specific branch settings
+app.put('/api/repositories/:name/branches', (req, res) => {
+  try {
+    const { name } = req.params;
+    const settings = req.body;
+    const updatedConfig = config.updateRepositoryBranchSettings(name, settings);
+    res.json({ success: true, config: updatedConfig });
+  } catch (error) {
+    console.error('Error updating repository branch settings:', error);
+    if (error.message.includes('not found')) {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Failed to update repository branch settings' });
+    }
+  }
+});
+
 // POST /api/validate-path - Validate if a path is a git repository
 app.post('/api/validate-path', (req, res) => {
   try {

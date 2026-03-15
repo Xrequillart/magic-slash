@@ -244,6 +244,37 @@ function updateRepositoryIssuesSettings(name, settings) {
 }
 
 /**
+ * Update branch settings for a specific repository
+ * @param {string} name Repository name
+ * @param {Object} settings Branch settings object
+ */
+function updateRepositoryBranchSettings(name, settings) {
+  const config = readConfig();
+  if (!config.repositories || !config.repositories[name]) {
+    throw new Error(`Repository '${name}' not found`);
+  }
+
+  config.repositories[name].branches = config.repositories[name].branches || {};
+
+  // Validate and set development branch
+  if (settings.development !== undefined) {
+    if (settings.development === '' || settings.development === null) {
+      delete config.repositories[name].branches.development;
+    } else if (typeof settings.development === 'string') {
+      config.repositories[name].branches.development = settings.development;
+    }
+  }
+
+  // Clean up empty branches object
+  if (Object.keys(config.repositories[name].branches).length === 0) {
+    delete config.repositories[name].branches;
+  }
+
+  writeConfig(config);
+  return config;
+}
+
+/**
  * Delete a repository from the configuration
  * @param {string} name Repository name
  */
@@ -268,5 +299,6 @@ module.exports = {
   updateRepositoryCommitSettings,
   updateRepositoryPullRequestSettings,
   updateRepositoryIssuesSettings,
+  updateRepositoryBranchSettings,
   CONFIG_FILE
 };
