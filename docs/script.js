@@ -30,13 +30,16 @@ var i18n = {
         'desktop.repositories': 'Repositories',
         'desktop.filesChanged': '3 files changed',
         'desktop.aheadOfMain': '2 ahead of main',
-        // Section 1 — Three Commands
-        'section1.title': '4 skills.<br>Entire workflow.',
-        'section1.subtitle': 'From ticket to pull request in four slash commands.',
+        // Section 1 — Seven Skills
+        'section1.title': '7 skills.<br>Entire workflow.',
+        'section1.subtitle': 'From ticket to merge in seven slash commands.',
         'section1.startDesc': '<b style="color:#000">/magic-start</b> grabs your ticket and creates the branch.',
         'section1.continueDesc': '<b style="color:#000">/magic-continue</b> resumes work on an existing ticket.',
         'section1.commitDesc': '<b style="color:#000">/magic-commit</b> stages, splits, and writes your commit message.',
-        'section1.doneDesc': '<b style="color:#000">/magic-done</b> pushes and creates the PR.',
+        'section1.prDesc': '<b style="color:#000">/magic-pr</b> pushes and creates the pull request.',
+        'section1.reviewDesc': '<b style="color:#000">/magic-review</b> reviews a PR with your team conventions.',
+        'section1.resolveDesc': '<b style="color:#000">/magic-resolve</b> addresses review comments and pushes fixes.',
+        'section1.doneDesc': '<b style="color:#000">/magic-done</b> finalizes after merge — cleans up and updates Jira.',
         'section1.prefixHint': 'Type <b style="color:#000">/magic-</b> to find all commands at once.',
         'section1.noContext': 'No context switching. No copy-pasting ticket IDs. Just flow.',
         'section1.seeDocs': 'See docs',
@@ -46,9 +49,11 @@ var i18n = {
         'section2.startDesc': 'Fetch ticket and create branch',
         'section2.continueDesc': 'Resume work on existing ticket',
         'section2.commitDesc': 'Smart commit with context',
-        'section2.doneDesc': 'Push and create pull request',
-        'section2.deployDesc': 'Build, test and deploy to staging',
+        'section2.prDesc': 'Push and create pull request',
         'section2.reviewDesc': 'Review PR with team conventions',
+        'section2.resolveDesc': 'Address review comments',
+        'section2.doneDesc': 'Finalize after merge',
+        'section2.deployDesc': 'Build, test and deploy to staging',
         'section2.title': 'Manage Claude Code skills.',
         'section2.p1': 'Add, edit and organize your Claude Code skills directly from the desktop app. Each skill is a simple markdown file — no config files to hunt down.',
         'section2.p2': 'Built-in skills get you started instantly. Create custom ones for your team\'s workflows, deploy pipelines, or code standards.',
@@ -118,13 +123,16 @@ var i18n = {
         'desktop.repositories': 'Dépôts',
         'desktop.filesChanged': '3 fichiers modifiés',
         'desktop.aheadOfMain': '2 en avance sur main',
-        // Section 1 — Three Commands
-        'section1.title': '4 skills.<br>Tout le workflow.',
-        'section1.subtitle': 'Du ticket à la pull request en quatre commandes slash.',
+        // Section 1 — Seven Skills
+        'section1.title': '7 skills.<br>Tout le workflow.',
+        'section1.subtitle': 'Du ticket au merge en sept commandes slash.',
         'section1.startDesc': '<b style="color:#000">/magic-start</b> récupère votre ticket et crée la branche.',
         'section1.continueDesc': '<b style="color:#000">/magic-continue</b> reprend le travail sur un ticket existant.',
         'section1.commitDesc': '<b style="color:#000">/magic-commit</b> indexe, découpe et rédige votre message de commit.',
-        'section1.doneDesc': '<b style="color:#000">/magic-done</b> pousse et crée la PR.',
+        'section1.prDesc': '<b style="color:#000">/magic-pr</b> pousse et crée la pull request.',
+        'section1.reviewDesc': '<b style="color:#000">/magic-review</b> review une PR selon les conventions d\'équipe.',
+        'section1.resolveDesc': '<b style="color:#000">/magic-resolve</b> traite les commentaires de review et pousse les corrections.',
+        'section1.doneDesc': '<b style="color:#000">/magic-done</b> finalise après le merge — nettoie et met à jour Jira.',
         'section1.prefixHint': 'Tapez <b style="color:#000">/magic-</b> pour retrouver toutes les commandes.',
         'section1.noContext': 'Pas de changement de contexte. Pas de copier-coller d\'identifiants. Juste du flow.',
         'section1.seeDocs': 'Voir la doc',
@@ -134,9 +142,11 @@ var i18n = {
         'section2.startDesc': 'Récupérer le ticket et créer la branche',
         'section2.continueDesc': 'Reprendre le travail sur un ticket existant',
         'section2.commitDesc': 'Commit intelligent avec contexte',
-        'section2.doneDesc': 'Pousser et créer la pull request',
-        'section2.deployDesc': 'Builder, tester et déployer en staging',
+        'section2.prDesc': 'Pousser et créer la pull request',
         'section2.reviewDesc': 'Revue de PR selon les conventions d\'équipe',
+        'section2.resolveDesc': 'Traiter les commentaires de review',
+        'section2.doneDesc': 'Finaliser après le merge',
+        'section2.deployDesc': 'Builder, tester et déployer en staging',
         'section2.title': 'Gérez les skills Claude Code.',
         'section2.p1': 'Ajoutez, éditez et organisez vos skills Claude Code directement depuis l\'application desktop. Chaque skill est un simple fichier markdown — pas de fichiers de config à chercher.',
         'section2.p2': 'Les skills intégrés vous lancent immédiatement. Créez-en sur mesure pour les workflows de votre équipe, vos pipelines de déploiement ou vos standards de code.',
@@ -626,6 +636,9 @@ fetch('https://api.github.com/repos/Xrequillart/magic-slash/releases/latest')
         var startCmdText = '/magic-start PROJ-142';
         var startCmdDuration = startCmdText.length * typeSpeed;
         var commitCmdDuration = '/magic-commit'.length * typeSpeed;
+        var prCmdDuration = '/magic-pr'.length * typeSpeed;
+        var reviewCmdDuration = '/magic-review 87'.length * typeSpeed;
+        var resolveCmdDuration = '/magic-resolve'.length * typeSpeed;
         var doneCmdDuration = '/magic-done'.length * typeSpeed;
 
         // ===== PHASE 1: /start =====
@@ -758,7 +771,7 @@ fetch('https://api.github.com/repos/Xrequillart/magic-slash/releases/latest')
             showSidebarAhead(1);
         }, p2Response + 3000);
 
-        // ===== PHASE 3: /done =====
+        // ===== PHASE 3: /pr =====
         var p3 = p2Response + 3800;
 
         dt(function() {
@@ -777,10 +790,10 @@ fetch('https://api.github.com/repos/Xrequillart/magic-slash/releases/latest')
                     response3.classList.add('visible');
                     scrollToEl(response3);
                 }
-            }, doneCmdDuration + 200);
+            }, prCmdDuration + 200);
         }, p3);
 
-        var p3Response = p3 + doneCmdDuration + 400;
+        var p3Response = p3 + prCmdDuration + 400;
         showEl('.phase-3-status-1', p3Response);
         completeEl('.phase-3-status-1', p3Response + 800, true);
 
@@ -799,9 +812,104 @@ fetch('https://api.github.com/repos/Xrequillart/magic-slash/releases/latest')
         showEl('.phase-3-status-3', p3Response + 2000);
         completeEl('.phase-3-status-3', p3Response + 2800, true);
 
+        // ===== PHASE 4: /review =====
+        var p4 = p3Response + 3600;
+
+        dt(function() {
+            var prompt4 = selectIn('.phase-4-line.cli-prompt');
+            var response4 = selectIn('.phase-4-line.cli-response');
+            if (prompt4) {
+                prompt4.classList.add('visible');
+                scrollToEl(prompt4);
+            }
+            var cmd4 = prompt4 ? prompt4.querySelector('.command') : null;
+            if (cmd4 && cmd4.dataset.text) {
+                typeText(cmd4, cmd4.dataset.text, typeSpeed);
+            }
+            dt(function() {
+                if (response4) {
+                    response4.classList.add('visible');
+                    scrollToEl(response4);
+                }
+            }, reviewCmdDuration + 200);
+        }, p4);
+
+        var p4Response = p4 + reviewCmdDuration + 400;
+        showEl('.phase-4-status-1', p4Response);
+        completeEl('.phase-4-status-1', p4Response + 800, true);
+
+        showEl('.phase-4-status-2', p4Response + 1000);
+        completeEl('.phase-4-status-2', p4Response + 2000, true);
+
+        showEl('.phase-4-status-3', p4Response + 2200);
+
+        // ===== PHASE 5: /resolve =====
+        var p5 = p4Response + 3000;
+
+        dt(function() {
+            var prompt5 = selectIn('.phase-5-line.cli-prompt');
+            var response5 = selectIn('.phase-5-line.cli-response');
+            if (prompt5) {
+                prompt5.classList.add('visible');
+                scrollToEl(prompt5);
+            }
+            var cmd5 = prompt5 ? prompt5.querySelector('.command') : null;
+            if (cmd5 && cmd5.dataset.text) {
+                typeText(cmd5, cmd5.dataset.text, typeSpeed);
+            }
+            dt(function() {
+                if (response5) {
+                    response5.classList.add('visible');
+                    scrollToEl(response5);
+                }
+            }, resolveCmdDuration + 200);
+        }, p5);
+
+        var p5Response = p5 + resolveCmdDuration + 400;
+        showEl('.phase-5-status-1', p5Response);
+        completeEl('.phase-5-status-1', p5Response + 800, true);
+
+        showEl('.phase-5-status-2', p5Response + 1000);
+        completeEl('.phase-5-status-2', p5Response + 1800, true);
+
+        showEl('.phase-5-status-3', p5Response + 2000);
+        completeEl('.phase-5-status-3', p5Response + 2800, true);
+
+        // ===== PHASE 6: /done =====
+        var p6 = p5Response + 3600;
+
+        dt(function() {
+            var prompt6 = selectIn('.phase-6-line.cli-prompt');
+            var response6 = selectIn('.phase-6-line.cli-response');
+            if (prompt6) {
+                prompt6.classList.add('visible');
+                scrollToEl(prompt6);
+            }
+            var cmd6 = prompt6 ? prompt6.querySelector('.command') : null;
+            if (cmd6 && cmd6.dataset.text) {
+                typeText(cmd6, cmd6.dataset.text, typeSpeed);
+            }
+            dt(function() {
+                if (response6) {
+                    response6.classList.add('visible');
+                    scrollToEl(response6);
+                }
+            }, doneCmdDuration + 200);
+        }, p6);
+
+        var p6Response = p6 + doneCmdDuration + 400;
+        showEl('.phase-6-status-1', p6Response);
+        completeEl('.phase-6-status-1', p6Response + 800, true);
+
+        showEl('.phase-6-status-2', p6Response + 1000);
+        completeEl('.phase-6-status-2', p6Response + 1800, true);
+
+        showEl('.phase-6-status-3', p6Response + 2000);
+        completeEl('.phase-6-status-3', p6Response + 2800, true);
+
         // Success banner
         dt(function() {
-            var banner = selectIn('.phase-3-status-4');
+            var banner = selectIn('.phase-6-status-4');
             if (banner) {
                 banner.classList.add('visible');
                 scrollToEl(banner);
@@ -810,14 +918,14 @@ fetch('https://api.github.com/repos/Xrequillart/magic-slash/releases/latest')
             if (agentSpinner) agentSpinner.classList.remove('active');
             if (agentCheck) agentCheck.classList.add('visible');
             if (agentDot) agentDot.classList.add('blue-to-green');
-        }, p3Response + 3200);
+        }, p6Response + 3200);
 
         // Show replay button
         dt(function() {
             var btn = terminal.querySelector('.desktop-replay-btn');
             if (btn) btn.classList.add('visible');
             unlockScroll();
-        }, p3Response + 3800);
+        }, p6Response + 3800);
     }
 
     // Replay function (global for onclick)

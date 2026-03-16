@@ -1824,6 +1824,8 @@ h1.typewriter-done::after {
     --accent: #6366f1;
     --purple: #a855f7;
     --green: #22c55e;
+    --cyan: #06b6d4;
+    --orange: #f97316;
     --red: #ef4444;
     --border: #27272a;
     --text: #ffffff;
@@ -1865,6 +1867,8 @@ h1.typewriter-done::after {
 }
 .desktop-main-terminal .cli-prompt-icon.purple { color: var(--purple); }
 .desktop-main-terminal .cli-prompt-icon.green { color: var(--green); }
+.desktop-main-terminal .cli-prompt-icon.cyan { color: var(--cyan); }
+.desktop-main-terminal .cli-prompt-icon.orange { color: var(--orange); }
 .desktop-main-terminal .command {
     color: var(--text);
     font-weight: 500;
@@ -1878,6 +1882,8 @@ h1.typewriter-done::after {
 }
 .desktop-main-terminal .command.typing.purple::after { color: var(--purple); }
 .desktop-main-terminal .command.typing.green::after { color: var(--green); }
+.desktop-main-terminal .command.typing.cyan::after { color: var(--cyan); }
+.desktop-main-terminal .command.typing.orange::after { color: var(--orange); }
 @keyframes desktop-blink-cursor {
     0%, 50% { opacity: 1; }
     51%, 100% { opacity: 0; }
@@ -1891,6 +1897,8 @@ h1.typewriter-done::after {
 }
 .desktop-main-terminal .cli-response.purple { border-left-color: var(--purple); }
 .desktop-main-terminal .cli-response.green { border-left-color: var(--green); }
+.desktop-main-terminal .cli-response.cyan { border-left-color: var(--cyan); }
+.desktop-main-terminal .cli-response.orange { border-left-color: var(--orange); }
 .desktop-main-terminal .cli-status {
     display: flex;
     align-items: center;
@@ -1926,6 +1934,8 @@ h1.typewriter-done::after {
 }
 .desktop-main-terminal .loader.purple { border-top-color: var(--purple); }
 .desktop-main-terminal .loader.green { border-top-color: var(--green); }
+.desktop-main-terminal .loader.cyan { border-top-color: var(--cyan); }
+.desktop-main-terminal .loader.orange { border-top-color: var(--orange); }
 .desktop-main-terminal .loader.done { display: none; }
 .desktop-main-terminal .checkmark {
     color: var(--green);
