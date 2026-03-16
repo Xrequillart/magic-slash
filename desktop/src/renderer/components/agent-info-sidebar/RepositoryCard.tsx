@@ -36,7 +36,7 @@ export function RepositoryCard({
   const resolvedBaseBranch = baseBranch || gitData?.commits?.baseBranch
 
   return (
-    <div className="bg-bg-tertiary/40 rounded-lg p-3 border border-border/30">
+    <div className="bg-white/[0.06] rounded-xl p-3">
       {/* Repo header */}
       <div className="flex items-center gap-2 mb-2">
         <span className="text-white/90 font-medium text-base truncate" title={repoPath}>
@@ -61,7 +61,7 @@ export function RepositoryCard({
           {/* Base branch (left) */}
           {resolvedBaseBranch && (
             <>
-              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-bg-tertiary/60 border border-border/30 rounded-md min-w-0">
+              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-white/[0.06] rounded-md min-w-0">
                 <GitBranch className="w-3 h-3 text-text-secondary/50 flex-shrink-0" />
                 <span
                   className="text-text-secondary/70 text-[12px] font-medium truncate"
@@ -74,7 +74,7 @@ export function RepositoryCard({
             </>
           )}
           {/* Current branch (right) */}
-          <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1.5 bg-bg-tertiary/60 border border-border/30 rounded-md">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1.5 bg-white/[0.06] rounded-md">
             <GitBranch className="w-3.5 h-3.5 text-green/70 flex-shrink-0" />
             <span
               className="text-green text-[13px] font-medium truncate"
@@ -99,7 +99,7 @@ export function RepositoryCard({
 
       {/* Uncommitted changes block */}
       {hasChanges && gitData.stats && (
-        <div className="bg-bg-tertiary/60 border border-border/30 rounded-md p-2 mb-2">
+        <div className="bg-white/[0.06] rounded-md p-2 mb-2">
           {/* Header with title, stats and gauge */}
           <div className="flex items-center gap-2 text-xs mb-2">
             <span className="text-text-secondary/70 font-medium">Uncommitted changes</span>
@@ -159,7 +159,7 @@ export function RepositoryCard({
 
       {/* Commits block */}
       {hasCommits && gitData.commits && (
-        <div className="bg-bg-tertiary/60 border border-border/30 rounded-md p-2 mb-2">
+        <div className="bg-white/[0.06] rounded-md p-2 mb-2">
           <div className="flex items-center text-xs mb-1.5">
             <span className="text-text-secondary/70 font-medium">Commits</span>
             <span className="text-text-secondary/50 ml-auto">
@@ -212,7 +212,7 @@ export function RepositoryCard({
 
       {/* No changes state */}
       {gitData && !gitData.error && !hasChanges && !hasCommits && gitData.branch && (
-        <div className="bg-bg-tertiary/60 border border-border/30 rounded-md p-2 mb-2">
+        <div className="bg-white/[0.06] rounded-md p-2 mb-2">
           <span className="text-xs text-text-secondary/40 italic">No uncommitted changes</span>
         </div>
       )}
@@ -221,13 +221,13 @@ export function RepositoryCard({
       {prUrl && (
         <button
           onClick={() => window.electronAPI.shell.openExternal(prUrl)}
-          className="w-full flex items-center justify-between bg-white/5 hover:bg-white/10 rounded-md p-2 mt-2 border border-border/30 transition-colors group cursor-pointer"
+          className="w-full flex items-center justify-between bg-accent/10 hover:bg-accent/20 rounded-md p-2 mt-2 border border-accent/20 transition-colors group cursor-pointer"
         >
           <div className="flex items-center gap-1.5">
-            <GitHubIcon className="w-3.5 h-3.5 text-text-secondary/60 group-hover:text-text-secondary transition-colors" />
-            <span className="text-text-secondary text-xs font-medium group-hover:text-white transition-colors">View Pull Request</span>
+            <GitHubIcon className="w-3.5 h-3.5 text-accent/70 group-hover:text-accent transition-colors" />
+            <span className="text-accent text-xs font-medium group-hover:text-accent transition-colors">View Pull Request</span>
           </div>
-          <ExternalLink className="w-3 h-3 text-text-secondary/40 group-hover:text-text-secondary transition-colors" />
+          <ExternalLink className="w-3 h-3 text-accent/50 group-hover:text-accent transition-colors" />
         </button>
       )}
     </div>

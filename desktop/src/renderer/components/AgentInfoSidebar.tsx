@@ -381,7 +381,7 @@ export function AgentInfoSidebar() {
               terminalName: activeTerminal.name,
               repositoryMetadata: activeTerminal.metadata?.repositoryMetadata
             })}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.08] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
           >
             <X className="w-3 h-3" />
             <span>Close agent</span>
@@ -431,7 +431,7 @@ export function AgentInfoSidebar() {
               <div className="text-xs text-text-secondary/50 uppercase tracking-wider">Repositories</div>
               <button
                 onClick={() => setIsRepoModalOpen(true)}
-                className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+                className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.08] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
               >
                 <Edit2 className="w-3 h-3" />
                 <span>Edit</span>
@@ -472,7 +472,7 @@ export function AgentInfoSidebar() {
 
             {/* Full-Stack Task Section */}
             {metadata?.fullStackTaskId && metadata?.relatedWorktrees && metadata.relatedWorktrees.length > 1 && (
-              <div className="bg-bg-tertiary/30 rounded-lg p-3 border border-orange/20">
+              <div className="bg-white/[0.06] rounded-xl p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Layers className="w-3.5 h-3.5 text-orange" />
                   <span className="text-[10px] text-text-secondary/50 uppercase tracking-wider">

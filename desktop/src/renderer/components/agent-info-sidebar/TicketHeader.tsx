@@ -77,7 +77,7 @@ export function TicketHeader({
   }, [isStatusOpen])
 
   return (
-    <div className="bg-bg-tertiary/50 rounded-lg p-4 border border-border/50">
+    <div className="bg-white/[0.06] rounded-xl p-4">
       {/* Ticket ID + Status Badge */}
       <div className="flex items-center justify-between mb-3">
         {metadata?.ticketId ? (
