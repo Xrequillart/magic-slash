@@ -6,6 +6,7 @@ import { TicketHeader } from './agent-info-sidebar/TicketHeader'
 import { RepositoryCard } from './agent-info-sidebar/RepositoryCard'
 import { RepositorySelector } from './agent-info-sidebar/RepositorySelector'
 import type { RepoGitData } from './agent-info-sidebar/types'
+import type { TerminalMetadata } from '../../types'
 
 const MIN_WIDTH = 288 // w-72
 const DEFAULT_WIDTH = 500
@@ -78,7 +79,7 @@ export function AgentInfoSidebar() {
 
   const activeTerminal = terminals.find(t => t.id === activeTerminalId)
   const metadata = activeTerminal?.metadata
-  const canClose = metadata?.status === 'PR created' || !metadata?.status
+  const canClose = metadata?.status === 'PR merged' || !metadata?.status
 
   // Get all configured repository paths for the dropdown
   const availableRepos = useMemo(() => {
@@ -268,7 +269,6 @@ export function AgentInfoSidebar() {
           openCloseAgentModal({
             terminalId: activeTerminal.id,
             terminalName: activeTerminal.name,
-            repositoryMetadata: activeTerminal.metadata?.repositoryMetadata
           })
         }
       }
@@ -326,7 +326,7 @@ export function AgentInfoSidebar() {
   // Change status
   const handleStatusChange = useCallback((status: string) => {
     if (activeTerminalId) {
-      updateTerminalMetadata(activeTerminalId, { status })
+      updateTerminalMetadata(activeTerminalId, { status: status as TerminalMetadata['status'] })
     }
   }, [activeTerminalId, updateTerminalMetadata])
 
@@ -379,7 +379,6 @@ export function AgentInfoSidebar() {
             onClick={() => openCloseAgentModal({
               terminalId: activeTerminal.id,
               terminalName: activeTerminal.name,
-              repositoryMetadata: activeTerminal.metadata?.repositoryMetadata
             })}
             className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.08] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
           >

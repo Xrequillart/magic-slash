@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 
-const SKILLS = ['magic-start', 'magic-continue', 'magic-commit', 'magic-done']
+const SKILLS = ['magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills'
 
 export async function updateSkills(): Promise<{ updated: string[]; errors: string[] }> {

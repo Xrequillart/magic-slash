@@ -20,6 +20,8 @@ module.exports = {
         green: '#22c55e',
         red: '#ef4444',
         yellow: '#eab308',
+        blue: '#3b82f6',
+        orange: '#f97316',
         border: '#27272a',
         'text-secondary': '#a1a1aa',
       },
