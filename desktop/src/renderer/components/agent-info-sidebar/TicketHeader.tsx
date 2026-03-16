@@ -3,14 +3,15 @@ import { Edit2, Check, ChevronDown } from 'lucide-react'
 import type { TerminalMetadata } from '../../../types'
 
 const STATUS_OPTIONS = [
-  { value: 'in progress',  bg: 'bg-yellow/20',    text: 'text-yellow' },
-  { value: 'committed',    bg: 'bg-cyan-500/20',  text: 'text-cyan-400' },
-  { value: 'ready for PR', bg: 'bg-orange/20',    text: 'text-orange' },
-  { value: 'PR created',   bg: 'bg-green/20',     text: 'text-green' },
+  { value: '',             label: 'no status',    bg: 'bg-white/10',      text: 'text-text-secondary' },
+  { value: 'in progress',  label: 'in progress',  bg: 'bg-yellow/20',     text: 'text-yellow' },
+  { value: 'committed',    label: 'committed',     bg: 'bg-cyan-500/20',   text: 'text-cyan-400' },
+  { value: 'ready for PR', label: 'ready for PR',  bg: 'bg-orange/20',     text: 'text-orange' },
+  { value: 'PR created',   label: 'PR created',    bg: 'bg-green/20',      text: 'text-green' },
 ] as const
 
-function getStatusColors(status: string) {
-  return STATUS_OPTIONS.find(s => s.value === status) ?? { bg: 'bg-white/10', text: 'text-white' }
+function getStatusOption(status: string) {
+  return STATUS_OPTIONS.find(s => s.value === status) ?? STATUS_OPTIONS[0]
 }
 
 interface TicketHeaderProps {
@@ -94,37 +95,46 @@ export function TicketHeader({
         ) : (
           <span className="text-text-secondary/40 text-base">No ticket</span>
         )}
-        {metadata?.status && (
+        {metadata && (
           <div ref={statusRef} className="relative">
-            <button
-              onClick={() => setIsStatusOpen(!isStatusOpen)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium cursor-pointer border-none ${getStatusColors(metadata.status).bg} ${getStatusColors(metadata.status).text}`}
-            >
-              {metadata.status}
-              <ChevronDown className={`w-3 h-3 transition-transform ${isStatusOpen ? 'rotate-180' : ''}`} />
-            </button>
+            {(() => {
+              const statusOption = getStatusOption(metadata.status ?? '')
+              return (
+                <button
+                  onClick={() => setIsStatusOpen(!isStatusOpen)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium cursor-pointer border-none ${statusOption.bg} ${statusOption.text}`}
+                >
+                  {statusOption.label}
+                  <ChevronDown className={`w-3 h-3 transition-transform ${isStatusOpen ? 'rotate-180' : ''}`} />
+                </button>
+              )
+            })()}
             {isStatusOpen && (
               <div className="absolute top-full right-0 mt-1 z-50 min-w-[160px] bg-bg-tertiary border border-border/50 rounded-lg shadow-xl py-1 overflow-hidden">
-                {STATUS_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => {
-                      onStatusChange?.(option.value)
-                      setIsStatusOpen(false)
-                    }}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-white/10 transition-colors border-none cursor-pointer ${
-                      metadata.status === option.value ? 'bg-white/5' : ''
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full ${option.text}`} style={{ backgroundColor: 'currentColor' }} />
-                    <span className={metadata.status === option.value ? 'text-white font-medium' : 'text-text-secondary'}>
-                      {option.value}
-                    </span>
-                    {metadata.status === option.value && (
-                      <Check className="w-3 h-3 text-white ml-auto" />
-                    )}
-                  </button>
-                ))}
+                {STATUS_OPTIONS.map((option) => {
+                  const currentStatus = metadata.status ?? ''
+                  const isSelected = currentStatus === option.value
+                  return (
+                    <button
+                      key={option.value || '__no_status__'}
+                      onClick={() => {
+                        onStatusChange?.(option.value)
+                        setIsStatusOpen(false)
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-white/10 transition-colors border-none cursor-pointer ${
+                        isSelected ? 'bg-white/5' : ''
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${option.text}`} style={{ backgroundColor: 'currentColor' }} />
+                      <span className={isSelected ? 'text-white font-medium' : 'text-text-secondary'}>
+                        {option.label}
+                      </span>
+                      {isSelected && (
+                        <Check className="w-3 h-3 text-white ml-auto" />
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>

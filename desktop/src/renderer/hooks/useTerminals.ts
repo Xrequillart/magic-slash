@@ -136,6 +136,7 @@ export function useTerminals() {
       state: result.state as TerminalState,
       repositories: result.repositories || [cwd],
       tsCreate: result.tsCreate,
+      metadata: result.metadata,
     }
 
     addTerminal(terminalInfo)

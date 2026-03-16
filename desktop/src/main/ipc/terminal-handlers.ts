@@ -328,6 +328,7 @@ export function setupTerminalHandlers(
       state: terminal.state,
       repositories: terminal.repositories,
       branchName: terminal.branchName,
+      metadata: terminal.metadata,
       tsCreate
     }
   })
