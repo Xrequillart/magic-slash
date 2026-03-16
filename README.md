@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  3 skills for Claude Code that automate the entire development cycle.
+  7 skills for Claude Code that automate the entire development cycle.
 </p>
 
 <p align="center">
@@ -27,12 +27,15 @@
 
 ## Skills
 
-| Skill              | Description                                       |
-| ------------------ | ------------------------------------------------- |
-| `/magic-start`     | Start a task from a Jira ticket or GitHub issue   |
-| `/magic-continue`  | Resume work on an existing ticket                 |
-| `/magic-commit`    | Create an atomic commit with conventional message |
-| `/magic-done`      | Push, create PR and update Jira                   |
+| Skill              | Description                                          |
+| ------------------ | ---------------------------------------------------- |
+| `/magic-start`     | Start a task from a Jira ticket or GitHub issue      |
+| `/magic-continue`  | Resume work on an existing ticket                    |
+| `/magic-commit`    | Create an atomic commit with conventional message    |
+| `/magic-pr`        | Push, create PR and update Jira                      |
+| `/magic-review`    | Review a Pull Request (self or external)             |
+| `/magic-resolve`   | Address review comments and force-push fixes         |
+| `/magic-done`      | Finalize after PR merge (transition Jira to Done)    |
 
 > Type `/magic-` to quickly find all commands.
 
@@ -40,13 +43,18 @@ You can also invoke skills using natural language:
 
 - "démarre PROJ-123" or "work on PROJ-123" → `/magic-start`
 - "je suis prêt à committer" or "ready to commit" → `/magic-commit`
-- "on peut créer la PR" or "create the PR" → `/magic-done`
+- "on peut créer la PR" or "create the PR" → `/magic-pr`
+- "regarde la PR" or "review my PR" → `/magic-review`
+- "corriger les commentaires" or "fix review comments" → `/magic-resolve`
+- "la PR est mergée" or "the PR is merged" → `/magic-done`
 
 ## Installation
 
 ```bash
 curl -fsSL https://magic-slash.io/install.sh | bash
 ```
+
+Two installation modes are available: **Desktop App** (recommended) and **Standalone CLI**.
 
 ### Prerequisites
 
@@ -60,7 +68,7 @@ curl -fsSL https://magic-slash.io/install.sh | bash
 1. Configures Atlassian MCP (prompts for OAuth authentication)
 2. Configures GitHub MCP (prompts for your token)
 3. Configures your repositories (1 to N repos with optional keywords for smart detection)
-4. Installs the 3 skills
+4. Installs the 7 skills
 
 ## Usage
 
@@ -146,10 +154,10 @@ Worktrees created:
 **Multi-repo support:** If you're in a worktree associated with a ticket that spans multiple repos,
 `/magic-commit` will detect all related worktrees and commit changes in each one.
 
-### /magic-done - Finalize the task
+### /magic-pr - Push and create a Pull Request
 
 ```bash
-/magic-done
+/magic-pr
 ```
 
 1. Push the branch to origin
@@ -160,11 +168,12 @@ Worktrees created:
 4. Update Jira ticket → "To be reviewed"
 5. Add comment with PR link on Jira (by default)
 
+**Multi-repo support:** If you're in a worktree associated with a ticket that spans multiple repos,
+`/magic-pr` will push and create PRs for each one.
+
 **Example:**
 
 ```text
-✅ Task completed!
-
 📌 Branch   : feature/PROJ-42
 🔗 PR       : https://github.com/org/repo/pull/42
 🎫 Ticket   : PROJ-42 → To be reviewed
@@ -173,6 +182,54 @@ Next steps:
 1. Request a review from your colleagues
 2. Wait for approval and CI checks
 3. Merge the PR once approved
+```
+
+### /magic-review - Review a Pull Request
+
+```bash
+/magic-review          # Review the PR for the current branch
+/magic-review PROJ-42  # Review a specific ticket's PR
+```
+
+1. Detect the PR associated with the current branch (or a given ticket)
+2. Determine if this is a self-review or an external review
+3. Fetch the PR diff and changed files
+4. Analyze each file for issues, suggestions, and good practices
+5. Submit the review on GitHub with categorized inline comments (Blocking / Suggestion / Praise)
+
+> **Note:** This skill is read-only — it does not modify any files.
+
+### /magic-resolve - Address review feedback
+
+```bash
+/magic-resolve          # Fix comments on the current branch's PR
+/magic-resolve PROJ-42  # Fix comments for a specific ticket's PR
+```
+
+1. Retrieve unresolved review comments from the PR
+2. Analyze each comment and determine required changes
+3. Apply fixes to the codebase
+4. Amend or create fixup commits as appropriate
+5. Force-push with `--force-with-lease`
+
+### /magic-done - Finalize after merge
+
+```bash
+/magic-done
+```
+
+1. Verify the PR has been merged
+2. Transition the Jira ticket to "Done"
+3. Add a final comment on Jira with a summary
+4. Update desktop agent metadata
+
+**Example:**
+
+```text
+✅ Task finalized!
+
+🎫 Ticket   : PROJ-42 → Done
+🔗 PR       : https://github.com/org/repo/pull/42 (merged)
 ```
 
 ## Configuration
@@ -220,13 +277,14 @@ npm run desktop:package
 | `~/.claude/settings.json`           | Atlassian & GitHub MCP configuration   |
 | `~/.config/magic-slash/config.json` | Repository paths, keywords, settings   |
 | `~/.local/bin/magic-slash`          | CLI command to launch web UI           |
-| `~/.claude/skills/magic-slash/`     | Installed skills (start, commit, done) |
+| `~/.claude/skills/magic-slash/`     | Installed skills (all 7 skills)        |
 
 ### Configuration schema
 
 ```json
 {
   "version": "0.18.2",
+  "installationMode": "desktop",
   "repositories": {
     "api": {
       "path": "/Users/dev/projects/my-api",
@@ -246,6 +304,9 @@ npm run desktop:package
       },
       "issues": {
         "commentOnPR": true
+      },
+      "branches": {
+        "development": "develop"
       }
     },
     "web": {
@@ -296,6 +357,12 @@ Each repository can have its own settings that override global defaults:
 | ------------- | --------------------------------------------- | ------- |
 | `commentOnPR` | Add comment with PR link when creating the PR | `true`  |
 
+#### Branches settings
+
+| Setting       | Description                                              | Default |
+| ------------- | -------------------------------------------------------- | ------- |
+| `development` | Base branch for worktrees and PRs (e.g. `develop`, `main`) | `main`  |
+
 ### Keywords
 
 Keywords are used for smart repository selection when starting a task:
@@ -321,11 +388,14 @@ magic-slash/
 │   │   └── renderer/      # React UI (pages, components, hooks)
 │   ├── resources/         # App icons & logo
 │   └── package.json
-├── skills/
-│   ├── magic-start/SKILL.md      # Skill /magic-start
-│   ├── magic-continue/SKILL.md   # Skill /magic-continue
-│   ├── magic-commit/SKILL.md     # Skill /magic-commit
-│   └── magic-done/SKILL.md       # Skill /magic-done
+├── skills/                        # Claude Code skills (7 skills)
+│   ├── magic-start/SKILL.md      # Start a task
+│   ├── magic-continue/SKILL.md   # Resume work on a ticket
+│   ├── magic-commit/SKILL.md     # Create atomic commits
+│   ├── magic-pr/SKILL.md         # Push and create PR
+│   ├── magic-review/SKILL.md     # Review a Pull Request
+│   ├── magic-resolve/SKILL.md    # Address review feedback
+│   └── magic-done/SKILL.md       # Finalize after merge
 ├── web-ui/               # Configuration web interface
 │   ├── server.js         # Express server
 │   ├── package.json      # Dependencies
@@ -333,10 +403,12 @@ magic-slash/
 │   └── public/           # Frontend (HTML, CSS, JS)
 ├── docs/                 # Landing page (GitHub Pages)
 │   ├── index.html        # Main page
+│   ├── documentation.html # Documentation page
 │   ├── logo.svg          # Logo (vector)
 │   ├── logo.png          # Logo (raster)
 │   ├── fonts/            # Custom fonts (Avenir)
 │   └── CNAME             # Custom domain config
+├── slides/               # Presentation slides (Vite + React)
 ├── install/
 │   ├── install.sh        # Installation script
 │   ├── uninstall.sh      # Uninstallation script
