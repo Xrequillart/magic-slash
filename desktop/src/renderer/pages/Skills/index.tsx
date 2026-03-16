@@ -454,7 +454,7 @@ export function SkillsPage() {
             {builtInSkills.length > 0 && (
               <div>
                 <h2 className="text-sm text-text-secondary/50 uppercase tracking-wider mb-3">Built-in</h2>
-                <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {builtInSkills.map((skill) => (
                     <SkillCard
                       key={skill.name}
@@ -511,7 +511,7 @@ export function SkillsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {customSkills.map((skill) => (
                     <SkillCard
                       key={skill.name}
