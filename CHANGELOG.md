@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.4] - 2026-03-16
+
+### Added
+
+- **Desktop**: "No status" default option in the agent status dropdown — new agents now show a neutral "no status" badge that can be changed manually from the sidebar
+
+### Changed
+
+- **Desktop**: Include default metadata when creating a new agent so the status dropdown is visible immediately
+- **Desktop**: Status options now use a `label` field decoupled from the stored `value`, with a renamed `getStatusOption` helper
+
 ## [0.17.3] - 2026-03-16
 
 ### Changed
@@ -569,6 +580,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.17.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.17.4
 [0.17.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.17.3
 [0.17.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.17.2
 [0.17.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.17.1
