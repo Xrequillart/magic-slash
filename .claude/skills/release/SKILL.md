@@ -106,13 +106,16 @@ Affiche une confirmation pour chaque fichier mis a jour.
 
 ## Etape 4 : Mettre a jour les skills et l'interface desktop
 
-### 4.1 : Fichiers SKILL.md (4 fichiers)
+### 4.1 : Fichiers SKILL.md (7 fichiers + release)
 
-Mets a jour le titre de version dans les 4 fichiers de skills :
+Mets a jour le titre de version dans les 7 fichiers de skills + le skill release :
 
 - `skills/magic-start/SKILL.md`
 - `skills/magic-continue/SKILL.md`
 - `skills/magic-commit/SKILL.md`
+- `skills/magic-pr/SKILL.md`
+- `skills/magic-review/SKILL.md`
+- `skills/magic-resolve/SKILL.md`
 - `skills/magic-done/SKILL.md`
 - `.claude/skills/release/SKILL.md`
 
@@ -227,7 +230,7 @@ for f in package.json web-ui/package.json desktop/package.json; do
     ERRORS=$((ERRORS+1))
   fi
 done && \
-for f in skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md skills/magic-done/SKILL.md .claude/skills/release/SKILL.md; do
+for f in skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md skills/magic-pr/SKILL.md skills/magic-review/SKILL.md skills/magic-resolve/SKILL.md skills/magic-done/SKILL.md .claude/skills/release/SKILL.md; do
   if grep -q "magic-slash vX.Y.Z" "$f"; then
     echo "  OK  $f"
   else
@@ -267,6 +270,9 @@ Resume des modifications pour la version X.Y.Z :
   skills/magic-start/SKILL.md                   v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-continue/SKILL.md                v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-commit/SKILL.md                  v{VERSION_ACTUELLE} -> vX.Y.Z
+  skills/magic-pr/SKILL.md                      v{VERSION_ACTUELLE} -> vX.Y.Z
+  skills/magic-review/SKILL.md                  v{VERSION_ACTUELLE} -> vX.Y.Z
+  skills/magic-resolve/SKILL.md                 v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-done/SKILL.md                    v{VERSION_ACTUELLE} -> vX.Y.Z
   .claude/skills/release/SKILL.md               v{VERSION_ACTUELLE} -> vX.Y.Z
   desktop/src/renderer/components/Sidebar.tsx    v{VERSION_ACTUELLE} -> vX.Y.Z
