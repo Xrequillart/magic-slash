@@ -163,7 +163,7 @@ export function TicketHeader({
       )}
 
       {/* Description - Editable */}
-      <div className="mt-3 pt-3 border-t border-border/30">
+      <div className="mt-3">
         {isEditingDescription ? (
           <div className="space-y-2">
             <textarea
