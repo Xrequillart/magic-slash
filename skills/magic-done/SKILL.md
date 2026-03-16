@@ -211,6 +211,72 @@ cd {WORKTREE_PATH}
 At the end of each PR, display a confirmation before moving to the next worktree.
 The Jira/GitHub ticket (Step 7) must be updated **ONLY ONCE** at the end, with links to ALL created PRs.
 
+## Step 0.6: Detect and activate Node.js version
+
+Before executing any command that depends on Node.js (git push with pre-push hooks, npm/yarn/pnpm commands), detect if the current worktree requires a specific Node.js version.
+
+**For multi-repo**: Re-execute this step each time you switch to a different worktree, as each repo may require a different Node.js version.
+
+### 0.6.1: Detect the version file and version manager
+
+```bash
+if [ -f ".nvmrc" ] || [ -f ".node-version" ]; then
+  if [ -f "$HOME/.nvm/nvm.sh" ]; then
+    echo "NVM"
+  elif [ -d "$HOME/.local/share/fnm" ] || [ -d "$HOME/.fnm" ]; then
+    echo "FNM"
+  else
+    echo "NO_MANAGER"
+  fi
+elif [ -f "package.json" ] && grep -q '"volta"' package.json 2>/dev/null; then
+  echo "VOLTA"
+else
+  echo "NONE"
+fi
+```
+
+### 0.6.2: Store the activation prefix
+
+Based on the detection result, store the activation prefix as `$NODE_PREFIX`:
+
+| Result | `$NODE_PREFIX` | Notes |
+| ------ | -------------- | ----- |
+| `NVM` | `source ~/.nvm/nvm.sh && nvm use &&` | Activates nvm and switches to the version in `.nvmrc` |
+| `FNM` | `eval "$(fnm env)" && fnm use &&` | Activates fnm and switches to the version in `.node-version` |
+| `VOLTA` | *(empty)* | Volta uses shims, no activation needed |
+| `NONE` | *(empty)* | No version file found, use system Node |
+| `NO_MANAGER` | *(empty)* | Display warning (see below) |
+
+### 0.6.3: Warning if no manager found
+
+If a `.nvmrc` or `.node-version` file exists but no version manager is detected (`NO_MANAGER`):
+
+#### In English
+```text
+⚠️ Node.js version file detected (.nvmrc/.node-version) but no version manager (nvm/fnm) found.
+Commands will use the system Node.js version.
+```
+
+#### In French
+```text
+⚠️ Fichier de version Node.js détecté (.nvmrc/.node-version) mais aucun gestionnaire de version (nvm/fnm) trouvé.
+Les commandes utiliseront la version Node.js du système.
+```
+
+### Usage
+
+For all subsequent bash commands that depend on Node.js, **prepend `$NODE_PREFIX`**:
+
+```bash
+# Instead of:
+git push -u origin branch-name
+
+# Use (if $NODE_PREFIX is set):
+source ~/.nvm/nvm.sh && nvm use && git push -u origin branch-name
+```
+
+If `$NODE_PREFIX` is empty, run commands normally without any prefix.
+
 ---
 
 ## Step 1: Get the current branch
@@ -224,7 +290,13 @@ If so, inform the user that they need to be on a feature branch.
 
 ## Step 2: Push to remote
 
+> **Node.js version**: If `$NODE_PREFIX` was determined in Step 0.6, prepend it to the `git push` command so that pre-push hooks run with the correct Node.js version.
+
 ```bash
+# If $NODE_PREFIX is set (e.g. nvm):
+source ~/.nvm/nvm.sh && nvm use && git push -u origin <branch-name>
+
+# If $NODE_PREFIX is empty:
 git push -u origin <branch-name>
 ```
 
