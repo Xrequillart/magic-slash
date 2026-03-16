@@ -1,16 +1,19 @@
 # Magic Slash
 
-4 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/magic-start`, `/magic-continue`, `/magic-commit`, `/magic-done`.
+7 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/magic-start`, `/magic-continue`, `/magic-commit`, `/magic-pr`, `/magic-review`, `/magic-resolve`, `/magic-done`.
 
 ## Project Structure
 
 ```text
 magic-slash/
-├── skills/            # Claude Code skills (magic-start, magic-continue, magic-commit, magic-done) - SKILL.md files
+├── skills/            # Claude Code skills (7 skills) - SKILL.md files
 │   ├── magic-start/   #   Start a task from a Jira ticket or GitHub issue
 │   ├── magic-continue/#   Resume work on an existing ticket
 │   ├── magic-commit/  #   Create atomic commits with conventional messages
-│   └── magic-done/    #   Push, create PR and update Jira
+│   ├── magic-pr/      #   Push, create PR and update Jira
+│   ├── magic-review/  #   Review a Pull Request (self or external)
+│   ├── magic-resolve/ #   Address review comments and force-push fixes
+│   └── magic-done/    #   Finalize after PR merge (transition Jira to Done)
 ├── desktop/           # Native desktop app (Electron + React + TypeScript)
 │   ├── src/main/      #   Electron main process (config, IPC, PTY, hooks, updater)
 │   ├── src/preload/   #   Secure bridge main <-> renderer
@@ -64,7 +67,7 @@ npm run desktop:package  # Package for macOS (.dmg, .zip)
 
 - **Commits**: conventional commits (commitlint), format `type(scope): subject`
   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`, `revert`
-  - Scopes: `start`, `continue`, `commit`, `done`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`
+  - Scopes: `start`, `continue`, `commit`, `pr`, `review`, `resolve`, `done`, `install`, `docs`, `deps`, `ci`, `readme`, `landing`, `slides`, `community`, `desktop`
   - Subject: lower-case, no trailing period, max 100 characters
 - **Node**: v20 (see `.nvmrc`)
 - **Formatting**: UTF-8, LF, 2-space indentation (see `.editorconfig`)
