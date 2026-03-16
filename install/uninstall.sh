@@ -182,6 +182,28 @@ fi
 echo ""
 
 # ============================================
+# 4b. PERMISSIONS CLEANUP
+# ============================================
+echo "4b. Removing Magic Slash permissions..."
+echo ""
+
+CLAUDE_SETTINGS="$HOME/.claude/settings.json"
+
+if [ -f "$CLAUDE_SETTINGS" ] && jq -e '.permissions.allow' "$CLAUDE_SETTINGS" > /dev/null 2>&1; then
+  TMP_SETTINGS=$(mktemp)
+  jq '
+    .permissions.allow = [.permissions.allow[] | select(contains("127.0.0.1") | not)] |
+    if (.permissions.allow | length) == 0 then del(.permissions.allow) else . end |
+    if (.permissions | length) == 0 then del(.permissions) else . end
+  ' "$CLAUDE_SETTINGS" > "$TMP_SETTINGS" && mv "$TMP_SETTINGS" "$CLAUDE_SETTINGS"
+  echo "   ✓ Magic Slash permissions removed"
+else
+  echo "   - No permissions to remove"
+fi
+
+echo ""
+
+# ============================================
 # 5. BACKUP CLEANUP (OPTIONAL)
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

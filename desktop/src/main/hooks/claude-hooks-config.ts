@@ -4,6 +4,7 @@ import * as os from 'os'
 
 const CLAUDE_SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json')
 const MAGIC_SLASH_HOOK_MARKER = 'magic-slash-desktop'
+const MAGIC_SLASH_PERMISSION = 'Bash(* curl -s "http://127.0.0.1:*" *)'
 
 interface HookConfig {
   matcher?: Record<string, unknown>
@@ -20,6 +21,10 @@ interface ClaudeSettings {
     Notification?: HookConfig[]
     Stop?: HookConfig[]
     [key: string]: HookConfig[] | undefined
+  }
+  permissions?: {
+    allow?: string[]
+    deny?: string[]
   }
   [key: string]: unknown
 }
@@ -118,6 +123,19 @@ export function configureClaudeHooks(): void {
       settings.hooks[event]!.push(getHookConfig(event))
     }
 
+    // Configure permissions for curl to localhost (auto-allow)
+    if (!settings.permissions) {
+      settings.permissions = { allow: [] }
+    }
+    if (!settings.permissions.allow) {
+      settings.permissions.allow = []
+    }
+    // Remove old magic-slash permissions (to update them if pattern changed)
+    settings.permissions.allow = settings.permissions.allow.filter(
+      (p: string) => !p.includes('127.0.0.1')
+    )
+    settings.permissions.allow.push(MAGIC_SLASH_PERMISSION)
+
     // Write back settings
     fs.writeFileSync(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2))
     console.log('Claude Code hooks configured successfully')
@@ -153,6 +171,19 @@ export function removeClaudeHooks(): void {
     // Remove empty hooks object
     if (Object.keys(settings.hooks).length === 0) {
       delete settings.hooks
+    }
+
+    // Remove Magic Slash permissions
+    if (settings.permissions?.allow) {
+      settings.permissions.allow = settings.permissions.allow.filter(
+        (p: string) => !p.includes('127.0.0.1')
+      )
+      if (settings.permissions.allow.length === 0) {
+        delete settings.permissions.allow
+      }
+      if (settings.permissions && Object.keys(settings.permissions).length === 0) {
+        delete settings.permissions
+      }
     }
 
     fs.writeFileSync(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2))

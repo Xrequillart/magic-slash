@@ -363,6 +363,33 @@ fi
 
 echo ""
 
+# ============================================
+# 4b. CONFIGURE PERMISSIONS (auto-allow curl to localhost)
+# ============================================
+echo "   Configuring permissions for Magic Slash..."
+
+CLAUDE_SETTINGS="$HOME/.claude/settings.json"
+mkdir -p "$HOME/.claude"
+
+if [ ! -f "$CLAUDE_SETTINGS" ]; then
+  echo '{}' > "$CLAUDE_SETTINGS"
+fi
+
+# Allow curl to localhost only (for Magic Slash Desktop communication)
+MAGIC_SLASH_PERM='Bash(* curl -s "http://127.0.0.1:*" *)'
+
+TMP_SETTINGS=$(mktemp)
+jq --arg perm "$MAGIC_SLASH_PERM" '
+  .permissions //= {} |
+  .permissions.allow //= [] |
+  if (.permissions.allow | index($perm)) then .
+  else .permissions.allow += [$perm]
+  end
+' "$CLAUDE_SETTINGS" > "$TMP_SETTINGS" && mv "$TMP_SETTINGS" "$CLAUDE_SETTINGS"
+
+echo "   ✅ Permissions configured (curl to localhost auto-allowed)"
+echo ""
+
 # Create initial config file (repositories will be configured in desktop app or TUI)
 mkdir -p "$CONFIG_DIR"
 if [ ! -f "$CONFIG_FILE" ]; then
