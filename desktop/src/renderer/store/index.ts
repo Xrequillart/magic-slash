@@ -1,11 +1,10 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Config, TerminalInfo, TerminalState, TerminalMetadata, WorkspaceTerminal, WorkspaceLayout, RepositoryMetadata, ScriptTerminalInfo } from '../../types'
+import type { Config, TerminalInfo, TerminalState, TerminalMetadata, WorkspaceTerminal, WorkspaceLayout, ScriptTerminalInfo } from '../../types'
 
 interface CloseAgentModalData {
   terminalId: string
   terminalName: string
-  repositoryMetadata?: Record<string, RepositoryMetadata>
 }
 
 interface AppState {

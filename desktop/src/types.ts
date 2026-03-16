@@ -9,7 +9,7 @@ export interface TerminalMetadata {
   branchName?: string
   ticketId?: string
   description?: string
-  status?: string
+  status?: '' | 'in progress' | 'committed' | 'ready for PR' | 'PR created' | 'in review' | 'changes requested' | 'PR merged'
   baseBranch?: string
   fullStackTaskId?: string
   relatedWorktrees?: string[]

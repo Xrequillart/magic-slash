@@ -8,6 +8,9 @@ const STATUS_OPTIONS = [
   { value: 'committed',    label: 'committed',     bg: 'bg-cyan-500/20',   text: 'text-cyan-400' },
   { value: 'ready for PR', label: 'ready for PR',  bg: 'bg-orange/20',     text: 'text-orange' },
   { value: 'PR created',   label: 'PR created',    bg: 'bg-green/20',      text: 'text-green' },
+  { value: 'in review',    label: 'in review',     bg: 'bg-blue/20',       text: 'text-blue' },
+  { value: 'changes requested', label: 'changes requested', bg: 'bg-red/20', text: 'text-red' },
+  { value: 'PR merged',    label: 'PR merged',     bg: 'bg-purple/20',     text: 'text-purple' },
 ] as const
 
 function getStatusOption(status: string) {

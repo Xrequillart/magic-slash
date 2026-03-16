@@ -202,25 +202,8 @@ export function App() {
             {/* Body */}
             <div className="px-5 pb-5">
               <p className="text-text-secondary text-sm mb-4">
-                Before closing, please verify that your Pull Request has been merged on GitHub.
+                Are you sure you want to close this agent?
               </p>
-
-              {/* Show all PR links from repositoryMetadata */}
-              {closeAgentModal.repositoryMetadata && Object.entries(closeAgentModal.repositoryMetadata).length > 0 && (
-                <div className="space-y-2 mb-4">
-                  {Object.entries(closeAgentModal.repositoryMetadata).map(([repoPath, repoMeta]) => repoMeta.prUrl && (
-                    <button
-                      key={repoPath}
-                      onClick={() => window.electronAPI.shell.openExternal(repoMeta.prUrl!)}
-                      className="block w-full text-center px-3 py-2 text-xs font-medium text-purple border border-purple/20 rounded-lg hover:bg-purple/10 transition-all cursor-pointer"
-                    >
-                      {Object.keys(closeAgentModal.repositoryMetadata!).length > 1
-                        ? `Open PR - ${repoPath.split('/').pop()}`
-                        : 'Open PR on GitHub'}
-                    </button>
-                  ))}
-                </div>
-              )}
 
               <div className="flex gap-2">
                 <button
