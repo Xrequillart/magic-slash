@@ -35,11 +35,12 @@ const RightSidebarCloseIcon = () => (
 )
 
 export function TitleBar() {
-  const { currentPage, terminals, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar } = useStore()
+  const { currentPage, terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar } = useStore()
+  const activeTerminal = terminals.find((t) => t.id === activeTerminalId)
 
   return (
     <div
-      className="h-10 bg-black/30 backdrop-blur-md select-none flex items-center justify-between px-3"
+      className="h-10 bg-black/30 backdrop-blur-md select-none flex items-center justify-between px-3 relative"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* Left side - Traffic lights space + Left sidebar toggle */}
@@ -57,7 +58,7 @@ export function TitleBar() {
               onClick={() => toggleLeftSidebar()}
               className={`p-2 rounded-lg transition-colors ${
                 leftSidebarVisible
-                  ? 'text-blue'
+                  ? 'text-white'
                   : 'text-text-secondary hover:text-white hover:bg-bg-tertiary'
               }`}
               title="Toggle agents list (⌘B)"
@@ -66,6 +67,11 @@ export function TitleBar() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Center - Active agent name */}
+      <div className="absolute left-1/2 -translate-x-1/2 text-sm text-text-secondary truncate max-w-[40%]">
+        {currentPage === 'terminals' && (activeTerminal?.metadata?.title || activeTerminal?.name)}
       </div>
 
       {/* Right side - Sidebar toggle (only on agents page with at least one agent) */}
@@ -78,7 +84,7 @@ export function TitleBar() {
             onClick={() => toggleRightSidebar('info')}
             className={`p-2 rounded-lg transition-colors ${
               rightSidebar === 'info'
-                ? 'text-blue'
+                ? 'text-white'
                 : 'text-text-secondary hover:text-white hover:bg-bg-tertiary'
             }`}
             title="Info"
