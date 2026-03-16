@@ -982,7 +982,7 @@ Once implementation is complete, display a full summary based on `.languages.dis
 💡 Next steps:
    • Test the changes
    • Run /commit to create a commit
-   • Run /done to finalize (PR + ticket update)
+   • Run /pr to create a Pull Request
 ```
 
 #### In French (discussion: "fr")
@@ -1011,7 +1011,7 @@ Once implementation is complete, display a full summary based on `.languages.dis
 💡 Prochaines étapes :
    • Teste les changements
    • Lance /commit pour créer un commit
-   • Lance /done pour finaliser (PR + mise à jour du ticket)
+   • Lance /pr pour créer une Pull Request
 ```
 
 #### Full-stack summary in English (discussion: "en" or absent)
@@ -1048,7 +1048,7 @@ Once implementation is complete, display a full summary based on `.languages.dis
 💡 Next steps:
    • Test the changes in both repos
    • Run /commit in each worktree to create commits
-   • Run /done to finalize (PR + ticket update)
+   • Run /pr to create a Pull Request
 ```
 
 #### Full-stack summary in French (discussion: "fr")
@@ -1085,7 +1085,7 @@ Once implementation is complete, display a full summary based on `.languages.dis
 💡 Prochaines étapes :
    • Teste les changements dans les deux repos
    • Lance /commit dans chaque worktree pour créer les commits
-   • Lance /done pour finaliser (PR + mise à jour du ticket)
+   • Lance /pr pour créer une Pull Request
 ```
 
 ---
