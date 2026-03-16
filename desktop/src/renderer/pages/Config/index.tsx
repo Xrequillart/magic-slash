@@ -217,16 +217,20 @@ function WelcomePage() {
               <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> N</kbd>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Settings</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ,</kbd>
+              <span className="text-text-secondary">Duplicate agent</span>
+              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> D</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Close agent</span>
               <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> W</kbd>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Repositories</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> P</kbd>
+              <span className="text-text-secondary">Previous agent</span>
+              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ↑</kbd>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-text-secondary">Next agent</span>
+              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ↓</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Toggle agent info</span>
@@ -235,6 +239,18 @@ function WelcomePage() {
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Toggle agents list</span>
               <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> B</kbd>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-text-secondary">Skills</span>
+              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ;</kbd>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-text-secondary">Repositories</span>
+              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> P</kbd>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-text-secondary">Settings</span>
+              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ,</kbd>
             </div>
           </div>
         </div>
