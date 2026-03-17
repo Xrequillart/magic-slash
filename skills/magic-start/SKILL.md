@@ -413,6 +413,141 @@ or `/projects/my-api-123` (GitHub)
 
 **⚠️ REMINDER**: You MUST be in the worktree (not in the main repo) before moving to the next step.
 
+### 4.2: Copy worktree files
+
+After creating the worktree and `cd`-ing into it, check if the repository has `worktreeFiles` configured in `~/.config/magic-slash/config.json` (under `.repositories.<name>.worktreeFiles`).
+
+#### Case A: `worktreeFiles` is non-empty
+
+Copy each file from the **main repo** to the **worktree**:
+
+```bash
+MAIN_REPO="{REPO_PATH}"
+for FILE in {WORKTREE_FILES_LIST}; do
+  if [ -f "$MAIN_REPO/$FILE" ]; then
+    cp "$MAIN_REPO/$FILE" "./$FILE"
+  fi
+done
+```
+
+**Rules**:
+- Only copy files that **exist** in the main repo. If a file does not exist, silently skip it.
+- Preserve the relative path (e.g., if the file is `.env`, copy it to the root of the worktree).
+- Display a summary of copied files:
+
+##### In English
+```text
+📄 Copied worktree files:
+   ✓ .env
+   ✓ .env.local
+   ⚠ .env.test (not found in main repo, skipped)
+```
+
+##### In French
+```text
+📄 Fichiers copiés dans le worktree :
+   ✓ .env
+   ✓ .env.local
+   ⚠ .env.test (introuvable dans le repo principal, ignoré)
+```
+
+#### Case B: `worktreeFiles` is empty or not configured — auto-detect
+
+Scan the **main repo** for common untracked files that typically need copying:
+
+```bash
+MAIN_REPO="{REPO_PATH}"
+CANDIDATES=(.env .env.local .env.development .env.development.local .env.test .env.test.local .env.production.local .npmrc .yarnrc .yarnrc.yml)
+DETECTED=()
+for f in "${CANDIDATES[@]}"; do
+  if [ -f "$MAIN_REPO/$f" ]; then
+    # Only include if the file is NOT tracked by git (i.e., it's in .gitignore or untracked)
+    if ! git -C "$MAIN_REPO" ls-files --error-unmatch "$f" > /dev/null 2>&1; then
+      DETECTED+=("$f")
+    fi
+  fi
+done
+```
+
+**If files are detected**, ask the user whether to save them to the config:
+
+##### In English
+```text
+🔍 Detected untracked files in the main repo that might need copying to worktrees:
+   • .env
+   • .env.local
+
+Save to config for future worktrees? (y/n)
+```
+
+##### In French
+```text
+🔍 Fichiers non versionnés détectés dans le repo principal, potentiellement utiles dans les worktrees :
+   • .env
+   • .env.local
+
+Sauvegarder dans la config pour les prochains worktrees ? (o/n)
+```
+
+- If **yes**: write the detected files to `config.json` under `.repositories.<name>.worktreeFiles`, then copy them to the worktree (same as Case A).
+- If **no**: copy the detected files to the worktree this time only, without saving to config.
+
+To save to config, edit the config file directly:
+
+```bash
+CONFIG_FILE="$HOME/.config/magic-slash/config.json"
+# Use jq to set worktreeFiles for the repository
+jq --arg repo "{REPO_NAME}" --argjson files '["DETECTED_FILE_1", "DETECTED_FILE_2"]' \
+  '.repositories[$repo].worktreeFiles = $files' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+```
+
+**If no files are detected**, skip this step silently.
+
+### 4.3: Install dependencies
+
+After creating the worktree (and copying worktree files), detect the project's package manager and install dependencies.
+
+**Detection** (check for lock files in the worktree root):
+
+| Lock file | Package manager | Install command |
+|-----------|----------------|-----------------|
+| `bun.lockb` or `bun.lock` | bun | `bun install` |
+| `yarn.lock` | yarn | `yarn install` |
+| `pnpm-lock.yaml` | pnpm | `pnpm install` |
+| `package-lock.json` | npm | `npm install` |
+
+**If no lock file is found**, check if a `package.json` exists. If yes, default to `npm install`. If no `package.json` exists, skip this step.
+
+**Execution**:
+
+```bash
+if [ -f "bun.lockb" ] || [ -f "bun.lock" ]; then
+  bun install
+elif [ -f "yarn.lock" ]; then
+  yarn install
+elif [ -f "pnpm-lock.yaml" ]; then
+  pnpm install
+elif [ -f "package-lock.json" ]; then
+  npm install
+elif [ -f "package.json" ]; then
+  npm install
+fi
+```
+
+**Display based on `.languages.discussion`**:
+
+#### In English
+```text
+📦 Installing dependencies with {PACKAGE_MANAGER}...
+```
+
+#### In French
+```text
+📦 Installation des dépendances avec {PACKAGE_MANAGER}...
+```
+
+**Important**: This step must never block the process. If the install fails, display a warning and continue.
+
 ## Step 4.5: Report context and attach repos (if multiple repos)
 
 > ⚠️ **MANDATORY IF MULTI-REPO**: This step is CRITICAL for the proper functioning of Magic Slash Desktop in full-stack mode. You MUST execute it if multiple worktrees were created.

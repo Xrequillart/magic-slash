@@ -448,6 +448,96 @@ This command is silent and never blocks the process.
 
 **⚠️ REMINDER**: You MUST execute this curl command NOW before moving to the next step. Do not skip this step.
 
+## Step 6.1: Copy worktree files (only if worktree was newly created)
+
+**Only execute this step if a worktree was created in Case 2** (branch found but no worktree). If the worktree already existed (Case 1), skip this step.
+
+Check if the repository has `worktreeFiles` configured in `~/.config/magic-slash/config.json` (under `.repositories.<name>.worktreeFiles`).
+
+### Case A: `worktreeFiles` is non-empty
+
+Copy each file from the **main repo** to the **worktree**:
+
+```bash
+MAIN_REPO="{REPO_PATH}"
+for FILE in {WORKTREE_FILES_LIST}; do
+  if [ -f "$MAIN_REPO/$FILE" ]; then
+    cp "$MAIN_REPO/$FILE" "./$FILE"
+  fi
+done
+```
+
+**Rules**:
+- Only copy files that **exist** in the main repo. If a file does not exist, silently skip it.
+- Display a summary of copied files (in the configured discussion language).
+
+### Case B: `worktreeFiles` is empty or not configured — auto-detect
+
+Scan the **main repo** for common untracked files that typically need copying:
+
+```bash
+MAIN_REPO="{REPO_PATH}"
+CANDIDATES=(.env .env.local .env.development .env.development.local .env.test .env.test.local .env.production.local .npmrc .yarnrc .yarnrc.yml)
+DETECTED=()
+for f in "${CANDIDATES[@]}"; do
+  if [ -f "$MAIN_REPO/$f" ]; then
+    if ! git -C "$MAIN_REPO" ls-files --error-unmatch "$f" > /dev/null 2>&1; then
+      DETECTED+=("$f")
+    fi
+  fi
+done
+```
+
+**If files are detected**, ask the user whether to save them to the config:
+
+#### In English
+```text
+🔍 Detected untracked files in the main repo that might need copying to worktrees:
+   • .env
+   • .env.local
+
+Save to config for future worktrees? (y/n)
+```
+
+#### In French
+```text
+🔍 Fichiers non versionnés détectés dans le repo principal, potentiellement utiles dans les worktrees :
+   • .env
+   • .env.local
+
+Sauvegarder dans la config pour les prochains worktrees ? (o/n)
+```
+
+- If **yes**: write the detected files to `config.json` under `.repositories.<name>.worktreeFiles`, then copy them to the worktree (same as Case A).
+- If **no**: copy the detected files to the worktree this time only, without saving to config.
+
+To save to config, edit the config file directly:
+
+```bash
+CONFIG_FILE="$HOME/.config/magic-slash/config.json"
+jq --arg repo "{REPO_NAME}" --argjson files '["DETECTED_FILE_1", "DETECTED_FILE_2"]' \
+  '.repositories[$repo].worktreeFiles = $files' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+```
+
+**If no files are detected**, skip this step silently.
+
+## Step 6.2: Install dependencies (only if worktree was newly created)
+
+**Only execute this step if a worktree was created in Case 2.**
+
+Detect the project's package manager and install dependencies:
+
+| Lock file | Package manager | Install command |
+|-----------|----------------|-----------------|
+| `bun.lockb` or `bun.lock` | bun | `bun install` |
+| `yarn.lock` | yarn | `yarn install` |
+| `pnpm-lock.yaml` | pnpm | `pnpm install` |
+| `package-lock.json` | npm | `npm install` |
+
+If no lock file is found, check if a `package.json` exists. If yes, default to `npm install`. If no `package.json` exists, skip this step.
+
+This step must never block the process. If the install fails, display a warning and continue.
+
 ## Step 6.5: Report context and attach repos (if multiple repos)
 
 > ⚠️ **MANDATORY IF MULTI-REPO - DO NOT SKIP THIS STEP**: This step is CRITICAL for the proper functioning of Magic Slash Desktop in full-stack mode. You MUST execute it if multiple worktrees were found/created, even if the curl commands seem trivial.
