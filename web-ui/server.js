@@ -151,6 +151,23 @@ app.put('/api/repositories/:name/commit', (req, res) => {
   }
 });
 
+// PUT /api/repositories/:name/resolve - Update repository-specific resolve settings
+app.put('/api/repositories/:name/resolve', (req, res) => {
+  try {
+    const { name } = req.params;
+    const settings = req.body;
+    const updatedConfig = config.updateRepositoryResolveSettings(name, settings);
+    res.json({ success: true, config: updatedConfig });
+  } catch (error) {
+    console.error('Error updating repository resolve settings:', error);
+    if (error.message.includes('not found')) {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Failed to update repository resolve settings' });
+    }
+  }
+});
+
 // PUT /api/repositories/:name/pull-request - Update repository-specific pull request settings
 app.put('/api/repositories/:name/pull-request', (req, res) => {
   try {

@@ -59,6 +59,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
     renameRepository,
     updateRepositoryLanguages,
     updateRepositoryCommitSettings,
+    updateRepositoryResolveSettings,
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
     updateRepositoryBranchSettings,
@@ -181,6 +182,16 @@ export function RepoPage({ repoName }: RepoPageProps) {
     }
   }
 
+  const handleResolveSettingChange = async (key: string, value: any) => {
+    try {
+      const settingValue = value === 'default' ? null : value
+      await updateRepositoryResolveSettings(repoName, { [key]: settingValue })
+      showToast('Setting updated')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to update setting', 'error')
+    }
+  }
+
   const handlePRSettingChange = async (key: string, value: boolean) => {
     try {
       await updateRepositoryPullRequestSettings(repoName, { [key]: value ? null : false })
@@ -289,6 +300,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
   const repoLangs = repo.languages || {}
   const commitSettings = repo.commit || {}
+  const resolveSettings = repo.resolve || {}
   const prSettings = repo.pullRequest || {}
   const issuesSettings = repo.issues || {}
   const branchSettings = repo.branches || {}
@@ -297,6 +309,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const formatVal = commitSettings.format || 'angular'
   const coAuthorVal = commitSettings.coAuthor !== undefined ? commitSettings.coAuthor : true
   const includeTicketIdVal = commitSettings.includeTicketId !== undefined ? commitSettings.includeTicketId : false
+  const resolveCommitModeVal = resolveSettings.commitMode || 'new'
+  const resolveUseCommitConfigVal = resolveSettings.useCommitConfig !== undefined ? resolveSettings.useCommitConfig : true
+  const resolveStyleVal = resolveSettings.style || 'single-line'
+  const resolveFormatVal = resolveSettings.format || 'angular'
+  const resolveReplyVal = resolveSettings.replyToComments !== undefined ? resolveSettings.replyToComments : true
+  const resolveReplyLangVal = resolveSettings.replyLanguage || repoLangs.discussion || 'en'
   const autoLinkTicketsVal = prSettings.autoLinkTickets !== undefined ? prSettings.autoLinkTickets : true
   const commentOnPRVal = issuesSettings.commentOnPR !== undefined ? issuesSettings.commentOnPR : true
 
@@ -323,6 +341,19 @@ export function RepoPage({ repoName }: RepoPageProps) {
       </div>
     )
   }
+
+  const resolvePreviewFormat = resolveUseCommitConfigVal
+    ? (formatVal === 'default' ? 'angular' : formatVal)
+    : (resolveFormatVal === 'default' ? 'angular' : resolveFormatVal)
+  const resolvePreview = (() => {
+    switch (resolvePreviewFormat) {
+      case 'conventional': return 'fix: address review feedback for PROJ-123'
+      case 'gitmoji': return '\uD83D\uDC1B address review feedback for PROJ-123'
+      case 'none': return 'Address review feedback for PROJ-123'
+      case 'angular':
+      default: return 'fix(pr): address review feedback for PROJ-123'
+    }
+  })()
 
   const commitPreview = generateCommitExample(
     formatVal === 'default' ? 'angular' : formatVal,
@@ -579,6 +610,147 @@ export function RepoPage({ repoName }: RepoPageProps) {
             <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">Example</div>
             <pre className="text-sm whitespace-pre-wrap text-text-secondary">{commitPreview}</pre>
           </div>
+        </div>
+      </div>
+
+      {/* Resolve Section */}
+      <div className="mb-6">
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Resolve</h2>
+        <div className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-5">
+          {/* Commit Mode */}
+          <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-0.5">Commit Mode</label>
+              <p className="text-xs text-text-secondary/50">How to commit resolve changes</p>
+            </div>
+            <div className="relative">
+              <select
+                value={resolveCommitModeVal}
+                onChange={(e) => handleResolveSettingChange('commitMode', e.target.value)}
+                className="w-52 px-3 py-2 pr-10 bg-bg border border-white/10 rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+              >
+                <option value="new">New commit</option>
+                <option value="amend">Amend last commit</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Commit Format Source - only when mode is 'new' */}
+          {resolveCommitModeVal === 'new' && (
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">Commit Format</label>
+                <p className="text-xs text-text-secondary/50">Format source for resolve commit messages</p>
+              </div>
+              <div className="relative">
+                <select
+                  value={resolveUseCommitConfigVal ? 'commit' : 'custom'}
+                  onChange={(e) => handleResolveSettingChange('useCommitConfig', e.target.value === 'commit')}
+                  className="w-52 px-3 py-2 pr-10 bg-bg border border-white/10 rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                >
+                  <option value="commit">Use commit settings</option>
+                  <option value="custom">Custom</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+              </div>
+            </div>
+          )}
+
+          {/* Custom Style & Format - only when mode is 'new' and useCommitConfig is false */}
+          {resolveCommitModeVal === 'new' && !resolveUseCommitConfigVal && (
+            <>
+              <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-0.5">Style</label>
+                  <p className="text-xs text-text-secondary/50">Single line or multi-line with body</p>
+                </div>
+                <div className="relative">
+                  <select
+                    value={resolveStyleVal}
+                    onChange={(e) => handleResolveSettingChange('style', e.target.value)}
+                    className="w-52 px-3 py-2 pr-10 bg-bg border border-white/10 rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                  >
+                    <option value="single-line">Single line</option>
+                    <option value="multi-line">Multi-line (with body)</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-0.5">Format</label>
+                  <p className="text-xs text-text-secondary/50">Commit message format/convention</p>
+                </div>
+                <div className="relative">
+                  <select
+                    value={resolveFormatVal}
+                    onChange={(e) => handleResolveSettingChange('format', e.target.value)}
+                    className="w-52 px-3 py-2 pr-10 bg-bg border border-white/10 rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                  >
+                    <option value="conventional">Conventional (type: description)</option>
+                    <option value="angular">Angular (type(scope): description)</option>
+                    <option value="gitmoji">Gitmoji (emoji + description)</option>
+                    <option value="none">None (free form)</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Reply to Comments Toggle */}
+          <div className="flex items-center justify-between gap-6 py-3 border-b border-white/5">
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-0.5">Reply to Comments</label>
+              <p className="text-xs text-text-secondary/50">Reply in-thread on resolved GitHub comments</p>
+            </div>
+            <label className="relative inline-block w-11 h-6 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={resolveReplyVal}
+                onChange={(e) => handleResolveSettingChange('replyToComments', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
+              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-white transition-all" />
+            </label>
+          </div>
+
+          {/* Reply Language - only when reply is enabled */}
+          {resolveReplyVal && (
+            <div className="flex items-start justify-between gap-6 py-3">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">Reply Language</label>
+                <p className="text-xs text-text-secondary/50">Language for reply messages on GitHub</p>
+              </div>
+              <div className="relative">
+                <select
+                  value={resolveReplyLangVal}
+                  onChange={(e) => handleResolveSettingChange('replyLanguage', e.target.value)}
+                  className="w-52 px-3 py-2.5 pr-10 bg-bg border border-white/10 rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                >
+                  <option value="en">English</option>
+                  <option value="fr">Francais</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+              </div>
+            </div>
+          )}
+
+          {/* Preview / Info */}
+          {resolveCommitModeVal === 'new' ? (
+            <div className="mt-4 p-3 bg-white/5 border border-white/5 rounded-lg">
+              <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">Example</div>
+              <pre className="text-sm whitespace-pre-wrap text-text-secondary">{resolvePreview}</pre>
+            </div>
+          ) : (
+            <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0" />
+              <span className="text-sm text-text-secondary">Push will use <code className="text-xs bg-white/10 px-1.5 py-0.5 rounded">--force-with-lease</code></span>
+            </div>
+          )}
         </div>
       </div>
 

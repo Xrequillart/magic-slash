@@ -102,6 +102,17 @@ const api = {
     return data;
   },
 
+  async updateRepositoryResolveSettings(name, settings) {
+    const response = await fetch(`/api/repositories/${encodeURIComponent(name)}/resolve`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to update resolve settings');
+    return data;
+  },
+
   async updateRepositoryPullRequestSettings(name, settings) {
     const response = await fetch(`/api/repositories/${encodeURIComponent(name)}/pull-request`, {
       method: 'PUT',
@@ -302,6 +313,76 @@ function generateCommitExample(format, style, includeTicketId) {
   return firstLine;
 }
 
+function generateResolveExample(format) {
+  switch (format) {
+    case 'conventional': return 'fix: address review feedback for PROJ-123';
+    case 'gitmoji': return '\uD83D\uDC1B address review feedback for PROJ-123';
+    case 'none': return 'Address review feedback for PROJ-123';
+    case 'angular':
+    default: return 'fix(pr): address review feedback for PROJ-123';
+  }
+}
+
+function updateResolvePreview() {
+  const previewEl = document.getElementById('resolve-preview-content');
+  if (!previewEl) return;
+
+  const modeSelect = document.getElementById('resolve-commit-mode');
+  const formatSourceSelect = document.getElementById('resolve-format-source');
+  const formatSelect = document.getElementById('resolve-format');
+  const commitFormatSelect = document.getElementById('commit-format');
+
+  if (!modeSelect) return;
+
+  const mode = modeSelect.value;
+  const previewContainer = document.getElementById('resolve-preview');
+  const amendWarning = document.getElementById('resolve-amend-warning');
+
+  if (mode === 'amend') {
+    if (previewContainer) previewContainer.style.display = 'none';
+    if (amendWarning) amendWarning.style.display = 'flex';
+    return;
+  }
+
+  if (previewContainer) previewContainer.style.display = 'block';
+  if (amendWarning) amendWarning.style.display = 'none';
+
+  const useCommitConfig = formatSourceSelect ? formatSourceSelect.value === 'commit' : true;
+  let format;
+  if (useCommitConfig && commitFormatSelect) {
+    format = commitFormatSelect.value;
+    if (format === 'default') format = 'angular';
+  } else if (formatSelect) {
+    format = formatSelect.value;
+    if (format === 'default') format = 'angular';
+  } else {
+    format = 'angular';
+  }
+
+  previewEl.textContent = generateResolveExample(format);
+}
+
+function updateResolveVisibility() {
+  const modeSelect = document.getElementById('resolve-commit-mode');
+  const formatSourceRow = document.getElementById('resolve-format-source-row');
+  const customRows = document.getElementById('resolve-custom-rows');
+  const formatSourceSelect = document.getElementById('resolve-format-source');
+  const replyLangRow = document.getElementById('resolve-reply-lang-row');
+  const replyToggle = document.getElementById('resolve-reply');
+
+  if (!modeSelect) return;
+
+  const mode = modeSelect.value;
+  const isNew = mode === 'new';
+  const isCustom = formatSourceSelect ? formatSourceSelect.value === 'custom' : false;
+
+  if (formatSourceRow) formatSourceRow.style.display = isNew ? 'flex' : 'none';
+  if (customRows) customRows.style.display = (isNew && isCustom) ? 'block' : 'none';
+  if (replyLangRow) replyLangRow.style.display = (replyToggle && replyToggle.checked) ? 'flex' : 'none';
+
+  updateResolvePreview();
+}
+
 function updateCommitPreview() {
   const previewEl = document.getElementById('commit-preview-content');
   if (!previewEl) return;
@@ -336,6 +417,9 @@ function countCustomSettings(repoName) {
 
   // Count custom commit settings
   count += Object.keys(repo.commit || {}).length;
+
+  // Count custom resolve settings
+  count += Object.keys(repo.resolve || {}).length;
 
   // Count custom pull request settings
   count += Object.keys(repo.pullRequest || {}).length;
@@ -446,6 +530,14 @@ function renderRepoPage(name) {
   const formatVal = commitSettings.format || 'default';
   const coAuthorVal = commitSettings.coAuthor !== undefined ? commitSettings.coAuthor : 'default';
   const includeTicketIdVal = commitSettings.includeTicketId !== undefined ? commitSettings.includeTicketId : 'default';
+
+  const resolveSettings = repo.resolve || {};
+  const resolveCommitModeVal = resolveSettings.commitMode || 'new';
+  const resolveUseCommitConfigVal = resolveSettings.useCommitConfig !== undefined ? resolveSettings.useCommitConfig : true;
+  const resolveStyleVal = resolveSettings.style || 'default';
+  const resolveFormatVal = resolveSettings.format || 'default';
+  const resolveReplyVal = resolveSettings.replyToComments !== undefined ? resolveSettings.replyToComments : true;
+  const resolveReplyLangVal = resolveSettings.replyLanguage || repoLangs.discussion || 'en';
 
   const prSettings = repo.pullRequest || {};
   // Default is true for autoLinkTickets
@@ -595,6 +687,114 @@ function renderRepoPage(name) {
             <span class="commit-preview-label">Example</span>
           </div>
           <code class="commit-preview-content" id="commit-preview-content"></code>
+        </div>
+      </section>
+
+      <!-- Resolve Section -->
+      <section class="detail-section">
+        <h2 class="detail-section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/>
+          </svg>
+          Resolve
+        </h2>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <label class="setting-label">Commit Mode</label>
+            <p class="setting-desc">How to commit resolve changes</p>
+          </div>
+          <div class="setting-control">
+            <select class="setting-select" id="resolve-commit-mode">
+              <option value="new" ${resolveCommitModeVal === 'new' ? 'selected' : ''}>New commit</option>
+              <option value="amend" ${resolveCommitModeVal === 'amend' ? 'selected' : ''}>Amend last commit</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-row" id="resolve-format-source-row" style="display: ${resolveCommitModeVal === 'new' ? 'flex' : 'none'};">
+          <div class="setting-info">
+            <label class="setting-label">Commit Format</label>
+            <p class="setting-desc">Format source for resolve commit messages</p>
+          </div>
+          <div class="setting-control">
+            <select class="setting-select" id="resolve-format-source">
+              <option value="commit" ${resolveUseCommitConfigVal ? 'selected' : ''}>Use commit settings</option>
+              <option value="custom" ${!resolveUseCommitConfigVal ? 'selected' : ''}>Custom</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="resolve-custom-rows" style="display: ${resolveCommitModeVal === 'new' && !resolveUseCommitConfigVal ? 'block' : 'none'};">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Style</label>
+              <p class="setting-desc">Single line or multi-line with body</p>
+            </div>
+            <div class="setting-control">
+              <select class="setting-select" id="resolve-style" data-resolve-key="style">
+                <option value="default" ${resolveStyleVal === 'default' ? 'selected' : ''}>Default (Single line)</option>
+                <option value="single-line" ${resolveStyleVal === 'single-line' ? 'selected' : ''}>Single line</option>
+                <option value="multi-line" ${resolveStyleVal === 'multi-line' ? 'selected' : ''}>Multi-line (with body)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label class="setting-label">Format</label>
+              <p class="setting-desc">Commit message format/convention</p>
+            </div>
+            <div class="setting-control">
+              <select class="setting-select" id="resolve-format" data-resolve-key="format">
+                <option value="default" ${resolveFormatVal === 'default' ? 'selected' : ''}>Default (Angular)</option>
+                <option value="conventional" ${resolveFormatVal === 'conventional' ? 'selected' : ''}>Conventional (type: description)</option>
+                <option value="angular" ${resolveFormatVal === 'angular' ? 'selected' : ''}>Angular (type(scope): description)</option>
+                <option value="gitmoji" ${resolveFormatVal === 'gitmoji' ? 'selected' : ''}>Gitmoji (emoji + description)</option>
+                <option value="none" ${resolveFormatVal === 'none' ? 'selected' : ''}>None (free form)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <label class="setting-label">Reply to Comments</label>
+            <p class="setting-desc">Reply in-thread on resolved GitHub comments</p>
+          </div>
+          <div class="setting-control">
+            <label class="toggle-switch">
+              <input type="checkbox" id="resolve-reply" ${resolveReplyVal === true ? 'checked' : ''}>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-row" id="resolve-reply-lang-row" style="display: ${resolveReplyVal ? 'flex' : 'none'};">
+          <div class="setting-info">
+            <label class="setting-label">Reply Language</label>
+            <p class="setting-desc">Language for reply messages on GitHub</p>
+          </div>
+          <div class="setting-control">
+            <select class="setting-select" id="resolve-reply-lang">
+              <option value="en" ${resolveReplyLangVal === 'en' ? 'selected' : ''}>English</option>
+              <option value="fr" ${resolveReplyLangVal === 'fr' ? 'selected' : ''}>Francais</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="commit-preview" id="resolve-preview" style="display: ${resolveCommitModeVal === 'new' ? 'block' : 'none'};">
+          <div class="commit-preview-header">
+            <span class="commit-preview-label">Example</span>
+          </div>
+          <code class="commit-preview-content" id="resolve-preview-content"></code>
+        </div>
+
+        <div class="resolve-amend-warning" id="resolve-amend-warning" style="display: ${resolveCommitModeVal === 'amend' ? 'flex' : 'none'}; align-items: center; gap: 8px; padding: 10px 14px; margin-top: 12px; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2); border-radius: 8px;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="rgb(234, 179, 8)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px; flex-shrink: 0;">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+          </svg>
+          <span style="font-size: 13px; color: var(--text-secondary);">Push will use <code style="font-size: 11px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">--force-with-lease</code></span>
         </div>
       </section>
 
@@ -866,6 +1066,85 @@ function renderRepoPage(name) {
     });
   });
 
+  // Resolve settings
+  const resolveCommitMode = document.getElementById('resolve-commit-mode');
+  const resolveFormatSource = document.getElementById('resolve-format-source');
+  const resolveReplyToggle = document.getElementById('resolve-reply');
+  const resolveReplyLang = document.getElementById('resolve-reply-lang');
+
+  if (resolveCommitMode) {
+    resolveCommitMode.addEventListener('change', async () => {
+      try {
+        const value = resolveCommitMode.value === 'new' ? null : resolveCommitMode.value;
+        const result = await api.updateRepositoryResolveSettings(name, { commitMode: value });
+        config = result.config;
+        showToast('Setting updated');
+        updateResolveVisibility();
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    });
+  }
+
+  if (resolveFormatSource) {
+    resolveFormatSource.addEventListener('change', async () => {
+      try {
+        const useCommitConfig = resolveFormatSource.value === 'commit';
+        const result = await api.updateRepositoryResolveSettings(name, { useCommitConfig: useCommitConfig ? null : false });
+        config = result.config;
+        showToast('Setting updated');
+        updateResolveVisibility();
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    });
+  }
+
+  // Resolve custom format/style selects
+  document.querySelectorAll('[data-resolve-key]').forEach(select => {
+    select.addEventListener('change', async () => {
+      const key = select.dataset.resolveKey;
+      let value = select.value;
+      if (value === 'default') value = null;
+
+      try {
+        const result = await api.updateRepositoryResolveSettings(name, { [key]: value });
+        config = result.config;
+        showToast('Setting updated');
+        updateResolvePreview();
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    });
+  });
+
+  if (resolveReplyToggle) {
+    resolveReplyToggle.addEventListener('change', async () => {
+      try {
+        const value = resolveReplyToggle.checked ? null : false;
+        const result = await api.updateRepositoryResolveSettings(name, { replyToComments: value });
+        config = result.config;
+        showToast('Setting updated');
+        updateResolveVisibility();
+      } catch (error) {
+        showToast(error.message, 'error');
+        resolveReplyToggle.checked = !resolveReplyToggle.checked;
+      }
+    });
+  }
+
+  if (resolveReplyLang) {
+    resolveReplyLang.addEventListener('change', async () => {
+      try {
+        const result = await api.updateRepositoryResolveSettings(name, { replyLanguage: resolveReplyLang.value });
+        config = result.config;
+        showToast('Setting updated');
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    });
+  }
+
   // Pull request settings toggles (default is true, so unchecked saves false)
   document.querySelectorAll('[data-pr-toggle]').forEach(toggle => {
     toggle.addEventListener('change', async () => {
@@ -935,6 +1214,9 @@ function renderRepoPage(name) {
 
   // Initialize commit preview
   updateCommitPreview();
+
+  // Initialize resolve preview
+  updateResolvePreview();
 }
 
 // Load and display PR template

@@ -43,6 +43,14 @@ export interface RepositoryConfig {
     coAuthor?: boolean
     includeTicketId?: boolean
   }
+  resolve?: {
+    commitMode?: string        // 'new' | 'amend'
+    format?: string            // 'conventional' | 'angular' | 'gitmoji' | 'none'
+    style?: string             // 'single-line' | 'multi-line'
+    useCommitConfig?: boolean  // true = inherit from commit settings
+    replyToComments?: boolean  // true = reply in-thread on GitHub
+    replyLanguage?: string     // 'en' | 'fr'
+  }
   pullRequest?: {
     autoLinkTickets?: boolean
   }

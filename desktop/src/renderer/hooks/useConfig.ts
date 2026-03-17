@@ -50,6 +50,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateRepositoryResolveSettings = useCallback(async (name: string, settings: Record<string, any>) => {
+    const result = await window.electronAPI.config.updateRepositoryResolveSettings(name, settings)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const updateRepositoryPullRequestSettings = useCallback(async (name: string, settings: Record<string, any>) => {
     const result = await window.electronAPI.config.updateRepositoryPullRequestSettings(name, settings)
     setConfig(result.config)
@@ -95,6 +101,7 @@ export function useConfig() {
     renameRepository,
     updateRepositoryLanguages,
     updateRepositoryCommitSettings,
+    updateRepositoryResolveSettings,
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
     updateRepositoryBranchSettings,

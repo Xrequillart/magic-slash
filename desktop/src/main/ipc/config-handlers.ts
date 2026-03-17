@@ -7,6 +7,7 @@ import {
   renameRepository,
   updateRepositoryLanguages,
   updateRepositoryCommitSettings,
+  updateRepositoryResolveSettings,
   updateRepositoryPullRequestSettings,
   updateRepositoryIssuesSettings,
   updateRepositoryBranchSettings,
@@ -100,6 +101,12 @@ export function setupConfigHandlers() {
   // Update repository commit settings
   ipcMain.handle('config:updateRepositoryCommitSettings', async (_event, { name, settings }) => {
     const config = updateRepositoryCommitSettings(name, settings)
+    return { config }
+  })
+
+  // Update repository resolve settings
+  ipcMain.handle('config:updateRepositoryResolveSettings', async (_event, { name, settings }) => {
+    const config = updateRepositoryResolveSettings(name, settings)
     return { config }
   })
 

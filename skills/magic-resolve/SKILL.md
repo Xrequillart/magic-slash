@@ -9,9 +9,9 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, mcp__github__*, mcp__atla
 
 > **IMPORTANT**: You MUST follow EACH step of this skill in order. Do not skip any step and do not take shortcuts. Each step is essential for the proper functioning of the workflow.
 >
-> **NOTE**: This skill modifies files to address review comments, then commits and force-pushes the changes.
+> **NOTE**: This skill modifies files to address review comments, then creates a new commit and pushes the changes.
 
-You are an assistant that addresses code review feedback by fixing the requested changes, amending the relevant commits, and force-pushing the result.
+You are an assistant that addresses code review feedback by fixing the requested changes and pushing a new commit.
 
 ## Configuration
 
@@ -26,6 +26,27 @@ Read `~/.config/magic-slash/config.json` and determine the parameters based on t
 | Parameter           | Repo path                                    | Default |
 | ------------------- | -------------------------------------------- | ------ |
 | Discussion language | `.repositories.<name>.languages.discussion`  | `"en"` |
+
+### Resolve parameters
+
+| Parameter         | Repo path                                      | Default   |
+| ----------------- | ---------------------------------------------- | --------- |
+| Commit mode       | `.repositories.<name>.resolve.commitMode`      | `"new"`   |
+| Format            | `.repositories.<name>.resolve.format`          | *(from commit config)* |
+| Style             | `.repositories.<name>.resolve.style`           | *(from commit config)* |
+| Use commit config | `.repositories.<name>.resolve.useCommitConfig` | `true`    |
+| Reply to comments | `.repositories.<name>.resolve.replyToComments` | `true`    |
+| Reply language    | `.repositories.<name>.resolve.replyLanguage`   | *(from languages.discussion)* |
+
+**Logic:**
+- `commitMode: "new"` (default) → create new commit + `git push`
+- `commitMode: "amend"` → `git commit --amend --no-edit` + `git push --force-with-lease`
+- `useCommitConfig: true` (default) → format/style are read from `.repositories.<name>.commit.*`
+- `useCommitConfig: false` → format/style are read from `.repositories.<name>.resolve.*`
+- When `commitMode: "amend"`, format/style are irrelevant (no new message)
+- `replyToComments: true` (default) → reply in-thread on each resolved comment (Step 7)
+- `replyToComments: false` → skip Step 7 entirely
+- `replyLanguage` → language for reply messages. Falls back to `languages.discussion` if not set
 
 ## Step 0: Check configuration and detect Node.js version
 
@@ -129,6 +150,8 @@ Gather all unresolved review comments:
 2. Use `mcp__github__get_pull_request_comments` to get inline review comments
 3. Filter to keep only unresolved/pending comments that request changes
 
+> **Important**: Store the `id` field of each comment. These comment IDs will be needed in Step 7 to reply in-thread on GitHub.
+
 ## Step 4: Display summary and ask for confirmation
 
 Display a summary of the review comments based on `.languages.discussion`:
@@ -174,7 +197,7 @@ For each selected comment:
 
 If a comment is unclear or ambiguous, skip it and note it in the summary.
 
-## Step 6: Commit and force push
+## Step 6: Commit and push
 
 After all fixes are applied:
 
@@ -184,51 +207,76 @@ After all fixes are applied:
 git add <modified-files>
 ```
 
-### 6.2: Amend the commit or create a fixup
+### 6.2: Commit
 
-Identify the commit(s) concerned by each change:
+Read the `commitMode` from the resolve config (default: `"new"`).
+
+#### When `commitMode` is `"new"` (default)
+
+Create a commit with a message that clearly indicates it addresses PR review feedback. Use the format/style from the resolve config (or inherit from commit config if `useCommitConfig` is `true`):
 
 ```bash
-git log --oneline
+git commit -m "fix(pr): address review feedback for {TICKET-ID}"
 ```
 
-- **If a single commit**: Amend it directly:
-  ```bash
-  git commit --amend --no-edit
-  ```
+Where `{TICKET-ID}` is the ticket ID detected in Step 1.
 
-- **If multiple commits are concerned**: Use fixup workflow:
-  ```bash
-  # For each commit that needs fixing:
-  git commit --fixup=<commit-hash>
-  ```
-  Then rebase:
-  ```bash
-  GIT_SEQUENCE_EDITOR=: git rebase --autosquash <base-branch>
-  ```
-  **If the rebase fails** (conflicts or other errors):
-  ```bash
-  git rebase --abort
-  ```
-  Fall back to a simple new commit instead:
-  ```bash
-  git add <modified-files>
-  git commit -m "fix: address review comments"
-  ```
-  Inform the user that the history could not be rewritten cleanly and a new commit was created instead.
+#### When `commitMode` is `"amend"`
 
-### 6.3: Force push
+Amend the last commit without changing the message:
+
+```bash
+git commit --amend --no-edit
+```
+
+#### After the commit
+
+Capture the SHA for use in Step 7:
+
+```bash
+COMMIT_SHA=$(git rev-parse HEAD)
+```
+
+> **Node.js version**: If `$NODE_PREFIX` was determined in Step 0.1, prepend it to the commit command.
+
+### 6.3: Push
 
 > **Node.js version**: If `$NODE_PREFIX` was determined in Step 0.1, prepend it to the push command.
 
+#### When `commitMode` is `"new"` (default)
+
 ```bash
-# Use --force-with-lease to avoid overwriting remote changes
+git push
+```
+
+#### When `commitMode` is `"amend"`
+
+```bash
 git push --force-with-lease
 ```
 
-## Step 7: (Optional) Reply to comments on GitHub
+## Step 7: Reply to resolved comments on GitHub
 
-For each resolved comment, optionally reply on GitHub using `mcp__github__add_issue_comment` or the review comments API to indicate the fix has been applied.
+> **Condition**: Only execute this step if `replyToComments` is `true` (default). If `replyToComments` is `false`, skip this step entirely.
+
+For each resolved comment, reply in-thread on GitHub to indicate the fix has been applied.
+
+Use the comment ID (stored in Step 3) and the commit SHA (from Step 6.2):
+
+```bash
+gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies -f body="{message}"
+```
+
+### Message based on `replyLanguage` (falls back to `.languages.discussion`):
+
+| Language | Message |
+|----------|---------|
+| `"en"` (default) | `Addressed in commit {COMMIT_SHA}` |
+| `"fr"` | `Traité dans ce commit {COMMIT_SHA}` |
+
+Where `{COMMIT_SHA}` is the full SHA obtained from `git rev-parse HEAD` after the commit in Step 6.2.
+
+> **Note**: If the `gh` CLI is not available or a reply fails, log a warning but do not block the workflow.
 
 ## Step 8: Update Magic Slash metadata
 
@@ -254,8 +302,9 @@ Display a summary of the resolved comments based on `.languages.discussion`:
 📝 Resolved  : {count} comment(s)
 ⏭️  Skipped   : {count} comment(s)
 📌 Branch    : {branch-name}
+🔗 Commit    : {COMMIT_SHA}
 
-Changes have been force-pushed.
+Changes have been pushed.
 
 Next steps:
 1. Request a re-review from the reviewer
@@ -274,8 +323,9 @@ Next steps:
 📝 Résolus   : {count} commentaire(s)
 ⏭️  Ignorés   : {count} commentaire(s)
 📌 Branche   : {branch-name}
+🔗 Commit    : {COMMIT_SHA}
 
-Les changements ont été force-pushés.
+Les changements ont été pushés.
 
 Prochaines étapes :
 1. Demande une re-review au reviewer

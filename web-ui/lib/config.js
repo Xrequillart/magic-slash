@@ -182,6 +182,82 @@ function updateRepositoryCommitSettings(name, settings) {
 }
 
 /**
+ * Update resolve settings for a specific repository
+ * @param {string} name Repository name
+ * @param {Object} settings Resolve settings object
+ */
+function updateRepositoryResolveSettings(name, settings) {
+  const config = readConfig();
+  if (!config.repositories || !config.repositories[name]) {
+    throw new Error(`Repository '${name}' not found`);
+  }
+
+  config.repositories[name].resolve = config.repositories[name].resolve || {};
+
+  // Validate and set commitMode
+  if (settings.commitMode !== undefined) {
+    if (settings.commitMode === 'default' || settings.commitMode === null) {
+      delete config.repositories[name].resolve.commitMode;
+    } else if (['new', 'amend'].includes(settings.commitMode)) {
+      config.repositories[name].resolve.commitMode = settings.commitMode;
+    }
+  }
+
+  // Validate and set format
+  if (settings.format !== undefined) {
+    if (settings.format === 'default' || settings.format === null) {
+      delete config.repositories[name].resolve.format;
+    } else if (['conventional', 'angular', 'gitmoji', 'none'].includes(settings.format)) {
+      config.repositories[name].resolve.format = settings.format;
+    }
+  }
+
+  // Validate and set style
+  if (settings.style !== undefined) {
+    if (settings.style === 'default' || settings.style === null) {
+      delete config.repositories[name].resolve.style;
+    } else if (['single-line', 'multi-line'].includes(settings.style)) {
+      config.repositories[name].resolve.style = settings.style;
+    }
+  }
+
+  // Validate and set useCommitConfig
+  if (settings.useCommitConfig !== undefined) {
+    if (settings.useCommitConfig === 'default' || settings.useCommitConfig === null) {
+      delete config.repositories[name].resolve.useCommitConfig;
+    } else if (typeof settings.useCommitConfig === 'boolean') {
+      config.repositories[name].resolve.useCommitConfig = settings.useCommitConfig;
+    }
+  }
+
+  // Validate and set replyToComments
+  if (settings.replyToComments !== undefined) {
+    if (settings.replyToComments === 'default' || settings.replyToComments === null) {
+      delete config.repositories[name].resolve.replyToComments;
+    } else if (typeof settings.replyToComments === 'boolean') {
+      config.repositories[name].resolve.replyToComments = settings.replyToComments;
+    }
+  }
+
+  // Validate and set replyLanguage
+  if (settings.replyLanguage !== undefined) {
+    if (settings.replyLanguage === 'default' || settings.replyLanguage === null) {
+      delete config.repositories[name].resolve.replyLanguage;
+    } else if (['en', 'fr'].includes(settings.replyLanguage)) {
+      config.repositories[name].resolve.replyLanguage = settings.replyLanguage;
+    }
+  }
+
+  // Clean up empty resolve object
+  if (Object.keys(config.repositories[name].resolve).length === 0) {
+    delete config.repositories[name].resolve;
+  }
+
+  writeConfig(config);
+  return config;
+}
+
+/**
  * Update pull request settings for a specific repository
  * @param {string} name Repository name
  * @param {Object} settings Pull request settings object
@@ -297,6 +373,7 @@ module.exports = {
   deleteRepository,
   updateRepositoryLanguages,
   updateRepositoryCommitSettings,
+  updateRepositoryResolveSettings,
   updateRepositoryPullRequestSettings,
   updateRepositoryIssuesSettings,
   updateRepositoryBranchSettings,

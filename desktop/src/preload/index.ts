@@ -33,6 +33,9 @@ const configApi = {
   updateRepositoryCommitSettings: (name: string, settings: Record<string, any>) =>
     ipcRenderer.invoke('config:updateRepositoryCommitSettings', { name, settings }),
 
+  updateRepositoryResolveSettings: (name: string, settings: Record<string, any>) =>
+    ipcRenderer.invoke('config:updateRepositoryResolveSettings', { name, settings }),
+
   updateRepositoryPullRequestSettings: (name: string, settings: Record<string, any>) =>
     ipcRenderer.invoke('config:updateRepositoryPullRequestSettings', { name, settings }),
 
