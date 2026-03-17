@@ -4,7 +4,7 @@ description: This skill should be used when the user says "the PR is merged", "l
 allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 ---
 
-# magic-slash v0.18.3 - /done
+# magic-slash v0.19.0 - /done
 
 > **IMPORTANT**: You MUST follow EACH step of this skill in order. Do not skip any step and do not take shortcuts. Each step is essential for the proper functioning of the workflow.
 >

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-03-17
+
+### Added
+
+- **Config migration**: Auto-migrate `config.json` at startup (desktop + web-ui) to ensure all repositories have a uniform format with all fields present (color, languages, commit, resolve, pullRequest, issues, branches)
+- **Config migration**: Auto-migrate agents to ensure `repositories` array and complete `metadata` structure exist
+- **Resolve settings**: Add per-repository resolve settings (commitMode, format, style, useCommitConfig, replyToComments, replyLanguage)
+
+### Changed
+
+- **Config**: `addRepository()` now creates repositories with all default fields instead of only path/keywords/languages
+
 ## [0.18.3] - 2026-03-16
 
 ### Changed
@@ -633,6 +645,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.19.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.19.0
 [0.18.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.18.3
 [0.18.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.18.2
 [0.18.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.18.1
