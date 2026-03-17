@@ -12,12 +12,28 @@ export interface SkillInfo {
 
 export interface SkillDetail extends SkillInfo {
   content: string
+  isRepoSkill?: boolean
+  repoName?: string
+  repoColor?: string
+}
+
+export interface RepoSkillInfo {
+  name: string
+  description: string
+  allowedTools: string
+  argumentHint?: string
+  repoName: string
+  repoColor?: string
+  format: 'skill' | 'command'
+  filePath: string
 }
 
 export function useSkills() {
   const [skills, setSkills] = useState<SkillInfo[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [repoSkills, setRepoSkills] = useState<RepoSkillInfo[]>([])
+  const [repoSkillsLoading, setRepoSkillsLoading] = useState(false)
 
   const loadSkills = useCallback(async () => {
     setLoading(true)
@@ -32,8 +48,24 @@ export function useSkills() {
     }
   }, [])
 
+  const loadRepoSkills = useCallback(async () => {
+    setRepoSkillsLoading(true)
+    try {
+      const result = await window.electronAPI.skills.listRepoSkills()
+      setRepoSkills(result)
+    } catch {
+      // Silently fail — repo skills are supplementary
+    } finally {
+      setRepoSkillsLoading(false)
+    }
+  }, [])
+
   const getSkill = useCallback(async (name: string): Promise<SkillDetail> => {
     return window.electronAPI.skills.get(name)
+  }, [])
+
+  const getRepoSkill = useCallback(async (filePath: string): Promise<SkillDetail> => {
+    return window.electronAPI.skills.getRepoSkill(filePath)
   }, [])
 
   const createSkill = useCallback(async (name: string, content: string, imagePath?: string) => {
@@ -84,5 +116,9 @@ export function useSkills() {
     downloadSkill,
     importSkill,
     pickImage,
+    repoSkills,
+    repoSkillsLoading,
+    loadRepoSkills,
+    getRepoSkill,
   }
 }

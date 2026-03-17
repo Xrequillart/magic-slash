@@ -219,6 +219,8 @@ const skillsApi = {
   download: (name: string) => ipcRenderer.invoke('skills:download', { name }),
   import: (): Promise<{ success: boolean; name?: string; canceled?: boolean }> =>
     ipcRenderer.invoke('skills:import'),
+  listRepoSkills: () => ipcRenderer.invoke('skills:listRepoSkills'),
+  getRepoSkill: (filePath: string) => ipcRenderer.invoke('skills:getRepoSkill', { filePath }),
 }
 
 // Scripts API

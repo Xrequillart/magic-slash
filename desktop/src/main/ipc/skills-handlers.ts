@@ -2,6 +2,8 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+import { readConfig } from '../config/config'
+import { expandPath } from '../config/validation'
 
 const BUILT_IN_SKILLS = ['magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
 
@@ -13,6 +15,17 @@ interface SkillInfo {
   isBuiltIn: boolean
   hasImage: boolean
   imagePath?: string
+}
+
+interface RepoSkillInfo {
+  name: string
+  description: string
+  allowedTools: string
+  argumentHint?: string
+  repoName: string
+  repoColor?: string
+  format: 'skill' | 'command'
+  filePath: string
 }
 
 function getSkillsDir(): string {
@@ -266,6 +279,121 @@ export function setupSkillsHandlers() {
     }
 
     return { success: true, name: skillName }
+  })
+
+  // List skills from registered repositories
+  ipcMain.handle('skills:listRepoSkills', async () => {
+    const config = readConfig()
+    const repos = config.repositories || {}
+    const repoSkills: RepoSkillInfo[] = []
+
+    for (const [repoName, repoConfig] of Object.entries(repos)) {
+      try {
+        const repoPath = expandPath(repoConfig.path)
+        if (!fs.existsSync(repoPath)) continue
+
+        // Scan .claude/skills/*/SKILL.md
+        const skillsDir = path.join(repoPath, '.claude', 'skills')
+        try {
+          if (fs.existsSync(skillsDir)) {
+            const entries = fs.readdirSync(skillsDir, { withFileTypes: true })
+            for (const entry of entries) {
+              if (!entry.isDirectory()) continue
+              const skillFile = path.join(skillsDir, entry.name, 'SKILL.md')
+              if (!fs.existsSync(skillFile)) continue
+              try {
+                const content = fs.readFileSync(skillFile, 'utf8')
+                const fm = parseFrontmatter(content)
+                repoSkills.push({
+                  name: fm.name || entry.name,
+                  description: fm.description || '',
+                  allowedTools: fm['allowed-tools'] || '',
+                  argumentHint: fm['argument-hint'] || undefined,
+                  repoName,
+                  repoColor: repoConfig.color,
+                  format: 'skill',
+                  filePath: skillFile,
+                })
+              } catch { /* skip unreadable file */ }
+            }
+          }
+        } catch { /* skip unreadable dir */ }
+
+        // Scan .claude/commands/*.md
+        const commandsDir = path.join(repoPath, '.claude', 'commands')
+        try {
+          if (fs.existsSync(commandsDir)) {
+            const files = fs.readdirSync(commandsDir)
+            for (const file of files) {
+              if (!file.endsWith('.md')) continue
+              const filePath = path.join(commandsDir, file)
+              try {
+                const content = fs.readFileSync(filePath, 'utf8')
+                const fm = parseFrontmatter(content)
+                repoSkills.push({
+                  name: fm.name || file.replace(/\.md$/, ''),
+                  description: fm.description || '',
+                  allowedTools: fm['allowed-tools'] || '',
+                  argumentHint: fm['argument-hint'] || undefined,
+                  repoName,
+                  repoColor: repoConfig.color,
+                  format: 'command',
+                  filePath,
+                })
+              } catch { /* skip unreadable file */ }
+            }
+          }
+        } catch { /* skip unreadable dir */ }
+      } catch { /* skip inaccessible repo */ }
+    }
+
+    return repoSkills
+  })
+
+  // Get a specific repo skill's full content
+  ipcMain.handle('skills:getRepoSkill', async (_event, { filePath }: { filePath: string }) => {
+    // Security: verify filePath is under a registered repo
+    const config = readConfig()
+    const repos = config.repositories || {}
+    let isAllowed = false
+    let repoName = ''
+    let repoColor: string | undefined
+
+    for (const [name, repoConfig] of Object.entries(repos)) {
+      const repoPath = expandPath(repoConfig.path)
+      if (filePath.startsWith(repoPath + path.sep) || filePath.startsWith(repoPath + '/')) {
+        isAllowed = true
+        repoName = name
+        repoColor = repoConfig.color
+        break
+      }
+    }
+
+    if (!isAllowed) {
+      throw new Error('File is not under a registered repository')
+    }
+
+    if (!fs.existsSync(filePath)) {
+      throw new Error('Skill file not found')
+    }
+
+    const content = fs.readFileSync(filePath, 'utf8')
+    const fm = parseFrontmatter(content)
+    const skillName = fm.name || path.basename(filePath, '.md')
+
+    return {
+      name: skillName,
+      description: fm.description || '',
+      allowedTools: fm['allowed-tools'] || '',
+      argumentHint: fm['argument-hint'] || undefined,
+      content,
+      isBuiltIn: false,
+      isRepoSkill: true,
+      repoName,
+      repoColor,
+      hasImage: false,
+      imagePath: undefined,
+    }
   })
 
   // Dialog: open file for image selection

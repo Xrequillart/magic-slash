@@ -1,16 +1,19 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Plus, ArrowLeft, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput } from 'lucide-react'
-import { useSkills, type SkillInfo, type SkillDetail } from '../../hooks/useSkills'
+import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 
 function SkillCard({
   skill,
   imageUrl,
+  badge,
   onClick,
 }: {
-  skill: SkillInfo
+  skill: SkillInfo | RepoSkillInfo
   imageUrl: string | null
+  badge?: { label: string; className: string }
   onClick: () => void
 }) {
+  const hasImage = 'hasImage' in skill ? skill.hasImage : false
   return (
     <button
       onClick={onClick}
@@ -29,8 +32,8 @@ function SkillCard({
       <div className="flex-1 min-w-0 text-left">
         <div className="flex items-center gap-2">
           <span className="text-base font-semibold text-white truncate capitalize">{skill.name}</span>
-          {skill.isBuiltIn && (
-            <span className="px-1.5 py-0.5 text-xs font-medium bg-accent/10 text-accent rounded flex-shrink-0">built-in</span>
+          {badge && (
+            <span className={`px-1.5 py-0.5 text-xs font-medium rounded flex-shrink-0 ${badge.className}`}>{badge.label}</span>
           )}
         </div>
         {skill.description && (
@@ -70,7 +73,7 @@ function SkillEditor({
   const [sharing, setSharing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isReadOnly = skill?.isBuiltIn ?? false
+  const isReadOnly = skill?.isBuiltIn || skill?.isRepoSkill || false
 
   // Initialize body from skill content (strip frontmatter)
   useEffect(() => {
@@ -82,7 +85,7 @@ function SkillEditor({
 
   // Load existing image
   useEffect(() => {
-    if (skill?.hasImage && skill.name) {
+    if (skill?.hasImage && skill.name && !skill.isRepoSkill) {
       window.electronAPI.skills.getImage(skill.name).then((url) => {
         if (url) setImagePreview(url)
       })
@@ -93,9 +96,7 @@ function SkillEditor({
     const path = await window.electronAPI.dialog.openFile()
     if (path) {
       setImagePath(path)
-      // Generate preview from the file path via IPC is not directly possible,
-      // so we'll show the path as feedback and the image will display after save
-      setImagePreview(null) // Will be replaced on save + reload
+      setImagePreview(null)
     }
   }
 
@@ -155,8 +156,15 @@ function SkillEditor({
     }
   }
 
+  const headerTitle = (() => {
+    if (skill?.isRepoSkill) return `${skill.name} (repo: ${skill.repoName}, read-only)`
+    if (isReadOnly) return `${skill?.name} (read-only)`
+    if (isNew) return 'New Skill'
+    return `Edit ${skill?.name}`
+  })()
+
   return (
-    <div className="flex flex-col gap-6 animate-fade-in max-w-2xl mx-auto w-full">
+    <div className="flex flex-col gap-6 animate-fade-in max-w-[62rem] mx-auto w-full">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
@@ -166,7 +174,7 @@ function SkillEditor({
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h2 className="text-xl font-semibold capitalize flex-1">
-          {isReadOnly ? `${skill?.name} (read-only)` : isNew ? 'New Skill' : `Edit ${skill?.name}`}
+          {headerTitle}
         </h2>
         {!isNew && !isReadOnly && onShare && (
           <button
@@ -311,18 +319,23 @@ function SkillEditor({
 }
 
 export function SkillsPage() {
-  const { skills, loading, loadSkills, getSkill, createSkill, updateSkill, deleteSkill, downloadSkill, importSkill, getImage } = useSkills()
+  const { skills, loading, loadSkills, getSkill, createSkill, updateSkill, deleteSkill, downloadSkill, importSkill, getImage, repoSkills, repoSkillsLoading, loadRepoSkills, getRepoSkill } = useSkills()
   const [imageCache, setImageCache] = useState<Record<string, string | null>>({})
 
   // Hash routing state
-  const [route, setRoute] = useState<{ page: string; params: { name?: string } }>({ page: 'home', params: {} })
+  const [route, setRoute] = useState<{ page: string; params: { name?: string; filePath?: string } }>({ page: 'home', params: {} })
   const [editSkill, setEditSkill] = useState<SkillDetail | null>(null)
 
-  const parseRoute = useCallback((): { page: string; params: { name?: string } } => {
+  const parseRoute = useCallback((): { page: string; params: { name?: string; filePath?: string } } => {
     const hash = window.location.hash || '#/'
 
     if (hash === '#/' || hash === '#') {
       return { page: 'home', params: {} }
+    }
+
+    const repoSkillMatch = hash.match(/^#\/repo-skill\/(.+)$/)
+    if (repoSkillMatch) {
+      return { page: 'repo-skill', params: { filePath: decodeURIComponent(repoSkillMatch[1]) } }
     }
 
     const skillMatch = hash.match(/^#\/skill\/(.+)$/)
@@ -344,10 +357,11 @@ export function SkillsPage() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [parseRoute])
 
-  // Load skills on mount
+  // Load skills on mount (both in parallel)
   useEffect(() => {
     loadSkills()
-  }, [loadSkills])
+    loadRepoSkills()
+  }, [loadSkills, loadRepoSkills])
 
   // Load skill detail when navigating to a skill
   useEffect(() => {
@@ -355,10 +369,14 @@ export function SkillsPage() {
       getSkill(route.params.name).then(setEditSkill).catch(() => {
         window.location.hash = '#/'
       })
+    } else if (route.page === 'repo-skill' && route.params.filePath) {
+      getRepoSkill(route.params.filePath).then(setEditSkill).catch(() => {
+        window.location.hash = '#/'
+      })
     } else if (route.page === 'new') {
       setEditSkill(null)
     }
-  }, [route, getSkill])
+  }, [route, getSkill, getRepoSkill])
 
   // Load images for all skills
   useEffect(() => {
@@ -373,6 +391,17 @@ export function SkillsPage() {
 
   const builtInSkills = useMemo(() => skills.filter((s) => s.isBuiltIn), [skills])
   const customSkills = useMemo(() => skills.filter((s) => !s.isBuiltIn), [skills])
+
+  const repoSkillsByRepo = useMemo(() => {
+    const grouped: Record<string, { color?: string; skills: RepoSkillInfo[] }> = {}
+    for (const rs of repoSkills) {
+      if (!grouped[rs.repoName]) {
+        grouped[rs.repoName] = { color: rs.repoColor, skills: [] }
+      }
+      grouped[rs.repoName].skills.push(rs)
+    }
+    return grouped
+  }, [repoSkills])
 
   const navigateToList = useCallback(() => {
     window.location.hash = '#/'
@@ -420,6 +449,17 @@ export function SkillsPage() {
       )
     }
 
+    if (route.page === 'repo-skill' && editSkill) {
+      return (
+        <SkillEditor
+          skill={editSkill}
+          isNew={false}
+          onSave={async () => {}}
+          onBack={navigateToList}
+        />
+      )
+    }
+
     if (route.page === 'skill' && editSkill) {
       return (
         <SkillEditor
@@ -435,7 +475,7 @@ export function SkillsPage() {
 
     // List view
     return (
-      <div className="flex flex-col gap-6 animate-fade-in max-w-2xl mx-auto w-full">
+      <div className="flex flex-col gap-6 animate-fade-in max-w-[62rem] mx-auto w-full">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-semibold">Skills</h1>
@@ -453,13 +493,15 @@ export function SkillsPage() {
             {/* Built-in section */}
             {builtInSkills.length > 0 && (
               <div>
-                <h2 className="text-sm text-text-secondary/50 uppercase tracking-wider mb-3">Built-in</h2>
+                <h2 className="text-sm text-text-secondary/50 uppercase tracking-wider">Built-in</h2>
+                <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">Magic Slash core skills, powering the development workflow</p>
                 <div className="grid grid-cols-2 gap-2">
                   {builtInSkills.map((skill) => (
                     <SkillCard
                       key={skill.name}
                       skill={skill}
                       imageUrl={imageCache[skill.name] ?? null}
+                      badge={{ label: 'built-in', className: 'bg-accent/10 text-accent' }}
                       onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.name)}` }}
                     />
                   ))}
@@ -470,7 +512,10 @@ export function SkillsPage() {
             {/* Custom section */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm text-text-secondary/50 uppercase tracking-wider">Custom</h2>
+                <div>
+                  <h2 className="text-sm text-text-secondary/50 uppercase tracking-wider">Custom</h2>
+                  <p className="text-xs text-text-secondary/30 mt-0.5">User-level skills, available across all projects</p>
+                </div>
                 {customSkills.length > 0 && (
                   <div className="flex items-center gap-2">
                     <button
@@ -522,6 +567,43 @@ export function SkillsPage() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Repository Skills section */}
+            <div>
+              <h2 className="text-sm text-text-secondary/50 uppercase tracking-wider">Repository Skills</h2>
+              <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">Skills defined in your registered repositories (.claude/skills/ and .claude/commands/)</p>
+              {repoSkillsLoading && (
+                <div className="flex items-center justify-center py-6">
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-accent rounded-full animate-spin" />
+                </div>
+              )}
+              {!repoSkillsLoading && Object.keys(repoSkillsByRepo).length === 0 && (
+                <p className="text-sm text-text-secondary/40">No skills found in registered repositories</p>
+              )}
+              {!repoSkillsLoading && Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => (
+                <div key={repoName} className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: color || '#6B7280' }}
+                    />
+                    <span className="text-sm font-medium text-text-secondary">{repoName}</span>
+                    <span className="text-xs text-text-secondary/40">{rSkills.length}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {rSkills.map((rs) => (
+                      <SkillCard
+                        key={rs.filePath}
+                        skill={rs}
+                        imageUrl={null}
+                        badge={{ label: repoName, className: 'bg-white/10 text-text-secondary' }}
+                        onClick={() => { window.location.hash = `#/repo-skill/${encodeURIComponent(rs.filePath)}` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </>
         )}
