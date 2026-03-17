@@ -11,6 +11,7 @@ import {
   updateRepositoryPullRequestSettings,
   updateRepositoryIssuesSettings,
   updateRepositoryBranchSettings,
+  updateRepositoryWorktreeFilesSettings,
   getSnippets,
   addSnippet,
   updateSnippet,
@@ -125,6 +126,12 @@ export function setupConfigHandlers() {
   // Update repository branch settings
   ipcMain.handle('config:updateRepositoryBranchSettings', async (_event, { name, settings }) => {
     const config = updateRepositoryBranchSettings(name, settings)
+    return { config }
+  })
+
+  // Update repository worktree files settings
+  ipcMain.handle('config:updateRepositoryWorktreeFilesSettings', async (_event, { name, settings }) => {
+    const config = updateRepositoryWorktreeFilesSettings(name, settings)
     return { config }
   })
 

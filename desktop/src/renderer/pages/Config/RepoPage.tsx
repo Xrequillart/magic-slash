@@ -63,6 +63,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
     updateRepositoryBranchSettings,
+    updateRepositoryWorktreeFilesSettings,
     validatePath,
     getPRTemplate,
     createPRTemplate,
@@ -220,6 +221,15 @@ export function RepoPage({ repoName }: RepoPageProps) {
       showToast('Branch setting updated')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to update branch setting', 'error')
+    }
+  }
+
+  const handleWorktreeFilesChange = async (files: string[]) => {
+    try {
+      await updateRepositoryWorktreeFilesSettings(repoName, { worktreeFiles: files })
+      showToast('Worktree files updated')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to update worktree files', 'error')
     }
   }
 
@@ -519,6 +529,70 @@ export function RepoPage({ repoName }: RepoPageProps) {
               placeholder="develop"
               className="w-52 px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
             />
+          </div>
+        </div>
+      </div>
+
+      {/* Worktree Files Section */}
+      <div className="mb-6">
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Worktree</h2>
+        <div className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-5">
+          <div className="py-3">
+            <div className="flex-1 mb-3">
+              <label className="block text-sm font-medium mb-0.5">Files to copy</label>
+              <p className="text-xs text-text-secondary/50">Files copied from the main repo to new worktrees (e.g., .env, .env.local)</p>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {(repo.worktreeFiles || []).map((file, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.06] border border-white/[0.15] rounded-lg text-sm"
+                >
+                  {file}
+                  <button
+                    onClick={() => {
+                      const newFiles = (repo.worktreeFiles || []).filter((_, i) => i !== index)
+                      handleWorktreeFilesChange(newFiles)
+                    }}
+                    className="text-text-secondary hover:text-red transition-colors"
+                  >
+                    &times;
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                id="worktree-file-input"
+                placeholder=".env"
+                className="flex-1 px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const input = e.currentTarget
+                    const value = input.value.trim()
+                    if (value && !(repo.worktreeFiles || []).includes(value)) {
+                      handleWorktreeFilesChange([...(repo.worktreeFiles || []), value])
+                      input.value = ''
+                    }
+                  }
+                }}
+              />
+              <button
+                onClick={() => {
+                  const input = document.getElementById('worktree-file-input') as HTMLInputElement
+                  const value = input?.value.trim()
+                  if (value && !(repo.worktreeFiles || []).includes(value)) {
+                    handleWorktreeFilesChange([...(repo.worktreeFiles || []), value])
+                    input.value = ''
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+              >
+                <Plus className="w-3 h-3" />
+                Add
+              </button>
+            </div>
           </div>
         </div>
       </div>

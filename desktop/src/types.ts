@@ -62,6 +62,7 @@ export interface RepositoryConfig {
   branches?: {
     development?: string  // e.g., "develop", "dev" - defaults to "develop"
   }
+  worktreeFiles?: string[]  // Files to copy from main repo to worktree (e.g., ".env", ".env.local")
 }
 
 export interface Agent {

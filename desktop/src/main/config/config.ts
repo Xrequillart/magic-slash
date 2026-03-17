@@ -387,6 +387,26 @@ export function updateRepositoryBranchSettings(name: string, settings: Record<st
   return config
 }
 
+export function updateRepositoryWorktreeFilesSettings(name: string, settings: Record<string, any>): Config {
+  const config = readConfig()
+  if (!config.repositories || !config.repositories[name]) {
+    throw new Error(`Repository '${name}' not found`)
+  }
+
+  // Validate and set worktreeFiles
+  if (settings.worktreeFiles !== undefined) {
+    if (Array.isArray(settings.worktreeFiles)) {
+      const filtered = settings.worktreeFiles.filter((f: any) => typeof f === 'string' && f.trim().length > 0)
+      config.repositories[name].worktreeFiles = filtered.length > 0 ? filtered : []
+    } else if (settings.worktreeFiles === null) {
+      config.repositories[name].worktreeFiles = []
+    }
+  }
+
+  writeConfig(config)
+  return config
+}
+
 export function deleteRepository(name: string): Config {
   const config = readConfig()
   if (!config.repositories || !config.repositories[name]) {

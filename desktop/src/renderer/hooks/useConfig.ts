@@ -74,6 +74,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateRepositoryWorktreeFilesSettings = useCallback(async (name: string, settings: Record<string, any>) => {
+    const result = await window.electronAPI.config.updateRepositoryWorktreeFilesSettings(name, settings)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const validatePath = useCallback(async (path: string) => {
     return window.electronAPI.config.validatePath(path)
   }, [])
@@ -105,6 +111,7 @@ export function useConfig() {
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
     updateRepositoryBranchSettings,
+    updateRepositoryWorktreeFilesSettings,
     validatePath,
     getPRTemplate,
     createPRTemplate,

@@ -33,7 +33,8 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
   },
   branches: {
     development: ''
-  }
+  },
+  worktreeFiles: []
 }
 
 function deepMergeDefaults(defaults: Record<string, any>, existing: Record<string, any>): Record<string, any> {
