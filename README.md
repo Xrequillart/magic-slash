@@ -283,7 +283,7 @@ npm run desktop:package
 
 ```json
 {
-  "version": "0.20.2",
+  "version": "0.21.0",
   "installationMode": "desktop",
   "repositories": {
     "api": {
