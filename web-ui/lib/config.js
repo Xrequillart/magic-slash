@@ -65,7 +65,8 @@ function addRepository(name, repoPath, keywords = []) {
     },
     pullRequest: { autoLinkTickets: true },
     issues: { commentOnPR: true, jiraUrl: '', githubIssuesUrl: '' },
-    branches: { development: '' }
+    branches: { development: '' },
+    worktreeFiles: []
   };
   writeConfig(config);
   return config;
@@ -360,6 +361,31 @@ function updateRepositoryBranchSettings(name, settings) {
 }
 
 /**
+ * Update worktree files settings for a specific repository
+ * @param {string} name Repository name
+ * @param {Object} settings Worktree files settings object
+ */
+function updateRepositoryWorktreeFilesSettings(name, settings) {
+  const config = readConfig();
+  if (!config.repositories || !config.repositories[name]) {
+    throw new Error(`Repository '${name}' not found`);
+  }
+
+  // Validate and set worktreeFiles
+  if (settings.worktreeFiles !== undefined) {
+    if (Array.isArray(settings.worktreeFiles)) {
+      const filtered = settings.worktreeFiles.filter(f => typeof f === 'string' && f.trim().length > 0);
+      config.repositories[name].worktreeFiles = filtered.length > 0 ? filtered : [];
+    } else if (settings.worktreeFiles === null) {
+      config.repositories[name].worktreeFiles = [];
+    }
+  }
+
+  writeConfig(config);
+  return config;
+}
+
+/**
  * Delete a repository from the configuration
  * @param {string} name Repository name
  */
@@ -386,5 +412,6 @@ module.exports = {
   updateRepositoryPullRequestSettings,
   updateRepositoryIssuesSettings,
   updateRepositoryBranchSettings,
+  updateRepositoryWorktreeFilesSettings,
   CONFIG_FILE
 };

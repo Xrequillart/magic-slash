@@ -22,7 +22,8 @@ describe('config module integration', () => {
         },
         pullRequest: { autoLinkTickets: true },
         issues: { commentOnPR: true, jiraUrl: '', githubIssuesUrl: '' },
-        branches: { development: '' }
+        branches: { development: '' },
+        worktreeFiles: []
       });
     } finally {
       // Clean up: delete the test repo

@@ -45,6 +45,9 @@ const configApi = {
   updateRepositoryBranchSettings: (name: string, settings: Record<string, any>) =>
     ipcRenderer.invoke('config:updateRepositoryBranchSettings', { name, settings }),
 
+  updateRepositoryWorktreeFilesSettings: (name: string, settings: Record<string, any>) =>
+    ipcRenderer.invoke('config:updateRepositoryWorktreeFilesSettings', { name, settings }),
+
   validatePath: (path: string) =>
     ipcRenderer.invoke('config:validatePath', { path }),
 

@@ -203,6 +203,23 @@ app.put('/api/repositories/:name/issues', (req, res) => {
   }
 });
 
+// PUT /api/repositories/:name/worktree-files - Update repository-specific worktree files settings
+app.put('/api/repositories/:name/worktree-files', (req, res) => {
+  try {
+    const { name } = req.params;
+    const settings = req.body;
+    const updatedConfig = config.updateRepositoryWorktreeFilesSettings(name, settings);
+    res.json({ success: true, config: updatedConfig });
+  } catch (error) {
+    console.error('Error updating repository worktree files settings:', error);
+    if (error.message.includes('not found')) {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Failed to update repository worktree files settings' });
+    }
+  }
+});
+
 // PUT /api/repositories/:name/branches - Update repository-specific branch settings
 app.put('/api/repositories/:name/branches', (req, res) => {
   try {

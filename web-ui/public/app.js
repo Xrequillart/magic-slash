@@ -146,6 +146,17 @@ const api = {
     return data;
   },
 
+  async updateRepositoryWorktreeFilesSettings(name, settings) {
+    const response = await fetch(`/api/repositories/${encodeURIComponent(name)}/worktree-files`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to update worktree files settings');
+    return data;
+  },
+
   async validatePath(path) {
     const response = await fetch('/api/validate-path', {
       method: 'POST',
@@ -935,6 +946,31 @@ function renderRepoPage(name) {
           </div>
         </div>
       </section>
+
+      <!-- Worktree Files -->
+      <section class="settings-section">
+        <h2 class="section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+            <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+          </svg>
+          Worktree Files
+        </h2>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <label class="setting-label">Files to copy</label>
+            <p class="setting-desc">Files copied from the main repo to new worktrees (e.g., .env, .env.local). Press Enter to add.</p>
+          </div>
+        </div>
+        <div id="worktree-files-tags" class="tags-container" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+          ${(repo.worktreeFiles || []).map((f, i) => `<span class="tag" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; font-size: 13px;"><code>${escapeHtml(f)}</code><button class="tag-remove" data-index="${i}" style="background: none; border: none; color: #888; cursor: pointer; font-size: 16px; padding: 0 2px;">&times;</button></span>`).join('')}
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" class="setting-input" id="worktree-file-input" placeholder=".env" style="flex: 1;">
+          <button class="btn btn-primary btn-sm" id="btn-add-worktree-file">Add</button>
+        </div>
+      </section>
     </div>
   `;
 
@@ -1202,6 +1238,50 @@ function renderRepoPage(name) {
     } catch (error) {
       showToast(error.message, 'error');
     }
+  });
+
+  // Worktree files
+  const worktreeFileInput = document.getElementById('worktree-file-input');
+  const addWorktreeFileBtn = document.getElementById('btn-add-worktree-file');
+
+  async function addWorktreeFile() {
+    const value = worktreeFileInput.value.trim();
+    if (!value) return;
+    const currentFiles = config.repositories[name].worktreeFiles || [];
+    if (currentFiles.includes(value)) {
+      showToast('File already in list', 'error');
+      return;
+    }
+    try {
+      const result = await api.updateRepositoryWorktreeFilesSettings(name, { worktreeFiles: [...currentFiles, value] });
+      config = result.config;
+      worktreeFileInput.value = '';
+      showToast('Worktree file added');
+      showRepoSettings(name);
+    } catch (error) {
+      showToast(error.message, 'error');
+    }
+  }
+
+  addWorktreeFileBtn.addEventListener('click', addWorktreeFile);
+  worktreeFileInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addWorktreeFile();
+  });
+
+  document.querySelectorAll('.tag-remove').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const index = parseInt(btn.dataset.index, 10);
+      const currentFiles = [...(config.repositories[name].worktreeFiles || [])];
+      currentFiles.splice(index, 1);
+      try {
+        const result = await api.updateRepositoryWorktreeFilesSettings(name, { worktreeFiles: currentFiles });
+        config = result.config;
+        showToast('Worktree file removed');
+        showRepoSettings(name);
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    });
   });
 
   // Delete button
