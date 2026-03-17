@@ -47,6 +47,11 @@ Read `~/.config/magic-slash/config.json` to determine the development branch:
 ##### In French
 > La branche de base configurée est **{branch}**. L'utiliser, ou en spécifier une autre ? (appuie sur Entrée pour confirmer)
 
+**Handling the user's response:**
+- **Empty response** (user just pressed Enter without typing): Use the configured default branch
+- **Short confirmation** ("oui", "yes", "ok", "go"): Use the configured default branch
+- **Another branch name** (e.g., "develop", "staging"): Use that branch instead
+
 #### If no default is configured
 
 ##### In English
