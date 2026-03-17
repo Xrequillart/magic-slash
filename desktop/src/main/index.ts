@@ -10,6 +10,7 @@ import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpd
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
+import { migrateConfig } from './config/migrate'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -219,6 +220,9 @@ function setupHandlers() {
 }
 
 app.whenReady().then(async () => {
+  // Migrate config to ensure all repositories have complete fields
+  migrateConfig()
+
   // Create custom menu (removes Cmd+W close window behavior)
   createMenu()
 

@@ -3,6 +3,7 @@ const path = require('path');
 const { exec } = require('child_process');
 const config = require('./lib/config');
 const validation = require('./lib/validation');
+const { migrateConfig } = require('./lib/migrate');
 
 const app = express();
 const PORT = 3847;
@@ -317,6 +318,9 @@ app.post('/api/shutdown', (req, res) => {
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// Migrate config to ensure all repositories have complete fields
+migrateConfig();
 
 // Start server
 const server = app.listen(PORT, () => {
