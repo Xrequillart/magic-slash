@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-03-17
+
+### Added
+
+- **Desktop Skills page**: New "Repository Skills" section that scans registered repositories for skills in `.claude/skills/` and `.claude/commands/`, grouped by repo with colored dot and read-only detail view
+- **Desktop Skills page**: Subtitle descriptions for Built-in, Custom, and Repository Skills sections
+
+### Changed
+
+- **Desktop**: Widen content max-width from 42rem to 62rem on Skills and Settings pages
+- **Desktop Skills page**: SkillCard now uses a generic `badge` prop instead of hardcoded `isBuiltIn` check
+
 ## [0.19.0] - 2026-03-17
 
 ### Added
@@ -645,6 +657,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.20.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.20.0
 [0.19.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.19.0
 [0.18.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.18.3
 [0.18.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.18.2
