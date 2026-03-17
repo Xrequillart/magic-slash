@@ -32,7 +32,8 @@ const DEFAULT_REPOSITORY_FIELDS = {
   },
   branches: {
     development: ''
-  }
+  },
+  worktreeFiles: []
 };
 
 function createDefaultMetadata() {

@@ -47,6 +47,7 @@ describe('migrateConfig', () => {
     expect(repo.pullRequest).toEqual({ autoLinkTickets: true });
     expect(repo.issues).toEqual({ commentOnPR: true, jiraUrl: '', githubIssuesUrl: '' });
     expect(repo.branches).toEqual({ development: '' });
+    expect(repo.worktreeFiles).toEqual([]);
   });
 
   it('preserves existing values and only fills missing fields', () => {
@@ -89,7 +90,8 @@ describe('migrateConfig', () => {
           },
           pullRequest: { autoLinkTickets: true },
           issues: { commentOnPR: true, jiraUrl: '', githubIssuesUrl: '' },
-          branches: { development: '' }
+          branches: { development: '' },
+          worktreeFiles: []
         }
       }
     });
