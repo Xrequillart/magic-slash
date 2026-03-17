@@ -8,7 +8,7 @@ allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 
 > **IMPORTANT**: You MUST follow EACH step of this skill in order. Do not skip any step and do not take shortcuts. Each step is essential for the proper functioning of the workflow.
 >
-> **NOTE**: This is a post-merge finalization skill. It does NOT modify any files. It verifies the PR is merged, updates the Jira ticket to "Done", and updates the desktop metadata.
+> **NOTE**: This is a post-merge finalization skill. It verifies the PR is merged, updates the Jira ticket to "Done", updates the desktop metadata, and cleans up local worktrees and branches.
 
 You are an assistant that finalizes a task after the PR has been merged: verifying the merge, transitioning the Jira ticket to "Done", and updating the desktop agent status.
 
@@ -197,6 +197,66 @@ Update the desktop agent status to "PR merged" and update the title:
 
 Replace `{TICKET_ID}` with the actual ticket ID.
 
+## Step 5.5: Clean up worktrees and branches
+
+For each worktree found at Step 2, perform the following cleanup. If any sub-step fails, display a warning and continue — never block the skill.
+
+### 5.5.1: Navigate to the main repo
+
+You must leave the worktree directory before removing it:
+
+```bash
+cd {REPO_PATH}
+```
+
+### 5.5.2: Remove the worktree
+
+```bash
+git worktree remove --force {WORKTREE_PATH}
+```
+
+(`--force` because untracked files like `.env`, `node_modules`, etc. may remain)
+
+### 5.5.3: Delete the local branch
+
+```bash
+git branch -D {BRANCH_NAME} 2>/dev/null || true
+```
+
+### 5.5.4: Delete the remote branch (best-effort)
+
+```bash
+git push origin --delete {BRANCH_NAME} 2>/dev/null || true
+```
+
+(Silent if already deleted by GitHub auto-delete)
+
+### 5.5.5: Prune stale worktree references
+
+```bash
+git worktree prune
+```
+
+### Error handling
+
+If the `git worktree remove` fails, display a warning based on `.languages.discussion` and continue:
+
+#### In English (discussion: "en" or absent)
+```text
+⚠️ Could not remove worktree {WORKTREE_PATH} automatically.
+Manual cleanup: git worktree remove --force {WORKTREE_PATH}
+```
+
+#### In French (discussion: "fr")
+```text
+⚠️ Impossible de supprimer le worktree {WORKTREE_PATH} automatiquement.
+Nettoyage manuel : git worktree remove --force {WORKTREE_PATH}
+```
+
+### Multi-repo
+
+Repeat steps 5.5.1→5.5.5 for each worktree, navigating (`cd`) to the corresponding main repo each time.
+
 ## Step 6: Summary
 
 Display a summary based on `.languages.discussion`:
@@ -210,6 +270,7 @@ Display a summary based on `.languages.discussion`:
 
 🔗 PR       : #{PR_NUMBER} (merged)
 🎫 Ticket   : {TICKET-ID} → Done
+🧹 Cleanup  : Worktree removed, branch deleted
 
 You can close this agent (⌘W).
 
@@ -225,6 +286,7 @@ You can close this agent (⌘W).
 
 🔗 PR       : #{PR_NUMBER} (mergée)
 🎫 Ticket   : {TICKET-ID} → Done
+🧹 Nettoyage : Worktree supprimé, branche supprimée
 
 Tu peux fermer cet agent (⌘W).
 
@@ -246,6 +308,10 @@ PRs merged:
   • api-PROJ-123: #{PR_NUMBER_1} (merged)
   • web-PROJ-123: #{PR_NUMBER_2} (merged)
 
+Cleaned up:
+  • api-PROJ-123: worktree removed, branch deleted
+  • web-PROJ-123: worktree removed, branch deleted
+
 🎫 Ticket: {TICKET-ID} → Done
 
 You can close this agent (⌘W).
@@ -263,6 +329,10 @@ You can close this agent (⌘W).
 PRs mergées :
   • api-PROJ-123 : #{PR_NUMBER_1} (mergée)
   • web-PROJ-123 : #{PR_NUMBER_2} (mergée)
+
+Nettoyage :
+  • api-PROJ-123 : worktree supprimé, branche supprimée
+  • web-PROJ-123 : worktree supprimé, branche supprimée
 
 🎫 Ticket : {TICKET-ID} → Done
 
