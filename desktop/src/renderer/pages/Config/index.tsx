@@ -120,7 +120,7 @@ function WelcomePage() {
   }
 
   return (
-    <div className="animate-fade-in max-w-2xl mx-auto">
+    <div className="animate-fade-in max-w-[62rem] mx-auto">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-semibold mb-2">Settings</h1>

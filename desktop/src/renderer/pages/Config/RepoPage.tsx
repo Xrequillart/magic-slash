@@ -362,7 +362,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
   )
 
   return (
-    <div className="animate-fade-in max-w-2xl mx-auto pb-8">
+    <div className="animate-fade-in max-w-[62rem] mx-auto pb-8">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
