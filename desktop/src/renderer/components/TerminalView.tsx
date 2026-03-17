@@ -17,7 +17,6 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
   const fitAddonRef = useRef<FitAddon | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
   const userScrolledUpRef = useRef(false)
-  const writingRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const dragCounterRef = useRef(0)
 
@@ -146,32 +145,22 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
 
     // Track whether user has scrolled away from bottom
     const scrollHandler = xterm.onScroll(() => {
-      if (!writingRef.current) {
-        userScrolledUpRef.current = !isNearBottom(xterm)
-      }
+      userScrolledUpRef.current = !isNearBottom(xterm)
     })
 
     // First, restore the buffer BEFORE attaching the live data listener
     // This ensures we get the historical data first, then live updates
     window.electronAPI.terminal.getBuffer(terminal.id).then((buffer) => {
       if (buffer && buffer.length > 0) {
-        writingRef.current = true
         xterm.write(buffer, () => {
-          writingRef.current = false
+          xterm.scrollToBottom()
         })
-        xterm.scrollToBottom() // Always scroll on initial restore
       }
 
       // Now attach the live data listener AFTER buffer is restored
       const unsubscribe = window.electronAPI.terminal.onData(({ id, data }) => {
         if (id === terminal.id) {
-          writingRef.current = true
-          xterm.write(data, () => {
-            writingRef.current = false
-          })
-          if (!userScrolledUpRef.current) {
-            xterm.scrollToBottom()
-          }
+          xterm.write(data)
         }
       })
 
@@ -185,13 +174,7 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
       // Even if buffer fails, still attach the listener
       const unsubscribe = window.electronAPI.terminal.onData(({ id, data }) => {
         if (id === terminal.id) {
-          writingRef.current = true
-          xterm.write(data, () => {
-            writingRef.current = false
-          })
-          if (!userScrolledUpRef.current) {
-            xterm.scrollToBottom()
-          }
+          xterm.write(data)
         }
       })
 
@@ -253,12 +236,10 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
     }
   }, [isActive, terminal.id])
 
-  // Focus when active and scroll to bottom
+  // Focus when active
   useEffect(() => {
     if (isActive && xtermRef.current) {
       xtermRef.current.focus()
-      xtermRef.current.scrollToBottom()
-      userScrolledUpRef.current = false
     }
   }, [isActive])
 
