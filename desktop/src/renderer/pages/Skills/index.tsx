@@ -13,7 +13,6 @@ function SkillCard({
   badge?: { label: string; className: string }
   onClick: () => void
 }) {
-  const hasImage = 'hasImage' in skill ? skill.hasImage : false
   return (
     <button
       onClick={onClick}
