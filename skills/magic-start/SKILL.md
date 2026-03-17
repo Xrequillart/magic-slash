@@ -390,7 +390,9 @@ For each selected repo:
 cd {REPO_PATH}
 REPO_NAME=$(basename "$PWD")
 git fetch origin
-git worktree add -b feature/$TICKET_ID ../${REPO_NAME}-$TICKET_ID origin/$DEV_BRANCH
+git checkout $DEV_BRANCH
+git pull --rebase origin $DEV_BRANCH
+git worktree add -b feature/$TICKET_ID ../${REPO_NAME}-$TICKET_ID $DEV_BRANCH
 # IMPORTANT: Immediately change to the created worktree
 cd ../${REPO_NAME}-$TICKET_ID
 ```
