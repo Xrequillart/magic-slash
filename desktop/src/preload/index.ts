@@ -63,6 +63,9 @@ const configApi = {
   getBranchCommits: (path: string, targetBranch?: string) =>
     ipcRenderer.invoke('config:getBranchCommits', { path, targetBranch }),
 
+  getRemoteBranches: (path: string) =>
+    ipcRenderer.invoke('config:getRemoteBranches', { path }),
+
   getGitHubRepoUrl: (path: string) =>
     ipcRenderer.invoke('config:getGitHubRepoUrl', { path }),
 

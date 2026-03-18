@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import { execSync } from 'child_process'
+import { execSync, execFile } from 'child_process'
 
 // Get extended PATH for git commands (GUI apps on macOS don't inherit shell PATH)
 function getExtendedPath(): string {
@@ -677,5 +677,41 @@ export function getBranchCommits(repoPath: string, targetBranch?: string): Branc
   } catch (error) {
     console.error('[getBranchCommits] Error:', error)
     return { commits: [], baseBranch: '', currentBranch: '', isGitRepo: true }
+  }
+}
+
+export async function getRemoteBranches(repoPath: string): Promise<{ branches: string[]; error?: string }> {
+  try {
+    const expandedPath = repoPath.replace(/^~/, os.homedir())
+    if (!fs.existsSync(expandedPath)) {
+      return { branches: [], error: 'Path does not exist' }
+    }
+
+    // Verify it's a git repo (fast local check, sync is fine)
+    execGitSync('git rev-parse --git-dir', expandedPath)
+
+    const extendedPath = getExtendedPath()
+    const output = await new Promise<string>((resolve, reject) => {
+      execFile('/usr/bin/git', ['ls-remote', '--heads', 'origin'], {
+        cwd: expandedPath,
+        encoding: 'utf8',
+        timeout: 10000,
+        env: { ...process.env, PATH: extendedPath }
+      }, (error, stdout) => {
+        if (error) reject(error)
+        else resolve(stdout)
+      })
+    })
+
+    const branches = output
+      .split('\n')
+      .filter(Boolean)
+      .map(line => line.replace(/^.*refs\/heads\//, ''))
+      .sort()
+
+    return { branches }
+  } catch (error) {
+    console.error('[getRemoteBranches] Error:', error)
+    return { branches: [], error: String(error) }
   }
 }

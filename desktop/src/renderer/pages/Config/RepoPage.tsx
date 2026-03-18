@@ -89,6 +89,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const [templateChanged, setTemplateChanged] = useState(false)
   const [templateLoading, setTemplateLoading] = useState(true)
 
+  // Remote branches state
+  const [remoteBranches, setRemoteBranches] = useState<string[]>([])
+  const [branchesLoading, setBranchesLoading] = useState(false)
+
   // Reset form state when repoName changes
   useEffect(() => {
     const currentRepo = config?.repositories?.[repoName]
@@ -126,6 +130,17 @@ export function RepoPage({ repoName }: RepoPageProps) {
       })
     }
   }, [repoName, repo?.path, getPRTemplate])
+
+  // Fetch remote branches
+  useEffect(() => {
+    if (!repo?.path) return
+    setBranchesLoading(true)
+    window.electronAPI.config.getRemoteBranches(repo.path)
+      .then((result) => {
+        if (!result.error) setRemoteBranches(result.branches)
+      })
+      .finally(() => setBranchesLoading(false))
+  }, [repo?.path])
 
   const handlePathChange = async (value: string) => {
     setPath(value)
@@ -522,13 +537,22 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <label className="block text-sm font-medium mb-0.5">Development Branch</label>
               <p className="text-xs text-text-secondary/50">Base branch for comparing commits</p>
             </div>
-            <input
-              type="text"
-              value={branchSettings.development || ''}
-              onChange={(e) => handleBranchSettingChange('development', e.target.value)}
-              placeholder="develop"
-              className="w-52 px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
-            />
+            <div className="relative">
+              <select
+                value={branchSettings.development || ''}
+                onChange={(e) => handleBranchSettingChange('development', e.target.value)}
+                disabled={branchesLoading}
+                className="w-52 px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
+              >
+                <option value="">
+                  {branchesLoading ? 'Loading...' : 'Select branch'}
+                </option>
+                {remoteBranches.map((branch) => (
+                  <option key={branch} value={branch}>{branch}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+            </div>
           </div>
         </div>
       </div>

@@ -28,7 +28,8 @@ import {
   getGitHubRepoUrl,
   getPRTemplate,
   createPRTemplate,
-  updatePRTemplate
+  updatePRTemplate,
+  getRemoteBranches
 } from '../config/validation'
 import {
   getCommandHistory,
@@ -162,6 +163,11 @@ export function setupConfigHandlers() {
   // Get branch commits (commits on current branch vs base branch)
   ipcMain.handle('config:getBranchCommits', async (_event, { path, targetBranch }) => {
     return getBranchCommits(path, targetBranch)
+  })
+
+  // Get remote branches
+  ipcMain.handle('config:getRemoteBranches', async (_event, { path }) => {
+    return getRemoteBranches(path)
   })
 
   // Get GitHub repo URL from remote
