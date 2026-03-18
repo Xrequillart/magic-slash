@@ -17,7 +17,9 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
   const fitAddonRef = useRef<FitAddon | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
   const userScrolledUpRef = useRef(false)
+  const inAlternateScreenRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [showScrollButton, setShowScrollButton] = useState(false)
   const dragCounterRef = useRef(0)
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -135,17 +137,21 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
     // Handle user input
     xterm.onData((data) => {
       window.electronAPI.terminal.write(terminal.id, data)
+      userScrolledUpRef.current = false
+      setShowScrollButton(false)
     })
 
     // Check if user is near the bottom of the terminal
     const isNearBottom = (t: Terminal): boolean => {
       const buf = t.buffer.active
-      return buf.viewportY >= buf.baseY - 3
+      return buf.viewportY >= buf.baseY - 5
     }
 
     // Track whether user has scrolled away from bottom
     const scrollHandler = xterm.onScroll(() => {
-      userScrolledUpRef.current = !isNearBottom(xterm)
+      const scrolledUp = !isNearBottom(xterm)
+      userScrolledUpRef.current = scrolledUp
+      setShowScrollButton(scrolledUp)
     })
 
     // First, restore the buffer BEFORE attaching the live data listener
@@ -160,7 +166,26 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
       // Now attach the live data listener AFTER buffer is restored
       const unsubscribe = window.electronAPI.terminal.onData(({ id, data }) => {
         if (id === terminal.id) {
-          xterm.write(data)
+          // Detect alternate screen buffer transitions
+          if (data.includes('\x1b[?1049h') || data.includes('\x1b[?47h')) {
+            inAlternateScreenRef.current = true
+          }
+          if (data.includes('\x1b[?1049l') || data.includes('\x1b[?47l')) {
+            inAlternateScreenRef.current = false
+            userScrolledUpRef.current = false
+            setShowScrollButton(false)
+          }
+          // Detect screen clear
+          if (data.includes('\x1b[2J')) {
+            userScrolledUpRef.current = false
+            setShowScrollButton(false)
+          }
+
+          xterm.write(data, () => {
+            if (!userScrolledUpRef.current && !inAlternateScreenRef.current) {
+              xterm.scrollToBottom()
+            }
+          })
         }
       })
 
@@ -174,7 +199,24 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
       // Even if buffer fails, still attach the listener
       const unsubscribe = window.electronAPI.terminal.onData(({ id, data }) => {
         if (id === terminal.id) {
-          xterm.write(data)
+          if (data.includes('\x1b[?1049h') || data.includes('\x1b[?47h')) {
+            inAlternateScreenRef.current = true
+          }
+          if (data.includes('\x1b[?1049l') || data.includes('\x1b[?47l')) {
+            inAlternateScreenRef.current = false
+            userScrolledUpRef.current = false
+            setShowScrollButton(false)
+          }
+          if (data.includes('\x1b[2J')) {
+            userScrolledUpRef.current = false
+            setShowScrollButton(false)
+          }
+
+          xterm.write(data, () => {
+            if (!userScrolledUpRef.current && !inAlternateScreenRef.current) {
+              xterm.scrollToBottom()
+            }
+          })
         }
       })
 
@@ -272,6 +314,18 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
         ref={containerRef}
         className="w-full h-full bg-black/30 backdrop-blur-md p-2"
       />
+      {showScrollButton && (
+        <button
+          onClick={() => {
+            xtermRef.current?.scrollToBottom()
+            userScrolledUpRef.current = false
+            setShowScrollButton(false)
+          }}
+          className="absolute bottom-4 right-4 z-20 bg-white/10 hover:bg-white/20 text-white/70 px-3 py-1.5 rounded-full text-xs backdrop-blur-sm transition-all duration-200"
+        >
+          Scroll to bottom
+        </button>
+      )}
       {isDragOver && (
         <div className="absolute inset-0 drop-overlay border-2 border-dashed rounded-lg flex items-center justify-center pointer-events-none z-10">
           <span className="text-white/80 text-sm font-medium bg-black/50 px-4 py-2 rounded-lg backdrop-blur-sm">

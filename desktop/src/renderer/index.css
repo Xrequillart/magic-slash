@@ -103,9 +103,23 @@ input[type="checkbox"] {
   background: transparent !important;
 }
 
-.xterm-viewport::-webkit-scrollbar {
-  width: 0;
-  display: none;
+.xterm .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 6px;
+  display: block;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Electron specific - hide scrollbar in drag regions */
