@@ -6,11 +6,11 @@ allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 
 # magic-slash v0.22.0 - /done
 
-> **IMPORTANT**: You MUST follow EACH step of this skill in order. Do not skip any step and do not take shortcuts. Each step is essential for the proper functioning of the workflow.
->
-> **NOTE**: This is a post-merge finalization skill. It verifies the PR is merged, updates the Jira ticket to "Done", updates the desktop metadata, and cleans up local worktrees and branches.
+> The steps below must be executed in order because each one depends on the previous result — for example, cleanup must only happen after confirming the merge, and the Jira transition must happen before the summary so it can reflect the actual state.
 
-You are an assistant that finalizes a task after the PR has been merged: verifying the merge, transitioning the Jira ticket to "Done", and updating the desktop agent status.
+You are an assistant that finalizes a task after the PR has been merged. The goal is to close the loop cleanly: confirm nothing is left dangling (unmerged PRs, open tickets, stale branches). This matters because abandoned worktrees and forgotten Jira tickets accumulate quickly and create confusion for the whole team.
+
+The flow is: **verify merge → update tracker → update desktop → clean up → report**. Each step feeds into the next — the merge check determines whether to proceed at all, the tracker update captures the PR links, the cleanup removes local artifacts, and the summary reflects what actually happened.
 
 ## Configuration
 
@@ -78,7 +78,7 @@ The worktree name follows the pattern `{repo-name}-{TICKET-ID}` (e.g.: `my-api-P
 
 Extract the TICKET-ID using the pattern:
 
-- **Jira**: `[A-Z]+-\d+` (e.g.: `PROJ-123`, `ABC-456`)
+- **Jira**: Extract the **last** `[A-Z]+-\d+` match from the directory name. This avoids false positives when the repo name itself contains uppercase segments (e.g.: `my-API-PROJ-123` → `PROJ-123`, not `API-PROJ`). You can also cross-reference with the repo name from `config.json` to strip it and isolate the ticket ID.
 - **GitHub**: the last numeric segment after the repo name (e.g.: `123` in `my-api-123`)
 
 If no ID is detected (you are in a regular repo, not a worktree), extract it from the branch name:
@@ -108,6 +108,8 @@ For each found worktree, find the associated PR:
 1. Get the branch name: `git -C {WORKTREE_PATH} branch --show-current`
 2. Use `mcp__github__list_pull_requests` to find the PR (search by head branch, state: all)
 3. If no match by branch, search by title containing the ticket ID
+4. If still no match, search by recent commit messages containing the ticket ID
+5. If no PR is found after all attempts, ask the user for the PR number or URL
 
 ## Step 3: Verify PR is merged
 
@@ -138,6 +140,10 @@ Merci de merger la PR sur GitHub d'abord, puis relance /magic-done.
 ### If the PR IS merged
 
 Continue to the next steps.
+
+### Multi-repo: partial merge
+
+If some PRs are merged and others are not, display a warning listing which PRs are still open, and **only proceed with the merged ones**. Do not transition Jira to "Done" unless ALL associated PRs are merged — the ticket should stay in its current state until the full work is complete. Continue with cleanup only for the merged worktrees.
 
 ## Step 4: Update the Jira/GitHub ticket
 
@@ -179,6 +185,12 @@ If the "Done" transition doesn't exist, try:
 - "Terminé"
 - "Complete"
 
+### Edge cases
+
+- **Ticket already in "Done"/"Closed"**: Skip the transition silently — just add the comment (if enabled). Do not treat this as an error.
+- **Transition fails (permissions, custom workflow)**: Display a warning with the error, add the comment anyway, and continue to cleanup. The user can manually transition the ticket later.
+- **No Jira/GitHub issue found**: Skip this step entirely and continue to cleanup. Warn the user that no ticket was updated.
+
 ### For GitHub issues
 
 If the ticket is a GitHub issue, add a comment (do NOT close the issue — let the PR auto-close handle it):
@@ -187,9 +199,9 @@ If the ticket is a GitHub issue, add a comment (do NOT close the issue — let t
 ✅ Task completed — PR #{PR_NUMBER} merged.
 ```
 
-## Step 5: Update Magic Slash metadata
+## Step 5: Update Magic Slash metadata (desktop app only)
 
-Update the desktop agent status to "PR merged" and update the title:
+This step only applies when the Magic Slash desktop app is running (the environment variables `MAGIC_SLASH_PORT` and `MAGIC_SLASH_TERMINAL_ID` are set). If they are not set, skip this step silently.
 
 ```bash
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(echo -n 'Done - {TICKET_ID}' | jq -sRr @uri)&status=PR%20merged" > /dev/null 2>&1 || true
@@ -199,7 +211,17 @@ Replace `{TICKET_ID}` with the actual ticket ID.
 
 ## Step 5.5: Clean up worktrees and branches
 
-For each worktree found at Step 2, perform the following cleanup. If any sub-step fails, display a warning and continue — never block the skill.
+Before proceeding, check each worktree for uncommitted changes:
+
+```bash
+git -C {WORKTREE_PATH} status --porcelain
+```
+
+If there are uncommitted changes, warn the user and **ask for confirmation** before removing that worktree. List the dirty files so the user can decide. If the user declines, skip cleanup for that worktree and continue with the others.
+
+For each worktree found at Step 2 (that the user confirmed or that is clean), perform the following cleanup. If any sub-step fails, display a warning and continue — never block the skill.
+
+Track the cleanup outcome for each worktree (success / skipped / failed) — this will be used in the summary.
 
 ### 5.5.1: Navigate to the main repo
 
@@ -259,7 +281,14 @@ Repeat steps 5.5.1→5.5.5 for each worktree, navigating (`cd`) to the correspon
 
 ## Step 6: Summary
 
-Display a summary based on `.languages.discussion`:
+Display a summary based on `.languages.discussion`. The summary must reflect what **actually happened** — adapt each line based on the real outcome of the previous steps.
+
+### Dynamic fields
+
+| Field | Success | Skipped / Partial | Failed |
+|-------|---------|-------------------|--------|
+| Ticket | `{TICKET-ID} → Done` | `{TICKET-ID} → already Done` or `{TICKET-ID} → ⚠️ transition skipped` | `{TICKET-ID} → ⚠️ transition failed` |
+| Cleanup | `Worktree removed, branch deleted` | `⚠️ Skipped (uncommitted changes)` | `⚠️ Failed (see warning above)` |
 
 ### In English (discussion: "en" or absent)
 
@@ -269,8 +298,8 @@ Display a summary based on `.languages.discussion`:
 ✅ Task finalized for {TICKET-ID}
 
 🔗 PR       : #{PR_NUMBER} (merged)
-🎫 Ticket   : {TICKET-ID} → Done
-🧹 Cleanup  : Worktree removed, branch deleted
+🎫 Ticket   : {TICKET_STATUS}
+🧹 Cleanup  : {CLEANUP_STATUS}
 
 You can close this agent (⌘W).
 
@@ -285,8 +314,8 @@ You can close this agent (⌘W).
 ✅ Tâche finalisée pour {TICKET-ID}
 
 🔗 PR       : #{PR_NUMBER} (mergée)
-🎫 Ticket   : {TICKET-ID} → Done
-🧹 Nettoyage : Worktree supprimé, branche supprimée
+🎫 Ticket   : {TICKET_STATUS}
+🧹 Nettoyage : {CLEANUP_STATUS}
 
 Tu peux fermer cet agent (⌘W).
 
@@ -297,6 +326,8 @@ Tu peux fermer cet agent (⌘W).
 
 If multiple PRs were found across worktrees, display a combined summary based on `.languages.discussion`:
 
+Adapt the cleanup and ticket lines using the same dynamic fields from Step 6.
+
 ### In English (discussion: "en" or absent)
 
 ```text
@@ -304,15 +335,15 @@ If multiple PRs were found across worktrees, display a combined summary based on
 
 ✅ Task finalized for {TICKET-ID} (Full-Stack)
 
-PRs merged:
+PRs:
   • api-PROJ-123: #{PR_NUMBER_1} (merged)
   • web-PROJ-123: #{PR_NUMBER_2} (merged)
 
-Cleaned up:
-  • api-PROJ-123: worktree removed, branch deleted
-  • web-PROJ-123: worktree removed, branch deleted
+Cleanup:
+  • api-PROJ-123: {CLEANUP_STATUS}
+  • web-PROJ-123: {CLEANUP_STATUS}
 
-🎫 Ticket: {TICKET-ID} → Done
+🎫 Ticket: {TICKET_STATUS}
 
 You can close this agent (⌘W).
 
@@ -326,15 +357,15 @@ You can close this agent (⌘W).
 
 ✅ Tâche finalisée pour {TICKET-ID} (Full-Stack)
 
-PRs mergées :
+PRs :
   • api-PROJ-123 : #{PR_NUMBER_1} (mergée)
   • web-PROJ-123 : #{PR_NUMBER_2} (mergée)
 
 Nettoyage :
-  • api-PROJ-123 : worktree supprimé, branche supprimée
-  • web-PROJ-123 : worktree supprimé, branche supprimée
+  • api-PROJ-123 : {CLEANUP_STATUS}
+  • web-PROJ-123 : {CLEANUP_STATUS}
 
-🎫 Ticket : {TICKET-ID} → Done
+🎫 Ticket : {TICKET_STATUS}
 
 Tu peux fermer cet agent (⌘W).
 
