@@ -4,7 +4,7 @@ description: This skill should be used when the user says "done", "terminé", "I
 allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 ---
 
-# magic-slash v0.21.1 - /pr
+# magic-slash v0.22.0 - /pr
 
 > **IMPORTANT**: You MUST follow EACH step of this skill in order. Do not skip any step and do not take shortcuts. Each step is essential for the proper functioning of the workflow.
 >

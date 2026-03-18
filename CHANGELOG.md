@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-03-18
+
+### Changed
+
+- **Desktop**: Replace development branch text input with a select dropdown listing remote branches via `git ls-remote --heads origin` (async, non-blocking)
+
 ## [0.21.1] - 2026-03-18
 
 ### Fixed
@@ -692,6 +698,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.22.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.22.0
 [0.21.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.21.1
 [0.21.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.21.0
 [0.20.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.20.2
