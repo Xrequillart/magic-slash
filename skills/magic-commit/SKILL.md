@@ -1,66 +1,48 @@
 ---
 name: magic-commit
-description: This skill should be used when the user says "commit", "je suis prêt à committer", "on commit", "create a commit", "faire un commit", "committer les changements", "save my changes", "enregistrer mes changements", "prêt à committer", "ready to commit", or indicates they want to save their current changes as a commit.
+description: This skill should be used when the user says "commit", "je suis pret a committer", "on commit", "create a commit", "faire un commit", "committer les changements", "save my changes", "enregistrer mes changements", "pret a committer", "ready to commit", or indicates they want to save their current changes as a commit.
 allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep
 ---
 
 # magic-slash v0.22.0 - /commit
 
-> **IMPORTANT**: You MUST follow EACH step of this skill in order. Do not skip any step and do not take shortcuts. Each step is essential for the proper functioning of the workflow.
->
-> **CRITICAL STEPS THAT MUST NEVER BE SKIPPED**:
-> - **Step 6.1**: Update Magic Slash status (curl) - MANDATORY
-
 You are an assistant that creates atomic commits with conventional messages.
 
-> **ATOMIC COMMITS**: You must always aim for atomic commits (one commit = one logical unit of change). If you detect that the staged changes concern multiple distinct features, you MUST split them into multiple commits. Do not ask for permission, just do it. This is a best practice that the user expects from you.
+Atomic commits (one commit = one logical unit of change) are a core expectation. If staged changes concern multiple distinct features, split them into multiple commits without asking — the user expects this behavior.
 
-## Step 0.0: Check configuration
+## Bundled references
 
-Before starting, verify that the Magic Slash configuration exists:
+- `references/messages.md` — All bilingual message templates (EN/FR). Read this file to get the exact wording for user-facing messages.
+- `references/node-setup.md` — Node.js version manager detection (nvm/fnm/volta). Read this before any Node.js-dependent command.
+- `references/glossary.md` — EN/FR terminology reference.
+
+---
+
+## Step 0: Configuration and setup
+
+### 0.1: Check configuration
 
 ```bash
 CONFIG_FILE=~/.config/magic-slash/config.json
 if [ ! -f "$CONFIG_FILE" ]; then
-  # Display error based on system language
+  echo "CONFIG_MISSING"
+else
+  cat "$CONFIG_FILE"
 fi
 ```
 
-### If the config does not exist
+If the config does not exist, display the error message from `references/messages.md` (section "Config not found") and stop.
 
-#### In English
-```text
-❌ Magic Slash configuration not found
+### 0.2: Determine languages
 
-Please create the config file at:
-  ~/.config/magic-slash/config.json
+From the config, identify the current repo by comparing `$PWD` with paths in `.repositories`:
 
-See documentation: https://github.com/magic-slash/config
-```
+- `discussion`: `.repositories.<name>.languages.discussion` (default `"en"`) — language for your responses
+- `commit`: `.repositories.<name>.languages.commit` (default `"en"`) — language for commit messages
 
-#### In French
-```text
-❌ Configuration Magic Slash introuvable
+All user-facing messages below use the `discussion` language. Refer to `references/messages.md` for exact templates.
 
-Veuillez créer le fichier de configuration :
-  ~/.config/magic-slash/config.json
-
-Voir la documentation : https://github.com/magic-slash/config
-```
-
-## Language configuration
-
-Read `~/.config/magic-slash/config.json` and determine the language for your responses:
-
-1. Identify the current repo by comparing `$PWD` with the paths in `.repositories`
-2. Read `.repositories.<name>.languages.discussion`, default `"en"`
-
-- `discussion`: Language for your responses to the user (`"en"` or `"fr"`)
-- `commit`: Language for commit messages (`.repositories.<name>.languages.commit` or `"en"`)
-
-## Step 0: Detect multi-repo worktrees
-
-### 0.1: Extract the ticket ID from the current worktree
+### 0.3: Detect multi-repo worktrees (skip if not in a worktree)
 
 Get the current directory name and extract the ticket ID:
 
@@ -68,163 +50,32 @@ Get the current directory name and extract the ticket ID:
 basename "$PWD"
 ```
 
-The worktree name follows the pattern `{repo-name}-{TICKET-ID}` (e.g.: `my-api-PROJ-123`, `my-web-PROJ-123`).
+The worktree name follows `{repo-name}-{TICKET-ID}`. Extract the ticket ID:
+- **Jira**: `[A-Z]+-\d+` (e.g.: `PROJ-123`)
+- **GitHub**: last numeric segment after the repo name (e.g.: `123`)
 
-Extract the TICKET-ID using the pattern:
+**If no ticket ID is detected** (regular repo, not a worktree), skip directly to **Step 1**. This is the most common case — the skill should get to the actual commit workflow as fast as possible.
 
-- **Jira**: `[A-Z]+-\d+` (e.g.: `PROJ-123`, `ABC-456`)
-- **GitHub**: the last numeric segment after the repo name (e.g.: `123` in `my-api-123`)
-
-If no ID is detected (you are in a regular repo, not a worktree), skip directly to **Step 1**.
-
-### 0.2: Read the repos configuration
+If a ticket ID is found, search for sibling worktrees across configured repos:
 
 ```bash
-cat ~/.config/magic-slash/config.json
-```
-
-Retrieve the list of configured repos with their paths:
-
-```json
-{
-  "repositories": {
-    "api": {"path": "/path/to/api", "keywords": [...]},
-    "web": {"path": "/path/to/web", "keywords": [...]}
-  }
-}
-```
-
-### 0.3: Search for associated worktrees
-
-For each configured repo, check if a worktree with the same TICKET-ID exists:
-
-```bash
+# For each configured repo path, check if a matching worktree exists
 ls -d {REPO_PATH}-{TICKET_ID} 2>/dev/null
 ```
 
-For example, if TICKET-ID = `PROJ-123` and the repos are `/projects/api` and `/projects/web`, search for:
-
-- `/projects/api-PROJ-123`
-- `/projects/web-PROJ-123`
-
-Collect all found worktrees.
-
-### 0.4: Check changes in each worktree
-
-For each found worktree, check if there are changes:
+For each found worktree, check for changes:
 
 ```bash
 git -C {WORKTREE_PATH} status --porcelain
 ```
 
-Keep only the worktrees that have modifications.
+If multiple worktrees have changes, display the multi-repo summary (see `references/messages.md`), then execute Steps 1-6 for each worktree sequentially, changing directory before each cycle.
 
-### 0.5: Summary and confirmation
+### 0.4: Detect Node.js version
 
-If multiple worktrees have changes, display a summary based on `.languages.discussion`:
+Read `references/node-setup.md` and follow its instructions to detect and store `$NODE_PREFIX`. This prefix must be prepended to any Node.js-dependent command (git commit with hooks, npx, npm, etc.).
 
-#### In English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🔄 Multi-repo commits detected for {TICKET-ID}
-
-Worktrees with changes:
-  • /projects/api-PROJ-123 (3 files modified)
-  • /projects/web-PROJ-123 (5 files modified)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-#### In French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🔄 Commits multi-repo détectés pour {TICKET-ID}
-
-Worktrees avec des changements :
-  • /projects/api-PROJ-123 (3 fichiers modifiés)
-  • /projects/web-PROJ-123 (5 fichiers modifiés)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-Then execute **Steps 1 to 6** for EACH worktree that has changes.
-Change directory before each cycle:
-
-```bash
-cd {WORKTREE_PATH}
-```
-
-At the end of each commit, display a confirmation before moving to the next worktree.
-
-## Step 0.6: Detect and activate Node.js version
-
-Before executing any command that depends on Node.js (git commit with pre-commit hooks, npm/yarn/pnpm commands, npx), detect if the current worktree requires a specific Node.js version.
-
-**For multi-repo**: Re-execute this step each time you switch to a different worktree, as each repo may require a different Node.js version.
-
-### 0.6.1: Detect the version file and version manager
-
-```bash
-if [ -f ".nvmrc" ] || [ -f ".node-version" ]; then
-  if [ -f "$HOME/.nvm/nvm.sh" ]; then
-    echo "NVM"
-  elif [ -d "$HOME/.local/share/fnm" ] || [ -d "$HOME/.fnm" ]; then
-    echo "FNM"
-  else
-    echo "NO_MANAGER"
-  fi
-elif [ -f "package.json" ] && grep -q '"volta"' package.json 2>/dev/null; then
-  echo "VOLTA"
-else
-  echo "NONE"
-fi
-```
-
-### 0.6.2: Store the activation prefix
-
-Based on the detection result, store the activation prefix as `$NODE_PREFIX`:
-
-| Result | `$NODE_PREFIX` | Notes |
-| ------ | -------------- | ----- |
-| `NVM` | `source ~/.nvm/nvm.sh && nvm use &&` | Activates nvm and switches to the version in `.nvmrc` |
-| `FNM` | `eval "$(fnm env)" && fnm use &&` | Activates fnm and switches to the version in `.node-version` |
-| `VOLTA` | *(empty)* | Volta uses shims, no activation needed |
-| `NONE` | *(empty)* | No version file found, use system Node |
-| `NO_MANAGER` | *(empty)* | Display warning (see below) |
-
-### 0.6.3: Warning if no manager found
-
-If a `.nvmrc` or `.node-version` file exists but no version manager is detected (`NO_MANAGER`):
-
-#### In English
-```text
-⚠️ Node.js version file detected (.nvmrc/.node-version) but no version manager (nvm/fnm) found.
-Commands will use the system Node.js version.
-```
-
-#### In French
-```text
-⚠️ Fichier de version Node.js détecté (.nvmrc/.node-version) mais aucun gestionnaire de version (nvm/fnm) trouvé.
-Les commandes utiliseront la version Node.js du système.
-```
-
-### Usage
-
-For all subsequent bash commands that depend on Node.js, **prepend `$NODE_PREFIX`**:
-
-```bash
-# Instead of:
-git commit -m "message"
-
-# Use (if $NODE_PREFIX is set):
-source ~/.nvm/nvm.sh && nvm use && git commit -m "message"
-```
-
-If `$NODE_PREFIX` is empty, run commands normally without any prefix.
+For multi-repo setups, re-run this detection when switching worktrees — each repo may need a different Node.js version.
 
 ---
 
@@ -234,9 +85,11 @@ If `$NODE_PREFIX` is empty, run commands normally without any prefix.
 git status
 ```
 
-If no modifications are detected, inform the user that there is nothing to commit.
+If no modifications are detected, inform the user and stop.
 
-## Step 2: Display and confirm files to stage
+---
+
+## Step 2: Stage files safely
 
 ### 2.1: Display modified files
 
@@ -244,366 +97,154 @@ If no modifications are detected, inform the user that there is nothing to commi
 git status --porcelain
 ```
 
-### 2.2: Check for sensitive files
+### 2.2: Check for sensitive and problematic files
 
-Check if potentially sensitive files are present:
+Scan for files that should not be committed:
+
+**Sensitive files** (secrets, credentials):
 - `.env`, `.env.*`
 - `credentials.*`, `secrets.*`
 - `*.pem`, `*.key`
-- `node_modules/`, `vendor/`
 
-If detected, display a warning based on `.languages.discussion`:
+**Problematic files** (bloat, dependencies):
+- `node_modules/`, `vendor/`, `.next/`, `dist/`
+- Binary files larger than 5MB (check with `find . -size +5M -not -path './.git/*'`)
 
-#### In English
-```text
-⚠️ Potentially sensitive files detected:
-  • .env.local
-  • credentials.json
-
-These files will NOT be staged. Continue? (Ctrl+C to abort)
-```
-
-#### In French
-```text
-⚠️ Fichiers potentiellement sensibles détectés :
-  • .env.local
-  • credentials.json
-
-Ces fichiers ne seront PAS stagés. Continuer ? (Ctrl+C pour abandonner)
-```
+If any are detected, warn the user (see `references/messages.md`) and exclude them from staging.
 
 ### 2.3: Stage safe files
 
 ```bash
 git add -A
-git reset HEAD -- .env* credentials* secrets* *.pem *.key 2>/dev/null || true
+# Unstage sensitive files — these patterns act as a safety net even if .gitignore is misconfigured
+git reset HEAD -- .env* credentials* secrets* *.pem *.key node_modules/ vendor/ 2>/dev/null || true
 ```
+
+If the user wants to commit only a subset of files (e.g., they mentioned specific files or said "just commit X"), stage only those files instead of using `git add -A`.
+
+---
 
 ## Step 3: Analyze the modifications
 
+### 3.1: Get the diff
+
+For large changesets, start with a summary to avoid flooding the context:
+
 ```bash
-git diff --cached
+DIFF_LINES=$(git diff --cached --stat | tail -1)
+echo "$DIFF_LINES"
 ```
 
-Analyze the modified files to understand the nature of the changes.
+If the diff exceeds ~500 lines, use `git diff --cached --stat` first to understand the scope, then read only the relevant files in detail. For smaller diffs, use `git diff --cached` directly.
 
-## Step 3.1: Atomic commits - Automatic split
+### 3.2: Atomic commits — automatic split
 
-> **IMPORTANT**: You must create atomic commits. If the changes are not cohesive, you MUST split them **without asking for permission**.
+Analyze whether the staged changes should be split. A split is necessary when:
 
-Analyze whether the staged changes should be split into multiple commits. **A split is MANDATORY** if:
-
-- The modifications concern multiple distinct features
+- Modifications concern multiple distinct features
 - There is a mix of different types (e.g.: `feat` + `fix` + `chore`)
-- The changes affect independent scopes/modules
-- The logical cohesion of the changes is low
+- Changes affect independent scopes/modules
+- The logical cohesion is low
 
-**Exception**: If the user has explicitly requested a single commit (e.g.: "commit tout ensemble", "single commit", "un seul commit"), do NOT split.
+**Exception**: If the user explicitly requested a single commit (e.g.: "tout ensemble", "single commit", "un seul commit", "all together", "no split"), respect that and create one commit.
 
-**How to detect**: Look in the conversation context for whether the user mentioned:
-- "single commit", "one commit", "un seul commit"
-- "tout ensemble", "all together"
-- "no split", "pas de split"
+If a split is needed, proceed directly — this is expected behavior, not something that needs permission:
 
-If detected → Create a single commit even if the split criteria are met.
-
-**If a split is necessary**, proceed directly based on `.languages.discussion`:
-
-### In English (discussion: "en" or absent)
-
-1. **Announce** that you will create multiple atomic commits (don't ask, inform)
-2. Briefly describe each commit you will create (type, scope, description)
-3. **Execute the split**:
-   - Unstage all files: `git reset HEAD`
-   - For each logical commit:
-     - Stage only the relevant files: `git add <files>`
-     - Create the commit with its appropriate message
-     - Display confirmation for each commit created
-   - Continue until all changes are committed
+1. Announce the split plan (how many commits, what each covers)
+2. Unstage all: `git reset HEAD`
+3. For each logical group:
+   - Stage the relevant files: `git add <files>`
+   - Create the commit (following Step 4 for the message)
+   - Display confirmation
 4. Display a summary of all commits created
 
-**Example output:**
-```text
-🔀 Multiple logical changes detected - Creating atomic commits...
-
-Commit 1/3: feat(auth): add login validation
-  → src/auth.ts, src/validators.ts
-
-Commit 2/3: fix(api): correct error handling
-  → src/api/errors.ts
-
-Commit 3/3: chore(deps): update dependencies
-  → package.json, package-lock.json
-
-✅ 3 atomic commits created successfully
-```
-
-### In French (discussion: "fr")
-
-1. **Announce** that you will create multiple atomic commits (don't wait, inform)
-2. Briefly describe each commit you will create (type, scope, description)
-3. **Execute the split**:
-   - Unstage all files: `git reset HEAD`
-   - For each logical commit:
-     - Stage only the relevant files: `git add <files>`
-     - Create the commit with its appropriate message
-     - Display confirmation for each commit created
-   - Continue until all changes are committed
-4. Display a summary of all commits created
-
-**Example output:**
-```text
-🔀 Plusieurs changements logiques détectés - Création de commits atomiques...
-
-Commit 1/3 : feat(auth): add login validation
-  → src/auth.ts, src/validators.ts
-
-Commit 2/3 : fix(api): correct error handling
-  → src/api/errors.ts
-
-Commit 3/3 : chore(deps): update dependencies
-  → package.json, package-lock.json
-
-✅ 3 commits atomiques créés avec succès
-```
-
-**If the changes are cohesive** (single type, single scope, single feature): Continue directly to step 4 to create a single commit.
+---
 
 ## Step 4: Generate the commit message
 
-Generate a commit message following these rules:
+### 4.1: Read commit parameters from config
 
-### 4.1: Read the configuration
+The config was already loaded in Step 0.2. Extract these parameters (repo config overrides global):
 
-Read `~/.config/magic-slash/config.json` and identify the current repo by comparing `$PWD` with the paths in `.repositories`.
-
-For each parameter, check the repo config first, then the global config:
-
-| Parameter         | Repo path                                     | Default         |
-| ----------------- | --------------------------------------------- | --------------- |
-| Language          | `.repositories.<name>.languages.commit`       | `"en"`          |
-| Style             | `.repositories.<name>.commit.style`           | `"single-line"` |
-| Format            | `.repositories.<name>.commit.format`          | `"angular"`     |
-| Co-Author         | `.repositories.<name>.commit.coAuthor`        | `false`         |
-| Include Ticket ID | `.repositories.<name>.commit.includeTicketId` | `false`         |
+| Parameter | Config path | Default |
+| --------- | ----------- | ------- |
+| Language | `.repositories.<name>.languages.commit` | `"en"` |
+| Style | `.repositories.<name>.commit.style` | `"single-line"` |
+| Format | `.repositories.<name>.commit.format` | `"angular"` |
+| Co-Author | `.repositories.<name>.commit.coAuthor` | `false` |
+| Include Ticket ID | `.repositories.<name>.commit.includeTicketId` | `false` |
 
 ### 4.2: Apply the style
 
-**Style `single-line`** (default):
+**`single-line`** (default): message on a single line, no body, max ~72 characters.
 
-- Message on a SINGLE LINE
-- No line break, no body
-- Max ~72 characters
-
-**Style `multi-line`**:
-
-- First line: short title (max 50 characters)
-- Empty line
-- Body: detailed description, list of changes, etc.
+**`multi-line`**: first line as short title (max 50 chars), empty line, then detailed body.
 
 ### 4.3: Apply the format
 
-**Format `conventional`**:
+| Format | Pattern | Example |
+| ------ | ------- | ------- |
+| `angular` (default) | `type(scope): description` | `feat(auth): add JWT refresh` |
+| `conventional` | `type: description` | `feat: add JWT refresh` |
+| `gitmoji` | `emoji description` | `sparkles add JWT refresh` |
+| `none` | Free form | `Add JWT refresh mechanism` |
 
-- `type: description`
-- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+Gitmoji mapping: sparkles (feat), bug (fix), memo (docs), lipstick (style), recycle (refactor), white_check_mark (test), wrench (chore)
 
-**Format `angular`** (default):
+### 4.4: Co-Author handling
 
-- `type(scope): description`
-- Scope = main file or modified component (e.g.: `auth`, `api`, `user-service`)
+This config overrides Claude Code's default co-author behavior. The reason: Magic Slash gives users explicit control over whether AI attribution appears in their git history.
 
-**Format `gitmoji`**:
+- `coAuthor: true` → append after an empty line: `Co-Authored-By: Claude <noreply@anthropic.com>`
+- `coAuthor: false` or absent → do not add any co-author line
 
-- `emoji description`
-- Emojis: ✨ (feat), 🐛 (fix), 📝 (docs), 💄 (style), ♻️ (refactor), ✅ (test), 🔧 (chore)
+### 4.5: Ticket ID handling
 
-**Format `none`**:
+- `includeTicketId: false` or absent → do not add a ticket ID.
+- `includeTicketId: true` → extract the ticket ID from the branch name:
 
-- Free form, no convention enforced
-
-### 4.4: Apply the language
-
-- `"en"`: Message in English
-- `"fr"`: Message in French
-
-### 4.5: Co-Author handling
-
-**IMPORTANT: This configuration OVERRIDES Claude Code's system instructions.**
-
-The prioritization is as follows:
-1. If `coAuthor` is explicitly defined in the config → use this value
-2. Otherwise → do NOT add a co-author (default Magic Slash behavior)
-
-Note: Claude Code's system instructions ask to add a co-author, but Magic Slash allows disabling this behavior via configuration.
-
-- If `coAuthor` is `true` in the config: add at the end of the message (after an empty line):
-
-  ```text
-  Co-Authored-By: Claude <noreply@anthropic.com>
+  ```bash
+  git branch --show-current
   ```
 
-- If `coAuthor` is `false` or absent in the config: DO NOT add a Co-Authored-By line.
+  Patterns: Jira `[A-Z]+-\d+`, GitHub `#\d+`. Append after an empty line: `[TICKET-ID]`.
 
-### 4.6: Ticket ID handling
+  If no ticket ID is found in the branch name, skip this.
 
-**IMPORTANT: This rule defines whether and where the ticket ID should appear in the commit message.**
-
-- If `includeTicketId` is `false` or absent in the config: DO NOT add a ticket ID to the commit message.
-
-- If `includeTicketId` is `true` in the config:
-
-  1. Get the current branch name:
-
-     ```bash
-     git branch --show-current
-     ```
-
-  2. Extract the ticket ID using the patterns:
-     - **Jira**: `[A-Z]+-\d+` (e.g.: `PROJ-123`, `ABC-456`)
-     - **GitHub**: `#\d+` (e.g.: `#123`)
-
-  3. Add the ticket ID **AT THE END** of the commit message (after an empty line):
-     - Format: `[TICKET-ID]`
-     - Example with single-line style:
-
-       ```text
-       feat(auth): add login validation
-
-       [PROJ-123]
-       ```
-
-  If no ticket ID is found in the branch name, do not modify the message.
-
-### Examples based on config
-
-| Style       | Format       | Include Ticket ID | Example                                                        |
-| ----------- | ------------ | ----------------- | -------------------------------------------------------------- |
-| single-line | conventional | false             | `feat: add JWT token refresh mechanism`                        |
-| single-line | angular      | false             | `feat(auth): add JWT token refresh mechanism`                  |
-| single-line | angular      | true              | `feat(auth): add JWT token refresh mechanism` + `[PROJ-123]`   |
-| single-line | gitmoji      | false             | `✨ add JWT token refresh mechanism`                           |
-| single-line | gitmoji      | true              | `✨ add JWT token refresh mechanism` + `[PROJ-123]`            |
-| multi-line  | angular      | false             | Title + detailed body                                          |
-| multi-line  | angular      | true              | Title + detailed body + `[PROJ-123]` at the end                |
+---
 
 ## Step 5: Create the commit
 
-> **Node.js version**: If `$NODE_PREFIX` was determined in Step 0.6, prepend it to the `git commit` command so that pre-commit hooks (lint, format, tests) run with the correct Node.js version.
+Prepend `$NODE_PREFIX` (from Step 0.4) if set, so pre-commit hooks run with the correct Node.js version.
 
 ```bash
-# If $NODE_PREFIX is set (e.g. nvm):
+# With NODE_PREFIX:
 source ~/.nvm/nvm.sh && nvm use && git commit -m "generated message"
 
-# If $NODE_PREFIX is empty:
+# Without NODE_PREFIX:
 git commit -m "generated message"
 ```
 
 ### 5.1: Pre-commit hook error handling
 
-If the commit fails (non-zero exit code), analyze the error:
-
-**Error classification by level**:
+If the commit fails, classify the error and act accordingly. The goal is to unblock the user without introducing regressions — auto-fix what's safe, ask for help on what's not.
 
 | Level | Error type | Examples | Action |
 | ----- | ---------- | -------- | ------ |
-| 1 - Auto | **Formatter** | Prettier, Black, gofmt | Fix automatically |
-| 2 - Semi-auto | **Linter** | ESLint --fix, Pylint, Flake8, Rubocop | Fix and inform |
-| 3 - Manual | **Type check** | TypeScript, mypy | **Ask the user** |
-| 3 - Manual | **Tests** | Jest, pytest (if in pre-commit) | **Ask the user** |
-| 3 - Manual | **Other** | Secrets detected, files too large | **Ask the user** |
+| 1 - Auto | Formatter | Prettier, Black, gofmt | Fix automatically, re-stage, retry |
+| 2 - Semi-auto | Linter | ESLint --fix, Pylint, Rubocop | Fix, inform user, retry |
+| 3 - Manual | Type check, tests, secrets | TypeScript, Jest, mypy | Ask the user (see `references/messages.md` for the prompt) |
 
-### For level 3 errors (manual)
+**Auto-correction process (levels 1-2 only):**
 
-These errors require human intervention because automatic fixes could introduce regressions.
+1. Analyze the error output (affected files, lines, error type)
+2. Fix the code (run formatter if available, prepend `$NODE_PREFIX` to Node.js commands)
+3. Re-stage: `git add -A`
+4. Retry the commit (same message)
+5. Repeat up to 3 times max. After 3 failures, display the error and ask the user.
 
-#### In English
-```text
-❌ Cannot auto-fix this error:
-
-[Error message from hook]
-
-Options:
-1. Fix manually and retry
-2. Skip this check (--no-verify) ⚠️
-3. Abort commit
-
-Choose (1/2/3):
-```
-
-#### In French
-```text
-❌ Impossible de corriger automatiquement :
-
-[Message d'erreur du hook]
-
-Options :
-1. Corriger manuellement et réessayer
-2. Ignorer cette vérification (--no-verify) ⚠️
-3. Abandonner le commit
-
-Choix (1/2/3) :
-```
-
-**Note**: Option 2 (--no-verify) should be used with caution. Display a warning if the user chooses this option.
-
-### Automatic correction process (levels 1 and 2 only)
-
-1. **Analyze the error output** to identify:
-   - The affected files
-   - The problematic lines
-   - The error type (lint, format, type, etc.)
-
-2. **Fix the code**:
-   - Read the files with errors
-   - Apply the necessary corrections
-   - For formatting, run the formatter if available: `npx prettier --write`, `black`, etc.
-   - **Remember to prepend `$NODE_PREFIX`** (from Step 0.6) to any Node.js command (npx, npm, yarn, pnpm)
-
-3. **Re-stage the corrected files**:
-
-   ```bash
-   git add -A
-   ```
-
-4. **Retry the commit** with the same message (remember to prepend `$NODE_PREFIX` if set):
-
-   ```bash
-   git commit -m "generated message"
-   ```
-
-5. **Repeat up to 3 times maximum**. If the commit still fails after 3 attempts,
-   display a detailed error message and ask the user to intervene.
-
-**Example flow** based on `.languages.discussion`:
-
-#### In English (discussion: "en" or absent)
-
-```text
-❌ Commit failed - ESLint errors detected
-
-Automatic correction in progress...
-  • src/auth.ts:42 - Missing semicolon → Fixed
-  • src/auth.ts:58 - Unexpected console.log → Removed
-
-🔄 Retrying commit...
-
-✅ Commit successful after correction
-```
-
-#### In French (discussion: "fr")
-
-```text
-❌ Commit échoué - ESLint errors détectées
-
-Correction automatique en cours...
-  • src/auth.ts:42 - Missing semicolon → Corrigé
-  • src/auth.ts:58 - Unexpected console.log → Supprimé
-
-🔄 Nouvelle tentative de commit...
-
-✅ Commit réussi après correction
-```
+---
 
 ## Step 6: Confirm
 
@@ -611,75 +252,18 @@ Correction automatique en cours...
 git log -1 --oneline
 ```
 
-Display the created commit for confirmation based on `.languages.discussion`:
+Display the commit confirmation (see `references/messages.md`).
 
 ### 6.1: Update Magic Slash status
 
-> ⚠️ **MANDATORY - DO NOT SKIP THIS STEP**: This step is CRITICAL for the proper functioning of Magic Slash Desktop. You MUST execute it after each successful commit.
-
-After a successful commit, update the agent status:
+This curl notifies Magic Slash Desktop so it can update its UI. Without it, the user sees a stale status in the desktop app, which is confusing.
 
 ```bash
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&status=committed" > /dev/null 2>&1 || true
 ```
 
-This command is silent and never blocks the process.
-
-### In English (discussion: "en" or absent)
-
-```text
-✅ Commit created: <commit hash and message>
-```
-
-### In French (discussion: "fr")
-
-```text
-✅ Commit créé : <hash et message du commit>
-```
+---
 
 ## Step 7: Multi-repo summary (if applicable)
 
-If you committed in multiple worktrees, display a final summary based on `.languages.discussion`:
-
-### In English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Commits created for {TICKET-ID}
-
-  • api-PROJ-123: feat(auth): add token refresh
-  • web-PROJ-123: feat(login): update UI for refresh flow
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-### In French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Commits créés pour {TICKET-ID}
-
-  • api-PROJ-123 : feat(auth): add token refresh
-  • web-PROJ-123 : feat(login): update UI for refresh flow
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
----
-
-## Glossary
-
-| EN Term | FR Term | Description |
-|---------|---------|-------------|
-| Worktree | Espace de travail | Separate Git working copy |
-| Stage / Staged | Indexer / Indexé | Prepare files for a commit |
-| Unstage | Désindexer | Remove files from the index |
-| Split | Diviser | Separate into multiple commits |
-| Hook | Hook | Script executed before/after a Git action |
-| Remote | Dépôt distant | Git server (GitHub, GitLab) |
-| Push | Pousser | Send commits to the remote |
-| Pull Request (PR) | Demande de fusion | Merge proposal |
-| Base branch | Branche cible | Branch where changes will be merged |
-| Head branch | Branche source | Branch containing the changes |
+If you committed in multiple worktrees, display a final summary listing all commits created across repos (see `references/messages.md`).
