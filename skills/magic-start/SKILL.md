@@ -2,1289 +2,370 @@
 name: magic-start
 description: This skill should be used when the user mentions a ticket ID like "PROJ-123", "#456", says "start", "commencer", "travailler sur", "je vais bosser sur", "begin work on", "work on ticket", "work on issue", "démarre", "démarrer", or indicates they want to start working on a specific task.
 argument-hint: <TICKET-ID>
-allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, mcp__atlassian__*, mcp__github__*
+allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, mcp__atlassian__*, mcp__github__*
 ---
 
 # magic-slash v0.22.0 - /start
 
-> **IMPORTANT**: You MUST follow EACH step of this skill in order. Do not skip any step and do not take shortcuts. Each step is essential for the proper functioning of the workflow.
->
-> **CRITICAL STEPS THAT MUST NEVER BE SKIPPED**:
-> - **Step 2.5**: Send metadata to Magic Slash Desktop (curl) - MANDATORY
-> - **Step 2.6**: Update ticket status - MANDATORY
-> - **Step 4**: After creating the worktree, `cd` into the worktree - MANDATORY
-> - **Step 4.1**: Attach the repo to the agent (curl /repositories) - MANDATORY
-> - **Step 4.5**: Report multi-repo context (curl /metadata + /repositories) - MANDATORY if multi-repo
-
 You are an assistant that helps start a development task from a Jira ticket or a GitHub issue.
 
-## Step 0.0: Check configuration
+Follow each step in order. Each step builds on the previous one.
 
-Before starting, verify that the Magic Slash configuration exists:
+## References
+
+- `references/messages.md` — All bilingual messages (MSG_*). Read relevant sections as needed (not the whole file at once).
+- `references/node-setup.md` — Node.js version manager detection. Read before installing dependencies (Step 4.3).
+- `references/plan-templates.md` — Implementation plan templates. Read when creating the plan (Step 5.2).
+- `references/glossary.md` — EN/FR terminology for git concepts. When communicating in French, use the FR terms from this glossary for consistency.
+- `references/api.md` — Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`).
+
+## Step 0: Configuration
+
+### 0.1: Check config file exists
 
 ```bash
 CONFIG_FILE=~/.config/magic-slash/config.json
-if [ ! -f "$CONFIG_FILE" ]; then
-  # Display error based on system language
-fi
+[ ! -f "$CONFIG_FILE" ] && echo "MISSING" || echo "OK"
 ```
 
-### If the config does not exist
+If missing, display `MSG_CONFIG_ERROR` and stop.
 
-#### In English
-```text
-❌ Magic Slash configuration not found
+### 0.2: Determine language
 
-Please create the config file at:
-  ~/.config/magic-slash/config.json
+Once the repo is identified (step 3), read `.repositories.<name>.languages.discussion` from config. Default: `"en"`. Until the repo is identified, use English for all messages.
 
-See documentation: https://github.com/magic-slash/config
-```
+### 0.3: Determine development branch (execute after repo is identified in step 3)
 
-#### In French
-```text
-❌ Configuration Magic Slash introuvable
+Read `.repositories.<name>.branches.development` from config.
 
-Veuillez créer le fichier de configuration :
-  ~/.config/magic-slash/config.json
+- **If configured**: Display `MSG_BRANCH_CONFIRM` with the configured value. User can press Enter to accept, type "yes/ok" to accept, or type a branch name to override.
+- **If not configured**: Display `MSG_BRANCH_ASK`.
 
-Voir la documentation : https://github.com/magic-slash/config
-```
-
-## Language configuration
-
-Read `~/.config/magic-slash/config.json` and determine the language based on the selected repo:
-
-1. Once the repo is identified (step 3), read `.repositories.<name>.languages.discussion`
-2. If no value is defined: English by default
-
-- `discussion`: Language for your responses and the agent prompt (`"en"` or `"fr"`)
-
-## Branch configuration
-
-Read `~/.config/magic-slash/config.json` to determine the development branch:
-
-1. Once the repo is identified, read `.repositories.<name>.branches.development`
-2. **Always ask the user for confirmation**, showing the configured default if available:
-
-#### If a default is configured (e.g., `"develop"`)
-
-##### In English
-> The configured base branch is **{branch}**. Use it, or specify another? (press Enter to confirm)
-
-##### In French
-> La branche de base configurée est **{branch}**. L'utiliser, ou en spécifier une autre ? (appuie sur Entrée pour confirmer)
-
-**Handling the user's response:**
-- **Empty response** (user just pressed Enter without typing): Use the configured default branch
-- **Short confirmation** ("oui", "yes", "ok", "go"): Use the configured default branch
-- **Another branch name** (e.g., "develop", "staging"): Use that branch instead
-
-#### If no default is configured
-
-##### In English
-> No development branch configured for this repository.
-> Which branch should I use as the base? (e.g., main, develop, staging)
-
-##### In French
-> Aucune branche de développement configurée pour ce repository.
-> Quelle branche dois-je utiliser comme base ? (ex : main, develop, staging)
-
-3. Store the result as `$DEV_BRANCH`.
+Store the result as `$DEV_BRANCH`.
 
 ## Step 1: Detect ticket type
 
-Analyze the provided argument: `$ARGUMENTS`
+Analyze `$ARGUMENTS`:
 
-- **Jira format**: Contains an alphabetic prefix followed by a hyphen and digits (e.g.: `PROJ-123`, `ABC-456`)
-  - Regex: `^[A-Z]+-\d+$`
-  - → Go to **Step 2A** (Jira)
-
-- **GitHub format**: A simple number, with or without `#` (e.g.: `123`, `#456`)
-  - Regex: `^#?\d+$`
-  - → Go to **Step 2B** (GitHub)
-
-If the format is not recognized, ask the user to clarify.
+- **Jira**: Alphabetic prefix + hyphen + digits (regex: `^[A-Za-z]+-\d+$`, normalize to uppercase) → Step 2A
+- **GitHub**: Number with optional `#` (regex: `^#?\d+$`) → Step 2B
+- **Unrecognized**: Ask user to clarify.
 
 ## Step 2A: Retrieve the Jira ticket
 
-Use the MCP Atlassian tool `mcp__atlassian__getJiraIssue` to retrieve the ticket details.
+Use `mcp__atlassian__getJiraIssue` to retrieve ticket details. If you don't know the `cloudId`, use `mcp__atlassian__getAccessibleAtlassianResources` first.
 
-Note: If you don't know the `cloudId`, first use `mcp__atlassian__getAccessibleAtlassianResources` to obtain it.
+If the MCP call fails (timeout, auth error), retry once. If it fails again, ask the user to provide the ticket title and description manually so the workflow can continue.
 
-→ Continue to **Step 2.5** (metadata) then **Step 2.6** (status).
+→ Continue to Step 2.5, then Step 2.6.
 
 ## Step 2B: Retrieve the GitHub issue
 
-### 2B.1: Read the repos configuration
+### 2B.1: Read repos configuration
 
-```bash
-cat ~/.config/magic-slash/config.json
-```
-
-Retrieve the paths of all configured repos:
-
-```json
-{
-  "repositories": {
-    "api": {"path": "/path/to/api", "keywords": ["backend", "api"]},
-    "web": {"path": "/path/to/web", "keywords": ["frontend", "ui"]}
-  }
-}
-```
+Read `~/.config/magic-slash/config.json` to get the list of configured repos.
 
 ### 2B.2: Identify GitHub repos
 
-For each configured repo, retrieve the owner and repo name:
+For each configured repo, get owner/repo from the remote URL:
 
 ```bash
 cd {REPO_PATH} && git remote get-url origin
 ```
 
-Parse the URL to extract `owner/repo` (possible formats: `git@github.com:owner/repo.git` or `https://github.com/owner/repo.git`).
+Parse `owner/repo` from either `git@github.com:owner/repo.git` or `https://github.com/owner/repo.git`.
 
-### 2B.3: Search for the issue in each repo
+### 2B.3: Search for the issue
 
-For each identified repo, use `mcp__github__get_issue` to check if the issue exists:
-
-- `owner`: The repo owner
-- `repo`: The repo name
-- `issue_number`: The issue number (without the `#`)
-
-Collect all found issues.
+Use `mcp__github__get_issue` for each repo — launch all calls in parallel for speed. Collect all found issues. If an MCP call fails, retry once; if still failing, skip that repo and continue with the others.
 
 ### 2B.4: Resolution
 
-- **No issue found**: Inform the user that no issue with this number exists in the configured repos.
+- **No issue found**: Display `MSG_NO_ISSUE_FOUND`.
+- **Single issue**: Use it. Scope = that repo.
+- **Multiple issues**: Display `MSG_GITHUB_MULTI_ISSUE` and ask user to choose.
 
-- **Single issue found**: Use this issue and continue. The scope is automatically the repo where the issue was found.
+→ Continue to Step 2.5, then Step 2.6.
 
-- **Multiple issues found**: Display the options and ask the user to choose:
+## Step 2.5: Update Magic Slash Desktop metadata
 
-  ```text
-  Multiple issues #123 found:
+This step updates the Magic Slash Desktop sidebar so the user sees their task context at a glance. Without it, the UI shows a blank/stale entry.
 
-  1. owner1/repo-api: "API issue title"
-  2. owner2/repo-web: "Web issue title"
+### 2.5.1: Generate ticket description
 
-  Which one do you want to use? (or 'all')
-  ```
-
-→ Continue to **Step 2.5** (metadata) then **Step 2.6** (status).
-
-## Step 2.5: Update Magic Slash metadata
-
-> ⚠️ **MANDATORY - DO NOT SKIP THIS STEP**: This step is CRITICAL for the proper functioning of Magic Slash Desktop. You MUST execute it before continuing, even if the curl command seems trivial.
-
-### 2.5.1: Generate a clear ticket description
-
-Generate a concise and clear description of the ticket (2-3 sentences maximum) based on:
-- The ticket title
-- The ticket description/content
-- The acceptance criteria (if present)
-
-**The description must be in the configured language** (`.languages.discussion`):
-- If `discussion: "fr"`: Generate the description in French
-- If `discussion: "en"` or absent: Generate the description in English
-
-**Example in English**:
-```
-Implement JWT token refresh mechanism. Add automatic token renewal before expiration and handle refresh failures gracefully.
-```
-
-**Example in French**:
-```
-Implémenter le mécanisme de rafraîchissement des tokens JWT. Ajouter le renouvellement automatique avant expiration et gérer les échecs de rafraîchissement.
-```
+Generate a concise description (2-3 sentences max) in the configured language, based on the ticket title, description, and acceptance criteria.
 
 ### 2.5.2: Send metadata
-
-Execute this command to update the title, ticket ID, description and agent status:
 
 ```bash
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(echo -n '{TICKET_ID}: {TICKET_TITLE}' | jq -sRr @uri)&ticketId={TICKET_ID}&description=$(echo -n '{DESCRIPTION}' | jq -sRr @uri)&status=in%20progress&baseBranch={DEV_BRANCH}" > /dev/null 2>&1 || true
 ```
 
-Replace:
-- `{TICKET_ID}`: The ticket ID (e.g.: `PROJ-123` or `#456`)
-- `{TICKET_TITLE}`: The ticket title (short version, max 30 characters)
-- `{DESCRIPTION}`: The description generated in step 2.5.1
-- `{DEV_BRANCH}`: The development branch chosen by the user (e.g.: `main`, `develop`)
-
-Note: We use `jq -sRr @uri` to properly encode special characters in the URL.
-
-This command is silent and never blocks the process.
-
-**⚠️ REMINDER**: You MUST execute this curl command NOW before moving to the next step. Do not skip this step.
+Replace `{TICKET_ID}`, `{TICKET_TITLE}` (max 30 chars), `{DESCRIPTION}`, `{DEV_BRANCH}`.
 
 ## Step 2.6: Update ticket status to "In Progress"
 
-Before continuing, update the ticket status to indicate that work has started.
+This step never blocks the process. On failure, display a warning and continue.
 
-**IMPORTANT**: This step must never block the process. In case of failure, display a warning and continue.
+### 2.6A: Jira ticket
 
-### 2.6A: For a Jira ticket (if coming from step 2A)
+1. Retrieve transitions with `mcp__atlassian__getTransitionsForJiraIssue`
+2. Look for: "In Progress", "En cours", "In Development", "Started", "In Work"
+3. Apply with `mcp__atlassian__transitionJiraIssue`
+4. On failure: Display `MSG_TRANSITION_FAILED`
 
-1. **Retrieve available transitions** with `mcp__atlassian__getTransitionsForJiraIssue`
+### 2.6B: GitHub issue
 
-2. **Look for a transition to "In Progress"** among the available transitions:
-   - Look first for: "In Progress"
-   - If not found, try: "En cours", "In Development", "Started", "In Work"
+1. Check if a progress label exists: "in-progress", "wip", "in progress", "working"
+2. If found: Add via `mcp__github__update_issue` (keep existing labels)
+3. If not found: Continue without modification (do not create a label)
+4. On failure: Display `MSG_LABEL_FAILED`
 
-3. **Apply the transition** with `mcp__atlassian__transitionJiraIssue`
+## Step 3: Analyze ticket scope (smart repo selection)
 
-4. **In case of failure**: Display a warning but continue the process
+**Short-circuit**: If only one repo is configured, use it directly — skip scoring (steps 3.2-3.4).
 
-   ```text
-   ⚠️ Unable to move the ticket to "In Progress" (transition not available or insufficient permissions)
-   ```
-
-### 2.6B: For a GitHub issue (if coming from step 2B)
-
-1. **Retrieve the issue labels** (already available from step 2B)
-
-2. **Check if a progress label exists** in the current repo labels:
-   - Look for an existing label among: "in-progress", "wip", "in progress", "working"
-
-3. **If an appropriate label exists**: Add it to the issue via `mcp__github__update_issue` while keeping existing labels
-
-4. **If no appropriate label exists**: Continue without modification (do not create a label automatically)
-
-5. **In case of failure**: Display a warning but continue the process
-
-   ```text
-   ⚠️ Unable to add the "in-progress" label (label not found or insufficient permissions)
-   ```
-
-→ Continue to **Step 3**.
-
-## Step 3: Analyze ticket scope (Smart repo selection)
-
-### 3.1: Read the configuration
-
-If not already done, read the configuration file:
-
-```bash
-cat ~/.config/magic-slash/config.json
-```
+### 3.1: Read configuration (if not already done)
 
 ### 3.2: Extract ticket information
 
-**For Jira**, collect:
+**Jira**: labels, components, title, description.
+**GitHub**: labels, title, description.
 
-- The ticket **labels**
-- The Jira **components** (if defined)
-- The **title** and **description**
+### 3.3: Calculate relevance score for each repo
 
-**For GitHub**, collect:
+For each configured repo, calculate a score based on its keywords. **All matching is case-insensitive** and supports common variants (with/without hyphens, e.g. "backend" matches "back-end"):
 
-- The issue **labels**
-- The **title** and **description**
+| Match source | Points |
+| --- | --- |
+| Jira label/component or GitHub label matching a keyword | +10 |
+| Keyword found in title | +5 |
+| Keyword found in description | +2 |
 
-### 3.3: Calculate a relevance score for each repo
-
-For each configured repo, calculate a score based on the defined keywords:
-
-| Match source                              | Points |
-| ----------------------------------------- | ------ |
-| Jira label/component matching a keyword   | +10    |
-| GitHub label matching a keyword            | +10    |
-| Keyword found in title                     | +5     |
-| Keyword found in description               | +2     |
-
-**Calculation example**:
-
-```text
-Ticket: "Add an API endpoint for users"
-Labels: ["backend"]
-
-Configured repos:
-- api: keywords=["backend", "api", "server"] → score = 10 (label) + 5 (title "API") = 15
-- web: keywords=["frontend", "ui", "react"] → score = 0
-- mobile: keywords=["mobile", "ios", "android"] → score = 0
-```
+**Example**: Ticket "Add an API endpoint for users", labels: ["backend"]
+- api (keywords: ["backend", "api", "server"]) → 10 (label "backend") + 5 (title "API") = **15**
+- web (keywords: ["frontend", "ui", "react"]) → **0**
 
 ### 3.4: Scope resolution
 
-- **Single repo with score > 0**: Use this repo directly
-
-- **Multiple repos with scores > 0**: Display options with scores and ask the user:
-
-  ```text
-  This ticket seems to involve multiple repositories:
-
-  1. api (score: 15) - matched keywords: "backend", "api"
-  2. web (score: 5) - matched keywords: "frontend"
-
-  Which one do you want to use? (1, 2, or 'all')
-  ```
-
-- **No match (all scores = 0)**: List all repos and ask the user:
-
-  ```text
-  Unable to automatically determine the relevant repo.
-
-  Available repositories:
-  1. api (/path/to/api)
-  2. web (/path/to/web)
-  3. mobile (/path/to/mobile)
-
-  Which one do you want to use? (1, 2, 3, or 'all')
-  ```
-
-**Special case for GitHub**: If the issue was found in a single repo during step 2B,
-the scope is automatically that repo (no scoring needed).
+- **Single repo with score > 0**: Use it directly.
+- **Multiple repos with scores > 0**: Display `MSG_SCOPE_MULTIPLE` with scores and matched keywords.
+- **No match (all scores = 0)**: Display `MSG_SCOPE_NONE` listing all repos.
+- **GitHub special case**: If the issue was found in a single repo (step 2B), scope is automatic.
 
 ## Step 4: Create worktrees
 
-> ⚠️ **MANDATORY**: After creating the worktree, you MUST `cd` into the created worktree before continuing.
-
-### 4.0: Check if the worktree already exists
-
-Before creating a worktree, check if it already exists:
+### 4.0: Check if worktree already exists
 
 ```bash
 WORKTREE_PATH="../${REPO_NAME}-$TICKET_ID"
-if [ -d "$WORKTREE_PATH" ]; then
-  # Worktree already exists
-fi
+[ -d "$WORKTREE_PATH" ] && echo "EXISTS" || echo "NEW"
 ```
 
-#### If the worktree exists - In English
-```text
-⚠️ Worktree already exists: /path/to/repo-TICKET-ID
-
-Options:
-1. Use existing worktree (recommended)
-2. Delete and recreate
-3. Abort
-
-Choose (1/2/3):
-```
-
-#### If the worktree exists - In French
-```text
-⚠️ Le worktree existe déjà : /path/to/repo-TICKET-ID
-
-Options :
-1. Utiliser le worktree existant (recommandé)
-2. Supprimer et recréer
-3. Abandonner
-
-Choix (1/2/3) :
-```
-
-**Behaviors**:
-- Option 1: `cd` into the existing worktree, continue to step 4.5
+If it exists, display `MSG_WORKTREE_EXISTS`:
+- Option 1: `cd` into existing worktree, continue to step 4.2
 - Option 2: `git worktree remove --force {path}` then recreate
-- Option 3: Stop the skill
+- Option 3: Stop
 
 ### 4.1: Create the worktree
 
 For each selected repo:
 
-1. Navigate to the repo directory
-2. Get the repo folder name
-3. Fetch the latest changes
-4. Create the worktree AT THE SAME LEVEL as the main repo
-5. **Keep track of the absolute path of the created worktree** for the next step
-6. **⚠️ CRITICAL: Change directory to the created worktree**
-7. **⚠️ MANDATORY: Attach the worktree to the agent** so it stays displayed in the correct project
-
 ```bash
 cd {REPO_PATH}
 REPO_NAME=$(basename "$PWD")
 git fetch origin
+```
+
+If `git fetch` fails (network issue), display `MSG_FETCH_FAILED` and continue with local state.
+
+```bash
 git checkout $DEV_BRANCH
 git pull --rebase origin $DEV_BRANCH
+```
+
+If `git pull --rebase` fails with conflicts, display `MSG_REBASE_CONFLICT` and let the user choose.
+
+**Create the worktree:**
+
+```bash
 git worktree add -b feature/$TICKET_ID ../${REPO_NAME}-$TICKET_ID $DEV_BRANCH
-# IMPORTANT: Immediately change to the created worktree
+```
+
+If this fails because the branch already exists, display `MSG_BRANCH_ALREADY_EXISTS`:
+- Option 1: `git worktree add ../${REPO_NAME}-$TICKET_ID feature/$TICKET_ID` (use existing branch)
+- Option 2: `git branch -D feature/$TICKET_ID` then retry creation
+- Option 3: Stop
+
+**Branch naming**:
+- Jira: `feature/PROJ-1234`
+- GitHub: `feature/repo-name-123` (prefix with repo name to avoid conflicts)
+
+**Change to the worktree** — the rest of the skill operates from inside the worktree, so all subsequent file operations and commands target the right directory:
+
+```bash
 cd ../${REPO_NAME}-$TICKET_ID
 ```
 
-> ⚠️ **MANDATORY - DO NOT SKIP**: Attach this repo to the agent for grouping in the Magic Slash Desktop sidebar.
+**Attach the worktree to the agent** — this tells the Desktop sidebar which project this terminal belongs to, so the user sees it grouped correctly:
 
 ```bash
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(echo -n '["'$(pwd)'"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
-**Note on branch naming**:
-
-- For Jira: use the ID as-is (e.g.: `feature/PROJ-1234`)
-- For GitHub: prefix with the repo name to avoid conflicts (e.g.: `feature/repo-name-123`)
-
-Example: If the repo is `/projects/my-api`, the worktree will be `/projects/my-api-PROJ-1234` (Jira)
-or `/projects/my-api-123` (GitHub)
-
-**⚠️ REMINDER**: You MUST be in the worktree (not in the main repo) before moving to the next step.
-
 ### 4.2: Copy worktree files
 
-After creating the worktree and `cd`-ing into it, check if the repository has `worktreeFiles` configured in `~/.config/magic-slash/config.json` (under `.repositories.<name>.worktreeFiles`).
+Check if the repo has `worktreeFiles` configured (`.repositories.<name>.worktreeFiles`).
 
-#### Case A: `worktreeFiles` is non-empty
+#### Case A: `worktreeFiles` is configured
 
-Copy each file from the **main repo** to the **worktree**:
+Copy each file from the main repo to the worktree. Only copy files that exist; silently skip missing ones. Display `MSG_WORKTREE_FILES_COPIED`.
 
-```bash
-MAIN_REPO="{REPO_PATH}"
-for FILE in {WORKTREE_FILES_LIST}; do
-  if [ -f "$MAIN_REPO/$FILE" ]; then
-    cp "$MAIN_REPO/$FILE" "./$FILE"
-  fi
-done
-```
+#### Case B: Not configured — auto-detect
 
-**Rules**:
-- Only copy files that **exist** in the main repo. If a file does not exist, silently skip it.
-- Preserve the relative path (e.g., if the file is `.env`, copy it to the root of the worktree).
-- Display a summary of copied files:
-
-##### In English
-```text
-📄 Copied worktree files:
-   ✓ .env
-   ✓ .env.local
-   ⚠ .env.test (not found in main repo, skipped)
-```
-
-##### In French
-```text
-📄 Fichiers copiés dans le worktree :
-   ✓ .env
-   ✓ .env.local
-   ⚠ .env.test (introuvable dans le repo principal, ignoré)
-```
-
-#### Case B: `worktreeFiles` is empty or not configured — auto-detect
-
-Scan the **main repo** for common untracked files that typically need copying:
+Scan for common untracked files in the main repo:
 
 ```bash
 MAIN_REPO="{REPO_PATH}"
-CANDIDATES=(.env .env.local .env.development .env.development.local .env.test .env.test.local .env.production.local .npmrc .yarnrc .yarnrc.yml)
-DETECTED=()
+CANDIDATES=(.env .env.local .env.development .env.development.local .env.test .env.test.local .env.production.local .npmrc .yarnrc .yarnrc.yml .python-version .tool-versions)
 for f in "${CANDIDATES[@]}"; do
-  if [ -f "$MAIN_REPO/$f" ]; then
-    # Only include if the file is NOT tracked by git (i.e., it's in .gitignore or untracked)
-    if ! git -C "$MAIN_REPO" ls-files --error-unmatch "$f" > /dev/null 2>&1; then
-      DETECTED+=("$f")
-    fi
-  fi
+  [ -f "$MAIN_REPO/$f" ] && ! git -C "$MAIN_REPO" ls-files --error-unmatch "$f" > /dev/null 2>&1 && echo "$f"
 done
 ```
 
-**If files are detected**, ask the user whether to save them to the config:
-
-##### In English
-```text
-🔍 Detected untracked files in the main repo that might need copying to worktrees:
-   • .env
-   • .env.local
-
-Save to config for future worktrees? (y/n)
-```
-
-##### In French
-```text
-🔍 Fichiers non versionnés détectés dans le repo principal, potentiellement utiles dans les worktrees :
-   • .env
-   • .env.local
-
-Sauvegarder dans la config pour les prochains worktrees ? (o/n)
-```
-
-- If **yes**: write the detected files to `config.json` under `.repositories.<name>.worktreeFiles`, then copy them to the worktree (same as Case A).
-- If **no**: copy the detected files to the worktree this time only, without saving to config.
-
-To save to config, edit the config file directly:
+If files detected: Display `MSG_WORKTREE_FILES_DETECTED`. If user says yes, save to config via `jq`:
 
 ```bash
-CONFIG_FILE="$HOME/.config/magic-slash/config.json"
-# Use jq to set worktreeFiles for the repository
-jq --arg repo "{REPO_NAME}" --argjson files '["DETECTED_FILE_1", "DETECTED_FILE_2"]' \
+jq --arg repo "{REPO_NAME}" --argjson files '["file1", "file2"]' \
   '.repositories[$repo].worktreeFiles = $files' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 ```
 
-**If no files are detected**, skip this step silently.
+Then copy the files either way. If no files detected, skip silently.
 
 ### 4.3: Install dependencies
 
-After creating the worktree (and copying worktree files), detect the project's package manager and install dependencies.
+Read `references/node-setup.md` to detect the Node.js version manager and set `$NODE_PREFIX`.
 
-**Detection** (check for lock files in the worktree root):
+**Detect package manager** — check lock files in worktree root, **first match wins** (stop at first detected):
 
-| Lock file | Package manager | Install command |
-|-----------|----------------|-----------------|
-| `bun.lockb` or `bun.lock` | bun | `bun install` |
-| `yarn.lock` | yarn | `yarn install` |
-| `pnpm-lock.yaml` | pnpm | `pnpm install` |
-| `package-lock.json` | npm | `npm install` |
+| Priority | Lock file | Package manager | Install command |
+|----------|-----------|----------------|-----------------|
+| 1 | `bun.lockb` or `bun.lock` | bun | `bun install` |
+| 2 | `yarn.lock` | yarn | `yarn install` |
+| 3 | `pnpm-lock.yaml` | pnpm | `pnpm install` |
+| 4 | `package-lock.json` | npm | `npm install` |
+| 5 | `requirements.txt` | pip | `pip install -r requirements.txt` |
+| 6 | `pyproject.toml` + `poetry.lock` | poetry | `poetry install` |
+| 7 | `Cargo.toml` | cargo | `cargo build` |
+| 8 | `go.mod` | go | `go mod download` |
+| 9 | `Gemfile.lock` | bundler | `bundle install` |
+| 10 | `composer.lock` | composer | `composer install` |
 
-**If no lock file is found**, check if a `package.json` exists. If yes, default to `npm install`. If no `package.json` exists, skip this step.
+If no lock file but `package.json` exists, default to `npm install`.
+If no recognizable project file exists, skip this step.
 
-**Execution**:
+**Monorepo note**: If the project uses a monorepo structure (e.g. `pnpm-workspace.yaml`, `"workspaces"` in `package.json`, or `lerna.json`), install from the worktree root — the package manager will handle workspace packages automatically.
 
-```bash
-if [ -f "bun.lockb" ] || [ -f "bun.lock" ]; then
-  bun install
-elif [ -f "yarn.lock" ]; then
-  yarn install
-elif [ -f "pnpm-lock.yaml" ]; then
-  pnpm install
-elif [ -f "package-lock.json" ]; then
-  npm install
-elif [ -f "package.json" ]; then
-  npm install
-fi
-```
+For Node.js projects, prepend `$NODE_PREFIX` to the install command.
 
-**Display based on `.languages.discussion`**:
+Display `MSG_INSTALLING_DEPS`. On failure, display `MSG_INSTALL_FAILED` and continue.
 
-#### In English
-```text
-📦 Installing dependencies with {PACKAGE_MANAGER}...
-```
+## Step 4.5: Report context (multi-repo only)
 
-#### In French
-```text
-📦 Installation des dépendances avec {PACKAGE_MANAGER}...
-```
+If multiple worktrees were created:
 
-**Important**: This step must never block the process. If the install fails, display a warning and continue.
-
-## Step 4.5: Report context and attach repos (if multiple repos)
-
-> ⚠️ **MANDATORY IF MULTI-REPO**: This step is CRITICAL for the proper functioning of Magic Slash Desktop in full-stack mode. You MUST execute it if multiple worktrees were created.
-
-**If multiple worktrees were created** (full-stack task):
-
-1. Collect all absolute paths of the created worktrees
-
-2. **MANDATORY** - Send full-stack metadata to Magic Slash Desktop:
+1. Send full-stack metadata — links all worktrees together in the Desktop UI so the user sees them as one task:
 
 ```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&fullStackTaskId={TICKET_ID}&relatedWorktrees=$(echo -n '["{WORKTREE_PATH_1}","{WORKTREE_PATH_2}"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&fullStackTaskId={TICKET_ID}&relatedWorktrees=$(echo -n '["{PATH_1}","{PATH_2}"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
-3. **MANDATORY** - Attach all worktrees to the agent so it stays displayed in all relevant projects:
+2. Attach all worktrees:
 
 ```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(echo -n '["{WORKTREE_PATH_1}","{WORKTREE_PATH_2}"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(echo -n '["{PATH_1}","{PATH_2}"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
-Replace:
-- `{TICKET_ID}`: The ticket ID (e.g.: `PROJ-123`)
-- `{WORKTREE_PATH_1}`, `{WORKTREE_PATH_2}`: The absolute paths of the created worktrees
+## Step 4.6: Create full-stack context file (multi-repo only)
 
-**Important note**: The `/repositories` endpoint allows the agent to stay attached to its projects even when Claude temporarily navigates elsewhere. The UI will use this list for grouping in the sidebar.
-
-## Step 4.6: Create the full-stack context file (if multiple repos)
-
-**If multiple worktrees were created**, create a `CLAUDE.local.md` file in **each** worktree so that Claude keeps context even when resuming a conversation:
-
-```bash
-cat > {WORKTREE_PATH}/CLAUDE.local.md << 'EOF'
-# Full-Stack Context
-
-You are working on ticket **{TICKET_ID}** which spans multiple repos.
-
-## Worktrees for this task
-{WORKTREE_LIST}
-
-## Instructions
-- Use `cd` to navigate to the appropriate worktree
-- You can work on both repos in a single session
-- Make sure changes are consistent across repos
-EOF
-```
-
-Example of `{WORKTREE_LIST}`:
-```
-- **Backend**: /projects/api-PROJ-123
-- **Frontend**: /projects/web-PROJ-123
-```
-
-**Note**: Adapt the file language according to `.languages.discussion`.
-
-After creating the context files, `cd` into the **first** worktree to begin work.
+Create a `CLAUDE.local.md` in each worktree using `MSG_MULTI_REPO_CONTEXT` from messages. Adapt language to `.languages.discussion`. Then `cd` into the first worktree.
 
 ## Step 5: Planning and implementation
 
-> **IMPORTANT**: This step is divided into 5 sub-steps. You must execute them in order and **NEVER** start implementation (5.4) without explicit user approval (5.3).
-
-Once the worktrees are created, display a brief summary:
-
-### Summary for a single repo:
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📌 Source    : Jira / GitHub (owner/repo)
-🎫 Ticket    : [ID] - [Title]
-📋 Type      : [Bug/Feature/Task...] or Labels
-📁 Worktree  : /path/to/repo-TICKET-ID
-
-🔍 Exploring codebase...
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-### Summary for a full-stack task (multiple repos):
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📌 Source    : Jira / GitHub
-🎫 Ticket    : [ID] - [Title]
-📋 Type      : [Bug/Feature/Task...] or Labels
-🔀 Full-Stack Task:
-   📁 Backend  : /path/to/api-TICKET-ID
-   📁 Frontend : /path/to/web-TICKET-ID
-
-🔍 Exploring codebase...
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
----
+Display `MSG_TASK_SUMMARY` (or `MSG_TASK_SUMMARY_FULLSTACK` for multi-repo).
 
 ### 5.1: Codebase exploration
 
-Explore the codebase to understand the architecture and identify impacted files.
+Explore enough to write a confident plan — typically 5-15 files read. Focus on understanding over completeness:
 
-**Actions to perform:**
+1. **Project structure**: `ls` on root and key directories (src/, lib/, app/), then `Glob` for specific patterns
+2. **Config files**: Read `package.json`, `tsconfig.json`, framework configs to understand stack and conventions
+3. **Existing patterns**: `Grep` for similar implementations (e.g. if adding an API endpoint, find an existing endpoint to use as reference). Read 1-2 complete reference files.
+4. **Impacted files**: Identify files to modify or create. Read each one to understand current state before planning changes.
 
-1. **Project structure**: Use `ls` and `Glob` to understand the organization
-2. **Configuration files**: Read config files (`package.json`, `tsconfig.json`, etc.)
-3. **Existing patterns**: Use `Grep` to find similar implementations
-4. **Impacted files**: Identify files that will need to be modified or created
+For full-stack: explore each worktree separately, identify cross-repo interactions (API endpoints, shared types, contracts).
 
-**For a full-stack task**:
-- Explore each worktree separately
-- Identify interactions between repos (API endpoints, shared types, etc.)
+### 5.2: Create implementation plan
 
----
+Read `references/plan-templates.md` and use the matching template (single/full-stack, EN/FR).
 
-### 5.2: Create the implementation plan
-
-Create a detailed implementation plan using the following template based on `.languages.discussion`:
-
-#### Template in English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 IMPLEMENTATION PLAN - [TICKET-ID]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-## Summary
-[2-3 sentences describing what needs to be done]
-
-## Technical Analysis
-
-### Files to modify
-- `path/to/file1.ts` - [reason]
-- `path/to/file2.ts` - [reason]
-
-### Files to create
-- `path/to/new-file.ts` - [purpose]
-
-### Reference patterns
-- Similar implementation found in: `path/to/reference.ts`
-- Pattern to follow: [description]
-
-## Implementation Steps
-
-### Step 1: [Short title]
-- [ ] [Detailed action]
-- [ ] [Detailed action]
-
-### Step 2: [Short title]
-- [ ] [Detailed action]
-- [ ] [Detailed action]
-
-### Step 3: [Short title]
-- [ ] [Detailed action]
-
-[Add more steps as needed]
-
-## Risks and Considerations
-- ⚠️ [Risk or important point]
-- ⚠️ [Risk or important point]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-#### Template in French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 PLAN D'IMPLÉMENTATION - [TICKET-ID]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-## Résumé
-[2-3 phrases décrivant ce qui doit être fait]
-
-## Analyse technique
-
-### Fichiers à modifier
-- `path/to/file1.ts` - [raison]
-- `path/to/file2.ts` - [raison]
-
-### Fichiers à créer
-- `path/to/new-file.ts` - [objectif]
-
-### Patterns de référence
-- Implémentation similaire trouvée dans : `path/to/reference.ts`
-- Pattern à suivre : [description]
-
-## Étapes d'implémentation
-
-### Étape 1 : [Titre court]
-- [ ] [Action détaillée]
-- [ ] [Action détaillée]
-
-### Étape 2 : [Titre court]
-- [ ] [Action détaillée]
-- [ ] [Action détaillée]
-
-### Étape 3 : [Titre court]
-- [ ] [Action détaillée]
-
-[Ajouter d'autres étapes si nécessaire]
-
-## Risques et points d'attention
-- ⚠️ [Risque ou point important]
-- ⚠️ [Risque ou point important]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-#### Full-stack template in English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 IMPLEMENTATION PLAN - [TICKET-ID] (Full-Stack)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-## Summary
-[2-3 sentences describing what needs to be done]
-
-## Technical Analysis
-
-### Backend ([backend worktree path])
-
-#### Files to modify
-- `path/to/file1.ts` - [reason]
-
-#### Files to create
-- `path/to/new-file.ts` - [purpose]
-
-### Frontend ([frontend worktree path])
-
-#### Files to modify
-- `path/to/component.tsx` - [reason]
-
-#### Files to create
-- `path/to/new-component.tsx` - [purpose]
-
-### Reference patterns
-- Backend pattern: `path/to/reference.ts`
-- Frontend pattern: `path/to/reference.tsx`
-
-## Implementation Steps
-
-### Backend Steps
-
-#### Step B1: [Short title]
-- [ ] [Detailed action]
-- [ ] [Detailed action]
-
-#### Step B2: [Short title]
-- [ ] [Detailed action]
-
-### Frontend Steps
-
-#### Step F1: [Short title]
-- [ ] [Detailed action]
-- [ ] [Detailed action]
-
-#### Step F2: [Short title]
-- [ ] [Detailed action]
-
-## Risks and Considerations
-- ⚠️ [Risk or important point]
-- ⚠️ [Risk or important point]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-#### Full-stack template in French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 PLAN D'IMPLÉMENTATION - [TICKET-ID] (Full-Stack)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-## Résumé
-[2-3 phrases décrivant ce qui doit être fait]
-
-## Analyse technique
-
-### Backend ([chemin worktree backend])
-
-#### Fichiers à modifier
-- `path/to/file1.ts` - [raison]
-
-#### Fichiers à créer
-- `path/to/new-file.ts` - [objectif]
-
-### Frontend ([chemin worktree frontend])
-
-#### Fichiers à modifier
-- `path/to/component.tsx` - [raison]
-
-#### Fichiers à créer
-- `path/to/new-component.tsx` - [objectif]
-
-### Patterns de référence
-- Pattern backend : `path/to/reference.ts`
-- Pattern frontend : `path/to/reference.tsx`
-
-## Étapes d'implémentation
-
-### Étapes Backend
-
-#### Étape B1 : [Titre court]
-- [ ] [Action détaillée]
-- [ ] [Action détaillée]
-
-#### Étape B2 : [Titre court]
-- [ ] [Action détaillée]
-
-### Étapes Frontend
-
-#### Étape F1 : [Titre court]
-- [ ] [Action détaillée]
-- [ ] [Action détaillée]
-
-#### Étape F2 : [Titre court]
-- [ ] [Action détaillée]
-
-## Risques et points d'attention
-- ⚠️ [Risque ou point important]
-- ⚠️ [Risque ou point important]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
----
+Keep the plan focused: aim for **3-7 implementation steps**, each with 2-3 concrete actions. A plan that's too detailed wastes context; too vague and the implementation drifts.
 
 ### 5.2.5: Dispatcher (execution strategy)
 
-After creating the plan, analyze it to determine the best execution strategy: **Solo** (single agent, sequential) or **Multi-agent** (parallel subagents orchestrated by the main agent).
+Analyze the plan to choose between **Solo** and **Multi-agent**:
 
-#### Evaluation criteria
+**Decision rules** (in order of priority):
 
-Evaluate the plan using these criteria:
+1. **Multi-agent if**: Multiple repos are involved (strong signal — each repo gets its own agent)
+2. **Multi-agent if**: Single repo with > 8 files to modify/create AND steps are parallelizable (no dependency between them)
+3. **Solo otherwise**: Steps are sequential, few files, or tightly coupled changes
 
-| Criterion | Weight | Subagent threshold |
-|-----------|--------|--------------------|
-| Number of repos involved | Strong | > 1 repo → strong indication |
-| Number of steps in the plan | Medium | > 4 independent steps |
-| Number of files to modify/create | Medium | > 8 files |
-| Independence of steps | Strong | Steps parallelizable without dependencies |
-
-#### Decision rules
-
-- **Solo**: The task is simple, steps are tightly coupled, or few files are involved. The agent executes everything sequentially (current behavior).
-- **Multi-agent**: Steps are independent and the workload is significant (e.g. backend + frontend, multiple modules with no dependencies between them). The main agent orchestrates subagents in parallel.
-
-#### Strategy display
-
-Display the chosen strategy as part of the plan output (before approval), based on `.languages.discussion`:
-
-##### In English (discussion: "en" or absent)
-
-**Multi-agent:**
-```text
-🎯 Execution strategy: Multi-agent ({N} subagents)
-
-  Agent 1 ({Domain1}): Steps {list}
-  Agent 2 ({Domain2}): Steps {list}
-
-  Orchestrator: Main agent (sync + final summary)
-```
-
-**Solo:**
-```text
-🎯 Execution strategy: Solo
-
-  The entire plan will be executed sequentially.
-```
-
-##### In French (discussion: "fr")
-
-**Multi-agent:**
-```text
-🎯 Strategie d'execution : Multi-agent ({N} subagents)
-
-  Agent 1 ({Domaine1}) : Etapes {liste}
-  Agent 2 ({Domaine2}) : Etapes {liste}
-
-  Orchestrateur : Agent principal (sync + resume final)
-```
-
-**Solo:**
-```text
-🎯 Strategie d'execution : Solo
-
-  L'ensemble du plan sera execute sequentiellement.
-```
-
----
+Display `MSG_STRATEGY_SOLO` or `MSG_STRATEGY_MULTI` as part of the plan output.
 
 ### 5.3: Request approval
 
-> **⚠️ MANDATORY**: You must **NEVER** start implementation without receiving explicit approval from the user.
+Display `MSG_APPROVAL`. Never start implementation without explicit user approval.
 
-After presenting the plan and the execution strategy (from step 5.2.5), request approval for both. The user validates the plan **and** the strategy at the same time.
+- **Positive** (oui, yes, ok, go, let's go, c'est parti, allons-y) → Step 5.4
+- **Negative or questions** → Adjust plan, re-request approval
+- **Modifications** → Update plan, present again
 
-Display based on `.languages.discussion`:
-
-#### In English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🔍 Does this plan and execution strategy look good to you?
-
-• Type "yes", "ok", "go", or "let's go" to start implementation
-• Type "no" or ask questions if you want to discuss changes
-• You can also suggest modifications to the plan or the strategy
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-#### In French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🔍 Ce plan et cette strategie d'execution te conviennent-ils ?
-
-• Tape "oui", "ok", "go", ou "c'est parti" pour lancer l'implementation
-• Tape "non" ou pose des questions si tu veux discuter de modifications
-• Tu peux aussi suggerer des modifications au plan ou a la strategie
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-**Expected behavior:**
-
-- **Positive response** (oui, yes, ok, go, let's go, c'est parti, allons-y) → Go to step 5.4
-- **Negative response or questions** → Answer questions, adjust the plan if necessary, then request approval again
-- **Modifications requested** → Update the plan and present it again for approval
-
----
-
-### 5.4: Implementation (adaptive)
-
-> **Prerequisite**: The user has approved the plan and strategy in step 5.3.
-
-The implementation adapts based on the strategy chosen by the dispatcher (step 5.2.5).
+### 5.4: Implementation
 
 #### 5.4A: Solo mode
 
-If the dispatcher chose **Solo**, implement the solution by following the plan step by step (standard behavior).
+Follow the plan step by step. Display `MSG_PROGRESS_SOLO` for each step.
 
-**Progress display based on `.languages.discussion`:**
+1. Implement each step in order
+2. Show progress (X/N)
+3. Use `Edit` to modify, `Write` to create
+4. Verify the code compiles/works
+5. Do NOT commit — user will use `/commit` afterwards
 
-##### In English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 IMPLEMENTATION IN PROGRESS (Solo)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📍 Step [X]/[N]: [Step title]
-
-[Description of what you're doing]
-```
-
-##### In French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 IMPLEMENTATION EN COURS (Solo)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📍 Etape [X]/[N] : [Titre de l'etape]
-
-[Description de ce que tu fais]
-```
-
-**Solo implementation instructions:**
-
-1. **Follow the plan**: Implement each step in the defined order
-2. **Display progress**: Indicate which step you're working on (X/N)
-3. **Use the right tools**: `Edit` to modify, `Write` to create
-4. **Verify the code**: Make sure the code compiles/works
-5. **DO NOT commit**: The user will use `/commit` afterwards
-
-**For a full-stack task in solo mode:**
-- Use `cd [path]` to navigate between worktrees
-- Implement the backend first, then the frontend (or according to the plan)
-- Make sure changes are consistent across repos
+For full-stack solo: `cd` between worktrees, implement backend first (or per plan), keep changes consistent.
 
 #### 5.4B: Multi-agent mode
 
-If the dispatcher chose **Multi-agent**, the main agent orchestrates parallel subagents.
+Display `MSG_PROGRESS_MULTI`. Use the `Agent` tool to launch subagents in parallel.
 
-**Subagent launch display based on `.languages.discussion`:**
+Each subagent prompt includes (keep it concise — summary, not the full ticket dump):
+- Ticket summary: ID, title, and a 2-3 sentence description of what to achieve
+- Acceptance criteria (if any)
+- Assigned plan steps (copy the relevant steps verbatim from the plan)
+- Worktree path to work in
+- Constraints: no commits, follow project patterns, use `Edit`/`Write`
+- Note: subagents have access to Bash, Read, Write, Edit, Glob, Grep only (no MCP tools)
 
-##### In English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 IMPLEMENTATION IN PROGRESS (Multi-agent)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🤖 Launching {N} subagents in parallel...
-
-  Agent 1 ({Domain1}): Steps {list}
-  Agent 2 ({Domain2}): Steps {list}
-
-⏳ Waiting for all agents to complete...
-```
-
-##### In French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 IMPLEMENTATION EN COURS (Multi-agent)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🤖 Lancement de {N} subagents en parallele...
-
-  Agent 1 ({Domaine1}) : Etapes {liste}
-  Agent 2 ({Domaine2}) : Etapes {liste}
-
-⏳ En attente de la completion de tous les agents...
-```
-
-**Multi-agent orchestration steps:**
-
-1. **Prepare subagent prompts**: For each subagent, the main agent prepares a detailed prompt containing:
-   - The ticket context (ID, title, description, acceptance criteria)
-   - The assigned steps from the plan
-   - The worktree path to work in
-   - Constraints: do NOT commit, follow project patterns and conventions, use `Edit` to modify and `Write` to create files
-
-2. **Launch subagents in parallel**: Use the `Agent` tool to launch all subagents simultaneously. Each `Agent` call includes:
-   - `prompt`: The detailed prompt prepared above
-   - If working in different repos: use worktree isolation
-
-3. **Wait and collect results**: The main agent waits for all subagents to complete and collects their results.
-
-4. **Verify consistency**: After all subagents finish, the main agent:
-   - Reviews the changes made by each subagent
-   - Checks for conflicts or inconsistencies between the work of different agents
-   - Fixes any integration issues if needed
-
-5. **Proceed to step 5.5**: Produce the final summary combining all subagent results
-
----
+After all subagents complete:
+1. Review changes from each subagent
+2. Check for conflicts/inconsistencies
+3. Fix integration issues if needed
 
 ### 5.5: Final summary
 
-Once implementation is complete, display a full summary based on `.languages.discussion`:
-
-#### In English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Implementation completed for [TICKET-ID]
-
-## Files modified
-- `path/to/file1.ts` - [brief description]
-- `path/to/file2.ts` - [brief description]
-
-## Files created
-- `path/to/new-file.ts` - [brief description]
-
-## Summary of changes
-[2-3 sentences summarizing the main changes]
-
-## Decisions made
-- [Technical decision if any]
-- [Technical decision if any]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💡 Next steps:
-   • Test the changes
-   • Run /commit to create a commit
-   • Run /pr to create a Pull Request
-```
-
-#### In French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Implémentation terminée pour [TICKET-ID]
-
-## Fichiers modifiés
-- `path/to/file1.ts` - [brève description]
-- `path/to/file2.ts` - [brève description]
-
-## Fichiers créés
-- `path/to/new-file.ts` - [brève description]
-
-## Résumé des changements
-[2-3 phrases résumant les changements principaux]
-
-## Décisions prises
-- [Décision technique si applicable]
-- [Décision technique si applicable]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💡 Prochaines étapes :
-   • Teste les changements
-   • Lance /commit pour créer un commit
-   • Lance /pr pour créer une Pull Request
-```
-
-#### Full-stack summary in English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Implementation completed for [TICKET-ID] (Full-Stack)
-
-## Backend ([backend worktree path])
-
-### Files modified
-- `path/to/file1.ts` - [brief description]
-
-### Files created
-- `path/to/new-file.ts` - [brief description]
-
-## Frontend ([frontend worktree path])
-
-### Files modified
-- `path/to/component.tsx` - [brief description]
-
-### Files created
-- `path/to/new-component.tsx` - [brief description]
-
-## Summary of changes
-[2-3 sentences summarizing the main changes]
-
-## How the repos interact
-[Description of the integration between backend and frontend]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💡 Next steps:
-   • Test the changes in both repos
-   • Run /commit in each worktree to create commits
-   • Run /pr to create a Pull Request
-```
-
-#### Full-stack summary in French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Implémentation terminée pour [TICKET-ID] (Full-Stack)
-
-## Backend ([chemin worktree backend])
-
-### Fichiers modifiés
-- `path/to/file1.ts` - [brève description]
-
-### Fichiers créés
-- `path/to/new-file.ts` - [brève description]
-
-## Frontend ([chemin worktree frontend])
-
-### Fichiers modifiés
-- `path/to/component.tsx` - [brève description]
-
-### Fichiers créés
-- `path/to/new-component.tsx` - [brève description]
-
-## Résumé des changements
-[2-3 phrases résumant les changements principaux]
-
-## Interaction entre les repos
-[Description de l'intégration entre backend et frontend]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💡 Prochaines étapes :
-   • Teste les changements dans les deux repos
-   • Lance /commit dans chaque worktree pour créer les commits
-   • Lance /pr pour créer une Pull Request
-```
+Display `MSG_FINAL_SUMMARY` (or `MSG_FINAL_SUMMARY_FULLSTACK`).
 
 ---
 
-## API Reference - Magic Slash Desktop
-
-### Endpoint `/metadata`
-
-Updates the agent metadata in the UI.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | string | Yes | Terminal ID (from `$MAGIC_SLASH_TERMINAL_ID`) |
-| `title` | string | No | Title displayed in the sidebar (URL-encoded) |
-| `ticketId` | string | No | Ticket ID (e.g.: `PROJ-123`, `#456`) |
-| `description` | string | No | Short ticket description (URL-encoded) |
-| `status` | string | No | Status: `"in progress"`, `"committed"`, `"PR created"` |
-| `baseBranch` | string | No | Development base branch (e.g.: `main`, `develop`) |
-| `fullStackTaskId` | string | No | Full-stack task ID (to link multiple worktrees) |
-| `relatedWorktrees` | JSON array | No | Absolute paths of related worktrees (URL-encoded) |
-| `prUrl` | string | No | URL of the created PR |
-| `prRepo` | string | No | Path of the PR repo |
-
-**Example**:
-```bash
-curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=PROJ-123%3A%20Add%20login&status=in%20progress"
-```
-
-### Endpoint `/repositories`
-
-Attaches repositories to the agent for grouping in the sidebar.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | string | Yes | Terminal ID (from `$MAGIC_SLASH_TERMINAL_ID`) |
-| `repos` | JSON array | Yes | List of absolute repo paths (URL-encoded) |
-
-**Example**:
-```bash
-curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=%5B%22%2Fpath%2Fto%2Frepo%22%5D"
-```
-
-**Note**: These endpoints are silent (`|| true`) and must never block the workflow. They are only available if the environment variables `$MAGIC_SLASH_PORT` and `$MAGIC_SLASH_TERMINAL_ID` are defined.
-
----
-
-## Glossary
-
-| EN Term | FR Term | Description |
-|---------|---------|-------------|
-| Worktree | Espace de travail | Separate Git working copy |
-| Stage / Staged | Indexer / Indexé | Prepare files for a commit |
-| Unstage | Désindexer | Remove files from the index |
-| Split | Diviser | Separate into multiple commits |
-| Hook | Hook | Script executed before/after a Git action |
-| Remote | Dépôt distant | Git server (GitHub, GitLab) |
-| Push | Pousser | Send commits to the remote |
-| Pull Request (PR) | Demande de fusion | Merge proposal |
-| Base branch | Branche cible | Branch where changes will be merged |
-| Head branch | Branche source | Branch containing the changes |
+For the Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`), see `references/api.md`.
