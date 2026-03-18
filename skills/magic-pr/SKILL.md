@@ -1,6 +1,7 @@
 ---
 name: magic-pr
-description: This skill should be used when the user says "done", "terminé", "I'm done", "c'est fini", "j'ai fini", "finalize", "create PR", "créer la PR", "push and create PR", "on peut créer la PR", "pousser les changements", "push my changes", "create the pull request", "ready for PR", "prêt pour la PR", "open a PR", "ouvrir une PR", or indicates they have finished coding and want to push their code and create a pull request.
+description: This skill should be used when the user says "done", "terminé", "I'm done", "c'est fini", "j'ai fini", "finalize", "create PR", "créer la PR", "push and create PR", "on peut créer la PR", "pousser les changements", "push my changes", "create the pull request", "ready for PR", "prêt pour la PR", "open a PR", "ouvrir une PR", or indicates they have finished coding and want to push their code and create a pull request. Also trigger when the user signals completion with phrases like "everything looks good", "let's ship it", "can you push this?", "les changements sont prêts", "j'ai fini de coder", "on peut pousser", "let's get this merged", "ready to submit", "ship it", "envoie la sauce", "go for PR", "wrap it up", "c'est bon pour moi", "I think we're good", "on est bon", "time to push", "pousse tout ça", or any indication that coding is complete and they want to move to the review phase. Use this skill even if the user doesn't explicitly mention "PR" — if they indicate their work is done and want to share it, this is the right skill.
+argument-hint: <base-branch> (optional, e.g., develop, staging)
 allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 ---
 
@@ -9,12 +10,13 @@ allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 > **IMPORTANT**: You MUST follow EACH step of this skill in order. Do not skip any step and do not take shortcuts. Each step is essential for the proper functioning of the workflow.
 >
 > **CRITICAL STEPS THAT MUST NEVER BE SKIPPED**:
-> - **Step 2**: Push to remote - MANDATORY
-> - **Step 5**: Create the Pull Request - MANDATORY
-> - **Step 5.1**: Update Magic Slash metadata (curl) - MANDATORY
-> - **Step 7**: Update the Jira/GitHub ticket - RECOMMENDED
+> - **Step 2**: Pre-push validation - MANDATORY
+> - **Step 3**: Push to remote - MANDATORY
+> - **Step 6**: Create the Pull Request - MANDATORY
+> - **Step 6.1**: Update Magic Slash metadata (curl) - MANDATORY
+> - **Step 8**: Update the Jira/GitHub ticket - RECOMMENDED
 
-You are an assistant that finalizes a task by pushing commits, creating a PR and updating the Jira ticket.
+You are an assistant that finalizes a task by pushing commits, creating a PR and updating the Jira/GitHub ticket.
 
 ## Configuration
 
@@ -26,26 +28,23 @@ Read `~/.config/magic-slash/config.json` and determine the parameters based on t
 
 ### Language parameters
 
-| Parameter         | Repo path                                    | Default |
-| ----------------- | -------------------------------------------- | ------ |
-| PR language       | `.repositories.<name>.languages.pullRequest` | `"en"` |
-| Jira language     | `.repositories.<name>.languages.jiraComment` | `"en"` |
-| Discussion language | `.repositories.<name>.languages.discussion` | `"en"` |
+| Parameter           | Repo path                                    | Default |
+| ------------------- | -------------------------------------------- | ------- |
+| PR language         | `.repositories.<name>.languages.pullRequest` | `"en"`  |
+| Jira language       | `.repositories.<name>.languages.jiraComment` | `"en"`  |
+| Discussion language | `.repositories.<name>.languages.discussion`  | `"en"`  |
 
 ## Branch configuration
 
 Read `~/.config/magic-slash/config.json` to determine the development branch:
 
 1. Once the repo is identified, read `.repositories.<name>.branches.development`
-2. **Always ask the user for confirmation**, showing the configured default if available:
+2. If an argument is provided (e.g., `/magic-pr develop`), use it directly as `$DEV_BRANCH` and skip confirmation.
+3. Otherwise, **always ask the user for confirmation**, showing the configured default if available:
 
 #### If a default is configured (e.g., `"develop"`)
 
-##### In English
-> The configured base branch is **{branch}**. Use it, or specify another? (press Enter to confirm)
-
-##### In French
-> La branche de base configurée est **{branch}**. L'utiliser, ou en spécifier une autre ? (appuie sur Entrée pour confirmer)
+Display **`MSG_BRANCH_CONFIRM`**, substituting `{branch}`.
 
 **Handling the user's response:**
 - **Empty response** (user just pressed Enter without typing): Use the configured default branch
@@ -54,27 +53,21 @@ Read `~/.config/magic-slash/config.json` to determine the development branch:
 
 #### If no default is configured
 
-##### In English
-> No development branch configured for this repository.
-> Which branch should I use as the base? (e.g., main, develop, staging)
+Display **`MSG_BRANCH_ASK`**.
 
-##### In French
-> Aucune branche de développement configurée pour ce repository.
-> Quelle branche dois-je utiliser comme base ? (ex : main, develop, staging)
-
-3. Store the result as `$DEV_BRANCH`.
+4. Store the result as `$DEV_BRANCH`.
 
 ### Pull Request parameters
 
-| Parameter         | Repo path                                          | Default | Description                              |
-| ----------------- | -------------------------------------------------- | ------- | ---------------------------------------- |
-| Auto-link tickets | `.repositories.<name>.pullRequest.autoLinkTickets` | `true`  | Add Jira/GitHub links in the PR          |
+| Parameter         | Repo path                                          | Default | Description                     |
+| ----------------- | -------------------------------------------------- | ------- | ------------------------------- |
+| Auto-link tickets | `.repositories.<name>.pullRequest.autoLinkTickets` | `true`  | Add Jira/GitHub links in the PR |
 
 ### Issues parameters
 
-| Parameter     | Repo path                                 | Default | Description                                  |
-| ------------- | ----------------------------------------- | ------- | -------------------------------------------- |
-| Comment on PR | `.repositories.<name>.issues.commentOnPR` | `true`  | Add a comment with the PR link               |
+| Parameter     | Repo path                                 | Default | Description                    |
+| ------------- | ----------------------------------------- | ------- | ------------------------------ |
+| Comment on PR | `.repositories.<name>.issues.commentOnPR` | `true`  | Add a comment with the PR link |
 
 ## Step 0: Check configuration and detect multi-repo worktrees
 
@@ -85,31 +78,11 @@ Before starting, verify that the Magic Slash configuration exists:
 ```bash
 CONFIG_FILE=~/.config/magic-slash/config.json
 if [ ! -f "$CONFIG_FILE" ]; then
-  # Display error based on system language
+  # Display MSG_CONFIG_ERROR and stop
 fi
 ```
 
-#### If the config does not exist
-
-##### In English
-```text
-❌ Magic Slash configuration not found
-
-Please create the config file at:
-  ~/.config/magic-slash/config.json
-
-See documentation: https://github.com/magic-slash/config
-```
-
-##### In French
-```text
-❌ Configuration Magic Slash introuvable
-
-Veuillez créer le fichier de configuration :
-  ~/.config/magic-slash/config.json
-
-Voir la documentation : https://github.com/magic-slash/config
-```
+If the config does not exist, display **`MSG_CONFIG_ERROR`** and stop.
 
 ### 0.1: Extract the ticket ID from the current worktree
 
@@ -172,41 +145,9 @@ Keep only the worktrees that have unpushed commits.
 
 ### 0.5: Summary and confirmation
 
-If multiple worktrees have commits to push, display a summary based on `.languages.discussion`:
+If multiple worktrees have commits to push, display **`MSG_MULTI_REPO_SUMMARY`**, substituting `{TICKET-ID}` and the worktree list with commit counts.
 
-#### In English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🔄 Multi-repo PR detected for {TICKET-ID}
-
-Worktrees with commits to push:
-  • /projects/api-PROJ-123 (2 commits)
-  • /projects/web-PROJ-123 (3 commits)
-
-A PR will be created for each repository.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-#### In French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🔄 PR multi-repo détectée pour {TICKET-ID}
-
-Worktrees avec des commits à pusher :
-  • /projects/api-PROJ-123 (2 commits)
-  • /projects/web-PROJ-123 (3 commits)
-
-Une PR sera créée pour chaque repository.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-If multi-repo detected, execute **Steps 1 to 7** for EACH worktree that has commits.
+If multi-repo detected, execute **Steps 1 to 8** for EACH worktree that has commits.
 Change directory before each cycle:
 
 ```bash
@@ -214,7 +155,15 @@ cd {WORKTREE_PATH}
 ```
 
 At the end of each PR, display a confirmation before moving to the next worktree.
-The Jira/GitHub ticket (Step 7) must be updated **ONLY ONCE** at the end, with links to ALL created PRs.
+The Jira/GitHub ticket (Step 8) must be updated **ONLY ONCE** at the end, with links to ALL created PRs.
+
+### Multi-repo partial failure handling
+
+If a worktree fails during its PR cycle (push error, API failure, etc.):
+
+1. **Do not stop the entire process** — log the failure for this worktree
+2. **Continue to the next worktree** after displaying **`MSG_MULTI_REPO_FAILURE`**, substituting `{worktree-name}` and `{error reason}`
+3. **Include failed worktrees in the Step 9 summary** with their error status
 
 ## Step 0.6: Detect and activate Node.js version
 
@@ -244,29 +193,13 @@ fi
 
 Based on the detection result, store the activation prefix as `$NODE_PREFIX`:
 
-| Result | `$NODE_PREFIX` | Notes |
-| ------ | -------------- | ----- |
-| `NVM` | `source ~/.nvm/nvm.sh && nvm use &&` | Activates nvm and switches to the version in `.nvmrc` |
-| `FNM` | `eval "$(fnm env)" && fnm use &&` | Activates fnm and switches to the version in `.node-version` |
-| `VOLTA` | *(empty)* | Volta uses shims, no activation needed |
-| `NONE` | *(empty)* | No version file found, use system Node |
-| `NO_MANAGER` | *(empty)* | Display warning (see below) |
-
-### 0.6.3: Warning if no manager found
-
-If a `.nvmrc` or `.node-version` file exists but no version manager is detected (`NO_MANAGER`):
-
-#### In English
-```text
-⚠️ Node.js version file detected (.nvmrc/.node-version) but no version manager (nvm/fnm) found.
-Commands will use the system Node.js version.
-```
-
-#### In French
-```text
-⚠️ Fichier de version Node.js détecté (.nvmrc/.node-version) mais aucun gestionnaire de version (nvm/fnm) trouvé.
-Les commandes utiliseront la version Node.js du système.
-```
+| Result       | `$NODE_PREFIX`                               | Notes                                                         |
+| ------------ | -------------------------------------------- | ------------------------------------------------------------- |
+| `NVM`        | `source ~/.nvm/nvm.sh && nvm use &&`         | Activates nvm and switches to the version in `.nvmrc`         |
+| `FNM`        | `eval "$(fnm env)" && fnm use &&`            | Activates fnm and switches to the version in `.node-version`  |
+| `VOLTA`      | *(empty)*                                    | Volta uses shims, no activation needed                        |
+| `NONE`       | *(empty)*                                    | No version file found, use system Node                        |
+| `NO_MANAGER` | *(empty)*                                    | Display **`MSG_NODE_NO_MANAGER`**                             |
 
 ### Usage
 
@@ -291,9 +224,59 @@ git branch --show-current
 ```
 
 Verify that you are not on `main` or `master`.
-If so, inform the user that they need to be on a feature branch.
+If so, display **`MSG_ON_MAIN_BRANCH`** and stop.
 
-## Step 2: Push to remote
+## Step 1.1: Check for existing PR
+
+Before pushing and creating a new PR, check if a PR already exists for this branch:
+
+Use `mcp__github__list_pull_requests` with the `head` parameter (format: `{owner}:{branch}`) to search for open PRs matching the current branch.
+
+- **If an open PR exists**: Display **`MSG_PR_EXISTS`**, substituting `{number}` and `{url}`. Ask the user whether to:
+  1. Open the existing PR (stop the process)
+  2. Continue anyway (e.g., if they just want to push new commits)
+- **If no PR exists**: Proceed to Step 2.
+
+## Step 2: Pre-push validation
+
+Before pushing, run a quick validation to catch issues that would cause push hooks to fail.
+
+### 2.1: Detect the project's verification command
+
+Detect the appropriate validation command for the project:
+
+1. Check `package.json` scripts for common verification commands:
+   - `"lint"` → `npm run lint` (or yarn/pnpm equivalent)
+   - `"typecheck"` or `"type-check"` → `npm run typecheck`
+   - `"check"` → `npm run check`
+2. For non-Node.js projects, detect common tools:
+   - Python: `mypy`, `ruff check`, `flake8`
+   - Go: `go vet ./...`
+   - Rust: `cargo check`
+3. If no verification command is found, skip this step
+
+### 2.2: Run validation
+
+Run the detected command:
+
+```bash
+# Example for Node.js projects:
+$NODE_PREFIX npm run lint
+```
+
+> **Node.js version**: If `$NODE_PREFIX` was determined in Step 0.6, prepend it to any validation command.
+
+### 2.3: Handle validation results
+
+- **All checks pass**: Proceed to Step 3
+- **Checks fail**: Display **`MSG_PRE_PUSH_VALIDATION`**, substituting `{error output}`.
+
+Handle the user's choice:
+- Option 1: Fix the issues and re-validate (repeat up to 3 times)
+- Option 2: Proceed anyway (issues may be caught by push hooks)
+- Option 3: Abort
+
+## Step 3: Push to remote
 
 > **Node.js version**: If `$NODE_PREFIX` was determined in Step 0.6, prepend it to the `git push` command so that pre-push hooks run with the correct Node.js version.
 
@@ -305,9 +288,63 @@ source ~/.nvm/nvm.sh && nvm use && git push -u origin <branch-name>
 git push -u origin <branch-name>
 ```
 
-If the push fails, display the error and stop the process.
+### 3.1: Push hook error handling
 
-## Step 3: List commits for the PR
+If the push fails (non-zero exit code), analyze the error:
+
+**Error classification by level**:
+
+| Level          | Error type    | Examples                               | Action              |
+| -------------- | ------------- | -------------------------------------- | ------------------- |
+| 1 - Auto       | **Formatter** | Prettier, Black, gofmt                 | Fix automatically   |
+| 2 - Semi-auto  | **Linter**    | ESLint --fix, Pylint, Flake8, Rubocop  | Fix and inform      |
+| 3 - Manual     | **Type check**| TypeScript, mypy                       | **Ask the user**    |
+| 3 - Manual     | **Tests**     | Jest, pytest (if in pre-push)          | **Ask the user**    |
+| 3 - Manual     | **Other**     | Secrets detected, files too large      | **Ask the user**    |
+
+#### For level 3 errors (manual)
+
+These errors require human intervention because automatic fixes could introduce regressions.
+
+Display **`MSG_PUSH_ERROR_MANUAL`**, substituting `{error message}`.
+
+Handle the user's choice:
+- Option 1: Fix manually and retry
+- Option 2: Skip this check (`--no-verify`) — display a warning if the user chooses this option
+- Option 3: Abort push
+
+#### Automatic correction process (levels 1 and 2 only)
+
+1. **Analyze the error output** to identify:
+   - The affected files
+   - The problematic lines
+   - The error type (lint, format, type, etc.)
+
+2. **Fix the code**:
+   - Read the files with errors
+   - Apply the necessary corrections
+   - For formatting, run the formatter if available: `npx prettier --write`, `black`, etc.
+   - **Remember to prepend `$NODE_PREFIX`** (from Step 0.6) to any Node.js command (npx, npm, yarn, pnpm)
+
+3. **Re-stage and commit the corrected files**:
+
+   ```bash
+   git add <corrected-files>
+   git commit --amend --no-edit
+   ```
+
+4. **Retry the push** (remember to prepend `$NODE_PREFIX` if set):
+
+   ```bash
+   git push -u origin <branch-name>
+   ```
+
+5. **Repeat up to 3 times maximum**. If the push still fails after 3 attempts,
+   display a detailed error message and ask the user to intervene.
+
+Display **`MSG_PUSH_AUTO_FIX`** during the correction process, substituting the error details and fix results.
+
+## Step 4: List commits for the PR
 
 ```bash
 git log origin/$DEV_BRANCH..HEAD --oneline
@@ -315,17 +352,24 @@ git log origin/$DEV_BRANCH..HEAD --oneline
 
 Retrieve the list of commits that will be included in the PR.
 
-## Step 3.1: Retrieve the full diff for testing instructions
+## Step 4.1: Retrieve the full diff for testing instructions
 
 ```bash
 git diff origin/$DEV_BRANCH..HEAD
 ```
 
-This diff will be used in Step 5 to generate concrete testing instructions in the PR description.
+This diff will be used in Step 6 to generate concrete testing instructions in the PR description.
 
-If the diff is too large (>500 lines), also run `git diff origin/$DEV_BRANCH..HEAD --stat` to get an overview, then read the key modified files individually to understand the changes.
+### Large diff strategy
 
-## Step 4: Retrieve the project's PR template
+If the diff is too large (>500 lines):
+
+1. Run `git diff origin/$DEV_BRANCH..HEAD --stat` to get an overview of changed files
+2. Identify the **key files** (business logic, API routes, components) vs **secondary files** (tests, config, types)
+3. Read key modified files individually using `Read` to understand the changes in context
+4. Use the stat overview + key file understanding to write testing instructions
+
+## Step 5: Retrieve the project's PR template
 
 Check if a PR template exists in the project:
 
@@ -333,13 +377,30 @@ Check if a PR template exists in the project:
 cat .github/PULL_REQUEST_TEMPLATE.md 2>/dev/null || cat .github/pull_request_template.md 2>/dev/null || cat docs/pull_request_template.md 2>/dev/null || echo ""
 ```
 
-If a template exists, you must **strictly follow it** and fill in its sections. For any section related to testing (e.g., "Testing", "How to test", "Test Steps", "Comment tester", "Vérification"), you must **analyze the diff from Step 3.1** to fill it with concrete, specific testing steps based on the actual code changes. Do NOT use generic placeholders.
+If a template exists, you must **strictly follow it** and fill in its sections. For any section related to testing (e.g., "Testing", "How to test", "Test Steps", "Comment tester", "Vérification"), you must **analyze the diff from Step 4.1** to fill it with concrete, specific testing steps based on the actual code changes. Do NOT use generic placeholders.
 
-## Step 5: Create the Pull Request via MCP GitHub
+## Step 5.1: Check for conflicts with base branch
 
-> ⚠️ **MANDATORY**: This step is critical. You MUST create the PR.
+Before creating the PR, check if there are merge conflicts with the base branch:
 
-### 5.0: Detect the base branch
+```bash
+git fetch origin $DEV_BRANCH --quiet
+git merge-tree $(git merge-base HEAD origin/$DEV_BRANCH) HEAD origin/$DEV_BRANCH | grep -c "^<<<<<<<" 2>/dev/null || echo "0"
+```
+
+If conflicts are detected, display **`MSG_CONFLICTS_DETECTED`**, substituting `{base_branch}`.
+
+Handle the user's choice:
+- Option 1: Create the PR anyway (conflicts can be resolved later)
+- Option 2: Abort and resolve conflicts first
+
+If no conflicts, proceed directly to Step 6.
+
+## Step 6: Create the Pull Request via MCP GitHub
+
+> **MANDATORY**: This step is critical. You MUST create the PR.
+
+### 6.0: Resolve the base branch
 
 Use `$DEV_BRANCH` (resolved from the branch configuration above) as the base branch for the PR.
 
@@ -347,11 +408,6 @@ If `$DEV_BRANCH` was not resolved earlier (e.g., the branch configuration sectio
 
 ```bash
 BASE_BRANCH=$(git remote show origin | grep 'HEAD branch' | cut -d: -f2 | xargs)
-```
-
-If the command fails, use `main` by default. If `main` doesn't exist, try `master`.
-
-```bash
 if ! git rev-parse --verify origin/$BASE_BRANCH >/dev/null 2>&1; then
   BASE_BRANCH="main"
 fi
@@ -362,20 +418,22 @@ fi
 
 Otherwise, set `BASE_BRANCH=$DEV_BRANCH`.
 
-Use the MCP GitHub tool `mcp__github__create_pull_request` to create the PR:
+### 6.1: Generate PR title and description
+
+Prepare the PR content:
 
 - **Title**: Based on the branch name or the first commit
   - If the branch contains a ticket ID (e.g.: `feature/PROJ-123`), use the format: `[PROJ-123] Description`
 - **Description**:
   - **If a PR template exists**: Use it and fill in all its sections
-  - **Otherwise**: Use the default template matching `.languages.pullRequest`
+  - **Otherwise**: Use the default template matching `.languages.pullRequest` (see **`MSG_PR_TEMPLATE_EN`** / **`MSG_PR_TEMPLATE_FR`**)
   - **Add a "Linked Issues" section** with the ticket link (unless `autoLinkTickets` is `false`)
 
 ### Linked Issues section (by default, unless autoLinkTickets: false)
 
-Add this section at the end of the PR description:
+Add this section at the end of the PR description.
 
-**In English:**
+For **Jira** tickets, adapt the Jira URL based on the user's domain (retrieved via `mcp__atlassian__getAccessibleAtlassianResources`):
 
 ```markdown
 ## Linked Issues
@@ -383,62 +441,33 @@ Add this section at the end of the PR description:
 - Jira: [PROJ-123](https://your-domain.atlassian.net/browse/PROJ-123)
 ```
 
-**In French:**
+For **GitHub** issues, use the `closes` keyword for automatic linking:
 
 ```markdown
-## Tickets liés
+## Linked Issues
 
-- Jira : [PROJ-123](https://your-domain.atlassian.net/browse/PROJ-123)
+- Closes #123
 ```
 
-Note: Adapt the Jira URL based on the user's domain (retrieved via `mcp__atlassian__getAccessibleAtlassianResources`).
+### 6.2: Preview and confirm before creation
 
-### PR template in English (pullRequest: "en" or absent) - used only if no project template exists
+Display **`MSG_PR_PREVIEW`**, substituting `{title}`, `{base_branch}`, `{head_branch}`, and `{description_preview}` (first 10 lines of the description).
 
-```markdown
-## Summary
+Handle the user's choice:
+- **Y/O** or Enter: Proceed with creation
+- **n**: Abort
+- **edit**: Let the user modify the title or description before creation
 
-[Concise summary of changes in 2-3 sentences]
+### 6.3: Create the PR
 
-## Changes
+Use `mcp__github__create_pull_request`:
 
-[List of commits with their messages]
-
-## How to test
-
-[Based on the diff from Step 3.1, write concrete step-by-step testing instructions:
-- Identify the features/fixes changed in the diff
-- For each change, describe how to verify it works
-- Include expected results
-Do NOT use generic placeholders - every step must be specific to the actual changes]
-```
-
-### PR template in French (pullRequest: "fr") - used only if no project template exists
-
-```markdown
-## Résumé
-
-[Résumé concis des changements en 2-3 phrases]
-
-## Changements
-
-[Liste des commits avec leurs messages]
-
-## Comment tester
-
-[À partir du diff récupéré au Step 3.1, rédiger des instructions de test concrètes étape par étape :
-- Identifier les fonctionnalités/corrections modifiées dans le diff
-- Pour chaque changement, décrire comment vérifier qu'il fonctionne
-- Inclure les résultats attendus
-Ne PAS utiliser de placeholders génériques - chaque étape doit être spécifique aux changements réels]
-```
-
-- **Base**: The branch detected in step 5.0 (usually `main` or `master`)
+- **Base**: The branch resolved in step 6.0
 - **Head**: The current branch
 
-## Step 5.1: Update Magic Slash metadata
+## Step 6.4: Update Magic Slash metadata
 
-> ⚠️ **MANDATORY - DO NOT SKIP THIS STEP**: This step is CRITICAL for the proper functioning of Magic Slash Desktop. You MUST execute it after creating the PR.
+> **MANDATORY - DO NOT SKIP THIS STEP**: This step is CRITICAL for the proper functioning of Magic Slash Desktop. You MUST execute it after creating the PR.
 
 After creating the PR, update the title, status and PR link of the agent:
 
@@ -453,135 +482,51 @@ Replace:
 
 This command is silent and never blocks the process.
 
-## Step 6: Extract the ticket ID
+## Step 7: Extract the ticket ID
 
-Analyze the branch name to extract the Jira ticket ID:
+Analyze the branch name to extract the ticket ID:
 
-- Pattern: `feature/PROJ-123`, `fix/PROJ-456`, `PROJ-789-description`
-- Regex: `[A-Z]+-\d+`
+- **Jira pattern**: `feature/PROJ-123`, `fix/PROJ-456`, `PROJ-789-description` → Regex: `[A-Z]+-\d+`
+- **GitHub pattern**: `feature/123-description`, `fix/456` → Regex: last numeric segment `\d+`
 
-If no ticket ID is found, ask the user if they still want to update a Jira ticket.
+If no ticket ID is found, ask the user if they still want to update a ticket.
 
-## Step 7: Update the Jira ticket
+## Step 8: Update the Jira/GitHub ticket
 
-If a ticket ID is found, use the MCP Atlassian tools:
+### 8.1: Jira tickets (pattern `[A-Z]+-\d+`)
+
+If a Jira ticket ID is found, use the MCP Atlassian tools:
 
 Note: If you don't know the `cloudId`, first use `mcp__atlassian__getAccessibleAtlassianResources` to obtain it.
 
 1. **Retrieve available transitions** with `mcp__atlassian__getTransitionsForJiraIssue`
 2. **Change the status** to "To be reviewed" (or equivalent) with `mcp__atlassian__transitionJiraIssue`
+   - If the "To be reviewed" status doesn't exist, try: "In Review", "Code Review", "Review"
 3. **Add a comment** with the PR link via `mcp__atlassian__addCommentToJiraIssue`
    (unless `commentOnPR` is `false`)
+   - Use **`MSG_JIRA_COMMENT`** for the comment body
 
-### Jira comment format based on `.languages.jiraComment`
+### 8.2: GitHub issues (numeric pattern `#\d+`)
 
-**In English (jiraComment: "en" or absent):**
+If a GitHub issue ID is found:
 
-```text
-🔗 Pull Request created: [PR_URL]
+1. **Add a comment** on the issue with the PR link via `mcp__github__add_issue_comment`
+   (unless `commentOnPR` is `false`)
+   - Use **`MSG_GITHUB_ISSUE_COMMENT`** for the comment body
+2. **Update labels** (optional): If the issue has a "todo" or "in progress" label, update it to "in review" if that label exists via `mcp__github__update_issue`
 
-Ready for code review.
-```
+> Note: The `closes #123` keyword in the PR description (from Step 6.1) will automatically close the issue when the PR is merged. No need to close it manually here.
 
-**In French (jiraComment: "fr"):**
+## Step 8.3: Final summary
 
-```text
-🔗 Pull Request créée : [PR_URL]
-
-Prêt pour la revue de code.
-```
-
-If the "To be reviewed" status doesn't exist, try:
-
-- "In Review"
-- "Code Review"
-- "Review"
-
-## Step 8: Final summary
-
-Display a summary of what was done based on `.languages.discussion`:
-
-### In English (discussion: "en" or absent)
-
-```text
-✅ PR created!
-
-📌 Branch   : feature/PROJ-123
-🔗 PR       : https://github.com/org/repo/pull/42
-🎫 Ticket   : PROJ-123 → To be reviewed
-
-Next steps:
-1. Run /magic-review to perform a code review
-2. Wait for approval and CI checks
-3. Merge the PR once approved
-4. Run /magic-done to finalize the task
-```
-
-### In French (discussion: "fr")
-
-```text
-✅ PR créée !
-
-📌 Branche  : feature/PROJ-123
-🔗 PR       : https://github.com/org/repo/pull/42
-🎫 Ticket   : PROJ-123 → To be reviewed
-
-Prochaines étapes :
-1. Lance /magic-review pour faire une revue de code
-2. Attend l'approbation et les checks CI
-3. Merge la PR une fois approuvée
-4. Lance /magic-done pour finaliser la tâche
-```
+Display **`MSG_SUMMARY`**, substituting `{branch}`, `{PR_URL}`, `{PR_NUMBER}`, `{TICKET_ID}`, and `{ticket_status}`.
 
 ## Step 9: Multi-repo summary (if applicable)
 
-If you created PRs in multiple worktrees, display a final summary based on `.languages.discussion`:
-
-### In English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ PRs created for {TICKET-ID} (Full-Stack)
-
-PRs created:
-  • api-PROJ-123: https://github.com/org/api/pull/42
-  • web-PROJ-123: https://github.com/org/web/pull/43
-
-🎫 Ticket updated with all PR links
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-### In French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ PRs créées pour {TICKET-ID} (Full-Stack)
-
-PRs créées :
-  • api-PROJ-123 : https://github.com/org/api/pull/42
-  • web-PROJ-123 : https://github.com/org/web/pull/43
-
-🎫 Ticket mis à jour avec tous les liens de PR
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+If you created PRs in multiple worktrees, display **`MSG_MULTI_REPO_FINAL`**, substituting `{TICKET-ID}` and the per-worktree results (each with `{worktree-name}`, `{PR_URL}`, and any `{error reason}` for failed worktrees).
 
 ---
 
-## Glossary
+## Messages Reference
 
-| EN Term | FR Term | Description |
-|---------|---------|-------------|
-| Worktree | Espace de travail | Separate Git working copy |
-| Stage / Staged | Indexer / Indexé | Prepare files for a commit |
-| Unstage | Désindexer | Remove files from the index |
-| Split | Diviser | Separate into multiple commits |
-| Hook | Hook | Script executed before/after a Git action |
-| Remote | Dépôt distant | Git server (GitHub, GitLab) |
-| Push | Pousser | Send commits to the remote |
-| Pull Request (PR) | Demande de fusion | Merge proposal |
-| Base branch | Branche cible | Branch where changes will be merged |
-| Head branch | Branche source | Branch containing the changes |
+All bilingual message templates (EN/FR) are in `references/messages.md`. Read that file when you need the exact wording for any `MSG_*` message. Each message has an `en` and `fr` variant — select based on `languages.discussion` config value (default: `en`).
