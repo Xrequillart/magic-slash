@@ -5,7 +5,7 @@ argument-hint: <TICKET-ID> (optional)
 allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, mcp__github__*, mcp__atlassian__*
 ---
 
-# magic-slash v0.21.0 - /resolve
+# magic-slash v0.21.1 - /resolve
 
 > **IMPORTANT**: You MUST follow EACH step of this skill in order. Do not skip any step and do not take shortcuts. Each step is essential for the proper functioning of the workflow.
 >

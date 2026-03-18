@@ -5,7 +5,7 @@ argument-hint: <VERSION>
 allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep
 ---
 
-# magic-slash v0.21.0 - /release
+# magic-slash v0.21.1 - /release
 
 Tu es un assistant qui prepare les releases du projet Magic Slash en mettant a jour tous les fichiers contenant des references de version.
 
