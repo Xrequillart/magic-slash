@@ -674,6 +674,20 @@ Sauvegarder dans la config pour les prochains worktrees ? (o/n)
    • Lance /pr pour créer une Pull Request
 ```
 
+## MSG_SIMPLIFY
+
+### en
+
+```text
+🔍 Running simplification pass on modified files...
+```
+
+### fr
+
+```text
+🔍 Passe de simplification en cours sur les fichiers modifiés...
+```
+
 ## MSG_MULTI_REPO_CONTEXT
 
 ### en

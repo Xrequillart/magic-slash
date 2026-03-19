@@ -362,6 +362,23 @@ After all subagents complete:
 2. Check for conflicts/inconsistencies
 3. Fix integration issues if needed
 
+### 5.4.5: Simplify pass
+
+After implementation completes (step 5.4), run a simplification pass **only on the files changed during this task** to catch redundant code, missed reuse opportunities, or efficiency issues.
+
+1. Collect the list of changed files:
+
+```bash
+cd {WORKTREE_PATH}
+git diff --name-only HEAD
+git ls-files --others --exclude-standard
+```
+
+2. If no files changed, skip this step silently.
+3. Display `MSG_SIMPLIFY`.
+4. Invoke the `/simplify` skill. It may explore the full codebase to detect duplicates, missed reuse opportunities, and existing patterns — but it must only **modify files from the changed list above**. Do NOT let it modify files that were not changed during this task.
+5. If `/simplify` finds no issues, continue silently to the next step.
+
 ### 5.5: Final summary
 
 Display `MSG_FINAL_SUMMARY` (or `MSG_FINAL_SUMMARY_FULLSTACK`).
