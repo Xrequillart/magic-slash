@@ -4,7 +4,7 @@ description: This skill should be used when the user says "the PR is merged", "l
 allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 ---
 
-# magic-slash v0.22.0 - /done
+# magic-slash v0.23.0 - /done
 
 > The steps below must be executed in order because each one depends on the previous result — for example, cleanup must only happen after confirming the merge, and the Jira transition must happen before the summary so it can reflect the actual state.
 

@@ -5,7 +5,7 @@ argument-hint: <base-branch> (optional, e.g., develop, staging)
 allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 ---
 
-# magic-slash v0.22.0 - /pr
+# magic-slash v0.23.0 - /pr
 
 > **IMPORTANT**: You MUST follow EACH step of this skill in order. Do not skip any step and do not take shortcuts. Each step is essential for the proper functioning of the workflow.
 >

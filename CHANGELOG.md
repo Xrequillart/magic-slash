@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0] - 2026-03-19
+
+### Added
+
+- **Skills**: Add `skill-creator` skill for creating, improving and benchmarking skills
+- **Skills /resolve**: Add multi-repo support and re-request review after pushing fixes
+- **Skills evals**: Add eval set (30 queries) and results for magic-skills triggering accuracy
+- **Install**: Sync entire skill folders (references, images) instead of only `SKILL.md`
+
+### Changed
+
+- **Skill /start**: Extract bilingual messages, node setup, plan templates, glossary and API into references
+- **Skill /continue**: Rewrite SKILL.md with progressive disclosure and why explanations; extract bilingual messages, node setup, glossary and API into references
+- **Skill /commit**: Extract bilingual messages, node setup and glossary into references
+- **Skill /pr**: Improve skill with structured error handling, PR preview and messages reference
+- **Skill /done**: Improve skill with why context, edge cases, robust PR search and dynamic summary
+- **Skill /resolve**: Add messages reference file
+
 ## [0.22.0] - 2026-03-18
 
 ### Changed
@@ -698,6 +716,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.23.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.23.0
 [0.22.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.22.0
 [0.21.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.21.1
 [0.21.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.21.0
