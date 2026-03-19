@@ -7,311 +7,129 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, mcp__atlassian__*, mcp__g
 
 # magic-slash v0.22.0 - /continue
 
-> **IMPORTANT**: You MUST follow EACH step in order. Do not skip any step.
->
-> **CRITICAL STEPS THAT MUST NEVER BE SKIPPED**:
-> - **Step 2.5**: Send metadata to Magic Slash Desktop (curl) - MANDATORY
-> - **Step 2.6**: Update ticket status - MANDATORY
-> - **Step 5**: After finding/creating the worktree, `cd` into it - MANDATORY
-> - **Step 6**: Attach the repo to the agent (curl /repositories) - MANDATORY
-> - **Step 6.5**: Report multi-repo context (curl /metadata + /repositories) - MANDATORY if multi-repo
-> - **Step 7**: Check for existing PR and update metadata with PR link - MANDATORY
+You are an assistant that helps resume work on a Jira ticket or GitHub issue that was already started (by you, a colleague, or in a previous session).
 
-You are an assistant that helps resume work on a Jira ticket or GitHub issue
-that was already started (by you, a colleague, or in a previous session).
+Follow each step in order. Each step builds on the previous one.
 
-## Step 0: Check configuration
+## References
 
-Before starting, verify that the Magic Slash configuration exists:
+- `references/messages.md` — All bilingual messages (MSG_*). Read relevant sections as needed (not the whole file at once).
+- `references/node-setup.md` — Node.js version manager detection. Read before installing dependencies (Step 6.2).
+- `references/glossary.md` — EN/FR terminology for git concepts. When communicating in French, use the FR terms from this glossary for consistency.
+- `references/api.md` — Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`).
+
+## Step 0: Configuration
+
+### 0.1: Check config file exists
 
 ```bash
 CONFIG_FILE=~/.config/magic-slash/config.json
-if [ ! -f "$CONFIG_FILE" ]; then
-  # Display error based on system language
-fi
+[ ! -f "$CONFIG_FILE" ] && echo "MISSING" || echo "OK"
 ```
 
-### If the config does not exist
+If missing, display `MSG_CONFIG_ERROR` and stop.
 
-#### In English
-```text
-❌ Magic Slash configuration not found
+### 0.2: Determine language
 
-Please create the config file at:
-  ~/.config/magic-slash/config.json
+Once the repo is identified (Step 5), read `.repositories.<name>.languages.discussion` from config. Default: `"en"`. Until the repo is identified, use English for all messages.
 
-See documentation: https://github.com/magic-slash/config
-```
+### 0.3: Determine development branch (execute after repo is identified in Step 5)
 
-#### In French
-```text
-❌ Configuration Magic Slash introuvable
+Read `.repositories.<name>.branches.development` from config.
 
-Veuillez créer le fichier de configuration :
-  ~/.config/magic-slash/config.json
-
-Voir la documentation : https://github.com/magic-slash/config
-```
-
-## Language configuration
-
-Read `~/.config/magic-slash/config.json` and determine the language based on the selected repo:
-
-1. Once the repo is identified (step 5), read `.repositories.<name>.languages.discussion`
-2. If no value is defined: English by default
-
-- `discussion`: Language for your responses and the agent prompt (`"en"` or `"fr"`)
-
-## Branch configuration
-
-Read `~/.config/magic-slash/config.json` to determine the development branch:
-
-1. Once the repo is identified, read `.repositories.<name>.branches.development`
-2. **Always ask the user for confirmation**, showing the configured default if available:
-
-#### If a default is configured (e.g., `"develop"`)
-
-##### In English
-> The configured base branch is **{branch}**. Use it, or specify another? (press Enter to confirm)
-
-##### In French
-> La branche de base configurée est **{branch}**. L'utiliser, ou en spécifier une autre ? (appuie sur Entrée pour confirmer)
+- **If configured**: Display `MSG_BRANCH_CONFIRM` with the configured value. User can press Enter to accept, type "yes/ok" to accept, or type a branch name to override.
+- **If not configured**: Display `MSG_BRANCH_ASK`.
 
 **Handling the user's response:**
 - **Empty response** (user just pressed Enter without typing): Use the configured default branch
 - **Short confirmation** ("oui", "yes", "ok", "go"): Use the configured default branch
 - **Another branch name** (e.g., "develop", "staging"): Use that branch instead
 
-#### If no default is configured
-
-##### In English
-> No development branch configured for this repository.
-> Which branch should I use as the base? (e.g., main, develop, staging)
-
-##### In French
-> Aucune branche de développement configurée pour ce repository.
-> Quelle branche dois-je utiliser comme base ? (ex : main, develop, staging)
-
-3. Store the result as `$DEV_BRANCH`.
+Store the result as `$DEV_BRANCH`.
 
 ## Step 1: Detect ticket type
 
-Analyze the provided argument: `$ARGUMENTS`
+Analyze `$ARGUMENTS`:
 
-- **Jira format**: Contains an alphabetic prefix followed by a hyphen and digits (e.g.: `PROJ-123`, `ABC-456`)
-  - Regex: `^[A-Z]+-\d+$`
-  - → Go to **Step 2A** (Jira)
-
-- **GitHub format**: A simple number, with or without `#` (e.g.: `123`, `#456`)
-  - Regex: `^#?\d+$`
-  - → Go to **Step 2B** (GitHub)
-
-If the format is not recognized, ask the user to clarify based on `.languages.discussion`:
-
-#### In English (discussion: "en" or absent)
-```text
-Unable to detect the ticket format. Please provide a valid ID:
-  • Jira: PROJ-123
-  • GitHub: #456 or 456
-```
-
-#### In French (discussion: "fr")
-```text
-Impossible de détecter le format du ticket. Veuillez fournir un ID valide :
-  • Jira : PROJ-123
-  • GitHub : #456 ou 456
-```
+- **Jira**: Alphabetic prefix + hyphen + digits (regex: `^[A-Za-z]+-\d+$`, normalize to uppercase) → Step 2A
+- **GitHub**: Number with optional `#` (regex: `^#?\d+$`) → Step 2B
+- **Unrecognized**: Display `MSG_FORMAT_UNRECOGNIZED`.
 
 ## Step 2A: Retrieve the Jira ticket
 
-Use the MCP Atlassian tool `mcp__atlassian__getJiraIssue` to retrieve the ticket details.
+Use `mcp__atlassian__getJiraIssue` to retrieve ticket details. If you don't know the `cloudId`, use `mcp__atlassian__getAccessibleAtlassianResources` first.
 
-Note: If you don't know the `cloudId`, first use `mcp__atlassian__getAccessibleAtlassianResources` to obtain it.
+If the MCP call fails (timeout, auth error), retry once. If it fails again, ask the user to provide the ticket title and description manually so the workflow can continue.
 
-→ Continue to **Step 2.5** (metadata) then **Step 2.6** (status).
+→ Continue to Step 2.5, then Step 2.6.
 
 ## Step 2B: Retrieve the GitHub issue
 
-### 2B.1: Read the repos configuration
+### 2B.1: Read repos configuration
 
-```bash
-cat ~/.config/magic-slash/config.json
-```
-
-Retrieve the paths of all configured repos:
-
-```json
-{
-  "repositories": {
-    "api": {"path": "/path/to/api", "keywords": ["backend", "api"]},
-    "web": {"path": "/path/to/web", "keywords": ["frontend", "ui"]}
-  }
-}
-```
+Read `~/.config/magic-slash/config.json` to get the list of configured repos.
 
 ### 2B.2: Identify GitHub repos
 
-For each configured repo, retrieve the owner and repo name:
+For each configured repo, get owner/repo from the remote URL:
 
 ```bash
 cd {REPO_PATH} && git remote get-url origin
 ```
 
-Parse the URL to extract `owner/repo` (possible formats: `git@github.com:owner/repo.git` or `https://github.com/owner/repo.git`).
+Parse `owner/repo` from either `git@github.com:owner/repo.git` or `https://github.com/owner/repo.git`.
 
-### 2B.3: Search for the issue in each repo
+### 2B.3: Search for the issue
 
-For each identified repo, use `mcp__github__get_issue` to check if the issue exists:
-
-- `owner`: The repo owner
-- `repo`: The repo name
-- `issue_number`: The issue number (without the `#`)
-
-Collect all found issues.
+Use `mcp__github__get_issue` for each repo — launch all calls in parallel for speed. Collect all found issues. If an MCP call fails, retry once; if still failing, skip that repo and continue with the others.
 
 ### 2B.4: Resolution
 
-- **No issue found**: Inform the user based on `.languages.discussion`:
+- **No issue found**: Display `MSG_NO_ISSUE_FOUND`.
+- **Single issue**: Use it. Scope = that repo.
+- **Multiple issues**: Display `MSG_GITHUB_MULTI_ISSUE` and ask user to choose.
 
-  #### In English (discussion: "en" or absent)
-  ```text
-  No issue #{NUMBER} found in the configured repositories.
-  ```
+→ Continue to Step 2.5, then Step 2.6.
 
-  #### In French (discussion: "fr")
-  ```text
-  Aucune issue #{NUMBER} trouvée dans les repositories configurés.
-  ```
+## Step 2.5: Update Magic Slash Desktop metadata
 
-- **Single issue found**: Use this issue and continue. The scope is automatically the repo where the issue was found.
+This step updates the Desktop sidebar so the user sees their task context. Without it, the UI shows a blank entry.
 
-- **Multiple issues found**: Display the options and ask the user to choose:
+### 2.5.1: Generate ticket description
 
-  #### In English (discussion: "en" or absent)
-  ```text
-  Multiple issues #123 found:
-
-  1. owner1/repo-api: "API issue title"
-  2. owner2/repo-web: "Web issue title"
-
-  Which one do you want to use? (or 'all')
-  ```
-
-  #### In French (discussion: "fr")
-  ```text
-  Plusieurs issues #123 trouvées :
-
-  1. owner1/repo-api : "Titre de l'issue API"
-  2. owner2/repo-web : "Titre de l'issue Web"
-
-  Laquelle souhaitez-vous utiliser ? (ou 'all')
-  ```
-
-→ Continue to **Step 2.5** (metadata) then **Step 2.6** (status).
-
-## Step 2.5: Update Magic Slash metadata
-
-> ⚠️ **MANDATORY - DO NOT SKIP THIS STEP**: This step is CRITICAL for the proper functioning of Magic Slash Desktop. You MUST execute it before continuing, even if the curl command seems trivial.
-
-### 2.5.1: Generate a clear ticket description
-
-Generate a concise and clear description of the ticket (2-3 sentences maximum) based on:
-- The ticket title
-- The ticket description/content
-- The acceptance criteria (if present)
-
-**The description must be in the configured language** (`.languages.discussion`):
-- If `discussion: "fr"`: Generate the description in French
-- If `discussion: "en"` or absent: Generate the description in English
-
-**Example in English**:
-```
-Implement JWT token refresh mechanism. Add automatic token renewal before expiration and handle refresh failures gracefully.
-```
-
-**Example in French**:
-```
-Implémenter le mécanisme de rafraîchissement des tokens JWT. Ajouter le renouvellement automatique avant expiration et gérer les échecs de rafraîchissement.
-```
+Generate a concise description (2-3 sentences max) in the configured language, based on the ticket title, description, and acceptance criteria.
 
 ### 2.5.2: Send metadata
-
-Execute this command to update the title, ticket ID, description and agent status:
 
 ```bash
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(echo -n '{TICKET_ID}: {TICKET_TITLE}' | jq -sRr @uri)&ticketId={TICKET_ID}&description=$(echo -n '{DESCRIPTION}' | jq -sRr @uri)&status=in%20progress&baseBranch={DEV_BRANCH}" > /dev/null 2>&1 || true
 ```
 
-Replace:
-- `{TICKET_ID}`: The ticket ID (e.g.: `PROJ-123` or `#456`)
-- `{TICKET_TITLE}`: The ticket title (short version, max 30 characters)
-- `{DESCRIPTION}`: The description generated in step 2.5.1
-- `{DEV_BRANCH}`: The development branch chosen by the user (e.g.: `main`, `develop`)
-
-Note: We use `jq -sRr @uri` to properly encode special characters in the URL.
-
-This command is silent and never blocks the process.
-
-**⚠️ REMINDER**: You MUST execute this curl command NOW before moving to the next step. Do not skip this step.
+Replace `{TICKET_ID}`, `{TICKET_TITLE}` (max 30 chars), `{DESCRIPTION}`, `{DEV_BRANCH}`.
 
 ## Step 2.6: Update ticket status to "In Progress"
 
-> ⚠️ **MANDATORY - DO NOT SKIP THIS STEP**: This step is CRITICAL for keeping the ticket status in sync. You MUST execute it before continuing.
+Updating ticket status keeps the board accurate for teammates. This step never blocks the process — on failure, display a warning and continue.
 
-Before continuing, update the ticket status to indicate that work has resumed.
+### 2.6A: Jira ticket
 
-**IMPORTANT**: This step must never block the process. In case of failure, display a warning and continue.
+1. Retrieve transitions with `mcp__atlassian__getTransitionsForJiraIssue`
+2. Look for: "In Progress", "En cours", "In Development", "Started", "In Work"
+3. Apply with `mcp__atlassian__transitionJiraIssue`
+4. On failure: Display `MSG_TRANSITION_FAILED`
 
-### 2.6A: For a Jira ticket (if coming from step 2A)
+### 2.6B: GitHub issue
 
-1. **Retrieve available transitions** with `mcp__atlassian__getTransitionsForJiraIssue`
+1. Check if a progress label exists: "in-progress", "wip", "in progress", "working"
+2. If found: Add via `mcp__github__update_issue` (keep existing labels)
+3. If not found: Continue without modification (do not create a label)
+4. On failure: Display `MSG_LABEL_FAILED`
 
-2. **Look for a transition to "In Progress"** among the available transitions:
-   - Look first for: "In Progress"
-   - If not found, try: "En cours", "In Development", "Started", "In Work"
-
-3. **Apply the transition** with `mcp__atlassian__transitionJiraIssue`
-
-4. **In case of failure**: Display a warning but continue the process
-
-   #### In English
-   ```text
-   ⚠️ Unable to move the ticket to "In Progress" (transition not available or insufficient permissions)
-   ```
-
-   #### In French
-   ```text
-   ⚠️ Impossible de déplacer le ticket vers "En cours" (transition non disponible ou permissions insuffisantes)
-   ```
-
-### 2.6B: For a GitHub issue (if coming from step 2B)
-
-1. **Retrieve the issue labels** (already available from step 2B)
-
-2. **Check if a progress label exists** in the current repo labels:
-   - Look for an existing label among: "in-progress", "wip", "in progress", "working"
-
-3. **If an appropriate label exists**: Add it to the issue via `mcp__github__update_issue` while keeping existing labels
-
-4. **If no appropriate label exists**: Continue without modification (do not create a label automatically)
-
-5. **In case of failure**: Display a warning but continue the process
-
-   #### In English
-   ```text
-   ⚠️ Unable to add the "in-progress" label (label not found or insufficient permissions)
-   ```
-
-   #### In French
-   ```text
-   ⚠️ Impossible d'ajouter le label "in-progress" (label introuvable ou permissions insuffisantes)
-   ```
-
-**⚠️ REMINDER**: You MUST execute this status update NOW before moving to the next step. Do not skip this step.
-
-→ Continue to **Step 3**.
+→ Continue to Step 3.
 
 ## Step 3: Search for existing worktrees
+
+Searching worktrees first avoids creating duplicates if work already started.
 
 For **each configured repo** in config.json:
 
@@ -331,10 +149,12 @@ git worktree list | grep -i "$TICKET_ID"
 
 Collect all found worktrees with their absolute paths.
 
-- **If worktree(s) found** → Go to **Step 5** (Resolution)
-- **If no worktree found** → Go to **Step 4** (Search branches)
+- **If worktree(s) found** → Go to Step 5 (Resolution)
+- **If no worktree found** → Go to Step 4 (Search branches)
 
 ## Step 4: Search for existing branches (if no worktree found)
+
+Searching branches preserves commit history from previous sessions.
 
 For **each configured repo**:
 
@@ -347,64 +167,28 @@ git fetch origin
 git branch -r --list "*${TICKET_ID}*"
 ```
 
+If `git fetch` fails, display `MSG_FETCH_FAILED` and continue with local state only.
+
+If multiple branches match the ticket ID in the **same repo**, list them and ask the user to choose.
+
 Collect all found branches (local and remote) with their associated repo.
 
-- **If branch(es) found** → Go to **Step 5** (Resolution)
-- **If nothing found** → Go to **Step 5**, Case 3
+- **If branch(es) found** → Go to Step 5 (Resolution)
+- **If nothing found** → Go to Step 5, Case 3
 
 ## Step 5: Resolution and action
 
-> ⚠️ **MANDATORY**: After resolving, you MUST `cd` into the worktree before continuing.
+The rest of the skill operates from inside the worktree — all subsequent commands must target the right directory.
 
 ### Case 1 — Worktree(s) found
 
-- **Single worktree**: `cd` into it directly
+- **Single worktree**: `cd` into it directly.
 
-- **Multiple worktrees (multi-repo)**: Display the list, ask which one or "all"
-
-  #### In English (discussion: "en" or absent)
-  ```text
-  Multiple worktrees found for {TICKET_ID}:
-
-  1. /path/to/api-TICKET-ID (backend)
-  2. /path/to/web-TICKET-ID (frontend)
-
-  Which one do you want to use? (1, 2, or 'all')
-  ```
-
-  #### In French (discussion: "fr")
-  ```text
-  Plusieurs worktrees trouvés pour {TICKET_ID} :
-
-  1. /path/to/api-TICKET-ID (backend)
-  2. /path/to/web-TICKET-ID (frontend)
-
-  Lequel souhaitez-vous utiliser ? (1, 2, ou 'all')
-  ```
-
-  - For "all" → multi-repo flow (Step 6.5)
+- **Multiple worktrees (multi-repo)**: Display `MSG_MULTI_WORKTREE` with the list. For "all" → multi-repo flow (Step 6.5).
 
 ### Case 2 — Branch(es) found but no worktree
 
-Display found branches (local and remote) with their repo and propose creating a worktree.
-
-#### In English (discussion: "en" or absent)
-```text
-Branch found for {TICKET_ID} but no worktree:
-
-  • {BRANCH_NAME} (in {REPO_NAME}, {local/remote})
-
-Creating a worktree from this branch...
-```
-
-#### In French (discussion: "fr")
-```text
-Branche trouvée pour {TICKET_ID} mais pas de worktree :
-
-  • {BRANCH_NAME} (dans {REPO_NAME}, {locale/distante})
-
-Création d'un worktree à partir de cette branche...
-```
+Display `MSG_BRANCH_FOUND_NO_WORKTREE` with branch details.
 
 Create the worktree from the branch:
 
@@ -419,45 +203,27 @@ git worktree add ../${REPO_NAME}-$TICKET_ID origin/{BRANCH_NAME}
 cd ../${REPO_NAME}-$TICKET_ID
 ```
 
+If `git fetch` fails, display `MSG_FETCH_FAILED` and continue with local state.
+
 If multiple branches in different repos → propose creating worktrees for each (multi-repo).
 
 ### Case 3 — Nothing found
 
-#### In English
-```text
-No branch or worktree found for {TICKET_ID}
+Display `MSG_NOTHING_FOUND`. → Stop the skill.
 
-Suggestion: Use /start {TICKET_ID} to begin working on this ticket.
-```
+## Step 6: Attach repo to the agent
 
-#### In French
-```text
-Aucune branche ou worktree trouvé pour {TICKET_ID}
-
-Suggestion : Utilisez /start {TICKET_ID} pour commencer à travailler sur ce ticket.
-```
-
-→ Stop the skill.
-
-**⚠️ REMINDER**: You MUST be in the worktree (not in the main repo) before moving to the next step.
-
-## Step 6: Attach repo(s) to the agent
-
-> ⚠️ **MANDATORY - DO NOT SKIP THIS STEP**: This step is CRITICAL for the proper functioning of Magic Slash Desktop. You MUST execute it after entering the worktree, even if the curl command seems trivial.
+This tells the Desktop sidebar which project this terminal belongs to, so the user sees it grouped correctly.
 
 ```bash
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(echo -n '["'$(pwd)'"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
-This command is silent and never blocks the process.
+## Step 6.1: Copy worktree files (only if worktree was newly created in Case 2)
 
-**⚠️ REMINDER**: You MUST execute this curl command NOW before moving to the next step. Do not skip this step.
+If the worktree already existed (Case 1), skip this step.
 
-## Step 6.1: Copy worktree files (only if worktree was newly created)
-
-**Only execute this step if a worktree was created in Case 2** (branch found but no worktree). If the worktree already existed (Case 1), skip this step.
-
-Check if the repository has `worktreeFiles` configured in `~/.config/magic-slash/config.json` (under `.repositories.<name>.worktreeFiles`).
+Check if the repository has `worktreeFiles` configured (`.repositories.<name>.worktreeFiles`).
 
 ### Case A: `worktreeFiles` is non-empty
 
@@ -472,13 +238,11 @@ for FILE in {WORKTREE_FILES_LIST}; do
 done
 ```
 
-**Rules**:
-- Only copy files that **exist** in the main repo. If a file does not exist, silently skip it.
-- Display a summary of copied files (in the configured discussion language).
+Only copy files that exist; silently skip missing ones. Display `MSG_WORKTREE_FILES_COPIED`.
 
-### Case B: `worktreeFiles` is empty or not configured — auto-detect
+### Case B: Not configured — auto-detect
 
-Scan the **main repo** for common untracked files that typically need copying:
+Scan the **main repo** for common untracked files:
 
 ```bash
 MAIN_REPO="{REPO_PATH}"
@@ -493,44 +257,20 @@ for f in "${CANDIDATES[@]}"; do
 done
 ```
 
-**If files are detected**, ask the user whether to save them to the config:
-
-#### In English
-```text
-🔍 Detected untracked files in the main repo that might need copying to worktrees:
-   • .env
-   • .env.local
-
-Save to config for future worktrees? (y/n)
-```
-
-#### In French
-```text
-🔍 Fichiers non versionnés détectés dans le repo principal, potentiellement utiles dans les worktrees :
-   • .env
-   • .env.local
-
-Sauvegarder dans la config pour les prochains worktrees ? (o/n)
-```
-
-- If **yes**: write the detected files to `config.json` under `.repositories.<name>.worktreeFiles`, then copy them to the worktree (same as Case A).
-- If **no**: copy the detected files to the worktree this time only, without saving to config.
-
-To save to config, edit the config file directly:
+If files detected: Display `MSG_WORKTREE_FILES_DETECTED`. If user says yes, save to config via `jq`:
 
 ```bash
-CONFIG_FILE="$HOME/.config/magic-slash/config.json"
-jq --arg repo "{REPO_NAME}" --argjson files '["DETECTED_FILE_1", "DETECTED_FILE_2"]' \
+jq --arg repo "{REPO_NAME}" --argjson files '["file1", "file2"]' \
   '.repositories[$repo].worktreeFiles = $files' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 ```
 
-**If no files are detected**, skip this step silently.
+Then copy files either way. If no files detected, skip silently.
 
-## Step 6.2: Install dependencies (only if worktree was newly created)
+## Step 6.2: Install dependencies (only if worktree was newly created in Case 2)
 
-**Only execute this step if a worktree was created in Case 2.**
+Read `references/node-setup.md` to detect the Node.js version manager and set `$NODE_PREFIX`.
 
-Detect the project's package manager and install dependencies:
+**Detect package manager** — check lock files, first match wins:
 
 | Lock file | Package manager | Install command |
 |-----------|----------------|-----------------|
@@ -539,71 +279,39 @@ Detect the project's package manager and install dependencies:
 | `pnpm-lock.yaml` | pnpm | `pnpm install` |
 | `package-lock.json` | npm | `npm install` |
 
-If no lock file is found, check if a `package.json` exists. If yes, default to `npm install`. If no `package.json` exists, skip this step.
+If no lock file but `package.json` exists, default to `npm install`. If no `package.json`, skip.
 
-This step must never block the process. If the install fails, display a warning and continue.
+For Node.js projects, prepend `$NODE_PREFIX` to the install command.
 
-## Step 6.5: Report context and attach repos (if multiple repos)
+Display `MSG_INSTALLING_DEPS`. On failure, display `MSG_INSTALL_FAILED` and continue.
 
-> ⚠️ **MANDATORY IF MULTI-REPO - DO NOT SKIP THIS STEP**: This step is CRITICAL for the proper functioning of Magic Slash Desktop in full-stack mode. You MUST execute it if multiple worktrees were found/created, even if the curl commands seem trivial.
+## Step 6.5: Report context and attach repos (multi-repo only)
 
-**If multiple worktrees** (full-stack task):
+Linking worktrees in the Desktop UI lets the user see them as one task.
 
-1. Collect all absolute paths of the worktrees
+If multiple worktrees:
 
-2. **⚠️ MANDATORY** - Send full-stack metadata to Magic Slash Desktop:
+1. Send full-stack metadata:
 
 ```bash
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&fullStackTaskId={TICKET_ID}&relatedWorktrees=$(echo -n '["{WORKTREE_PATH_1}","{WORKTREE_PATH_2}"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
-3. **⚠️ MANDATORY** - Attach all worktrees to the agent so it stays displayed in all relevant projects:
+2. Attach all worktrees:
 
 ```bash
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(echo -n '["{WORKTREE_PATH_1}","{WORKTREE_PATH_2}"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
-Replace:
-- `{TICKET_ID}`: The ticket ID (e.g.: `PROJ-123`)
-- `{WORKTREE_PATH_1}`, `{WORKTREE_PATH_2}`: The absolute paths of the worktrees
+3. Create `CLAUDE.local.md` in each worktree (if missing) using `MSG_MULTI_REPO_CONTEXT`. Adapt language to `.languages.discussion`.
 
-These commands are silent and never block the process.
-
-**⚠️ REMINDER**: You MUST execute BOTH curl commands above NOW before moving to the next sub-step. Do not skip them.
-
-4. **Check if `CLAUDE.local.md` already exists** in each worktree. If missing, create it:
-
-```bash
-cat > {WORKTREE_PATH}/CLAUDE.local.md << 'EOF'
-# Full-Stack Context
-
-You are working on ticket **{TICKET_ID}** which spans multiple repos.
-
-## Worktrees for this task
-{WORKTREE_LIST}
-
-## Instructions
-- Use `cd` to navigate to the appropriate worktree
-- You can work on both repos in a single session
-- Make sure changes are consistent across repos
-EOF
-```
-
-Example of `{WORKTREE_LIST}`:
-```
-- **Backend**: /projects/api-PROJ-123
-- **Frontend**: /projects/web-PROJ-123
-```
-
-**Note**: Adapt the file language according to `.languages.discussion`.
-
-After creating the context files, `cd` into the **first** worktree to begin work.
+4. `cd` into the **first** worktree to begin work.
 
 ## Step 7: Check for existing Pull Request
 
-> ⚠️ **MANDATORY - DO NOT SKIP THIS STEP**: This step is CRITICAL for the proper functioning of Magic Slash Desktop. You MUST execute it to detect existing PRs and update metadata accordingly.
+Detecting an existing PR lets the summary show its status and updates the Desktop UI with a clickable link.
 
-For each worktree/repo, check if a PR already exists for the current branch:
+For each worktree/repo:
 
 ### 7.1: Get branch and repo info
 
@@ -615,39 +323,32 @@ REMOTE_URL=$(git remote get-url origin)
 
 ### 7.2: Search for an open PR
 
-Use `mcp__github__list_pull_requests` to search for an open PR on this branch:
+Use `mcp__github__list_pull_requests`:
 - `owner`: repo owner
 - `repo`: repo name
-- `head`: `"owner:branch-name"` (e.g., `"myorg:feature/PROJ-123"`)
+- `head`: `"owner:branch-name"`
 - `state`: `"open"`
+
+If the MCP call fails, retry once. If still failing, skip PR detection and continue.
 
 ### 7.3: If PR found
 
-Extract PR number and URL, then **MANDATORY** - update Desktop metadata with PR info:
+Update Desktop metadata with PR info:
 
 ```bash
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&prUrl=$(echo -n '{PR_URL}' | jq -sRr @uri)&prRepo=$(echo -n "$PWD" | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
-Replace:
-- `{PR_URL}`: The full PR URL (e.g.: `https://github.com/org/repo/pull/42`)
-
-This command is silent and never blocks the process.
-
-**⚠️ REMINDER**: You MUST execute this curl command NOW if a PR was found. Do not skip this step.
-
-Include PR info in the summary (Step 8).
-
 ### 7.4: If no PR found
 
-Continue without PR info (nothing to report).
+Continue without PR info.
 
 ## Step 8: Quick status summary
 
-Display a summary to get context on the current state:
+Display a summary of the current state:
 
 ```bash
-# Commits on the branch (compared to main/origin)
+# Commits on the branch (compared to dev branch)
 git log --oneline origin/$DEV_BRANCH..HEAD
 
 # Uncommitted modified files
@@ -657,175 +358,8 @@ git status --short
 git diff --stat
 ```
 
-### Summary template (single repo, with PR) — English
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Resuming work on {TICKET_ID}: "{TICKET_TITLE}"
-
-  Source    : Jira / GitHub (owner/repo)
-  Ticket    : [ID] - [Title]
-  Worktree  : /path/to/repo-TICKET-ID
-  Branch    : feature/PROJ-123
-  PR        : #42 (open) - https://github.com/org/repo/pull/42
-
-  Current state:
-    3 commits ahead of main
-    2 modified files (not staged)
-    1 file staged
-
-  Recent commits:
-    abc1234 feat(auth): add token validation
-    def5678 feat(auth): add login endpoint
-
-Ready to continue. What would you like to do?
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-### Summary template (single repo, with PR) — French
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Reprise du travail sur {TICKET_ID} : "{TICKET_TITLE}"
-
-  Source    : Jira / GitHub (owner/repo)
-  Ticket    : [ID] - [Title]
-  Worktree  : /path/to/repo-TICKET-ID
-  Branche   : feature/PROJ-123
-  PR        : #42 (ouverte) - https://github.com/org/repo/pull/42
-
-  État actuel :
-    3 commits en avance sur main
-    2 fichiers modifiés (non stagés)
-    1 fichier stagé
-
-  Commits récents :
-    abc1234 feat(auth): add token validation
-    def5678 feat(auth): add login endpoint
-
-Prêt à continuer. Que souhaitez-vous faire ?
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-### Summary template (single repo, no PR)
-
-Same as above but without the `PR` line.
-
-### Summary template (multi-repo)
-
-Similar but with a section per worktree showing each repo's state and PR status:
-
-#### In English
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Resuming work on {TICKET_ID}: "{TICKET_TITLE}" (Full-Stack)
-
-  Source    : Jira / GitHub
-  Ticket    : [ID] - [Title]
-
-  📁 Backend: /path/to/api-TICKET-ID
-    Branch  : feature/PROJ-123
-    PR      : #42 (open) - https://github.com/org/api/pull/42
-    State   : 3 commits ahead, 2 modified files
-
-  📁 Frontend: /path/to/web-TICKET-ID
-    Branch  : feature/PROJ-123
-    PR      : #43 (open) - https://github.com/org/web/pull/43
-    State   : 1 commit ahead, no pending changes
-
-Ready to continue. What would you like to do?
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-#### In French
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Reprise du travail sur {TICKET_ID} : "{TICKET_TITLE}" (Full-Stack)
-
-  Source    : Jira / GitHub
-  Ticket    : [ID] - [Title]
-
-  📁 Backend : /path/to/api-TICKET-ID
-    Branche : feature/PROJ-123
-    PR      : #42 (ouverte) - https://github.com/org/api/pull/42
-    État    : 3 commits en avance, 2 fichiers modifiés
-
-  📁 Frontend : /path/to/web-TICKET-ID
-    Branche : feature/PROJ-123
-    PR      : #43 (ouverte) - https://github.com/org/web/pull/43
-    État    : 1 commit en avance, aucune modification en attente
-
-Prêt à continuer. Que souhaitez-vous faire ?
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-**No planning/exploration step** — just display git state + PR status. The user can ask for a deeper analysis if needed.
+Display `MSG_RESUME_SUMMARY` (or `MSG_RESUME_SUMMARY_FULLSTACK` for multi-repo). No planning/exploration step — just display git state + PR status. The user can ask for a deeper analysis if needed.
 
 ---
 
-## API Reference - Magic Slash Desktop
-
-### Endpoint `/metadata`
-
-Updates the agent metadata in the UI.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | string | Yes | Terminal ID (from `$MAGIC_SLASH_TERMINAL_ID`) |
-| `title` | string | No | Title displayed in the sidebar (URL-encoded) |
-| `ticketId` | string | No | Ticket ID (e.g.: `PROJ-123`, `#456`) |
-| `description` | string | No | Short ticket description (URL-encoded) |
-| `status` | string | No | Status: `"in progress"`, `"committed"`, `"PR created"` |
-| `baseBranch` | string | No | Development base branch (e.g.: `main`, `develop`) |
-| `fullStackTaskId` | string | No | Full-stack task ID (to link multiple worktrees) |
-| `relatedWorktrees` | JSON array | No | Absolute paths of related worktrees (URL-encoded) |
-| `prUrl` | string | No | URL of the created PR |
-| `prRepo` | string | No | Path of the PR repo |
-
-**Example**:
-```bash
-curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=PROJ-123%3A%20Add%20login&status=in%20progress"
-```
-
-### Endpoint `/repositories`
-
-Attaches repositories to the agent for grouping in the sidebar.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | string | Yes | Terminal ID (from `$MAGIC_SLASH_TERMINAL_ID`) |
-| `repos` | JSON array | Yes | List of absolute repo paths (URL-encoded) |
-
-**Example**:
-```bash
-curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=%5B%22%2Fpath%2Fto%2Frepo%22%5D"
-```
-
-**Note**: These endpoints are silent (`|| true`) and must never block the workflow. They are only available if the environment variables `$MAGIC_SLASH_PORT` and `$MAGIC_SLASH_TERMINAL_ID` are defined.
-
----
-
-## Glossary
-
-| EN Term | FR Term | Description |
-|---------|---------|-------------|
-| Worktree | Espace de travail | Separate Git working copy |
-| Stage / Staged | Indexer / Indexé | Prepare files for a commit |
-| Unstage | Désindexer | Remove files from the index |
-| Split | Diviser | Separate into multiple commits |
-| Hook | Hook | Script executed before/after a Git action |
-| Remote | Dépôt distant | Git server (GitHub, GitLab) |
-| Push | Pousser | Send commits to the remote |
-| Pull Request (PR) | Demande de fusion | Merge proposal |
-| Base branch | Branche cible | Branch where changes will be merged |
-| Head branch | Branche source | Branch containing the changes |
+For the Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`), see `references/api.md`.
