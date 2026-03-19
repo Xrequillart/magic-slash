@@ -1,0 +1,212 @@
+[
+  {
+    "id": 1,
+    "query": "PROJ-123",
+    "expected_skill": "magic-start",
+    "notes": "Bare ticket ID with no context — should default to start, but could also be continue. Ambiguous case.",
+    "difficulty": "hard"
+  },
+  {
+    "id": 2,
+    "query": "je vais bosser sur PROJ-456 aujourd'hui",
+    "expected_skill": "magic-start",
+    "notes": "French phrase for starting work on a ticket",
+    "difficulty": "easy"
+  },
+  {
+    "id": 3,
+    "query": "let me resume work on PROJ-789, I was working on it yesterday",
+    "expected_skill": "magic-continue",
+    "notes": "Clear resume intent with context",
+    "difficulty": "easy"
+  },
+  {
+    "id": 4,
+    "query": "je reprends PROJ-123",
+    "expected_skill": "magic-continue",
+    "notes": "French resume keyword",
+    "difficulty": "easy"
+  },
+  {
+    "id": 5,
+    "query": "switch to PROJ-456",
+    "expected_skill": "magic-continue",
+    "notes": "Switch implies existing work",
+    "difficulty": "medium"
+  },
+  {
+    "id": 6,
+    "query": "j'ai fini, on peut pousser tout ça",
+    "expected_skill": "magic-pr",
+    "notes": "French completion phrase without mentioning PR — should trigger magic-pr, not magic-done",
+    "difficulty": "hard"
+  },
+  {
+    "id": 7,
+    "query": "I'm done coding, everything looks good",
+    "expected_skill": "magic-pr",
+    "notes": "'done' + 'coding' context = PR creation, not task finalization",
+    "difficulty": "hard"
+  },
+  {
+    "id": 8,
+    "query": "the PR has been merged, let's close things out",
+    "expected_skill": "magic-done",
+    "notes": "Clear post-merge finalization",
+    "difficulty": "easy"
+  },
+  {
+    "id": 9,
+    "query": "la tâche est terminée, la PR est mergée",
+    "expected_skill": "magic-done",
+    "notes": "French — task done + PR merged",
+    "difficulty": "easy"
+  },
+  {
+    "id": 10,
+    "query": "c'est bon pour moi, ship it",
+    "expected_skill": "magic-pr",
+    "notes": "Casual completion signal — should be PR, not done",
+    "difficulty": "hard"
+  },
+  {
+    "id": 11,
+    "query": "commit",
+    "expected_skill": "magic-commit",
+    "notes": "Single word trigger",
+    "difficulty": "easy"
+  },
+  {
+    "id": 12,
+    "query": "let's save my changes before I forget",
+    "expected_skill": "magic-commit",
+    "notes": "Indirect commit intent",
+    "difficulty": "medium"
+  },
+  {
+    "id": 13,
+    "query": "review the PR please",
+    "expected_skill": "magic-review",
+    "notes": "Direct review request",
+    "difficulty": "easy"
+  },
+  {
+    "id": 14,
+    "query": "can you do a self-review before I ask my colleague?",
+    "expected_skill": "magic-review",
+    "notes": "Self-review context",
+    "difficulty": "easy"
+  },
+  {
+    "id": 15,
+    "query": "fix the review comments on my PR",
+    "expected_skill": "magic-resolve",
+    "notes": "Fix review comments = resolve, not review",
+    "difficulty": "medium"
+  },
+  {
+    "id": 16,
+    "query": "il y a des retours sur la PR, faut que je les corrige",
+    "expected_skill": "magic-resolve",
+    "notes": "French — feedback on PR that needs fixing",
+    "difficulty": "medium"
+  },
+  {
+    "id": 17,
+    "query": "the task is done",
+    "expected_skill": "magic-done",
+    "notes": "In magic-done description, but could be confused with magic-pr 'I'm done'",
+    "difficulty": "hard"
+  },
+  {
+    "id": 18,
+    "query": "I think we're good, time to push",
+    "expected_skill": "magic-pr",
+    "notes": "'push' is the disambiguator here — PR creation, not finalization",
+    "difficulty": "medium"
+  },
+  {
+    "id": 19,
+    "query": "envoie la sauce",
+    "expected_skill": "magic-pr",
+    "notes": "Casual French slang for 'ship it'",
+    "difficulty": "medium"
+  },
+  {
+    "id": 20,
+    "query": "mark the ticket as done, everything is merged",
+    "expected_skill": "magic-done",
+    "notes": "Explicit done + merged context",
+    "difficulty": "easy"
+  },
+  {
+    "id": 21,
+    "query": "address the feedback from the code review",
+    "expected_skill": "magic-resolve",
+    "notes": "'address feedback' is in the resolve description",
+    "difficulty": "easy"
+  },
+  {
+    "id": 22,
+    "query": "fermer le ticket",
+    "expected_skill": "magic-done",
+    "notes": "French — close the ticket",
+    "difficulty": "easy"
+  },
+  {
+    "id": 23,
+    "query": "start #42",
+    "expected_skill": "magic-start",
+    "notes": "GitHub issue format with start keyword",
+    "difficulty": "easy"
+  },
+  {
+    "id": 24,
+    "query": "#42",
+    "expected_skill": "magic-start",
+    "notes": "Bare GitHub issue number — ambiguous like bare ticket ID",
+    "difficulty": "hard"
+  },
+  {
+    "id": 25,
+    "query": "ready to commit, everything passes",
+    "expected_skill": "magic-commit",
+    "notes": "Ready to commit phrase",
+    "difficulty": "easy"
+  },
+  {
+    "id": 26,
+    "query": "wrap it up and create the pull request",
+    "expected_skill": "magic-pr",
+    "notes": "Explicit PR creation mention",
+    "difficulty": "easy"
+  },
+  {
+    "id": 27,
+    "query": "done",
+    "expected_skill": "magic-pr",
+    "notes": "Single word 'done' — listed in magic-pr description, but magic-done also has 'task is done'. magic-pr should win because bare 'done' usually means 'I finished coding'",
+    "difficulty": "hard"
+  },
+  {
+    "id": 28,
+    "query": "regarde la PR s'il te plait",
+    "expected_skill": "magic-review",
+    "notes": "French PR review request",
+    "difficulty": "easy"
+  },
+  {
+    "id": 29,
+    "query": "work on issue #15, it's about adding dark mode to the settings page",
+    "expected_skill": "magic-start",
+    "notes": "Start with context about the issue",
+    "difficulty": "easy"
+  },
+  {
+    "id": 30,
+    "query": "les changements sont prêts, on peut créer la PR",
+    "expected_skill": "magic-pr",
+    "notes": "French — changes ready, let's create PR",
+    "difficulty": "easy"
+  }
+]

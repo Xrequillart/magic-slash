@@ -13,7 +13,8 @@ magic-slash/
 │   ├── magic-pr/      #   Push, create PR and update Jira
 │   ├── magic-review/  #   Review a Pull Request (self or external)
 │   ├── magic-resolve/ #   Address review comments and force-push fixes
-│   └── magic-done/    #   Finalize after PR merge (transition Jira to Done)
+│   ├── magic-done/    #   Finalize after PR merge (transition Jira to Done)
+│   └── evals/         #   Trigger evals: eval_set.json (30 queries) + results.json
 ├── desktop/           # Native desktop app (Electron + React + TypeScript)
 │   ├── src/main/      #   Electron main process (config, IPC, PTY, hooks, updater)
 │   ├── src/preload/   #   Secure bridge main <-> renderer
