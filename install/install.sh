@@ -340,11 +340,23 @@ if [ -d "$SCRIPT_DIR/../skills" ]; then
   # Local installation
   cp -r "$SCRIPT_DIR/../skills/"* "$SKILLS_DIR/"
 else
-  # Remote installation - download from GitHub
+  # Remote installation - download full skill folders from GitHub
+  TREE_JSON=$(curl -fsSL "https://api.github.com/repos/xrequillart/magic-slash/git/trees/main?recursive=1")
   for skill in magic-start magic-continue magic-commit magic-pr magic-review magic-resolve magic-done; do
     mkdir -p "$SKILLS_DIR/$skill"
-    curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/SKILL.md" > "$SKILLS_DIR/$skill/SKILL.md"
-    curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/image.png" -o "$SKILLS_DIR/$skill/image.png" 2>/dev/null || true
+    # Extract file paths for this skill from the tree
+    SKILL_FILES=$(echo "$TREE_JSON" | grep -o "\"path\" *: *\"skills/$skill/[^\"]*\"" | sed 's/"path" *: *"skills\///;s/"//' | sed "s|^$skill/||")
+    if [ -z "$SKILL_FILES" ]; then
+      # Fallback: download SKILL.md and image.png directly
+      curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/SKILL.md" > "$SKILLS_DIR/$skill/SKILL.md"
+      curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/image.png" -o "$SKILLS_DIR/$skill/image.png" 2>/dev/null || true
+    else
+      echo "$SKILL_FILES" | while IFS= read -r file; do
+        [ -z "$file" ] && continue
+        mkdir -p "$SKILLS_DIR/$skill/$(dirname "$file")"
+        curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills/$skill/$file" -o "$SKILLS_DIR/$skill/$file" 2>/dev/null || true
+      done
+    fi
   done
 fi
 
