@@ -5,6 +5,7 @@ import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useGroupedTerminals } from '../../hooks/useGroupedTerminals'
 import { useStore } from '../../store'
 import { TerminalView } from '../../components/TerminalView'
+import { FriendlyOverlay } from '../../components/FriendlyOverlay'
 import { showToast } from '../../components/Toast'
 
 const DEFAULT_PATH = '~/Documents'
@@ -14,7 +15,7 @@ export function TerminalsPage() {
   const { terminals, activeTerminalId, launchClaudeTerminal, setActiveTerminal, duplicateAgent } = useTerminals()
   const { scriptTerminals } = useScriptRunner()
   const { flatVisualOrder } = useGroupedTerminals()
-  const { toggleRightSidebar, setCurrentPage } = useStore()
+  const { toggleRightSidebar, setCurrentPage, viewMode, toggleViewMode } = useStore()
   const [isCreating, setIsCreating] = useState(false)
 
   // Generate terminal name based on count
@@ -141,6 +142,19 @@ export function TerminalsPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [activeTerminalId, terminals, duplicateAgent, setActiveTerminal])
 
+  // Listen for Command+T to toggle view mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 't') {
+        e.preventDefault()
+        toggleViewMode()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [toggleViewMode])
+
   // Detect platform for keyboard shortcut display
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const shortcutKey = isMac ? '⌘N' : 'Ctrl+N'
@@ -168,27 +182,34 @@ export function TerminalsPage() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Terminal Content */}
-      <div className="flex-1 overflow-hidden">
-        {terminals.map((terminal) => (
-          <TerminalView
-            key={terminal.id}
-            terminal={terminal}
-            isActive={terminal.id === activeTerminalId}
-          />
-        ))}
-        {scriptTerminals.map((script) => (
-          <TerminalView
-            key={script.id}
-            terminal={{
-              id: script.id,
-              name: `${script.scriptName} (${script.agentName})`,
-              state: script.state === 'running' ? 'working' : 'error',
-              repositories: [script.projectPath],
-            }}
-            isActive={script.id === activeTerminalId}
-          />
-        ))}
+      <div className="flex-1 overflow-hidden relative">
+        {/* Terminal views — kept mounted to preserve PTY state */}
+        <div className={viewMode === 'terminal' ? 'h-full' : 'hidden'}>
+          {terminals.map((terminal) => (
+            <TerminalView
+              key={terminal.id}
+              terminal={terminal}
+              isActive={terminal.id === activeTerminalId && viewMode === 'terminal'}
+            />
+          ))}
+          {scriptTerminals.map((script) => (
+            <TerminalView
+              key={script.id}
+              terminal={{
+                id: script.id,
+                name: `${script.scriptName} (${script.agentName})`,
+                state: script.state === 'running' ? 'working' : 'error',
+                repositories: [script.projectPath],
+              }}
+              isActive={script.id === activeTerminalId && viewMode === 'terminal'}
+            />
+          ))}
+        </div>
+
+        {/* Friendly overlay */}
+        {viewMode === 'overlay' && (
+          <FriendlyOverlay terminalId={activeTerminalId} />
+        )}
       </div>
     </div>
   )

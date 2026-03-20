@@ -22,6 +22,7 @@ interface AppState {
   rightSidebar: 'info' | null
   leftSidebarVisible: boolean
   iconSidebarVisible: boolean
+  viewMode: 'terminal' | 'overlay'
 
   // Workspace terminals
   workspaceTerminals: WorkspaceTerminal[]
@@ -55,6 +56,8 @@ interface AppState {
   toggleRightSidebar: (sidebar: 'info') => void
   toggleLeftSidebar: () => void
   toggleIconSidebar: () => void
+  setViewMode: (mode: 'terminal' | 'overlay') => void
+  toggleViewMode: () => void
 
   // Workspace terminal actions
   addWorkspaceTerminal: (paneIndex: number, id: string, name: string, repositories: string[]) => void
@@ -91,6 +94,7 @@ export const useStore = create<AppState>()(
         rightSidebar: null,
         leftSidebarVisible: true,
         iconSidebarVisible: true,
+        viewMode: 'overlay',
 
         workspaceTerminals: [],
         workspaceLayout: 1,
@@ -168,6 +172,8 @@ export const useStore = create<AppState>()(
         })),
         toggleLeftSidebar: () => set((state) => ({ leftSidebarVisible: !state.leftSidebarVisible })),
         toggleIconSidebar: () => set((state) => ({ iconSidebarVisible: !state.iconSidebarVisible })),
+        setViewMode: (viewMode) => set({ viewMode }),
+        toggleViewMode: () => set((state) => ({ viewMode: state.viewMode === 'terminal' ? 'overlay' : 'terminal' })),
 
         // Workspace terminal actions
         addWorkspaceTerminal: (paneIndex, id, name, repositories) =>
@@ -231,6 +237,7 @@ export const useStore = create<AppState>()(
       partialize: (state) => ({
         leftSidebarVisible: state.leftSidebarVisible,
         iconSidebarVisible: state.iconSidebarVisible,
+        viewMode: state.viewMode,
         workspaceLayout: state.workspaceLayout,
       }),
     }
