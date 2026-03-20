@@ -388,7 +388,7 @@ if [ ! -f "$CLAUDE_SETTINGS" ]; then
 fi
 
 # Allow curl to localhost only (for Magic Slash Desktop communication)
-MAGIC_SLASH_PERM='Bash(* curl -s "http://127.0.0.1:*" *)'
+MAGIC_SLASH_PERM='Bash(*http://127.0.0.1:*)'
 
 TMP_SETTINGS=$(mktemp)
 jq --arg perm "$MAGIC_SLASH_PERM" '

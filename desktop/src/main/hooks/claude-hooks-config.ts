@@ -4,7 +4,7 @@ import * as os from 'os'
 
 const CLAUDE_SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json')
 const MAGIC_SLASH_HOOK_MARKER = 'magic-slash-desktop'
-const MAGIC_SLASH_PERMISSION = 'Bash(* curl -s "http://127.0.0.1:*" *)'
+const MAGIC_SLASH_PERMISSION = 'Bash(*http://127.0.0.1:*)'
 
 interface HookConfig {
   matcher?: Record<string, unknown>
