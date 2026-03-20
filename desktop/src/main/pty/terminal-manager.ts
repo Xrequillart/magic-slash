@@ -403,7 +403,8 @@ export function launchClaude(
   onMetadataChange?: (metadata: TerminalMetadata) => void,
   initialMetadata?: TerminalMetadata,
   onRepositoriesChange?: (repositories: string[]) => void,
-  initialRepositories?: string[]
+  initialRepositories?: string[],
+  outputFormat?: 'raw' | 'stream-json'
 ): Terminal {
   const shell = getDefaultShell()
   const expandedCwd = expandPath(cwd)
@@ -413,9 +414,14 @@ export function launchClaude(
   // Track when PTY process started for stable-run detection
   let ptyStartTime = Date.now()
 
+  // Build the claude command with optional output format
+  const claudeCmd = outputFormat === 'stream-json'
+    ? 'claude --output-format stream-json'
+    : 'claude'
+
   // Function to create and attach a new PTY process
   const createPtyProcess = (currentCwd: string, cols: number = 120, rows: number = 30) => {
-    const ptyProcess = pty.spawn(shell, ['-li', '-c', 'claude'], {
+    const ptyProcess = pty.spawn(shell, ['-li', '-c', claudeCmd], {
       name: 'xterm-256color',
       cols,
       rows,

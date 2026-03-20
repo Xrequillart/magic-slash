@@ -243,7 +243,7 @@ export function setupTerminalHandlers(
   })
 
   // Launch Claude in a new terminal
-  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd }) => {
+  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd, outputFormat }) => {
     const terminal = launchClaude(
       id,
       name,
@@ -315,7 +315,9 @@ export function setupTerminalHandlers(
         if (mainWindow) {
           mainWindow.webContents.send('terminal:repositories', { id, repositories })
         }
-      }
+      },
+      // outputFormat
+      outputFormat
     )
 
     // Save agent to disk immediately
