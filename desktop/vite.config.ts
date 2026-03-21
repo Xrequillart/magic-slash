@@ -18,7 +18,7 @@ export default defineConfig({
             outDir: 'dist/main',
             minify: 'esbuild',
             rollupOptions: {
-              external: ['electron', 'node-pty'],
+              external: ['electron', 'node-pty', '@anthropic-ai/claude-agent-sdk'],
               output: {
                 format: 'cjs',
               }

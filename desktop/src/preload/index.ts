@@ -191,6 +191,12 @@ const overlayApi = {
   sendMessage: (id: string, message: string, cwd: string) =>
     ipcRenderer.invoke('overlay:sendMessage', { id, message, cwd }),
 
+  respond: (id: string, requestId: string, behavior: 'allow' | 'deny', message?: string, updatedInput?: Record<string, unknown>) =>
+    ipcRenderer.invoke('overlay:respond', { id, requestId, behavior, message, updatedInput }),
+
+  resetSession: (id: string) =>
+    ipcRenderer.invoke('overlay:resetSession', { id }),
+
   onData: (callback: (data: { id: string; data: string }) => void) => {
     const listener = (_event: any, data: { id: string; data: string }) => callback(data)
     ipcRenderer.on('overlay:data', listener)
