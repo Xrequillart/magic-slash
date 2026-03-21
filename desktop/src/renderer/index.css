@@ -249,3 +249,14 @@ input[type="checkbox"] {
     transition-duration: 0.01ms !important;
   }
 }
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
