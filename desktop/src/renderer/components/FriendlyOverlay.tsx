@@ -1,4 +1,14 @@
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useStreamJsonParser } from '../hooks/useStreamJsonParser'
+import type { StreamEvent } from '../types/streamEvents'
+import { ChatInput } from './friendly/ChatInput'
+import { ConfirmDialog } from './friendly/ConfirmDialog'
+
+const FAKE_CONFIRM_EVENT: StreamEvent = {
+  type: 'system',
+  subtype: 'tool_use_permission',
+  message: 'Claude wants to execute Bash(rm -rf node_modules). Allow?',
+}
 
 interface FriendlyOverlayProps {
   terminalId: string | null
@@ -6,6 +16,25 @@ interface FriendlyOverlayProps {
 
 export function FriendlyOverlay({ terminalId }: FriendlyOverlayProps) {
   const { events } = useStreamJsonParser(terminalId)
+  const [isConfirmationActive, setIsConfirmationActive] = useState(false)
+  const [debugConfirm, setDebugConfirm] = useState(false)
+
+  // Listen for debug trigger from UpdateOverlay debug menu
+  useEffect(() => {
+    const handler = () => setDebugConfirm(true)
+    window.addEventListener('debug:confirm-dialog', handler)
+    return () => window.removeEventListener('debug:confirm-dialog', handler)
+  }, [])
+
+  const confirmEvents = useMemo<StreamEvent[]>(
+    () => (debugConfirm ? [...events, FAKE_CONFIRM_EVENT] : events),
+    [events, debugConfirm],
+  )
+
+  const handleConfirmActiveChange = useCallback((active: boolean) => {
+    setIsConfirmationActive(active)
+    if (!active) setDebugConfirm(false)
+  }, [])
 
   return (
     <div className="h-full flex flex-col bg-black/30 backdrop-blur-md overflow-hidden">
@@ -26,10 +55,19 @@ export function FriendlyOverlay({ terminalId }: FriendlyOverlayProps) {
         )}
       </div>
 
-      {/* Fixed input zone at bottom */}
-      <div className="shrink-0 bg-white/5 mx-2 mb-4 px-4 py-3 rounded-lg">
-        <span className="text-text-secondary text-sm">Input will be connected in a future sub-issue</span>
-      </div>
+      {/* Confirmation dialog (above input) */}
+      <ConfirmDialog
+        terminalId={terminalId}
+        events={confirmEvents}
+        onActiveChange={handleConfirmActiveChange}
+      />
+
+      {/* Chat input bar */}
+      <ChatInput
+        terminalId={terminalId}
+        disabled={isConfirmationActive}
+      />
+
     </div>
   )
 }
