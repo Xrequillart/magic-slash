@@ -33,9 +33,11 @@ const MODE_PILL: Record<ClaudeMode, { label: string; bg: string; text: string }>
 interface ChatInputProps {
   terminalId: string | null
   disabled?: boolean
+  onSend?: (text: string) => void
+  overlayMode?: boolean
 }
 
-export function ChatInput({ terminalId, disabled = false }: ChatInputProps) {
+export function ChatInput({ terminalId, disabled = false, onSend, overlayMode = false }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [value, setValue] = useState('')
   const [isMultiline, setIsMultiline] = useState(false)
@@ -115,9 +117,14 @@ export function ChatInput({ terminalId, disabled = false }: ChatInputProps) {
 
   const sendMessage = useCallback(() => {
     if (!terminalId || !value.trim()) return
-    window.electronAPI.terminal.write(terminalId, value + '\r')
+    onSend?.(value)
+    // In overlay mode, the parent handles sending via overlay API
+    // In terminal mode, write directly to PTY
+    if (!overlayMode) {
+      window.electronAPI.terminal.write(terminalId, value + '\r')
+    }
     setValue('')
-  }, [terminalId, value])
+  }, [terminalId, value, onSend, overlayMode])
 
   const cycleMode = useCallback(() => {
     if (!terminalId) return

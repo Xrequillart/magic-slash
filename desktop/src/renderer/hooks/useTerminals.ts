@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useStore } from '../store'
 import type { TerminalState, TerminalInfo, TerminalMetadata } from '../../types'
+import { clearTerminalStream } from './useStreamJsonParser'
 
 export function useTerminals() {
   const {
@@ -128,7 +129,7 @@ export function useTerminals() {
 
   const launchClaudeTerminal = useCallback(async (name: string, cwd: string) => {
     const id = `claude-${Date.now()}`
-    const result = await window.electronAPI.terminal.launchClaude(id, name, cwd)
+    const result = await window.electronAPI.terminal.launchClaude(id, name, cwd, 'stream-json')
 
     const terminalInfo: TerminalInfo = {
       id: result.id,
@@ -146,6 +147,7 @@ export function useTerminals() {
   const killTerminal = useCallback(async (id: string) => {
     await window.electronAPI.terminal.kill(id)
     removeTerminal(id)
+    clearTerminalStream(id)
   }, [removeTerminal])
 
   // Update terminal metadata (both local store and backend)
@@ -204,7 +206,7 @@ export function useTerminals() {
     const cwd = sourceTerminal.repositories?.[0] || '~/Documents'
 
     // Launch new Claude terminal
-    const result = await window.electronAPI.terminal.launchClaude(newId, newName, cwd)
+    const result = await window.electronAPI.terminal.launchClaude(newId, newName, cwd, 'stream-json')
 
     // Create terminal info with copied metadata
     const terminalInfo: TerminalInfo = {

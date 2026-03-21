@@ -250,6 +250,28 @@ input[type="checkbox"] {
   }
 }
 
+/* Thinking dots animation */
+@keyframes thinkingBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.thinking-dot {
+  animation: thinkingBounce 1.4s ease-in-out infinite;
+}
+.thinking-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.thinking-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
 @keyframes slideInFromRight {
   from {
     transform: translateX(100%);

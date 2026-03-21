@@ -206,10 +206,10 @@ export function TerminalsPage() {
           ))}
         </div>
 
-        {/* Friendly overlay */}
-        {viewMode === 'overlay' && (
+        {/* Friendly overlay — kept mounted to preserve conversation state */}
+        <div className={viewMode === 'overlay' ? 'h-full' : 'hidden'}>
           <FriendlyOverlay terminalId={activeTerminalId} />
-        )}
+        </div>
       </div>
     </div>
   )
