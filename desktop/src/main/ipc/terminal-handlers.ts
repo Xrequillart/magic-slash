@@ -355,6 +355,7 @@ export function setupTerminalHandlers(
   // Kill terminal
   ipcMain.handle('terminal:kill', async (_event, { id }) => {
     killTerminal(id)
+    cleanupOverlay(id)
     // Remove agent from disk
     removeAgent(id)
   })

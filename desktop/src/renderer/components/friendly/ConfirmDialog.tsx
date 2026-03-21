@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { ShieldQuestion } from 'lucide-react'
 import type { StreamEvent } from '../../hooks/useStreamJsonParser'
+import type { ContentBlockStart } from '../../types/streamEvents'
 
 interface ConfirmDialogProps {
   terminalId: string | null
@@ -30,14 +31,14 @@ function detectConfirmation(events: StreamEvent[]): ConfirmationRequest | null {
       }
     }
 
-    if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
-      const toolName = event.content_block.name || 'a tool'
+    if (event.type === 'content_block_start' && (event as ContentBlockStart).content_block?.type === 'tool_use') {
+      const toolName = (event as ContentBlockStart).content_block.name || 'a tool'
 
       // Check if a completion event follows within the remaining window
       let hasCompleted = false
       for (let j = i + 1; j < events.length; j++) {
         const e = events[j]
-        if (e.type === 'message_stop' || (e.type === 'message_delta' && e.delta?.stop_reason)) {
+        if (e.type === 'message_stop' || (e.type === 'message_delta' && (e as { delta?: { stop_reason?: string } }).delta?.stop_reason)) {
           hasCompleted = true
           break
         }
