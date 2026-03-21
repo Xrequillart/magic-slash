@@ -183,6 +183,27 @@ const terminalApi = {
   },
 }
 
+// Overlay API (non-PTY stream-json for FriendlyOverlay)
+const overlayApi = {
+  getClaudeInfo: (): Promise<{ version: string; model: string; accountType: string }> =>
+    ipcRenderer.invoke('overlay:getClaudeInfo'),
+
+  sendMessage: (id: string, message: string, cwd: string) =>
+    ipcRenderer.invoke('overlay:sendMessage', { id, message, cwd }),
+
+  onData: (callback: (data: { id: string; data: string }) => void) => {
+    const listener = (_event: any, data: { id: string; data: string }) => callback(data)
+    ipcRenderer.on('overlay:data', listener)
+    return () => ipcRenderer.removeListener('overlay:data', listener)
+  },
+
+  onDone: (callback: (data: { id: string; exitCode: number }) => void) => {
+    const listener = (_event: any, data: { id: string; exitCode: number }) => callback(data)
+    ipcRenderer.on('overlay:done', listener)
+    return () => ipcRenderer.removeListener('overlay:done', listener)
+  },
+}
+
 // Command History API
 const historyApi = {
   get: (repoPath: string) =>
@@ -274,6 +295,7 @@ const updaterApi = {
 contextBridge.exposeInMainWorld('electronAPI', {
   config: configApi,
   terminal: terminalApi,
+  overlay: overlayApi,
   history: historyApi,
   window: windowApi,
   dialog: dialogApi,
@@ -289,6 +311,7 @@ declare global {
     electronAPI: {
       config: typeof configApi
       terminal: typeof terminalApi
+      overlay: typeof overlayApi
       history: typeof historyApi
       window: typeof windowApi
       dialog: typeof dialogApi

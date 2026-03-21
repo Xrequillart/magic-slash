@@ -436,7 +436,7 @@ export function renameRepository(oldName: string, newName: string): Config {
   return config
 }
 
-export function saveAgent(id: string, name: string, repositories: string[], metadata?: TerminalMetadata, tsCreate?: number): Config {
+export function saveAgent(id: string, name: string, repositories: string[], metadata?: TerminalMetadata, tsCreate?: number, outputFormat?: 'raw' | 'stream-json'): Config {
   const config = readConfig()
   config.agents = config.agents || []
 
@@ -458,7 +458,8 @@ export function saveAgent(id: string, name: string, repositories: string[], meta
     metadata: {
       ...createDefaultMetadata(),
       ...metadata
-    }
+    },
+    ...(outputFormat && { outputFormat }),
   }
   config.agents.push(agent)
 

@@ -22,13 +22,18 @@
     "@xterm/xterm": "^5.5.0",
     "adm-zip": "^0.5.16",
     "electron-updater": "^6.7.3",
+    "highlight.js": "^11.11.1",
     "lucide-react": "^0.563.0",
     "node-pty": "^1.0.0",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
     "zustand": "^4.5.0"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
     "@types/adm-zip": "^0.5.7",
+    "@types/hast": "^3.0.4",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",

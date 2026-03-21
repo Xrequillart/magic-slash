@@ -12,6 +12,9 @@ import {
   cleanupAllTerminals,
   updateTerminalMetadataFromHook,
   updateTerminalRepositoriesFromHook,
+  sendOverlayMessage,
+  cleanupOverlay,
+  getClaudeCodeInfo,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
 import {
@@ -147,11 +150,13 @@ export function restoreAgents() {
           }
         },
         // initialRepositories - restore saved repositories
-        agent.repositories
+        agent.repositories,
+        // outputFormat - restore saved format
+        agent.outputFormat
       )
 
       // Save restored agent to disk (preserve original tsCreate)
-      saveAgent(agent.id, agent.name, agent.repositories, agent.metadata, agent.tsCreate)
+      saveAgent(agent.id, agent.name, agent.repositories, agent.metadata, agent.tsCreate, agent.outputFormat)
     }
   } catch (error) {
     console.error('Error restoring agents:', error)
@@ -316,13 +321,15 @@ export function setupTerminalHandlers(
           mainWindow.webContents.send('terminal:repositories', { id, repositories })
         }
       },
+      // initialRepositories
+      undefined,
       // outputFormat
       outputFormat
     )
 
     // Save agent to disk immediately
     const tsCreate = Date.now()
-    saveAgent(terminal.id, terminal.name, terminal.repositories, terminal.metadata, tsCreate)
+    saveAgent(terminal.id, terminal.name, terminal.repositories, terminal.metadata, tsCreate, outputFormat)
 
     return {
       id: terminal.id,
@@ -348,6 +355,7 @@ export function setupTerminalHandlers(
   // Kill terminal
   ipcMain.handle('terminal:kill', async (_event, { id }) => {
     killTerminal(id)
+    cleanupOverlay(id)
     // Remove agent from disk
     removeAgent(id)
   })
@@ -425,6 +433,30 @@ export function setupTerminalHandlers(
     if (mainWindow) {
       mainWindow.webContents.send('terminal:repositories', { id, repositories })
     }
+  })
+
+  // Send a message via overlay mode (non-PTY, stream-json)
+  ipcMain.handle('overlay:getClaudeInfo', async () => {
+    return getClaudeCodeInfo()
+  })
+
+  ipcMain.handle('overlay:sendMessage', async (_event, { id, message, cwd }) => {
+    const mainWindow = getMainWindow()
+    if (!mainWindow) return
+
+    sendOverlayMessage(
+      id,
+      message,
+      cwd,
+      // onEvent — stream each JSON line to renderer
+      (jsonLine) => {
+        mainWindow.webContents.send('overlay:data', { id, data: jsonLine })
+      },
+      // onDone
+      (exitCode) => {
+        mainWindow.webContents.send('overlay:done', { id, exitCode })
+      }
+    )
   })
 }
 

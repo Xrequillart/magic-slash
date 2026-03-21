@@ -71,6 +71,7 @@ export interface Agent {
   repositories: string[]  // List of attached repository paths
   tsCreate?: number
   metadata?: TerminalMetadata
+  outputFormat?: 'raw' | 'stream-json'
 }
 
 export interface Config {
