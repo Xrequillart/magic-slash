@@ -30,10 +30,6 @@ export function useTerminals() {
 
   // Setup global event listeners
   useEffect(() => {
-    const unsubData = window.electronAPI.terminal.onData(() => {
-      // Data is handled by individual terminal components
-    })
-
     const unsubState = window.electronAPI.terminal.onState(({ id, state }) => {
       // Ignore non-agent terminals
       if (shouldIgnoreTerminal(id)) return
@@ -65,7 +61,6 @@ export function useTerminals() {
     })
 
     return () => {
-      unsubData()
       unsubState()
       unsubExit()
       unsubBranch()

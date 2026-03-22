@@ -3,7 +3,6 @@ import { BrowserWindow, ipcMain, app } from 'electron'
 import { writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs'
 import { join } from 'path'
 import { cleanupAllTerminals } from './pty/terminal-manager'
-import { stopStatusServer } from './hooks/status-server'
 
 function getPendingWhatsNewPath() {
   return join(app.getPath('userData'), 'pending-whats-new.json')
@@ -105,7 +104,6 @@ export function setupAutoUpdater() {
       isUpdating = true
       try {
         cleanupAllTerminals()
-        await stopStatusServer()
       } catch (err) {
         console.error('[Updater] Pre-install cleanup error:', err)
       }

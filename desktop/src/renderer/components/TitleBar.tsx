@@ -1,4 +1,3 @@
-import { Monitor, MessageSquare } from 'lucide-react'
 import { useStore } from '../store'
 
 // Inline SVG components for left sidebar toggle icons
@@ -36,7 +35,7 @@ const RightSidebarCloseIcon = () => (
 )
 
 export function TitleBar() {
-  const { currentPage, terminals, activeTerminalId, rightSidebar, leftSidebarVisible, viewMode, toggleRightSidebar, toggleLeftSidebar, toggleViewMode } = useStore()
+  const { currentPage, terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar } = useStore()
   const activeTerminal = terminals.find((t) => t.id === activeTerminalId)
 
   return (
@@ -69,34 +68,6 @@ export function TitleBar() {
           </div>
         )}
 
-        {/* View mode toggle */}
-        {currentPage === 'terminals' && terminals.length > 0 && (
-          <div
-            className="flex items-center"
-            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-          >
-            <button
-              onClick={toggleViewMode}
-              className="relative flex items-center gap-0.5 p-1 rounded-lg"
-              title={`Switch to ${viewMode === 'overlay' ? 'terminal' : 'overlay'} mode (${navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘T' : 'Ctrl+T'})`}
-            >
-              {/* Sliding active indicator */}
-              <span className={`absolute top-1 w-6 h-6 rounded-md bg-white/20 transition-transform duration-200 ease-in-out ${
-                viewMode === 'terminal' ? 'translate-x-[26px]' : 'translate-x-0'
-              }`} />
-              <span className={`relative flex items-center justify-center w-6 h-6 rounded-md transition-colors duration-200 ${
-                viewMode === 'overlay' ? 'text-white' : 'text-text-secondary'
-              }`}>
-                <MessageSquare className="w-3.5 h-3.5" />
-              </span>
-              <span className={`relative flex items-center justify-center w-6 h-6 rounded-md transition-colors duration-200 ${
-                viewMode === 'terminal' ? 'text-white' : 'text-text-secondary'
-              }`}>
-                <Monitor className="w-3.5 h-3.5" />
-              </span>
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Center - Active agent name */}

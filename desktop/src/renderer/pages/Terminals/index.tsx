@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Bot } from 'lucide-react'
 import { useTerminals } from '../../hooks/useTerminals'
-import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useGroupedTerminals } from '../../hooks/useGroupedTerminals'
 import { useStore } from '../../store'
-import { TerminalView } from '../../components/TerminalView'
 import { FriendlyOverlay } from '../../components/FriendlyOverlay'
 import { showToast } from '../../components/Toast'
 
@@ -13,9 +11,8 @@ const MAX_AGENTS = 12
 
 export function TerminalsPage() {
   const { terminals, activeTerminalId, launchClaudeTerminal, setActiveTerminal, duplicateAgent } = useTerminals()
-  const { scriptTerminals } = useScriptRunner()
   const { flatVisualOrder } = useGroupedTerminals()
-  const { toggleRightSidebar, setCurrentPage, viewMode, toggleViewMode } = useStore()
+  const { toggleRightSidebar, setCurrentPage } = useStore()
   const [isCreating, setIsCreating] = useState(false)
 
   // Generate terminal name based on count
@@ -58,7 +55,6 @@ export function TerminalsPage() {
   // Listen for Command+N keyboard shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Check for Command+N (Mac) or Ctrl+N (Windows/Linux)
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault()
         handleCreateTerminal()
@@ -82,10 +78,8 @@ export function TerminalsPage() {
         if (flatVisualOrder.length === 1) {
           newIndex = 0
         } else if (e.key === 'ArrowUp') {
-          // Go to previous agent (wrap to end if at start)
           newIndex = currentIndex <= 0 ? flatVisualOrder.length - 1 : currentIndex - 1
         } else {
-          // Go to next agent (wrap to start if at end)
           newIndex = currentIndex >= flatVisualOrder.length - 1 ? 0 : currentIndex + 1
         }
 
@@ -120,7 +114,6 @@ export function TerminalsPage() {
         e.preventDefault()
         if (!activeTerminalId) return
 
-        // Check max agents limit
         if (terminals.length >= MAX_AGENTS) {
           showToast(`Maximum of ${MAX_AGENTS} agents reached`, 'error')
           return
@@ -141,19 +134,6 @@ export function TerminalsPage() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [activeTerminalId, terminals, duplicateAgent, setActiveTerminal])
-
-  // Listen for Command+T to toggle view mode
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 't') {
-        e.preventDefault()
-        toggleViewMode()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [toggleViewMode])
 
   // Detect platform for keyboard shortcut display
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
@@ -183,31 +163,7 @@ export function TerminalsPage() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <div className="flex-1 overflow-hidden relative">
-        {/* Terminal views — kept mounted to preserve PTY state */}
-        <div className={viewMode === 'terminal' ? 'h-full' : 'hidden'}>
-          {terminals.map((terminal) => (
-            <TerminalView
-              key={terminal.id}
-              terminal={terminal}
-              isActive={terminal.id === activeTerminalId && viewMode === 'terminal'}
-            />
-          ))}
-          {scriptTerminals.map((script) => (
-            <TerminalView
-              key={script.id}
-              terminal={{
-                id: script.id,
-                name: `${script.scriptName} (${script.agentName})`,
-                state: script.state === 'running' ? 'working' : 'error',
-                repositories: [script.projectPath],
-              }}
-              isActive={script.id === activeTerminalId && viewMode === 'terminal'}
-            />
-          ))}
-        </div>
-
-        {/* Friendly overlay — kept mounted to preserve conversation state */}
-        <div className={viewMode === 'overlay' ? 'h-full' : 'hidden'}>
+        <div className="h-full">
           <FriendlyOverlay terminalId={activeTerminalId} />
         </div>
       </div>

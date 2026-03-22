@@ -2,10 +2,6 @@ import { useRef, useCallback, useEffect, useState } from 'react'
 import { ArrowUp } from 'lucide-react'
 import { MODE_CYCLE, type ClaudeMode } from './ModeLabel'
 
-// PTY escape sequences for mode switching in Claude Code
-// Shift+Tab sends the escape sequence that Claude Code interprets as mode cycle
-const SHIFT_TAB_SEQUENCE = '\x1b[Z'
-
 // Persist mode per terminal across remounts and refreshes
 const STORAGE_KEY = 'magic-slash-terminal-modes'
 
@@ -34,10 +30,9 @@ interface ChatInputProps {
   terminalId: string | null
   disabled?: boolean
   onSend?: (text: string) => void
-  overlayMode?: boolean
 }
 
-export function ChatInput({ terminalId, disabled = false, onSend, overlayMode = false }: ChatInputProps) {
+export function ChatInput({ terminalId, disabled = false, onSend }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [value, setValue] = useState('')
   const [isMultiline, setIsMultiline] = useState(false)
@@ -118,18 +113,12 @@ export function ChatInput({ terminalId, disabled = false, onSend, overlayMode = 
   const sendMessage = useCallback(() => {
     if (!terminalId || !value.trim()) return
     onSend?.(value)
-    // In overlay mode, the parent handles sending via overlay API
-    // In terminal mode, write directly to PTY
-    if (!overlayMode) {
-      window.electronAPI.terminal.write(terminalId, value + '\r')
-    }
     setValue('')
-  }, [terminalId, value, onSend, overlayMode])
+  }, [terminalId, value, onSend])
 
   const cycleMode = useCallback(() => {
     if (!terminalId) return
     setMode(prev => MODE_CYCLE[(MODE_CYCLE.indexOf(prev) + 1) % MODE_CYCLE.length])
-    window.electronAPI.terminal.write(terminalId, SHIFT_TAB_SEQUENCE)
   }, [terminalId])
 
 
@@ -160,32 +149,10 @@ export function ChatInput({ terminalId, disabled = false, onSend, overlayMode = 
       return
     }
 
-    // Escape: send to PTY (cancel current action)
+    // Escape: clear input
     if (e.key === 'Escape') {
       e.preventDefault()
-      if (terminalId) {
-        window.electronAPI.terminal.write(terminalId, '\x1b')
-      }
       setValue('')
-      return
-    }
-
-    // Ctrl+C: interrupt
-    if (e.key === 'c' && e.ctrlKey) {
-      e.preventDefault()
-      if (terminalId) {
-        window.electronAPI.terminal.write(terminalId, '\x03')
-      }
-      setValue('')
-      return
-    }
-
-    // Ctrl+D: EOF
-    if (e.key === 'd' && e.ctrlKey) {
-      e.preventDefault()
-      if (terminalId) {
-        window.electronAPI.terminal.write(terminalId, '\x04')
-      }
       return
     }
   }, [terminalId, sendMessage, cycleMode])

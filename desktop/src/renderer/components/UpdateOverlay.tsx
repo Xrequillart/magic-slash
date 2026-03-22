@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bug, Download, CheckCircle, Loader2, Play, ScrollText, ShieldQuestion, Sparkles } from 'lucide-react'
-import { useStore } from '../store'
+import { Bug, Download, CheckCircle, Loader2, Play, ShieldQuestion, Sparkles } from 'lucide-react'
 
 type UpdateStatus =
   | { type: 'checking' }
@@ -100,7 +99,6 @@ function launchConfetti(canvas: HTMLCanvasElement) {
 }
 
 export function UpdateOverlay() {
-  const activeTerminalId = useStore((s) => s.activeTerminalId)
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [visible, setVisible] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
@@ -109,13 +107,6 @@ export function UpdateOverlay() {
   const debugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const debugMenuRef = useRef<HTMLDivElement>(null)
   const confettiRef = useRef<HTMLCanvasElement>(null)
-
-  function floodTerminal() {
-    if (!activeTerminalId) return
-    setDebugMenuOpen(false)
-    const prompt = 'Print exactly 200 lines of lorem ipsum text, each line numbered. Do not ask questions, just print.\n'
-    window.electronAPI.terminal.write(activeTerminalId, prompt)
-  }
 
   function showConfirmDialog() {
     setDebugMenuOpen(false)
@@ -241,14 +232,6 @@ export function UpdateOverlay() {
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   What&apos;s New modal
-                </button>
-                <button
-                  onClick={floodTerminal}
-                  disabled={!activeTerminalId}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-white hover:bg-bg-tertiary transition-colors disabled:opacity-40"
-                >
-                  <ScrollText className="w-3.5 h-3.5" />
-                  Flood terminal
                 </button>
                 <button
                   onClick={showConfirmDialog}
