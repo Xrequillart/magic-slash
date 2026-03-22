@@ -637,130 +637,24 @@ export function getTerminalRepositories(id: string): string[] | null {
   return terminal ? terminal.repositories : null
 }
 
-// --- Overlay message system (non-PTY, stream-json) ---
+// --- Overlay message system (via Claude Agent SDK) ---
 
-import { spawn, type ChildProcess } from 'child_process'
-
-// Track overlay session IDs per terminal (for --resume)
-const overlaySessionIds = new Map<string, string>()
-
-// Track active overlay processes per terminal (to kill on new message or terminal close)
-const overlayProcesses = new Map<string, ChildProcess>()
-
-export function getOverlaySessionId(id: string): string | undefined {
-  return overlaySessionIds.get(id)
+// Expose getShellPath for the overlay SDK module
+export function getShellPathForOverlay(): string {
+  return getShellPath()
 }
 
-export function setOverlaySessionId(id: string, sessionId: string): void {
-  overlaySessionIds.set(id, sessionId)
-}
+// Re-export overlay functions from the SDK module
+export {
+  sendOverlayMessage,
+  respondToOverlay,
+  resetOverlaySession,
+  cleanupOverlay,
+  getOverlaySessionId,
+  setOverlaySessionId,
+} from './overlay-sdk'
 
-/**
- * Send a message via overlay mode (non-PTY, stream-json).
- * Spawns `claude -p --output-format stream-json --verbose [--resume session_id]`.
- * Each JSON line from stdout is sent to onEvent.
- * The session_id from the result event is stored automatically.
- */
-export function sendOverlayMessage(
-  terminalId: string,
-  message: string,
-  cwd: string,
-  onEvent: (jsonLine: string) => void,
-  onDone: (exitCode: number) => void
-): void {
-  const shell = getDefaultShell()
-  const expandedCwd = expandPath(cwd)
-  const defaultDir = path.join(os.homedir(), 'Documents')
-  const workingDir = fs.existsSync(expandedCwd) ? expandedCwd : (fs.existsSync(defaultDir) ? defaultDir : os.homedir())
-
-  // Kill any existing overlay process for this terminal
-  const existing = overlayProcesses.get(terminalId)
-  if (existing && !existing.killed) {
-    existing.kill()
-  }
-
-  const sessionId = overlaySessionIds.get(terminalId)
-  const args = ['-p', '--output-format', 'stream-json', '--verbose']
-  if (sessionId) {
-    args.push('--resume', sessionId)
-  }
-
-  const claudeArgs = args.map(a => `'${a}'`).join(' ')
-  const claudeCmd = `claude ${claudeArgs}`
-
-  const proc = spawn(shell, ['-lc', claudeCmd], {
-    cwd: workingDir,
-    env: {
-      ...process.env,
-      HOME: os.homedir(),
-      SHELL: shell,
-      PATH: getShellPath(),
-      MAGIC_SLASH_TERMINAL_ID: terminalId,
-      MAGIC_SLASH_PORT: statusServerPort.toString(),
-    },
-    stdio: ['pipe', 'pipe', 'pipe'],
-  })
-
-  overlayProcesses.set(terminalId, proc)
-
-  let stdoutBuffer = ''
-
-  proc.stdout?.on('data', (chunk: Buffer) => {
-    stdoutBuffer += chunk.toString()
-    const lines = stdoutBuffer.split('\n')
-    // Keep the last (potentially incomplete) line in the buffer
-    stdoutBuffer = lines.pop() || ''
-
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (!trimmed) continue
-      try {
-        // Validate it's JSON before sending
-        const parsed = JSON.parse(trimmed)
-        // Auto-capture session_id from result events
-        if (parsed.type === 'result' && parsed.session_id) {
-          overlaySessionIds.set(terminalId, parsed.session_id)
-        }
-        onEvent(trimmed)
-      } catch {
-        // Not JSON, skip (shell preamble, etc.)
-      }
-    }
-  })
-
-  proc.stderr?.on('data', () => {
-    // Ignore stderr (shell warnings, etc.)
-  })
-
-  proc.on('close', (code) => {
-    overlayProcesses.delete(terminalId)
-    // Flush any remaining buffer
-    if (stdoutBuffer.trim()) {
-      try {
-        const parsed = JSON.parse(stdoutBuffer.trim())
-        if (parsed.type === 'result' && parsed.session_id) {
-          overlaySessionIds.set(terminalId, parsed.session_id)
-        }
-        onEvent(stdoutBuffer.trim())
-      } catch { /* ignore */ }
-    }
-    onDone(code ?? 0)
-  })
-
-  // Send the message via stdin and close it
-  proc.stdin?.write(message)
-  proc.stdin?.end()
-}
-
-// Clean up overlay resources when a terminal is killed
-export function cleanupOverlay(id: string): void {
-  const proc = overlayProcesses.get(id)
-  if (proc && !proc.killed) {
-    proc.kill()
-  }
-  overlayProcesses.delete(id)
-  overlaySessionIds.delete(id)
-}
+import { spawn } from 'child_process'
 
 // Cache for Claude Code info (version, model, billing mode)
 export interface ClaudeCodeInfo {

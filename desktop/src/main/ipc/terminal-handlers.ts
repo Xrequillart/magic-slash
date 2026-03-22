@@ -13,6 +13,8 @@ import {
   updateTerminalMetadataFromHook,
   updateTerminalRepositoriesFromHook,
   sendOverlayMessage,
+  respondToOverlay,
+  resetOverlaySession,
   cleanupOverlay,
   getClaudeCodeInfo,
   type TerminalMetadata,
@@ -457,6 +459,16 @@ export function setupTerminalHandlers(
         mainWindow.webContents.send('overlay:done', { id, exitCode })
       }
     )
+  })
+
+  // Respond to an active overlay process permission request
+  ipcMain.handle('overlay:respond', async (_event, { id, requestId, behavior, message, updatedInput }) => {
+    respondToOverlay(id, requestId, behavior, message, updatedInput)
+  })
+
+  // Reset overlay session (clears session history for fresh start)
+  ipcMain.handle('overlay:resetSession', async (_event, { id }) => {
+    resetOverlaySession(id)
   })
 }
 

@@ -36,13 +36,15 @@ export interface AssistantEvent {
     }
     [key: string]: unknown
   }
+  uuid?: string
+  parent_tool_use_id?: string | null
   session_id?: string
   [key: string]: unknown
 }
 
 export interface ResultEvent {
   type: 'result'
-  subtype: 'success' | 'error'
+  subtype: 'success' | 'error' | 'error_during_execution' | 'error_max_turns'
   is_error?: boolean
   result?: string
   duration_ms?: number
@@ -96,11 +98,25 @@ export interface ContentBlockDelta {
   }
 }
 
+// Permission control request from Claude CLI (--permission-prompt-tool stdio)
+export interface ControlRequest {
+  type: 'control_request'
+  request_id: string
+  request: {
+    subtype: 'can_use_tool'
+    tool_name: string
+    input: Record<string, unknown>
+    permission_suggestions?: string[]
+    tool_use_id?: string
+  }
+}
+
 export type StreamEvent =
   | SystemEvent
   | AssistantEvent
   | ResultEvent
   | ErrorEvent
+  | ControlRequest
   | MessageStart
   | ContentBlockStart
   | ContentBlockDelta
