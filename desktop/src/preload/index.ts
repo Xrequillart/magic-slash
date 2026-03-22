@@ -155,8 +155,11 @@ const overlayApi = {
   getClaudeInfo: (): Promise<{ version: string; model: string; accountType: string }> =>
     ipcRenderer.invoke('overlay:getClaudeInfo'),
 
-  sendMessage: (id: string, message: string, cwd: string) =>
-    ipcRenderer.invoke('overlay:sendMessage', { id, message, cwd }),
+  sendMessage: (id: string, message: string, cwd: string, mode?: 'normal' | 'auto-accept' | 'plan') =>
+    ipcRenderer.invoke('overlay:sendMessage', { id, message, cwd, mode }),
+
+  abort: (id: string) =>
+    ipcRenderer.invoke('overlay:abort', { id }),
 
   respond: (id: string, requestId: string, behavior: 'allow' | 'deny', message?: string, updatedInput?: Record<string, unknown>) =>
     ipcRenderer.invoke('overlay:respond', { id, requestId, behavior, message, updatedInput }),

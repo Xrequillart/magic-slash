@@ -36,6 +36,19 @@ interface PendingPermission {
 }
 const pendingPermissions = new Map<string, PendingPermission>()
 
+// Track terminals where ExitPlanMode was already approved (auto-approve on resume)
+const planApprovedTerminals = new Set<string>()
+
+/** Reject all pending permissions for a terminal */
+function rejectPendingPermissions(terminalId: string, reason: string): void {
+  for (const [key, pending] of pendingPermissions) {
+    if (key.startsWith(`${terminalId}:`)) {
+      pending.resolve({ behavior: 'deny', message: reason })
+      pendingPermissions.delete(key)
+    }
+  }
+}
+
 // Expand ~ to home directory
 function expandPath(inputPath: string): string {
   if (!inputPath) return inputPath
@@ -59,12 +72,15 @@ export function setOverlaySessionId(id: string, sessionId: string): void {
  * Each SDK message is forwarded to the renderer via onEvent().
  * Permission requests emit synthetic control_request events.
  */
+export type ClaudeMode = 'normal' | 'auto-accept' | 'plan'
+
 export function sendOverlayMessage(
   terminalId: string,
   message: string,
   cwd: string,
   onEvent: (jsonLine: string) => void,
-  onDone: (exitCode: number) => void
+  onDone: (exitCode: number) => void,
+  mode: ClaudeMode = 'normal'
 ): void {
   const expandedCwd = expandPath(cwd)
   const defaultDir = path.join(os.homedir(), 'Documents')
@@ -77,13 +93,7 @@ export function sendOverlayMessage(
     activeQueries.delete(terminalId)
   }
 
-  // Reject any stale pending permissions for this terminal
-  for (const [key, pending] of pendingPermissions) {
-    if (key.startsWith(`${terminalId}:`)) {
-      pending.resolve({ behavior: 'deny', message: 'Session replaced' })
-      pendingPermissions.delete(key)
-    }
-  }
+  rejectPendingPermissions(terminalId, 'Session replaced')
 
   const sessionId = overlaySessionIds.get(terminalId)
 
@@ -98,41 +108,72 @@ export function sendOverlayMessage(
       return
     }
 
+    // Track whether ExitPlanMode was approved during this query
+    // (plan mode queries end after ExitPlanMode; we need to auto-resume for implementation)
+    let exitPlanModeApproved = false
+
+    const canUseToolCallback = async (toolName: string, input: Record<string, unknown>, options: { signal: AbortSignal; toolUseID?: string }) => {
+      // Auto-accept mode: auto-allow tool permissions (but not AskUserQuestion)
+      if (mode === 'auto-accept' && toolName !== 'AskUserQuestion') {
+        return { behavior: 'allow' as const }
+      }
+
+      // Auto-approve ExitPlanMode if the plan was already approved for this terminal
+      // (happens when the resumed session restores plan mode state)
+      if (toolName === 'ExitPlanMode' && planApprovedTerminals.has(terminalId)) {
+        return { behavior: 'allow' as const }
+      }
+
+      const requestId = `perm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+      // Emit synthetic control_request event (same shape ConfirmDialog expects)
+      const controlRequest = {
+        type: 'control_request',
+        request_id: requestId,
+        request: {
+          subtype: 'can_use_tool',
+          tool_name: toolName,
+          input,
+          tool_use_id: options.toolUseID,
+        },
+      }
+      onEvent(JSON.stringify(controlRequest))
+
+      // Return a Promise that resolves when respondToOverlay() is called
+      return new Promise<PermissionResult>((resolve) => {
+        const key = `${terminalId}:${requestId}`
+        pendingPermissions.set(key, {
+          resolve: (result: PermissionResult) => {
+            // Track ExitPlanMode approval for auto-resume and auto-approve on resume
+            if (toolName === 'ExitPlanMode' && result.behavior === 'allow') {
+              exitPlanModeApproved = true
+              planApprovedTerminals.add(terminalId)
+            }
+            resolve(result)
+          },
+        })
+
+        // Cleanup on abort
+        options.signal.addEventListener('abort', () => {
+          if (pendingPermissions.has(key)) {
+            pendingPermissions.delete(key)
+            resolve({ behavior: 'deny', message: 'Aborted' })
+          }
+        })
+      })
+    }
+
     const q = queryFn({
       prompt: message,
       options: {
         cwd: workingDir,
         resume: sessionId,
-        canUseTool: async (toolName, input, options) => {
-          const requestId = `perm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-
-          // Emit synthetic control_request event (same shape ConfirmDialog expects)
-          const controlRequest = {
-            type: 'control_request',
-            request_id: requestId,
-            request: {
-              subtype: 'can_use_tool',
-              tool_name: toolName,
-              input,
-              tool_use_id: options.toolUseID,
-            },
-          }
-          onEvent(JSON.stringify(controlRequest))
-
-          // Return a Promise that resolves when respondToOverlay() is called
-          return new Promise<PermissionResult>((resolve) => {
-            const key = `${terminalId}:${requestId}`
-            pendingPermissions.set(key, { resolve })
-
-            // Cleanup on abort
-            options.signal.addEventListener('abort', () => {
-              if (pendingPermissions.has(key)) {
-                pendingPermissions.delete(key)
-                resolve({ behavior: 'deny', message: 'Aborted' })
-              }
-            })
-          })
-        },
+        ...(mode === 'plan'
+          ? { permissionMode: 'plan' as const }
+          : mode === 'auto-accept'
+            ? { permissionMode: 'acceptEdits' as const }
+            : {}),
+        canUseTool: canUseToolCallback,
         env: {
           ...process.env,
           HOME: os.homedir(),
@@ -154,6 +195,26 @@ export function sendOverlayMessage(
 
         onEvent(jsonLine)
       }
+
+      // After a plan mode query completes with ExitPlanMode approved,
+      // auto-resume to start the implementation phase.
+      // The CLI exits after plan approval; we resume the session in normal mode.
+      if (mode === 'plan' && exitPlanModeApproved && overlaySessionIds.has(terminalId)) {
+        exitPlanModeApproved = false
+        // Notify renderer to switch UI mode to auto-accept
+        onEvent(JSON.stringify({ type: 'mode_change', mode: 'auto-accept' }))
+        // Resume in auto-accept mode so implementation tools are auto-approved
+        sendOverlayMessage(
+          terminalId,
+          'Plan mode has been deactivated. You now have full permission to edit files, write files, and run commands. Proceed with implementing the plan.',
+          cwd,
+          onEvent,
+          onDone,
+          'auto-accept'
+        )
+        return
+      }
+
       onDone(0)
     } catch (err) {
       console.error(`[overlay-sdk:${terminalId}] query error:`, err)
@@ -164,6 +225,25 @@ export function sendOverlayMessage(
       }
     }
   })()
+}
+
+/** Abort an active overlay query (idempotent — safe to call multiple times) */
+export function abortOverlayQuery(
+  terminalId: string,
+  onEvent?: (jsonLine: string) => void
+): void {
+  const q = activeQueries.get(terminalId)
+  if (!q) return
+
+  // Emit synthetic interrupted event so the renderer knows it was user-initiated
+  if (onEvent) {
+    onEvent(JSON.stringify({ type: 'interrupted' }))
+  }
+
+  rejectPendingPermissions(terminalId, 'Interrupted by user')
+
+  q.interrupt().catch(() => {})
+  activeQueries.delete(terminalId)
 }
 
 /** Resolve a pending permission request from the renderer */
@@ -195,18 +275,13 @@ export function respondToOverlay(
 /** Reset the overlay session (clears session ID so next message starts fresh) */
 export function resetOverlaySession(id: string): void {
   overlaySessionIds.delete(id)
+  planApprovedTerminals.delete(id)
   const q = activeQueries.get(id)
   if (q) {
     q.return().catch(() => {})
     activeQueries.delete(id)
   }
-  // Reject all pending permissions for this terminal
-  for (const [key, pending] of pendingPermissions) {
-    if (key.startsWith(`${id}:`)) {
-      pending.resolve({ behavior: 'deny', message: 'Session reset' })
-      pendingPermissions.delete(key)
-    }
-  }
+  rejectPendingPermissions(id, 'Session reset')
 }
 
 /** Clean up overlay resources when a terminal is killed */

@@ -24,6 +24,7 @@ interface StepCardProps {
   isError?: boolean
   defaultOpen?: boolean
   permissionStatus?: PermissionStatus
+  autoApproved?: boolean
   children?: ReactNode
 }
 
@@ -33,6 +34,7 @@ export const StepCard = memo(function StepCard({
   isError = false,
   defaultOpen = false,
   permissionStatus,
+  autoApproved = false,
   children,
 }: StepCardProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
@@ -60,6 +62,9 @@ export const StepCard = memo(function StepCard({
         )}
         <Icon className={`w-4 h-4 ${iconColor} shrink-0`} />
         <span className={`text-xs font-mono truncate ${denied ? 'text-red/60 line-through' : 'text-text-secondary'}`}>{summary}</span>
+        {autoApproved && permissionStatus === 'allow' && (
+          <span className="text-[9px] font-medium text-orange/70 bg-orange/10 px-1.5 py-0.5 rounded-full shrink-0">auto</span>
+        )}
         {permissionStatus === 'allow' && (
           <Check className="w-3.5 h-3.5 text-green shrink-0 ml-auto" />
         )}

@@ -77,7 +77,7 @@ function setupGlobalListener() {
       const stream = getOrCreateStream(id)
       stream.events = [...stream.events, parsed]
       stream.lastEvent = parsed
-      stream.isLoading = parsed.type !== 'result'
+      stream.isLoading = parsed.type !== 'result' && parsed.type !== 'interrupted'
       // Persist to sessionStorage
       saveEvents(id, stream.events)
       notifySubscribers(id)

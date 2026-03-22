@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
-import { ArrowUp } from 'lucide-react'
+import { ArrowUp, Square } from 'lucide-react'
 import { MODE_CYCLE, type ClaudeMode } from './ModeLabel'
 
 // Persist mode per terminal across remounts and refreshes
@@ -29,10 +29,13 @@ const MODE_PILL: Record<ClaudeMode, { label: string; bg: string; text: string }>
 interface ChatInputProps {
   terminalId: string | null
   disabled?: boolean
-  onSend?: (text: string) => void
+  isWorking?: boolean
+  forceMode?: ClaudeMode
+  onSend?: (text: string, mode: ClaudeMode) => void
+  onAbort?: () => void
 }
 
-export function ChatInput({ terminalId, disabled = false, onSend }: ChatInputProps) {
+export function ChatInput({ terminalId, disabled = false, isWorking = false, forceMode, onSend, onAbort }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [value, setValue] = useState('')
   const [isMultiline, setIsMultiline] = useState(false)
@@ -89,6 +92,13 @@ export function ChatInput({ terminalId, disabled = false, onSend }: ChatInputPro
     }
   }, [terminalId])
 
+  // Apply externally-forced mode changes (e.g. plan→auto-accept after ExitPlanMode)
+  useEffect(() => {
+    if (forceMode !== undefined && forceMode !== mode) {
+      setMode(forceMode)
+    }
+  }, [forceMode])
+
   // Auto-resize textarea
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current
@@ -112,9 +122,9 @@ export function ChatInput({ terminalId, disabled = false, onSend }: ChatInputPro
 
   const sendMessage = useCallback(() => {
     if (!terminalId || !value.trim()) return
-    onSend?.(value)
+    onSend?.(value, mode)
     setValue('')
-  }, [terminalId, value, onSend])
+  }, [terminalId, value, mode, onSend])
 
   const cycleMode = useCallback(() => {
     if (!terminalId) return
@@ -123,17 +133,34 @@ export function ChatInput({ terminalId, disabled = false, onSend }: ChatInputPro
 
 
   // Global Shift+Tab handler (works even when input is not focused)
+  // Global Ctrl+C handler (abort when working, preserve copy when text selected)
+  // Global Escape handler (abort when working and no dialog active)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Tab' && e.shiftKey) {
         e.preventDefault()
         cycleMode()
       }
+
+      // Ctrl+C: abort only when working and no text selected (preserve copy)
+      if (e.key === 'c' && (e.ctrlKey || e.metaKey) && isWorking) {
+        const selection = window.getSelection()?.toString()
+        if (!selection) {
+          e.preventDefault()
+          onAbort?.()
+        }
+      }
+
+      // Escape: abort when working (but not if ConfirmDialog is active — it handles Escape itself via disabled prop)
+      if (e.key === 'Escape' && isWorking && !disabled) {
+        e.preventDefault()
+        onAbort?.()
+      }
     }
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [cycleMode])
+  }, [cycleMode, isWorking, disabled, onAbort])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Shift+Tab: handled globally, prevent default here too
@@ -149,13 +176,15 @@ export function ChatInput({ terminalId, disabled = false, onSend }: ChatInputPro
       return
     }
 
-    // Escape: clear input
+    // Escape: clear input (abort is handled by the global handler)
     if (e.key === 'Escape') {
       e.preventDefault()
-      setValue('')
+      if (!isWorking) {
+        setValue('')
+      }
       return
     }
-  }, [terminalId, sendMessage, cycleMode])
+  }, [terminalId, sendMessage, cycleMode, isWorking])
 
   return (
     <div
@@ -183,8 +212,8 @@ export function ChatInput({ terminalId, disabled = false, onSend }: ChatInputPro
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          disabled={disabled}
-          placeholder={disabled ? 'Waiting for response...' : 'Send a message...'}
+          disabled={disabled || isWorking}
+          placeholder={isWorking ? 'Claude is working...' : disabled ? 'Waiting for response...' : 'Send a message...'}
           rows={1}
           spellCheck={false}
           className={`
@@ -230,20 +259,29 @@ export function ChatInput({ terminalId, disabled = false, onSend }: ChatInputPro
           </span>
         </button>
 
-        {/* Send button */}
-        <button
-          onClick={sendMessage}
-          disabled={disabled || !value.trim()}
-          className={`
-            shrink-0 w-[26px] h-[26px] flex items-center justify-center rounded-full transition-all
-            ${value.trim() && !disabled
-              ? 'bg-accent text-white hover:bg-accent-hover'
-              : 'bg-bg-tertiary text-text-secondary cursor-not-allowed'
-            }
-          `}
-        >
-          <ArrowUp className="w-3.5 h-3.5" strokeWidth={2.5} />
-        </button>
+        {/* Send / Stop button */}
+        {isWorking ? (
+          <button
+            onClick={onAbort}
+            className="shrink-0 w-[26px] h-[26px] flex items-center justify-center rounded-full transition-all bg-red/20 text-red hover:bg-red/30 cursor-pointer"
+          >
+            <Square className="w-3 h-3" fill="currentColor" />
+          </button>
+        ) : (
+          <button
+            onClick={sendMessage}
+            disabled={disabled || !value.trim()}
+            className={`
+              shrink-0 w-[26px] h-[26px] flex items-center justify-center rounded-full transition-all
+              ${value.trim() && !disabled
+                ? 'bg-accent text-white hover:bg-accent-hover'
+                : 'bg-bg-tertiary text-text-secondary cursor-not-allowed'
+              }
+            `}
+          >
+            <ArrowUp className="w-3.5 h-3.5" strokeWidth={2.5} />
+          </button>
+        )}
       </div>
     </div>
   )

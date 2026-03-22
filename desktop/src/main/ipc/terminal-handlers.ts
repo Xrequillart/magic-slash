@@ -11,6 +11,7 @@ import {
   respondToOverlay,
   resetOverlaySession,
   cleanupOverlay,
+  abortOverlayQuery,
   getClaudeCodeInfo,
   type TerminalMetadata,
   type TerminalState,
@@ -241,7 +242,7 @@ export function setupTerminalHandlers(
     return getClaudeCodeInfo()
   })
 
-  ipcMain.handle('overlay:sendMessage', async (_event, { id, message, cwd }) => {
+  ipcMain.handle('overlay:sendMessage', async (_event, { id, message, cwd, mode }) => {
     const mainWindow = getMainWindow()
     if (!mainWindow) return
 
@@ -254,7 +255,17 @@ export function setupTerminalHandlers(
       },
       (exitCode) => {
         mainWindow.webContents.send('overlay:done', { id, exitCode })
-      }
+      },
+      mode
+    )
+  })
+
+  // Abort (interrupt) an active overlay query
+  ipcMain.handle('overlay:abort', async (_event, { id }) => {
+    const mainWindow = getMainWindow()
+    abortOverlayQuery(
+      id,
+      mainWindow ? (jsonLine) => mainWindow.webContents.send('overlay:data', { id, data: jsonLine }) : undefined
     )
   })
 

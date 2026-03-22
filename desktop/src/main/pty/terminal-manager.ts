@@ -253,6 +253,7 @@ export {
   respondToOverlay,
   resetOverlaySession,
   cleanupOverlay,
+  abortOverlayQuery,
   getOverlaySessionId,
   setOverlaySessionId,
 } from './overlay-sdk'

@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { ShieldQuestion, MessageCircleQuestion } from 'lucide-react'
-import type { StreamEvent, ControlRequest } from '../../types/streamEvents'
+import { ShieldQuestion, MessageCircleQuestion, FileText } from 'lucide-react'
+import { MarkdownRenderer } from './MarkdownRenderer'
+import type { StreamEvent, ControlRequest, AssistantEvent } from '../../types/streamEvents'
 
 interface ConfirmDialogProps {
   terminalId: string | null
   events: StreamEvent[]
+  alwaysAllowed?: Set<string>
   onActiveChange: (active: boolean) => void
   onPermissionResult?: (toolUseId: string, behavior: 'allow' | 'deny') => void
   onQuestionAnswered?: (toolUseId: string, answers: Record<string, string>) => void
+  onAlwaysAllow?: (toolName: string) => void
 }
 
 interface QuestionOption {
@@ -35,7 +38,7 @@ interface PermissionRequest {
 const SCAN_WINDOW = 20
 
 // Detect when Claude Code is waiting for a permission decision from control_request events.
-function detectPermissionRequest(events: StreamEvent[]): PermissionRequest | null {
+function detectPermissionRequest(events: StreamEvent[], alwaysAllowed?: Set<string>): PermissionRequest | null {
   const start = Math.max(0, events.length - SCAN_WINDOW)
 
   for (let i = events.length - 1; i >= start; i--) {
@@ -44,6 +47,8 @@ function detectPermissionRequest(events: StreamEvent[]): PermissionRequest | nul
     if (event.type === 'control_request') {
       const cr = event as ControlRequest
       if (cr.request.subtype === 'can_use_tool') {
+        // Skip tools that are always-allowed (auto-respond handles them)
+        if (alwaysAllowed?.has(cr.request.tool_name)) continue
         // Check if a control_response or result event follows (meaning it was already answered)
         let wasAnswered = false
         for (let j = i + 1; j < events.length; j++) {
@@ -73,6 +78,31 @@ function detectPermissionRequest(events: StreamEvent[]): PermissionRequest | nul
   return null
 }
 
+/**
+ * Search backwards through events to find the plan content
+ * written by a Write tool call to a plans/ directory.
+ */
+function findPlanContent(events: StreamEvent[]): string | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i]
+    if (event.type !== 'assistant') continue
+    const assistantEvent = event as AssistantEvent
+    const blocks = assistantEvent.message.content
+    for (let j = blocks.length - 1; j >= 0; j--) {
+      const block = blocks[j]
+      if (block.type === 'tool_use' && block.name === 'Write') {
+        const input = block.input as Record<string, unknown> | undefined
+        const filePath = (input?.file_path || '') as string
+        const content = (input?.content || '') as string
+        if (filePath.includes('/plans/') && content) {
+          return content
+        }
+      }
+    }
+  }
+  return null
+}
+
 function buildToolDescription(toolName: string, input: Record<string, unknown>): string {
   const filePath = (input.file_path || input.path || '') as string
   const fileName = filePath ? filePath.split('/').pop() || filePath : ''
@@ -90,7 +120,10 @@ function buildToolDescription(toolName: string, input: Record<string, unknown>):
   }
 }
 
-export function ConfirmDialog({ terminalId, events, onActiveChange, onPermissionResult, onQuestionAnswered }: ConfirmDialogProps) {
+// Number of buttons in the standard permission dialog (Allow, Always Allow, Deny)
+const PERMISSION_BUTTON_COUNT = 3
+
+export function ConfirmDialog({ terminalId, events, alwaysAllowed, onActiveChange, onPermissionResult, onQuestionAnswered, onAlwaysAllow }: ConfirmDialogProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [dismissed, setDismissed] = useState(false)
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0)
@@ -98,11 +131,19 @@ export function ConfirmDialog({ terminalId, events, onActiveChange, onPermission
   const [textAnswer, setTextAnswer] = useState('')
   const prevRequestRef = useRef<string | null>(null)
   const textInputRef = useRef<HTMLInputElement>(null)
+  const planScrollRef = useRef<HTMLDivElement>(null)
 
-  const permissionRequest = useMemo(() => detectPermissionRequest(events), [events])
+  const permissionRequest = useMemo(() => detectPermissionRequest(events, alwaysAllowed), [events, alwaysAllowed])
 
   const isQuestion = !!(permissionRequest?.questions && permissionRequest.questions.length > 0)
   const currentQuestion = isQuestion ? permissionRequest!.questions![currentQuestionIdx] : null
+  const isPlanApproval = permissionRequest?.toolName === 'ExitPlanMode'
+
+  // Find plan content when ExitPlanMode is detected
+  const planContent = useMemo(
+    () => isPlanApproval ? findPlanContent(events) : null,
+    [isPlanApproval, events]
+  )
 
   // Reset state when a new request appears
   useEffect(() => {
@@ -174,6 +215,12 @@ export function ConfirmDialog({ terminalId, events, onActiveChange, onPermission
     setDismissed(true)
   }, [terminalId, permissionRequest, onPermissionResult])
 
+  const respondAlwaysAllow = useCallback(() => {
+    if (!permissionRequest) return
+    onAlwaysAllow?.(permissionRequest.toolName)
+    respondPermission('allow')
+  }, [permissionRequest, onAlwaysAllow, respondPermission])
+
   const dismiss = useCallback(() => {
     if (!terminalId || !permissionRequest) return
     window.electronAPI.overlay.respond(terminalId, permissionRequest.requestId, 'deny', 'User skipped the question')
@@ -222,20 +269,38 @@ export function ConfirmDialog({ terminalId, events, onActiveChange, onPermission
         return
       }
 
-      // --- Standard permission dialog ---
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      // --- Standard permission dialog (3 buttons: Allow=0, Always Allow=1, Deny=2) ---
+      // --- Plan approval dialog (2 buttons: Accept=0, Reject=1) ---
+      const buttonCount = isPlanApproval ? 2 : PERMISSION_BUTTON_COUNT
+
+      if (e.key === 'ArrowLeft') {
         e.preventDefault()
-        setSelectedIndex(prev => prev === 0 ? 1 : 0)
+        setSelectedIndex(prev => (prev - 1 + buttonCount) % buttonCount)
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        setSelectedIndex(prev => (prev + 1) % buttonCount)
       }
 
       if (e.key === 'Enter') {
         e.preventDefault()
-        respondPermission(selectedIndex === 0 ? 'allow' : 'deny')
+        if (isPlanApproval) {
+          respondPermission(selectedIndex === 0 ? 'allow' : 'deny')
+        } else {
+          // 0=Allow, 1=Always Allow, 2=Deny
+          if (selectedIndex === 0) respondPermission('allow')
+          else if (selectedIndex === 1) respondAlwaysAllow()
+          else respondPermission('deny')
+        }
       }
 
       if (e.key === 'y' || e.key === 'Y') {
         e.preventDefault()
         respondPermission('allow')
+      }
+      if (!isPlanApproval && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault()
+        respondAlwaysAllow()
       }
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault()
@@ -250,7 +315,7 @@ export function ConfirmDialog({ terminalId, events, onActiveChange, onPermission
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isActive, permissionRequest, isQuestion, currentQuestion, selectedIndex, textAnswer, respondPermission, selectOption, submitTextAnswer, dismiss])
+  }, [isActive, permissionRequest, isQuestion, isPlanApproval, currentQuestion, selectedIndex, textAnswer, respondPermission, respondAlwaysAllow, selectOption, submitTextAnswer, dismiss])
 
   if (!isActive || !permissionRequest) return null
 
@@ -350,6 +415,54 @@ export function ConfirmDialog({ terminalId, events, onActiveChange, onPermission
     )
   }
 
+  // --- Plan approval UI (ExitPlanMode) ---
+  if (isPlanApproval) {
+    return (
+      <div className="shrink-0 mx-2 mb-2 bg-white/5 border border-purple/30 rounded-lg animate-fade-in overflow-hidden">
+        <div className="px-3 pt-3 pb-2 flex items-center gap-2">
+          <FileText className="w-4 h-4 text-purple shrink-0" />
+          <p className="text-sm font-medium text-white">Accept this plan?</p>
+        </div>
+        {planContent && (
+          <div
+            ref={planScrollRef}
+            className="mx-3 mb-2 max-h-[300px] overflow-y-auto bg-black/30 border border-white/5 rounded-md px-3 py-2"
+          >
+            <MarkdownRenderer content={planContent} />
+          </div>
+        )}
+        <div className="px-3 pb-3 flex items-center gap-2">
+          <button
+            onClick={() => respondPermission('allow')}
+            className={`
+              px-3 py-1 text-xs font-medium rounded-md transition-all
+              ${selectedIndex === 0
+                ? 'bg-green/20 text-green border border-green/30'
+                : 'bg-white/5 text-text-secondary border border-white/10 hover:bg-white/10'
+              }
+            `}
+          >
+            Accept Plan
+            <kbd className="ml-1.5 text-[10px] opacity-50">Y</kbd>
+          </button>
+          <button
+            onClick={() => respondPermission('deny')}
+            className={`
+              px-3 py-1 text-xs font-medium rounded-md transition-all
+              ${selectedIndex === 1
+                ? 'bg-red/20 text-red border border-red/30'
+                : 'bg-white/5 text-text-secondary border border-white/10 hover:bg-white/10'
+              }
+            `}
+          >
+            Reject
+            <kbd className="ml-1.5 text-[10px] opacity-50">N</kbd>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // --- Standard permission UI ---
   const description = buildToolDescription(permissionRequest.toolName, permissionRequest.input)
 
@@ -379,10 +492,23 @@ export function ConfirmDialog({ terminalId, events, onActiveChange, onPermission
               <kbd className="ml-1.5 text-[10px] opacity-50">Y</kbd>
             </button>
             <button
-              onClick={() => respondPermission('deny')}
+              onClick={respondAlwaysAllow}
               className={`
                 px-3 py-1 text-xs font-medium rounded-md transition-all
                 ${selectedIndex === 1
+                  ? 'bg-orange/20 text-orange border border-orange/30'
+                  : 'bg-white/5 text-text-secondary border border-white/10 hover:bg-white/10'
+                }
+              `}
+            >
+              Always Allow
+              <kbd className="ml-1.5 text-[10px] opacity-50">A</kbd>
+            </button>
+            <button
+              onClick={() => respondPermission('deny')}
+              className={`
+                px-3 py-1 text-xs font-medium rounded-md transition-all
+                ${selectedIndex === 2
                   ? 'bg-red/20 text-red border border-red/30'
                   : 'bg-white/5 text-text-secondary border border-white/10 hover:bg-white/10'
                 }

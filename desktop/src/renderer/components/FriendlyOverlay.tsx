@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef, memo } from 'react'
 import { useStreamJsonParser } from '../hooks/useStreamJsonParser'
-import type { StreamEvent, AssistantEvent } from '../types/streamEvents'
+import type { StreamEvent, AssistantEvent, ControlRequest } from '../types/streamEvents'
+import type { ClaudeMode } from './friendly/ModeLabel'
 import { ChatInput } from './friendly/ChatInput'
 import { ConfirmDialog } from './friendly/ConfirmDialog'
 import { SessionHeader } from './friendly/SessionHeader'
@@ -128,6 +129,11 @@ function buildConversation(
     if (event.type === 'result') {
       isThinking = false
     }
+
+    if (event.type === 'interrupted') {
+      entries.push({ role: 'assistant', text: '*Interrupted*' })
+      isThinking = false
+    }
   }
 
   // Flush remaining user messages
@@ -180,6 +186,30 @@ function saveUserMessages(terminalId: string, messages: UserMsg[]) {
     const all = raw ? JSON.parse(raw) : {}
     all[terminalId] = messages
     sessionStorage.setItem(USER_MESSAGES_KEY, JSON.stringify(all))
+  } catch { /* ignore storage errors */ }
+}
+
+// --- Always-allowed tools persistence (per session) ---
+
+const ALWAYS_ALLOWED_KEY = 'magic-slash-always-allowed'
+
+function loadAlwaysAllowed(terminalId: string): Set<string> {
+  try {
+    const raw = sessionStorage.getItem(ALWAYS_ALLOWED_KEY)
+    if (!raw) return new Set()
+    const all = JSON.parse(raw) as Record<string, string[]>
+    return all[terminalId] ? new Set(all[terminalId]) : new Set()
+  } catch {
+    return new Set()
+  }
+}
+
+function saveAlwaysAllowed(terminalId: string, tools: Set<string>) {
+  try {
+    const raw = sessionStorage.getItem(ALWAYS_ALLOWED_KEY)
+    const all = raw ? JSON.parse(raw) : {}
+    all[terminalId] = [...tools]
+    sessionStorage.setItem(ALWAYS_ALLOWED_KEY, JSON.stringify(all))
   } catch { /* ignore storage errors */ }
 }
 
@@ -238,7 +268,7 @@ function saveQuestionAnswers(terminalId: string, answers: Map<string, Record<str
 
 import type { PermissionStatus } from './friendly/StepCard'
 
-const ToolStepCard = memo(function ToolStepCard({ entry, permissionStatus, questionAnswers }: { entry: ToolEntry; permissionStatus?: PermissionStatus; questionAnswers?: Record<string, string> }) {
+const ToolStepCard = memo(function ToolStepCard({ entry, permissionStatus, questionAnswers, autoApproved }: { entry: ToolEntry; permissionStatus?: PermissionStatus; questionAnswers?: Record<string, string>; autoApproved?: boolean }) {
   const { toolName, input, summary } = entry
 
   // Edit tool — show diff
@@ -247,7 +277,7 @@ const ToolStepCard = memo(function ToolStepCard({ entry, permissionStatus, quest
     const newStr = (input.new_string || '') as string
     const filePath = (input.file_path || '') as string
     return (
-      <StepCard toolName={toolName} summary={summary} permissionStatus={permissionStatus}>
+      <StepCard toolName={toolName} summary={summary} permissionStatus={permissionStatus} autoApproved={autoApproved}>
         {oldStr || newStr ? (
           <DiffViewer filePath={filePath} oldString={oldStr} newString={newStr} />
         ) : null}
@@ -259,7 +289,7 @@ const ToolStepCard = memo(function ToolStepCard({ entry, permissionStatus, quest
   if (toolName === 'Bash') {
     const command = (input.command || '') as string
     return (
-      <StepCard toolName={toolName} summary={summary} permissionStatus={permissionStatus}>
+      <StepCard toolName={toolName} summary={summary} permissionStatus={permissionStatus} autoApproved={autoApproved}>
         <BashOutput command={command} />
       </StepCard>
     )
@@ -271,7 +301,7 @@ const ToolStepCard = memo(function ToolStepCard({ entry, permissionStatus, quest
     const hasAnswers = questionAnswers && Object.keys(questionAnswers).length > 0
 
     return (
-      <StepCard toolName={toolName} summary={summary} permissionStatus={permissionStatus}>
+      <StepCard toolName={toolName} summary={summary} permissionStatus={permissionStatus} autoApproved={autoApproved}>
         <div className="mt-2 space-y-2.5">
           {questions.map((q, i) => {
             const answer = questionAnswers?.[q.question]
@@ -292,7 +322,7 @@ const ToolStepCard = memo(function ToolStepCard({ entry, permissionStatus, quest
   }
 
   // Read/Write/Grep/Glob/Agent — simple step card
-  return <StepCard toolName={toolName} summary={summary} permissionStatus={permissionStatus} />
+  return <StepCard toolName={toolName} summary={summary} permissionStatus={permissionStatus} autoApproved={autoApproved} />
 })
 
 // --- Main component ---
@@ -308,6 +338,9 @@ export function FriendlyOverlay({ terminalId }: FriendlyOverlayProps) {
   const [debugConfirm, setDebugConfirm] = useState(false)
   const [permissionResults, setPermissionResults] = useState<Map<string, 'allow' | 'deny'>>(
     () => terminalId ? loadPermissionResults(terminalId) : new Map()
+  )
+  const [alwaysAllowed, setAlwaysAllowed] = useState<Set<string>>(
+    () => terminalId ? loadAlwaysAllowed(terminalId) : new Set()
   )
   const [questionAnswers, setQuestionAnswers] = useState<Map<string, Record<string, string>>>(
     () => terminalId ? loadQuestionAnswers(terminalId) : new Map()
@@ -331,10 +364,12 @@ export function FriendlyOverlay({ terminalId }: FriendlyOverlayProps) {
       setUserMessages(loadUserMessages(terminalId))
       setPermissionResults(loadPermissionResults(terminalId))
       setQuestionAnswers(loadQuestionAnswers(terminalId))
+      setAlwaysAllowed(loadAlwaysAllowed(terminalId))
     } else {
       setUserMessages([])
       setPermissionResults(new Map())
       setQuestionAnswers(new Map())
+      setAlwaysAllowed(new Set())
     }
   }, [terminalId])
 
@@ -358,6 +393,13 @@ export function FriendlyOverlay({ terminalId }: FriendlyOverlayProps) {
       saveQuestionAnswers(terminalId, questionAnswers)
     }
   }, [terminalId, questionAnswers])
+
+  // Persist always-allowed tools on every update
+  useEffect(() => {
+    if (terminalId) {
+      saveAlwaysAllowed(terminalId, alwaysAllowed)
+    }
+  }, [terminalId, alwaysAllowed])
 
   // Listen for debug trigger from UpdateOverlay debug menu
   useEffect(() => {
@@ -392,8 +434,62 @@ export function FriendlyOverlay({ terminalId }: FriendlyOverlayProps) {
     })
   }, [])
 
+  const handleAlwaysAllow = useCallback((toolName: string) => {
+    setAlwaysAllowed(prev => {
+      const next = new Set(prev)
+      next.add(toolName)
+      return next
+    })
+  }, [])
+
+  const handleAbort = useCallback(() => {
+    if (!terminalId) return
+    window.electronAPI.overlay.abort(terminalId)
+  }, [terminalId])
+
+  // Auto-respond to permission requests for always-allowed tools
+  const alwaysAllowedRef = useRef(alwaysAllowed)
+  alwaysAllowedRef.current = alwaysAllowed
+  const respondedRequests = useRef(new Set<string>())
+  useEffect(() => {
+    if (!terminalId || events.length === 0) return
+    const start = Math.max(0, events.length - 20)
+    for (let i = events.length - 1; i >= start; i--) {
+      const event = events[i]
+      if (event.type !== 'control_request') continue
+      const cr = event as ControlRequest
+      if (cr.request.subtype !== 'can_use_tool') continue
+      if (cr.request.tool_name === 'AskUserQuestion') continue
+      if (!alwaysAllowedRef.current.has(cr.request.tool_name)) continue
+      if (respondedRequests.current.has(cr.request_id)) continue
+      // Check not already answered by a subsequent event
+      let wasAnswered = false
+      for (let j = i + 1; j < events.length; j++) {
+        if (events[j].type === 'result' || events[j].type === 'assistant') { wasAnswered = true; break }
+      }
+      if (wasAnswered) continue
+      respondedRequests.current.add(cr.request_id)
+      window.electronAPI.overlay.respond(terminalId, cr.request_id, 'allow')
+      if (cr.request.tool_use_id) handlePermissionResult(cr.request.tool_use_id, 'allow')
+      break // Handle one at a time
+    }
+  }, [terminalId, events, handlePermissionResult])
+
+  // Detect mode_change events from the backend (e.g. plan→auto-accept after ExitPlanMode)
+  const [forcedMode, setForcedMode] = useState<ClaudeMode | undefined>(undefined)
+  useEffect(() => {
+    if (events.length === 0) return
+    for (let i = events.length - 1; i >= Math.max(0, events.length - 5); i--) {
+      const event = events[i]
+      if (event.type === 'mode_change' && 'mode' in event) {
+        setForcedMode((event as { type: string; mode: ClaudeMode }).mode)
+        return
+      }
+    }
+  }, [events])
+
   // Send message via overlay API (not PTY)
-  const handleUserSend = useCallback((text: string) => {
+  const handleUserSend = useCallback((text: string, mode?: 'normal' | 'auto-accept' | 'plan') => {
     if (!terminalId) return
 
     // Handle /clear — reset conversation and session in overlay
@@ -402,10 +498,12 @@ export function FriendlyOverlay({ terminalId }: FriendlyOverlayProps) {
       setUserMessages([])
       setPermissionResults(new Map())
       setQuestionAnswers(new Map())
+      setAlwaysAllowed(new Set())
       if (terminalId) {
         saveUserMessages(terminalId, [])
         savePermissionResults(terminalId, new Map())
         saveQuestionAnswers(terminalId, new Map())
+        saveAlwaysAllowed(terminalId, new Set())
         window.electronAPI.overlay.resetSession(terminalId)
       }
       return
@@ -413,7 +511,7 @@ export function FriendlyOverlay({ terminalId }: FriendlyOverlayProps) {
 
     setUserMessages(prev => [...prev, { text, afterEventIndex: eventsLengthRef.current }])
     // Send via overlay channel (spawns claude -p --output-format stream-json --verbose)
-    window.electronAPI.overlay.sendMessage(terminalId, text, activeCwd)
+    window.electronAPI.overlay.sendMessage(terminalId, text, activeCwd, mode)
   }, [terminalId, activeCwd, clearEvents])
 
   // Build conversation model
@@ -448,7 +546,7 @@ export function FriendlyOverlay({ terminalId }: FriendlyOverlayProps) {
                 return <ClaudeMessage key={i} content={entry.text} />
               }
               // Tool entry
-              return <ToolStepCard key={i} entry={entry} permissionStatus={permissionResults.get(entry.toolId)} questionAnswers={questionAnswers.get(entry.toolId)} />
+              return <ToolStepCard key={i} entry={entry} permissionStatus={permissionResults.get(entry.toolId)} questionAnswers={questionAnswers.get(entry.toolId)} autoApproved={alwaysAllowed.has(entry.toolName)} />
             })}
             {(isThinking || isLoading) && <ThinkingLoader />}
           </div>
@@ -459,16 +557,21 @@ export function FriendlyOverlay({ terminalId }: FriendlyOverlayProps) {
       <ConfirmDialog
         terminalId={terminalId}
         events={confirmEvents}
+        alwaysAllowed={alwaysAllowed}
         onActiveChange={handleConfirmActiveChange}
         onPermissionResult={handlePermissionResult}
         onQuestionAnswered={handleQuestionAnswered}
+        onAlwaysAllow={handleAlwaysAllow}
       />
 
       {/* Chat input bar — overlay mode: don't write to PTY, use overlay API */}
       <ChatInput
         terminalId={terminalId}
-        disabled={isConfirmationActive || isLoading}
+        disabled={isConfirmationActive}
+        isWorking={isLoading && !isConfirmationActive}
+        forceMode={forcedMode}
         onSend={handleUserSend}
+        onAbort={handleAbort}
       />
     </div>
   )
