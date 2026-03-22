@@ -94,17 +94,8 @@ const configApi = {
 
 // Terminal API
 const terminalApi = {
-  create: (id: string, name: string, cwd: string) =>
-    ipcRenderer.invoke('terminal:create', { id, name, cwd }),
-
   launchClaude: (id: string, name: string, cwd: string, outputFormat?: 'raw' | 'stream-json') =>
     ipcRenderer.invoke('terminal:launchClaude', { id, name, cwd, outputFormat }),
-
-  write: (id: string, data: string) =>
-    ipcRenderer.invoke('terminal:write', { id, data }),
-
-  resize: (id: string, cols: number, rows: number) =>
-    ipcRenderer.invoke('terminal:resize', { id, cols, rows }),
 
   kill: (id: string) =>
     ipcRenderer.invoke('terminal:kill', { id }),
@@ -115,17 +106,11 @@ const terminalApi = {
   getAll: () =>
     ipcRenderer.invoke('terminal:getAll'),
 
-  getCwd: (id: string) =>
-    ipcRenderer.invoke('terminal:getCwd', { id }),
-
   getSessions: () =>
     ipcRenderer.invoke('terminal:getSessions'),
 
   getAgents: () =>
     ipcRenderer.invoke('terminal:getAgents'),
-
-  getBuffer: (id: string) =>
-    ipcRenderer.invoke('terminal:getBuffer', { id }),
 
   updateMetadata: (id: string, metadata: Partial<TerminalMetadata>) =>
     ipcRenderer.invoke('terminal:updateMetadata', { id, metadata }),
@@ -134,12 +119,6 @@ const terminalApi = {
     ipcRenderer.invoke('terminal:updateRepositories', { id, repositories }),
 
   // Event listeners
-  onData: (callback: (data: { id: string; data: string }) => void) => {
-    const listener = (_event: any, data: { id: string; data: string }) => callback(data)
-    ipcRenderer.on('terminal:data', listener)
-    return () => ipcRenderer.removeListener('terminal:data', listener)
-  },
-
   onState: (callback: (data: { id: string; state: TerminalState; previousState: TerminalState }) => void) => {
     const listener = (_event: any, data: { id: string; state: TerminalState; previousState: TerminalState }) => callback(data)
     ipcRenderer.on('terminal:state', listener)
@@ -162,18 +141,6 @@ const terminalApi = {
     const listener = (_event: any, data: { id: string; metadata: TerminalMetadata }) => callback(data)
     ipcRenderer.on('terminal:metadata', listener)
     return () => ipcRenderer.removeListener('terminal:metadata', listener)
-  },
-
-  onCommandStart: (callback: (data: { id: string; command: string }) => void) => {
-    const listener = (_event: any, data: { id: string; command: string }) => callback(data)
-    ipcRenderer.on('terminal:commandStart', listener)
-    return () => ipcRenderer.removeListener('terminal:commandStart', listener)
-  },
-
-  onCommandEnd: (callback: (data: { id: string; exitCode: number }) => void) => {
-    const listener = (_event: any, data: { id: string; exitCode: number }) => callback(data)
-    ipcRenderer.on('terminal:commandEnd', listener)
-    return () => ipcRenderer.removeListener('terminal:commandEnd', listener)
   },
 
   onRepositories: (callback: (data: { id: string; repositories: string[] }) => void) => {
@@ -208,21 +175,6 @@ const overlayApi = {
     ipcRenderer.on('overlay:done', listener)
     return () => ipcRenderer.removeListener('overlay:done', listener)
   },
-}
-
-// Command History API
-const historyApi = {
-  get: (repoPath: string) =>
-    ipcRenderer.invoke('history:get', { repoPath }),
-
-  add: (repoPath: string, command: string) =>
-    ipcRenderer.invoke('history:add', { repoPath, command }),
-
-  getSuggestion: (repoPath: string, prefix: string) =>
-    ipcRenderer.invoke('history:getSuggestion', { repoPath, prefix }),
-
-  getLast: (repoPath: string) =>
-    ipcRenderer.invoke('history:getLast', { repoPath }),
 }
 
 // Window API
@@ -302,7 +254,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   config: configApi,
   terminal: terminalApi,
   overlay: overlayApi,
-  history: historyApi,
   window: windowApi,
   dialog: dialogApi,
   shell: shellApi,
@@ -318,7 +269,6 @@ declare global {
       config: typeof configApi
       terminal: typeof terminalApi
       overlay: typeof overlayApi
-      history: typeof historyApi
       window: typeof windowApi
       dialog: typeof dialogApi
       shell: typeof shellApi

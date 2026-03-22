@@ -2,10 +2,7 @@ import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell } from '
 import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupTerminalHandlers, cleanupTerminals, restoreAgents } from './ipc/terminal-handlers'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback } from './hooks/status-server'
-import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks } from './hooks/claude-hooks-config'
-import { setStatusServerPort, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalRepositoriesFromHook } from './pty/terminal-manager'
 import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpdating } from './updater'
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
@@ -107,7 +104,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       // sandbox: false is required because the preload script needs access to
-      // Node.js APIs (child_process, fs, path) for node-pty terminal management.
+      // Node.js APIs (child_process, fs, path) for terminal management.
       // Security mitigations: contextIsolation=true prevents renderer from accessing
       // Node globals, nodeIntegration=false blocks require() in renderer, and all
       // IPC is mediated through contextBridge in preload/index.ts.
@@ -267,69 +264,10 @@ app.whenReady().then(async () => {
 // Deferred initialization - runs after window is shown
 async function initializeHooksAndSessions() {
   try {
-    const port = await startStatusServer()
-    setStatusServerPort(port)
-
     // Configure Claude Code hooks (deferred file I/O)
     configureClaudeHooks()
 
-    // Set up callbacks for status updates
-    setStateCallback((terminalId: string, state: string) => {
-      updateTerminalStateFromHook(terminalId, state)
-      if (mainWindow) {
-        mainWindow.webContents.send('terminal:state', {
-          id: terminalId,
-          state,
-          previousState: null
-        })
-      }
-    })
-
-    setMetadataCallback((terminalId: string, metadata: Record<string, string | string[] | Record<string, { prUrl?: string }>>) => {
-      updateTerminalMetadataFromHook(terminalId, metadata)
-      if (mainWindow) {
-        mainWindow.webContents.send('terminal:metadata', {
-          id: terminalId,
-          metadata
-        })
-      }
-    })
-
-    // Set up callbacks for command start/end (shell hooks)
-    setCommandStartCallback((terminalId: string, command: string) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('terminal:commandStart', {
-          id: terminalId,
-          command
-        })
-      }
-    })
-
-    setCommandEndCallback((terminalId: string, exitCode: number) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('terminal:commandEnd', {
-          id: terminalId,
-          exitCode
-        })
-      }
-    })
-
-    setRepositoriesCallback((terminalId: string, repositories: string[]) => {
-      updateTerminalRepositoriesFromHook(terminalId, repositories)
-      if (mainWindow) {
-        mainWindow.webContents.send('terminal:repositories', {
-          id: terminalId,
-          repositories
-        })
-      }
-    })
-
-    // Install shell integration hooks
-    installShellIntegration()
-
-    console.log(`Magic Slash hooks configured on port ${port}`)
-
-    // Restore terminal sessions after hooks are ready
+    // Restore agent sessions
     restoreAgents()
   } catch (error) {
     console.error('Failed to initialize hooks:', error)
@@ -346,5 +284,4 @@ app.on('window-all-closed', () => {
 app.on('before-quit', async () => {
   if (isUpdating) return
   cleanupTerminals()
-  await stopStatusServer()
 })

@@ -469,7 +469,6 @@ export function FriendlyOverlay({ terminalId }: FriendlyOverlayProps) {
         terminalId={terminalId}
         disabled={isConfirmationActive || isLoading}
         onSend={handleUserSend}
-        overlayMode
       />
     </div>
   )

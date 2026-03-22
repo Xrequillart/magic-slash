@@ -1,11 +1,14 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
-import { createTerminal, killTerminal, writeToTerminal } from '../pty/terminal-manager'
+import { spawn, ChildProcess } from 'child_process'
 import { getNodeActivationPrefix } from '../pty/node-version'
 import type { PackageManager, ScriptCategory, PackageScript, ProjectScripts } from '../../types'
 
 let getMainWindow: () => BrowserWindow | null
+
+// Track running script processes
+const scriptProcesses = new Map<string, ChildProcess>()
 
 function detectPackageManager(repoPath: string): PackageManager {
   if (fs.existsSync(path.join(repoPath, 'bun.lockb')) || fs.existsSync(path.join(repoPath, 'bun.lock'))) return 'bun'
@@ -20,6 +23,11 @@ function categorizeScript(name: string): ScriptCategory {
   if (/^(test|spec|e2e)/.test(name)) return 'test'
   if (/^(lint|format|prettier|eslint)/.test(name)) return 'lint'
   return 'other'
+}
+
+function getDefaultShell(): string {
+  if (process.platform === 'win32') return process.env.COMSPEC || 'cmd.exe'
+  return process.env.SHELL || '/bin/zsh'
 }
 
 export function setupScriptHandlers(mainWindowGetter: () => BrowserWindow | null) {
@@ -44,7 +52,7 @@ export function setupScriptHandlers(mainWindowGetter: () => BrowserWindow | null
     return { packageManager, scripts } as ProjectScripts
   })
 
-  ipcMain.handle('scripts:run', async (_event, { repoPath, scriptName, packageManager, agentId: _agentId, agentName }: {
+  ipcMain.handle('scripts:run', async (_event, { repoPath, scriptName, packageManager, agentId: _agentId, agentName: _agentName }: {
     repoPath: string
     scriptName: string
     packageManager: string
@@ -54,39 +62,34 @@ export function setupScriptHandlers(mainWindowGetter: () => BrowserWindow | null
     const id = `script-${Date.now()}`
     const mainWindow = getMainWindow()
 
-    createTerminal(
-      id,
-      `${scriptName} (${agentName})`,
-      repoPath,
-      (data) => {
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:data', { id, data })
-        }
-      },
-      () => {},
-      (exitCode) => {
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:exit', { id, exitCode })
-        }
-      },
-      undefined, undefined, undefined, undefined,
-      { loginShell: false }
-    )
-
-    // Write the run command with `exec` so the shell is replaced by the command.
-    // When the command exits (including via Ctrl+C), the PTY exits and terminal:exit fires.
     const runCommand = packageManager === 'npm' ? `npm run ${scriptName}` : `${packageManager} ${scriptName}`
     const nodePrefix = getNodeActivationPrefix(repoPath)
-    const fullCommand = nodePrefix ? `${nodePrefix} && exec ${runCommand}` : `exec ${runCommand}`
-    // Small delay to let the shell initialize
-    setTimeout(() => {
-      writeToTerminal(id, `${fullCommand}\r`)
-    }, 500)
+    const fullCommand = nodePrefix ? `${nodePrefix} && ${runCommand}` : runCommand
+
+    const shell = getDefaultShell()
+    const proc = spawn(shell, ['-lc', fullCommand], {
+      cwd: repoPath,
+      env: { ...process.env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    scriptProcesses.set(id, proc)
+
+    proc.on('close', (exitCode) => {
+      scriptProcesses.delete(id)
+      if (mainWindow) {
+        mainWindow.webContents.send('terminal:exit', { id, exitCode: exitCode ?? 1 })
+      }
+    })
 
     return { id }
   })
 
   ipcMain.handle('scripts:stop', async (_event, { id }: { id: string }) => {
-    killTerminal(id)
+    const proc = scriptProcesses.get(id)
+    if (proc) {
+      proc.kill('SIGTERM')
+      scriptProcesses.delete(id)
+    }
   })
 }
