@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 
 export interface SkillInfo {
   name: string
+  dirName: string
   description: string
   allowedTools: string
   argumentHint?: string

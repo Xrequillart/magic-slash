@@ -12,6 +12,7 @@ interface SkillInfo {
   description: string
   allowedTools: string
   argumentHint?: string
+  dirName: string
   isBuiltIn: boolean
   hasImage: boolean
   imagePath?: string
@@ -89,6 +90,7 @@ export function setupSkillsHandlers() {
 
       skills.push({
         name: frontmatter.name || entry.name,
+        dirName: entry.name,
         description: frontmatter.description || '',
         allowedTools: frontmatter['allowed-tools'] || '',
         argumentHint: frontmatter['argument-hint'] || undefined,
@@ -115,6 +117,7 @@ export function setupSkillsHandlers() {
 
     return {
       name: frontmatter.name || name,
+      dirName: name,
       description: frontmatter.description || '',
       allowedTools: frontmatter['allowed-tools'] || '',
       argumentHint: frontmatter['argument-hint'] || undefined,

@@ -84,8 +84,8 @@ function SkillEditor({
 
   // Load existing image
   useEffect(() => {
-    if (skill?.hasImage && skill.name && !skill.isRepoSkill) {
-      window.electronAPI.skills.getImage(skill.name).then((url) => {
+    if (skill?.hasImage && skill.dirName && !skill.isRepoSkill) {
+      window.electronAPI.skills.getImage(skill.dirName).then((url) => {
         if (url) setImagePreview(url)
       })
     }
@@ -380,9 +380,9 @@ export function SkillsPage() {
   // Load images for all skills
   useEffect(() => {
     skills.forEach((skill) => {
-      if (skill.hasImage && imageCache[skill.name] === undefined) {
-        getImage(skill.name).then((url) => {
-          setImageCache((prev) => ({ ...prev, [skill.name]: url }))
+      if (skill.hasImage && imageCache[skill.dirName] === undefined) {
+        getImage(skill.dirName).then((url) => {
+          setImageCache((prev) => ({ ...prev, [skill.dirName]: url }))
         })
       }
     })
@@ -412,10 +412,11 @@ export function SkillsPage() {
     window.location.hash = '#/'
   }, [createSkill])
 
-  const handleUpdateSave = useCallback(async (name: string, content: string, imagePath?: string) => {
-    await updateSkill(name, content, imagePath)
+  const handleUpdateSave = useCallback(async (_name: string, content: string, imagePath?: string) => {
+    if (!editSkill?.dirName) return
+    await updateSkill(editSkill.dirName, content, imagePath)
     window.location.hash = '#/'
-  }, [updateSkill])
+  }, [updateSkill, editSkill])
 
   const handleImport = useCallback(async () => {
     try {
@@ -429,8 +430,8 @@ export function SkillsPage() {
   }, [importSkill])
 
   const handleDelete = useCallback(async () => {
-    if (editSkill?.name) {
-      await deleteSkill(editSkill.name)
+    if (editSkill?.dirName) {
+      await deleteSkill(editSkill.dirName)
       window.location.hash = '#/'
     }
   }, [editSkill, deleteSkill])
@@ -466,7 +467,7 @@ export function SkillsPage() {
           isNew={false}
           onSave={handleUpdateSave}
           onDelete={editSkill.isBuiltIn ? undefined : handleDelete}
-          onShare={editSkill.isBuiltIn ? undefined : downloadSkill}
+          onShare={editSkill.isBuiltIn ? undefined : () => downloadSkill(editSkill.dirName)}
           onBack={navigateToList}
         />
       )
@@ -494,14 +495,14 @@ export function SkillsPage() {
               <div>
                 <h2 className="text-sm text-text-secondary/50 uppercase tracking-wider">Built-in</h2>
                 <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">Magic Slash core skills, powering the development workflow</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {builtInSkills.map((skill) => (
                     <SkillCard
-                      key={skill.name}
+                      key={skill.dirName}
                       skill={skill}
-                      imageUrl={imageCache[skill.name] ?? null}
+                      imageUrl={imageCache[skill.dirName] ?? null}
                       badge={{ label: 'built-in', className: 'bg-accent/10 text-accent' }}
-                      onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.name)}` }}
+                      onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
                     />
                   ))}
                 </div>
@@ -555,13 +556,13 @@ export function SkillsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {customSkills.map((skill) => (
                     <SkillCard
-                      key={skill.name}
+                      key={skill.dirName}
                       skill={skill}
-                      imageUrl={imageCache[skill.name] ?? null}
-                      onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.name)}` }}
+                      imageUrl={imageCache[skill.dirName] ?? null}
+                      onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
                     />
                   ))}
                 </div>
@@ -590,13 +591,12 @@ export function SkillsPage() {
                     <span className="text-sm font-medium text-text-secondary">{repoName}</span>
                     <span className="text-xs text-text-secondary/40">{rSkills.length}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     {rSkills.map((rs) => (
                       <SkillCard
                         key={rs.filePath}
                         skill={rs}
                         imageUrl={null}
-                        badge={{ label: repoName, className: 'bg-white/10 text-text-secondary' }}
                         onClick={() => { window.location.hash = `#/repo-skill/${encodeURIComponent(rs.filePath)}` }}
                       />
                     ))}
