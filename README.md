@@ -29,24 +29,24 @@
 
 | Skill              | Description                                          |
 | ------------------ | ---------------------------------------------------- |
-| `/magic-start`     | Start a task from a Jira ticket or GitHub issue      |
-| `/magic-continue`  | Resume work on an existing ticket                    |
-| `/magic-commit`    | Create an atomic commit with conventional message    |
-| `/magic-pr`        | Push, create PR and update Jira                      |
-| `/magic-review`    | Review a Pull Request (self or external)             |
-| `/magic-resolve`   | Address review comments and force-push fixes         |
-| `/magic-done`      | Finalize after PR merge (transition Jira to Done)    |
+| `/magic:start`     | Start a task from a Jira ticket or GitHub issue      |
+| `/magic:continue`  | Resume work on an existing ticket                    |
+| `/magic:commit`    | Create an atomic commit with conventional message    |
+| `/magic:pr`        | Push, create PR and update Jira                      |
+| `/magic:review`    | Review a Pull Request (self or external)             |
+| `/magic:resolve`   | Address review comments and force-push fixes         |
+| `/magic:done`      | Finalize after PR merge (transition Jira to Done)    |
 
-> Type `/magic-` to quickly find all commands.
+> Type `/magic:` to quickly find all commands.
 
 You can also invoke skills using natural language:
 
-- "démarre PROJ-123" or "work on PROJ-123" → `/magic-start`
-- "je suis prêt à committer" or "ready to commit" → `/magic-commit`
-- "on peut créer la PR" or "create the PR" → `/magic-pr`
-- "regarde la PR" or "review my PR" → `/magic-review`
-- "corriger les commentaires" or "fix review comments" → `/magic-resolve`
-- "la PR est mergée" or "the PR is merged" → `/magic-done`
+- "démarre PROJ-123" or "work on PROJ-123" → `/magic:start`
+- "je suis prêt à committer" or "ready to commit" → `/magic:commit`
+- "on peut créer la PR" or "create the PR" → `/magic:pr`
+- "regarde la PR" or "review my PR" → `/magic:review`
+- "corriger les commentaires" or "fix review comments" → `/magic:resolve`
+- "la PR est mergée" or "the PR is merged" → `/magic:done`
 
 ## Installation
 
@@ -72,12 +72,12 @@ Two installation modes are available: **Desktop App** (recommended) and **Standa
 
 ## Usage
 
-### /magic-start - Start a task
+### /magic:start - Start a task
 
 ```bash
-/magic-start PROJ-1234    # Jira ticket
-/magic-start 42           # GitHub issue
-/magic-start #42          # GitHub issue (with #)
+/magic:start PROJ-1234    # Jira ticket
+/magic:start 42           # GitHub issue
+/magic:start #42          # GitHub issue (with #)
 ```
 
 1. Detects the ticket type (Jira or GitHub) based on format
@@ -89,7 +89,7 @@ Two installation modes are available: **Desktop App** (recommended) and **Standa
 **Jira example (single repo detected):**
 
 ```text
-> /magic-start PROJ-42
+> /magic:start PROJ-42
 
 Source: Jira
 Ticket: PROJ-42 - Add API endpoint for users
@@ -106,7 +106,7 @@ You need to implement the new API endpoint for users...
 **Jira example (multiple repos detected):**
 
 ```text
-> /magic-start PROJ-42
+> /magic:start PROJ-42
 
 Source: Jira
 Ticket: PROJ-42 - Add pagination on /users
@@ -124,10 +124,10 @@ Worktrees created:
 ✓ /projects/my-web-PROJ-42
 ```
 
-### /magic-commit - Create a commit
+### /magic:commit - Create a commit
 
 ```bash
-/magic-commit
+/magic:commit
 ```
 
 1. Stage all changes
@@ -152,12 +152,12 @@ Worktrees created:
 ```
 
 **Multi-repo support:** If you're in a worktree associated with a ticket that spans multiple repos,
-`/magic-commit` will detect all related worktrees and commit changes in each one.
+`/magic:commit` will detect all related worktrees and commit changes in each one.
 
-### /magic-pr - Push and create a Pull Request
+### /magic:pr - Push and create a Pull Request
 
 ```bash
-/magic-pr
+/magic:pr
 ```
 
 1. Push the branch to origin
@@ -169,7 +169,7 @@ Worktrees created:
 5. Add comment with PR link on Jira (by default)
 
 **Multi-repo support:** If you're in a worktree associated with a ticket that spans multiple repos,
-`/magic-pr` will push and create PRs for each one.
+`/magic:pr` will push and create PRs for each one.
 
 **Example:**
 
@@ -184,11 +184,11 @@ Next steps:
 3. Merge the PR once approved
 ```
 
-### /magic-review - Review a Pull Request
+### /magic:review - Review a Pull Request
 
 ```bash
-/magic-review          # Review the PR for the current branch
-/magic-review PROJ-42  # Review a specific ticket's PR
+/magic:review          # Review the PR for the current branch
+/magic:review PROJ-42  # Review a specific ticket's PR
 ```
 
 1. Detect the PR associated with the current branch (or a given ticket)
@@ -199,11 +199,11 @@ Next steps:
 
 > **Note:** This skill is read-only — it does not modify any files.
 
-### /magic-resolve - Address review feedback
+### /magic:resolve - Address review feedback
 
 ```bash
-/magic-resolve          # Fix comments on the current branch's PR
-/magic-resolve PROJ-42  # Fix comments for a specific ticket's PR
+/magic:resolve          # Fix comments on the current branch's PR
+/magic:resolve PROJ-42  # Fix comments for a specific ticket's PR
 ```
 
 1. Retrieve unresolved review comments from the PR
@@ -212,10 +212,10 @@ Next steps:
 4. Amend or create fixup commits as appropriate
 5. Force-push with `--force-with-lease`
 
-### /magic-done - Finalize after merge
+### /magic:done - Finalize after merge
 
 ```bash
-/magic-done
+/magic:done
 ```
 
 1. Verify the PR has been merged

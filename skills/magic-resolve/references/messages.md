@@ -432,13 +432,13 @@ Changes have been pushed.
 
 {IF_RE_REQUEST_OK}
 Next step:
-1. Run /magic-review for a self-review of the fixes
+1. Run /magic:review for a self-review of the fixes
 {/IF_RE_REQUEST_OK}
 
 {IF_RE_REQUEST_FAIL}
 Next steps:
 1. Request a re-review from the reviewer
-2. Run /magic-review for a self-review of the fixes
+2. Run /magic:review for a self-review of the fixes
 {/IF_RE_REQUEST_FAIL}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -466,13 +466,13 @@ Les changements ont été pushés.
 
 {IF_RE_REQUEST_OK}
 Prochaine étape :
-1. Lance /magic-review pour une auto-review des corrections
+1. Lance /magic:review pour une auto-review des corrections
 {/IF_RE_REQUEST_OK}
 
 {IF_RE_REQUEST_FAIL}
 Prochaines étapes :
 1. Demande une re-review au reviewer
-2. Lance /magic-review pour une auto-review des corrections
+2. Lance /magic:review pour une auto-review des corrections
 {/IF_RE_REQUEST_FAIL}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

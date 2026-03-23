@@ -1,6 +1,6 @@
 ---
-name: magic-done
-description: This skill should be used when the user says "the PR is merged", "la PR est mergée", "close the ticket", "fermer le ticket", "finalize the task", "finaliser la tâche", "task is done", "tâche terminée", "mark as done", "marquer comme terminé", or indicates the PR has already been merged and they want to close out the task. Do NOT use this skill if the user just finished coding and wants to create a PR — use /magic-pr instead.
+name: magic:done
+description: This skill should be used when the user says "the PR is merged", "la PR est mergée", "close the ticket", "fermer le ticket", "finalize the task", "finaliser la tâche", "task is done", "tâche terminée", "mark as done", "marquer comme terminé", or indicates the PR has already been merged and they want to close out the task. Do NOT use this skill if the user just finished coding and wants to create a PR — use /magic:pr instead.
 allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 ---
 
@@ -123,7 +123,7 @@ Display a message and stop:
 ```text
 ⚠️ The PR #{PR_NUMBER} is not yet merged.
 
-Please merge the PR on GitHub first, then run /magic-done again.
+Please merge the PR on GitHub first, then run /magic:done again.
 
 🔗 PR: {PR_URL}
 ```
@@ -132,7 +132,7 @@ Please merge the PR on GitHub first, then run /magic-done again.
 ```text
 ⚠️ La PR #{PR_NUMBER} n'est pas encore mergée.
 
-Merci de merger la PR sur GitHub d'abord, puis relance /magic-done.
+Merci de merger la PR sur GitHub d'abord, puis relance /magic:done.
 
 🔗 PR : {PR_URL}
 ```

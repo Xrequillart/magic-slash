@@ -416,10 +416,10 @@ Passage au repository suivant...
 🎫 Ticket   : {TICKET_ID} → {ticket_status}
 
 Next steps:
-1. Run /magic-review to perform a code review
+1. Run /magic:review to perform a code review
 2. Wait for approval and CI checks
 3. Merge the PR once approved
-4. Run /magic-done to finalize the task
+4. Run /magic:done to finalize the task
 ```
 
 ### fr
@@ -432,10 +432,10 @@ Next steps:
 🎫 Ticket   : {TICKET_ID} → {ticket_status}
 
 Prochaines étapes :
-1. Lance /magic-review pour faire une revue de code
+1. Lance /magic:review pour faire une revue de code
 2. Attend l'approbation et les checks CI
 3. Merge la PR une fois approuvée
-4. Lance /magic-done pour finaliser la tâche
+4. Lance /magic:done pour finaliser la tâche
 ```
 
 ## MSG_MULTI_REPO_FINAL

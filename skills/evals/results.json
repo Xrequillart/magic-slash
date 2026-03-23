@@ -5,17 +5,17 @@
   "correct_triggers": 30,
   "accuracy": "100%",
   "ambiguous_cases": [
-    {"ids": [1, 24], "issue": "Bare ticket IDs trigger both magic-start and magic-continue", "resolved": "magic-start", "confidence": "low"},
-    {"ids": [27], "issue": "'done' alone is ambiguous between magic-pr and magic-done", "resolved": "magic-pr", "confidence": "medium"},
-    {"ids": [17], "issue": "'the task is done' could be confused with magic-pr completion signals", "resolved": "magic-done", "confidence": "medium-high"}
+    {"ids": [1, 24], "issue": "Bare ticket IDs trigger both magic:start and magic:continue", "resolved": "magic:start", "confidence": "low"},
+    {"ids": [27], "issue": "'done' alone is ambiguous between magic:pr and magic:done", "resolved": "magic:pr", "confidence": "medium"},
+    {"ids": [17], "issue": "'the task is done' could be confused with magic:pr completion signals", "resolved": "magic:done", "confidence": "medium-high"}
   ],
   "per_skill_stats": {
-    "magic-start": {"queries": [1, 2, 23, 24, 29], "count": 5, "passed": 5, "all_correct": true},
-    "magic-continue": {"queries": [3, 4, 5], "count": 3, "passed": 3, "all_correct": true},
-    "magic-commit": {"queries": [11, 12, 25], "count": 3, "passed": 3, "all_correct": true},
-    "magic-pr": {"queries": [6, 7, 10, 18, 19, 26, 27, 30], "count": 8, "passed": 8, "all_correct": true},
-    "magic-review": {"queries": [13, 14, 28], "count": 3, "passed": 3, "all_correct": true},
-    "magic-resolve": {"queries": [15, 16, 21], "count": 3, "passed": 3, "all_correct": true},
-    "magic-done": {"queries": [8, 9, 17, 20, 22], "count": 5, "passed": 5, "all_correct": true}
+    "magic:start": {"queries": [1, 2, 23, 24, 29], "count": 5, "passed": 5, "all_correct": true},
+    "magic:continue": {"queries": [3, 4, 5], "count": 3, "passed": 3, "all_correct": true},
+    "magic:commit": {"queries": [11, 12, 25], "count": 3, "passed": 3, "all_correct": true},
+    "magic:pr": {"queries": [6, 7, 10, 18, 19, 26, 27, 30], "count": 8, "passed": 8, "all_correct": true},
+    "magic:review": {"queries": [13, 14, 28], "count": 3, "passed": 3, "all_correct": true},
+    "magic:resolve": {"queries": [15, 16, 21], "count": 3, "passed": 3, "all_correct": true},
+    "magic:done": {"queries": [8, 9, 17, 20, 22], "count": 5, "passed": 5, "all_correct": true}
   }
 }

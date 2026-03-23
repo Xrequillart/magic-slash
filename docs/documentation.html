@@ -797,7 +797,7 @@
                 <div class="doc-section" id="usage">
                     <h2>Usage</h2>
                     <p>The typical workflow follows four steps. Start by referencing your ticket ID &mdash; magic-slash handles the rest.</p>
-                    <pre><code>&gt; /magic-start PROJ-142
+                    <pre><code>&gt; /magic:start PROJ-142
 &#10003; Fetched ticket: "Add JWT auth middleware"
 &#10003; Created worktree: /projects/api-PROJ-142
 &#10003; Branch feature/PROJ-142 created
@@ -805,35 +805,35 @@
 
   ... you write code ...
 
-&gt; /magic-commit
+&gt; /magic:commit
 &#10003; Staged 4 files (excluded .env.local)
 &#10003; feat(auth): add JWT token refresh mechanism
 
-&gt; /magic-pr
+&gt; /magic:pr
 &#10003; Pushed to origin/feature/PROJ-142
 &#10003; PR #87 created — linked to PROJ-142
 &#10003; Ticket moved to "To be reviewed"
 
   ... PR gets reviewed ...
 
-&gt; /magic-review 87
+&gt; /magic:review 87
 &#10003; Fetched PR #87 (3 files, +10 −1)
 &#10003; Approved with 2 suggestions
 
-&gt; /magic-resolve
+&gt; /magic:resolve
 &#10003; 2 comments addressed — 2 files updated
 &#10003; Force-pushed to origin/feature/PROJ-142
 
   ... PR is merged ...
 
-&gt; /magic-done
+&gt; /magic:done
 &#10003; PR #87 merged
 &#10003; Branch feature/PROJ-142 deleted
 &#10003; Ticket moved to "Done"</code></pre>
 
                     <h3>Resuming work</h3>
-                    <p>Already started a ticket? Use <code>/magic-continue</code> to pick up where you left off.</p>
-                    <pre><code>&gt; /magic-continue PROJ-142
+                    <p>Already started a ticket? Use <code>/magic:continue</code> to pick up where you left off.</p>
+                    <pre><code>&gt; /magic:continue PROJ-142
 &#10003; Worktree found: /projects/api-PROJ-142
 &#10003; Branch: feature/PROJ-142 (3 commits ahead)
 &#10003; PR #87 (open)
@@ -877,11 +877,11 @@ Ready to continue. What would you like to do?</code></pre>
                 <div class="doc-section" id="skills">
                     <h2>Built-in Skills Reference</h2>
                     <p>magic-slash ships with seven built-in skills that cover the full development lifecycle — from ticket to merge. Each skill is invoked as a slash command inside Claude Code and handles multi-repo worktrees automatically.</p>
-                    <p>All skills share the <code>magic-</code> prefix (<code>/magic-start</code>, <code>/magic-continue</code>, <code>/magic-commit</code>, <code>/magic-pr</code>, <code>/magic-review</code>, <code>/magic-resolve</code>, <code>/magic-done</code>) so you can type <code>/magic-</code> to quickly find them all.</p>
+                    <p>All skills share the <code>magic:</code> prefix (<code>/magic:start</code>, <code>/magic:continue</code>, <code>/magic:commit</code>, <code>/magic:pr</code>, <code>/magic:review</code>, <code>/magic:resolve</code>, <code>/magic:done</code>) so you can type <code>/magic:</code> to quickly find them all.</p>
 
                     <div class="doc-skill">
-                        <h3><img src="skill-start.png" alt="skill /magic-start icon" class="doc-skill-img"><span class="doc-skill-name">/magic-start</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-start/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
-                        <p class="doc-skill-desc">Bootstraps a development task from a Jira ticket or GitHub issue. Say <code>/magic-start PROJ-123</code> or <code>/magic-start #456</code>.</p>
+                        <h3><img src="skill-start.png" alt="skill /magic:start icon" class="doc-skill-img"><span class="doc-skill-name">/magic:start</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-start/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <p class="doc-skill-desc">Bootstraps a development task from a Jira ticket or GitHub issue. Say <code>/magic:start PROJ-123</code> or <code>/magic:start #456</code>.</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
                                 <h4>What it does</h4>
@@ -896,7 +896,7 @@ Ready to continue. What would you like to do?</code></pre>
                             <div class="doc-skill-col">
                                 <h4>Trigger phrases</h4>
                                 <ul>
-                                    <li><code>/magic-start &lt;ID&gt;</code></li>
+                                    <li><code>/magic:start &lt;ID&gt;</code></li>
                                     <li>"start", "begin work on", "work on ticket"</li>
                                     <li>"commencer", "travailler sur", "demarre"</li>
                                 </ul>
@@ -907,8 +907,8 @@ Ready to continue. What would you like to do?</code></pre>
                     </div>
 
                     <div class="doc-skill">
-                        <h3><img src="skill-continue.png" alt="skill /magic-continue icon" class="doc-skill-img"><span class="doc-skill-name">/magic-continue</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-continue/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
-                        <p class="doc-skill-desc">Resumes work on an existing Jira ticket or GitHub issue. Say <code>/magic-continue PROJ-123</code> or <code>/magic-continue #456</code>.</p>
+                        <h3><img src="skill-continue.png" alt="skill /magic:continue icon" class="doc-skill-img"><span class="doc-skill-name">/magic:continue</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-continue/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <p class="doc-skill-desc">Resumes work on an existing Jira ticket or GitHub issue. Say <code>/magic:continue PROJ-123</code> or <code>/magic:continue #456</code>.</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
                                 <h4>What it does</h4>
@@ -924,7 +924,7 @@ Ready to continue. What would you like to do?</code></pre>
                             <div class="doc-skill-col">
                                 <h4>Trigger phrases</h4>
                                 <ul>
-                                    <li><code>/magic-continue &lt;ID&gt;</code></li>
+                                    <li><code>/magic:continue &lt;ID&gt;</code></li>
                                     <li>"continue", "resume work on", "switch to"</li>
                                     <li>"reprendre", "je reprends", "basculer sur"</li>
                                 </ul>
@@ -935,8 +935,8 @@ Ready to continue. What would you like to do?</code></pre>
                     </div>
 
                     <div class="doc-skill">
-                        <h3><img src="skill-commit.png" alt="skill /magic-commit icon" class="doc-skill-img"><span class="doc-skill-name">/magic-commit</span> <span class="doc-skill-tag">Git</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-commit/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
-                        <p class="doc-skill-desc">Creates atomic, conventional commits by analyzing your staged changes. Just say <code>/magic-commit</code>.</p>
+                        <h3><img src="skill-commit.png" alt="skill /magic:commit icon" class="doc-skill-img"><span class="doc-skill-name">/magic:commit</span> <span class="doc-skill-tag">Git</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-commit/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <p class="doc-skill-desc">Creates atomic, conventional commits by analyzing your staged changes. Just say <code>/magic:commit</code>.</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
                                 <h4>What it does</h4>
@@ -961,8 +961,8 @@ Ready to continue. What would you like to do?</code></pre>
                     </div>
 
                     <div class="doc-skill">
-                        <h3><img src="skill-done.png" alt="skill /magic-pr icon" class="doc-skill-img"><span class="doc-skill-name">/magic-pr</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-pr/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
-                        <p class="doc-skill-desc">Pushes your commits, creates a pull request, and updates the ticket. Say <code>/magic-pr</code> when you are finished coding.</p>
+                        <h3><img src="skill-done.png" alt="skill /magic:pr icon" class="doc-skill-img"><span class="doc-skill-name">/magic:pr</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-pr/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <p class="doc-skill-desc">Pushes your commits, creates a pull request, and updates the ticket. Say <code>/magic:pr</code> when you are finished coding.</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
                                 <h4>What it does</h4>
@@ -989,8 +989,8 @@ Ready to continue. What would you like to do?</code></pre>
                     </div>
 
                     <div class="doc-skill">
-                        <h3><img src="skill-done.png" alt="skill /magic-review icon" class="doc-skill-img"><span class="doc-skill-name">/magic-review</span> <span class="doc-skill-tag">Review</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-review/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
-                        <p class="doc-skill-desc">Performs a thorough code review on a pull request. Say <code>/magic-review</code> for the current PR or <code>/magic-review 87</code> for a specific one.</p>
+                        <h3><img src="skill-done.png" alt="skill /magic:review icon" class="doc-skill-img"><span class="doc-skill-name">/magic:review</span> <span class="doc-skill-tag">Review</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-review/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <p class="doc-skill-desc">Performs a thorough code review on a pull request. Say <code>/magic:review</code> for the current PR or <code>/magic:review 87</code> for a specific one.</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
                                 <h4>What it does</h4>
@@ -1005,7 +1005,7 @@ Ready to continue. What would you like to do?</code></pre>
                             <div class="doc-skill-col">
                                 <h4>Trigger phrases</h4>
                                 <ul>
-                                    <li><code>/magic-review</code>, <code>/magic-review 87</code></li>
+                                    <li><code>/magic:review</code>, <code>/magic:review 87</code></li>
                                     <li>"review", "code review", "review the PR"</li>
                                     <li>"revue de code", "regarde la PR", "vérifie ma PR"</li>
                                 </ul>
@@ -1014,8 +1014,8 @@ Ready to continue. What would you like to do?</code></pre>
                     </div>
 
                     <div class="doc-skill">
-                        <h3><img src="skill-done.png" alt="skill /magic-resolve icon" class="doc-skill-img"><span class="doc-skill-name">/magic-resolve</span> <span class="doc-skill-tag">Review</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-resolve/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
-                        <p class="doc-skill-desc">Addresses code review feedback by fixing the requested changes and force-pushing. Say <code>/magic-resolve</code> after receiving review comments.</p>
+                        <h3><img src="skill-done.png" alt="skill /magic:resolve icon" class="doc-skill-img"><span class="doc-skill-name">/magic:resolve</span> <span class="doc-skill-tag">Review</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-resolve/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <p class="doc-skill-desc">Addresses code review feedback by fixing the requested changes and force-pushing. Say <code>/magic:resolve</code> after receiving review comments.</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
                                 <h4>What it does</h4>
@@ -1030,7 +1030,7 @@ Ready to continue. What would you like to do?</code></pre>
                             <div class="doc-skill-col">
                                 <h4>Trigger phrases</h4>
                                 <ul>
-                                    <li><code>/magic-resolve</code></li>
+                                    <li><code>/magic:resolve</code></li>
                                     <li>"resolve", "fix review comments", "address feedback"</li>
                                     <li>"résoudre", "corriger les commentaires", "traiter les retours"</li>
                                 </ul>
@@ -1039,8 +1039,8 @@ Ready to continue. What would you like to do?</code></pre>
                     </div>
 
                     <div class="doc-skill">
-                        <h3><img src="skill-done.png" alt="skill /magic-done icon" class="doc-skill-img"><span class="doc-skill-name">/magic-done</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-done/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
-                        <p class="doc-skill-desc">Finalizes a task after the PR has been merged: verifies the merge, transitions the Jira ticket to "Done", and cleans up. Say <code>/magic-done</code> once the PR is merged.</p>
+                        <h3><img src="skill-done.png" alt="skill /magic:done icon" class="doc-skill-img"><span class="doc-skill-name">/magic:done</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/Xrequillart/magic-slash/blob/main/skills/magic-done/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <p class="doc-skill-desc">Finalizes a task after the PR has been merged: verifies the merge, transitions the Jira ticket to "Done", and cleans up. Say <code>/magic:done</code> once the PR is merged.</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
                                 <h4>What it does</h4>
@@ -1055,12 +1055,12 @@ Ready to continue. What would you like to do?</code></pre>
                             <div class="doc-skill-col">
                                 <h4>Trigger phrases</h4>
                                 <ul>
-                                    <li><code>/magic-done</code></li>
+                                    <li><code>/magic:done</code></li>
                                     <li>"the PR is merged", "close the ticket", "task is done"</li>
                                     <li>"la PR est mergée", "fermer le ticket", "tâche terminée"</li>
                                 </ul>
                                 <h4>Note</h4>
-                                <p>Do <strong>not</strong> use this to create a PR &mdash; use <code>/magic-pr</code> instead. This skill is only for post-merge finalization.</p>
+                                <p>Do <strong>not</strong> use this to create a PR &mdash; use <code>/magic:pr</code> instead. This skill is only for post-merge finalization.</p>
                             </div>
                         </div>
                     </div>
@@ -1214,7 +1214,7 @@ Ready to continue. What would you like to do?</code></pre>
 }</code></pre>
 
                     <h3>Repository settings</h3>
-                    <p>Each repository entry defines its local path and keyword list. Keywords are used by <code>/magic-start</code> to automatically match tickets to the right repo.</p>
+                    <p>Each repository entry defines its local path and keyword list. Keywords are used by <code>/magic:start</code> to automatically match tickets to the right repo.</p>
                     <div class="doc-skill">
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
@@ -1330,13 +1330,13 @@ Ready to continue. What would you like to do?</code></pre>
 
                     <h3>File locations</h3>
                     <pre><code>~/.config/magic-slash/config.json   # Main configuration
-~/.claude/skills/magic-start/SKILL.md      # /magic-start skill definition
-~/.claude/skills/magic-continue/SKILL.md   # /magic-continue skill definition
-~/.claude/skills/magic-commit/SKILL.md     # /magic-commit skill definition
-~/.claude/skills/magic-pr/SKILL.md         # /magic-pr skill definition
-~/.claude/skills/magic-review/SKILL.md     # /magic-review skill definition
-~/.claude/skills/magic-resolve/SKILL.md    # /magic-resolve skill definition
-~/.claude/skills/magic-done/SKILL.md       # /magic-done skill definition
+~/.claude/skills/magic-start/SKILL.md      # /magic:start skill definition
+~/.claude/skills/magic-continue/SKILL.md   # /magic:continue skill definition
+~/.claude/skills/magic-commit/SKILL.md     # /magic:commit skill definition
+~/.claude/skills/magic-pr/SKILL.md         # /magic:pr skill definition
+~/.claude/skills/magic-review/SKILL.md     # /magic:review skill definition
+~/.claude/skills/magic-resolve/SKILL.md    # /magic:resolve skill definition
+~/.claude/skills/magic-done/SKILL.md       # /magic:done skill definition
 ~/.claude.json                      # MCP server settings (Jira &amp; GitHub)</code></pre>
                 </div>
 
@@ -1437,7 +1437,7 @@ Ready to continue. What would you like to do?</code></pre>
                     <div class="doc-skill">
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
-                                <h4>/magic-start</h4>
+                                <h4>/magic:start</h4>
                                 <ul>
                                     <li>Scores all configured repos against the ticket keywords</li>
                                     <li>If multiple repos match, asks you to choose or select "all"</li>
@@ -1446,7 +1446,7 @@ Ready to continue. What would you like to do?</code></pre>
                                 </ul>
                             </div>
                             <div class="doc-skill-col">
-                                <h4>/magic-continue</h4>
+                                <h4>/magic:continue</h4>
                                 <ul>
                                     <li>Searches all configured repos for worktrees matching the ticket ID</li>
                                     <li>If multiple worktrees found, asks to choose or select "all"</li>
@@ -1455,18 +1455,18 @@ Ready to continue. What would you like to do?</code></pre>
                                 </ul>
                             </div>
                             <div class="doc-skill-col">
-                                <h4>/magic-commit &amp; /magic-pr</h4>
+                                <h4>/magic:commit &amp; /magic:pr</h4>
                                 <ul>
                                     <li>Detects all worktrees sharing the same ticket ID</li>
-                                    <li><code>/magic-commit</code> iterates over each worktree that has changes</li>
-                                    <li><code>/magic-pr</code> creates one PR per repo, then updates the ticket once with all PR links</li>
+                                    <li><code>/magic:commit</code> iterates over each worktree that has changes</li>
+                                    <li><code>/magic:pr</code> creates one PR per repo, then updates the ticket once with all PR links</li>
                                 </ul>
                             </div>
                         </div>
                     </div>
 
                     <h3>Example: full-stack task</h3>
-                    <pre><code>&gt; /magic-start PROJ-200
+                    <pre><code>&gt; /magic:start PROJ-200
 &#10003; Ticket: "Add user avatar upload"
 &#10003; Matched repos: api (score: 15), web (score: 12)
 
@@ -1477,11 +1477,11 @@ Ready to continue. What would you like to do?</code></pre>
 
   ... you implement backend + frontend ...
 
-&gt; /magic-commit
+&gt; /magic:commit
 &#10003; api-PROJ-200: feat(upload): add avatar endpoint
 &#10003; web-PROJ-200: feat(profile): add avatar picker component
 
-&gt; /magic-pr
+&gt; /magic:pr
 &#10003; PR #42 created on org/api
 &#10003; PR #43 created on org/web
 &#10003; Jira PROJ-200 updated with both PR links</code></pre>
@@ -1572,7 +1572,7 @@ You are working on ticket **PROJ-200** which spans multiple repos.
                                 <ul>
                                     <li><code>repos</code> &mdash; JSON array of absolute paths</li>
                                 </ul>
-                                <p>Attaches worktrees to the agent for sidebar grouping. Called automatically by <code>/magic-start</code> after creating a worktree.</p>
+                                <p>Attaches worktrees to the agent for sidebar grouping. Called automatically by <code>/magic:start</code> after creating a worktree.</p>
                             </div>
                         </div>
                     </div>
@@ -1616,7 +1616,7 @@ You are working on ticket **PROJ-200** which spans multiple repos.
 
                     <div class="doc-skill">
                         <h3>Worktree already exists</h3>
-                        <p class="doc-skill-desc"><code>/magic-start</code> detects existing worktrees and offers three options: reuse, recreate, or abort.</p>
+                        <p class="doc-skill-desc"><code>/magic:start</code> detects existing worktrees and offers three options: reuse, recreate, or abort.</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
                                 <h4>Options</h4>
@@ -1636,7 +1636,7 @@ git worktree remove ../repo-PROJ-123</code></pre>
 
                     <div class="doc-skill">
                         <h3>Pre-commit hook failures</h3>
-                        <p class="doc-skill-desc"><code>/magic-commit</code> handles hook errors automatically based on severity.</p>
+                        <p class="doc-skill-desc"><code>/magic:commit</code> handles hook errors automatically based on severity.</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
                                 <h4>Auto-fixed (level 1-2)</h4>

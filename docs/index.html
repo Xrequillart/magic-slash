@@ -357,7 +357,7 @@
                                 <!-- Phase 1: /start PROJ-142 -->
                                 <div class="workflow-line phase-1-line cli-prompt">
                                     <span class="cli-prompt-icon">❯</span>
-                                    <span class="command" data-text="/magic-start PROJ-142"></span>
+                                    <span class="command" data-text="/magic:start PROJ-142"></span>
                                 </div>
                                 <div class="workflow-line phase-1-line cli-response">
                                     <div class="cli-status phase-1-status-1">
@@ -409,7 +409,7 @@
                                 <!-- Phase 2: /commit -->
                                 <div class="workflow-line phase-2-line cli-prompt" style="margin-top: 16px">
                                     <span class="cli-prompt-icon purple">❯</span>
-                                    <span class="command purple" data-text="/magic-commit"></span>
+                                    <span class="command purple" data-text="/magic:commit"></span>
                                 </div>
                                 <div class="workflow-line phase-2-line cli-response purple">
                                     <div class="cli-status phase-2-status-1">
@@ -435,7 +435,7 @@
                                 <!-- Phase 3: /pr -->
                                 <div class="workflow-line phase-3-line cli-prompt" style="margin-top: 16px">
                                     <span class="cli-prompt-icon green">❯</span>
-                                    <span class="command green" data-text="/magic-pr"></span>
+                                    <span class="command green" data-text="/magic:pr"></span>
                                 </div>
                                 <div class="workflow-line phase-3-line cli-response green">
                                     <div class="cli-status phase-3-status-1">
@@ -458,7 +458,7 @@
                                 <!-- Phase 4: /review -->
                                 <div class="workflow-line phase-4-line cli-prompt" style="margin-top: 16px">
                                     <span class="cli-prompt-icon cyan">❯</span>
-                                    <span class="command cyan" data-text="/magic-review 87"></span>
+                                    <span class="command cyan" data-text="/magic:review 87"></span>
                                 </div>
                                 <div class="workflow-line phase-4-line cli-response cyan">
                                     <div class="cli-status phase-4-status-1">
@@ -480,7 +480,7 @@
                                 <!-- Phase 5: /resolve -->
                                 <div class="workflow-line phase-5-line cli-prompt" style="margin-top: 16px">
                                     <span class="cli-prompt-icon orange">❯</span>
-                                    <span class="command orange" data-text="/magic-resolve"></span>
+                                    <span class="command orange" data-text="/magic:resolve"></span>
                                 </div>
                                 <div class="workflow-line phase-5-line cli-response orange">
                                     <div class="cli-status phase-5-status-1">
@@ -503,7 +503,7 @@
                                 <!-- Phase 6: /done -->
                                 <div class="workflow-line phase-6-line cli-prompt" style="margin-top: 16px">
                                     <span class="cli-prompt-icon green">❯</span>
-                                    <span class="command green" data-text="/magic-done"></span>
+                                    <span class="command green" data-text="/magic:done"></span>
                                 </div>
                                 <div class="workflow-line phase-6-line cli-response green">
                                     <div class="cli-status phase-6-status-1">
@@ -598,15 +598,15 @@
                     <h2 class="section-header" data-i18n="section1.title" data-i18n-html>7 skills.<br>Entire workflow.</h2>
                     <p data-i18n="section1.subtitle">From ticket to merge in seven slash commands.</p>
                     <ul>
-                        <li data-i18n="section1.startDesc" data-i18n-html><b style="color:#000">/magic-start</b> grabs your ticket and creates the branch.</li>
-                        <li data-i18n="section1.continueDesc" data-i18n-html><b style="color:#000">/magic-continue</b> resumes work on an existing ticket.</li>
-                        <li data-i18n="section1.commitDesc" data-i18n-html><b style="color:#000">/magic-commit</b> stages, splits, and writes your commit message.</li>
-                        <li data-i18n="section1.prDesc" data-i18n-html><b style="color:#000">/magic-pr</b> pushes and creates the pull request.</li>
-                        <li data-i18n="section1.reviewDesc" data-i18n-html><b style="color:#000">/magic-review</b> reviews a PR with your team conventions.</li>
-                        <li data-i18n="section1.resolveDesc" data-i18n-html><b style="color:#000">/magic-resolve</b> addresses review comments and pushes fixes.</li>
-                        <li data-i18n="section1.doneDesc" data-i18n-html><b style="color:#000">/magic-done</b> finalizes after merge — cleans up and updates Jira.</li>
+                        <li data-i18n="section1.startDesc" data-i18n-html><b style="color:#000">/magic:start</b> grabs your ticket and creates the branch.</li>
+                        <li data-i18n="section1.continueDesc" data-i18n-html><b style="color:#000">/magic:continue</b> resumes work on an existing ticket.</li>
+                        <li data-i18n="section1.commitDesc" data-i18n-html><b style="color:#000">/magic:commit</b> stages, splits, and writes your commit message.</li>
+                        <li data-i18n="section1.prDesc" data-i18n-html><b style="color:#000">/magic:pr</b> pushes and creates the pull request.</li>
+                        <li data-i18n="section1.reviewDesc" data-i18n-html><b style="color:#000">/magic:review</b> reviews a PR with your team conventions.</li>
+                        <li data-i18n="section1.resolveDesc" data-i18n-html><b style="color:#000">/magic:resolve</b> addresses review comments and pushes fixes.</li>
+                        <li data-i18n="section1.doneDesc" data-i18n-html><b style="color:#000">/magic:done</b> finalizes after merge — cleans up and updates Jira.</li>
                     </ul>
-                    <p class="cmd-prefix-hint" data-i18n="section1.prefixHint" data-i18n-html>Type <b style="color:#000">/magic-</b> to find all commands at once.</p>
+                    <p class="cmd-prefix-hint" data-i18n="section1.prefixHint" data-i18n-html>Type <b style="color:#000">/magic:</b> to find all commands at once.</p>
                     <p data-i18n="section1.noContext">No context switching. No copy-pasting ticket IDs. Just flow.</p>
                     <a href="documentation.html" class="btn-get-started" style="margin-top: 1.5rem;" data-i18n="section1.seeDocs">See docs</a>
                 </div>
@@ -619,19 +619,19 @@
                             <span class="cmd-terminal-dot"></span>
                         </div>
                         <div class="cmd-terminal-body">
-                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic-start</span> <span class="cmd-arg">PROJ-142</span></div>
+                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic:start</span> <span class="cmd-arg">PROJ-142</span></div>
                             <div class="cmd-line"><span class="cmd-output">&#10003; Branch feature/PROJ-142 created</span></div>
-                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic-continue</span> <span class="cmd-arg">PROJ-142</span></div>
+                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic:continue</span> <span class="cmd-arg">PROJ-142</span></div>
                             <div class="cmd-line"><span class="cmd-output">&#10003; Resuming — worktree found at api-PROJ-142</span></div>
-                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic-commit</span></div>
+                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic:commit</span></div>
                             <div class="cmd-line"><span class="cmd-output">&#10003; feat: add user authentication</span></div>
-                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic-pr</span></div>
+                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic:pr</span></div>
                             <div class="cmd-line"><span class="cmd-output">&#10003; PR #87 created &mdash; linked to PROJ-142</span></div>
-                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic-review</span> <span class="cmd-arg">87</span></div>
+                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic:review</span> <span class="cmd-arg">87</span></div>
                             <div class="cmd-line"><span class="cmd-output">&#10003; 2 comments &mdash; approved</span></div>
-                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic-resolve</span></div>
+                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic:resolve</span></div>
                             <div class="cmd-line"><span class="cmd-output">&#10003; 2 comments resolved &mdash; force-pushed</span></div>
-                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic-done</span></div>
+                            <div class="cmd-line"><span class="cmd-prompt">&#10095;</span> <span class="cmd-slash">/magic:done</span></div>
                             <div class="cmd-line"><span class="cmd-output">&#10003; PROJ-142 &rarr; Done &mdash; branch cleaned up</span></div>
                         </div>
                     </div>
@@ -899,7 +899,7 @@
                 </div>
                 <div class="split-text reveal-right">
                     <h2 class="section-header" data-i18n="section6.title">Your ticket, always in context.</h2>
-                    <p data-i18n="section6.p1" data-i18n-html>When you <b style="color:#000">/magic-start</b> a ticket, magic-slash fetches the title, description, and metadata from Jira or GitHub Issues. Every command you run knows what you're working on.</p>
+                    <p data-i18n="section6.p1" data-i18n-html>When you <b style="color:#000">/magic:start</b> a ticket, magic-slash fetches the title, description, and metadata from Jira or GitHub Issues. Every command you run knows what you're working on.</p>
                     <p data-i18n="section6.p2">Commit messages reference the right ticket. PRs include the full context. No more tab-switching to copy-paste issue details.</p>
                     <a href="documentation.html" class="btn-get-started" style="margin-top: 1.5rem;" data-i18n="section6.seeDocs">See docs</a>
                 </div>
