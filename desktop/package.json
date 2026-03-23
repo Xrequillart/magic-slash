@@ -1,6 +1,6 @@
 {
   "name": "magic-slash-desktop",
-  "version": "0.25.1",
+  "version": "0.26.0",
   "description": "Magic Slash Desktop - Configuration and Claude Code terminals",
   "main": "dist/main/index.js",
   "author": "xrequillart",
