@@ -376,7 +376,7 @@ fi
 echo ""
 
 # ============================================
-# 4b. CONFIGURE PERMISSIONS (auto-allow curl to localhost)
+# 4b. CONFIGURE PERMISSIONS (MCP tools + common commands)
 # ============================================
 echo "   Configuring permissions for Magic Slash..."
 
@@ -387,19 +387,52 @@ if [ ! -f "$CLAUDE_SETTINGS" ]; then
   echo '{}' > "$CLAUDE_SETTINGS"
 fi
 
-# Allow curl to localhost only (for Magic Slash Desktop communication)
-MAGIC_SLASH_PERM='Bash(*http://127.0.0.1:*)'
+# Permissions needed by magic:* skills
+MAGIC_SLASH_PERMS=(
+  # Desktop communication
+  'Bash(*http://127.0.0.1:*)'
+  # GitHub MCP tools
+  'mcp__github__get_issue'
+  'mcp__github__add_issue_comment'
+  'mcp__github__update_issue'
+  'mcp__github__list_pull_requests'
+  'mcp__github__get_pull_request'
+  'mcp__github__get_pull_request_files'
+  'mcp__github__get_pull_request_comments'
+  'mcp__github__get_pull_request_reviews'
+  'mcp__github__create_pull_request'
+  'mcp__github__create_pull_request_review'
+  # Atlassian MCP tools
+  'mcp__atlassian__getAccessibleAtlassianResources'
+  'mcp__atlassian__getJiraIssue'
+  'mcp__atlassian__getTransitionsForJiraIssue'
+  'mcp__atlassian__transitionJiraIssue'
+  'mcp__atlassian__addCommentToJiraIssue'
+  # Common Bash commands used by skills
+  'Bash(git *)'
+  'Bash(npm *)'
+  'Bash(yarn *)'
+  'Bash(pnpm *)'
+  'Bash(bun *)'
+  'Bash(jq *)'
+  'Bash(gh *)'
+)
 
 TMP_SETTINGS=$(mktemp)
-jq --arg perm "$MAGIC_SLASH_PERM" '
-  .permissions //= {} |
-  .permissions.allow //= [] |
-  if (.permissions.allow | index($perm)) then .
-  else .permissions.allow += [$perm]
-  end
-' "$CLAUDE_SETTINGS" > "$TMP_SETTINGS" && mv "$TMP_SETTINGS" "$CLAUDE_SETTINGS"
+cp "$CLAUDE_SETTINGS" "$TMP_SETTINGS"
+for perm in "${MAGIC_SLASH_PERMS[@]}"; do
+  NEXT_TMP=$(mktemp)
+  jq --arg perm "$perm" '
+    .permissions //= {} |
+    .permissions.allow //= [] |
+    if (.permissions.allow | index($perm)) then .
+    else .permissions.allow += [$perm]
+    end
+  ' "$TMP_SETTINGS" > "$NEXT_TMP" && mv "$NEXT_TMP" "$TMP_SETTINGS"
+done
+mv "$TMP_SETTINGS" "$CLAUDE_SETTINGS"
 
-echo "   ✅ Permissions configured (curl to localhost auto-allowed)"
+echo "   ✅ Permissions configured (MCP tools + common commands auto-allowed)"
 echo ""
 
 # Create initial config file (repositories will be configured in desktop app or TUI)

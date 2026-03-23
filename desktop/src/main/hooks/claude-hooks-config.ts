@@ -4,7 +4,52 @@ import * as os from 'os'
 
 const CLAUDE_SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json')
 const MAGIC_SLASH_HOOK_MARKER = 'magic-slash-desktop'
-const MAGIC_SLASH_PERMISSION = 'Bash(*http://127.0.0.1:*)'
+const MAGIC_SLASH_PERMISSIONS = [
+  // Desktop communication
+  'Bash(*http://127.0.0.1:*)',
+  // GitHub MCP tools
+  'mcp__github__get_issue',
+  'mcp__github__add_issue_comment',
+  'mcp__github__update_issue',
+  'mcp__github__list_pull_requests',
+  'mcp__github__get_pull_request',
+  'mcp__github__get_pull_request_files',
+  'mcp__github__get_pull_request_comments',
+  'mcp__github__get_pull_request_reviews',
+  'mcp__github__create_pull_request',
+  'mcp__github__create_pull_request_review',
+  // Atlassian MCP tools
+  'mcp__atlassian__getAccessibleAtlassianResources',
+  'mcp__atlassian__getJiraIssue',
+  'mcp__atlassian__getTransitionsForJiraIssue',
+  'mcp__atlassian__transitionJiraIssue',
+  'mcp__atlassian__addCommentToJiraIssue',
+  // Common Bash commands used by skills
+  'Bash(git *)',
+  'Bash(npm *)',
+  'Bash(yarn *)',
+  'Bash(pnpm *)',
+  'Bash(bun *)',
+  'Bash(jq *)',
+  'Bash(gh *)',
+]
+
+const MAGIC_SLASH_PERMISSION_MARKERS = [
+  '127.0.0.1',
+  'mcp__github__',
+  'mcp__atlassian__',
+  'Bash(git ',
+  'Bash(npm ',
+  'Bash(yarn ',
+  'Bash(pnpm ',
+  'Bash(bun ',
+  'Bash(jq ',
+  'Bash(gh ',
+]
+
+function isMagicSlashPermission(perm: string): boolean {
+  return MAGIC_SLASH_PERMISSION_MARKERS.some(marker => perm.includes(marker))
+}
 
 interface HookConfig {
   matcher?: Record<string, unknown>
@@ -123,18 +168,18 @@ export function configureClaudeHooks(): void {
       settings.hooks[event]!.push(getHookConfig(event))
     }
 
-    // Configure permissions for curl to localhost (auto-allow)
+    // Configure permissions for magic-slash skills (MCP tools + common commands)
     if (!settings.permissions) {
       settings.permissions = { allow: [] }
     }
     if (!settings.permissions.allow) {
       settings.permissions.allow = []
     }
-    // Remove old magic-slash permissions (to update them if pattern changed)
+    // Remove old magic-slash permissions (to update them if list changed)
     settings.permissions.allow = settings.permissions.allow.filter(
-      (p: string) => !p.includes('127.0.0.1')
+      (p: string) => !isMagicSlashPermission(p)
     )
-    settings.permissions.allow.push(MAGIC_SLASH_PERMISSION)
+    settings.permissions.allow.push(...MAGIC_SLASH_PERMISSIONS)
 
     // Write back settings
     fs.writeFileSync(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2))
@@ -176,7 +221,7 @@ export function removeClaudeHooks(): void {
     // Remove Magic Slash permissions
     if (settings.permissions?.allow) {
       settings.permissions.allow = settings.permissions.allow.filter(
-        (p: string) => !p.includes('127.0.0.1')
+        (p: string) => !isMagicSlashPermission(p)
       )
       if (settings.permissions.allow.length === 0) {
         delete settings.permissions.allow

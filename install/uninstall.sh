@@ -195,7 +195,18 @@ CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 if [ -f "$CLAUDE_SETTINGS" ] && jq -e '.permissions.allow' "$CLAUDE_SETTINGS" > /dev/null 2>&1; then
   TMP_SETTINGS=$(mktemp)
   jq '
-    .permissions.allow = [.permissions.allow[] | select(contains("127.0.0.1") | not)] |
+    .permissions.allow = [.permissions.allow[] | select(
+      (contains("127.0.0.1") or
+       contains("mcp__github__") or
+       contains("mcp__atlassian__") or
+       startswith("Bash(git ") or
+       startswith("Bash(npm ") or
+       startswith("Bash(yarn ") or
+       startswith("Bash(pnpm ") or
+       startswith("Bash(bun ") or
+       startswith("Bash(jq ") or
+       startswith("Bash(gh ")) | not
+    )] |
     if (.permissions.allow | length) == 0 then del(.permissions.allow) else . end |
     if (.permissions | length) == 0 then del(.permissions) else . end
   ' "$CLAUDE_SETTINGS" > "$TMP_SETTINGS" && mv "$TMP_SETTINGS" "$CLAUDE_SETTINGS"
