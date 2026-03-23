@@ -1,6 +1,124 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, ArrowLeft, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput } from 'lucide-react'
+import { Plus, ArrowLeft, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info } from 'lucide-react'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
+
+const TOKEN_BUDGET = 4000
+const CHAR_BUDGET = 16000
+const CHARS_PER_TOKEN = 4
+
+function BudgetBar({ label, value, max, unit, barColor }: { label: string; value: number; max: number; unit: string; barColor: string }) {
+  const percentage = Math.min(Math.round((value / max) * 100), 100)
+
+  return (
+    <div className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-text-secondary/60">{label}</span>
+        <span className="text-xs font-medium text-text-secondary">
+          {value.toLocaleString()} / {max.toLocaleString()} {unit}
+        </span>
+      </div>
+      <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      <div className="mt-1.5 text-xs text-text-secondary/40 text-right">{percentage}%</div>
+    </div>
+  )
+}
+
+interface SkillTokenEntry {
+  name: string
+  tokens: number
+  chars: number
+  source: 'built-in' | 'custom' | 'repo'
+  weight: 'high' | 'medium' | 'low'
+}
+
+function getWeight(tokens: number): 'high' | 'medium' | 'low' {
+  if (tokens >= 400) return 'high'
+  if (tokens >= 200) return 'medium'
+  return 'low'
+}
+
+const weightStyles: Record<string, { className: string; label: string }> = {
+  high: { className: 'bg-red/10 text-red', label: 'High' },
+  medium: { className: 'bg-orange/10 text-orange', label: 'Medium' },
+  low: { className: 'bg-green/10 text-green', label: 'Low' },
+}
+
+function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSkills: RepoSkillInfo[] }) {
+  const [showBreakdown, setShowBreakdown] = useState(false)
+  const { totalTokens, totalChars, breakdown } = useMemo(() => {
+    const entries: SkillTokenEntry[] = []
+    for (const s of skills) {
+      const chars = (s.description || '').length
+      const tokens = Math.ceil(chars / CHARS_PER_TOKEN)
+      entries.push({ name: s.name, chars, tokens, source: s.isBuiltIn ? 'built-in' : 'custom', weight: getWeight(tokens) })
+    }
+    for (const rs of repoSkills) {
+      const chars = (rs.description || '').length
+      const tokens = Math.ceil(chars / CHARS_PER_TOKEN)
+      entries.push({ name: rs.name, chars, tokens, source: 'repo', weight: getWeight(tokens) })
+    }
+    entries.sort((a, b) => b.tokens - a.tokens)
+    let tc = 0, cc = 0
+    for (const e of entries) { tc += e.tokens; cc += e.chars }
+    return { totalTokens: tc, totalChars: cc, breakdown: entries }
+  }, [skills, repoSkills])
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Gauges side by side */}
+      <div className="flex items-center gap-2 text-sm text-text-secondary">
+        <Gauge className="w-4 h-4" />
+        <span>Skills Budget</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <BudgetBar label="Tokens (2% context)" value={totalTokens} max={TOKEN_BUDGET} unit="tokens" barColor="bg-accent" />
+        <BudgetBar label="Characters (fallback)" value={totalChars} max={CHAR_BUDGET} unit="chars" barColor="bg-orange" />
+      </div>
+      <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05]">
+        <Info className="w-3.5 h-3.5 text-text-secondary/40 flex-shrink-0 mt-0.5" />
+        <p className="text-[11px] text-text-secondary/40 leading-relaxed">
+          Skill descriptions are injected into the system prompt on every message. The <strong className="text-text-secondary/60">2% context</strong> gauge tracks token usage against ~2% of the model's context window — the recommended ceiling to keep skills from crowding out actual conversation. The <strong className="text-text-secondary/60">characters (fallback)</strong> gauge is a simpler byte-level check used when a tokenizer is unavailable.
+        </p>
+      </div>
+
+      {/* Breakdown toggle */}
+      {breakdown.length > 0 && (
+        <div>
+          <button
+            onClick={() => setShowBreakdown((v) => !v)}
+            className="flex items-center gap-1.5 text-xs text-text-secondary/50 hover:text-text-secondary transition-colors"
+          >
+            <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showBreakdown ? 'rotate-90' : ''}`} />
+            <span>Details by skill</span>
+          </button>
+          {showBreakdown && (
+            <div className="mt-2 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+              <div className="flex flex-col gap-1.5">
+                {breakdown.map((entry) => {
+                  const sourceColor = entry.source === 'built-in' ? 'bg-accent/10 text-accent' : entry.source === 'repo' ? 'bg-blue/10 text-blue' : 'bg-green/10 text-green'
+                  const ws = weightStyles[entry.weight]
+                  return (
+                    <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
+                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 ${sourceColor}`}>{entry.source}</span>
+                      <span className="text-xs text-white truncate min-w-0 flex-1 capitalize">{entry.name}</span>
+                      <span className="text-[10px] text-text-secondary/50 w-14 text-right flex-shrink-0">{entry.tokens} tok</span>
+                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 w-14 text-center ${ws.className}`}>{ws.label}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function SkillCard({
   skill,
@@ -16,7 +134,7 @@ function SkillCard({
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-4 px-4 py-4 rounded-xl bg-white/[0.06] border border-white/[0.15] hover:bg-white/[0.12] hover:border-white/[0.15] transition-all group"
+      className="w-full flex items-center gap-3 px-2 py-2 rounded-xl bg-white/[0.06] border border-white/[0.15] hover:bg-white/[0.12] hover:border-white/[0.15] transition-all group"
     >
       {/* Avatar */}
       <div className="w-12 h-12 rounded-lg bg-white/[0.06] flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -481,6 +599,11 @@ export function SkillsPage() {
           <h1 className="text-2xl font-semibold">Skills</h1>
           <p className="text-sm text-text-secondary mt-1">Manage the skills available to your agents.</p>
         </div>
+
+        {/* Token Budget Gauge */}
+        {!loading && (skills.length > 0 || repoSkills.length > 0) && (
+          <TokenBudgetGauge skills={skills} repoSkills={repoSkills} />
+        )}
 
         {loading && (
           <div className="flex items-center justify-center py-12">
