@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.1] - 2026-03-23
+
+### Changed
+
+- **Permissions**: Pre-authorize MCP tools (GitHub + Atlassian) and common Bash commands (git, npm, yarn, pnpm, bun, jq, gh) to reduce permission prompts when using magic:* skills
+
 ## [0.25.0] - 2026-03-23
 
 ### Changed
@@ -742,6 +748,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.25.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.25.1
 [0.25.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.25.0
 [0.24.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.24.0
 [0.23.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.23.0
