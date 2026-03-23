@@ -1,5 +1,5 @@
 ---
-name: magic-pr
+name: magic:pr
 description: This skill should be used when the user says "done", "terminé", "I'm done", "c'est fini", "j'ai fini", "finalize", "create PR", "créer la PR", "push and create PR", "on peut créer la PR", "pousser les changements", "push my changes", "create the pull request", "ready for PR", "prêt pour la PR", "open a PR", "ouvrir une PR", or indicates they have finished coding and want to push their code and create a pull request. Also trigger when the user signals completion with phrases like "everything looks good", "let's ship it", "can you push this?", "les changements sont prêts", "j'ai fini de coder", "on peut pousser", "let's get this merged", "ready to submit", "ship it", "envoie la sauce", "go for PR", "wrap it up", "c'est bon pour moi", "I think we're good", "on est bon", "time to push", "pousse tout ça", or any indication that coding is complete and they want to move to the review phase. Use this skill even if the user doesn't explicitly mention "PR" — if they indicate their work is done and want to share it, this is the right skill.
 argument-hint: <base-branch> (optional, e.g., develop, staging)
 allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
@@ -39,7 +39,7 @@ Read `~/.config/magic-slash/config.json` and determine the parameters based on t
 Read `~/.config/magic-slash/config.json` to determine the development branch:
 
 1. Once the repo is identified, read `.repositories.<name>.branches.development`
-2. If an argument is provided (e.g., `/magic-pr develop`), use it directly as `$DEV_BRANCH` and skip confirmation.
+2. If an argument is provided (e.g., `/magic:pr develop`), use it directly as `$DEV_BRANCH` and skip confirmation.
 3. Otherwise, **always ask the user for confirmation**, showing the configured default if available:
 
 #### If a default is configured (e.g., `"develop"`)

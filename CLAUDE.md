@@ -1,6 +1,6 @@
 # Magic Slash
 
-7 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/magic-start`, `/magic-continue`, `/magic-commit`, `/magic-pr`, `/magic-review`, `/magic-resolve`, `/magic-done`.
+7 skills for Claude Code that automate the entire development cycle with Jira and GitHub: `/magic:start`, `/magic:continue`, `/magic:commit`, `/magic:pr`, `/magic:review`, `/magic:resolve`, `/magic:done`.
 
 ## Project Structure
 

@@ -1,5 +1,5 @@
 ---
-name: magic-review
+name: magic:review
 description: This skill should be used when the user says "review", "revue de code", "code review", "review the PR", "regarde la PR", "review my PR", "self-review", "auto-review", "check my PR", "vérifie ma PR", or indicates they want to perform a code review on a pull request.
 argument-hint: <TICKET-ID> (optional)
 allowed-tools: Bash(*), Read, Glob, Grep, mcp__github__*, mcp__atlassian__*
@@ -62,7 +62,7 @@ Voir la documentation : https://github.com/magic-slash/config
 
 ## Step 1: Detect the ticket
 
-If an argument is provided (e.g., `/magic-review PROJ-123`), use it as the ticket ID.
+If an argument is provided (e.g., `/magic:review PROJ-123`), use it as the ticket ID.
 
 Otherwise, extract the ticket ID from the current worktree:
 
@@ -210,11 +210,11 @@ Display a summary of the review based on `.languages.discussion`:
 Next steps:
 1. Wait for CI checks to pass
 2. Merge the PR once approved
-3. Run /magic-done to finalize the task
+3. Run /magic:done to finalize the task
 
 {If REQUEST_CHANGES}
 Next steps:
-1. Run /magic-resolve to address the review comments
+1. Run /magic:resolve to address the review comments
 2. Request a re-review after fixing
 
 {If COMMENT}
@@ -243,11 +243,11 @@ Next steps:
 Prochaines étapes :
 1. Attend que les checks CI passent
 2. Merge la PR une fois approuvée
-3. Lance /magic-done pour finaliser la tâche
+3. Lance /magic:done pour finaliser la tâche
 
 {Si REQUEST_CHANGES}
 Prochaines étapes :
-1. Lance /magic-resolve pour corriger les commentaires de review
+1. Lance /magic:resolve pour corriger les commentaires de review
 2. Demande une re-review après correction
 
 {Si COMMENT}

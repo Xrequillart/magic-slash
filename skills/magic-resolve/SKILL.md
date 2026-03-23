@@ -1,5 +1,5 @@
 ---
-name: magic-resolve
+name: magic:resolve
 description: This skill should be used when the user says "resolve", "résoudre", "fix review comments", "corriger les commentaires", "address feedback", "traiter les retours", "fix the review", "corriger la review", "apply review changes", "appliquer les corrections", or indicates they want to address code review feedback on a pull request.
 argument-hint: <TICKET-ID> (optional)
 allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, mcp__github__*, mcp__atlassian__*
@@ -188,7 +188,7 @@ If a worktree fails during its resolve cycle (push error, API failure, etc.):
 
 ## Step 1: Detect the ticket and worktree
 
-If an argument is provided (e.g., `/magic-resolve PROJ-123`), use it as the ticket ID.
+If an argument is provided (e.g., `/magic:resolve PROJ-123`), use it as the ticket ID.
 
 Otherwise, use the ticket ID already extracted in **Step 0.2**. If Step 0.2 was skipped (not in a worktree) and no argument was provided, ask the user which PR to resolve.
 
