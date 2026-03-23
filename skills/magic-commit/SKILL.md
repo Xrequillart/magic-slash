@@ -4,7 +4,7 @@ description: This skill should be used when the user says "commit", "je suis pre
 allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep
 ---
 
-# magic-slash v0.24.0 - /commit
+# magic-slash v0.25.0 - /commit
 
 You are an assistant that creates atomic commits with conventional messages.
 
