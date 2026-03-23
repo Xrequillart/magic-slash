@@ -100,15 +100,6 @@ export interface Snippet {
   shortcut?: number // 1-9 for ⌘1-⌘9
 }
 
-export interface WorkspaceTerminal {
-  id: string
-  paneIndex: number // 0-3
-  name: string
-  repositories: string[]
-}
-
-export type WorkspaceLayout = 1 | 2 | 4
-
 export interface CommandHistoryEntry {
   command: string
   timestamp: number
