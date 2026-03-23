@@ -18,14 +18,11 @@ export function useTerminals() {
   // Helper to check if terminal is a sidebar terminal (not an agent)
   const isSidebarTerminal = (id: string) => id.startsWith('sidebar-')
 
-  // Helper to check if terminal is a workspace terminal (not an agent)
-  const isWorkspaceTerminal = (id: string) => id.startsWith('workspace-')
-
   // Helper to check if terminal is a script terminal (not an agent)
   const isScriptTerminal = (id: string) => id.startsWith('script-')
 
   // Helper to check if terminal should be ignored (not an agent)
-  const shouldIgnoreTerminal = (id: string) => isSidebarTerminal(id) || isWorkspaceTerminal(id) || isScriptTerminal(id)
+  const shouldIgnoreTerminal = (id: string) => isSidebarTerminal(id) || isScriptTerminal(id)
 
   // Setup global event listeners
   useEffect(() => {
@@ -93,7 +90,7 @@ export function useTerminals() {
 
           // Use existing terminals (after refresh), but filter out non-agent terminals
           for (const term of existingTerminals) {
-            // Skip non-agent terminals (sidebar and workspace)
+            // Skip non-agent terminals (sidebar and scripts)
             if (shouldIgnoreTerminal(term.id)) continue
 
             const terminalInfo: TerminalInfo = {

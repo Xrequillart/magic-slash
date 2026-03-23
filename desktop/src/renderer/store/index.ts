@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Config, TerminalInfo, TerminalState, TerminalMetadata, WorkspaceTerminal, WorkspaceLayout, ScriptTerminalInfo } from '../../types'
+import type { Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo } from '../../types'
 
 interface CloseAgentModalData {
   terminalId: string
@@ -18,15 +18,10 @@ interface AppState {
   activeTerminalId: string | null
 
   // UI
-  currentPage: 'config' | 'terminals' | 'workspace' | 'skills'
+  currentPage: 'config' | 'terminals' | 'skills'
   rightSidebar: 'info' | null
   leftSidebarVisible: boolean
   iconSidebarVisible: boolean
-
-  // Workspace terminals
-  workspaceTerminals: WorkspaceTerminal[]
-  workspaceLayout: WorkspaceLayout
-  activeWorkspacePane: number
 
   // Script terminals
   scriptTerminals: ScriptTerminalInfo[]
@@ -50,17 +45,11 @@ interface AppState {
   removeTerminal: (id: string) => void
   setActiveTerminal: (id: string | null) => void
 
-  setCurrentPage: (page: 'config' | 'terminals' | 'workspace' | 'skills') => void
+  setCurrentPage: (page: 'config' | 'terminals' | 'skills') => void
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void
   toggleLeftSidebar: () => void
   toggleIconSidebar: () => void
-
-  // Workspace terminal actions
-  addWorkspaceTerminal: (paneIndex: number, id: string, name: string, repositories: string[]) => void
-  removeWorkspaceTerminal: (paneIndex: number) => void
-  setWorkspaceLayout: (layout: WorkspaceLayout) => void
-  setActiveWorkspacePane: (paneIndex: number) => void
 
   // Close agent modal actions
   openCloseAgentModal: (data: CloseAgentModalData) => void
@@ -91,10 +80,6 @@ export const useStore = create<AppState>()(
         rightSidebar: null,
         leftSidebarVisible: true,
         iconSidebarVisible: true,
-
-        workspaceTerminals: [],
-        workspaceLayout: 1,
-        activeWorkspacePane: 0,
 
         scriptTerminals: [],
 
@@ -169,25 +154,6 @@ export const useStore = create<AppState>()(
         toggleLeftSidebar: () => set((state) => ({ leftSidebarVisible: !state.leftSidebarVisible })),
         toggleIconSidebar: () => set((state) => ({ iconSidebarVisible: !state.iconSidebarVisible })),
 
-        // Workspace terminal actions
-        addWorkspaceTerminal: (paneIndex, id, name, repositories) =>
-          set((state) => {
-            // Remove existing terminal at this pane if any
-            const filtered = state.workspaceTerminals.filter((t) => t.paneIndex !== paneIndex)
-            return {
-              workspaceTerminals: [...filtered, { id, paneIndex, name, repositories }],
-              activeWorkspacePane: paneIndex,
-            }
-          }),
-
-        removeWorkspaceTerminal: (paneIndex) =>
-          set((state) => ({
-            workspaceTerminals: state.workspaceTerminals.filter((t) => t.paneIndex !== paneIndex),
-          })),
-
-        setWorkspaceLayout: (workspaceLayout) => set({ workspaceLayout }),
-        setActiveWorkspacePane: (activeWorkspacePane) => set({ activeWorkspacePane }),
-
         // Close agent modal actions
         openCloseAgentModal: (data) => set({ closeAgentModal: data }),
         closeCloseAgentModal: () => set({ closeAgentModal: null }),
@@ -231,7 +197,6 @@ export const useStore = create<AppState>()(
       partialize: (state) => ({
         leftSidebarVisible: state.leftSidebarVisible,
         iconSidebarVisible: state.iconSidebarVisible,
-        workspaceLayout: state.workspaceLayout,
       }),
     }
   )
