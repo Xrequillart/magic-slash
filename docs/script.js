@@ -439,7 +439,7 @@ function copyCommand(btn) {
 }
 
 // Fetch latest version from GitHub
-fetch('https://api.github.com/repos/Xrequillart/magic:slash/releases/latest')
+fetch('https://api.github.com/repos/xrequillart/magic-slash/releases/latest')
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.tag_name) {
