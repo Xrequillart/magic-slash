@@ -2,7 +2,7 @@
 name: magic:start
 description: This skill should be used when the user mentions a ticket ID like "PROJ-123", "#456", says "start", "commencer", "travailler sur", "je vais bosser sur", "begin work on", "work on ticket", "work on issue", "démarre", "démarrer", or indicates they want to start working on a specific task.
 argument-hint: <TICKET-ID>
-allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, mcp__atlassian__*, mcp__github__*
+allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, AskUserQuestion, mcp__atlassian__*, mcp__github__*
 ---
 
 # magic-slash v0.24.0 - /start
@@ -13,9 +13,9 @@ Follow each step in order. Each step builds on the previous one.
 
 ## References
 
-- `references/messages.md` — All bilingual messages (MSG_*). Read relevant sections as needed (not the whole file at once).
+- `references/messages-{lang}.md` — All messages (MSG_*). Read the file matching `languages.discussion` (`en` or `fr`).
 - `references/node-setup.md` — Node.js version manager detection. Read before installing dependencies (Step 4.3).
-- `references/plan-templates.md` — Implementation plan templates. Read when creating the plan (Step 5.2).
+- `references/plan-template-{type}-{lang}.md` — Implementation plan template. Read the matching file (`single`/`fullstack` + `en`/`fr`) in Step 5.2.
 - `references/glossary.md` — EN/FR terminology for git concepts. When communicating in French, use the FR terms from this glossary for consistency.
 - `references/api.md` — Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`).
 
@@ -38,8 +38,8 @@ Once the repo is identified (step 3), read `.repositories.<name>.languages.discu
 
 Read `.repositories.<name>.branches.development` from config.
 
-- **If configured**: Display `MSG_BRANCH_CONFIRM` with the configured value. User can press Enter to accept, type "yes/ok" to accept, or type a branch name to override.
-- **If not configured**: Display `MSG_BRANCH_ASK`.
+- **If configured**: Use `AskUserQuestion` with the configured branch as default option and a free-text alternative. Display `MSG_BRANCH_CONFIRM` as the question text.
+- **If not configured**: Use `AskUserQuestion` to ask. Display `MSG_BRANCH_ASK` as the question text.
 
 Store the result as `$DEV_BRANCH`.
 
@@ -83,7 +83,7 @@ Use `mcp__github__get_issue` for each repo — launch all calls in parallel for 
 
 - **No issue found**: Display `MSG_NO_ISSUE_FOUND`.
 - **Single issue**: Use it. Scope = that repo.
-- **Multiple issues**: Display `MSG_GITHUB_MULTI_ISSUE` and ask user to choose.
+- **Multiple issues**: Use `AskUserQuestion` with the list of issues as options. Display `MSG_GITHUB_MULTI_ISSUE` as the question text.
 
 → Continue to Step 2.5, then Step 2.6.
 
@@ -149,8 +149,8 @@ For each configured repo, calculate a score based on its keywords. **All matchin
 ### 3.4: Scope resolution
 
 - **Single repo with score > 0**: Use it directly.
-- **Multiple repos with scores > 0**: Display `MSG_SCOPE_MULTIPLE` with scores and matched keywords.
-- **No match (all scores = 0)**: Display `MSG_SCOPE_NONE` listing all repos.
+- **Multiple repos with scores > 0**: Use `AskUserQuestion` with the repos as numbered options (include scores and matched keywords). Display `MSG_SCOPE_MULTIPLE` as the question text.
+- **No match (all scores = 0)**: Use `AskUserQuestion` listing all repos. Display `MSG_SCOPE_NONE` as the question text.
 - **GitHub special case**: If the issue was found in a single repo (step 2B), scope is automatic.
 
 ## Step 4: Create worktrees
@@ -162,7 +162,7 @@ WORKTREE_PATH="../${REPO_NAME}-$TICKET_ID"
 [ -d "$WORKTREE_PATH" ] && echo "EXISTS" || echo "NEW"
 ```
 
-If it exists, display `MSG_WORKTREE_EXISTS`:
+If it exists, use `AskUserQuestion` with `MSG_WORKTREE_EXISTS` options:
 - Option 1: `cd` into existing worktree, continue to step 4.2
 - Option 2: `git worktree remove --force {path}` then recreate
 - Option 3: Stop
@@ -184,7 +184,7 @@ git checkout $DEV_BRANCH
 git pull --rebase origin $DEV_BRANCH
 ```
 
-If `git pull --rebase` fails with conflicts, display `MSG_REBASE_CONFLICT` and let the user choose.
+If `git pull --rebase` fails with conflicts, use `AskUserQuestion` with `MSG_REBASE_CONFLICT` options.
 
 **Create the worktree:**
 
@@ -192,7 +192,7 @@ If `git pull --rebase` fails with conflicts, display `MSG_REBASE_CONFLICT` and l
 git worktree add -b feature/$TICKET_ID ../${REPO_NAME}-$TICKET_ID $DEV_BRANCH
 ```
 
-If this fails because the branch already exists, display `MSG_BRANCH_ALREADY_EXISTS`:
+If this fails because the branch already exists, use `AskUserQuestion` with `MSG_BRANCH_ALREADY_EXISTS` options:
 - Option 1: `git worktree add ../${REPO_NAME}-$TICKET_ID feature/$TICKET_ID` (use existing branch)
 - Option 2: `git branch -D feature/$TICKET_ID` then retry creation
 - Option 3: Stop
@@ -233,7 +233,7 @@ for f in "${CANDIDATES[@]}"; do
 done
 ```
 
-If files detected: Display `MSG_WORKTREE_FILES_DETECTED`. If user says yes, save to config via `jq`:
+If files detected: Use `AskUserQuestion` with `MSG_WORKTREE_FILES_DETECTED` (y/n). If user says yes, save to config via `jq`:
 
 ```bash
 jq --arg repo "{REPO_NAME}" --argjson files '["file1", "file2"]' \
@@ -288,26 +288,23 @@ If multiple worktrees were created:
 
 ## Step 4.6: Create full-stack context file (multi-repo only)
 
-Create a `CLAUDE.local.md` in each worktree using `MSG_MULTI_REPO_CONTEXT` from messages. Adapt language to `.languages.discussion`. Then `cd` into the first worktree.
+Create a `CLAUDE.local.md` in each worktree using `MSG_MULTI_REPO_CONTEXT` from messages. Then `cd` into the first worktree.
 
 ## Step 5: Planning and implementation
 
 Display `MSG_TASK_SUMMARY` (or `MSG_TASK_SUMMARY_FULLSTACK` for multi-repo).
 
-### 5.1: Codebase exploration
+### 5.1: Codebase exploration (via sub-agent)
 
-Explore enough to write a confident plan — typically 5-15 files read. Focus on understanding over completeness:
+Launch an `Agent` (subagent_type=`Explore`) to explore the codebase. Request a structured summary: (1) project structure & framework, (2) config & stack, (3) existing patterns with file paths, (4) impacted files with current state, (5) cross-repo interactions if full-stack. Target 5-15 files, return summary only — not raw file contents.
 
-1. **Project structure**: `ls` on root and key directories (src/, lib/, app/), then `Glob` for specific patterns
-2. **Config files**: Read `package.json`, `tsconfig.json`, framework configs to understand stack and conventions
-3. **Existing patterns**: `Grep` for similar implementations (e.g. if adding an API endpoint, find an existing endpoint to use as reference). Read 1-2 complete reference files.
-4. **Impacted files**: Identify files to modify or create. Read each one to understand current state before planning changes.
-
-For full-stack: explore each worktree separately, identify cross-repo interactions (API endpoints, shared types, contracts).
+Use the sub-agent's returned summary to create the implementation plan in step 5.2.
 
 ### 5.2: Create implementation plan
 
-Read `references/plan-templates.md` and use the matching template (single/full-stack, EN/FR).
+Read the matching plan template from `references/plan-template-{type}-{lang}.md`:
+- `{type}`: `single` or `fullstack`
+- `{lang}`: value of `languages.discussion` (`en` or `fr`)
 
 Keep the plan focused: aim for **3-7 implementation steps**, each with 2-3 concrete actions. A plan that's too detailed wastes context; too vague and the implementation drifts.
 
@@ -333,17 +330,11 @@ Display `MSG_APPROVAL`. Never start implementation without explicit user approva
 
 ### 5.4: Implementation
 
-#### 5.4A: Solo mode
+#### 5.4A: Solo mode (via sub-agent)
 
-Follow the plan step by step. Display `MSG_PROGRESS_SOLO` for each step.
+Display `MSG_PROGRESS_SOLO` (with step 1/1 since the sub-agent handles all steps).
 
-1. Implement each step in order
-2. Show progress (X/N)
-3. Use `Edit` to modify, `Write` to create
-4. Verify the code compiles/works
-5. Do NOT commit — user will use `/commit` afterwards
-
-For full-stack solo: `cd` between worktrees, implement backend first (or per plan), keep changes consistent.
+Launch an `Agent` with: ticket summary (ID, title, 2-3 sentence goal), acceptance criteria, full plan (verbatim), worktree path, constraints (no commits, use `Edit`/`Write`, follow patterns). For full-stack: list all paths, implement backend first. Review sub-agent output after completion.
 
 #### 5.4B: Multi-agent mode
 
@@ -362,9 +353,9 @@ After all subagents complete:
 2. Check for conflicts/inconsistencies
 3. Fix integration issues if needed
 
-### 5.4.5: Simplify pass
+### 5.4.5: Simplify pass (via sub-agent)
 
-After implementation completes (step 5.4), run a simplification pass **only on the files changed during this task** to catch redundant code, missed reuse opportunities, or efficiency issues.
+After implementation completes (step 5.4), run a simplification pass **only on the files changed during this task**.
 
 1. Collect the list of changed files:
 
@@ -376,8 +367,8 @@ git ls-files --others --exclude-standard
 
 2. If no files changed, skip this step silently.
 3. Display `MSG_SIMPLIFY`.
-4. Invoke the `/simplify` skill. It may explore the full codebase to detect duplicates, missed reuse opportunities, and existing patterns — but it must only **modify files from the changed list above**. Do NOT let it modify files that were not changed during this task.
-5. If `/simplify` finds no issues, continue silently to the next step.
+4. Launch an `Agent` with: worktree path, changed files list (only these modifiable), instruction to invoke `/simplify` (may explore full codebase but modify only changed files).
+5. If no issues found, continue silently.
 
 ### 5.5: Final summary
 
