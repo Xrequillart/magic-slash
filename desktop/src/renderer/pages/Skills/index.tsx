@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, ArrowLeft, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info } from 'lucide-react'
+import { Plus, ArrowLeft, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle } from 'lucide-react'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 
 const TOKEN_BUDGET = 4000
@@ -50,7 +50,8 @@ const weightStyles: Record<string, { className: string; label: string }> = {
 
 function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSkills: RepoSkillInfo[] }) {
   const [showBreakdown, setShowBreakdown] = useState(false)
-  const { totalTokens, totalChars, breakdown } = useMemo(() => {
+  const [showLongDescriptions, setShowLongDescriptions] = useState(false)
+  const { totalTokens, totalChars, breakdown, longDescriptions } = useMemo(() => {
     const entries: SkillTokenEntry[] = []
     for (const s of skills) {
       const chars = (s.description || '').length
@@ -64,8 +65,14 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
     }
     entries.sort((a, b) => b.tokens - a.tokens)
     let tc = 0, cc = 0
-    for (const e of entries) { tc += e.tokens; cc += e.chars }
-    return { totalTokens: tc, totalChars: cc, breakdown: entries }
+    const longEntries: { name: string; source: string; wordCount: number }[] = []
+    for (const e of entries) {
+      tc += e.tokens; cc += e.chars
+      const desc = (skills.find(s => s.name === e.name)?.description || repoSkills.find(s => s.name === e.name)?.description || '')
+      const wordCount = desc.split(/\s+/).filter(Boolean).length
+      if (wordCount > 110) longEntries.push({ name: e.name, source: e.source, wordCount })
+    }
+    return { totalTokens: tc, totalChars: cc, breakdown: entries, longDescriptions: longEntries }
   }, [skills, repoSkills])
 
   return (
@@ -75,6 +82,36 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
         <Gauge className="w-4 h-4" />
         <span>Skills Budget</span>
       </div>
+      {longDescriptions.length > 0 && (
+        <div className="rounded-lg bg-orange/10 border border-orange/20 overflow-hidden">
+          <button
+            onClick={() => setShowLongDescriptions((v) => !v)}
+            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-orange/5 transition-colors"
+          >
+            <AlertTriangle className="w-4 h-4 text-orange flex-shrink-0" />
+            <p className="text-xs text-orange flex-1 text-left">
+              You have {longDescriptions.length} skill{longDescriptions.length > 1 ? 's' : ''} with {longDescriptions.length > 1 ? 'descriptions' : 'a description'} longer than 110 words. Consider optimizing {longDescriptions.length > 1 ? 'them' : 'it'} for better performance.
+            </p>
+            <ChevronRight className={`w-3.5 h-3.5 text-orange flex-shrink-0 transition-transform ${showLongDescriptions ? 'rotate-90' : ''}`} />
+          </button>
+          {showLongDescriptions && (
+            <div className="px-3 pt-1 pb-2">
+              <div className="flex flex-col gap-1.5">
+                {longDescriptions.map((entry) => {
+                  const sourceColor = entry.source === 'built-in' ? 'bg-accent/10 text-accent' : entry.source === 'repo' ? 'bg-blue/10 text-blue' : 'bg-green/10 text-green'
+                  return (
+                    <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
+                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 ${sourceColor}`}>{entry.source}</span>
+                      <span className="text-xs text-white truncate min-w-0 flex-1 capitalize">{entry.name}</span>
+                      <span className="text-[10px] text-orange/70 flex-shrink-0">{entry.wordCount} words</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <BudgetBar label="Tokens (2% context)" value={totalTokens} max={TOKEN_BUDGET} unit="tokens" barColor="bg-accent" />
         <BudgetBar label="Characters (fallback)" value={totalChars} max={CHAR_BUDGET} unit="chars" barColor="bg-orange" />
