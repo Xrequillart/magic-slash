@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.0] - 2026-03-24
+
+### Added
+
+- **Desktop**: Add long description warning to skills budget gauge
+- **Desktop**: Unify section titles with icons and add shimmer animation to budget bars
+
+### Changed
+
+- **Skill /pr**: Add `AskUserQuestion` to 7 interaction points for better UX and less context usage
+- **Skill /pr**: Deduplicate ticket ID extraction (single extraction, reused across steps)
+- **Skill /pr**: Default to `git diff --stat` instead of full diff to reduce context consumption
+- **Skill /pr**: Merge duplicate config reads into a single step
+- **Skill /pr**: Shorten skill description from ~170 to ~95 words
+- **Skill /pr**: Replace MUST/CRITICAL language with why-explanations
+- **Desktop**: Remove unused snippets feature
+
+### Fixed
+
+- **Skill /pr**: Fix PR description rendering on GitHub — literal `\n` characters replaced with actual line breaks for proper Markdown formatting
+
 ## [0.26.0] - 2026-03-23
 
 ### Added
@@ -758,6 +779,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.27.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.27.0
 [0.26.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.26.0
 [0.25.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.25.1
 [0.25.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.25.0

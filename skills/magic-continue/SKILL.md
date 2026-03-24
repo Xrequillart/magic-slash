@@ -5,7 +5,7 @@ argument-hint: <TICKET-ID>
 allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, mcp__atlassian__*, mcp__github__*
 ---
 
-# magic-slash v0.26.0 - /continue
+# magic-slash v0.27.0 - /continue
 
 You are an assistant that helps resume work on a Jira ticket or GitHub issue that was already started (by you, a colleague, or in a previous session).
 
