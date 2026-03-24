@@ -78,18 +78,6 @@ const configApi = {
   updatePRTemplate: (repoPath: string, content: string) =>
     ipcRenderer.invoke('config:updatePRTemplate', { repoPath, content }),
 
-  // Snippets
-  getSnippets: () =>
-    ipcRenderer.invoke('config:getSnippets'),
-
-  addSnippet: (snippet: { name: string; content: string; shortcut?: number }) =>
-    ipcRenderer.invoke('config:addSnippet', { snippet }),
-
-  updateSnippet: (id: string, updates: { name?: string; content?: string; shortcut?: number }) =>
-    ipcRenderer.invoke('config:updateSnippet', { id, updates }),
-
-  deleteSnippet: (id: string) =>
-    ipcRenderer.invoke('config:deleteSnippet', { id }),
 }
 
 // Terminal API

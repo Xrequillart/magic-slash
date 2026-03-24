@@ -77,7 +77,7 @@ export interface Config {
   version: string
   repositories: Record<string, RepositoryConfig>
   agents?: Agent[]
-  snippets?: Snippet[]
+
 }
 
 export interface PRTemplate {
@@ -91,13 +91,6 @@ export interface GitCheckResult {
   isGit: boolean
   exists: boolean
   expandedPath?: string
-}
-
-export interface Snippet {
-  id: string
-  name: string
-  content: string
-  shortcut?: number // 1-9 for ⌘1-⌘9
 }
 
 export interface CommandHistoryEntry {

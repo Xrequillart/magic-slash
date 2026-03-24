@@ -1,8 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import * as crypto from 'crypto'
-import type { RepositoryConfig, TerminalMetadata, Agent, Snippet } from '../../types'
+import type { RepositoryConfig, TerminalMetadata, Agent } from '../../types'
 
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'magic-slash')
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
@@ -46,7 +45,6 @@ export interface Config {
   version: string
   repositories: Record<string, RepositoryConfig>
   agents?: Agent[]
-  snippets?: Snippet[]
 }
 
 export function createDefaultMetadata(): TerminalMetadata {
@@ -539,48 +537,6 @@ export function clearAllAgents(): Config {
   config.agents = []
   writeConfig(config)
   return config
-}
-
-// Snippet functions
-export function getSnippets(): Snippet[] {
-  const config = readConfig()
-  return config.snippets || []
-}
-
-export function addSnippet(snippet: Omit<Snippet, 'id'>): Snippet {
-  const config = readConfig()
-  config.snippets = config.snippets || []
-
-  const newSnippet: Snippet = {
-    ...snippet,
-    id: crypto.randomUUID()
-  }
-
-  config.snippets.push(newSnippet)
-  writeConfig(config)
-  return newSnippet
-}
-
-export function updateSnippet(id: string, updates: Partial<Omit<Snippet, 'id'>>): Snippet {
-  const config = readConfig()
-  config.snippets = config.snippets || []
-
-  const index = config.snippets.findIndex(s => s.id === id)
-  if (index === -1) {
-    throw new Error(`Snippet '${id}' not found`)
-  }
-
-  config.snippets[index] = { ...config.snippets[index], ...updates }
-  writeConfig(config)
-  return config.snippets[index]
-}
-
-export function deleteSnippet(id: string): void {
-  const config = readConfig()
-  if (!config.snippets) return
-
-  config.snippets = config.snippets.filter(s => s.id !== id)
-  writeConfig(config)
 }
 
 export { CONFIG_FILE }

@@ -285,20 +285,6 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
     }
   }, [isActive])
 
-  // Listen for snippet events (only when active)
-  useEffect(() => {
-    if (!isActive) return
-
-    const handleSnippet = (e: CustomEvent<string>) => {
-      if (e.detail) {
-        window.electronAPI.terminal.write(terminal.id, e.detail)
-      }
-    }
-
-    window.addEventListener('send-snippet', handleSnippet as EventListener)
-    return () => window.removeEventListener('send-snippet', handleSnippet as EventListener)
-  }, [isActive, terminal.id])
-
   return (
     <div
       className={`

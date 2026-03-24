@@ -12,10 +12,6 @@ import {
   updateRepositoryIssuesSettings,
   updateRepositoryBranchSettings,
   updateRepositoryWorktreeFilesSettings,
-  getSnippets,
-  addSnippet,
-  updateSnippet,
-  deleteSnippet
 } from '../config/config'
 import {
   validateRepoName,
@@ -188,24 +184,6 @@ export function setupConfigHandlers() {
   // Update PR template
   ipcMain.handle('config:updatePRTemplate', async (_event, { repoPath, content }) => {
     return updatePRTemplate(repoPath, content)
-  })
-
-  // Snippet handlers
-  ipcMain.handle('config:getSnippets', async () => {
-    return getSnippets()
-  })
-
-  ipcMain.handle('config:addSnippet', async (_event, { snippet }) => {
-    return addSnippet(snippet)
-  })
-
-  ipcMain.handle('config:updateSnippet', async (_event, { id, updates }) => {
-    return updateSnippet(id, updates)
-  })
-
-  ipcMain.handle('config:deleteSnippet', async (_event, { id }) => {
-    deleteSnippet(id)
-    return { success: true }
   })
 
   // Command history handlers
