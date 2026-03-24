@@ -240,6 +240,13 @@ input[type="checkbox"] {
   @apply text-accent hover:underline;
 }
 
+/* Budget bar shimmer */
+@keyframes shimmer-sweep {
+  0% { left: -30%; }
+  10% { left: 130%; }
+  100% { left: 130%; }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,

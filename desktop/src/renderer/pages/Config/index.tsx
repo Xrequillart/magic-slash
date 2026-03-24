@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info } from 'lucide-react'
 import { RepoPage } from './RepoPage'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
@@ -120,9 +120,9 @@ function WelcomePage() {
   }
 
   return (
-    <div className="animate-fade-in max-w-[62rem] mx-auto">
+    <div className="flex flex-col gap-10 animate-fade-in max-w-[62rem] mx-auto">
       {/* Header */}
-      <div className="mb-8">
+      <div>
         <h1 className="text-2xl font-semibold mb-2">Settings</h1>
         <p className="text-text-secondary text-sm">
           Manage your repositories and configure Magic Slash
@@ -130,9 +130,12 @@ function WelcomePage() {
       </div>
 
       {/* Repositories Section */}
-      <div className="mb-8">
+      <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider">Repositories</h2>
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            <FolderGit className="w-4 h-4" />
+            <span>Repositories</span>
+          </div>
           <button
             onClick={handleOpenProject}
             disabled={isAdding}
@@ -208,8 +211,11 @@ function WelcomePage() {
       </div>
 
       {/* Keyboard Shortcuts Section */}
-      <div className="mb-8">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Keyboard Shortcuts</h2>
+      <div>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <Keyboard className="w-4 h-4" />
+          <span>Keyboard Shortcuts</span>
+        </div>
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center justify-between">
@@ -258,7 +264,10 @@ function WelcomePage() {
 
       {/* About Section */}
       <div>
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">About</h2>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <Info className="w-4 h-4" />
+          <span>About</span>
+        </div>
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 flex items-center justify-between">
           <div>
             <div className="font-medium">Magic Slash</div>

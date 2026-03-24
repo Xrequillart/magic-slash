@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, ArrowLeft, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle } from 'lucide-react'
+import { Plus, ArrowLeft, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork } from 'lucide-react'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 
 const TOKEN_BUDGET = 4000
@@ -19,9 +19,17 @@ function BudgetBar({ label, value, max, unit, barColor }: { label: string; value
       </div>
       <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+          className={`relative h-full rounded-full transition-all duration-300 overflow-hidden ${barColor}`}
           style={{ width: `${percentage}%` }}
-        />
+        >
+          <div
+            className="absolute inset-y-0 w-[30%] rounded-full"
+            style={{
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+              animation: 'shimmer-sweep 5s ease-in-out infinite',
+            }}
+          />
+        </div>
       </div>
       <div className="mt-1.5 text-xs text-text-secondary/40 text-right">{percentage}%</div>
     </div>
@@ -630,7 +638,7 @@ export function SkillsPage() {
 
     // List view
     return (
-      <div className="flex flex-col gap-6 animate-fade-in max-w-[62rem] mx-auto w-full">
+      <div className="flex flex-col gap-10 animate-fade-in max-w-[62rem] mx-auto w-full">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-semibold">Skills</h1>
@@ -653,7 +661,10 @@ export function SkillsPage() {
             {/* Built-in section */}
             {builtInSkills.length > 0 && (
               <div>
-                <h2 className="text-sm text-text-secondary/50 uppercase tracking-wider">Built-in</h2>
+                <div className="flex items-center gap-2 text-sm text-text-secondary">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Built-in</span>
+                </div>
                 <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">Magic Slash core skills, powering the development workflow</p>
                 <div className="grid grid-cols-3 gap-2">
                   {builtInSkills.map((skill) => (
@@ -673,7 +684,10 @@ export function SkillsPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h2 className="text-sm text-text-secondary/50 uppercase tracking-wider">Custom</h2>
+                  <div className="flex items-center gap-2 text-sm text-text-secondary">
+                    <PenTool className="w-4 h-4" />
+                    <span>Custom</span>
+                  </div>
                   <p className="text-xs text-text-secondary/30 mt-0.5">User-level skills, available across all projects</p>
                 </div>
                 {customSkills.length > 0 && (
@@ -731,7 +745,10 @@ export function SkillsPage() {
 
             {/* Repository Skills section */}
             <div>
-              <h2 className="text-sm text-text-secondary/50 uppercase tracking-wider">Repository Skills</h2>
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
+                <GitFork className="w-4 h-4" />
+                <span>Repository Skills</span>
+              </div>
               <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">Skills defined in your registered repositories (.claude/skills/ and .claude/commands/)</p>
               {repoSkillsLoading && (
                 <div className="flex items-center justify-center py-6">
