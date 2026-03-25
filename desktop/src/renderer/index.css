@@ -91,7 +91,6 @@ input[type="checkbox"] {
 
 /* xterm overrides */
 .xterm {
-  padding: 8px;
   background: transparent !important;
 }
 
