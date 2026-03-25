@@ -31,7 +31,7 @@ magic-slash/
 
 | Component | Technologies |
 |-----------|-------------|
-| Root | Node.js 18+, ESLint, commitlint, Vitest |
+| Root | Node.js 20+, ESLint, commitlint, Vitest |
 | Desktop | Electron 28, React 18, TypeScript, Tailwind CSS, Zustand, xterm.js + node-pty, Vite, electron-builder |
 | Skills | Markdown (SKILL.md) |
 | Docs | Static HTML/CSS/JS, GitHub Pages |
@@ -41,7 +41,7 @@ magic-slash/
 
 ```bash
 # Linting
-npm run lint          # All linters (md + yaml + js)
+npm run lint          # All linters (yaml + js)
 npm run lint:js       # ESLint only (desktop/src/)
 
 # Tests

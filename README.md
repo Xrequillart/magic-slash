@@ -383,7 +383,6 @@ magic-slash/
 │   ├── index.html        # Main page
 │   ├── documentation.html # Documentation page
 │   ├── logo.svg          # Logo (vector)
-│   ├── logo.png          # Logo (raster)
 │   ├── fonts/            # Custom fonts (Avenir)
 │   └── CNAME             # Custom domain config
 ├── slides/               # Presentation slides (Vite + React)
