@@ -2,7 +2,7 @@ import * as pty from 'node-pty'
 import * as os from 'os'
 import * as fs from 'fs'
 import * as path from 'path'
-import { execSync } from 'child_process'
+import { execSync, execFileSync } from 'child_process'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata } from '../config/config'
 import type { TerminalMetadata } from '../../types'
 export type { TerminalMetadata }
@@ -58,7 +58,7 @@ function getShellPath(): string {
   // Also try to get PATH from shell (may work in dev mode)
   const shell = getDefaultShell()
   try {
-    const result = execSync(`${shell} -l -c 'echo $PATH'`, {
+    const result = execFileSync(shell, ['-l', '-c', 'echo $PATH'], {
       encoding: 'utf8',
       timeout: 5000,
       stdio: ['pipe', 'pipe', 'pipe']
@@ -156,6 +156,7 @@ export interface Terminal {
   onBranchChange?: (branchName: string | null) => void
   onMetadataChange?: (metadata: TerminalMetadata) => void
   onRepositoriesChange?: (repositories: string[]) => void
+  isRestarting?: boolean
 }
 
 const terminals = new Map<string, Terminal>()
@@ -163,6 +164,17 @@ const terminals = new Map<string, Terminal>()
 // Buffer for terminal display history (for reconnection after refresh)
 const displayBuffers = new Map<string, string>()
 const DISPLAY_BUFFER_MAX_SIZE = 100000 // ~100KB per terminal
+
+// Append data to a terminal's display buffer, truncating on a newline boundary when too large
+function appendToDisplayBuffer(id: string, data: string): void {
+  let buf = (displayBuffers.get(id) || '') + data
+  if (buf.length > DISPLAY_BUFFER_MAX_SIZE) {
+    const sliced = buf.slice(-DISPLAY_BUFFER_MAX_SIZE)
+    const firstNewline = sliced.indexOf('\n')
+    buf = firstNewline > 0 ? sliced.slice(firstNewline + 1) : sliced
+  }
+  displayBuffers.set(id, buf)
+}
 
 // Track last activity time (used by hooks)
 const lastActivityTime = new Map<string, number>()
@@ -238,7 +250,7 @@ export function createTerminal(
       PATH: getShellPath(),
       // Magic Slash hook integration
       MAGIC_SLASH_TERMINAL_ID: id,
-      MAGIC_SLASH_PORT: statusServerPort.toString(),
+      ...(statusServerPort > 0 ? { MAGIC_SLASH_PORT: statusServerPort.toString() } : {}),
     }
   })
 
@@ -274,19 +286,14 @@ export function createTerminal(
   const disposables: Array<{ dispose: () => void }> = []
 
   disposables.push(ptyProcess.onData((data: string) => {
-    let displayBuffer = displayBuffers.get(id) || ''
-    displayBuffer += data
-    if (displayBuffer.length > DISPLAY_BUFFER_MAX_SIZE) {
-      displayBuffer = displayBuffer.slice(-DISPLAY_BUFFER_MAX_SIZE)
-    }
-    displayBuffers.set(id, displayBuffer)
-
+    appendToDisplayBuffer(id, data)
     onData(data)
   }))
 
   // Handle exit
   disposables.push(ptyProcess.onExit(({ exitCode }) => {
     terminal.state = exitCode === 0 ? 'completed' : 'error'
+    displayBuffers.delete(id)
     onExit(exitCode)
   }))
 
@@ -298,7 +305,11 @@ export function createTerminal(
 export function writeToTerminal(id: string, data: string): void {
   const terminal = terminals.get(id)
   if (terminal) {
-    terminal.pty.write(data)
+    try {
+      terminal.pty.write(data)
+    } catch (e) {
+      console.error(`[writeToTerminal] Failed to write to terminal ${id}:`, e)
+    }
     // State changes are now handled exclusively by Claude Code hooks
     // via updateTerminalStateFromHook() - no automatic state change on Enter
   }
@@ -306,11 +317,13 @@ export function writeToTerminal(id: string, data: string): void {
 
 export function resizeTerminal(id: string, cols: number, rows: number): void {
   const terminal = terminals.get(id)
-  if (terminal) {
-    terminal.cols = cols
-    terminal.rows = rows
-    terminal.pty.resize(cols, rows)
-  }
+  if (!terminal) return
+  if (isNaN(cols) || isNaN(rows)) return
+  cols = Math.max(1, Math.floor(cols))
+  rows = Math.max(1, Math.floor(rows))
+  terminal.cols = cols
+  terminal.rows = rows
+  terminal.pty.resize(cols, rows)
 }
 
 export function killTerminal(id: string): void {
@@ -343,16 +356,24 @@ export function getTerminalCwd(id: string): string | null {
 
   try {
     const pid = terminal.pty.pid
+    if (!Number.isInteger(pid) || pid <= 0) {
+      return terminal.repositories[0] || null
+    }
     // On macOS, use lsof to get the cwd
     if (process.platform === 'darwin') {
-      const { execSync } = require('child_process')
-      const result = execSync(`lsof -p ${pid} | grep cwd | awk '{print $9}'`, {
+      const result = execFileSync('lsof', ['-p', String(pid), '-Fn'], {
         encoding: 'utf8',
         timeout: 2000,
         stdio: ['pipe', 'pipe', 'pipe']
-      }).trim()
-      if (result) {
-        return result
+      })
+      // lsof -Fn outputs lines starting with 'f' for file descriptor and 'n' for name
+      // Find the cwd entry: look for 'fcwd' followed by 'n<path>'
+      const lines = result.split('\n')
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i] === 'fcwd' && i + 1 < lines.length && lines[i + 1].startsWith('n')) {
+          const cwdPath = lines[i + 1].slice(1)
+          if (cwdPath) return cwdPath
+        }
       }
     }
     // Fallback to first repository
@@ -429,7 +450,7 @@ export function launchClaude(
         PATH: getShellPath(),
         // Magic Slash hook integration
         MAGIC_SLASH_TERMINAL_ID: id,
-        MAGIC_SLASH_PORT: statusServerPort.toString(),
+        ...(statusServerPort > 0 ? { MAGIC_SLASH_PORT: statusServerPort.toString() } : {}),
       }
     })
 
@@ -440,13 +461,7 @@ export function launchClaude(
 
     // Handle data output
     disposables.push(ptyProcess.onData((data: string) => {
-      let displayBuffer = displayBuffers.get(id) || ''
-      displayBuffer += data
-      if (displayBuffer.length > DISPLAY_BUFFER_MAX_SIZE) {
-        displayBuffer = displayBuffer.slice(-DISPLAY_BUFFER_MAX_SIZE)
-      }
-      displayBuffers.set(id, displayBuffer)
-
+      appendToDisplayBuffer(id, data)
       onData(data)
 
       // Reset restart counter if process has been running stably
@@ -478,10 +493,11 @@ export function launchClaude(
         // Too many restarts — stop and show error
         const errorMsg = '\x1b[2J\x1b[H\x1b[31m--- Claude Code crashed too many times. Please restart the agent manually. ---\x1b[0m\r\n\r\n'
         onData(errorMsg)
-        displayBuffers.set(id, errorMsg)
+        displayBuffers.delete(id)
+        const previousStateBeforeError = terminal.state
         terminal.state = 'error'
         if (terminal.onStateChange) {
-          terminal.onStateChange('error', terminal.state)
+          terminal.onStateChange('error', previousStateBeforeError)
         }
         onExit(exitCode)
         return
@@ -495,35 +511,50 @@ export function launchClaude(
       displayBuffers.set(id, clearAndRestart)
 
       // Restart after backoff delay
+      terminal.isRestarting = true
       setTimeout(() => {
         // Double-check terminal still exists and wasn't killed during the delay
-        if (!terminals.has(id) || intentionallyKilled.has(id)) {
+        if (!terminals.has(id) || intentionallyKilled.has(id) || terminals.get(id) !== terminal) {
           intentionallyKilled.delete(id)
+          terminal.isRestarting = false
           return
         }
 
-        // Dispose old listeners BEFORE killing old PTY to avoid cascade
-        const oldDisposables = ptyDisposables.get(id)
-        if (oldDisposables) {
-          for (const d of oldDisposables) d.dispose()
-        }
-
-        // Kill the old PTY process
         try {
-          terminal.pty.kill()
-        } catch {
-          // Already dead, ignore
-        }
+          // Dispose old listeners BEFORE killing old PTY to avoid cascade
+          const oldDisposables = ptyDisposables.get(id)
+          if (oldDisposables) {
+            for (const d of oldDisposables) d.dispose()
+          }
 
-        // Create new PTY process and attach to terminal with current size
-        const restartCwd = terminal.repositories[0] || workingDir
-        const newPty = createPtyProcess(restartCwd, terminal.cols, terminal.rows)
-        terminal.pty = newPty
-        terminal.state = 'idle'
+          // Kill the old PTY process
+          try {
+            terminal.pty.kill()
+          } catch {
+            // Already dead, ignore
+          }
 
-        // Notify state change
-        if (terminal.onStateChange) {
-          terminal.onStateChange('idle', 'error')
+          // Create new PTY process and attach to terminal with current size
+          const restartCwd = terminal.repositories[0] || workingDir
+          const previousStateBeforeRestart = terminal.state
+          const newPty = createPtyProcess(restartCwd, terminal.cols, terminal.rows)
+          terminal.pty = newPty
+          terminal.state = 'idle'
+          terminal.isRestarting = false
+
+          // Notify state change
+          if (terminal.onStateChange) {
+            terminal.onStateChange('idle', previousStateBeforeRestart)
+          }
+        } catch (e) {
+          console.error(`[launchClaude] Restart failed for terminal ${id}:`, e)
+          terminal.isRestarting = false
+          const previousStateBeforeFailure = terminal.state
+          terminal.state = 'error'
+          if (terminal.onStateChange) {
+            terminal.onStateChange('error', previousStateBeforeFailure)
+          }
+          onExit(1)
         }
       }, delay)
     }))

@@ -18,8 +18,6 @@ import {
   saveAgent,
   removeAgent,
   getAgents,
-  updateAgentMetadata,
-  updateAgentRepositories,
 } from '../config/config'
 
 let getMainWindow: () => BrowserWindow | null
@@ -55,6 +53,68 @@ function maybeShowNotification(
   showNotification(title, body)
 }
 
+function createTerminalCallbacks(id: string, name: string) {
+  return {
+    onData: (data: string) => {
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send('terminal:data', { id, data })
+      }
+    },
+    onStateChange: (state: string, previousState: string) => {
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send('terminal:state', { id, state, previousState })
+      }
+
+      const t = getTerminal(id)
+      const displayName = t?.metadata?.title || name
+
+      if (state === 'waiting' && previousState !== 'waiting') {
+        maybeShowNotification(
+          id,
+          displayName,
+          'Claude Code needs attention',
+          `Agent "${displayName}" is waiting for your input`
+        )
+      }
+
+      if (state === 'completed' && previousState !== 'completed') {
+        maybeShowNotification(
+          id,
+          displayName,
+          'Task completed',
+          `Agent "${displayName}" has finished`
+        )
+      }
+    },
+    onExit: (exitCode: number) => {
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send('terminal:exit', { id, exitCode })
+      }
+    },
+    onBranchChange: (branchName: string | null) => {
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send('terminal:branch', { id, branchName })
+      }
+    },
+    onMetadataChange: (metadata: TerminalMetadata) => {
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send('terminal:metadata', { id, metadata })
+      }
+    },
+    onRepositoriesChange: (repositories: string[]) => {
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send('terminal:repositories', { id, repositories })
+      }
+    }
+  }
+}
+
 export function restoreAgents() {
   try {
     // Filter out sidebar agents (VS Code extension)
@@ -77,76 +137,18 @@ export function restoreAgents() {
       const cwd = agent.repositories[0] || ''
       if (!cwd) continue // Skip agents without repositories
 
+      const callbacks = createTerminalCallbacks(agent.id, agent.name)
       launchClaude(
         agent.id,
         agent.name,
         cwd,
-        // onData
-        (data) => {
-          const mainWindow = getMainWindow()
-          if (mainWindow) {
-            mainWindow.webContents.send('terminal:data', { id: agent.id, data })
-          }
-        },
-        // onStateChange
-        (state, previousState) => {
-          const mainWindow = getMainWindow()
-          if (mainWindow) {
-            mainWindow.webContents.send('terminal:state', { id: agent.id, state, previousState })
-          }
-
-          // Use title from metadata if available, fallback to name
-          const displayName = agent.metadata?.title || agent.name
-
-          if (state === 'waiting' && previousState !== 'waiting') {
-            maybeShowNotification(
-              agent.id,
-              displayName,
-              'Claude Code needs attention',
-              `Agent "${displayName}" is waiting for your input`
-            )
-          }
-
-          if (state === 'completed' && previousState !== 'completed') {
-            maybeShowNotification(
-              agent.id,
-              displayName,
-              'Task completed',
-              `Agent "${displayName}" has finished`
-            )
-          }
-        },
-        // onExit
-        (exitCode) => {
-          const mainWindow = getMainWindow()
-          if (mainWindow) {
-            mainWindow.webContents.send('terminal:exit', { id: agent.id, exitCode })
-          }
-        },
-        // onBranchChange
-        (branchName) => {
-          const mainWindow = getMainWindow()
-          if (mainWindow) {
-            mainWindow.webContents.send('terminal:branch', { id: agent.id, branchName })
-          }
-        },
-        // onMetadataChange
-        (metadata) => {
-          const mainWindow = getMainWindow()
-          if (mainWindow) {
-            mainWindow.webContents.send('terminal:metadata', { id: agent.id, metadata })
-          }
-        },
-        // initialMetadata - restore saved metadata
+        callbacks.onData,
+        callbacks.onStateChange,
+        callbacks.onExit,
+        callbacks.onBranchChange,
+        callbacks.onMetadataChange,
         agent.metadata as TerminalMetadata | undefined,
-        // onRepositoriesChange
-        (repositories) => {
-          const mainWindow = getMainWindow()
-          if (mainWindow) {
-            mainWindow.webContents.send('terminal:repositories', { id: agent.id, repositories })
-          }
-        },
-        // initialRepositories - restore saved repositories
+        callbacks.onRepositoriesChange,
         agent.repositories
       )
 
@@ -168,69 +170,19 @@ export function setupTerminalHandlers(
 
   // Create a new terminal
   ipcMain.handle('terminal:create', async (_event, { id, name, cwd }) => {
+    if (typeof id !== 'string' || typeof name !== 'string') {
+      throw new Error('terminal:create requires id (string) and name (string)')
+    }
+    const callbacks = createTerminalCallbacks(id, name)
     const terminal = createTerminal(
       id,
       name,
       cwd,
-      // onData
-      (data) => {
-        const mainWindow = getMainWindow()
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:data', { id, data })
-        }
-      },
-      // onStateChange
-      (state, previousState) => {
-        const mainWindow = getMainWindow()
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:state', { id, state, previousState })
-        }
-
-        // Use title from metadata if available, fallback to name
-        const t = getTerminal(id)
-        const displayName = t?.metadata?.title || name
-
-        // Show notification when terminal is waiting for input
-        if (state === 'waiting' && previousState !== 'waiting') {
-          maybeShowNotification(
-            id,
-            displayName,
-            'Claude Code needs attention',
-            `Terminal "${displayName}" is waiting for your input`
-          )
-        }
-
-        // Show notification when task is completed
-        if (state === 'completed' && previousState !== 'completed') {
-          maybeShowNotification(
-            id,
-            displayName,
-            'Task completed',
-            `Terminal "${displayName}" has finished`
-          )
-        }
-      },
-      // onExit
-      (exitCode) => {
-        const mainWindow = getMainWindow()
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:exit', { id, exitCode })
-        }
-      },
-      // onBranchChange
-      (branchName) => {
-        const mainWindow = getMainWindow()
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:branch', { id, branchName })
-        }
-      },
-      // onMetadataChange
-      (metadata) => {
-        const mainWindow = getMainWindow()
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:metadata', { id, metadata })
-        }
-      }
+      callbacks.onData,
+      callbacks.onStateChange,
+      callbacks.onExit,
+      callbacks.onBranchChange,
+      callbacks.onMetadataChange
     )
 
     return {
@@ -244,78 +196,21 @@ export function setupTerminalHandlers(
 
   // Launch Claude in a new terminal
   ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd }) => {
+    if (typeof id !== 'string' || typeof name !== 'string') {
+      throw new Error('terminal:launchClaude requires id (string) and name (string)')
+    }
+    const callbacks = createTerminalCallbacks(id, name)
     const terminal = launchClaude(
       id,
       name,
       cwd,
-      // onData
-      (data) => {
-        const mainWindow = getMainWindow()
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:data', { id, data })
-        }
-      },
-      // onStateChange
-      (state, previousState) => {
-        const mainWindow = getMainWindow()
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:state', { id, state, previousState })
-        }
-
-        // Use title from metadata if available, fallback to name
-        const t = getTerminal(id)
-        const displayName = t?.metadata?.title || name
-
-        // Show notification when terminal is waiting for input
-        if (state === 'waiting' && previousState !== 'waiting') {
-          maybeShowNotification(
-            id,
-            displayName,
-            'Claude Code needs attention',
-            `Agent "${displayName}" is waiting for your input`
-          )
-        }
-
-        // Show notification when task is completed
-        if (state === 'completed' && previousState !== 'completed') {
-          maybeShowNotification(
-            id,
-            displayName,
-            'Task completed',
-            `Agent "${displayName}" has finished`
-          )
-        }
-      },
-      // onExit
-      (exitCode) => {
-        const mainWindow = getMainWindow()
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:exit', { id, exitCode })
-        }
-      },
-      // onBranchChange
-      (branchName) => {
-        const mainWindow = getMainWindow()
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:branch', { id, branchName })
-        }
-      },
-      // onMetadataChange
-      (metadata) => {
-        const mainWindow = getMainWindow()
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:metadata', { id, metadata })
-        }
-      },
-      // initialMetadata
+      callbacks.onData,
+      callbacks.onStateChange,
+      callbacks.onExit,
+      callbacks.onBranchChange,
+      callbacks.onMetadataChange,
       undefined,
-      // onRepositoriesChange
-      (repositories) => {
-        const mainWindow = getMainWindow()
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:repositories', { id, repositories })
-        }
-      }
+      callbacks.onRepositoriesChange
     )
 
     // Save agent to disk immediately
@@ -335,16 +230,20 @@ export function setupTerminalHandlers(
 
   // Write to terminal
   ipcMain.handle('terminal:write', async (_event, { id, data }) => {
+    if (typeof id !== 'string' || typeof data !== 'string') return
     writeToTerminal(id, data)
   })
 
   // Resize terminal
   ipcMain.handle('terminal:resize', async (_event, { id, cols, rows }) => {
+    if (typeof id !== 'string' || typeof cols !== 'number' || typeof rows !== 'number') return
+    if (cols <= 0 || rows <= 0) return
     resizeTerminal(id, cols, rows)
   })
 
   // Kill terminal
   ipcMain.handle('terminal:kill', async (_event, { id }) => {
+    if (typeof id !== 'string') return
     killTerminal(id)
     // Remove agent from disk
     removeAgent(id)
@@ -388,6 +287,7 @@ export function setupTerminalHandlers(
 
   // Get current working directory of a terminal (queries the PTY process)
   ipcMain.handle('terminal:getCwd', async (_event, { id }) => {
+    if (typeof id !== 'string') return null
     return getTerminalCwd(id)
   })
 
@@ -403,21 +303,20 @@ export function setupTerminalHandlers(
 
   // Get terminal display buffer (for reconnection after refresh)
   ipcMain.handle('terminal:getBuffer', async (_event, { id }) => {
+    if (typeof id !== 'string') return null
     return getTerminalBuffer(id)
   })
 
   // Update terminal metadata
   ipcMain.handle('terminal:updateMetadata', async (_event, { id, metadata }) => {
+    if (typeof id !== 'string' || typeof metadata !== 'object' || metadata === null) return
     updateTerminalMetadataFromHook(id, metadata)
-    // Also persist to disk (updateTerminalMetadataFromHook already does this, but let's be explicit)
-    updateAgentMetadata(id, metadata)
   })
 
   // Update terminal repositories
   ipcMain.handle('terminal:updateRepositories', async (_event, { id, repositories }) => {
+    if (typeof id !== 'string' || !Array.isArray(repositories)) return
     updateTerminalRepositoriesFromHook(id, repositories)
-    // Persist to disk
-    updateAgentRepositories(id, repositories)
     // Notify renderer
     const mainWindow = getMainWindow()
     if (mainWindow) {
