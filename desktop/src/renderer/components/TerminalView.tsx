@@ -87,7 +87,7 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
         brightWhite: '#ffffff',
       },
       fontFamily: "'Hack', monospace",
-      fontSize: 15,
+      fontSize: 14,
       lineHeight: 1.0,
       cursorBlink: false,
       cursorStyle: 'bar',
