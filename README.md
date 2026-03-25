@@ -267,7 +267,7 @@ npm run desktop:package
 
 ```json
 {
-  "version": "0.27.1",
+  "version": "0.27.2",
   "repositories": {
     "api": {
       "path": "/Users/dev/projects/my-api",
