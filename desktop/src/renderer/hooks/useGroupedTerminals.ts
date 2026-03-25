@@ -2,71 +2,88 @@ import { useMemo } from 'react'
 import { useStore } from '../store'
 import type { TerminalInfo } from '../../types'
 
-export interface MultiProjectTerminal extends TerminalInfo {
+export type WorkflowGroupKey =
+  | 'needs_attention'
+  | 'in_review'
+  | 'in_progress'
+  | 'done'
+  | 'backlog'
+
+export interface TerminalWithRepos extends TerminalInfo {
   matchingProjects: string[]
+}
+
+export const WORKFLOW_GROUPS: {
+  key: WorkflowGroupKey
+  label: string
+  collapsedByDefault: boolean
+}[] = [
+  { key: 'backlog',          label: 'Backlog',          collapsedByDefault: false },
+  { key: 'needs_attention',  label: 'Needs attention',  collapsedByDefault: false },
+  { key: 'in_progress',      label: 'In progress',      collapsedByDefault: false },
+  { key: 'in_review',        label: 'In review',        collapsedByDefault: false },
+  { key: 'done',             label: 'Done',             collapsedByDefault: true },
+]
+
+export function classifyTerminal(terminal: TerminalInfo): WorkflowGroupKey {
+  const { state } = terminal
+  const status = terminal.metadata?.status || ''
+
+  // Real-time state: only error/waiting override workflow status
+  if (state === 'error' || state === 'waiting') return 'needs_attention'
+
+  // Workflow status
+  if (['PR created', 'in review', 'changes requested'].includes(status)) return 'in_review'
+  if (['in progress', 'committed', 'ready for PR'].includes(status)) return 'in_progress'
+  if (status === 'PR merged') return 'done'
+
+  return 'backlog'
 }
 
 export function useGroupedTerminals() {
   const { terminals, config } = useStore()
 
   return useMemo(() => {
-    const noProject: TerminalInfo[] = []
-    const multiProject: MultiProjectTerminal[] = []
-    const byProject: Record<string, TerminalInfo[]> = {}
+    const groups: Record<WorkflowGroupKey, TerminalWithRepos[]> = {
+      needs_attention: [],
+      in_review: [],
+      in_progress: [],
+      done: [],
+      backlog: [],
+    }
     const projectNames: string[] = []
 
-    // Initialize projects
+    // Collect project names
     if (config) {
       for (const repoName of Object.keys(config.repositories)) {
-        byProject[repoName] = []
         projectNames.push(repoName)
       }
     }
 
-    // Group terminals by project
+    // Enrich terminals with repo info and classify into workflow groups
     for (const terminal of terminals) {
       const repos = terminal.repositories || []
       const matchingProjects: string[] = []
 
       if (config) {
         for (const [repoName, repoConfig] of Object.entries(config.repositories)) {
-          const matchesProject = repos.some(repo => repo.startsWith(repoConfig.path))
-          if (matchesProject) {
+          if (repos.some(repo => repo.startsWith(repoConfig.path))) {
             matchingProjects.push(repoName)
           }
         }
       }
 
-      if (matchingProjects.length === 0) {
-        noProject.push(terminal)
-      } else if (matchingProjects.length === 1) {
-        byProject[matchingProjects[0]].push(terminal)
-      } else {
-        // Multi-project agent
-        multiProject.push({ ...terminal, matchingProjects })
-      }
+      const enriched: TerminalWithRepos = { ...terminal, matchingProjects }
+      const groupKey = classifyTerminal(terminal)
+      groups[groupKey].push(enriched)
     }
 
-    // Flattened visual order for navigation (deduplicate terminals)
+    // Build flatVisualOrder following WORKFLOW_GROUPS order (for keyboard nav)
     const seenIds = new Set<string>()
     const flatVisualOrder: TerminalInfo[] = []
 
-    for (const terminal of noProject) {
-      if (!seenIds.has(terminal.id)) {
-        seenIds.add(terminal.id)
-        flatVisualOrder.push(terminal)
-      }
-    }
-
-    for (const terminal of multiProject) {
-      if (!seenIds.has(terminal.id)) {
-        seenIds.add(terminal.id)
-        flatVisualOrder.push(terminal)
-      }
-    }
-
-    for (const projectTerminals of Object.values(byProject)) {
-      for (const terminal of projectTerminals) {
+    for (const { key } of WORKFLOW_GROUPS) {
+      for (const terminal of groups[key]) {
         if (!seenIds.has(terminal.id)) {
           seenIds.add(terminal.id)
           flatVisualOrder.push(terminal)
@@ -74,6 +91,6 @@ export function useGroupedTerminals() {
       }
     }
 
-    return { noProject, multiProject, byProject, projectNames, flatVisualOrder }
+    return { groups, projectNames, flatVisualOrder }
   }, [terminals, config])
 }

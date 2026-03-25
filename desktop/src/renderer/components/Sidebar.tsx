@@ -1,11 +1,11 @@
 import { useMemo, useState, useEffect, useCallback, memo } from 'react'
-import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, ChevronDown, ChevronLeft, Sparkles, X } from 'lucide-react'
+import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, ChevronDown, ChevronLeft, Sparkles, X, Eye, Play, CheckCircle2, Moon } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
-import { useGroupedTerminals, type MultiProjectTerminal } from '../hooks/useGroupedTerminals'
+import { useGroupedTerminals, WORKFLOW_GROUPS, type WorkflowGroupKey, type TerminalWithRepos } from '../hooks/useGroupedTerminals'
 import { getProjectColorMap } from '../utils/projectColors'
-import type { TerminalState, TerminalInfo, ScriptTerminalInfo } from '../../types'
+import type { TerminalState, ScriptTerminalInfo } from '../../types'
 
 const SIDEBAR_MIN_WIDTH = 200
 const SIDEBAR_DEFAULT_WIDTH = 300
@@ -71,14 +71,28 @@ const ProjectDot = memo(function ProjectDot({ color, title }: { color: string; t
   )
 })
 
+// Workflow group icon and color config
+const WORKFLOW_GROUP_CONFIG: Record<WorkflowGroupKey, {
+  icon: React.ComponentType<{ className?: string }> | null
+  spinner?: boolean
+  color: string
+}> = {
+  backlog:         { icon: Moon, color: 'text-text-secondary/50' },
+  needs_attention: { icon: AlertTriangle, color: 'text-text-secondary/50' },
+  in_progress:     { icon: Play, color: 'text-text-secondary/50' },
+  in_review:       { icon: Eye, color: 'text-text-secondary/50' },
+  done:            { icon: CheckCircle2, color: 'text-text-secondary/50' },
+}
+
 interface AgentItemProps {
-  terminal: TerminalInfo
+  terminal: TerminalWithRepos
   isActive: boolean
   onSelect: () => void
+  colorMap: Record<string, string>
   now: number
 }
 
-const AgentItem = memo(function AgentItem({ terminal, isActive, onSelect, now: _now }: AgentItemProps) {
+const AgentItem = memo(function AgentItem({ terminal, isActive, onSelect, colorMap, now: _now }: AgentItemProps) {
   return (
     <button
       onClick={onSelect}
@@ -93,70 +107,50 @@ const AgentItem = memo(function AgentItem({ terminal, isActive, onSelect, now: _
       <div className="flex-1 text-left min-w-0">
         <div className="truncate font-medium">{terminal.metadata?.title || terminal.name}</div>
       </div>
+      {terminal.matchingProjects.length > 0 && (
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {terminal.matchingProjects.map((project) => (
+            <ProjectDot
+              key={project}
+              color={colorMap[project]}
+              title={project}
+            />
+          ))}
+        </div>
+      )}
       <StatusBadge state={terminal.state} />
     </button>
   )
 })
 
-// Agent item with colored dots for multi-project
-interface MultiProjectAgentItemProps {
-  terminal: MultiProjectTerminal
-  isActive: boolean
-  onSelect: () => void
-  colorMap: Record<string, string>
-  now: number
-}
-
-const MultiProjectAgentItem = memo(function MultiProjectAgentItem({ terminal, isActive, onSelect, colorMap, now: _now }: MultiProjectAgentItemProps) {
-  return (
-    <button
-      onClick={onSelect}
-      className={`
-        w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-all rounded-lg
-        ${isActive
-          ? `${stateBgColors[terminal.state]} text-white`
-          : `text-text-secondary ${stateHoverBgColors[terminal.state]} hover:text-white`
-        }
-      `}
-    >
-      <div className="flex-1 text-left min-w-0">
-        <div className="truncate font-medium">{terminal.metadata?.title || terminal.name}</div>
-      </div>
-      <div className="flex items-center gap-1 flex-shrink-0">
-        {terminal.matchingProjects.map((project) => (
-          <ProjectDot
-            key={project}
-            color={colorMap[project]}
-            title={project}
-          />
-        ))}
-      </div>
-      <StatusBadge state={terminal.state} />
-    </button>
-  )
-})
-
-// Multi-project section
-interface MultiProjectGroupProps {
-  terminals: MultiProjectTerminal[]
-  colorMap: Record<string, string>
+// Workflow group section
+interface WorkflowGroupProps {
+  groupKey: WorkflowGroupKey
+  label: string
+  terminals: TerminalWithRepos[]
   isCollapsed: boolean
   onToggle: () => void
   activeTerminalId: string | null
   onSelectTerminal: (id: string) => void
+  colorMap: Record<string, string>
   now: number
 }
 
-const MultiProjectGroup = memo(function MultiProjectGroup({
+const WorkflowGroup = memo(function WorkflowGroup({
+  groupKey,
+  label,
   terminals,
-  colorMap,
   isCollapsed,
   onToggle,
   activeTerminalId,
   onSelectTerminal,
+  colorMap,
   now,
-}: MultiProjectGroupProps) {
+}: WorkflowGroupProps) {
   if (terminals.length === 0) return null
+
+  const config = WORKFLOW_GROUP_CONFIG[groupKey]
+  const IconComponent = config.icon
 
   return (
     <div className="flex flex-col">
@@ -165,7 +159,15 @@ const MultiProjectGroup = memo(function MultiProjectGroup({
         onClick={onToggle}
         className="flex items-center gap-2 px-2 py-1.5 text-sm text-text-secondary/50 hover:text-white transition-colors w-full"
       >
-        <span className="font-medium truncate">Multi-projects</span>
+        <span className={`flex items-center ${config.color}`}>
+          {config.spinner ? (
+            <span className="loader-spinner-sm flex-shrink-0" />
+          ) : IconComponent ? (
+            <IconComponent className="w-3.5 h-3.5" />
+          ) : null}
+        </span>
+        <span className="font-medium truncate">{label}</span>
+        <span className="text-text-secondary/30 text-xs">{terminals.length}</span>
         <span className="ml-auto">
           {isCollapsed ? (
             <ChevronLeft className="w-3 h-3" />
@@ -179,84 +181,12 @@ const MultiProjectGroup = memo(function MultiProjectGroup({
       {!isCollapsed && (
         <div className="flex flex-col gap-1">
           {terminals.map(terminal => (
-            <MultiProjectAgentItem
-              key={terminal.id}
-              terminal={terminal}
-              isActive={activeTerminalId === terminal.id}
-              onSelect={() => onSelectTerminal(terminal.id)}
-              colorMap={colorMap}
-              now={now}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-})
-
-interface ProjectGroupProps {
-  name: string
-  color: string
-  terminals: TerminalInfo[]
-  isCollapsed: boolean
-  onToggle: () => void
-  activeTerminalId: string | null
-  onSelectTerminal: (id: string) => void
-  now: number
-}
-
-const ProjectGroup = memo(function ProjectGroup({
-  name,
-  color,
-  terminals,
-  isCollapsed,
-  onToggle,
-  activeTerminalId,
-  onSelectTerminal,
-  now
-}: ProjectGroupProps) {
-  const hasAgents = terminals.length >= 1
-
-  return (
-    <div className="flex flex-col">
-      {/* Group header */}
-      {hasAgents ? (
-        <button
-          onClick={onToggle}
-          className="flex items-center gap-2 px-2 py-1.5 text-sm text-text-secondary/50 hover:text-white transition-colors w-full"
-        >
-          <span
-            className="w-2 h-2 rounded-full flex-shrink-0"
-            style={{ backgroundColor: color }}
-          />
-          <span className="font-medium truncate">{name}</span>
-          <span className="ml-auto">
-            {isCollapsed ? (
-              <ChevronLeft className="w-3 h-3" />
-            ) : (
-              <ChevronDown className="w-3 h-3" />
-            )}
-          </span>
-        </button>
-      ) : (
-        <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-text-secondary/50 w-full">
-          <span
-            className="w-2 h-2 rounded-full flex-shrink-0"
-            style={{ backgroundColor: color }}
-          />
-          <span className="font-medium truncate">{name}</span>
-        </div>
-      )}
-
-      {/* Agent list */}
-      {hasAgents && !isCollapsed && (
-        <div className="flex flex-col gap-1">
-          {terminals.map(terminal => (
             <AgentItem
               key={terminal.id}
               terminal={terminal}
               isActive={activeTerminalId === terminal.id}
               onSelect={() => onSelectTerminal(terminal.id)}
+              colorMap={colorMap}
               now={now}
             />
           ))}
@@ -364,10 +294,17 @@ export function Sidebar() {
     return () => window.removeEventListener('resize', handleResize)
   }, [width, getMaxWidth])
 
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  // Collapsed state: Done and Idle collapsed by default
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
+    const initial = new Set<string>()
+    for (const group of WORKFLOW_GROUPS) {
+      if (group.collapsedByDefault) initial.add(group.key)
+    }
+    return initial
+  })
 
-  // Group terminals by project (shared hook)
-  const { noProject, multiProject, byProject, projectNames } = useGroupedTerminals()
+  // Group terminals by workflow status
+  const { groups, projectNames } = useGroupedTerminals()
 
   // Generate color map for projects (using configured colors if available)
   const colorMap = useMemo(
@@ -511,51 +448,23 @@ export function Sidebar() {
       <nav className="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-2">
         {terminals.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-text-secondary text-sm p-4 text-center">
-            No agents yet. Click "New agent" to start.
+            No agents yet. Click &quot;New agent&quot; to start.
           </div>
         ) : (
-          <>
-            {/* Agents without a project */}
-            {noProject.length > 0 && (
-              <div className="flex flex-col gap-1">
-                {noProject.map(terminal => (
-                  <AgentItem
-                    key={terminal.id}
-                    terminal={terminal}
-                    isActive={activeTerminalId === terminal.id}
-                    onSelect={() => handleSelectTerminal(terminal.id)}
-                    now={now}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Multi-project agents section */}
-            <MultiProjectGroup
-              terminals={multiProject}
-              colorMap={colorMap}
-              isCollapsed={collapsedGroups.has('__multi_project__')}
-              onToggle={() => toggleGroup('__multi_project__')}
+          WORKFLOW_GROUPS.map(({ key, label }) => (
+            <WorkflowGroup
+              key={key}
+              groupKey={key}
+              label={label}
+              terminals={groups[key]}
+              isCollapsed={collapsedGroups.has(key)}
+              onToggle={() => toggleGroup(key)}
               activeTerminalId={activeTerminalId}
               onSelectTerminal={handleSelectTerminal}
+              colorMap={colorMap}
               now={now}
             />
-
-            {/* Agents by project */}
-            {Object.entries(byProject).map(([projectName, projectTerminals]) => (
-              <ProjectGroup
-                key={projectName}
-                name={projectName}
-                color={colorMap[projectName]}
-                terminals={projectTerminals}
-                isCollapsed={collapsedGroups.has(projectName)}
-                onToggle={() => toggleGroup(projectName)}
-                activeTerminalId={activeTerminalId}
-                onSelectTerminal={handleSelectTerminal}
-                now={now}
-              />
-            ))}
-          </>
+          ))
         )}
       </nav>
 
@@ -582,7 +491,7 @@ export function Sidebar() {
       {/* Footer */}
       <div className="px-4 py-2 text-xs text-text-secondary flex items-center justify-start gap-2">
         <span className="opacity-60">v0.27.2</span>
-        <span className="opacity-30">•</span>
+        <span className="opacity-30">&bull;</span>
         <a
           href="https://xrequillart.github.io/magic-slash/"
           target="_blank"
@@ -591,7 +500,7 @@ export function Sidebar() {
         >
           Docs
         </a>
-        <span className="opacity-30">•</span>
+        <span className="opacity-30">&bull;</span>
         <a
           href="https://github.com/xrequillart/magic-slash"
           target="_blank"
