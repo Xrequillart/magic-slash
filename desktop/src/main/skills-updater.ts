@@ -1,6 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+import { githubHeaders } from './github'
 
 const SKILLS = ['magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills'
@@ -20,7 +21,7 @@ interface TreeResponse {
 
 async function fetchSkillsTree(): Promise<Map<string, TreeEntry[]>> {
   const response = await fetch(GITHUB_TREE_URL, {
-    headers: { Accept: 'application/vnd.github.v3+json' }
+    headers: githubHeaders({ Accept: 'application/vnd.github.v3+json' })
   })
   if (!response.ok) {
     throw new Error(`GitHub Trees API returned ${response.status}`)

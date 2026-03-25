@@ -4,6 +4,7 @@ import { writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs'
 import { join } from 'path'
 import { cleanupAllTerminals } from './pty/terminal-manager'
 import { stopStatusServer } from './hooks/status-server'
+import { githubHeaders } from './github'
 
 function getPendingWhatsNewPath() {
   return join(app.getPath('userData'), 'pending-whats-new.json')
@@ -153,7 +154,7 @@ export function setupAutoUpdater() {
     try {
       const response = await fetch(
         `https://api.github.com/repos/xrequillart/magic-slash/releases/tags/v${version}`,
-        { headers: { Accept: 'application/vnd.github.html+json' } }
+        { headers: githubHeaders({ Accept: 'application/vnd.github.html+json' }) }
       )
       if (!response.ok) return null
       const data = await response.json()
