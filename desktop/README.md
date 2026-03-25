@@ -1,10 +1,10 @@
 # Magic Slash Desktop
 
-Application Electron qui remplace la web-ui et ajoute des terminaux Claude Code intégrés.
+Application Electron avec terminaux Claude Code intégrés.
 
 ## Fonctionnalités
 
-### Configuration (portée de web-ui)
+### Configuration
 - Gestion des repositories (ajout, édition, suppression)
 - Keywords par repo pour la détection automatique
 - Langues par feature (commit, PR, jiraComment, discussion)

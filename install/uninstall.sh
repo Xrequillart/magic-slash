@@ -27,15 +27,6 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ============================================
-# READ INSTALLATION MODE
-# ============================================
-CONFIG_FILE="$HOME/.config/magic-slash/config.json"
-INSTALL_MODE="unknown"
-if [ -f "$CONFIG_FILE" ]; then
-  INSTALL_MODE=$(jq -r '.installationMode // "unknown"' "$CONFIG_FILE" 2>/dev/null)
-fi
-
-# ============================================
 # CONFIRMATION
 # ============================================
 echo "This script will remove:"
@@ -48,14 +39,8 @@ echo "  • ~/.claude/skills/magic-review/"
 echo "  • ~/.claude/skills/magic-resolve/"
 echo "  • ~/.claude/skills/magic-done/"
 echo "  • ~/.config/magic-slash/ (entire folder)"
-if [ "$INSTALL_MODE" = "standalone" ]; then
-  echo "  • ~/.local/bin/magic-slash (CLI)"
-elif [ "$INSTALL_MODE" = "desktop" ]; then
-  echo "  • /Applications/Magic Slash.app (desktop app)"
-else
-  echo "  • /Applications/Magic Slash.app (desktop app, if present)"
-  echo "  • ~/.local/bin/magic-slash (CLI, if present)"
-fi
+echo "  • /Applications/Magic Slash.app (desktop app)"
+echo "  • ~/.local/bin/magic-slash (CLI, if present)"
 echo "  • MCP Atlassian (via claude mcp remove)"
 echo "  • MCP GitHub (via claude mcp remove)"
 echo ""
@@ -129,22 +114,20 @@ echo ""
 echo "3. Removing Magic Slash app/CLI..."
 echo ""
 
-# Remove desktop app (if installed in desktop mode or for safety)
+# Remove desktop app
 APP_PATH="/Applications/Magic Slash.app"
 if [ -d "$APP_PATH" ]; then
   rm -rf "$APP_PATH"
   echo "   ✓ Removed: $APP_PATH"
-elif [ "$INSTALL_MODE" = "desktop" ]; then
+else
   echo "   - Not found: $APP_PATH"
 fi
 
-# Remove CLI (if installed in standalone mode or for safety)
+# Remove CLI (if present from previous installation)
 CLI_PATH="$HOME/.local/bin/magic-slash"
 if [ -f "$CLI_PATH" ]; then
   rm "$CLI_PATH"
   echo "   ✓ Removed: $CLI_PATH"
-elif [ "$INSTALL_MODE" = "standalone" ]; then
-  echo "   - Not found: $CLI_PATH"
 fi
 
 # Also clean up legacy web UI if it exists

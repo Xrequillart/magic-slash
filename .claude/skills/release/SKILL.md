@@ -62,15 +62,7 @@ Mets a jour la version dans `/package.json` :
 "version": "X.Y.Z"
 ```
 
-### 2.2 : web-ui/package.json
-
-Mets a jour la version dans `/web-ui/package.json` :
-
-```json
-"version": "X.Y.Z"
-```
-
-### 2.3 : desktop/package.json
+### 2.2 : desktop/package.json
 
 Mets a jour la version dans `/desktop/package.json` :
 
@@ -222,7 +214,7 @@ Execute la commande suivante pour verifier que tous les fichiers ont ete mis a j
 ```bash
 echo "=== Verification de la version X.Y.Z ===" && \
 ERRORS=0 && \
-for f in package.json web-ui/package.json desktop/package.json; do
+for f in package.json desktop/package.json; do
   if grep -q "\"version\": \"X.Y.Z\"" "$f"; then
     echo "  OK  $f"
   else
@@ -263,7 +255,6 @@ Affiche un resume de tous les fichiers modifies :
 Resume des modifications pour la version X.Y.Z :
 
   package.json                                  {VERSION_ACTUELLE} -> X.Y.Z
-  web-ui/package.json                           {VERSION_ACTUELLE} -> X.Y.Z
   desktop/package.json                          {VERSION_ACTUELLE} -> X.Y.Z
   README.md                                     {VERSION_ACTUELLE} -> X.Y.Z
   docs/documentation.html                       {VERSION_ACTUELLE} -> X.Y.Z (2 occurrences)

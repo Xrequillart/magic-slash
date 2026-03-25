@@ -24,10 +24,8 @@
   "author": "xrequillart",
   "scripts": {
     "lint": "npm run lint:yaml && npm run lint:js",
-    "lint:js": "eslint web-ui/ desktop/src/",
+    "lint:js": "eslint desktop/src/",
     "lint:yaml": "yamllint -c .yamllint.yml .",
-    "web": "node web-ui/server.js",
-    "web:install": "cd web-ui && npm install",
     "desktop": "cd desktop && npm run dev",
     "desktop:install": "cd desktop && npm install",
     "desktop:build": "cd desktop && npm run build",

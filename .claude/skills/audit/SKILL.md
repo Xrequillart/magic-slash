@@ -65,7 +65,6 @@ Store relevant values: `indent_style`, `indent_size`, `end_of_line`, `charset`.
 Read `package.json` and `desktop/package.json` to extract actual dependency versions:
 - Electron version from `desktop/package.json`
 - React version from `desktop/package.json`
-- Express version from `web-ui/package.json`
 - Vitest (from root `package.json`)
 
 ### 1.7: Project tree structure
@@ -88,7 +87,6 @@ Scan the following files for inconsistencies against the sources of truth:
 - `docs/documentation.html`
 - `install/install.sh`
 - `.github/` (all markdown files: issue templates, PR templates, workflow comments)
-- `web-ui/public/index.html` (if it displays project info)
 - `desktop/src/renderer/components/Sidebar.tsx` (version display)
 
 ### Types of inconsistencies to detect

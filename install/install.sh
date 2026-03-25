@@ -200,32 +200,6 @@ echo "✅ All prerequisites are installed"
 echo ""
 
 # ============================================
-# 1b. INSTALLATION MODE SELECTION
-# ============================================
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Choose installation mode:"
-echo ""
-
-select_installation_mode() {
-  echo ""
-  select_option "Desktop App (recommended)" "Standalone (CLI only)"
-
-  if [ $SELECT_RESULT -eq 0 ]; then
-    INSTALL_MODE="desktop"
-    echo ""
-    echo -e "   ${GREEN}→ Desktop App${NC}: Full visual interface with terminal management"
-  else
-    INSTALL_MODE="standalone"
-    echo ""
-    echo -e "   ${GREEN}→ Standalone${NC}: Terminal-based configuration, no desktop app"
-  fi
-  echo ""
-}
-
-select_installation_mode
-
-# ============================================
 # 2. MCP ATLASSIAN CONFIGURATION (JIRA + CONFLUENCE)
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -435,16 +409,16 @@ mv "$TMP_SETTINGS" "$CLAUDE_SETTINGS"
 echo "   ✅ Permissions configured (MCP tools + common commands auto-allowed)"
 echo ""
 
-# Create initial config file (repositories will be configured in desktop app or TUI)
+# Create initial config file (repositories will be configured in desktop app)
 mkdir -p "$CONFIG_DIR"
 if [ ! -f "$CONFIG_FILE" ]; then
-  jq -n --arg version "$CURRENT_VERSION" --arg mode "$INSTALL_MODE" \
-    '{"version": $version, "installationMode": $mode, "repositories": {}}' > "$CONFIG_FILE"
+  jq -n --arg version "$CURRENT_VERSION" \
+    '{"version": $version, "repositories": {}}' > "$CONFIG_FILE"
 else
-  # Update version and installationMode in existing config file
+  # Update version in existing config file
   TMP_FILE=$(mktemp)
-  jq --arg version "$CURRENT_VERSION" --arg mode "$INSTALL_MODE" \
-    '.version = $version | .installationMode = $mode' "$CONFIG_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$CONFIG_FILE"
+  jq --arg version "$CURRENT_VERSION" \
+    '.version = $version | del(.installationMode)' "$CONFIG_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$CONFIG_FILE"
 fi
 
 # ============================================
@@ -453,183 +427,84 @@ fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-if [ "$INSTALL_MODE" = "desktop" ]; then
-  echo "5. Installing Magic Slash Desktop app"
+echo "5. Installing Magic Slash Desktop app"
+echo ""
+
+# Check if already installed in /Applications
+SKIP_DESKTOP=false
+if [ -d "/Applications/Magic Slash.app" ]; then
+  INSTALLED_APP_VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "/Applications/Magic Slash.app/Contents/Info.plist" 2>/dev/null || echo "unknown")
+  echo "   Magic Slash Desktop already installed (v$INSTALLED_APP_VERSION)"
+  echo ""
+  read -p "   Reinstall/Update? (y/N) " REINSTALL_DESKTOP < /dev/tty
+  [ "$REINSTALL_DESKTOP" != "y" ] && SKIP_DESKTOP=true
+  echo ""
+fi
+
+if [ "$SKIP_DESKTOP" = false ]; then
+  # Detect architecture
+  ARCH=$(uname -m)
+  if [ "$ARCH" = "arm64" ]; then
+    DMG_SUFFIX="arm64"
+  else
+    DMG_SUFFIX="x64"
+  fi
+
+  DMG_NAME="Magic-Slash-${CURRENT_VERSION}-${DMG_SUFFIX}.dmg"
+  DMG_URL="https://github.com/xrequillart/magic-slash/releases/download/v${CURRENT_VERSION}/${DMG_NAME}"
+  TMP_DMG="/tmp/${DMG_NAME}"
+
+  echo "   Downloading Magic Slash Desktop v${CURRENT_VERSION}..."
+  echo "   Architecture: ${ARCH}"
   echo ""
 
-  # Check if already installed in /Applications
-  SKIP_DESKTOP=false
-  if [ -d "/Applications/Magic Slash.app" ]; then
-    INSTALLED_APP_VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "/Applications/Magic Slash.app/Contents/Info.plist" 2>/dev/null || echo "unknown")
-    echo "   Magic Slash Desktop already installed (v$INSTALLED_APP_VERSION)"
+  # Download DMG from GitHub releases
+  if curl -fsSL -o "$TMP_DMG" "$DMG_URL"; then
+    echo "   ✅ Downloaded successfully"
     echo ""
-    read -p "   Reinstall/Update? (y/N) " REINSTALL_DESKTOP < /dev/tty
-    [ "$REINSTALL_DESKTOP" != "y" ] && SKIP_DESKTOP=true
-    echo ""
-  fi
 
-  if [ "$SKIP_DESKTOP" = false ]; then
-    # Detect architecture
-    ARCH=$(uname -m)
-    if [ "$ARCH" = "arm64" ]; then
-      DMG_SUFFIX="arm64"
+    # Open DMG for manual installation
+    echo "   Opening the disk image..."
+    echo ""
+    open "$TMP_DMG"
+
+    echo "   ┌─────────────────────────────────────────────────┐"
+    echo "   │                                                 │"
+    echo "   │   A Finder window should have opened.           │"
+    echo "   │                                                 │"
+    echo "   │   → Drag 'Magic Slash' into the                 │"
+    echo "   │     'Applications' folder.                      │"
+    echo "   │                                                 │"
+    echo "   │   If prompted to replace, click 'Replace'.      │"
+    echo "   │                                                 │"
+    echo "   └─────────────────────────────────────────────────┘"
+    echo ""
+    read -p "   Press Enter once you've dragged the app to Applications... " < /dev/tty
+    echo ""
+
+    # Verify installation
+    if [ -d "/Applications/Magic Slash.app" ]; then
+      echo "   ✅ Desktop app installed"
     else
-      DMG_SUFFIX="x64"
+      echo -e "   ${YELLOW}⚠️  Magic Slash.app not found in /Applications${NC}"
+      echo "   → Make sure you dragged it to the Applications folder."
+      echo "   → You can also do it later from the DMG."
     fi
 
-    DMG_NAME="Magic-Slash-${CURRENT_VERSION}-${DMG_SUFFIX}.dmg"
-    DMG_URL="https://github.com/xrequillart/magic-slash/releases/download/v${CURRENT_VERSION}/${DMG_NAME}"
-    TMP_DMG="/tmp/${DMG_NAME}"
-
-    echo "   Downloading Magic Slash Desktop v${CURRENT_VERSION}..."
-    echo "   Architecture: ${ARCH}"
-    echo ""
-
-    # Download DMG from GitHub releases
-    if curl -fsSL -o "$TMP_DMG" "$DMG_URL"; then
-      echo "   ✅ Downloaded successfully"
-      echo ""
-
-      # Open DMG for manual installation
-      echo "   Opening the disk image..."
-      echo ""
-      open "$TMP_DMG"
-
-      echo "   ┌─────────────────────────────────────────────────┐"
-      echo "   │                                                 │"
-      echo "   │   A Finder window should have opened.           │"
-      echo "   │                                                 │"
-      echo "   │   → Drag 'Magic Slash' into the                 │"
-      echo "   │     'Applications' folder.                      │"
-      echo "   │                                                 │"
-      echo "   │   If prompted to replace, click 'Replace'.      │"
-      echo "   │                                                 │"
-      echo "   └─────────────────────────────────────────────────┘"
-      echo ""
-      read -p "   Press Enter once you've dragged the app to Applications... " < /dev/tty
-      echo ""
-
-      # Verify installation
-      if [ -d "/Applications/Magic Slash.app" ]; then
-        echo "   ✅ Desktop app installed"
-      else
-        echo -e "   ${YELLOW}⚠️  Magic Slash.app not found in /Applications${NC}"
-        echo "   → Make sure you dragged it to the Applications folder."
-        echo "   → You can also do it later from the DMG."
-      fi
-
-      # Eject DMG
-      MOUNT_POINT=$(hdiutil info | grep "Magic" | awk -F'\t' '{print $NF}' | head -1 | xargs)
-      if [ -n "$MOUNT_POINT" ]; then
-        hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true
-      fi
-
-      # Cleanup
-      rm -f "$TMP_DMG" 2>/dev/null
-    else
-      echo "   ⚠️  Could not download DMG from GitHub releases"
-      echo "   → Download manually: https://github.com/xrequillart/magic-slash/releases"
+    # Eject DMG
+    MOUNT_POINT=$(hdiutil info | grep "Magic" | awk -F'\t' '{print $NF}' | head -1 | xargs)
+    if [ -n "$MOUNT_POINT" ]; then
+      hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true
     fi
+
+    # Cleanup
+    rm -f "$TMP_DMG" 2>/dev/null
   else
-    echo "   ✅ Desktop app kept"
+    echo "   ⚠️  Could not download DMG from GitHub releases"
+    echo "   → Download manually: https://github.com/xrequillart/magic-slash/releases"
   fi
-
 else
-  # Standalone mode - install CLI
-  echo "5. Installing Magic Slash CLI"
-  echo ""
-
-  CLI_DIR="$HOME/.local/bin"
-  CLI_PATH="$CLI_DIR/magic-slash"
-
-  # Create directory if needed
-  mkdir -p "$CLI_DIR"
-
-  # Copy CLI from local or download from GitHub
-  if [ -f "$SCRIPT_DIR/magic-slash" ]; then
-    # Local installation
-    cp "$SCRIPT_DIR/magic-slash" "$CLI_PATH"
-  else
-    # Remote installation - download from GitHub
-    curl -fsSL "https://raw.githubusercontent.com/xrequillart/magic-slash/main/install/magic-slash" > "$CLI_PATH"
-  fi
-
-  chmod +x "$CLI_PATH"
-  echo "   ✅ CLI installed at $CLI_PATH"
-
-  # Check if ~/.local/bin is in PATH
-  if [[ ":$PATH:" != *":$CLI_DIR:"* ]]; then
-    echo ""
-    echo -e "   ${YELLOW}⚠️  $CLI_DIR is not in your PATH${NC}"
-    echo ""
-    echo "   Add this line to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
-    echo ""
-    echo -e "   ${CYAN}export PATH=\"\$HOME/.local/bin:\$PATH\"${NC}"
-    echo ""
-  fi
-
-  # ============================================
-  # 5b. REPOSITORY CONFIGURATION (Standalone only)
-  # ============================================
-  echo ""
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "6. Configure repositories"
-  echo ""
-  echo "   Add at least one repository so /start can match tickets to projects."
-  echo ""
-
-  REPO_INDEX=0
-  ADD_MORE=true
-
-  while [ "$ADD_MORE" = true ]; do
-    REPO_INDEX=$((REPO_INDEX + 1))
-    echo -e "   ${BOLD}Repository #$REPO_INDEX${NC}"
-    echo ""
-
-    # Repository name
-    read -p "   Name (e.g. api, web, mobile): " REPO_NAME < /dev/tty
-    echo ""
-
-    # Repository path
-    read -p "   Absolute path (e.g. /Users/dev/projects/my-api): " REPO_PATH < /dev/tty
-    echo ""
-
-    # Validate path exists
-    if [ ! -d "$REPO_PATH" ]; then
-      echo -e "   ${YELLOW}⚠️  Directory not found: $REPO_PATH${NC}"
-      echo "   → The path will be saved anyway. Make sure it exists before using /start."
-      echo ""
-    fi
-
-    # Keywords
-    read -p "   Keywords, comma-separated (e.g. backend,api,server): " REPO_KEYWORDS_RAW < /dev/tty
-    echo ""
-
-    # Convert comma-separated keywords to JSON array
-    KEYWORDS_JSON=$(echo "$REPO_KEYWORDS_RAW" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R . | jq -s .)
-
-    # Add repository to config
-    TMP_FILE=$(mktemp)
-    jq --arg name "$REPO_NAME" --arg path "$REPO_PATH" --argjson keywords "$KEYWORDS_JSON" \
-      '.repositories[$name] = {"path": $path, "keywords": $keywords}' "$CONFIG_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$CONFIG_FILE"
-
-    echo -e "   ${GREEN}✅ Repository '$REPO_NAME' added${NC}"
-    echo ""
-
-    # Ask to add another
-    echo -e "   ${DIM}Add another repository?${NC}"
-    echo ""
-    select_option "Add another repository" "Done, continue installation"
-
-    if [ $SELECT_RESULT -eq 1 ]; then
-      ADD_MORE=false
-    fi
-    echo ""
-  done
-
-  echo "   ✅ $REPO_INDEX repository(ies) configured"
-  echo ""
+  echo "   ✅ Desktop app kept"
 fi
 
 echo ""
@@ -647,19 +522,11 @@ echo "  • MCP GitHub     : ~/.claude.json"
 echo "  • Config         : ~/.config/magic-slash/config.json"
 echo "  • Skills         : ~/.claude/skills/{magic-start,magic-continue,magic-commit,magic-pr,magic-review,magic-resolve,magic-done}/SKILL.md"
 
-if [ "$INSTALL_MODE" = "desktop" ]; then
-  echo "  • Desktop app    : /Applications/Magic Slash.app"
-  echo ""
-  echo "Configuration:"
-  echo "  • Open 'Magic Slash' app from Applications"
-  echo "  • Or use Spotlight: Cmd+Space → 'Magic Slash'"
-else
-  echo "  • CLI            : ~/.local/bin/magic-slash"
-  echo ""
-  echo "Configuration:"
-  echo "  • Run 'magic-slash' to modify repositories or settings"
-  echo "  • Or 'magic-slash --help' for more options"
-fi
+echo "  • Desktop app    : /Applications/Magic Slash.app"
+echo ""
+echo "Configuration:"
+echo "  • Open 'Magic Slash' app from Applications"
+echo "  • Or use Spotlight: Cmd+Space → 'Magic Slash'"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

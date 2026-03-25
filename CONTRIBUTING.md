@@ -106,14 +106,6 @@ Before contributing, make sure you understand:
   npm test
   ```
 
-- **Web UI**: Test the configuration interface locally
-
-  ```bash
-  cd web-ui
-  npm install
-  npm start
-  ```
-
 - **Desktop app**: Run the Electron app in development mode
 
   ```bash

@@ -7,7 +7,11 @@
 </p>
 
 <p align="center">
-  7 skills for Claude Code that automate the entire development cycle.
+  Desktop app with 7 Claude Code skills to automate your entire dev cycle — from Jira ticket to merged PR.
+</p>
+
+<p align="center">
+  <img src="docs/desktop-preview.png" alt="Magic Slash Desktop" width="700">
 </p>
 
 <p align="center">
@@ -53,8 +57,6 @@ You can also invoke skills using natural language:
 ```bash
 curl -fsSL https://magic-slash.io/install.sh | bash
 ```
-
-Two installation modes are available: **Desktop App** (recommended) and **Standalone CLI**.
 
 ### Prerequisites
 
@@ -234,27 +236,9 @@ Next steps:
 
 ## Configuration
 
-### Web UI
-
-Run `magic-slash` to open the configuration web interface:
-
-```bash
-magic-slash
-```
-
-This launches a local web server and opens your browser to configure:
-
-- **Repositories**: Add, edit, or remove repositories with their paths and keywords
-- **Per-repository settings**: Customize commit format, PR behavior, and languages for each repo
-- **Global defaults**: Set default languages for all repositories
-
-<p align="center">
-  <img src="docs/web-ui-preview.png" alt="Magic Slash Web UI" width="600">
-</p>
-
 ### Desktop App
 
-Magic Slash also ships a native desktop application built with Electron, featuring integrated Claude Code terminals and project management.
+Magic Slash ships a native desktop application built with Electron, featuring integrated Claude Code terminals and project management.
 
 ```bash
 # Install desktop dependencies
@@ -276,7 +260,7 @@ npm run desktop:package
 | ----------------------------------- | -------------------------------------- |
 | `~/.claude/settings.json`           | Atlassian & GitHub MCP configuration   |
 | `~/.config/magic-slash/config.json` | Repository paths, keywords, settings   |
-| `~/.local/bin/magic-slash`          | CLI command to launch web UI           |
+| `~/.local/bin/magic-slash`          | CLI command to launch the desktop app  |
 | `~/.claude/skills/magic-slash/`     | Installed skills (all 7 skills)        |
 
 ### Configuration schema
@@ -284,7 +268,6 @@ npm run desktop:package
 ```json
 {
   "version": "0.27.1",
-  "installationMode": "desktop",
   "repositories": {
     "api": {
       "path": "/Users/dev/projects/my-api",
@@ -396,11 +379,6 @@ magic-slash/
 │   ├── magic-review/SKILL.md     # Review a Pull Request
 │   ├── magic-resolve/SKILL.md    # Address review feedback
 │   └── magic-done/SKILL.md       # Finalize after merge
-├── web-ui/               # Configuration web interface
-│   ├── server.js         # Express server
-│   ├── package.json      # Dependencies
-│   ├── lib/              # Backend utilities
-│   └── public/           # Frontend (HTML, CSS, JS)
 ├── docs/                 # Landing page (GitHub Pages)
 │   ├── index.html        # Main page
 │   ├── documentation.html # Documentation page
@@ -451,9 +429,6 @@ npm run lint
 
 # Run tests
 npm test
-
-# Test the web UI locally
-cd web-ui && npm install && npm start
 
 # Run the desktop app in dev mode
 cd desktop && npm install && npm run dev

@@ -19,10 +19,6 @@ magic-slash/
 │   ├── src/main/      #   Electron main process (config, IPC, PTY, hooks, updater)
 │   ├── src/preload/   #   Secure bridge main <-> renderer
 │   └── src/renderer/  #   React UI (pages, components, hooks, Zustand store)
-├── web-ui/            # Web configuration interface (Express + Vanilla JS)
-│   ├── lib/           #   Backend: config I/O, validation
-│   ├── public/        #   Frontend: vanilla SPA (index.html, app.js, styles.css)
-│   └── server.js      #   Express server (port 3847)
 ├── docs/              # Static landing page (GitHub Pages)
 ├── install/           # Installation scripts and CLI (bash)
 │   ├── install.sh     #   Setup Atlassian/GitHub MCP, repos, skills, CLI
@@ -37,7 +33,6 @@ magic-slash/
 |-----------|-------------|
 | Root | Node.js 18+, ESLint, commitlint, Vitest |
 | Desktop | Electron 28, React 18, TypeScript, Tailwind CSS, Zustand, xterm.js + node-pty, Vite, electron-builder |
-| Web UI | Express 4, Vanilla JS/CSS |
 | Skills | Markdown (SKILL.md) |
 | Docs | Static HTML/CSS/JS, GitHub Pages |
 | Install | Bash |
@@ -47,15 +42,11 @@ magic-slash/
 ```bash
 # Linting
 npm run lint          # All linters (md + yaml + js)
-npm run lint:js       # ESLint only (web-ui/ + desktop/src/)
+npm run lint:js       # ESLint only (desktop/src/)
 
 # Tests
 npm test              # Vitest (run)
 npm run test:watch    # Vitest (watch)
-
-# Web UI
-npm run web:install   # Install web-ui dependencies
-npm run web           # Start web server (port 3847)
 
 # Desktop
 npm run desktop:install  # Install desktop dependencies

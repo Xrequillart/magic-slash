@@ -6,22 +6,6 @@ export default [
   {
     ignores: ['**/node_modules/', '**/dist/', '**/release/', 'desktop/out/'],
   },
-  {
-    ...js.configs.recommended,
-    files: ['web-ui/**/*.js'],
-    languageOptions: {
-      globals: {
-        ...globals.node,
-        ...globals.browser,
-      },
-    },
-    rules: {
-      'no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
-      ],
-    },
-  },
   ...tseslint.configs.recommended.map((config) => ({
     ...config,
     files: ['desktop/src/**/*.{ts,tsx}'],
