@@ -46,6 +46,7 @@
 You can also invoke skills using natural language:
 
 - "démarre PROJ-123" or "work on PROJ-123" → `/magic:start`
+- "je reprends PROJ-123" or "continue PROJ-123" → `/magic:continue`
 - "je suis prêt à committer" or "ready to commit" → `/magic:commit`
 - "on peut créer la PR" or "create the PR" → `/magic:pr`
 - "regarde la PR" or "review my PR" → `/magic:review`
@@ -61,7 +62,7 @@ curl -fsSL https://magic-slash.io/install.sh | bash
 ### Prerequisites
 
 - [Claude Code](https://claude.ai/download)
-- Node.js
+- Node.js 20+ (see `.nvmrc`)
 - Git
 - jq
 
@@ -145,7 +146,7 @@ Worktrees created:
 | ------------ | --------------------------------------------- |
 | conventional | `feat: add JWT token refresh mechanism`       |
 | angular      | `feat(auth): add JWT token refresh mechanism` |
-| gitmoji      | `✨ add JWT token refresh mechanism`          |
+| gitmoji      | `:sparkles: add JWT token refresh mechanism`  |
 
 **With ticket ID (if enabled):**
 
@@ -223,7 +224,7 @@ Next steps:
 1. Verify the PR has been merged
 2. Transition the Jira ticket to "Done"
 3. Add a final comment on Jira with a summary
-4. Update desktop agent metadata
+4. Update task status in the Desktop app
 
 **Example:**
 
@@ -234,11 +235,9 @@ Next steps:
 🔗 PR       : https://github.com/org/repo/pull/42 (merged)
 ```
 
-## Configuration
+## Desktop App
 
-### Desktop App
-
-Magic Slash ships a native desktop application built with Electron, featuring integrated Claude Code terminals and project management.
+Magic Slash ships a native desktop application built with Electron, featuring integrated Claude Code terminals, project management sidebar, and agent tracking. The app checks for updates automatically on launch.
 
 ```bash
 # Install desktop dependencies
@@ -254,6 +253,8 @@ npm run desktop:build
 npm run desktop:package
 ```
 
+## Configuration
+
 ### Files
 
 | File                                | Description                            |
@@ -267,48 +268,56 @@ npm run desktop:package
 
 ```json
 {
-  "version": "0.28.3",
+  "version": "x.y.z",
   "repositories": {
     "api": {
       "path": "/Users/dev/projects/my-api",
       "keywords": ["backend", "api", "server"],
+      "color": "#3B82F6",
       "languages": {
         "commit": "en",
-        "pullRequest": "fr"
+        "pullRequest": "fr",
+        "jiraComment": "en",
+        "discussion": "en"
       },
       "commit": {
         "style": "single-line",
         "format": "angular",
-        "coAuthor": false,
+        "coAuthor": true,
         "includeTicketId": true
+      },
+      "resolve": {
+        "commitMode": "new",
+        "useCommitConfig": true,
+        "replyToComments": true,
+        "replyLanguage": "en"
       },
       "pullRequest": {
         "autoLinkTickets": true
       },
       "issues": {
-        "commentOnPR": true
+        "commentOnPR": true,
+        "jiraUrl": "",
+        "githubIssuesUrl": ""
       },
       "branches": {
         "development": "develop"
-      }
+      },
+      "worktreeFiles": [".env", ".env.local"]
     },
     "web": {
       "path": "/Users/dev/projects/my-web",
       "keywords": ["frontend", "ui", "react"]
     }
-  },
-  "languages": {
-    "commit": "en",
-    "pullRequest": "en",
-    "jiraComment": "en",
-    "discussion": "en"
   }
 }
 ```
 
+> The `version` field is managed automatically by the installer.
+
 ### Repository settings
 
-Each repository can have its own settings that override global defaults:
+Each repository can be independently configured:
 
 #### Languages
 
@@ -319,14 +328,25 @@ Each repository can have its own settings that override global defaults:
 | `jiraComment` | Language for Jira comments            | `en`    |
 | `discussion`  | Language for Claude Code interactions | `en`    |
 
+> Supported languages: `en` (English) and `fr` (French).
+
 #### Commit settings
 
 | Setting           | Description                                      | Default       |
 | ----------------- | ------------------------------------------------ | ------------- |
 | `style`           | `single-line` or `multi-line` (with body)        | `single-line` |
 | `format`          | `conventional`, `angular`, `gitmoji`, or `none`  | `angular`     |
-| `coAuthor`        | Add Claude as co-author in commits               | `false`       |
-| `includeTicketId` | Add ticket ID from branch name in commit message | `false`       |
+| `coAuthor`        | Add Claude as co-author in commits               | `true`        |
+| `includeTicketId` | Add ticket ID from branch name in commit message | `true`        |
+
+#### Resolve settings
+
+| Setting            | Description                                              | Default |
+| ------------------ | -------------------------------------------------------- | ------- |
+| `commitMode`       | `new` (new commit + push) or `amend` (amend + force-push) | `new`   |
+| `useCommitConfig`  | Inherit format/style from commit settings                | `true`  |
+| `replyToComments`  | Reply in-thread on GitHub for each resolved comment      | `true`  |
+| `replyLanguage`    | Language for comment replies (`en`, `fr`)                | `en`    |
 
 #### Pull Request settings
 
@@ -336,15 +356,27 @@ Each repository can have its own settings that override global defaults:
 
 #### Issues settings
 
-| Setting       | Description                                   | Default |
-| ------------- | --------------------------------------------- | ------- |
-| `commentOnPR` | Add comment with PR link when creating the PR | `true`  |
+| Setting           | Description                                   | Default |
+| ----------------- | --------------------------------------------- | ------- |
+| `commentOnPR`     | Add comment with PR link when creating the PR | `true`  |
+| `jiraUrl`         | Base URL for Jira instance                    | `""`    |
+| `githubIssuesUrl` | URL for GitHub Issues                         | `""`    |
 
 #### Branches settings
 
-| Setting       | Description                                              | Default |
-| ------------- | -------------------------------------------------------- | ------- |
-| `development` | Base branch for worktrees and PRs (e.g. `develop`, `main`) | `main`  |
+| Setting       | Description                                                 | Default |
+| ------------- | ----------------------------------------------------------- | ------- |
+| `development` | Base branch for worktrees and PRs (e.g. `develop`, `main`) | `""`    |
+
+> If `development` is empty, the skill prompts the user to specify the base branch.
+
+#### Worktree files
+
+| Setting         | Description                                                         | Default |
+| --------------- | ------------------------------------------------------------------- | ------- |
+| `worktreeFiles` | Files to auto-copy from main repo to worktrees (e.g., `.env`)      | `[]`    |
+
+> When creating a worktree, Magic Slash copies these files from the main repository. If not configured, it auto-detects common untracked files and offers to save them for future use.
 
 ### Keywords
 
@@ -360,7 +392,7 @@ Keywords are used for smart repository selection when starting a task:
 ```text
 magic-slash/
 ├── .github/
-│   ├── ISSUE_TEMPLATE/   # Bug report & feature request templates
+│   ├── ISSUE_TEMPLATE/   # Bug report, feature request templates & config
 │   ├── workflows/        # CI and release workflows
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── dependabot.yml
@@ -372,24 +404,35 @@ magic-slash/
 │   ├── resources/         # App icons & logo
 │   └── package.json
 ├── skills/                        # Claude Code skills (7 skills)
-│   ├── magic-start/SKILL.md      # Start a task
-│   ├── magic-continue/SKILL.md   # Resume work on a ticket
-│   ├── magic-commit/SKILL.md     # Create atomic commits
-│   ├── magic-pr/SKILL.md         # Push and create PR
+│   ├── magic-start/              # Start a task
+│   │   ├── SKILL.md
+│   │   └── references/           # Messages, glossary, API docs, templates
+│   ├── magic-continue/           # Resume work on a ticket
+│   │   ├── SKILL.md
+│   │   └── references/
+│   ├── magic-commit/             # Create atomic commits
+│   │   ├── SKILL.md
+│   │   └── references/
+│   ├── magic-pr/                 # Push and create PR
+│   │   ├── SKILL.md
+│   │   └── references/
 │   ├── magic-review/SKILL.md     # Review a Pull Request
-│   ├── magic-resolve/SKILL.md    # Address review feedback
-│   └── magic-done/SKILL.md       # Finalize after merge
+│   ├── magic-resolve/            # Address review feedback
+│   │   ├── SKILL.md
+│   │   └── references/
+│   ├── magic-done/SKILL.md       # Finalize after merge
+│   └── evals/                    # Eval set and results
 ├── docs/                 # Landing page (GitHub Pages)
 │   ├── index.html        # Main page
 │   ├── documentation.html # Documentation page
 │   ├── logo.svg          # Logo (vector)
-│   ├── fonts/            # Custom fonts (Avenir)
+│   ├── fonts/            # Custom fonts (Avenir, CeraPro)
 │   └── CNAME             # Custom domain config
 ├── slides/               # Presentation slides (Vite + React)
 ├── install/
 │   ├── install.sh        # Installation script
 │   ├── uninstall.sh      # Uninstallation script
-│   └── magic-slash       # CLI script (launches web UI)
+│   └── magic-slash       # CLI script (launches Desktop app)
 ├── CHANGELOG.md          # Version history
 ├── CODE_OF_CONDUCT.md    # Community guidelines
 ├── CONTRIBUTING.md       # Contribution guide
@@ -421,7 +464,7 @@ cd magic-slash
 npm install
 
 # Install yamllint (required for YAML linting)
-pip install yamllint
+pip install yamllint    # or: brew install yamllint
 
 # Run linters
 npm run lint
@@ -429,8 +472,9 @@ npm run lint
 # Run tests
 npm test
 
-# Run the desktop app in dev mode
-cd desktop && npm install && npm run dev
+# Install desktop dependencies and run in dev mode
+npm run desktop:install
+npm run desktop
 ```
 
 ## Acknowledgments

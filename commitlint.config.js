@@ -23,7 +23,11 @@ module.exports = {
       'always',
       [
         'start',
+        'continue',
         'commit',
+        'pr',
+        'review',
+        'resolve',
         'done',
         'install',
         'docs',
