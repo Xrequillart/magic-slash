@@ -154,82 +154,67 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
       setShowScrollButton(scrolledUp)
     })
 
-    // First, restore the buffer BEFORE attaching the live data listener
-    // This ensures we get the historical data first, then live updates
+    // Register the live data listener ONCE, outside the buffer restore promise chain
+    const prevChunkTailRef = { current: '' }
+    const unsubscribe = window.electronAPI.terminal.onData(({ id, data }) => {
+      if (id === terminal.id) {
+        // Detect alternate screen buffer transitions (handle split sequences)
+        const combined = prevChunkTailRef.current + data
+        if (combined.includes('\x1b[?1049h') || combined.includes('\x1b[?47h')) {
+          inAlternateScreenRef.current = true
+        }
+        if (combined.includes('\x1b[?1049l') || combined.includes('\x1b[?47l')) {
+          inAlternateScreenRef.current = false
+          userScrolledUpRef.current = false
+          setShowScrollButton(false)
+        }
+        // Detect screen clear
+        if (combined.includes('\x1b[2J')) {
+          userScrolledUpRef.current = false
+          setShowScrollButton(false)
+        }
+        prevChunkTailRef.current = data.slice(-20)
+
+        xterm.write(data, () => {
+          if (!userScrolledUpRef.current && !inAlternateScreenRef.current) {
+            xterm.scrollToBottom()
+          }
+        })
+      }
+    })
+
+    cleanupRef.current = () => {
+      unsubscribe()
+      scrollHandler.dispose()
+    }
+
+    // Restore the buffer asynchronously
     window.electronAPI.terminal.getBuffer(terminal.id).then((buffer) => {
       if (buffer && buffer.length > 0) {
         xterm.write(buffer, () => {
           xterm.scrollToBottom()
         })
       }
-
-      // Now attach the live data listener AFTER buffer is restored
-      const unsubscribe = window.electronAPI.terminal.onData(({ id, data }) => {
-        if (id === terminal.id) {
-          // Detect alternate screen buffer transitions
-          if (data.includes('\x1b[?1049h') || data.includes('\x1b[?47h')) {
-            inAlternateScreenRef.current = true
-          }
-          if (data.includes('\x1b[?1049l') || data.includes('\x1b[?47l')) {
-            inAlternateScreenRef.current = false
-            userScrolledUpRef.current = false
-            setShowScrollButton(false)
-          }
-          // Detect screen clear
-          if (data.includes('\x1b[2J')) {
-            userScrolledUpRef.current = false
-            setShowScrollButton(false)
-          }
-
-          xterm.write(data, () => {
-            if (!userScrolledUpRef.current && !inAlternateScreenRef.current) {
-              xterm.scrollToBottom()
-            }
-          })
-        }
-      })
-
-      cleanupRef.current = () => {
-        unsubscribe()
-        scrollHandler.dispose()
-      }
     }).catch((error) => {
       console.error('Failed to restore terminal buffer:', error)
-
-      // Even if buffer fails, still attach the listener
-      const unsubscribe = window.electronAPI.terminal.onData(({ id, data }) => {
-        if (id === terminal.id) {
-          if (data.includes('\x1b[?1049h') || data.includes('\x1b[?47h')) {
-            inAlternateScreenRef.current = true
-          }
-          if (data.includes('\x1b[?1049l') || data.includes('\x1b[?47l')) {
-            inAlternateScreenRef.current = false
-            userScrolledUpRef.current = false
-            setShowScrollButton(false)
-          }
-          if (data.includes('\x1b[2J')) {
-            userScrolledUpRef.current = false
-            setShowScrollButton(false)
-          }
-
-          xterm.write(data, () => {
-            if (!userScrolledUpRef.current && !inAlternateScreenRef.current) {
-              xterm.scrollToBottom()
-            }
-          })
-        }
-      })
-
-      cleanupRef.current = () => {
-        unsubscribe()
-        scrollHandler.dispose()
-      }
     })
+
+    // Handle copy to preserve trailing spaces
+    const copyHandler = (e: ClipboardEvent) => {
+      if (xterm.hasSelection()) {
+        e.preventDefault()
+        e.clipboardData?.setData('text/plain', xterm.getSelection())
+      }
+    }
+    containerRef.current.addEventListener('copy', copyHandler)
 
     return () => {
       if (cleanupRef.current) {
         cleanupRef.current()
       }
+      containerRef.current?.removeEventListener('copy', copyHandler)
+      fitAddon.dispose()
+      webLinksAddon.dispose()
       xterm.dispose()
     }
   }, [terminal.id])
