@@ -720,10 +720,19 @@
                 <a href="#desktop" class="doc-sidebar-link">
                     <i data-feather="monitor"></i> Desktop App
                 </a>
+                <a href="#hooks" class="doc-sidebar-link">
+                    <i data-feather="cpu"></i> Hooks & Automation
+                </a>
+                <a href="#security" class="doc-sidebar-link">
+                    <i data-feather="shield"></i> Security
+                </a>
+                <a href="#updates" class="doc-sidebar-link">
+                    <i data-feather="refresh-cw"></i> Updates
+                </a>
 
                 <span class="doc-sidebar-section">Help</span>
                 <a href="#troubleshooting" class="doc-sidebar-link">
-                    <i data-feather="life-buoy"></i> Troubleshooting
+                    <i data-feather="life-buoy"></i> FAQ & Troubleshooting
                 </a>
 
                 <span class="doc-sidebar-section">Links</span>
@@ -771,18 +780,7 @@
                         </div>
                     </div>
 
-                    <h3>Installation modes</h3>
-                    <p>The installer offers two modes:</p>
-                    <div class="doc-card-grid" style="grid-template-columns: 1fr 1fr;">
-                        <div class="doc-card">
-                            <h3>Standalone CLI</h3>
-                            <p>Installs the 7 skills only. Use magic-slash directly inside any Claude Code session.</p>
-                        </div>
-                        <div class="doc-card">
-                            <h3>Desktop App</h3>
-                            <p>Includes a native Electron app with integrated terminals, visual ticket tracking, and repo grouping.</p>
-                        </div>
-                    </div>
+                    <p>The installer sets up the 7 core skills, configures MCP servers (Jira &amp; GitHub), and installs the magic-slash Desktop app.</p>
                 </div>
 
                 <!-- Trail 1 -->
@@ -961,7 +959,7 @@ Ready to continue. What would you like to do?</code></pre>
                     </div>
 
                     <div class="doc-skill">
-                        <h3><img src="skill-done.png" alt="skill /magic:pr icon" class="doc-skill-img"><span class="doc-skill-name">/magic:pr</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/xrequillart/magic-slash/blob/main/skills/magic-pr/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <h3><img src="skill-pr.png" alt="skill /magic:pr icon" class="doc-skill-img"><span class="doc-skill-name">/magic:pr</span> <span class="doc-skill-tag">Lifecycle</span> <a href="https://github.com/xrequillart/magic-slash/blob/main/skills/magic-pr/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
                         <p class="doc-skill-desc">Pushes your commits, creates a pull request, and updates the ticket. Say <code>/magic:pr</code> when you are finished coding.</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
@@ -989,7 +987,7 @@ Ready to continue. What would you like to do?</code></pre>
                     </div>
 
                     <div class="doc-skill">
-                        <h3><img src="skill-done.png" alt="skill /magic:review icon" class="doc-skill-img"><span class="doc-skill-name">/magic:review</span> <span class="doc-skill-tag">Review</span> <a href="https://github.com/xrequillart/magic-slash/blob/main/skills/magic-review/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <h3><img src="skill-review.png" alt="skill /magic:review icon" class="doc-skill-img"><span class="doc-skill-name">/magic:review</span> <span class="doc-skill-tag">Review</span> <a href="https://github.com/xrequillart/magic-slash/blob/main/skills/magic-review/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
                         <p class="doc-skill-desc">Performs a thorough code review on a pull request. Say <code>/magic:review</code> for the current PR or <code>/magic:review 87</code> for a specific one.</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
@@ -1014,7 +1012,7 @@ Ready to continue. What would you like to do?</code></pre>
                     </div>
 
                     <div class="doc-skill">
-                        <h3><img src="skill-done.png" alt="skill /magic:resolve icon" class="doc-skill-img"><span class="doc-skill-name">/magic:resolve</span> <span class="doc-skill-tag">Review</span> <a href="https://github.com/xrequillart/magic-slash/blob/main/skills/magic-resolve/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
+                        <h3><img src="skill-resolve.png" alt="skill /magic:resolve icon" class="doc-skill-img"><span class="doc-skill-name">/magic:resolve</span> <span class="doc-skill-tag">Review</span> <a href="https://github.com/xrequillart/magic-slash/blob/main/skills/magic-resolve/SKILL.md" target="_blank" class="doc-skill-source"><i data-feather="external-link"></i> Source</a></h3>
                         <p class="doc-skill-desc">Addresses code review feedback by fixing the requested changes and force-pushing. Say <code>/magic:resolve</code> after receiving review comments.</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
@@ -1112,7 +1110,6 @@ Ready to continue. What would you like to do?</code></pre>
                     <h3>Full config example</h3>
                     <pre><code>{
   "version": "0.28.2",
-  "installationMode": "desktop",
   "repositories": {
     "my-frontend": {
       "path": "/Users/dev/projects/my-frontend",
@@ -1513,7 +1510,7 @@ You are working on ticket **PROJ-200** which spans multiple repos.
 
                 <div class="doc-section" id="desktop">
                     <h2>Desktop App</h2>
-                    <p>magic-slash Desktop is an optional Electron app that provides a visual interface on top of the CLI skills.</p>
+                    <p>magic-slash Desktop is a native Electron app that provides a visual interface on top of the core skills.</p>
 
                     <div class="doc-card-grid">
                         <div class="doc-card">
@@ -1587,9 +1584,248 @@ You are working on ticket **PROJ-200** which spans multiple repos.
                     </svg>
                 </div>
 
+                <!-- ==================== HOOKS & AUTOMATION ==================== -->
+                <div class="doc-section" id="hooks">
+                    <h2>Hooks & Automation</h2>
+                    <p>The Desktop app automatically configures <a href="https://docs.anthropic.com/en/docs/claude-code/hooks" target="_blank">Claude Code hooks</a> in <code>~/.claude/settings.json</code>. These hooks enable real-time visual tracking in the sidebar &mdash; every state change in Claude Code is reflected instantly in the Desktop UI.</p>
+
+                    <div class="doc-skill">
+                        <h3>Hook events</h3>
+                        <p class="doc-skill-desc">Six lifecycle events are hooked to track agent activity. Each event maps to a visual state in the sidebar.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Events &rarr; States</h4>
+                                <ul>
+                                    <li><code>UserPromptSubmit</code> &rarr; <strong>working</strong> &mdash; User sent a message</li>
+                                    <li><code>PreToolUse</code> &rarr; <strong>working</strong> &mdash; Before tool execution</li>
+                                    <li><code>PostToolUse</code> &rarr; <strong>working</strong> &mdash; After tool execution</li>
+                                    <li><code>Notification</code> &rarr; <strong>waiting</strong> &mdash; Claude needs user attention</li>
+                                    <li><code>Stop</code> &rarr; <strong>completed</strong> &mdash; Claude finished responding</li>
+                                    <li><code>SessionStart</code> &rarr; <strong>idle</strong> &mdash; New session, waiting for input</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>How it works</h4>
+                                <p>Each hook sends an HTTP request to the local status server using environment variables <code>MAGIC_SLASH_PORT</code> and <code>MAGIC_SLASH_TERMINAL_ID</code>, which are injected by the Desktop app into each terminal session.</p>
+                                <p>Hooks are installed once and work across all instances. They are idempotent &mdash; re-launching the app re-registers them without duplicates.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Status server</h3>
+                        <p class="doc-skill-desc">A lightweight HTTP server that bridges Claude Code hooks with the Desktop UI. Runs locally on <code>127.0.0.1</code> with a random port per session.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Endpoints</h4>
+                                <ul>
+                                    <li><code>/status</code> &mdash; Agent state updates (working, waiting, completed, idle)</li>
+                                    <li><code>/metadata</code> &mdash; Ticket title, branch, PR URL, description, status</li>
+                                    <li><code>/repositories</code> &mdash; Worktree attachments for sidebar grouping</li>
+                                    <li><code>/command/start</code> &mdash; Skill execution started</li>
+                                    <li><code>/command/end</code> &mdash; Skill execution ended (with exit code)</li>
+                                    <li><code>/ping</code> &mdash; Health check</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Metadata fields</h4>
+                                <ul>
+                                    <li><code>title</code> &mdash; Sidebar agent title</li>
+                                    <li><code>ticketId</code> &mdash; Jira/GitHub ticket identifier</li>
+                                    <li><code>branchName</code> &mdash; Current feature branch</li>
+                                    <li><code>status</code> &mdash; in progress, committed, PR created</li>
+                                    <li><code>prUrl</code> + <code>prRepo</code> &mdash; PR link per repository</li>
+                                    <li><code>fullStackTaskId</code> &mdash; Multi-repo task grouping</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Auto-configured permissions</h3>
+                        <p class="doc-skill-desc">The Desktop app auto-allows commonly used tools in <code>~/.claude/settings.json</code> so skills can run without manual permission prompts.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>MCP tools</h4>
+                                <ul>
+                                    <li><strong>GitHub</strong> &mdash; <code>get_issue</code>, <code>add_issue_comment</code>, <code>update_issue</code>, <code>list_pull_requests</code>, <code>get_pull_request</code>, <code>get_pull_request_files</code>, <code>get_pull_request_comments</code>, <code>get_pull_request_reviews</code>, <code>create_pull_request</code>, <code>create_pull_request_review</code></li>
+                                    <li><strong>Atlassian</strong> &mdash; <code>getAccessibleAtlassianResources</code>, <code>getJiraIssue</code>, <code>getTransitionsForJiraIssue</code>, <code>transitionJiraIssue</code>, <code>addCommentToJiraIssue</code></li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Bash commands</h4>
+                                <ul>
+                                    <li><code>git *</code> &mdash; All git operations</li>
+                                    <li><code>npm *</code>, <code>yarn *</code>, <code>pnpm *</code>, <code>bun *</code> &mdash; Package managers</li>
+                                    <li><code>gh *</code> &mdash; GitHub CLI</li>
+                                    <li><code>jq *</code> &mdash; JSON processing</li>
+                                    <li><code>*http://127.0.0.1:*</code> &mdash; Local server communication</li>
+                                </ul>
+                                <p>You can review and edit these permissions at any time in <code>~/.claude/settings.json</code>.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trail 8 -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-1)">
+                            <path d="M-20 28C120 52 220 8 360 32C500 56 580 12 680 35C710 40 720 30 720 30" stroke="#FF0000" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- ==================== SECURITY & PERMISSIONS ==================== -->
+                <div class="doc-section" id="security">
+                    <h2>Security & Permissions</h2>
+                    <p>magic-slash is designed with a local-first security model. All communication stays on your machine, credentials are managed by external tools, and permissions are explicitly scoped.</p>
+
+                    <div class="doc-skill">
+                        <h3>Credentials &amp; storage</h3>
+                        <p class="doc-skill-desc">magic-slash itself does not store any tokens or passwords. Authentication is delegated to MCP servers.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Atlassian (Jira / Confluence)</h4>
+                                <p>Uses OAuth authentication managed by the MCP Atlassian server. No API token required &mdash; you authenticate via browser during installation.</p>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>GitHub</h4>
+                                <p>Requires a Personal Access Token (PAT) stored as an environment variable in the MCP GitHub server configuration (<code>~/.claude/settings.json</code>). The token is never read by magic-slash directly.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Local-only communication</h3>
+                        <p class="doc-skill-desc">The status server that bridges Claude Code and the Desktop UI is strictly local.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Network binding</h4>
+                                <ul>
+                                    <li>Binds exclusively to <code>127.0.0.1</code> &mdash; not accessible from the network</li>
+                                    <li>Uses a random port per session &mdash; no fixed port exposure</li>
+                                    <li>Port is passed to terminals via environment variables, not stored on disk</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Data flow</h4>
+                                <p>Claude Code hooks &rarr; HTTP requests to <code>127.0.0.1:PORT</code> &rarr; Status server &rarr; Desktop UI (via IPC)</p>
+                                <p>No data is sent to external servers by the Desktop app. MCP servers handle their own external communication (GitHub API, Jira API).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Permission model</h3>
+                        <p class="doc-skill-desc">Permissions are explicitly scoped &mdash; no blanket access is granted.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Scope</h4>
+                                <ul>
+                                    <li>Each permission targets a specific tool category (e.g. <code>Bash(git *)</code> allows git commands only)</li>
+                                    <li>MCP tools are listed individually &mdash; only the tools skills actually use are allowed</li>
+                                    <li>No <code>Bash(*)</code> blanket permission is ever configured</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Review &amp; customization</h4>
+                                <ul>
+                                    <li>All permissions are stored in <code>~/.claude/settings.json</code> under <code>permissions.allow</code></li>
+                                    <li>You can remove, add, or modify any permission at any time</li>
+                                    <li>Uninstalling magic-slash removes all auto-configured permissions</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trail 9 -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-2)">
+                            <path d="M-20 35C80 10 200 50 320 28C440 6 540 48 650 25C700 15 720 30 720 30" stroke="#393BFF" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- ==================== UPDATES & AUTO-UPDATE ==================== -->
+                <div class="doc-section" id="updates">
+                    <h2>Updates & Auto-Update</h2>
+                    <p>magic-slash keeps both the Desktop app and the 7 core skills up to date automatically.</p>
+
+                    <div class="doc-skill">
+                        <h3>Desktop app updates</h3>
+                        <p class="doc-skill-desc">The Desktop app uses <code>electron-updater</code> to check for new versions via GitHub Releases.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Update flow</h4>
+                                <ul>
+                                    <li>Checks for updates automatically on startup (after a 1-second delay)</li>
+                                    <li>If an update is available, downloads it in the background</li>
+                                    <li>Once downloaded, cleans up terminals and status server</li>
+                                    <li>Installs the update and restarts the app automatically</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>What's New</h4>
+                                <p>After an update, a "What's New" dialog shows the release notes for the new version. Release notes are fetched from the GitHub Release page.</p>
+                                <p>The dialog appears once per update and can be dismissed.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Skills auto-update</h3>
+                        <p class="doc-skill-desc">Skills are updated independently from the Desktop app. On startup, the app checks for changes to skill files on GitHub.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>How it works</h4>
+                                <ul>
+                                    <li>Fetches the repository file tree from GitHub API</li>
+                                    <li>Compares each skill file with the local version in <code>~/.claude/skills/</code></li>
+                                    <li>Downloads changed files (text and binary)</li>
+                                    <li>Removes obsolete local files that no longer exist in the repository</li>
+                                    <li>Cleans up empty directories</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Scope</h4>
+                                <p>All 7 built-in skills are checked: <code>magic-start</code>, <code>magic-continue</code>, <code>magic-commit</code>, <code>magic-pr</code>, <code>magic-review</code>, <code>magic-resolve</code>, <code>magic-done</code>.</p>
+                                <p>Custom skills you create are never modified or removed by the auto-updater.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Manual update check</h3>
+                        <p class="doc-skill-desc">You can trigger an update check at any time from the Desktop app.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>From the app</h4>
+                                <p>Open <strong>Settings</strong> and click <strong>Check for updates</strong>. The current version is displayed in the sidebar and on the Settings page.</p>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Re-install</h4>
+                                <p>You can also re-run the installer at any time to update skills and reconfigure MCP servers:</p>
+                                <pre style="margin:0"><code>curl -fsSL https://magic-slash.io/install.sh | bash</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trail 10 -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-1)">
+                            <path d="M-20 30C100 55 220 5 350 32C480 59 560 10 680 30C710 35 720 30 720 30" stroke="#FF0000" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
                 <div class="doc-section" id="troubleshooting">
-                    <h2>Troubleshooting</h2>
-                    <p>Common issues and how to resolve them.</p>
+                    <h2>FAQ & Troubleshooting</h2>
+                    <p>Common questions and issues, and how to resolve them.</p>
 
                     <div class="doc-skill">
                         <h3>Configuration not found</h3>
@@ -1677,6 +1913,75 @@ git worktree remove ../repo-PROJ-123</code></pre>
                                     <li>"In Progress", "En cours", "In Development", "Started"</li>
                                     <li>"To be reviewed", "In Review", "Code Review", "Review"</li>
                                 </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-top: 3rem;">Frequently asked questions</h3>
+
+                    <div class="doc-skill">
+                        <h3>Can I use magic-slash without the Desktop App?</h3>
+                        <p class="doc-skill-desc">No. The standalone CLI mode was removed. The Desktop app is now the only installation method. Skills are still invoked via <code>/magic:</code> commands inside the integrated terminals &mdash; the Desktop app simply provides the environment that powers the full experience (hooks, sidebar tracking, auto-updates).</p>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>How do I change the language after installation?</h3>
+                        <p class="doc-skill-desc">Open the Desktop app Settings page, or edit <code>~/.config/magic-slash/config.json</code> directly. Each context can have its own language:</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Language keys</h4>
+                                <ul>
+                                    <li><code>languages.discussion</code> &mdash; Agent responses</li>
+                                    <li><code>languages.commit</code> &mdash; Commit messages</li>
+                                    <li><code>languages.pullRequest</code> &mdash; PR descriptions</li>
+                                    <li><code>languages.jiraComment</code> &mdash; Jira comments</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Supported values</h4>
+                                <p><code>en</code> (English, default) and <code>fr</code> (French).</p>
+                                <p>Settings can be defined globally or overridden per repository.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>How do I add or remove repositories?</h3>
+                        <p class="doc-skill-desc">Use the Desktop app Settings page, or edit <code>~/.config/magic-slash/config.json</code> directly. Each repository entry needs at least a <code>path</code> (absolute) and a <code>keywords</code> array for ticket-to-repo matching.</p>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>How do I uninstall magic-slash?</h3>
+                        <p class="doc-skill-desc">Run the uninstall script to remove skills, hooks, permissions, configuration, and the Desktop app:</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Uninstall command</h4>
+                                <pre style="margin:0"><code>bash &lt;(curl -fsSL https://magic-slash.io/uninstall.sh)</code></pre>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>What it removes</h4>
+                                <ul>
+                                    <li>Skills from <code>~/.claude/skills/</code></li>
+                                    <li>Hooks and permissions from <code>~/.claude/settings.json</code></li>
+                                    <li>Configuration from <code>~/.config/magic-slash/</code></li>
+                                    <li>Desktop app from <code>/Applications/</code></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Skills not found after update?</h3>
+                        <p class="doc-skill-desc">Skills are stored in <code>~/.claude/skills/</code>. The auto-updater refreshes them on each startup. If skills are missing, try restarting the Desktop app. You can also re-run the installer to force a fresh install of all skills:</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Re-install skills</h4>
+                                <pre style="margin:0"><code>curl -fsSL https://magic-slash.io/install.sh | bash</code></pre>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Verify skills</h4>
+                                <pre style="margin:0"><code>ls ~/.claude/skills/magic-*/SKILL.md</code></pre>
+                                <p>You should see 7 SKILL.md files, one per skill.</p>
                             </div>
                         </div>
                     </div>
