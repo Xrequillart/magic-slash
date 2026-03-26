@@ -71,13 +71,14 @@ export interface Agent {
   repositories: string[]  // List of attached repository paths
   tsCreate?: number
   metadata?: TerminalMetadata
+  splitPane?: 'left' | 'right'
 }
 
 export interface Config {
   version: string
   repositories: Record<string, RepositoryConfig>
   agents?: Agent[]
-
+  splitEnabled?: boolean
 }
 
 export interface PRTemplate {

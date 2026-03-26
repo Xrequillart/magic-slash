@@ -3,7 +3,7 @@ import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, ChevronDown, Chevr
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
-import { useGroupedTerminals, WORKFLOW_GROUPS, type WorkflowGroupKey, type TerminalWithRepos } from '../hooks/useGroupedTerminals'
+import { useGroupedTerminals, useSplitGroupedTerminals, WORKFLOW_GROUPS, type WorkflowGroupKey, type TerminalWithRepos } from '../hooks/useGroupedTerminals'
 import { getProjectColorMap } from '../utils/projectColors'
 import type { TerminalState, ScriptTerminalInfo } from '../../types'
 
@@ -87,18 +87,26 @@ const WORKFLOW_GROUP_CONFIG: Record<WorkflowGroupKey, {
 interface AgentItemProps {
   terminal: TerminalWithRepos
   isActive: boolean
-  onSelect: () => void
+  isSplitTarget: boolean
+  onSelect: (e: React.MouseEvent) => void
   colorMap: Record<string, string>
   now: number
+  draggable?: boolean
 }
 
-const AgentItem = memo(function AgentItem({ terminal, isActive, onSelect, colorMap, now: _now }: AgentItemProps) {
+const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, onSelect, colorMap, now: _now, draggable }: AgentItemProps) {
   return (
     <button
       onClick={onSelect}
+      draggable={draggable}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('terminal-id', terminal.id)
+        e.dataTransfer.effectAllowed = 'move'
+      }}
       className={`
         w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-all rounded-lg
-        ${isActive
+        ${draggable ? 'cursor-pointer active:cursor-grab' : 'cursor-pointer'}
+        ${isActive || isSplitTarget
           ? `${stateBgColors[terminal.state]} text-white`
           : `text-text-secondary ${stateHoverBgColors[terminal.state]} hover:text-white`
         }
@@ -131,9 +139,12 @@ interface WorkflowGroupProps {
   isCollapsed: boolean
   onToggle: () => void
   activeTerminalId: string | null
-  onSelectTerminal: (id: string) => void
+  splitTerminalId: string | null
+  isSplitMode: boolean
+  onSelectTerminal: (id: string, e: React.MouseEvent) => void
   colorMap: Record<string, string>
   now: number
+  draggable?: boolean
 }
 
 const WorkflowGroup = memo(function WorkflowGroup({
@@ -143,9 +154,12 @@ const WorkflowGroup = memo(function WorkflowGroup({
   isCollapsed,
   onToggle,
   activeTerminalId,
+  splitTerminalId,
+  isSplitMode,
   onSelectTerminal,
   colorMap,
   now,
+  draggable,
 }: WorkflowGroupProps) {
   if (terminals.length === 0) return null
 
@@ -185,9 +199,11 @@ const WorkflowGroup = memo(function WorkflowGroup({
               key={terminal.id}
               terminal={terminal}
               isActive={activeTerminalId === terminal.id}
-              onSelect={() => onSelectTerminal(terminal.id)}
+              isSplitTarget={isSplitMode && splitTerminalId === terminal.id}
+              onSelect={(e) => onSelectTerminal(terminal.id, e)}
               colorMap={colorMap}
               now={now}
+              draggable={draggable}
             />
           ))}
         </div>
@@ -237,7 +253,7 @@ const ScriptItem = memo(function ScriptItem({ script, isActive, onSelect, onStop
 })
 
 export function Sidebar() {
-  const { currentPage, setCurrentPage, terminals, activeTerminalId, config, leftSidebarVisible } = useStore()
+  const { currentPage, setCurrentPage, terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds } = useStore()
   const { setActiveTerminal } = useTerminals()
   const { scriptTerminals, stopScript } = useScriptRunner()
 
@@ -305,6 +321,10 @@ export function Sidebar() {
 
   // Group terminals by workflow status
   const { groups, projectNames } = useGroupedTerminals()
+  const { leftGroups, rightGroups } = useSplitGroupedTerminals()
+
+  // Drag & drop state for split zones
+  const [dragOverZone, setDragOverZone] = useState<'left' | 'right' | null>(null)
 
   // Generate color map for projects (using configured colors if available)
   const colorMap = useMemo(
@@ -324,10 +344,63 @@ export function Sidebar() {
     })
   }, [])
 
-  const handleSelectTerminal = useCallback((id: string) => {
+  const handleSelectTerminal = useCallback((id: string, e?: React.MouseEvent) => {
+    setCurrentPage('terminals')
+    if (isSplitMode && splitTerminalId) {
+      const targetSecondary = (e && (e.metaKey || e.ctrlKey))
+        ? focusedPane !== 'secondary'
+        : focusedPane === 'secondary'
+
+      if (targetSecondary) {
+        if (id === activeTerminalId) {
+          setSplitTerminalId(activeTerminalId)
+          setActiveTerminal(splitTerminalId)
+        } else {
+          setSplitTerminalId(id)
+        }
+        setFocusedPane('secondary')
+      } else {
+        if (id === splitTerminalId) {
+          setActiveTerminal(splitTerminalId)
+          setSplitTerminalId(activeTerminalId)
+        } else {
+          setActiveTerminal(id)
+        }
+        setFocusedPane('primary')
+      }
+    } else {
+      setActiveTerminal(id)
+    }
+  }, [setCurrentPage, setActiveTerminal, isSplitMode, activeTerminalId, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane])
+
+  // Zone-specific select handlers for split mode
+  const handleSelectLeftTerminal = useCallback((id: string) => {
     setCurrentPage('terminals')
     setActiveTerminal(id)
-  }, [setCurrentPage, setActiveTerminal])
+    setFocusedPane('primary')
+  }, [setCurrentPage, setActiveTerminal, setFocusedPane])
+
+  const handleSelectRightTerminal = useCallback((id: string) => {
+    setCurrentPage('terminals')
+    setSplitTerminalId(id)
+    setFocusedPane('secondary')
+  }, [setCurrentPage, setSplitTerminalId, setFocusedPane])
+
+  // Drop handlers for split zones
+  const handleDropOnZone = useCallback((pane: 'left' | 'right', e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOverZone(null)
+    const terminalId = e.dataTransfer.getData('terminal-id')
+    if (terminalId) {
+      moveTerminalToPane(terminalId, pane)
+    }
+  }, [moveTerminalToPane])
+
+  const handleDragOverZone = useCallback((pane: 'left' | 'right', e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverZone(pane)
+  }, [])
 
   // Check if there are no repos configured
   const hasNoRepos = useMemo(() => {
@@ -439,32 +512,111 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Agents section header */}
-      <div className="px-4 pt-4 pb-2">
-        <div className="text-xs text-text-secondary/50 uppercase tracking-wider">Agents</div>
-      </div>
+      {/* Mode toggle + Agents list */}
+      <nav className="flex-1 overflow-y-auto px-2 pb-2 flex flex-col">
 
-      {/* Agents list */}
-      <nav className="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-2">
+        {/* Agents label - always in the same position */}
+        <div className="px-2 pt-2 pb-1 flex items-center justify-between">
+          <div className="text-xs text-text-secondary/50 uppercase tracking-wider">Agents</div>
+          <span className={`text-[10px] bg-white/[0.06] px-1.5 py-0.5 rounded transition-opacity duration-150 ${
+            isSplitMode && terminals.length > 0 ? 'text-text-secondary/40 opacity-100' : 'opacity-0'
+          }`}>Left</span>
+        </div>
+
         {terminals.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-text-secondary text-sm p-4 text-center">
             No agents yet. Click &quot;New agent&quot; to start.
           </div>
+        ) : isSplitMode ? (
+          <>
+            {/* LEFT zone */}
+            <div
+              className={`flex flex-col gap-1 rounded-lg transition-colors ${dragOverZone === 'left' ? 'bg-accent/10' : ''}`}
+              onDragOver={(e) => handleDragOverZone('left', e)}
+              onDragLeave={() => setDragOverZone(null)}
+              onDrop={(e) => handleDropOnZone('left', e)}
+            >
+              {WORKFLOW_GROUPS.map(({ key, label }) => (
+                <WorkflowGroup
+                  key={`left-${key}`}
+                  groupKey={key}
+                  label={label}
+                  terminals={leftGroups[key]}
+                  isCollapsed={collapsedGroups.has(key)}
+                  onToggle={() => toggleGroup(key)}
+                  activeTerminalId={focusedPane === 'primary' ? activeTerminalId : null}
+                  splitTerminalId={null}
+                  isSplitMode={false}
+                  onSelectTerminal={handleSelectLeftTerminal}
+                  colorMap={colorMap}
+                  now={now}
+                  draggable
+                />
+              ))}
+              {terminals.filter(t => !rightPaneTerminalIds.includes(t.id)).length === 0 && (
+                <div className="text-text-secondary/30 text-xs text-center py-3">
+                  Drop agents here
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-white/[0.06] mx-2 my-2" />
+
+            {/* RIGHT zone */}
+            <div
+              className={`flex flex-col gap-1 rounded-lg transition-colors ${dragOverZone === 'right' ? 'bg-accent/10' : ''}`}
+              onDragOver={(e) => handleDragOverZone('right', e)}
+              onDragLeave={() => setDragOverZone(null)}
+              onDrop={(e) => handleDropOnZone('right', e)}
+            >
+              <div className="px-2 pt-2 pb-1 flex items-center justify-between">
+                <div className="text-xs text-text-secondary/50 uppercase tracking-wider">Agents</div>
+                <span className="text-[10px] text-text-secondary/40 bg-white/[0.06] px-1.5 py-0.5 rounded">Right</span>
+              </div>
+              {WORKFLOW_GROUPS.map(({ key, label }) => (
+                <WorkflowGroup
+                  key={`right-${key}`}
+                  groupKey={key}
+                  label={label}
+                  terminals={rightGroups[key]}
+                  isCollapsed={collapsedGroups.has(key)}
+                  onToggle={() => toggleGroup(key)}
+                  activeTerminalId={focusedPane === 'secondary' ? splitTerminalId : null}
+                  splitTerminalId={null}
+                  isSplitMode={false}
+                  onSelectTerminal={handleSelectRightTerminal}
+                  colorMap={colorMap}
+                  now={now}
+                  draggable
+                />
+              ))}
+              {rightPaneTerminalIds.length === 0 && (
+                <div className="text-text-secondary/30 text-xs text-center py-3">
+                  Drop agents here
+                </div>
+              )}
+            </div>
+          </>
         ) : (
-          WORKFLOW_GROUPS.map(({ key, label }) => (
-            <WorkflowGroup
-              key={key}
-              groupKey={key}
-              label={label}
-              terminals={groups[key]}
-              isCollapsed={collapsedGroups.has(key)}
-              onToggle={() => toggleGroup(key)}
-              activeTerminalId={activeTerminalId}
-              onSelectTerminal={handleSelectTerminal}
-              colorMap={colorMap}
-              now={now}
-            />
-          ))
+          <div className="flex flex-col gap-1">
+            {WORKFLOW_GROUPS.map(({ key, label }) => (
+              <WorkflowGroup
+                key={key}
+                groupKey={key}
+                label={label}
+                terminals={groups[key]}
+                isCollapsed={collapsedGroups.has(key)}
+                onToggle={() => toggleGroup(key)}
+                activeTerminalId={activeTerminalId}
+                splitTerminalId={splitTerminalId}
+                isSplitMode={isSplitMode}
+                onSelectTerminal={handleSelectTerminal}
+                colorMap={colorMap}
+                now={now}
+              />
+            ))}
+          </div>
         )}
       </nav>
 

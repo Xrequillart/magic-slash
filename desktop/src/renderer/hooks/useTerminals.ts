@@ -105,6 +105,17 @@ export function useTerminals() {
             addTerminal(terminalInfo)
           }
 
+          // Restore split pane assignments from config.json
+          const rightIds = existingTerminals
+            .filter((t: { id: string; splitPane?: string }) => !shouldIgnoreTerminal(t.id) && t.splitPane === 'right')
+            .map((t: { id: string }) => t.id)
+          if (rightIds.length > 0) {
+            useStore.setState({
+              rightPaneTerminalIds: rightIds,
+              splitTerminalId: rightIds[0],
+            })
+          }
+
           // Restore the saved activeTerminalId if it still exists in the loaded terminals
           if (savedActiveTerminalId) {
             const terminalStillExists = existingTerminals.some(

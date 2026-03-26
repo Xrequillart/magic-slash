@@ -17,6 +17,15 @@ interface AppState {
   terminals: TerminalInfo[]
   activeTerminalId: string | null
 
+  // Split screen
+  splitTerminalId: string | null
+  focusedPane: 'primary' | 'secondary'
+  isSplitMode: boolean
+  isWideScreen: boolean
+  splitEnabled: boolean
+  splitActive: boolean
+  rightPaneTerminalIds: string[]
+
   // UI
   currentPage: 'config' | 'terminals' | 'skills'
   rightSidebar: 'info' | null
@@ -44,6 +53,13 @@ interface AppState {
   updateTerminalRepositories: (id: string, repositories: string[]) => void
   removeTerminal: (id: string) => void
   setActiveTerminal: (id: string | null) => void
+  setSplitTerminalId: (id: string | null) => void
+  setFocusedPane: (pane: 'primary' | 'secondary') => void
+  setSplitMode: (enabled: boolean) => void
+  setIsWideScreen: (wide: boolean) => void
+  toggleSplitEnabled: () => void
+  toggleSplitActive: () => void
+  moveTerminalToPane: (id: string, pane: 'left' | 'right') => void
 
   setCurrentPage: (page: 'config' | 'terminals' | 'skills') => void
   setRightSidebar: (sidebar: 'info' | null) => void
@@ -76,6 +92,14 @@ export const useStore = create<AppState>()(
         terminals: [],
         activeTerminalId: null,
 
+        splitTerminalId: null,
+        focusedPane: 'primary',
+        isSplitMode: false,
+        isWideScreen: false,
+        splitEnabled: false,
+        splitActive: true,
+        rightPaneTerminalIds: [],
+
         currentPage: 'terminals',
         rightSidebar: null,
         leftSidebarVisible: true,
@@ -87,7 +111,12 @@ export const useStore = create<AppState>()(
         noReposWarningShown: false,
 
         // Actions
-        setConfig: (config) => set({ config, configLoading: false, configError: null }),
+        setConfig: (config) => set({
+          config,
+          configLoading: false,
+          configError: null,
+          ...(config?.splitEnabled !== undefined ? { splitEnabled: config.splitEnabled } : {}),
+        }),
         setConfigLoading: (configLoading) => set({ configLoading }),
         setConfigError: (configError) => set({ configError, configLoading: false }),
 
@@ -135,16 +164,80 @@ export const useStore = create<AppState>()(
         removeTerminal: (id) =>
           set((state) => {
             const newTerminals = state.terminals.filter((t) => t.id !== id)
+            const newRightIds = state.rightPaneTerminalIds.filter(tid => tid !== id)
             return {
               terminals: newTerminals,
               activeTerminalId:
                 state.activeTerminalId === id
-                  ? newTerminals[0]?.id || null
+                  ? newTerminals.filter(t => !newRightIds.includes(t.id))[0]?.id || null
                   : state.activeTerminalId,
+              splitTerminalId:
+                state.splitTerminalId === id ? (newRightIds[0] || null) : state.splitTerminalId,
+              focusedPane:
+                state.splitTerminalId === id ? 'primary' : state.focusedPane,
+              rightPaneTerminalIds: newRightIds,
             }
           }),
 
-        setActiveTerminal: (activeTerminalId) => set({ activeTerminalId }),
+        setActiveTerminal: (activeTerminalId) =>
+          set((state) => {
+            if (state.isSplitMode && activeTerminalId === state.splitTerminalId) {
+              return {
+                activeTerminalId,
+                splitTerminalId: state.activeTerminalId,
+                focusedPane: 'primary',
+              }
+            }
+            return { activeTerminalId }
+          }),
+
+        setSplitTerminalId: (splitTerminalId) =>
+          set((state) => state.splitTerminalId === splitTerminalId ? {} : { splitTerminalId }),
+        setFocusedPane: (focusedPane) =>
+          set((state) => state.focusedPane === focusedPane ? {} : { focusedPane }),
+        setSplitMode: (isSplitMode) =>
+          set((state) => state.isSplitMode === isSplitMode ? {} : { isSplitMode }),
+        setIsWideScreen: (isWideScreen) =>
+          set((state) => state.isWideScreen === isWideScreen ? {} : { isWideScreen }),
+        toggleSplitEnabled: () =>
+          set((state) => ({ splitEnabled: !state.splitEnabled })),
+        toggleSplitActive: () =>
+          set((state) => {
+            if (state.splitActive) {
+              // Switching to single: move all right-pane agents back to left in config.json
+              for (const id of state.rightPaneTerminalIds) {
+                window.electronAPI?.terminal.updateSplitPane(id, 'left').catch(() => {})
+              }
+              return { splitActive: false, rightPaneTerminalIds: [], splitTerminalId: null, focusedPane: 'primary' }
+            }
+            return { splitActive: true }
+          }),
+        moveTerminalToPane: (id, pane) => {
+          window.electronAPI?.terminal.updateSplitPane(id, pane).catch(() => {})
+          return set((state) => {
+            if (pane === 'right') {
+              if (state.rightPaneTerminalIds.includes(id)) return {}
+              const newRightIds = [...state.rightPaneTerminalIds, id]
+              const updates: Partial<AppState> = { rightPaneTerminalIds: newRightIds }
+              if (id === state.activeTerminalId) {
+                const leftTerminals = state.terminals.filter(t => !newRightIds.includes(t.id))
+                updates.activeTerminalId = leftTerminals[0]?.id || null
+              }
+              if (!state.splitTerminalId || !newRightIds.includes(state.splitTerminalId)) {
+                updates.splitTerminalId = id
+              }
+              return updates
+            } else {
+              if (!state.rightPaneTerminalIds.includes(id)) return {}
+              const newRightIds = state.rightPaneTerminalIds.filter(tid => tid !== id)
+              const updates: Partial<AppState> = { rightPaneTerminalIds: newRightIds }
+              if (id === state.splitTerminalId) {
+                updates.splitTerminalId = newRightIds[0] || null
+              }
+              return updates
+            }
+          })
+        },
 
         setCurrentPage: (currentPage) => set({ currentPage }),
         setRightSidebar: (rightSidebar) => set({ rightSidebar }),
@@ -188,6 +281,8 @@ export const useStore = create<AppState>()(
         storage: createJSONStorage(() => sessionStorage),
         partialize: (state) => ({
           activeTerminalId: state.activeTerminalId,
+          splitTerminalId: state.splitTerminalId,
+          rightPaneTerminalIds: state.rightPaneTerminalIds,
         }),
       }
     ),

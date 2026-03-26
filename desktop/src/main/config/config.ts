@@ -45,6 +45,7 @@ export interface Config {
   version: string
   repositories: Record<string, RepositoryConfig>
   agents?: Agent[]
+  splitEnabled?: boolean
 }
 
 export function createDefaultMetadata(): TerminalMetadata {
@@ -63,18 +64,46 @@ export function createDefaultMetadata(): TerminalMetadata {
 export function readConfig(): Config {
   try {
     if (!fs.existsSync(CONFIG_FILE)) {
-      return {
+      const defaultConfig: Config = {
         version: 'unknown',
-        repositories: {}
+        repositories: {},
+        splitEnabled: false,
       }
+      writeConfig(defaultConfig)
+      return defaultConfig
     }
     const content = fs.readFileSync(CONFIG_FILE, 'utf8')
-    return JSON.parse(content)
+    const config: Config = JSON.parse(content)
+
+    // Migration: ensure config fields have default values
+    let needsWrite = false
+
+    if (config.splitEnabled === undefined) {
+      config.splitEnabled = false
+      needsWrite = true
+    }
+
+    // Ensure all agents have a splitPane value
+    if (config.agents && config.agents.length > 0) {
+      for (const agent of config.agents) {
+        if (!agent.splitPane) {
+          agent.splitPane = 'left'
+          needsWrite = true
+        }
+      }
+    }
+
+    if (needsWrite) {
+      writeConfig(config)
+    }
+
+    return config
   } catch (error) {
     console.error('Error reading config:', error)
     return {
       version: 'unknown',
-      repositories: {}
+      repositories: {},
+      splitEnabled: false,
     }
   }
 }
@@ -456,7 +485,8 @@ export function saveAgent(id: string, name: string, repositories: string[], meta
     metadata: {
       ...createDefaultMetadata(),
       ...metadata
-    }
+    },
+    ...(existingAgent?.splitPane ? { splitPane: existingAgent.splitPane } : {}),
   }
   config.agents.push(agent)
 
@@ -530,6 +560,24 @@ export function getAgents(): Agent[] {
     agentsMap.set(agent.id, agent)
   }
   return Array.from(agentsMap.values())
+}
+
+export function updateAgentSplitPane(id: string, pane: 'left' | 'right'): Config {
+  const config = readConfig()
+  config.agents = config.agents || []
+  const agent = config.agents.find(a => a.id === id)
+  if (agent) {
+    agent.splitPane = pane
+    writeConfig(config)
+  }
+  return config
+}
+
+export function updateSplitEnabled(enabled: boolean): Config {
+  const config = readConfig()
+  config.splitEnabled = enabled
+  writeConfig(config)
+  return config
 }
 
 export function clearAllAgents(): Config {

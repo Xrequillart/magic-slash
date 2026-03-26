@@ -18,6 +18,7 @@ import {
   saveAgent,
   removeAgent,
   getAgents,
+  updateAgentSplitPane,
 } from '../config/config'
 
 let getMainWindow: () => BrowserWindow | null
@@ -281,7 +282,8 @@ export function setupTerminalHandlers(
       branchName: t.branchName,
       createdAt: t.createdAt,
       tsCreate: agentMap.get(t.id)?.tsCreate,
-      metadata: t.metadata
+      metadata: t.metadata,
+      splitPane: agentMap.get(t.id)?.splitPane,
     }))
   })
 
@@ -299,6 +301,11 @@ export function setupTerminalHandlers(
   // Get saved agents (new API)
   ipcMain.handle('terminal:getAgents', async () => {
     return getAgents()
+  })
+
+  // Update agent split pane assignment
+  ipcMain.handle('terminal:updateSplitPane', async (_event, { id, pane }) => {
+    return updateAgentSplitPane(id, pane)
   })
 
   // Get terminal display buffer (for reconnection after refresh)

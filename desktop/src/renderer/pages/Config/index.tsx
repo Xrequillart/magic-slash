@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns } from 'lucide-react'
 import { RepoPage } from './RepoPage'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
@@ -7,8 +7,8 @@ import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 
 function WelcomePage() {
-  const { config, terminals } = useStore()
-  const { addRepository } = useConfig()
+  const { config, terminals, splitEnabled, toggleSplitEnabled } = useStore()
+  const { addRepository, updateSplitEnabled } = useConfig()
   const [githubStatus, setGithubStatus] = useState<Record<string, boolean>>({})
   const [isAdding, setIsAdding] = useState(false)
   const [appVersion, setAppVersion] = useState('')
@@ -210,6 +210,32 @@ function WelcomePage() {
         )}
       </div>
 
+      {/* Split View Section */}
+      <div>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <Columns className="w-4 h-4" />
+          <span>Split View</span>
+        </div>
+        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">Enable split view</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">Display two agents side by side on wide screens</div>
+            </div>
+            <button
+              onClick={() => { toggleSplitEnabled(); updateSplitEnabled(!splitEnabled) }}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                splitEnabled ? 'bg-accent' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+                splitEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Keyboard Shortcuts Section */}
       <div>
         <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
@@ -257,6 +283,10 @@ function WelcomePage() {
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Settings</span>
               <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ,</kbd>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-text-secondary">Toggle Split View</span>
+              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> /</kbd>
             </div>
           </div>
         </div>

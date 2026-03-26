@@ -8,10 +8,12 @@ import { formatDroppedPaths } from '../utils/formatDroppedPaths'
 
 interface TerminalViewProps {
   terminal: TerminalInfo
-  isActive: boolean
+  isVisible: boolean
+  isFocused: boolean
+  onFocusRequest?: () => void
 }
 
-export function TerminalView({ terminal, isActive }: TerminalViewProps) {
+export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -221,7 +223,7 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
 
   // Handle resize - use ResizeObserver to detect container size changes
   useEffect(() => {
-    if (!isActive || !containerRef.current) return
+    if (!isVisible || !containerRef.current) return
 
     let resizeTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -241,9 +243,12 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
       resizeTimer = setTimeout(handleResize, 100)
     }
 
-    // Initial fit (non-debounced) to ensure correct sizing at mount
+    // Initial fit: double-RAF ensures browser has computed layout after visibility change
+    // (single RAF can fire before display:hidden→block layout is resolved)
     requestAnimationFrame(() => {
-      handleResize()
+      requestAnimationFrame(() => {
+        handleResize()
+      })
     })
 
     // Use ResizeObserver to detect container size changes (e.g., sidebar open/close)
@@ -261,21 +266,22 @@ export function TerminalView({ terminal, isActive }: TerminalViewProps) {
       resizeObserver.disconnect()
       window.removeEventListener('resize', debouncedResize)
     }
-  }, [isActive, terminal.id])
+  }, [isVisible, terminal.id])
 
-  // Focus when active
+  // Focus when focused
   useEffect(() => {
-    if (isActive && xtermRef.current) {
+    if (isFocused && xtermRef.current) {
       xtermRef.current.focus()
     }
-  }, [isActive])
+  }, [isFocused])
 
   return (
     <div
       className={`
         relative w-full h-full
-        ${isActive ? 'block' : 'hidden'}
+        ${isVisible ? 'block' : 'hidden'}
       `}
+      onMouseDown={onFocusRequest}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

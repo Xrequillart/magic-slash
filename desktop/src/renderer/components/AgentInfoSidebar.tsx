@@ -12,7 +12,7 @@ const MIN_WIDTH = 288 // w-72
 const DEFAULT_WIDTH = 500
 
 export function AgentInfoSidebar() {
-  const { rightSidebar, toggleRightSidebar, terminals, activeTerminalId, config, openCloseAgentModal } = useStore()
+  const { rightSidebar, toggleRightSidebar, terminals, activeTerminalId, config, openCloseAgentModal, isSplitMode, focusedPane, splitTerminalId } = useStore()
   const { updateTerminalMetadata, updateTerminalRepositories } = useTerminals()
   const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
@@ -77,7 +77,10 @@ export function AgentInfoSidebar() {
     return () => window.removeEventListener('resize', handleResize)
   }, [width, getMaxWidth])
 
-  const activeTerminal = terminals.find(t => t.id === activeTerminalId)
+  const inspectedTerminalId = isSplitMode && focusedPane === 'secondary'
+    ? splitTerminalId
+    : activeTerminalId
+  const activeTerminal = terminals.find(t => t.id === inspectedTerminalId)
   const metadata = activeTerminal?.metadata
   const canClose = metadata?.status === 'PR merged' || !metadata?.status
 
@@ -141,15 +144,15 @@ export function AgentInfoSidebar() {
 
   // Handle toggling a repository (add or remove)
   const handleToggleRepository = useCallback((repoPath: string) => {
-    if (!activeTerminalId || !activeTerminal) return
+    if (!inspectedTerminalId || !activeTerminal) return
     const currentRepos = activeTerminal.repositories || []
 
     if (currentRepos.includes(repoPath)) {
-      updateTerminalRepositories(activeTerminalId, currentRepos.filter(r => r !== repoPath))
+      updateTerminalRepositories(inspectedTerminalId, currentRepos.filter(r => r !== repoPath))
     } else {
-      updateTerminalRepositories(activeTerminalId, [...currentRepos, repoPath])
+      updateTerminalRepositories(inspectedTerminalId, [...currentRepos, repoPath])
     }
-  }, [activeTerminalId, activeTerminal, updateTerminalRepositories])
+  }, [inspectedTerminalId, activeTerminal, updateTerminalRepositories])
 
   // Detect ticket type and build the full ticket URL
   const getTicketLink = useCallback(() => {
@@ -302,11 +305,11 @@ export function AgentInfoSidebar() {
 
   // Save title
   const saveTitle = useCallback(() => {
-    if (activeTerminalId && editTitle.trim() !== (metadata?.title || '')) {
-      updateTerminalMetadata(activeTerminalId, { title: editTitle.trim() || undefined })
+    if (inspectedTerminalId && editTitle.trim() !== (metadata?.title || '')) {
+      updateTerminalMetadata(inspectedTerminalId, { title: editTitle.trim() || undefined })
     }
     setIsEditingTitle(false)
-  }, [activeTerminalId, editTitle, metadata?.title, updateTerminalMetadata])
+  }, [inspectedTerminalId, editTitle, metadata?.title, updateTerminalMetadata])
 
   // Start editing description
   const startEditingDescription = useCallback(() => {
@@ -317,25 +320,25 @@ export function AgentInfoSidebar() {
 
   // Save description
   const saveDescription = useCallback(() => {
-    if (activeTerminalId && editDescription.trim() !== (metadata?.description || '')) {
-      updateTerminalMetadata(activeTerminalId, { description: editDescription.trim() || undefined })
+    if (inspectedTerminalId && editDescription.trim() !== (metadata?.description || '')) {
+      updateTerminalMetadata(inspectedTerminalId, { description: editDescription.trim() || undefined })
     }
     setIsEditingDescription(false)
-  }, [activeTerminalId, editDescription, metadata?.description, updateTerminalMetadata])
+  }, [inspectedTerminalId, editDescription, metadata?.description, updateTerminalMetadata])
 
   // Change status
   const handleStatusChange = useCallback((status: string) => {
-    if (activeTerminalId) {
-      updateTerminalMetadata(activeTerminalId, { status: status as TerminalMetadata['status'] })
+    if (inspectedTerminalId) {
+      updateTerminalMetadata(inspectedTerminalId, { status: status as TerminalMetadata['status'] })
     }
-  }, [activeTerminalId, updateTerminalMetadata])
+  }, [inspectedTerminalId, updateTerminalMetadata])
 
   // Cancel editing when switching terminals
   useEffect(() => {
     setIsEditingTitle(false)
     setIsEditingDescription(false)
     setIsRepoModalOpen(false)
-  }, [activeTerminalId])
+  }, [inspectedTerminalId])
 
   // Copy commit hash with feedback
   const copyCommitHash = useCallback((hash: string) => {
@@ -455,7 +458,7 @@ export function AgentInfoSidebar() {
                     key={repoPath}
                     repoPath={repoPath}
                     repoName={getRepoName(repoPath)}
-                    agentId={activeTerminalId!}
+                    agentId={inspectedTerminalId!}
                     agentName={activeTerminal!.metadata?.title || activeTerminal!.name}
                     gitData={repoGitData[repoPath]}
                     baseBranch={metadata?.baseBranch}

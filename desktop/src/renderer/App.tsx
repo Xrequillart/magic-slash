@@ -13,6 +13,7 @@ import { ConfigPage } from './pages/Config'
 import { TerminalsPage } from './pages/Terminals'
 import { SkillsPage } from './pages/Skills'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { useWindowSplitMode } from './hooks/useWindowSplitMode'
 
 function LoadingScreen() {
   return (
@@ -42,9 +43,10 @@ function ErrorScreen({ error }: { error: string }) {
 }
 
 export function App() {
-  const { currentPage, closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, toggleRightSidebar, toggleLeftSidebar, config, noReposWarningShown, setNoReposWarningShown, setCurrentPage } = useStore()
+  const { currentPage, closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, noReposWarningShown, setNoReposWarningShown, setCurrentPage } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal } = useTerminals()
+  useWindowSplitMode()
   const confirmCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [showNoReposModal, setShowNoReposModal] = useState(false)
 
@@ -127,6 +129,21 @@ export function App() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [currentPage, toggleLeftSidebar])
+
+  // Keyboard shortcut: Cmd+/ to toggle split view
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        if (isWideScreen && splitEnabled && terminals.length >= 2) {
+          e.preventDefault()
+          toggleSplitActive()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isWideScreen, splitEnabled, terminals.length, toggleSplitActive])
 
   if (configLoading) {
     return <LoadingScreen />

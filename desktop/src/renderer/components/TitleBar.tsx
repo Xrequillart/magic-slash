@@ -1,3 +1,4 @@
+import { Square, Columns } from 'lucide-react'
 import { useStore } from '../store'
 
 // Inline SVG components for left sidebar toggle icons
@@ -35,8 +36,9 @@ const RightSidebarCloseIcon = () => (
 )
 
 export function TitleBar() {
-  const { currentPage, terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar } = useStore()
+  const { currentPage, terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar, isSplitMode, splitTerminalId, focusedPane, isWideScreen, splitEnabled, splitActive, toggleSplitActive } = useStore()
   const activeTerminal = terminals.find((t) => t.id === activeTerminalId)
+  const splitTerminal = terminals.find((t) => t.id === splitTerminalId)
 
   return (
     <div
@@ -48,7 +50,7 @@ export function TitleBar() {
         {/* Space for macOS traffic lights */}
         <div className="w-16 flex-shrink-0" />
 
-        {/* Left sidebar toggle */}
+        {/* Left sidebar toggle + Split view toggle */}
         {(currentPage === 'terminals' || currentPage === 'config' || currentPage === 'skills') && (
           <div
             className="flex items-center gap-1"
@@ -65,13 +67,56 @@ export function TitleBar() {
             >
               {leftSidebarVisible ? <LeftSidebarOpenIcon /> : <LeftSidebarCloseIcon />}
             </button>
+
+            {/* Split view segmented toggle */}
+            {isWideScreen && splitEnabled && terminals.length >= 2 && (
+              <div className="relative flex bg-white/[0.06] rounded-md p-px">
+                <div className={`absolute top-px bottom-px w-[calc(50%-1px)] bg-white/[0.12] rounded transition-transform duration-200 ${
+                  splitActive ? 'translate-x-[calc(100%+2px)]' : 'translate-x-0'
+                }`} />
+                <button
+                  onClick={() => { if (splitActive) toggleSplitActive() }}
+                  className={`relative z-10 flex items-center gap-1 pl-2 pr-3 py-1 rounded text-[11px] font-medium transition-colors duration-200 ${
+                    !splitActive ? 'text-white' : 'text-text-secondary/50 hover:text-text-secondary'
+                  }`}
+                  title="Single view (⌘/)"
+                >
+                  <Square className="w-3 h-3" />
+                  Single
+                </button>
+                <button
+                  onClick={() => { if (!splitActive) toggleSplitActive() }}
+                  className={`relative z-10 flex items-center gap-1 pl-2 pr-3 py-1 rounded text-[11px] font-medium transition-colors duration-200 ${
+                    splitActive ? 'text-white' : 'text-text-secondary/50 hover:text-text-secondary'
+                  }`}
+                  title="Dual view (⌘/)"
+                >
+                  <Columns className="w-3 h-3" />
+                  Dual
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Center - Active agent name */}
-      <div className="absolute left-1/2 -translate-x-1/2 text-sm text-text-secondary truncate max-w-[40%]">
-        {currentPage === 'terminals' && (activeTerminal?.metadata?.title || activeTerminal?.name)}
+      {/* Center - Active agent name(s) */}
+      <div className="absolute left-1/2 -translate-x-1/2 text-sm truncate max-w-[40%]">
+        {currentPage === 'terminals' && isSplitMode && splitTerminal ? (
+          <div className="flex items-center gap-2">
+            <span className={focusedPane === 'primary' ? 'text-white' : 'text-text-secondary/50'}>
+              {activeTerminal?.metadata?.title || activeTerminal?.name}
+            </span>
+            <span className="text-text-secondary/30">|</span>
+            <span className={focusedPane === 'secondary' ? 'text-white' : 'text-text-secondary/50'}>
+              {splitTerminal?.metadata?.title || splitTerminal?.name}
+            </span>
+          </div>
+        ) : (
+          <span className="text-text-secondary">
+            {currentPage === 'terminals' && (activeTerminal?.metadata?.title || activeTerminal?.name)}
+          </span>
+        )}
       </div>
 
       {/* Right side - Sidebar toggle (only on agents page with at least one agent) */}

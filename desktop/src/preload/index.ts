@@ -48,6 +48,9 @@ const configApi = {
   updateRepositoryWorktreeFilesSettings: (name: string, settings: Record<string, any>) =>
     ipcRenderer.invoke('config:updateRepositoryWorktreeFilesSettings', { name, settings }),
 
+  updateSplitEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke('config:updateSplitEnabled', { enabled }),
+
   validatePath: (path: string) =>
     ipcRenderer.invoke('config:validatePath', { path }),
 
@@ -120,6 +123,9 @@ const terminalApi = {
 
   updateRepositories: (id: string, repositories: string[]) =>
     ipcRenderer.invoke('terminal:updateRepositories', { id, repositories }),
+
+  updateSplitPane: (id: string, pane: 'left' | 'right') =>
+    ipcRenderer.invoke('terminal:updateSplitPane', { id, pane }),
 
   // Event listeners
   onData: (callback: (data: { id: string; data: string }) => void) => {

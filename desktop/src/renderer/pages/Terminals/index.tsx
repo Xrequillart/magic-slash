@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Bot } from 'lucide-react'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useScriptRunner } from '../../hooks/useScriptRunner'
@@ -14,7 +14,7 @@ export function TerminalsPage() {
   const { terminals, activeTerminalId, launchClaudeTerminal, setActiveTerminal, duplicateAgent } = useTerminals()
   const { scriptTerminals } = useScriptRunner()
   const { flatVisualOrder } = useGroupedTerminals()
-  const { toggleRightSidebar, setCurrentPage } = useStore()
+  const { toggleRightSidebar, setCurrentPage, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane } = useStore()
   const [isCreating, setIsCreating] = useState(false)
 
   // Generate terminal name based on count
@@ -37,6 +37,26 @@ export function TerminalsPage() {
       const name = getNextTerminalName()
       await launchClaudeTerminal(name, DEFAULT_PATH)
       setCurrentPage('terminals')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to create terminal', 'error')
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const handleCreateTerminalInRightPane = async () => {
+    if (isCreating) return
+    if (terminals.length >= MAX_AGENTS) {
+      showToast(`Maximum of ${MAX_AGENTS} agents reached`, 'error')
+      return
+    }
+    setIsCreating(true)
+    try {
+      const name = getNextTerminalName()
+      const terminal = await launchClaudeTerminal(name, DEFAULT_PATH)
+      moveTerminalToPane(terminal.id, 'right')
+      setSplitTerminalId(terminal.id)
+      setFocusedPane('secondary')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to create terminal', 'error')
     } finally {
@@ -68,34 +88,46 @@ export function TerminalsPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [terminals.length, isCreating])
 
-  // Listen for Command+Arrow to switch between agents (follows visual order in sidebar)
+  // Listen for Command+Arrow to switch between agents (within current zone in split mode)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
         e.preventDefault()
-        if (flatVisualOrder.length === 0) return
 
-        const currentIndex = flatVisualOrder.findIndex(t => t.id === activeTerminalId)
+        const isSecondary = isSplitMode && focusedPane === 'secondary'
+        // In split mode, only navigate within the zone's agents
+        const zoneTerminals = isSplitMode
+          ? (isSecondary
+            ? flatVisualOrder.filter(t => rightPaneTerminalIds.includes(t.id))
+            : flatVisualOrder.filter(t => !rightPaneTerminalIds.includes(t.id)))
+          : flatVisualOrder
+
+        if (zoneTerminals.length === 0) return
+
+        const currentId = isSecondary ? splitTerminalId : activeTerminalId
+        const currentIndex = zoneTerminals.findIndex(t => t.id === currentId)
         let newIndex: number
 
-        if (flatVisualOrder.length === 1) {
+        if (zoneTerminals.length === 1) {
           newIndex = 0
         } else if (e.key === 'ArrowUp') {
-          // Go to previous agent (wrap to end if at start)
-          newIndex = currentIndex <= 0 ? flatVisualOrder.length - 1 : currentIndex - 1
+          newIndex = currentIndex <= 0 ? zoneTerminals.length - 1 : currentIndex - 1
         } else {
-          // Go to next agent (wrap to start if at end)
-          newIndex = currentIndex >= flatVisualOrder.length - 1 ? 0 : currentIndex + 1
+          newIndex = currentIndex >= zoneTerminals.length - 1 ? 0 : currentIndex + 1
         }
 
         setCurrentPage('terminals')
-        setActiveTerminal(flatVisualOrder[newIndex].id)
+        if (isSecondary) {
+          setSplitTerminalId(zoneTerminals[newIndex].id)
+        } else {
+          setActiveTerminal(zoneTerminals[newIndex].id)
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [flatVisualOrder, activeTerminalId, setActiveTerminal, setCurrentPage])
+  }, [flatVisualOrder, activeTerminalId, splitTerminalId, isSplitMode, focusedPane, rightPaneTerminalIds, setActiveTerminal, setSplitTerminalId, setCurrentPage])
 
   // Listen for Command+I to toggle Info sidebar (only with agents)
   useEffect(() => {
@@ -141,6 +173,34 @@ export function TerminalsPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [activeTerminalId, terminals, duplicateAgent, setActiveTerminal])
 
+  // Listen for Command+\ or Command+Left/Right to toggle focus between split panes
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || !isSplitMode || !splitTerminalId) return
+
+      if (e.key === '\\') {
+        e.preventDefault()
+        setFocusedPane(focusedPane === 'primary' ? 'secondary' : 'primary')
+      } else if (e.key === 'ArrowLeft' && focusedPane !== 'primary') {
+        e.preventDefault()
+        setFocusedPane('primary')
+      } else if (e.key === 'ArrowRight' && focusedPane !== 'secondary') {
+        e.preventDefault()
+        setFocusedPane('secondary')
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isSplitMode, splitTerminalId, focusedPane, setFocusedPane])
+
+
+  // Reset focused pane when exiting split mode
+  useEffect(() => {
+    if (!isSplitMode) {
+      setFocusedPane('primary')
+    }
+  }, [isSplitMode, setFocusedPane])
+
   // Detect platform for keyboard shortcut display
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const shortcutKey = isMac ? '⌘N' : 'Ctrl+N'
@@ -166,29 +226,119 @@ export function TerminalsPage() {
     )
   }
 
+  // Memoize filtered terminal lists using zone assignments
+  const primaryTerminals = useMemo(
+    () => isSplitMode ? terminals.filter(t => !rightPaneTerminalIds.includes(t.id)) : terminals,
+    [terminals, isSplitMode, rightPaneTerminalIds]
+  )
+  const secondaryTerminals = useMemo(
+    () => isSplitMode ? terminals.filter(t => rightPaneTerminalIds.includes(t.id)) : [],
+    [terminals, isSplitMode, rightPaneTerminalIds]
+  )
+
+  // Guarded focus handlers - only update store when pane actually changes
+  const handlePrimaryFocus = useCallback(() => {
+    if (focusedPane !== 'primary') setFocusedPane('primary')
+  }, [focusedPane, setFocusedPane])
+  const handleSecondaryFocus = useCallback(() => {
+    if (focusedPane !== 'secondary') setFocusedPane('secondary')
+  }, [focusedPane, setFocusedPane])
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Terminal Content */}
-      <div className="flex-1 overflow-hidden">
-        {terminals.map((terminal) => (
-          <TerminalView
-            key={terminal.id}
-            terminal={terminal}
-            isActive={terminal.id === activeTerminalId}
-          />
-        ))}
-        {scriptTerminals.map((script) => (
-          <TerminalView
-            key={script.id}
-            terminal={{
-              id: script.id,
-              name: `${script.scriptName} (${script.agentName})`,
-              state: script.state === 'running' ? 'working' : 'error',
-              repositories: [script.projectPath],
-            }}
-            isActive={script.id === activeTerminalId}
-          />
-        ))}
+      <div className={`flex-1 overflow-hidden ${isSplitMode ? 'flex' : ''}`}>
+        {isSplitMode ? (
+          <>
+            {/* Primary pane */}
+            <div
+              className="w-1/2 h-full relative"
+              onMouseDown={handlePrimaryFocus}
+            >
+              {focusedPane === 'primary' && <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent/50 z-10" />}
+              {primaryTerminals.map((terminal) => (
+                <TerminalView
+                  key={terminal.id}
+                  terminal={terminal}
+                  isVisible={terminal.id === activeTerminalId}
+                  isFocused={terminal.id === activeTerminalId && focusedPane === 'primary'}
+                />
+              ))}
+              {scriptTerminals.map((script) => (
+                <TerminalView
+                  key={script.id}
+                  terminal={{
+                    id: script.id,
+                    name: `${script.scriptName} (${script.agentName})`,
+                    state: script.state === 'running' ? 'working' : 'error',
+                    repositories: [script.projectPath],
+                  }}
+                  isVisible={script.id === activeTerminalId}
+                  isFocused={script.id === activeTerminalId && focusedPane === 'primary'}
+                />
+              ))}
+            </div>
+            {/* Divider */}
+            <div className="w-px bg-white/10 flex-shrink-0" />
+            {/* Secondary pane */}
+            <div
+              className="w-1/2 h-full relative"
+              onMouseDown={handleSecondaryFocus}
+            >
+              {focusedPane === 'secondary' && secondaryTerminals.length > 0 && <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent/50 z-10" />}
+              {secondaryTerminals.length > 0 ? (
+                secondaryTerminals.map((terminal) => (
+                  <TerminalView
+                    key={`split-${terminal.id}`}
+                    terminal={terminal}
+                    isVisible={terminal.id === splitTerminalId}
+                    isFocused={terminal.id === splitTerminalId && focusedPane === 'secondary'}
+                  />
+                ))
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <Bot className="w-12 h-12 mx-auto mb-3 text-text-secondary opacity-30" />
+                    <p className="text-sm text-text-secondary/50 mb-4">Drag an agent here or create a new one</p>
+                    <button
+                      onClick={handleCreateTerminalInRightPane}
+                      disabled={isCreating}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-purple hover:bg-purple/80 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      <Bot className="w-3.5 h-3.5" />
+                      {isCreating ? 'Launching...' : 'New agent'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          /* Single pane mode */
+          <>
+            {terminals.map((terminal) => (
+              <TerminalView
+                key={terminal.id}
+                terminal={terminal}
+                isVisible={terminal.id === activeTerminalId}
+                isFocused={terminal.id === activeTerminalId}
+              />
+            ))}
+            {scriptTerminals.map((script) => (
+              <TerminalView
+                key={script.id}
+                terminal={{
+                  id: script.id,
+                  name: `${script.scriptName} (${script.agentName})`,
+                  state: script.state === 'running' ? 'working' : 'error',
+                  repositories: [script.projectPath],
+                }}
+                isVisible={script.id === activeTerminalId}
+                isFocused={script.id === activeTerminalId}
+              />
+            ))}
+          </>
+        )}
       </div>
     </div>
   )

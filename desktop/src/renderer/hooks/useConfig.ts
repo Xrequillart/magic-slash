@@ -80,6 +80,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateSplitEnabled = useCallback(async (enabled: boolean) => {
+    const result = await window.electronAPI.config.updateSplitEnabled(enabled)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const validatePath = useCallback(async (path: string) => {
     return window.electronAPI.config.validatePath(path)
   }, [])
@@ -112,6 +118,7 @@ export function useConfig() {
     updateRepositoryIssuesSettings,
     updateRepositoryBranchSettings,
     updateRepositoryWorktreeFilesSettings,
+    updateSplitEnabled,
     validatePath,
     getPRTemplate,
     createPRTemplate,

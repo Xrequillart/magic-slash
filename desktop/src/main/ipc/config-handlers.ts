@@ -12,6 +12,7 @@ import {
   updateRepositoryIssuesSettings,
   updateRepositoryBranchSettings,
   updateRepositoryWorktreeFilesSettings,
+  updateSplitEnabled,
 } from '../config/config'
 import {
   validateRepoName,
@@ -129,6 +130,12 @@ export function setupConfigHandlers() {
   // Update repository worktree files settings
   ipcMain.handle('config:updateRepositoryWorktreeFilesSettings', async (_event, { name, settings }) => {
     const config = updateRepositoryWorktreeFilesSettings(name, settings)
+    return { config }
+  })
+
+  // Update split enabled setting
+  ipcMain.handle('config:updateSplitEnabled', async (_event, { enabled }) => {
+    const config = updateSplitEnabled(enabled)
     return { config }
   })
 

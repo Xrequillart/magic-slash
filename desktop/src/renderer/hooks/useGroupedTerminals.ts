@@ -40,43 +40,41 @@ export function classifyTerminal(terminal: TerminalInfo): WorkflowGroupKey {
   return 'backlog'
 }
 
+function groupTerminals(terminalList: TerminalInfo[], config: any) {
+  const groups: Record<WorkflowGroupKey, TerminalWithRepos[]> = {
+    needs_attention: [],
+    in_review: [],
+    in_progress: [],
+    done: [],
+    backlog: [],
+  }
+
+  for (const terminal of terminalList) {
+    const repos = terminal.repositories || []
+    const matchingProjects: string[] = []
+
+    if (config) {
+      for (const [repoName, repoConfig] of Object.entries(config.repositories)) {
+        if (repos.some(repo => repo.startsWith((repoConfig as any).path))) {
+          matchingProjects.push(repoName)
+        }
+      }
+    }
+
+    const enriched: TerminalWithRepos = { ...terminal, matchingProjects }
+    const groupKey = classifyTerminal(terminal)
+    groups[groupKey].push(enriched)
+  }
+
+  return groups
+}
+
 export function useGroupedTerminals() {
   const { terminals, config } = useStore()
 
   return useMemo(() => {
-    const groups: Record<WorkflowGroupKey, TerminalWithRepos[]> = {
-      needs_attention: [],
-      in_review: [],
-      in_progress: [],
-      done: [],
-      backlog: [],
-    }
-    const projectNames: string[] = []
-
-    // Collect project names
-    if (config) {
-      for (const repoName of Object.keys(config.repositories)) {
-        projectNames.push(repoName)
-      }
-    }
-
-    // Enrich terminals with repo info and classify into workflow groups
-    for (const terminal of terminals) {
-      const repos = terminal.repositories || []
-      const matchingProjects: string[] = []
-
-      if (config) {
-        for (const [repoName, repoConfig] of Object.entries(config.repositories)) {
-          if (repos.some(repo => repo.startsWith(repoConfig.path))) {
-            matchingProjects.push(repoName)
-          }
-        }
-      }
-
-      const enriched: TerminalWithRepos = { ...terminal, matchingProjects }
-      const groupKey = classifyTerminal(terminal)
-      groups[groupKey].push(enriched)
-    }
+    const groups = groupTerminals(terminals, config)
+    const projectNames: string[] = config ? Object.keys(config.repositories) : []
 
     // Build flatVisualOrder following WORKFLOW_GROUPS order (for keyboard nav)
     const seenIds = new Set<string>()
@@ -93,4 +91,19 @@ export function useGroupedTerminals() {
 
     return { groups, projectNames, flatVisualOrder }
   }, [terminals, config])
+}
+
+export function useSplitGroupedTerminals() {
+  const { terminals, config, rightPaneTerminalIds } = useStore()
+
+  return useMemo(() => {
+    const leftTerminals = terminals.filter(t => !rightPaneTerminalIds.includes(t.id))
+    const rightTerminals = terminals.filter(t => rightPaneTerminalIds.includes(t.id))
+
+    const leftGroups = groupTerminals(leftTerminals, config)
+    const rightGroups = groupTerminals(rightTerminals, config)
+    const projectNames: string[] = config ? Object.keys(config.repositories) : []
+
+    return { leftGroups, rightGroups, projectNames }
+  }, [terminals, config, rightPaneTerminalIds])
 }
