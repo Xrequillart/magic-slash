@@ -409,7 +409,7 @@ Prepare the PR content:
   - **Otherwise**: Use the default template matching `.languages.pullRequest` (see **`MSG_PR_TEMPLATE_EN`** / **`MSG_PR_TEMPLATE_FR`**)
   - **Add a "Linked Issues" section** with the ticket link (unless `autoLinkTickets` is `false`)
 
-> **Markdown formatting**: The `body` parameter passed to `mcp__github__create_pull_request` must contain actual line breaks, not literal `\n` characters. Otherwise GitHub renders the entire description as a single unreadable paragraph — headings, lists, and paragraphs all collapse into one block of text.
+> **CRITICAL — Markdown formatting**: The `body` parameter MUST contain actual line break characters, NOT the two-character literal sequence `\n`. This is verified automatically in Step 6.2.1.
 
 ### Linked Issues section (by default, unless autoLinkTickets: false)
 
@@ -437,6 +437,23 @@ Use `AskUserQuestion` with the text from **`MSG_PR_PREVIEW`** (substituting `{ti
 - **Y/O** or Enter: Proceed with creation
 - **n**: Abort
 - **edit**: Let the user modify the title or description before creation
+
+### 6.2.1: Verify and fix formatting before creation
+
+After the user confirms, verify the PR body before passing it to the MCP tool. If any check fails, **reconstruct the body from scratch** and re-verify (max 2 retries).
+
+**Checks to perform on the `body` string:**
+
+1. **No literal escape sequences**: the body must not contain the two-character sequences `\n`, `\t`, or `\r`. These must be actual line break characters. This is the most common failure — it causes GitHub to render the entire PR as a single unreadable paragraph.
+2. **No unfilled template placeholders**: the body must not contain instruction text inside square brackets (e.g., `[Concise summary of changes]`, `[List of commits]`). Every `[instruction]` from the template must have been replaced with actual content.
+3. **Required section headers present**: the body must contain at least `## Summary` and `## Changes` as distinct lines (or their FR equivalents `## Résumé` and `## Changements` if `languages.pullRequest` is `"fr"`).
+4. **Non-empty sections**: each section heading must be followed by at least one non-blank line of actual content before the next heading or end of body.
+
+**If any check fails:**
+- Log which check(s) failed
+- Reconstruct the body from the commits and diff (re-read if needed)
+- Re-verify the reconstructed body
+- After 2 failed retries, show the body to the user with `AskUserQuestion` and ask them to fix it manually
 
 ### 6.3: Create the PR
 
