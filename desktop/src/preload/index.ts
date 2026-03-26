@@ -51,6 +51,9 @@ const configApi = {
   updateSplitEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('config:updateSplitEnabled', { enabled }),
 
+  updateSplitActive: (active: boolean) =>
+    ipcRenderer.invoke('config:updateSplitActive', { active }),
+
   validatePath: (path: string) =>
     ipcRenderer.invoke('config:validatePath', { path }),
 

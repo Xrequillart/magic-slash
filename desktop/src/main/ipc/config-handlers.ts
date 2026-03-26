@@ -13,6 +13,7 @@ import {
   updateRepositoryBranchSettings,
   updateRepositoryWorktreeFilesSettings,
   updateSplitEnabled,
+  updateSplitActive,
 } from '../config/config'
 import {
   validateRepoName,
@@ -136,6 +137,12 @@ export function setupConfigHandlers() {
   // Update split enabled setting
   ipcMain.handle('config:updateSplitEnabled', async (_event, { enabled }) => {
     const config = updateSplitEnabled(enabled)
+    return { config }
+  })
+
+  // Update split active setting (single/dual view mode)
+  ipcMain.handle('config:updateSplitActive', async (_event, { active }) => {
+    const config = updateSplitActive(active)
     return { config }
   })
 

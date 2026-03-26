@@ -97,7 +97,7 @@ export const useStore = create<AppState>()(
         isSplitMode: false,
         isWideScreen: false,
         splitEnabled: false,
-        splitActive: true,
+        splitActive: false,
         rightPaneTerminalIds: [],
 
         currentPage: 'terminals',
@@ -116,6 +116,7 @@ export const useStore = create<AppState>()(
           configLoading: false,
           configError: null,
           ...(config?.splitEnabled !== undefined ? { splitEnabled: config.splitEnabled } : {}),
+          ...(config?.splitActive !== undefined ? { splitActive: config.splitActive } : {}),
         }),
         setConfigLoading: (configLoading) => set({ configLoading }),
         setConfigError: (configError) => set({ configError, configLoading: false }),
@@ -208,8 +209,10 @@ export const useStore = create<AppState>()(
               for (const id of state.rightPaneTerminalIds) {
                 window.electronAPI?.terminal.updateSplitPane(id, 'left').catch(() => {})
               }
+              window.electronAPI?.config.updateSplitActive(false).catch(() => {})
               return { splitActive: false, rightPaneTerminalIds: [], splitTerminalId: null, focusedPane: 'primary' }
             }
+            window.electronAPI?.config.updateSplitActive(true).catch(() => {})
             return { splitActive: true }
           }),
         moveTerminalToPane: (id, pane) => {

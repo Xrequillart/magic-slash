@@ -79,6 +79,7 @@ export interface Config {
   repositories: Record<string, RepositoryConfig>
   agents?: Agent[]
   splitEnabled?: boolean
+  splitActive?: boolean
 }
 
 export interface PRTemplate {

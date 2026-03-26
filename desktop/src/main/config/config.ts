@@ -46,6 +46,7 @@ export interface Config {
   repositories: Record<string, RepositoryConfig>
   agents?: Agent[]
   splitEnabled?: boolean
+  splitActive?: boolean
 }
 
 export function createDefaultMetadata(): TerminalMetadata {
@@ -68,6 +69,7 @@ export function readConfig(): Config {
         version: 'unknown',
         repositories: {},
         splitEnabled: false,
+        splitActive: false,
       }
       writeConfig(defaultConfig)
       return defaultConfig
@@ -80,6 +82,11 @@ export function readConfig(): Config {
 
     if (config.splitEnabled === undefined) {
       config.splitEnabled = false
+      needsWrite = true
+    }
+
+    if (config.splitActive === undefined) {
+      config.splitActive = false
       needsWrite = true
     }
 
@@ -104,6 +111,7 @@ export function readConfig(): Config {
       version: 'unknown',
       repositories: {},
       splitEnabled: false,
+      splitActive: false,
     }
   }
 }
@@ -576,6 +584,13 @@ export function updateAgentSplitPane(id: string, pane: 'left' | 'right'): Config
 export function updateSplitEnabled(enabled: boolean): Config {
   const config = readConfig()
   config.splitEnabled = enabled
+  writeConfig(config)
+  return config
+}
+
+export function updateSplitActive(active: boolean): Config {
+  const config = readConfig()
+  config.splitActive = active
   writeConfig(config)
   return config
 }
