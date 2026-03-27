@@ -1,4 +1,4 @@
-import { Square, Columns } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../store'
 
 // Inline SVG components for left sidebar toggle icons
@@ -40,6 +40,19 @@ export function TitleBar() {
   const activeTerminal = terminals.find((t) => t.id === activeTerminalId)
   const splitTerminal = terminals.find((t) => t.id === splitTerminalId)
 
+  const splitToggleVisible = isWideScreen && splitEnabled && terminals.length >= 2
+  const [showSplitToggle, setShowSplitToggle] = useState(splitToggleVisible)
+  const [splitToggleExiting, setSplitToggleExiting] = useState(false)
+
+  useEffect(() => {
+    if (splitToggleVisible) {
+      setShowSplitToggle(true)
+      setSplitToggleExiting(false)
+    } else if (showSplitToggle) {
+      setSplitToggleExiting(true)
+    }
+  }, [splitToggleVisible])
+
   return (
     <div
       className="h-10 bg-black/30 backdrop-blur-md select-none flex items-center justify-between px-3 relative"
@@ -58,10 +71,10 @@ export function TitleBar() {
           >
             <button
               onClick={() => toggleLeftSidebar()}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-[5px] rounded-full bg-white/[0.06] transition-colors ${
                 leftSidebarVisible
                   ? 'text-white'
-                  : 'text-text-secondary hover:text-white hover:bg-bg-tertiary'
+                  : 'text-text-secondary hover:text-white'
               }`}
               title="Toggle agents list (⌘B)"
             >
@@ -69,30 +82,36 @@ export function TitleBar() {
             </button>
 
             {/* Split view segmented toggle */}
-            {isWideScreen && splitEnabled && terminals.length >= 2 && (
-              <div className="relative flex bg-white/[0.06] rounded-md p-px">
-                <div className={`absolute top-px bottom-px w-[calc(50%-1px)] bg-white/[0.12] rounded transition-transform duration-200 ${
-                  splitActive ? 'translate-x-[calc(100%+2px)]' : 'translate-x-0'
+            {showSplitToggle && (
+              <div
+                className={`relative grid grid-cols-2 bg-white/[0.06] rounded-full p-px ${splitToggleExiting ? 'animate-slide-out' : 'animate-slide-in'}`}
+                onAnimationEnd={() => {
+                  if (splitToggleExiting) {
+                    setShowSplitToggle(false)
+                    setSplitToggleExiting(false)
+                  }
+                }}
+              >
+                <div className={`absolute top-px bottom-px left-px right-1/2 bg-white/[0.12] rounded-full transition-transform duration-200 ${
+                  splitActive ? 'translate-x-full' : 'translate-x-0'
                 }`} />
                 <button
                   onClick={() => { if (splitActive) toggleSplitActive() }}
-                  className={`relative z-10 flex items-center gap-1 pl-2 pr-3 py-1 rounded text-[11px] font-medium transition-colors duration-200 ${
+                  className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center ${
                     !splitActive ? 'text-white' : 'text-text-secondary/50 hover:text-text-secondary'
                   }`}
-                  title="Single view (⌘/)"
+                  title="Normal view (⌘/)"
                 >
-                  <Square className="w-3 h-3" />
-                  Single
+                  Normal
                 </button>
                 <button
                   onClick={() => { if (!splitActive) toggleSplitActive() }}
-                  className={`relative z-10 flex items-center gap-1 pl-2 pr-3 py-1 rounded text-[11px] font-medium transition-colors duration-200 ${
+                  className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center ${
                     splitActive ? 'text-white' : 'text-text-secondary/50 hover:text-text-secondary'
                   }`}
-                  title="Dual view (⌘/)"
+                  title="Split view (⌘/)"
                 >
-                  <Columns className="w-3 h-3" />
-                  Dual
+                  Split view
                 </button>
               </div>
             )}
@@ -127,10 +146,10 @@ export function TitleBar() {
         >
           <button
             onClick={() => toggleRightSidebar('info')}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-[5px] rounded-full bg-white/[0.06] transition-colors ${
               rightSidebar === 'info'
                 ? 'text-white'
-                : 'text-text-secondary hover:text-white hover:bg-bg-tertiary'
+                : 'text-text-secondary hover:text-white'
             }`}
             title="Info"
           >
