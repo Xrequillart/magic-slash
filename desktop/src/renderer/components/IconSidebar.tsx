@@ -1,23 +1,7 @@
 import { Bot, Settings, Circle, AlertTriangle, Sparkles } from 'lucide-react'
 import { useStore } from '../store'
-import type { TerminalState } from '../../types'
+import { stateColorsIcon as stateColors, stateBgColorsIcon as stateBgColors } from '../utils/stateColors'
 import { useMemo } from 'react'
-
-const stateColors: Record<TerminalState, string> = {
-  idle: 'text-white',
-  working: 'text-accent',
-  waiting: 'text-yellow',
-  completed: 'text-green',
-  error: 'text-red',
-}
-
-const stateBgColors: Record<TerminalState, string> = {
-  idle: 'bg-white/20',
-  working: 'bg-accent/20',
-  waiting: 'bg-yellow/20',
-  completed: 'bg-green/20',
-  error: 'bg-red/20',
-}
 
 export function IconSidebar() {
   const { currentPage, setCurrentPage, terminals, iconSidebarVisible, config } = useStore()

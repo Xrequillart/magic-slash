@@ -1,5 +1,5 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import type { TerminalMetadata } from '../types'
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import type { TerminalMetadata, RepositoryConfig } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -18,7 +18,7 @@ const configApi = {
   addRepository: (name: string, path: string, keywords: string[]) =>
     ipcRenderer.invoke('config:addRepository', { name, path, keywords }),
 
-  updateRepository: (name: string, updates: any) =>
+  updateRepository: (name: string, updates: Partial<RepositoryConfig>) =>
     ipcRenderer.invoke('config:updateRepository', { name, updates }),
 
   deleteRepository: (name: string) =>
@@ -30,22 +30,22 @@ const configApi = {
   updateRepositoryLanguages: (name: string, languages: Record<string, string | null>) =>
     ipcRenderer.invoke('config:updateRepositoryLanguages', { name, languages }),
 
-  updateRepositoryCommitSettings: (name: string, settings: Record<string, any>) =>
+  updateRepositoryCommitSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['commit']>>) =>
     ipcRenderer.invoke('config:updateRepositoryCommitSettings', { name, settings }),
 
-  updateRepositoryResolveSettings: (name: string, settings: Record<string, any>) =>
+  updateRepositoryResolveSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['resolve']>>) =>
     ipcRenderer.invoke('config:updateRepositoryResolveSettings', { name, settings }),
 
-  updateRepositoryPullRequestSettings: (name: string, settings: Record<string, any>) =>
+  updateRepositoryPullRequestSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['pullRequest']>>) =>
     ipcRenderer.invoke('config:updateRepositoryPullRequestSettings', { name, settings }),
 
-  updateRepositoryIssuesSettings: (name: string, settings: Record<string, any>) =>
+  updateRepositoryIssuesSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['issues']>>) =>
     ipcRenderer.invoke('config:updateRepositoryIssuesSettings', { name, settings }),
 
-  updateRepositoryBranchSettings: (name: string, settings: Record<string, any>) =>
+  updateRepositoryBranchSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['branches']>>) =>
     ipcRenderer.invoke('config:updateRepositoryBranchSettings', { name, settings }),
 
-  updateRepositoryWorktreeFilesSettings: (name: string, settings: Record<string, any>) =>
+  updateRepositoryWorktreeFilesSettings: (name: string, settings: string[]) =>
     ipcRenderer.invoke('config:updateRepositoryWorktreeFilesSettings', { name, settings }),
 
   updateSplitEnabled: (enabled: boolean) =>
@@ -132,49 +132,49 @@ const terminalApi = {
 
   // Event listeners
   onData: (callback: (data: { id: string; data: string }) => void) => {
-    const listener = (_event: any, data: { id: string; data: string }) => callback(data)
+    const listener = (_event: IpcRendererEvent, data: { id: string; data: string }) => callback(data)
     ipcRenderer.on('terminal:data', listener)
     return () => ipcRenderer.removeListener('terminal:data', listener)
   },
 
   onState: (callback: (data: { id: string; state: TerminalState; previousState: TerminalState }) => void) => {
-    const listener = (_event: any, data: { id: string; state: TerminalState; previousState: TerminalState }) => callback(data)
+    const listener = (_event: IpcRendererEvent, data: { id: string; state: TerminalState; previousState: TerminalState }) => callback(data)
     ipcRenderer.on('terminal:state', listener)
     return () => ipcRenderer.removeListener('terminal:state', listener)
   },
 
   onExit: (callback: (data: { id: string; exitCode: number }) => void) => {
-    const listener = (_event: any, data: { id: string; exitCode: number }) => callback(data)
+    const listener = (_event: IpcRendererEvent, data: { id: string; exitCode: number }) => callback(data)
     ipcRenderer.on('terminal:exit', listener)
     return () => ipcRenderer.removeListener('terminal:exit', listener)
   },
 
   onBranch: (callback: (data: { id: string; branchName: string | null }) => void) => {
-    const listener = (_event: any, data: { id: string; branchName: string | null }) => callback(data)
+    const listener = (_event: IpcRendererEvent, data: { id: string; branchName: string | null }) => callback(data)
     ipcRenderer.on('terminal:branch', listener)
     return () => ipcRenderer.removeListener('terminal:branch', listener)
   },
 
   onMetadata: (callback: (data: { id: string; metadata: TerminalMetadata }) => void) => {
-    const listener = (_event: any, data: { id: string; metadata: TerminalMetadata }) => callback(data)
+    const listener = (_event: IpcRendererEvent, data: { id: string; metadata: TerminalMetadata }) => callback(data)
     ipcRenderer.on('terminal:metadata', listener)
     return () => ipcRenderer.removeListener('terminal:metadata', listener)
   },
 
   onCommandStart: (callback: (data: { id: string; command: string }) => void) => {
-    const listener = (_event: any, data: { id: string; command: string }) => callback(data)
+    const listener = (_event: IpcRendererEvent, data: { id: string; command: string }) => callback(data)
     ipcRenderer.on('terminal:commandStart', listener)
     return () => ipcRenderer.removeListener('terminal:commandStart', listener)
   },
 
   onCommandEnd: (callback: (data: { id: string; exitCode: number }) => void) => {
-    const listener = (_event: any, data: { id: string; exitCode: number }) => callback(data)
+    const listener = (_event: IpcRendererEvent, data: { id: string; exitCode: number }) => callback(data)
     ipcRenderer.on('terminal:commandEnd', listener)
     return () => ipcRenderer.removeListener('terminal:commandEnd', listener)
   },
 
   onRepositories: (callback: (data: { id: string; repositories: string[] }) => void) => {
-    const listener = (_event: any, data: { id: string; repositories: string[] }) => callback(data)
+    const listener = (_event: IpcRendererEvent, data: { id: string; repositories: string[] }) => callback(data)
     ipcRenderer.on('terminal:repositories', listener)
     return () => ipcRenderer.removeListener('terminal:repositories', listener)
   },
@@ -261,7 +261,7 @@ const updaterApi = {
   getReleaseNotes: (version: string): Promise<string | null> =>
     ipcRenderer.invoke('updater:getReleaseNotes', version),
   onStatus: (callback: (status: UpdateStatus) => void) => {
-    const listener = (_event: any, status: UpdateStatus) => callback(status)
+    const listener = (_event: IpcRendererEvent, status: UpdateStatus) => callback(status)
     ipcRenderer.on('updater:status', listener)
     return () => ipcRenderer.removeListener('updater:status', listener)
   },

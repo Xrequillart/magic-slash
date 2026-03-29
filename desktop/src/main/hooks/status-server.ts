@@ -42,9 +42,7 @@ export function setRepositoriesCallback(callback: RepositoriesCallback) {
 export function startStatusServer(): Promise<number> {
   return new Promise((resolve, reject) => {
     server = http.createServer((req, res) => {
-      // Enable CORS
-      res.setHeader('Access-Control-Allow-Origin', '*')
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST')
+      // No CORS headers — server is called from shell hooks (curl), not browsers
 
       if (!req.url) {
         res.writeHead(400)
@@ -189,7 +187,8 @@ export function startStatusServer(): Promise<number> {
           res.writeHead(404)
           res.end('Not found')
         }
-      } catch {
+      } catch (error) {
+        console.error('[StatusServer] Request error:', error)
         res.writeHead(500)
         res.end('Server error')
       }

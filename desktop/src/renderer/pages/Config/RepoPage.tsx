@@ -241,7 +241,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
   const handleWorktreeFilesChange = async (files: string[]) => {
     try {
-      await updateRepositoryWorktreeFilesSettings(repoName, { worktreeFiles: files })
+      await updateRepositoryWorktreeFilesSettings(repoName, files)
       showToast('Worktree files updated')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to update worktree files', 'error')

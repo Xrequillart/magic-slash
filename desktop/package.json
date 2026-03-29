@@ -1,6 +1,6 @@
 {
   "name": "magic-slash-desktop",
-  "version": "0.29.3",
+  "version": "0.29.4",
   "description": "Magic Slash Desktop - Configuration and Claude Code terminals",
   "main": "dist/main/index.js",
   "author": "xrequillart",
@@ -34,8 +34,7 @@
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
-    "concurrently": "^8.2.2",
-    "electron": "^28.2.0",
+"electron": "^28.2.0",
     "electron-builder": "^24.9.1",
     "esbuild": "^0.20.0",
     "postcss": "^8.4.33",

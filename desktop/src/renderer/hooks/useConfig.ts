@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
+import type { RepositoryConfig } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -20,7 +21,7 @@ export function useConfig() {
     return result
   }, [setConfig])
 
-  const updateRepository = useCallback(async (name: string, updates: any) => {
+  const updateRepository = useCallback(async (name: string, updates: Partial<RepositoryConfig>) => {
     const result = await window.electronAPI.config.updateRepository(name, updates)
     setConfig(result.config)
     return result
@@ -44,37 +45,37 @@ export function useConfig() {
     return result
   }, [setConfig])
 
-  const updateRepositoryCommitSettings = useCallback(async (name: string, settings: Record<string, any>) => {
+  const updateRepositoryCommitSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['commit']>>) => {
     const result = await window.electronAPI.config.updateRepositoryCommitSettings(name, settings)
     setConfig(result.config)
     return result
   }, [setConfig])
 
-  const updateRepositoryResolveSettings = useCallback(async (name: string, settings: Record<string, any>) => {
+  const updateRepositoryResolveSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['resolve']>>) => {
     const result = await window.electronAPI.config.updateRepositoryResolveSettings(name, settings)
     setConfig(result.config)
     return result
   }, [setConfig])
 
-  const updateRepositoryPullRequestSettings = useCallback(async (name: string, settings: Record<string, any>) => {
+  const updateRepositoryPullRequestSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['pullRequest']>>) => {
     const result = await window.electronAPI.config.updateRepositoryPullRequestSettings(name, settings)
     setConfig(result.config)
     return result
   }, [setConfig])
 
-  const updateRepositoryIssuesSettings = useCallback(async (name: string, settings: Record<string, any>) => {
+  const updateRepositoryIssuesSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['issues']>>) => {
     const result = await window.electronAPI.config.updateRepositoryIssuesSettings(name, settings)
     setConfig(result.config)
     return result
   }, [setConfig])
 
-  const updateRepositoryBranchSettings = useCallback(async (name: string, settings: Record<string, any>) => {
+  const updateRepositoryBranchSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['branches']>>) => {
     const result = await window.electronAPI.config.updateRepositoryBranchSettings(name, settings)
     setConfig(result.config)
     return result
   }, [setConfig])
 
-  const updateRepositoryWorktreeFilesSettings = useCallback(async (name: string, settings: Record<string, any>) => {
+  const updateRepositoryWorktreeFilesSettings = useCallback(async (name: string, settings: string[]) => {
     const result = await window.electronAPI.config.updateRepositoryWorktreeFilesSettings(name, settings)
     setConfig(result.config)
     return result

@@ -37,22 +37,19 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
   worktreeFiles: []
 }
 
-function deepMergeDefaults(defaults: Record<string, any>, existing: Record<string, any>): Record<string, any> {
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function deepMergeDefaults(defaults: Record<string, unknown>, existing: Record<string, unknown>): Record<string, unknown> {
   const result = { ...existing }
   for (const key of Object.keys(defaults)) {
+    const defVal = defaults[key]
+    const resVal = result[key]
     if (!(key in result)) {
-      result[key] = typeof defaults[key] === 'object' && defaults[key] !== null && !Array.isArray(defaults[key])
-        ? { ...defaults[key] }
-        : defaults[key]
-    } else if (
-      typeof defaults[key] === 'object' &&
-      defaults[key] !== null &&
-      !Array.isArray(defaults[key]) &&
-      typeof result[key] === 'object' &&
-      result[key] !== null &&
-      !Array.isArray(result[key])
-    ) {
-      result[key] = deepMergeDefaults(defaults[key], result[key])
+      result[key] = isPlainObject(defVal) ? { ...defVal } : defVal
+    } else if (isPlainObject(defVal) && isPlainObject(resVal)) {
+      result[key] = deepMergeDefaults(defVal, resVal)
     }
   }
   return result
@@ -66,7 +63,7 @@ export function migrateConfig(): boolean {
   if (config.repositories) {
     for (const name of Object.keys(config.repositories)) {
       const repo = config.repositories[name]
-      const merged = deepMergeDefaults(DEFAULT_REPOSITORY_FIELDS as Record<string, any>, repo as Record<string, any>) as RepositoryConfig
+      const merged = deepMergeDefaults(DEFAULT_REPOSITORY_FIELDS as unknown as Record<string, unknown>, repo as unknown as Record<string, unknown>) as unknown as RepositoryConfig
       if (JSON.stringify(merged) !== JSON.stringify(repo)) {
         config.repositories[name] = merged
         changed = true

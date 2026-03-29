@@ -131,19 +131,6 @@ input[type="checkbox"] {
 }
 
 /* Animation utilities */
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 2s ease-in-out infinite;
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -151,16 +138,6 @@ input[type="checkbox"] {
 }
 
 /* Loader spinner */
-.loader-spinner {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border: 2px solid #27272a;
-  border-top-color: #6366f1;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
 .loader-spinner-small {
   display: inline-block;
   width: 8px;

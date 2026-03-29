@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Play, ChevronDown } from 'lucide-react'
 import { useScriptRunner } from '../../hooks/useScriptRunner'
+import { useClickOutside } from '../../hooks/useClickOutside'
 import type { ProjectScripts, ScriptCategory, PackageScript } from '../../../types'
 
 const CATEGORY_ORDER: ScriptCategory[] = ['dev', 'build', 'test', 'lint', 'other']
@@ -52,26 +53,8 @@ export function ScriptsDropdown({ repoPath, agentId, agentName }: ScriptsDropdow
   }, [repoPath, agentId, agentName, projectScripts, runScript])
 
   // Close on click outside or Escape
-  useEffect(() => {
-    if (!isOpen) return
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false)
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isOpen])
+  const closeDropdown = useCallback(() => setIsOpen(false), [])
+  useClickOutside(dropdownRef, isOpen, closeDropdown)
 
   // Check if a script is already running for this repo+agent
   const isScriptRunning = useCallback((scriptName: string) => {

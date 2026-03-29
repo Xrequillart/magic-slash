@@ -4,6 +4,7 @@ import * as path from 'path'
 import * as os from 'os'
 import { readConfig } from '../config/config'
 import { expandPath } from '../config/validation'
+import AdmZip from 'adm-zip'
 
 const BUILT_IN_SKILLS = ['magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
 
@@ -227,7 +228,6 @@ export function setupSkillsHandlers() {
     if (result.canceled || !result.filePath) return { success: false, canceled: true }
 
     const content = fs.readFileSync(skillFile, 'utf-8')
-    const AdmZip = require('adm-zip')
     const zip = new AdmZip()
     zip.addFile(`${name}/SKILL.md`, Buffer.from(content, 'utf-8'))
     zip.writeZip(result.filePath)
@@ -364,11 +364,18 @@ export function setupSkillsHandlers() {
 
     for (const [name, repoConfig] of Object.entries(repos)) {
       const repoPath = expandPath(repoConfig.path)
-      if (filePath.startsWith(repoPath + path.sep) || filePath.startsWith(repoPath + '/')) {
-        isAllowed = true
-        repoName = name
-        repoColor = repoConfig.color
-        break
+      try {
+        const realRepoPath = fs.realpathSync(repoPath)
+        const realFilePath = fs.realpathSync(filePath)
+        if (realFilePath.startsWith(realRepoPath + path.sep) || realFilePath.startsWith(realRepoPath + '/')) {
+          isAllowed = true
+          repoName = name
+          repoColor = repoConfig.color
+          break
+        }
+      } catch {
+        // realpathSync fails for dangling symlinks or non-existent paths — skip this repo
+        continue
       }
     }
 

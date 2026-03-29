@@ -54,24 +54,29 @@ export function setupScriptHandlers(mainWindowGetter: () => BrowserWindow | null
     const id = `script-${Date.now()}`
     const mainWindow = getMainWindow()
 
-    createTerminal(
-      id,
-      `${scriptName} (${agentName})`,
-      repoPath,
-      (data) => {
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:data', { id, data })
-        }
-      },
-      () => {},
-      (exitCode) => {
-        if (mainWindow) {
-          mainWindow.webContents.send('terminal:exit', { id, exitCode })
-        }
-      },
-      undefined, undefined, undefined, undefined,
-      { loginShell: false }
-    )
+    try {
+      createTerminal(
+        id,
+        `${scriptName} (${agentName})`,
+        repoPath,
+        (data) => {
+          if (mainWindow) {
+            mainWindow.webContents.send('terminal:data', { id, data })
+          }
+        },
+        () => {},
+        (exitCode) => {
+          if (mainWindow) {
+            mainWindow.webContents.send('terminal:exit', { id, exitCode })
+          }
+        },
+        undefined, undefined, undefined, undefined,
+        { loginShell: false }
+      )
+    } catch (error) {
+      console.error('[Scripts] Failed to create terminal:', error)
+      return { id: null, error: (error as Error).message }
+    }
 
     // Write the run command with `exec` so the shell is replaced by the command.
     // When the command exits (including via Ctrl+C), the PTY exits and terminal:exit fires.
@@ -80,7 +85,11 @@ export function setupScriptHandlers(mainWindowGetter: () => BrowserWindow | null
     const fullCommand = nodePrefix ? `${nodePrefix} && exec ${runCommand}` : `exec ${runCommand}`
     // Small delay to let the shell initialize
     setTimeout(() => {
-      writeToTerminal(id, `${fullCommand}\r`)
+      try {
+        writeToTerminal(id, `${fullCommand}\r`)
+      } catch (error) {
+        console.error('[Scripts] Failed to write to terminal:', error)
+      }
     }, 500)
 
     return { id }

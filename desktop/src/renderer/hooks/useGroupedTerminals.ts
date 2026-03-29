@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useStore } from '../store'
-import type { TerminalInfo } from '../../types'
+import type { TerminalInfo, Config, RepositoryConfig } from '../../types'
 
 export type WorkflowGroupKey =
   | 'needs_attention'
@@ -40,7 +40,7 @@ export function classifyTerminal(terminal: TerminalInfo): WorkflowGroupKey {
   return 'backlog'
 }
 
-function groupTerminals(terminalList: TerminalInfo[], config: any) {
+function groupTerminals(terminalList: TerminalInfo[], config: Config | null) {
   const groups: Record<WorkflowGroupKey, TerminalWithRepos[]> = {
     needs_attention: [],
     in_review: [],
@@ -55,7 +55,7 @@ function groupTerminals(terminalList: TerminalInfo[], config: any) {
 
     if (config) {
       for (const [repoName, repoConfig] of Object.entries(config.repositories)) {
-        if (repos.some(repo => repo.startsWith((repoConfig as any).path))) {
+        if (repos.some(repo => repo.startsWith((repoConfig as RepositoryConfig).path))) {
           matchingProjects.push(repoName)
         }
       }

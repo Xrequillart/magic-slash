@@ -3,6 +3,11 @@ import * as path from 'path'
 import * as os from 'os'
 import type { RepositoryConfig, TerminalMetadata, Agent } from '../../types'
 
+/** Settings input where each field can be its normal type, 'default', or null (to reset) */
+type SettingsInput<T> = {
+  [K in keyof T]?: T[K] | 'default' | null
+}
+
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'magic-slash')
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
 
@@ -188,7 +193,7 @@ export function updateRepositoryLanguages(name: string, languages: Record<string
       if (value === null || value === 'default') {
         delete config.repositories[name].languages![key as keyof typeof config.repositories[string]['languages']]
       } else if (validValues.includes(value)) {
-        (config.repositories[name].languages as any)[key] = value
+        ;(config.repositories[name].languages as Record<string, string>)[key] = value
       }
     }
   }
@@ -202,7 +207,7 @@ export function updateRepositoryLanguages(name: string, languages: Record<string
   return config
 }
 
-export function updateRepositoryCommitSettings(name: string, settings: Record<string, any>): Config {
+export function updateRepositoryCommitSettings(name: string, settings: SettingsInput<NonNullable<RepositoryConfig['commit']>>): Config {
   const config = readConfig()
   if (!config.repositories || !config.repositories[name]) {
     throw new Error(`Repository '${name}' not found`)
@@ -255,7 +260,7 @@ export function updateRepositoryCommitSettings(name: string, settings: Record<st
   return config
 }
 
-export function updateRepositoryResolveSettings(name: string, settings: Record<string, any>): Config {
+export function updateRepositoryResolveSettings(name: string, settings: SettingsInput<NonNullable<RepositoryConfig['resolve']>>): Config {
   const config = readConfig()
   if (!config.repositories || !config.repositories[name]) {
     throw new Error(`Repository '${name}' not found`)
@@ -326,7 +331,7 @@ export function updateRepositoryResolveSettings(name: string, settings: Record<s
   return config
 }
 
-export function updateRepositoryPullRequestSettings(name: string, settings: Record<string, any>): Config {
+export function updateRepositoryPullRequestSettings(name: string, settings: SettingsInput<NonNullable<RepositoryConfig['pullRequest']>>): Config {
   const config = readConfig()
   if (!config.repositories || !config.repositories[name]) {
     throw new Error(`Repository '${name}' not found`)
@@ -352,7 +357,7 @@ export function updateRepositoryPullRequestSettings(name: string, settings: Reco
   return config
 }
 
-export function updateRepositoryIssuesSettings(name: string, settings: Record<string, any>): Config {
+export function updateRepositoryIssuesSettings(name: string, settings: SettingsInput<NonNullable<RepositoryConfig['issues']>>): Config {
   const config = readConfig()
   if (!config.repositories || !config.repositories[name]) {
     throw new Error(`Repository '${name}' not found`)
@@ -396,7 +401,7 @@ export function updateRepositoryIssuesSettings(name: string, settings: Record<st
   return config
 }
 
-export function updateRepositoryBranchSettings(name: string, settings: Record<string, any>): Config {
+export function updateRepositoryBranchSettings(name: string, settings: SettingsInput<NonNullable<RepositoryConfig['branches']>>): Config {
   const config = readConfig()
   if (!config.repositories || !config.repositories[name]) {
     throw new Error(`Repository '${name}' not found`)
@@ -422,7 +427,7 @@ export function updateRepositoryBranchSettings(name: string, settings: Record<st
   return config
 }
 
-export function updateRepositoryWorktreeFilesSettings(name: string, settings: Record<string, any>): Config {
+export function updateRepositoryWorktreeFilesSettings(name: string, settings: { worktreeFiles?: string[] | null }): Config {
   const config = readConfig()
   if (!config.repositories || !config.repositories[name]) {
     throw new Error(`Repository '${name}' not found`)
@@ -431,7 +436,7 @@ export function updateRepositoryWorktreeFilesSettings(name: string, settings: Re
   // Validate and set worktreeFiles
   if (settings.worktreeFiles !== undefined) {
     if (Array.isArray(settings.worktreeFiles)) {
-      const filtered = settings.worktreeFiles.filter((f: any) => typeof f === 'string' && f.trim().length > 0)
+      const filtered = settings.worktreeFiles.filter((f) => typeof f === 'string' && f.trim().length > 0)
       config.repositories[name].worktreeFiles = filtered.length > 0 ? filtered : []
     } else if (settings.worktreeFiles === null) {
       config.repositories[name].worktreeFiles = []
