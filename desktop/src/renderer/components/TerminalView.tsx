@@ -281,13 +281,7 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
       requestAnimationFrame(() => {
         if (!fitAddonRef.current || !xtermRef.current || !containerRef.current) return
 
-        const oldCols = xtermRef.current.cols
-        const oldRows = xtermRef.current.rows
-
         handleResize()
-
-        const newCols = xtermRef.current.cols
-        const newRows = xtermRef.current.rows
 
         // When terminal was hidden, always re-render from the authoritative
         // display buffer. xterm's internal state may be stale because the
