@@ -9,6 +9,9 @@ export type { TerminalMetadata }
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
+// Must match MAX_TERMINAL_ROWS in TerminalView.tsx
+const DEFAULT_PTY_ROWS = 26
+
 // Cached shell environment PATH (loaded once at startup)
 let cachedShellPath: string | null = null
 
@@ -241,7 +244,7 @@ export function createTerminal(
   const ptyProcess = pty.spawn(shell, shellArgs, {
     name: 'xterm-256color',
     cols: 120,
-    rows: 30,
+    rows: DEFAULT_PTY_ROWS,
     cwd: workingDir,
     env: {
       ...process.env,
@@ -267,7 +270,7 @@ export function createTerminal(
     repositories: initialRepositories || [workingDir],
     branchName: initialBranch,
     cols: 120,
-    rows: 30,
+    rows: DEFAULT_PTY_ROWS,
     createdAt: new Date(),
     metadata: createDefaultMetadata(),
     onStateChange,
@@ -323,6 +326,8 @@ export function resizeTerminal(id: string, cols: number, rows: number): void {
   if (isNaN(cols) || isNaN(rows)) return
   cols = Math.max(1, Math.floor(cols))
   rows = Math.max(1, Math.floor(rows))
+  // Skip if dimensions haven't changed to avoid unnecessary SIGWINCH
+  if (terminal.cols === cols && terminal.rows === rows) return
   terminal.cols = cols
   terminal.rows = rows
   terminal.pty.resize(cols, rows)
@@ -579,7 +584,7 @@ export function launchClaude(
     repositories: initialRepositories || [workingDir],
     branchName: initialBranch,
     cols: 120,
-    rows: 30,
+    rows: DEFAULT_PTY_ROWS,
     createdAt: new Date(),
     metadata: {
       ...createDefaultMetadata(),
