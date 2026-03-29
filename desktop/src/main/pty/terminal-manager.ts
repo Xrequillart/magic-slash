@@ -4,13 +4,14 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { execSync, execFileSync } from 'child_process'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata } from '../config/config'
+import { expandPath } from '../config/validation'
+import { getCommonPaths } from '../utils/paths'
 import type { TerminalMetadata } from '../../types'
 export type { TerminalMetadata }
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
-// Must match MAX_TERMINAL_ROWS in TerminalView.tsx
-const DEFAULT_PTY_ROWS = 26
+const DEFAULT_PTY_ROWS = 40
 
 // Cached shell environment PATH (loaded once at startup)
 let cachedShellPath: string | null = null
@@ -21,20 +22,9 @@ function getShellPath(): string {
   if (cachedShellPath) return cachedShellPath
 
   const home = os.homedir()
-
-  // Common paths where CLI tools are installed
   const commonPaths = [
-    path.join(home, '.local/bin'),           // claude CLI location
-    path.join(home, '.npm-global/bin'),      // npm global
+    ...getCommonPaths(),
     path.join(home, '.nvm/versions/node'),   // nvm (will be expanded below)
-    path.join(home, '.volta/bin'),           // Volta shims
-    '/opt/homebrew/bin',                     // Homebrew on Apple Silicon
-    '/opt/homebrew/sbin',
-    '/usr/local/bin',                        // Homebrew on Intel / system
-    '/usr/bin',
-    '/bin',
-    '/usr/sbin',
-    '/sbin'
   ]
 
   // Try to find nvm node path (use semver sort instead of alphabetical)
@@ -135,14 +125,6 @@ function getDefaultShell(): string {
   return '/bin/sh'
 }
 
-// Expand ~ to home directory
-function expandPath(inputPath: string): string {
-  if (!inputPath) return inputPath
-  if (inputPath.startsWith('~')) {
-    return path.join(os.homedir(), inputPath.slice(1))
-  }
-  return inputPath
-}
 
 export interface Terminal {
   id: string
@@ -442,7 +424,7 @@ export function launchClaude(
   let ptyStartTime = Date.now()
 
   // Function to create and attach a new PTY process
-  const createPtyProcess = (currentCwd: string, cols: number = 120, rows: number = 30) => {
+  const createPtyProcess = (currentCwd: string, cols: number = 120, rows: number = DEFAULT_PTY_ROWS) => {
     const ptyProcess = pty.spawn(shell, ['-li', '-c', 'claude'], {
       name: 'xterm-256color',
       cols,

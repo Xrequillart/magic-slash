@@ -6,8 +6,6 @@ import '@xterm/xterm/css/xterm.css'
 import type { TerminalInfo } from '../../types'
 import { formatDroppedPaths } from '../utils/formatDroppedPaths'
 
-const MAX_TERMINAL_ROWS = 26
-
 interface TerminalViewProps {
   terminal: TerminalInfo
   isVisible: boolean
@@ -26,19 +24,6 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
   const [showScrollButton, setShowScrollButton] = useState(false)
   const needsResizeRef = useRef(false)
   const dragCounterRef = useRef(0)
-
-  const fitWithRowCap = useCallback(() => {
-    if (!fitAddonRef.current || !xtermRef.current) return
-    const dims = fitAddonRef.current.proposeDimensions()
-    if (!dims || isNaN(dims.cols) || isNaN(dims.rows)) return
-    const cols = dims.cols
-    const rows = Math.min(dims.rows, MAX_TERMINAL_ROWS)
-    if (xtermRef.current.cols !== cols || xtermRef.current.rows !== rows) {
-      const core = (xtermRef.current as any)._core
-      core._renderService.clear()
-      xtermRef.current.resize(cols, rows)
-    }
-  }, [])
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -132,7 +117,7 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
     // Then notify main process of the calculated size
     requestAnimationFrame(() => {
       if (containerRef.current && fitAddonRef.current && xtermRef.current) {
-        fitWithRowCap()
+        fitAddonRef.current.fit()
         const { cols, rows } = xtermRef.current
         window.electronAPI.terminal.resize(terminal.id, cols, rows)
       }
@@ -257,7 +242,7 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
       if (fitAddonRef.current && xtermRef.current && containerRef.current) {
         const { offsetWidth, offsetHeight } = containerRef.current
         if (offsetWidth > 0 && offsetHeight > 0) {
-          fitWithRowCap()
+          fitAddonRef.current.fit()
           const { cols, rows } = xtermRef.current
           // Only send resize to PTY if dimensions actually changed,
           // to avoid unnecessary SIGWINCH that causes Claude Code to re-render
@@ -272,7 +257,7 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
 
     const debouncedResize = () => {
       if (resizeTimer) clearTimeout(resizeTimer)
-      resizeTimer = setTimeout(handleResize, 100)
+      resizeTimer = setTimeout(handleResize, 200)
     }
 
     // Initial fit: double-RAF ensures browser has computed layout after visibility change
@@ -283,21 +268,12 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
 
         handleResize()
 
-        // When terminal was hidden, always re-render from the authoritative
-        // display buffer. xterm's internal state may be stale because the
-        // renderer skips updates while the element is display:none.
+        // When terminal was hidden, force a repaint. The xterm buffer is
+        // already up-to-date (onData listener writes even while display:none),
+        // only the visual renderer is stale.
         if (needsResizeRef.current) {
-          xtermRef.current.reset()
-          window.electronAPI.terminal.getBuffer(terminal.id).then((buffer) => {
-            if (buffer && buffer.length > 0 && xtermRef.current) {
-              // Prepend ANSI reset to prevent color bleeding from truncated sequences
-              xtermRef.current.write('\x1b[0m' + buffer, () => {
-                xtermRef.current?.scrollToBottom()
-              })
-            }
-          }).catch(() => {
-            // Buffer restore failed, terminal will show new output normally
-          })
+          xtermRef.current.refresh(0, xtermRef.current.rows - 1)
+          xtermRef.current.scrollToBottom()
         }
 
         needsResizeRef.current = false
