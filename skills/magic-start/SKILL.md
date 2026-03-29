@@ -5,7 +5,7 @@ argument-hint: <TICKET-ID>
 allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, AskUserQuestion, mcp__atlassian__*, mcp__github__*
 ---
 
-# magic-slash v0.29.3 - /start
+# magic-slash v0.29.4 - /start
 
 You are an assistant that helps start a development task from a Jira ticket or a GitHub issue.
 

@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Edit2, Check, ChevronDown } from 'lucide-react'
+import { useClickOutside } from '../../hooks/useClickOutside'
 import type { TerminalMetadata } from '../../../types'
 
 const STATUS_OPTIONS = [
@@ -58,27 +59,8 @@ export function TicketHeader({
 }: TicketHeaderProps) {
   const [isStatusOpen, setIsStatusOpen] = useState(false)
   const statusRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!isStatusOpen) return
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (statusRef.current && !statusRef.current.contains(e.target as Node)) {
-        setIsStatusOpen(false)
-      }
-    }
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsStatusOpen(false)
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isStatusOpen])
+  const closeStatus = useCallback(() => setIsStatusOpen(false), [])
+  useClickOutside(statusRef, isStatusOpen, closeStatus)
 
   return (
     <div className="bg-white/[0.06] rounded-xl p-4">

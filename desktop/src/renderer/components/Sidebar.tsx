@@ -5,34 +5,11 @@ import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
 import { useGroupedTerminals, useSplitGroupedTerminals, WORKFLOW_GROUPS, type WorkflowGroupKey, type TerminalWithRepos } from '../hooks/useGroupedTerminals'
 import { getProjectColorMap } from '../utils/projectColors'
+import { stateColors, stateBgColors, stateHoverBgColors } from '../utils/stateColors'
 import type { TerminalState, ScriptTerminalInfo } from '../../types'
 
 const SIDEBAR_MIN_WIDTH = 200
 const SIDEBAR_DEFAULT_WIDTH = 300
-
-const stateColors: Record<TerminalState, string> = {
-  idle: 'text-text-secondary',
-  working: 'text-accent',
-  waiting: 'text-yellow',
-  completed: 'text-green',
-  error: 'text-red',
-}
-
-const stateBgColors: Record<TerminalState, string> = {
-  idle: 'bg-text-secondary/20',
-  working: 'bg-accent/20',
-  waiting: 'bg-yellow/20',
-  completed: 'bg-green/20',
-  error: 'bg-red/20',
-}
-
-const stateHoverBgColors: Record<TerminalState, string> = {
-  idle: 'hover:bg-text-secondary/10',
-  working: 'hover:bg-accent/10',
-  waiting: 'hover:bg-yellow/10',
-  completed: 'hover:bg-green/10',
-  error: 'hover:bg-red/10',
-}
 
 const StatusBadge = memo(function StatusBadge({ state }: { state: TerminalState }) {
   // Don't render anything for idle state
@@ -642,7 +619,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 py-2 text-xs text-text-secondary flex items-center justify-start gap-2">
-        <span className="opacity-60">v0.29.3</span>
+        <span className="opacity-60">v0.29.4</span>
         <span className="opacity-30">&bull;</span>
         <a
           href="https://xrequillart.github.io/magic-slash/"

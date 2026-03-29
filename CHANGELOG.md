@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.4] - 2026-03-29
+
+### Fixed
+
+- **Desktop**: Remove terminal row cap (26 rows) that prevented xterm.js from using full window height
+- **Desktop**: Eliminate flash/flicker when switching between agents by using `refresh()` instead of heavy buffer restore (`reset()` + IPC `getBuffer()` + `write()`)
+- **Desktop**: Fix inconsistent initial PTY rows between `createTerminal` (26) and `createPtyProcess` (30)
+
+### Changed
+
+- **Desktop**: Replace custom `fitTerminal()` with `fitAddon.fit()` to remove fragile internal xterm.js API usage (`_core._renderService.clear()`)
+- **Desktop**: Increase resize debounce from 100ms to 200ms to reduce SIGWINCH churn during continuous window drag
+
 ## [0.29.3] - 2026-03-29
 
 ### Fixed
@@ -866,6 +879,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.29.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.29.4
 [0.29.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.29.3
 [0.29.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.29.2
 [0.29.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.29.1

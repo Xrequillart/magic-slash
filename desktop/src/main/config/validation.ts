@@ -2,21 +2,11 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import { execSync, execFile } from 'child_process'
+import { getCommonPaths } from '../utils/paths'
 
 // Get extended PATH for git commands (GUI apps on macOS don't inherit shell PATH)
 function getExtendedPath(): string {
-  const home = os.homedir()
-  const commonPaths = [
-    '/opt/homebrew/bin',      // Homebrew on Apple Silicon
-    '/opt/homebrew/sbin',
-    '/usr/local/bin',         // Homebrew on Intel / system
-    '/usr/bin',
-    '/bin',
-    '/usr/sbin',
-    '/sbin',
-    path.join(home, '.local/bin'),
-  ]
-  return [...commonPaths, process.env.PATH || ''].join(':')
+  return [...getCommonPaths(), process.env.PATH || ''].join(':')
 }
 
 // Execute git command with proper PATH

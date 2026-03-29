@@ -249,7 +249,9 @@ app.whenReady().then(async () => {
   })
 
   // Initialize hooks and restore sessions in background (non-blocking)
-  initializeHooksAndSessions()
+  initializeHooksAndSessions().catch(err => {
+    console.error('[Init] Failed to initialize hooks and sessions:', err)
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
