@@ -22,6 +22,7 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
   const inAlternateScreenRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [showScrollButton, setShowScrollButton] = useState(false)
+  const needsResizeRef = useRef(false)
   const dragCounterRef = useRef(0)
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -223,7 +224,13 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
 
   // Handle resize - use ResizeObserver to detect container size changes
   useEffect(() => {
-    if (!isVisible || !containerRef.current) return
+    if (!containerRef.current) return
+
+    // When not visible, mark that a resize check is needed when we become visible
+    if (!isVisible) {
+      needsResizeRef.current = true
+      return
+    }
 
     let resizeTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -247,7 +254,33 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
     // (single RAF can fire before display:hidden→block layout is resolved)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        if (!fitAddonRef.current || !xtermRef.current || !containerRef.current) return
+
+        const oldCols = xtermRef.current.cols
+        const oldRows = xtermRef.current.rows
+
         handleResize()
+
+        const newCols = xtermRef.current.cols
+        const newRows = xtermRef.current.rows
+
+        // If dimensions changed while this terminal was hidden, the PTY output
+        // received in the meantime was hard-wrapped for the old column width.
+        // Re-render from the display buffer so xterm reflows for the new size.
+        if (needsResizeRef.current && (oldCols !== newCols || oldRows !== newRows)) {
+          xtermRef.current.reset()
+          window.electronAPI.terminal.getBuffer(terminal.id).then((buffer) => {
+            if (buffer && buffer.length > 0 && xtermRef.current) {
+              xtermRef.current.write(buffer, () => {
+                xtermRef.current?.scrollToBottom()
+              })
+            }
+          }).catch(() => {
+            // Buffer restore failed, terminal will show new output normally
+          })
+        }
+
+        needsResizeRef.current = false
       })
     })
 

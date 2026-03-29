@@ -172,6 +172,8 @@ function appendToDisplayBuffer(id: string, data: string): void {
     const sliced = buf.slice(-DISPLAY_BUFFER_MAX_SIZE)
     const firstNewline = sliced.indexOf('\n')
     buf = firstNewline > 0 ? sliced.slice(firstNewline + 1) : sliced
+    // Reset ANSI state to prevent color bleeding from truncated escape sequences
+    buf = '\x1b[0m' + buf
   }
   displayBuffers.set(id, buf)
 }
