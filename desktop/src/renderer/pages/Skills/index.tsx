@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, ArrowLeft, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork } from 'lucide-react'
+import { Plus, ArrowLeft, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2 } from 'lucide-react'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
+import { VSCodeIcon } from '../../components/agent-info-sidebar/icons'
+import { useTerminals } from '../../hooks/useTerminals'
+import { useStore } from '../../store'
 
 const TOKEN_BUDGET = 4000
 const CHAR_BUDGET = 16000
@@ -44,6 +47,11 @@ interface SkillTokenEntry {
   weight: 'high' | 'medium' | 'low'
 }
 
+interface DuplicateSkillEntry {
+  name: string
+  sources: Array<{ source: 'built-in' | 'custom' | 'repo'; repoName?: string }>
+}
+
 function getWeight(tokens: number): 'high' | 'medium' | 'low' {
   if (tokens >= 400) return 'high'
   if (tokens >= 200) return 'medium'
@@ -58,8 +66,7 @@ const weightStyles: Record<string, { className: string; label: string }> = {
 
 function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSkills: RepoSkillInfo[] }) {
   const [showBreakdown, setShowBreakdown] = useState(false)
-  const [showLongDescriptions, setShowLongDescriptions] = useState(false)
-  const { totalTokens, totalChars, breakdown, longDescriptions } = useMemo(() => {
+  const { totalTokens, totalChars, breakdown } = useMemo(() => {
     const entries: SkillTokenEntry[] = []
     for (const s of skills) {
       const chars = (s.description || '').length
@@ -73,14 +80,10 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
     }
     entries.sort((a, b) => b.tokens - a.tokens)
     let tc = 0, cc = 0
-    const longEntries: { name: string; source: string; wordCount: number }[] = []
     for (const e of entries) {
       tc += e.tokens; cc += e.chars
-      const desc = (skills.find(s => s.name === e.name)?.description || repoSkills.find(s => s.name === e.name)?.description || '')
-      const wordCount = desc.split(/\s+/).filter(Boolean).length
-      if (wordCount > 110) longEntries.push({ name: e.name, source: e.source, wordCount })
     }
-    return { totalTokens: tc, totalChars: cc, breakdown: entries, longDescriptions: longEntries }
+    return { totalTokens: tc, totalChars: cc, breakdown: entries }
   }, [skills, repoSkills])
 
   return (
@@ -90,36 +93,6 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
         <Gauge className="w-4 h-4" />
         <span>Skills Budget</span>
       </div>
-      {longDescriptions.length > 0 && (
-        <div className="rounded-lg bg-orange/10 border border-orange/20 overflow-hidden">
-          <button
-            onClick={() => setShowLongDescriptions((v) => !v)}
-            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-orange/5 transition-colors"
-          >
-            <AlertTriangle className="w-4 h-4 text-orange flex-shrink-0" />
-            <p className="text-xs text-orange flex-1 text-left">
-              You have {longDescriptions.length} skill{longDescriptions.length > 1 ? 's' : ''} with {longDescriptions.length > 1 ? 'descriptions' : 'a description'} longer than 110 words. Consider optimizing {longDescriptions.length > 1 ? 'them' : 'it'} for better performance.
-            </p>
-            <ChevronRight className={`w-3.5 h-3.5 text-orange flex-shrink-0 transition-transform ${showLongDescriptions ? 'rotate-90' : ''}`} />
-          </button>
-          {showLongDescriptions && (
-            <div className="px-3 pt-1 pb-2">
-              <div className="flex flex-col gap-1.5">
-                {longDescriptions.map((entry) => {
-                  const sourceColor = entry.source === 'built-in' ? 'bg-accent/10 text-accent' : entry.source === 'repo' ? 'bg-blue/10 text-blue' : 'bg-green/10 text-green'
-                  return (
-                    <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
-                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 ${sourceColor}`}>{entry.source}</span>
-                      <span className="text-xs text-white truncate min-w-0 flex-1 capitalize">{entry.name}</span>
-                      <span className="text-[10px] text-orange/70 flex-shrink-0">{entry.wordCount} words</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
       <div className="grid grid-cols-2 gap-3">
         <BudgetBar label="Tokens (2% context)" value={totalTokens} max={TOKEN_BUDGET} unit="tokens" barColor="bg-accent" />
         <BudgetBar label="Characters (fallback)" value={totalChars} max={CHAR_BUDGET} unit="chars" barColor="bg-orange" />
@@ -161,6 +134,103 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function DuplicateSkillsAlert({ duplicates }: { duplicates: DuplicateSkillEntry[] }) {
+  if (duplicates.length === 0) return null
+
+  return (
+    <div className="rounded-lg bg-orange/10 border border-orange/20 px-3 py-2.5">
+      <div className="flex items-center gap-2 mb-2">
+        <AlertTriangle className="w-4 h-4 text-orange flex-shrink-0" />
+        <p className="text-xs text-orange">
+          {duplicates.length} skill name{duplicates.length > 1 ? 's are' : ' is'} used in multiple sources. Duplicates may cause unexpected behavior.
+        </p>
+      </div>
+      <div className="flex flex-col gap-1.5 ml-6">
+        {duplicates.map((dup) => (
+          <div key={dup.name} className="flex items-center gap-2">
+            <span className="text-xs text-white truncate min-w-0 flex-1 capitalize">{dup.name}</span>
+            <span className="text-[10px] text-orange/70 flex-shrink-0">{dup.sources.length}x</span>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {dup.sources.map((s, i) => {
+                const sourceColor = s.source === 'built-in'
+                  ? 'bg-accent/10 text-accent'
+                  : s.source === 'repo'
+                    ? 'bg-blue/10 text-blue'
+                    : 'bg-green/10 text-green'
+                const label = s.source === 'repo' && s.repoName
+                  ? `repo (${s.repoName})`
+                  : s.source
+                return (
+                  <span
+                    key={`${s.source}-${s.repoName || ''}-${i}`}
+                    className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${sourceColor}`}
+                  >
+                    {label}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function LongDescriptionsAlert({ longDescriptions, onFix }: { longDescriptions: { name: string; source: string; wordCount: number; filePath: string }[]; onFix: () => void }) {
+  if (longDescriptions.length === 0) return null
+
+  return (
+    <div className="rounded-lg bg-orange/10 border border-orange/20 px-3 py-2.5">
+      <div className="flex items-center gap-2 mb-2">
+        <AlertTriangle className="w-4 h-4 text-orange flex-shrink-0" />
+        <p className="text-xs text-orange">
+          {longDescriptions.length} skill{longDescriptions.length > 1 ? 's' : ''} with {longDescriptions.length > 1 ? 'descriptions' : 'a description'} longer than 110 words. Consider optimizing {longDescriptions.length > 1 ? 'them' : 'it'} for better performance.
+        </p>
+      </div>
+      <div className="flex flex-col gap-1.5 ml-6">
+        {longDescriptions.map((entry) => (
+          <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
+            <span className="text-xs text-white truncate min-w-0 flex-1 capitalize">{entry.name}</span>
+            <span className="text-[10px] text-orange/70 flex-shrink-0">{entry.wordCount} words</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2.5 ml-6 flex justify-end gap-2">
+        <button
+          onClick={() => longDescriptions.forEach((e) => window.electronAPI.shell.openInVSCode(e.filePath))}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-orange border border-orange/20 rounded-lg hover:bg-orange/10 transition-colors"
+        >
+          <VSCodeIcon className="w-3.5 h-3.5" />
+          Open in VS Code
+        </button>
+        <button
+          onClick={onFix}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-orange border border-orange/20 rounded-lg hover:bg-orange/10 transition-colors"
+        >
+          <Wand2 className="w-3.5 h-3.5" />
+          Fix with agent
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function SkillsWarnings({ duplicates, longDescriptions, onFixLongDescriptions }: { duplicates: DuplicateSkillEntry[]; longDescriptions: { name: string; source: string; wordCount: number; filePath: string }[]; onFixLongDescriptions: () => void }) {
+  if (duplicates.length === 0 && longDescriptions.length === 0) return null
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2 text-sm text-text-secondary">
+        <AlertTriangle className="w-4 h-4" />
+        <span>Warnings</span>
+      </div>
+      <DuplicateSkillsAlert duplicates={duplicates} />
+      <LongDescriptionsAlert longDescriptions={longDescriptions} onFix={onFixLongDescriptions} />
     </div>
   )
 }
@@ -482,6 +552,8 @@ function SkillEditor({
 
 export function SkillsPage() {
   const { skills, loading, loadSkills, getSkill, createSkill, updateSkill, deleteSkill, downloadSkill, importSkill, getImage, repoSkills, repoSkillsLoading, loadRepoSkills, getRepoSkill } = useSkills()
+  const { launchClaudeTerminal } = useTerminals()
+  const { setCurrentPage } = useStore()
   const [imageCache, setImageCache] = useState<Record<string, string | null>>({})
 
   // Hash routing state
@@ -565,6 +637,44 @@ export function SkillsPage() {
     return grouped
   }, [repoSkills])
 
+  const duplicateSkills = useMemo(() => {
+    const nameMap = new Map<string, Array<{ source: 'built-in' | 'custom' | 'repo'; repoName?: string }>>()
+
+    for (const s of skills) {
+      const key = s.name.toLowerCase()
+      if (!nameMap.has(key)) nameMap.set(key, [])
+      nameMap.get(key)!.push({ source: s.isBuiltIn ? 'built-in' : 'custom' })
+    }
+
+    for (const rs of repoSkills) {
+      const key = rs.name.toLowerCase()
+      if (!nameMap.has(key)) nameMap.set(key, [])
+      nameMap.get(key)!.push({ source: 'repo', repoName: rs.repoName })
+    }
+
+    const duplicates: DuplicateSkillEntry[] = []
+    for (const [name, sources] of nameMap) {
+      if (sources.length > 1) {
+        duplicates.push({ name, sources })
+      }
+    }
+
+    return duplicates
+  }, [skills, repoSkills])
+
+  const longDescriptions = useMemo(() => {
+    const entries: { name: string; source: string; wordCount: number; filePath: string }[] = []
+    for (const s of skills) {
+      const wordCount = (s.description || '').split(/\s+/).filter(Boolean).length
+      if (wordCount > 110) entries.push({ name: s.name, source: s.isBuiltIn ? 'built-in' : 'custom', wordCount, filePath: `~/.claude/skills/${s.dirName}/SKILL.md` })
+    }
+    for (const rs of repoSkills) {
+      const wordCount = (rs.description || '').split(/\s+/).filter(Boolean).length
+      if (wordCount > 110) entries.push({ name: rs.name, source: 'repo', wordCount, filePath: rs.filePath })
+    }
+    return entries
+  }, [skills, repoSkills])
+
   const navigateToList = useCallback(() => {
     window.location.hash = '#/'
     setEditSkill(null)
@@ -598,6 +708,16 @@ export function SkillsPage() {
       window.location.hash = '#/'
     }
   }, [editSkill, deleteSkill])
+
+  const handleFixLongDescriptions = useCallback(async () => {
+    const details = longDescriptions.map((e) => `- ${e.name} (${e.wordCount} words, located in ${e.filePath})`).join('\n')
+    const prompt = `Optimize the descriptions of the following skills to be under 110 words each while keeping their meaning and trigger conditions:\n${details}\nRead each skill file, rewrite only the description field in the frontmatter, and save.`
+    const terminal = await launchClaudeTerminal('Fix skill descriptions', '~/Documents')
+    setCurrentPage('terminals')
+    setTimeout(() => {
+      window.electronAPI.terminal.write(terminal.id, `${prompt}\r`)
+    }, 500)
+  }, [longDescriptions, launchClaudeTerminal, setCurrentPage])
 
   const content = (() => {
     // Skill detail / editor view
@@ -644,6 +764,11 @@ export function SkillsPage() {
           <h1 className="text-2xl font-semibold">Skills</h1>
           <p className="text-sm text-text-secondary mt-1">Manage the skills available to your agents.</p>
         </div>
+
+        {/* Warnings */}
+        {!loading && (
+          <SkillsWarnings duplicates={duplicateSkills} longDescriptions={longDescriptions} onFixLongDescriptions={handleFixLongDescriptions} />
+        )}
 
         {/* Token Budget Gauge */}
         {!loading && (skills.length > 0 || repoSkills.length > 0) && (
