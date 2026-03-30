@@ -247,7 +247,7 @@ export function TerminalsPage() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Terminal Content */}
-      <div className={`flex-1 overflow-hidden ${isSplitMode ? 'flex' : ''}`}>
+      <div className={`flex-1 overflow-hidden relative ${isSplitMode ? 'flex' : ''}`}>
         {isSplitMode ? (
           <>
             {/* Primary pane */}

@@ -117,9 +117,12 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
     // Then notify main process of the calculated size
     requestAnimationFrame(() => {
       if (containerRef.current && fitAddonRef.current && xtermRef.current) {
-        fitAddonRef.current.fit()
-        const { cols, rows } = xtermRef.current
-        window.electronAPI.terminal.resize(terminal.id, cols, rows)
+        const { offsetWidth, offsetHeight } = containerRef.current
+        if (offsetWidth > 0 && offsetHeight > 0) {
+          fitAddonRef.current.fit()
+          const { cols, rows } = xtermRef.current
+          window.electronAPI.terminal.resize(terminal.id, cols, rows)
+        }
       }
     })
 
@@ -261,7 +264,7 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
     }
 
     // Initial fit: double-RAF ensures browser has computed layout after visibility change
-    // (single RAF can fire before display:hidden→block layout is resolved)
+    // (single RAF can fire before visibility change layout is resolved)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (!fitAddonRef.current || !xtermRef.current || !containerRef.current) return
@@ -269,8 +272,8 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
         handleResize()
 
         // When terminal was hidden, force a repaint. The xterm buffer is
-        // already up-to-date (onData listener writes even while display:none),
-        // only the visual renderer is stale.
+        // already up-to-date (onData listener writes even while visibility:hidden),
+        // only the visual renderer may be stale.
         if (needsResizeRef.current) {
           xtermRef.current.refresh(0, xtermRef.current.rows - 1)
           xtermRef.current.scrollToBottom()
@@ -307,8 +310,8 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
   return (
     <div
       className={`
-        relative w-full h-full
-        ${isVisible ? 'block' : 'hidden'}
+        absolute inset-0
+        ${isVisible ? '' : 'invisible pointer-events-none'}
       `}
       onMouseDown={onFocusRequest}
       onDragEnter={handleDragEnter}
