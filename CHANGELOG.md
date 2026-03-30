@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.1] - 2026-03-30
+
+### Fixed
+
+- **Desktop**: Prevent terminal flash and Claude Code banner loss when switching agents by using `visibility:hidden` instead of `display:none`
+
+### Changed
+
+- **Desktop**: Terminal containers now use absolute positioning with visibility toggle instead of display toggle, ensuring xterm.js always has correct dimensions
+
 ## [0.30.0] - 2026-03-30
 
 ### Added
@@ -888,6 +898,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.30.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.30.1
 [0.30.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.30.0
 [0.29.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.29.4
 [0.29.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.29.3
