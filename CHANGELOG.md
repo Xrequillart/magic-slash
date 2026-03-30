@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-03-30
+
+### Added
+
+- **Desktop**: New "Warnings" section on the Skills page that detects and displays duplicate skill names across sources (built-in, custom, repo)
+- **Desktop**: Long description alert moved to the Warnings section with "Open in VS Code" and "Fix with agent" action buttons
+- **Desktop**: "Fix with agent" button launches a new Claude agent with a pre-filled prompt to optimize skill descriptions exceeding 110 words
+- **Desktop**: "Open in VS Code" button opens all problematic skill files directly in the editor
+
 ## [0.29.4] - 2026-03-29
 
 ### Fixed
@@ -879,6 +888,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.30.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.30.0
 [0.29.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.29.4
 [0.29.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.29.3
 [0.29.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.29.2
