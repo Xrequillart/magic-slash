@@ -71,7 +71,7 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
         foreground: '#ffffff',
         cursor: 'transparent', // Hide cursor - Claude Code manages its own
         cursorAccent: 'transparent',
-        selectionBackground: '#6366f140',
+        selectionBackground: '#eab30840',
         black: '#52525b',
         red: '#ef4444',
         green: '#22c55e',
