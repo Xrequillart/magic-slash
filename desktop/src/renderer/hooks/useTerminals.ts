@@ -116,13 +116,24 @@ export function useTerminals() {
             })
           }
 
-          // Restore the saved activeTerminalId if it still exists in the loaded terminals
+          // Restore the saved activeTerminalId if it still exists and is not in the right pane
           if (savedActiveTerminalId) {
             const terminalStillExists = existingTerminals.some(
               (t: { id: string }) => t.id === savedActiveTerminalId && !shouldIgnoreTerminal(t.id)
             )
-            if (terminalStillExists) {
+            if (terminalStillExists && !rightIds.includes(savedActiveTerminalId)) {
               setActiveTerminal(savedActiveTerminalId)
+            }
+          }
+
+          // Ensure activeTerminalId points to a left-pane terminal
+          if (rightIds.length > 0) {
+            const finalActiveId = useStore.getState().activeTerminalId
+            if (!finalActiveId || rightIds.includes(finalActiveId)) {
+              const leftTerminal = existingTerminals.find(
+                (t: { id: string; splitPane?: string }) => !shouldIgnoreTerminal(t.id) && !rightIds.includes(t.id)
+              )
+              useStore.setState({ activeTerminalId: leftTerminal?.id || null })
             }
           }
         }
