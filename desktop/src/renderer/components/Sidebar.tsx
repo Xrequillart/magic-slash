@@ -631,6 +631,15 @@ export function Sidebar() {
         </a>
         <span className="opacity-30">&bull;</span>
         <a
+          href="https://xrequillart.github.io/magic-slash/documentation.html#changelog"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-white transition-colors"
+        >
+          Changelog
+        </a>
+        <span className="opacity-30">&bull;</span>
+        <a
           href="https://github.com/xrequillart/magic-slash"
           target="_blank"
           rel="noopener noreferrer"

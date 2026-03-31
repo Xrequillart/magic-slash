@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock } from 'lucide-react'
 import { RepoPage } from './RepoPage'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
@@ -303,14 +303,25 @@ function WelcomePage() {
             <div className="font-medium">Magic Slash</div>
             <div className="text-xs text-text-secondary/50 mt-0.5">v{appVersion}</div>
           </div>
-          <button
-            onClick={handleWhatsNew}
-            disabled={loadingWhatsNew}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-accent bg-accent/10 border border-accent/20 rounded-lg hover:bg-accent/20 transition-colors disabled:opacity-50"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            {loadingWhatsNew ? 'Loading...' : "What's New"}
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="https://xrequillart.github.io/magic-slash/documentation.html#changelog"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              Changelog
+            </a>
+            <button
+              onClick={handleWhatsNew}
+              disabled={loadingWhatsNew}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-accent bg-accent/10 border border-accent/20 rounded-lg hover:bg-accent/20 transition-colors disabled:opacity-50"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {loadingWhatsNew ? 'Loading...' : "What's New"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

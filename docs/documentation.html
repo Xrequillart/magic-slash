@@ -624,6 +624,127 @@
                 padding: 0.5rem 0.75rem 0.25rem;
             }
         }
+
+        /* ── Changelog ── */
+        .changelog-version {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.75rem;
+            margin-bottom: 1.25rem;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.3s;
+        }
+        .changelog-version:hover {
+            border-color: rgba(57, 59, 255, 0.15);
+            box-shadow: 0 4px 20px rgba(57, 59, 255, 0.05);
+        }
+        .changelog-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+        }
+        .changelog-version-tag {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text);
+            transition: color 0.3s;
+        }
+        .changelog-date {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            transition: color 0.3s;
+        }
+        .changelog-category {
+            margin-bottom: 0.75rem;
+        }
+        .changelog-category:last-child {
+            margin-bottom: 0;
+        }
+        .changelog-badge {
+            display: inline-block;
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 3px 8px;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+        }
+        .changelog-badge-added {
+            color: #22c55e;
+            background: rgba(34, 197, 94, 0.12);
+        }
+        .changelog-badge-changed {
+            color: var(--sidebar-active-text);
+            background: var(--sidebar-active);
+        }
+        .changelog-badge-fixed {
+            color: #f97316;
+            background: rgba(249, 115, 22, 0.12);
+        }
+        .changelog-items {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 0 0.25rem;
+        }
+        .changelog-items li {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.92rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            padding: 0.2rem 0;
+            padding-left: 1rem;
+            position: relative;
+            transition: color 0.3s;
+        }
+        .changelog-items li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0.7rem;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+        .changelog-component {
+            font-weight: 600;
+            color: var(--text);
+            transition: color 0.3s;
+        }
+        .changelog-load-more {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--sidebar-active-text);
+            background: var(--sidebar-active);
+            border: 1px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .changelog-load-more:hover {
+            border-color: rgba(57, 59, 255, 0.2);
+        }
+        .changelog-loading,
+        .changelog-error {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 2rem 0;
+        }
+        .changelog-error {
+            color: #ef4444;
+        }
     </style>
 </head>
 <body>
@@ -733,6 +854,9 @@
                 <span class="doc-sidebar-section">Help</span>
                 <a href="#troubleshooting" class="doc-sidebar-link">
                     <i data-feather="life-buoy"></i> FAQ & Troubleshooting
+                </a>
+                <a href="#changelog" class="doc-sidebar-link">
+                    <i data-feather="clock"></i> Changelog
                 </a>
 
                 <span class="doc-sidebar-section">Links</span>
@@ -1986,6 +2110,16 @@ git worktree remove ../repo-PROJ-123</code></pre>
                         </div>
                     </div>
                 </div>
+
+                <!-- ── Changelog ── -->
+                <div class="doc-section" id="changelog">
+                    <h2>Changelog</h2>
+                    <p>All notable changes to magic-slash, loaded from <a href="https://github.com/xrequillart/magic-slash/blob/main/CHANGELOG.md" target="_blank">CHANGELOG.md</a>.</p>
+                    <div id="changelogContent">
+                        <p class="changelog-loading">Loading changelog...</p>
+                    </div>
+                    <button id="changelogLoadMore" style="display:none" class="changelog-load-more">Show more versions</button>
+                </div>
             </main>
         </div>
 
@@ -2049,6 +2183,105 @@ git worktree remove ../repo-PROJ-123</code></pre>
                 }
             })
             .catch(() => {});
+
+        // Changelog
+        (function () {
+            const VERSIONS_PER_PAGE = 15;
+            let allVersions = [];
+            let visibleCount = VERSIONS_PER_PAGE;
+            const container = document.getElementById('changelogContent');
+            const loadMoreBtn = document.getElementById('changelogLoadMore');
+
+            function parseChangelog(raw) {
+                const lines = raw.split('\n');
+                const versions = [];
+                let current = null;
+                let category = null;
+
+                for (const line of lines) {
+                    // Version header
+                    const vMatch = line.match(/^## \[(\d+\.\d+\.\d+)\] - (\d{4}-\d{2}-\d{2})/);
+                    if (vMatch) {
+                        if (current) versions.push(current);
+                        current = { version: vMatch[1], date: vMatch[2], categories: [] };
+                        category = null;
+                        continue;
+                    }
+                    // Skip non-version content
+                    if (!current) continue;
+                    // Link references at bottom
+                    if (/^\[[\d.]+\]:/.test(line)) continue;
+                    // Category header
+                    const cMatch = line.match(/^### (Added|Changed|Fixed)/);
+                    if (cMatch) {
+                        category = { type: cMatch[1], items: [] };
+                        current.categories.push(category);
+                        continue;
+                    }
+                    // Item
+                    if (category && /^- /.test(line)) {
+                        const iMatch = line.match(/^- \*\*(.+?)\*\*:?\s*(.+)/);
+                        if (iMatch) {
+                            category.items.push({ component: iMatch[1], description: iMatch[2] });
+                        } else {
+                            category.items.push({ component: '', description: line.slice(2) });
+                        }
+                    }
+                }
+                if (current) versions.push(current);
+                return versions;
+            }
+
+            function renderVersions(versions) {
+                return versions.map(function (v) {
+                    const cats = v.categories.map(function (c) {
+                        const badgeClass = 'changelog-badge changelog-badge-' + c.type.toLowerCase();
+                        const items = c.items.map(function (it) {
+                            const comp = it.component ? '<span class="changelog-component">' + escHtml(it.component) + '</span>: ' : '';
+                            return '<li>' + comp + escHtml(it.description) + '</li>';
+                        }).join('');
+                        return '<div class="changelog-category"><span class="' + badgeClass + '">' + escHtml(c.type) + '</span><ul class="changelog-items">' + items + '</ul></div>';
+                    }).join('');
+                    return '<div class="changelog-version"><div class="changelog-header"><span class="changelog-version-tag">v' + escHtml(v.version) + '</span><span class="changelog-date">' + escHtml(v.date) + '</span></div>' + cats + '</div>';
+                }).join('');
+            }
+
+            function escHtml(s) {
+                var d = document.createElement('div');
+                d.textContent = s;
+                return d.innerHTML;
+            }
+
+            function render() {
+                var slice = allVersions.slice(0, visibleCount);
+                container.innerHTML = renderVersions(slice);
+                if (visibleCount < allVersions.length) {
+                    loadMoreBtn.style.display = 'block';
+                    loadMoreBtn.textContent = 'Show more versions (' + (allVersions.length - visibleCount) + ' remaining)';
+                } else {
+                    loadMoreBtn.style.display = 'none';
+                }
+            }
+
+            loadMoreBtn.addEventListener('click', function () {
+                visibleCount += VERSIONS_PER_PAGE;
+                render();
+            });
+
+            fetch('https://raw.githubusercontent.com/xrequillart/magic-slash/main/CHANGELOG.md')
+                .then(function (r) { return r.text(); })
+                .then(function (text) {
+                    allVersions = parseChangelog(text);
+                    if (allVersions.length === 0) {
+                        container.innerHTML = '<p class="changelog-error">No changelog entries found.</p>';
+                        return;
+                    }
+                    render();
+                })
+                .catch(function () {
+                    container.innerHTML = '<p class="changelog-error">Failed to load changelog. <a href="https://github.com/xrequillart/magic-slash/blob/main/CHANGELOG.md" target="_blank">View on GitHub</a></p>';
+                });
+        })();
 
         // Active sidebar link on scroll
         const sections = document.querySelectorAll('.doc-section[id], .doc-card-grid[id]');
