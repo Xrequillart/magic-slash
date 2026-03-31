@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.3] - 2026-03-31
+
+### Changed
+
+- **Release**: Improve `/release` skill — use `AskUserQuestion` for all user interactions, remove hardcoded version from skill title, replace fragile line number references with pattern-based search, use `Read` tool instead of `cat | jq`
+
+### Fixed
+
+- **Done**: Prevent worktree verification loop and improve robustness in `/done` skill
+
 ## [0.30.2] - 2026-03-31
 
 ### Fixed
@@ -904,6 +914,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.30.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.30.3
 [0.30.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.30.2
 [0.30.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.30.1
 [0.30.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.30.0
