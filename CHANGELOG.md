@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.2] - 2026-03-31
+
+### Fixed
+
+- **Desktop**: Cmd+N now creates a new agent in the currently focused split pane instead of always defaulting to the left pane
+
 ## [0.30.1] - 2026-03-30
 
 ### Fixed
@@ -898,6 +904,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.30.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.30.2
 [0.30.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.30.1
 [0.30.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.30.0
 [0.29.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.29.4
