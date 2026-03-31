@@ -67,12 +67,16 @@ export function TerminalsPage() {
   // Listen for new terminal event from sidebar
   useEffect(() => {
     const handleNewTerminal = () => {
-      handleCreateTerminal()
+      if (isSplitMode && focusedPane === 'secondary') {
+        handleCreateTerminalInRightPane()
+      } else {
+        handleCreateTerminal()
+      }
     }
 
     window.addEventListener('new-terminal', handleNewTerminal)
     return () => window.removeEventListener('new-terminal', handleNewTerminal)
-  }, [terminals.length, isCreating])
+  }, [terminals.length, isCreating, isSplitMode, focusedPane])
 
   // Listen for Command+N keyboard shortcut
   useEffect(() => {
@@ -80,13 +84,17 @@ export function TerminalsPage() {
       // Check for Command+N (Mac) or Ctrl+N (Windows/Linux)
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault()
-        handleCreateTerminal()
+        if (isSplitMode && focusedPane === 'secondary') {
+          handleCreateTerminalInRightPane()
+        } else {
+          handleCreateTerminal()
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [terminals.length, isCreating])
+  }, [terminals.length, isCreating, isSplitMode, focusedPane])
 
   // Listen for Command+Arrow to switch between agents (within current zone in split mode)
   useEffect(() => {
