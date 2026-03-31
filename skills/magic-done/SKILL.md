@@ -1,7 +1,7 @@
 ---
 name: magic:done
 description: This skill should be used when the user says "the PR is merged", "la PR est mergée", "close the ticket", "fermer le ticket", "finalize the task", "finaliser la tâche", "task is done", "tâche terminée", "mark as done", "marquer comme terminé", or indicates the PR has already been merged and they want to close out the task. Do NOT use this skill if the user just finished coding and wants to create a PR — use /magic:pr instead.
-allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
+allowed-tools: Bash(*), AskUserQuestion, mcp__github__*, mcp__atlassian__*
 ---
 
 # magic-slash v0.30.2 - /done
@@ -11,6 +11,12 @@ allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*
 You are an assistant that finalizes a task after the PR has been merged. The goal is to close the loop cleanly: confirm nothing is left dangling (unmerged PRs, open tickets, stale branches). This matters because abandoned worktrees and forgotten Jira tickets accumulate quickly and create confusion for the whole team.
 
 The flow is: **verify merge → update tracker → update desktop → clean up → report**. Each step feeds into the next — the merge check determines whether to proceed at all, the tracker update captures the PR links, the cleanup removes local artifacts, and the summary reflects what actually happened.
+
+> **Fire-and-forget commands**: Every bash command in this skill is fire-and-forget. Run the command, read its output, and move to the next step immediately. Never re-run a command to verify a previous command succeeded. Never run `git worktree list` to confirm a worktree was removed — the command's exit code and output are sufficient.
+>
+> **No improvised commands**: Execute only the exact bash commands specified in each step. Do not substitute alternative commands (e.g., do not replace `ls -d` with `git worktree list`). Do not add diagnostic or verification commands between steps.
+>
+> **When in doubt, ask**: If a command produces unexpected output or fails in an unclear way, use AskUserQuestion to ask the user how to proceed. Never loop or retry silently — asking is always better than guessing.
 
 ## Configuration
 
@@ -66,9 +72,13 @@ Veuillez créer le fichier de configuration :
 Voir la documentation : https://github.com/magic-slash/config
 ```
 
-## Step 1: Extract the ticket ID from the current worktree
+## Step 1: Extract the ticket ID
 
-Get the current directory name and extract the ticket ID:
+Determine whether you are inside a worktree or the main repo, then extract the ticket ID accordingly.
+
+### Case A: Inside a worktree
+
+Get the current directory name:
 
 ```bash
 basename "$PWD"
@@ -81,13 +91,19 @@ Extract the TICKET-ID using the pattern:
 - **Jira**: Extract the **last** `[A-Z]+-\d+` match from the directory name. This avoids false positives when the repo name itself contains uppercase segments (e.g.: `my-API-PROJ-123` → `PROJ-123`, not `API-PROJ`). You can also cross-reference with the repo name from `config.json` to strip it and isolate the ticket ID.
 - **GitHub**: the last numeric segment after the repo name (e.g.: `123` in `my-api-123`)
 
-If no ID is detected (you are in a regular repo, not a worktree), extract it from the branch name:
+### Case B: Inside the main repo (not a worktree)
+
+If the current directory matches a repo path from `config.json` directly (no ticket ID in the directory name), extract the ticket ID from the branch name:
 
 ```bash
 git branch --show-current
 ```
 
-If still no ticket ID found, ask the user.
+Branch patterns: `feature/PROJ-123`, `feature/my-api-123`, `PROJ-123-some-description`, etc.
+
+### Fallback
+
+If still no ticket ID found from either case, ask the user.
 
 ## Step 2: Find the associated PR(s)
 
@@ -97,11 +113,31 @@ Read the config to identify all configured repos and search for associated workt
 cat ~/.config/magic-slash/config.json
 ```
 
-For each configured repo, check if a worktree with the same TICKET-ID exists:
+For each configured repo, build the expected worktree path and check if it exists. The worktree is always a sibling of the repo directory, named `{repo-dir-name}-{TICKET-ID}`:
 
 ```bash
-ls -d {REPO_PATH}-{TICKET_ID} 2>/dev/null
+REPO_PARENT=$(dirname {REPO_PATH})
+REPO_DIR=$(basename {REPO_PATH})
+WORKTREE_PATH="$REPO_PARENT/${REPO_DIR}-{TICKET_ID}"
+[ -d "$WORKTREE_PATH" ] && echo "$WORKTREE_PATH"
 ```
+
+> Use only `[ -d ]` for worktree detection — do not use `git worktree list`. The naming convention is sufficient and avoids confusion with stale git worktree metadata.
+
+If the current directory is itself a worktree for this ticket (Case A from Step 1), include it in the list.
+
+### No worktrees found (Case B from Step 1)
+
+If no worktrees exist for this ticket, the user is working directly in the main repo on a feature branch. Find the PR from the current branch:
+
+1. Get the branch name: `git branch --show-current`
+2. Use `mcp__github__list_pull_requests` to find the PR (search by head branch, state: all)
+3. If no match, search by title containing the ticket ID
+4. If no PR is found, ask the user for the PR number or URL
+
+Then skip directly to Step 3 (there are no worktrees to clean up later — Step 5.5 will be skipped).
+
+### With worktrees found
 
 For each found worktree, find the associated PR:
 
@@ -211,6 +247,8 @@ Replace `{TICKET_ID}` with the actual ticket ID.
 
 ## Step 5.5: Clean up worktrees and branches
 
+If no worktrees were found at Step 2 (Case B — working directly in the main repo), skip this entire step and go to Step 6.
+
 Before proceeding, check each worktree for uncommitted changes:
 
 ```bash
@@ -222,6 +260,8 @@ If there are uncommitted changes, warn the user and **ask for confirmation** bef
 For each worktree found at Step 2 (that the user confirmed or that is clean), perform the following cleanup. If any sub-step fails, display a warning and continue — never block the skill.
 
 Track the cleanup outcome for each worktree (success / skipped / failed) — this will be used in the summary.
+
+**Execute steps 5.5.1 through 5.5.5 as a single linear pass.** Run each command once and move to the next — do not verify the result of any sub-step before proceeding. If a command fails (non-zero exit code), capture the error, record the worktree as "failed", and skip to the next worktree. Do not re-run `git worktree remove`, do not run `git worktree list`, and do not add any verification commands between sub-steps.
 
 ### 5.5.1: Navigate to the main repo
 
@@ -259,6 +299,18 @@ git push origin --delete {BRANCH_NAME} 2>/dev/null || true
 git worktree prune
 ```
 
+Alternatively, you may run all cleanup commands for one worktree as a single block:
+
+```bash
+cd {REPO_PATH} && \
+  git worktree remove --force {WORKTREE_PATH}; \
+  git branch -D {BRANCH_NAME} 2>/dev/null || true; \
+  git push origin --delete {BRANCH_NAME} 2>/dev/null || true; \
+  git worktree prune
+```
+
+Either way, do not insert any verification commands (such as `git worktree list`) between them.
+
 ### Error handling
 
 If the `git worktree remove` fails, display a warning based on `.languages.discussion` and continue:
@@ -275,9 +327,11 @@ Manual cleanup: git worktree remove --force {WORKTREE_PATH}
 Nettoyage manuel : git worktree remove --force {WORKTREE_PATH}
 ```
 
+After displaying the warning, immediately proceed to the next worktree (or to Step 6 if this was the last one). Do not retry the failed command or run diagnostic commands. If the failure is unclear or unexpected, use AskUserQuestion to let the user decide how to proceed.
+
 ### Multi-repo
 
-Repeat steps 5.5.1→5.5.5 for each worktree, navigating (`cd`) to the corresponding main repo each time.
+Repeat steps 5.5.1→5.5.5 for each worktree, navigating (`cd`) to the corresponding main repo each time. After completing cleanup for all worktrees, move directly to Step 6. Do not run any global verification command (such as `git worktree list`) between worktrees or after the final cleanup.
 
 ## Step 6: Summary
 
@@ -288,7 +342,7 @@ Display a summary based on `.languages.discussion`. The summary must reflect wha
 | Field | Success | Skipped / Partial | Failed |
 |-------|---------|-------------------|--------|
 | Ticket | `{TICKET-ID} → Done` | `{TICKET-ID} → already Done` or `{TICKET-ID} → ⚠️ transition skipped` | `{TICKET-ID} → ⚠️ transition failed` |
-| Cleanup | `Worktree removed, branch deleted` | `⚠️ Skipped (uncommitted changes)` | `⚠️ Failed (see warning above)` |
+| Cleanup | `Worktree removed, branch deleted` | `⚠️ Skipped (uncommitted changes)` or `N/A (no worktree)` | `⚠️ Failed (see warning above)` |
 
 ### In English (discussion: "en" or absent)
 
