@@ -31,15 +31,15 @@
 
 ## Skills
 
-| Skill              | Description                                          |
-| ------------------ | ---------------------------------------------------- |
-| `/magic:start`     | Start a task from a Jira ticket or GitHub issue      |
-| `/magic:continue`  | Resume work on an existing ticket                    |
-| `/magic:commit`    | Create an atomic commit with conventional message    |
-| `/magic:pr`        | Push, create PR and update Jira                      |
-| `/magic:review`    | Review a Pull Request (self or external)             |
-| `/magic:resolve`   | Address review comments and force-push fixes         |
-| `/magic:done`      | Finalize after PR merge (transition Jira to Done)    |
+| Skill             | Description                                       |
+| ----------------- | ------------------------------------------------- |
+| `/magic:start`    | Start a task from a Jira ticket or GitHub issue   |
+| `/magic:continue` | Resume work on an existing ticket                 |
+| `/magic:commit`   | Create an atomic commit with conventional message |
+| `/magic:pr`       | Push, create PR and update Jira                   |
+| `/magic:review`   | Review a Pull Request (self or external)          |
+| `/magic:resolve`  | Address review comments and force-push fixes      |
+| `/magic:done`     | Finalize after PR merge (transition Jira to Done) |
 
 > Type `/magic:` to quickly find all commands.
 
@@ -257,18 +257,18 @@ npm run desktop:package
 
 ### Files
 
-| File                                | Description                            |
-| ----------------------------------- | -------------------------------------- |
-| `~/.claude/settings.json`           | Atlassian & GitHub MCP configuration   |
-| `~/.config/magic-slash/config.json` | Repository paths, keywords, settings   |
-| `~/.local/bin/magic-slash`          | CLI command to launch the desktop app  |
-| `~/.claude/skills/magic-slash/`     | Installed skills (all 7 skills)        |
+| File                                | Description                           |
+| ----------------------------------- | ------------------------------------- |
+| `~/.claude/settings.json`           | Atlassian & GitHub MCP configuration  |
+| `~/.config/magic-slash/config.json` | Repository paths, keywords, settings  |
+| `~/.local/bin/magic-slash`          | CLI command to launch the desktop app |
+| `~/.claude/skills/magic-slash/`     | Installed skills (all 7 skills)       |
 
 ### Configuration schema
 
 ```json
 {
-  "version": "0.32.2",
+  "version": "0.32.3",
   "repositories": {
     "api": {
       "path": "/Users/dev/projects/my-api",
@@ -341,12 +341,12 @@ Each repository can be independently configured:
 
 #### Resolve settings
 
-| Setting            | Description                                              | Default |
-| ------------------ | -------------------------------------------------------- | ------- |
-| `commitMode`       | `new` (new commit + push) or `amend` (amend + force-push) | `new`   |
-| `useCommitConfig`  | Inherit format/style from commit settings                | `true`  |
-| `replyToComments`  | Reply in-thread on GitHub for each resolved comment      | `true`  |
-| `replyLanguage`    | Language for comment replies (`en`, `fr`)                | `en`    |
+| Setting           | Description                                               | Default |
+| ----------------- | --------------------------------------------------------- | ------- |
+| `commitMode`      | `new` (new commit + push) or `amend` (amend + force-push) | `new`   |
+| `useCommitConfig` | Inherit format/style from commit settings                 | `true`  |
+| `replyToComments` | Reply in-thread on GitHub for each resolved comment       | `true`  |
+| `replyLanguage`   | Language for comment replies (`en`, `fr`)                 | `en`    |
 
 #### Pull Request settings
 
@@ -364,17 +364,17 @@ Each repository can be independently configured:
 
 #### Branches settings
 
-| Setting       | Description                                                 | Default |
-| ------------- | ----------------------------------------------------------- | ------- |
+| Setting       | Description                                                | Default |
+| ------------- | ---------------------------------------------------------- | ------- |
 | `development` | Base branch for worktrees and PRs (e.g. `develop`, `main`) | `""`    |
 
 > If `development` is empty, the skill prompts the user to specify the base branch.
 
 #### Worktree files
 
-| Setting         | Description                                                         | Default |
-| --------------- | ------------------------------------------------------------------- | ------- |
-| `worktreeFiles` | Files to auto-copy from main repo to worktrees (e.g., `.env`)      | `[]`    |
+| Setting         | Description                                                   | Default |
+| --------------- | ------------------------------------------------------------- | ------- |
+| `worktreeFiles` | Files to auto-copy from main repo to worktrees (e.g., `.env`) | `[]`    |
 
 > When creating a worktree, Magic Slash copies these files from the main repository. If not configured, it auto-detects common untracked files and offers to save them for future use.
 
@@ -428,7 +428,6 @@ magic-slash/
 │   ├── logo.svg          # Logo (vector)
 │   ├── fonts/            # Custom fonts (Avenir, CeraPro)
 │   └── CNAME             # Custom domain config
-├── slides/               # Presentation slides (Vite + React)
 ├── install/
 │   ├── install.sh        # Installation script
 │   ├── uninstall.sh      # Uninstallation script
