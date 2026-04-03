@@ -816,6 +816,12 @@
                 <a href="#skills" class="doc-sidebar-link">
                     <i data-feather="command"></i> Skills
                 </a>
+                <a href="#workflows" class="doc-sidebar-link">
+                    <i data-feather="map"></i> Workflow Examples
+                </a>
+                <a href="#best-practices" class="doc-sidebar-link">
+                    <i data-feather="award"></i> Best Practices
+                </a>
 
                 <span class="doc-sidebar-section">Reference</span>
                 <a href="#configuration" class="doc-sidebar-link">
@@ -838,6 +844,9 @@
                 </a>
                 <a href="#updates" class="doc-sidebar-link">
                     <i data-feather="refresh-cw"></i> Updates
+                </a>
+                <a href="#environments" class="doc-sidebar-link">
+                    <i data-feather="check-circle"></i> Supported Environments
                 </a>
 
                 <span class="doc-sidebar-section">Help</span>
@@ -1207,11 +1216,290 @@ Ready to continue. What would you like to do?</code></pre>
                     </div>
                 </div>
 
-                <!-- Trail 3 -->
+                <!-- Trail: Skills → Workflows -->
                 <div class="doc-trail">
                     <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <g filter="url(#trail-texture-3)">
                             <path d="M-20 30C60 50 160 8 280 40C400 72 480 15 600 30C660 38 720 20 720 20" stroke="#FF0000" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- ==================== WORKFLOW EXAMPLES ==================== -->
+                <div class="doc-section" id="workflows">
+                    <h2>Workflow Examples</h2>
+                    <p>End-to-end recipes for common development scenarios. Each workflow shows the exact commands to run in sequence.</p>
+
+                    <div class="doc-skill">
+                        <h3>Simple bug fix</h3>
+                        <p class="doc-skill-desc">The most common workflow: pick up a bug ticket, fix it, ship it.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Steps</h4>
+                                <pre style="margin:0"><code>/magic:start BUG-42
+  ... fix the bug ...
+/magic:commit
+/magic:pr
+  ... wait for review ...
+/magic:done</code></pre>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>What happens</h4>
+                                <ul>
+                                    <li>Worktree + branch created, ticket moves to "In Progress"</li>
+                                    <li>Changes committed with a <code>fix(...)</code> message</li>
+                                    <li>PR created, ticket moves to "To be reviewed"</li>
+                                    <li>After merge: branch cleaned up, ticket moves to "Done"</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Feature with self-review</h3>
+                        <p class="doc-skill-desc">Build a feature, review your own PR before requesting external review.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Steps</h4>
+                                <pre style="margin:0"><code>/magic:start FEAT-101
+  ... implement feature ...
+/magic:commit
+/magic:commit
+/magic:pr
+/magic:review
+  ... fix issues found ...
+/magic:commit
+  ... request external review ...
+/magic:done</code></pre>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Tips</h4>
+                                <ul>
+                                    <li>Multiple <code>/magic:commit</code> calls create atomic, focused commits</li>
+                                    <li><code>/magic:review</code> on your own PR catches issues before others see them</li>
+                                    <li>Commit again after fixing self-review findings, then ask for external review</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Full-stack multi-repo</h3>
+                        <p class="doc-skill-desc">A feature that spans both backend and frontend repositories.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Steps</h4>
+                                <pre style="margin:0"><code>/magic:start FEAT-200
+  ✓ Matched: api-repo + web-repo
+  ✓ Worktrees created for both
+
+  ... implement backend ...
+/magic:commit
+
+  ... implement frontend ...
+/magic:commit
+/magic:pr
+  ... PRs created for both repos ...
+/magic:done</code></pre>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>How it works</h4>
+                                <ul>
+                                    <li>Keyword scoring matches the ticket to multiple repos</li>
+                                    <li>Separate worktrees and branches are created for each</li>
+                                    <li>PRs are linked together and to the same ticket</li>
+                                    <li>The Desktop app groups them in the sidebar</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Resume work on a ticket</h3>
+                        <p class="doc-skill-desc">Pick up where you left off &mdash; next day, different machine, or after a context switch.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Steps</h4>
+                                <pre style="margin:0"><code>/magic:continue PROJ-142
+  ✓ Worktree found
+  ✓ Branch: feature/PROJ-142 (3 commits ahead)
+  ✓ PR #87 (open, 1 comment)
+
+  ... continue coding ...
+/magic:commit
+/magic:resolve
+  ... review comments addressed ...</code></pre>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>What continue provides</h4>
+                                <ul>
+                                    <li>Full context: branch status, existing PR, pending comments</li>
+                                    <li>Automatic <code>cd</code> into the existing worktree</li>
+                                    <li>Use <code>/magic:resolve</code> to address review comments in one step</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>External PR review</h3>
+                        <p class="doc-skill-desc">Review a colleague's pull request with detailed, actionable feedback.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Steps</h4>
+                                <pre style="margin:0"><code>/magic:review 87
+  ✓ Fetched PR #87 (12 files, +340 −42)
+  ✓ Review: 1 blocker, 3 suggestions, 2 nits
+  ✓ Submitted as "Changes Requested"</code></pre>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Review quality</h4>
+                                <ul>
+                                    <li>Analyzes every changed file in the diff</li>
+                                    <li>Categorizes comments by severity (blocker, suggestion, nit)</li>
+                                    <li>Posts inline comments directly on the relevant lines</li>
+                                    <li>Submits an overall review verdict (approve / request changes)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trail: Workflows → Best Practices -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-2)">
+                            <path d="M-20 25C100 55 200 5 350 35C500 65 580 15 720 28" stroke="#393BFF" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- ==================== BEST PRACTICES ==================== -->
+                <div class="doc-section" id="best-practices">
+                    <h2>Best Practices & Tips</h2>
+                    <p>Get the most out of magic-slash with these practical recommendations.</p>
+
+                    <div class="doc-skill">
+                        <h3>Write descriptive tickets</h3>
+                        <p class="doc-skill-desc">The quality of magic-slash's output depends heavily on ticket content. Better tickets lead to better branches, commits, and PRs.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Do</h4>
+                                <ul>
+                                    <li>Use clear, specific titles: <em>"Add rate limiting to /api/auth endpoints"</em></li>
+                                    <li>Add relevant labels (e.g. <code>backend</code>, <code>ui</code>) &mdash; they score +10 pts for repo matching</li>
+                                    <li>Include acceptance criteria in the description</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Avoid</h4>
+                                <ul>
+                                    <li>Vague titles: <em>"Fix the thing"</em> &mdash; poor keyword matching</li>
+                                    <li>Empty descriptions &mdash; magic-slash uses them for context</li>
+                                    <li>Missing labels &mdash; reduces repo detection accuracy</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Commit often &amp; small</h3>
+                        <p class="doc-skill-desc"><code>/magic:commit</code> works best with focused, atomic changes. Run it after each logical unit of work rather than once at the end.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Good patterns</h4>
+                                <ul>
+                                    <li>One commit per feature/concern (e.g. model, controller, tests)</li>
+                                    <li>Separate refactoring commits from functional changes</li>
+                                    <li>magic-slash detects and excludes sensitive files (<code>.env</code>, credentials) automatically</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Why it matters</h4>
+                                <ul>
+                                    <li>Smaller diffs = more accurate commit messages</li>
+                                    <li>Easier to review and revert individual changes</li>
+                                    <li>Pre-commit hooks run on each commit, catching issues early</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Self-review before requesting review</h3>
+                        <p class="doc-skill-desc">Run <code>/magic:review</code> on your own PR before asking a colleague. It catches common issues and improves code quality before the first human review.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Benefits</h4>
+                                <ul>
+                                    <li>Catches forgotten TODOs, dead code, missing error handling</li>
+                                    <li>Flags style inconsistencies and potential bugs</li>
+                                    <li>Reduces back-and-forth with reviewers</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Workflow</h4>
+                                <pre style="margin:0"><code>/magic:pr
+/magic:review
+  ... fix findings ...
+/magic:commit
+  ... then request human review</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Tune your keywords</h3>
+                        <p class="doc-skill-desc">Repository matching is only as good as your keyword configuration. Review and adjust keywords as your project evolves.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Tips</h4>
+                                <ul>
+                                    <li>Use domain-specific terms: <code>checkout</code>, <code>payments</code>, <code>auth</code></li>
+                                    <li>Include technology names: <code>react</code>, <code>graphql</code>, <code>postgres</code></li>
+                                    <li>Add team names or component names used in your Jira labels</li>
+                                    <li>Avoid overly generic words: <code>code</code>, <code>update</code>, <code>fix</code></li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Test it</h4>
+                                <p>If magic-slash selects the wrong repo, check which keywords matched and adjust. Add the label or term that would have made the correct match obvious.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Use worktree files for environment setup</h3>
+                        <p class="doc-skill-desc">Configure <code>worktreeFiles</code> in your repository settings to automatically copy untracked files (<code>.env</code>, <code>.npmrc</code>, etc.) into new worktrees.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Configuration</h4>
+                                <pre style="margin:0"><code>"my-repo": {
+  "path": "/projects/my-repo",
+  "worktreeFiles": [
+    ".env",
+    ".env.local",
+    ".npmrc"
+  ]
+}</code></pre>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Why</h4>
+                                <ul>
+                                    <li>New worktrees are clean checkouts &mdash; untracked files are not included</li>
+                                    <li>Without <code>.env</code>, your app may fail to start in the worktree</li>
+                                    <li>Files are copied from the main repo, not committed to Git</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trail: Best Practices → Configuration -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-1)">
+                            <path d="M-20 28C90 55 190 12 320 38C450 64 540 18 640 32C690 38 720 22 720 22" stroke="#FF0000" stroke-width="6" stroke-linecap="round"/>
                         </g>
                     </svg>
                 </div>
@@ -1927,11 +2215,122 @@ You are working on ticket **PROJ-200** which spans multiple repos.
                     </div>
                 </div>
 
-                <!-- Trail 10 -->
+                <!-- Trail: Updates → Environments -->
                 <div class="doc-trail">
                     <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <g filter="url(#trail-texture-1)">
                             <path d="M-20 30C100 55 220 5 350 32C480 59 560 10 680 30C710 35 720 30 720 30" stroke="#FF0000" stroke-width="6" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- ==================== SUPPORTED ENVIRONMENTS ==================== -->
+                <div class="doc-section" id="environments">
+                    <h2>Supported Environments</h2>
+                    <p>magic-slash works anywhere Claude Code runs. Here is a summary of supported platforms, editors, and toolchains.</p>
+
+                    <div class="doc-skill">
+                        <h3>Operating systems</h3>
+                        <p class="doc-skill-desc">Supported platforms for both the skills (CLI) and the Desktop app.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Skills (Claude Code)</h4>
+                                <ul>
+                                    <li><strong>macOS</strong> &mdash; Full support (Intel + Apple Silicon)</li>
+                                    <li><strong>Linux</strong> &mdash; Full support (x64, arm64)</li>
+                                    <li><strong>Windows</strong> &mdash; Via WSL 2 (Windows Subsystem for Linux)</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Desktop app</h4>
+                                <ul>
+                                    <li><strong>macOS</strong> &mdash; Native app (.dmg, .zip), universal binary</li>
+                                    <li><strong>Linux</strong> &mdash; AppImage, .deb</li>
+                                    <li><strong>Windows</strong> &mdash; .exe installer, portable</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Editors &amp; terminals</h3>
+                        <p class="doc-skill-desc">The <code>/magic:</code> skills work in any environment where Claude Code is available.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Supported</h4>
+                                <ul>
+                                    <li><strong>VS Code</strong> &mdash; Via the Claude Code extension</li>
+                                    <li><strong>JetBrains IDEs</strong> &mdash; IntelliJ, WebStorm, PyCharm, etc.</li>
+                                    <li><strong>Any terminal</strong> &mdash; iTerm2, Warp, Alacritty, Windows Terminal, etc.</li>
+                                    <li><strong>magic-slash Desktop</strong> &mdash; Integrated terminal with sidebar tracking</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Requirements</h4>
+                                <ul>
+                                    <li>Claude Code CLI installed and authenticated</li>
+                                    <li>Skills installed in <code>~/.claude/skills/</code></li>
+                                    <li>MCP servers configured (GitHub + Atlassian)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Prerequisites</h3>
+                        <p class="doc-skill-desc">System requirements for running magic-slash.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Required</h4>
+                                <ul>
+                                    <li><strong>Node.js</strong> &ge; 20 (see <code>.nvmrc</code>)</li>
+                                    <li><strong>Git</strong> &ge; 2.20 (worktree support)</li>
+                                    <li><strong>Claude Code</strong> CLI installed and authenticated</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Optional</h4>
+                                <ul>
+                                    <li><strong>GitHub CLI</strong> (<code>gh</code>) &mdash; Used during installation for token setup</li>
+                                    <li><strong>jq</strong> &mdash; Used by the installer to parse JSON config</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Package managers &amp; languages</h3>
+                        <p class="doc-skill-desc">magic-slash auto-detects your project's package manager and installs dependencies accordingly in new worktrees.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>JavaScript / TypeScript</h4>
+                                <ul>
+                                    <li><code>bun.lockb</code> / <code>bun.lock</code> &rarr; bun</li>
+                                    <li><code>yarn.lock</code> &rarr; yarn</li>
+                                    <li><code>pnpm-lock.yaml</code> &rarr; pnpm</li>
+                                    <li><code>package-lock.json</code> &rarr; npm</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Other languages</h4>
+                                <ul>
+                                    <li><code>requirements.txt</code> &rarr; pip</li>
+                                    <li><code>poetry.lock</code> &rarr; poetry</li>
+                                    <li><code>Cargo.toml</code> &rarr; cargo</li>
+                                    <li><code>go.mod</code> &rarr; go</li>
+                                    <li><code>Gemfile.lock</code> &rarr; bundler</li>
+                                    <li><code>composer.lock</code> &rarr; composer</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trail: Environments → FAQ -->
+                <div class="doc-trail">
+                    <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g filter="url(#trail-texture-2)">
+                            <path d="M-20 35C80 10 200 50 320 28C440 6 540 48 650 25C700 15 720 30 720 30" stroke="#393BFF" stroke-width="6" stroke-linecap="round"/>
                         </g>
                     </svg>
                 </div>
@@ -2030,11 +2429,104 @@ git worktree remove ../repo-PROJ-123</code></pre>
                         </div>
                     </div>
 
+                    <div class="doc-skill">
+                        <h3>MCP server connection failed</h3>
+                        <p class="doc-skill-desc">If a skill fails with an MCP connection error, the Atlassian or GitHub MCP server is unreachable.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Common causes</h4>
+                                <ul>
+                                    <li>Expired or revoked GitHub Personal Access Token</li>
+                                    <li>Atlassian OAuth session expired (re-authenticate in browser)</li>
+                                    <li>MCP server not configured &mdash; run the installer again</li>
+                                    <li>Network issue or corporate proxy blocking the connection</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Verify MCP servers</h4>
+                                <pre style="margin:0"><code>claude mcp list</code></pre>
+                                <p>You should see both <code>atlassian</code> and <code>github</code> entries. If missing, re-run the installer or add them manually:</p>
+                                <pre style="margin:0"><code>claude mcp add atlassian --transport http
+claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN="ghp_..."</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>PR creation fails</h3>
+                        <p class="doc-skill-desc"><code>/magic:pr</code> may fail during push or PR creation for several reasons.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Common causes</h4>
+                                <ul>
+                                    <li>Branch not pushed to remote yet</li>
+                                    <li>Merge conflicts with the base branch</li>
+                                    <li>Insufficient GitHub permissions (need <code>repo</code> scope)</li>
+                                    <li>A PR already exists for this branch</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Manual checks</h4>
+                                <pre style="margin:0"><code># Check remote status
+git remote -v
+git push --dry-run
+
+# Check existing PRs
+gh pr list --head $(git branch --show-current)</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Ticket not found / wrong repository matched</h3>
+                        <p class="doc-skill-desc"><code>/magic:start</code> uses a keyword scoring system to match tickets to repositories. If the wrong repo is selected, your keywords may need tuning.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>How scoring works</h4>
+                                <ul>
+                                    <li>Jira label/component or GitHub label matches a keyword: <strong>+10 pts</strong></li>
+                                    <li>Keyword found in ticket title: <strong>+5 pts</strong></li>
+                                    <li>Keyword found in description: <strong>+2 pts</strong></li>
+                                </ul>
+                                <p>The repository with the highest score is selected.</p>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Fix</h4>
+                                <p>Add more specific keywords to your repositories in <code>~/.config/magic-slash/config.json</code>:</p>
+                                <pre style="margin:0"><code>"my-api": {
+  "keywords": ["backend", "api", "server", "graphql"]
+},
+"my-web": {
+  "keywords": ["frontend", "ui", "react", "dashboard"]
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
                     <h3 style="margin-top: 3rem;">Frequently asked questions</h3>
 
                     <div class="doc-skill">
                         <h3>Can I use magic-slash without the Desktop App?</h3>
-                        <p class="doc-skill-desc">No. The standalone CLI mode was removed. The Desktop app is now the only installation method. Skills are still invoked via <code>/magic:</code> commands inside the integrated terminals &mdash; the Desktop app simply provides the environment that powers the full experience (hooks, sidebar tracking, auto-updates).</p>
+                        <p class="doc-skill-desc">Yes! The skills work anywhere Claude Code runs. You can invoke <code>/magic:</code> commands directly from any terminal &mdash; the Desktop app is not required to use the core workflow.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Without the Desktop app</h4>
+                                <ul>
+                                    <li>All 7 skills work in any terminal with Claude Code</li>
+                                    <li>Full Jira &amp; GitHub integration via MCP servers</li>
+                                    <li>Works in VS Code, JetBrains, or a standalone terminal</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>What the Desktop app adds</h4>
+                                <ul>
+                                    <li>Automatic updates (skills + app)</li>
+                                    <li>Sidebar with task tracking and worktree overview</li>
+                                    <li>Integrated hooks for real-time status</li>
+                                </ul>
+                                <p>You can also install the Desktop app solely for auto-updates and keep using your preferred terminal.</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="doc-skill">
@@ -2095,6 +2587,164 @@ git worktree remove ../repo-PROJ-123</code></pre>
                                 <h4>Verify skills</h4>
                                 <pre style="margin:0"><code>ls ~/.claude/skills/magic-*/SKILL.md</code></pre>
                                 <p>You should see 7 SKILL.md files, one per skill.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Can I use magic-slash with GitHub Issues instead of Jira?</h3>
+                        <p class="doc-skill-desc">Yes! magic-slash fully supports both Jira tickets and GitHub Issues. Use the ticket format that matches your tracker:</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Jira tickets</h4>
+                                <p>Use the format <code>PROJ-123</code> (uppercase project key + number). Fetched via the Atlassian MCP server.</p>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>GitHub Issues</h4>
+                                <p>Use the format <code>#42</code> (hash + number). Fetched via the GitHub MCP server. Searches across all your configured repositories in parallel.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Does magic-slash work with monorepos?</h3>
+                        <p class="doc-skill-desc">Yes. magic-slash detects monorepos automatically by looking for <code>pnpm-workspace.yaml</code>, <code>"workspaces"</code> in <code>package.json</code>, or <code>lerna.json</code>.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>How it works</h4>
+                                <ul>
+                                    <li>Worktrees are created from the monorepo root</li>
+                                    <li>Dependencies are installed at the root level; the package manager handles workspace packages automatically</li>
+                                    <li>You can configure a single repository entry for the whole monorepo</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Multi-repo tasks</h4>
+                                <p>For full-stack tasks spanning multiple repositories, magic-slash can create separate worktrees for each repo and link them together in the Desktop UI.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Can I customize the commit message format?</h3>
+                        <p class="doc-skill-desc">Yes. Each repository can define its own commit format in <code>~/.config/magic-slash/config.json</code>.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Available formats</h4>
+                                <ul>
+                                    <li><code>angular</code> &mdash; <code>type(scope): description</code> (default)</li>
+                                    <li><code>conventional</code> &mdash; <code>type: description</code></li>
+                                    <li><code>gitmoji</code> &mdash; <code>emoji description</code></li>
+                                    <li><code>none</code> &mdash; Free-form text</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Example configuration</h4>
+                                <pre style="margin:0"><code>"commit": {
+  "format": "angular",
+  "style": "single-line",
+  "coAuthor": false,
+  "includeTicketId": true
+}</code></pre>
+                                <p>Set <code>style</code> to <code>"multi-line"</code> for title + body format.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>How does the keyword matching work?</h3>
+                        <p class="doc-skill-desc">When you start a task, magic-slash scores each configured repository against the ticket content to find the best match. Matching is case-insensitive and supports common variants (e.g. "backend" matches "back-end").</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Scoring rules</h4>
+                                <ul>
+                                    <li>Jira label/component or GitHub label matches a keyword: <strong>+10 points</strong></li>
+                                    <li>Keyword found in ticket title: <strong>+5 points</strong></li>
+                                    <li>Keyword found in ticket description: <strong>+2 points</strong></li>
+                                </ul>
+                                <p>The repository with the highest score wins. On a tie, you are asked to choose.</p>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>Example</h4>
+                                <p>Ticket: <em>"Add an API endpoint for users"</em> with label <code>backend</code></p>
+                                <ul>
+                                    <li><strong>api-repo</strong> (keywords: backend, api, server) &rarr; 15 pts</li>
+                                    <li><strong>web-repo</strong> (keywords: frontend, ui, react) &rarr; 0 pts</li>
+                                </ul>
+                                <p>Result: <strong>api-repo</strong> is selected automatically.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Is my data sent to external servers?</h3>
+                        <p class="doc-skill-desc">magic-slash operates locally on your machine. All API calls are made directly from your computer to the services you already use.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>What stays local</h4>
+                                <ul>
+                                    <li>Your configuration and credentials are stored in your home directory</li>
+                                    <li>Skills run inside Claude Code on your machine</li>
+                                    <li>The Desktop app communicates only via local IPC (<code>127.0.0.1</code>)</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>External connections</h4>
+                                <ul>
+                                    <li><strong>Claude API</strong> &mdash; Your prompts and code context (via Anthropic)</li>
+                                    <li><strong>GitHub API</strong> &mdash; Issues, PRs, code (via your PAT)</li>
+                                    <li><strong>Atlassian API</strong> &mdash; Jira tickets (via your OAuth session)</li>
+                                    <li><strong>GitHub Releases</strong> &mdash; Auto-update checks</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>Can multiple team members use magic-slash on the same project?</h3>
+                        <p class="doc-skill-desc">Yes. Each developer installs magic-slash independently with their own configuration and credentials. There is no shared state between team members.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>What is personal</h4>
+                                <ul>
+                                    <li>Configuration file (<code>~/.config/magic-slash/config.json</code>)</li>
+                                    <li>GitHub token and Atlassian OAuth session</li>
+                                    <li>Language preferences and commit format</li>
+                                    <li>Worktrees created on their machine</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>What is shared</h4>
+                                <ul>
+                                    <li>The same Jira project and GitHub repository</li>
+                                    <li>Branch naming conventions (automatic)</li>
+                                    <li>PR templates and review workflows</li>
+                                </ul>
+                                <p>Each team member can have different keywords, languages, and commit formats.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-skill">
+                        <h3>How do automatic updates work?</h3>
+                        <p class="doc-skill-desc">The Desktop app checks for updates on startup using GitHub Releases. Updates are downloaded in the background and installed when you confirm.</p>
+                        <div class="doc-skill-details">
+                            <div class="doc-skill-col">
+                                <h4>Update flow</h4>
+                                <ul>
+                                    <li>Update check runs automatically at app startup</li>
+                                    <li>If a new version is available, it downloads silently</li>
+                                    <li>You are notified with release notes once the download completes</li>
+                                    <li>On confirmation, the app restarts with the new version</li>
+                                </ul>
+                            </div>
+                            <div class="doc-skill-col">
+                                <h4>What gets updated</h4>
+                                <ul>
+                                    <li>The Desktop app (Electron binary)</li>
+                                    <li>All 7 skills (refreshed on each startup)</li>
+                                    <li>Your configuration is preserved across updates</li>
+                                </ul>
                             </div>
                         </div>
                     </div>
