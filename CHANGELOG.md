@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.4] - 2026-04-04
+
+### Added
+
+- **Install**: Add JSON Schema (`install/config-schema.json`) for `config.json` validation
+- **Desktop**: Validate `config.json` against JSON Schema on startup with AJV — critical errors block loading, non-critical errors are warned
+- **Desktop**: Auto-repair invalid config values (languages, commit format/style, resolve settings) with `repairConfig()`
+- **Desktop**: Create automatic backup (`config.json.bak`) before migration and repair
+- **Desktop**: Notify renderer of validation errors on startup via `config:validationErrors` IPC event
+- **Desktop**: Add schema validation unit tests (`schema-validator.test.ts`)
+
+### Changed
+
+- **Desktop**: Extract default repository fields into `defaults.ts` (shared by config, migrate, and repair)
+- **Docs**: Enrich documentation with new sections and FAQ entries
+
 ## [0.32.3] - 2026-04-03
 
 ### Changed
@@ -961,6 +977,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.32.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.4
 [0.32.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.3
 [0.32.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.2
 [0.32.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.1
