@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.5] - 2026-04-05
+
+### Added
+
+- **Desktop**: Sync `config.json` version with app version on startup via `migrateConfig()`
+
+### Fixed
+
+- **Desktop**: Config validation toast now re-appears on every config load instead of only on first page load — dismissing it no longer hides it forever
+
 ## [0.32.4] - 2026-04-04
 
 ### Added
@@ -977,6 +987,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.32.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.5
 [0.32.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.4
 [0.32.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.3
 [0.32.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.2
