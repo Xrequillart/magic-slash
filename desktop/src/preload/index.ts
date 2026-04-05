@@ -54,6 +54,15 @@ const configApi = {
   updateSplitActive: (active: boolean) =>
     ipcRenderer.invoke('config:updateSplitActive', { active }),
 
+  repair: (): Promise<{ repaired: boolean; fixes: string[] }> =>
+    ipcRenderer.invoke('config:repair'),
+
+  onValidationErrors: (callback: (data: { errors: string[]; configPath: string }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { errors: string[]; configPath: string }) => callback(data)
+    ipcRenderer.on('config:validationErrors', listener)
+    return () => ipcRenderer.removeListener('config:validationErrors', listener)
+  },
+
   validatePath: (path: string) =>
     ipcRenderer.invoke('config:validatePath', { path }),
 
@@ -295,4 +304,5 @@ declare global {
       scripts: typeof scriptsApi
     }
   }
+
 }
