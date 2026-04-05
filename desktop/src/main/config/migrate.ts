@@ -44,9 +44,15 @@ function createBackup(): boolean {
   return false
 }
 
-export function migrateConfig(): boolean {
+export function migrateConfig(appVersion?: string): boolean {
   const config = readConfig()
   let changed = false
+
+  // Sync config version with app version
+  if (appVersion && config.version !== appVersion) {
+    config.version = appVersion
+    changed = true
+  }
 
   // Migrate repositories
   if (config.repositories) {

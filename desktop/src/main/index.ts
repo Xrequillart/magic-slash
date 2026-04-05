@@ -222,7 +222,7 @@ function setupHandlers() {
 
 app.whenReady().then(async () => {
   // Migrate config to ensure all repositories have complete fields
-  migrateConfig()
+  migrateConfig(app.getVersion())
 
   // Create custom menu (removes Cmd+W close window behavior)
   createMenu()
