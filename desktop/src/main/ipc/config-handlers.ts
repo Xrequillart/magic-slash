@@ -1,6 +1,7 @@
-import { ipcMain } from 'electron'
+import { ipcMain, type BrowserWindow } from 'electron'
 import {
   readConfig,
+  CONFIG_FILE,
   addRepository,
   updateRepository,
   deleteRepository,
@@ -16,6 +17,7 @@ import {
   updateSplitActive,
 } from '../config/config'
 import { repairConfig } from '../config/migrate'
+import { validateConfig } from '../config/schema-validator'
 import {
   validateRepoName,
   validateRepoPath,
@@ -37,10 +39,22 @@ import {
   getLastCommand
 } from '../config/command-history'
 
-export function setupConfigHandlers() {
-  // Get config
+export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
+  // Get config (also validates and notifies renderer of any errors)
   ipcMain.handle('config:get', async () => {
-    return readConfig()
+    const config = readConfig()
+    try {
+      const validation = validateConfig(config)
+      if (!validation.valid) {
+        getMainWindow()?.webContents.send('config:validationErrors', {
+          errors: validation.errors,
+          configPath: CONFIG_FILE,
+        })
+      }
+    } catch {
+      // Validation failures already handled in readConfig
+    }
+    return config
   })
 
   // Add repository

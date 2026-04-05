@@ -11,8 +11,6 @@ import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
 import { migrateConfig } from './config/migrate'
-import { validateConfig } from './config/schema-validator'
-import { readConfig, CONFIG_FILE } from './config/config'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -130,21 +128,6 @@ function createWindow() {
     mainWindow = null
   })
 
-  // Validate config and notify renderer of any errors on startup
-  mainWindow.webContents.on('did-finish-load', () => {
-    try {
-      const config = readConfig()
-      const validation = validateConfig(config)
-      if (!validation.valid) {
-        mainWindow?.webContents.send('config:validationErrors', {
-          errors: validation.errors,
-          configPath: CONFIG_FILE,
-        })
-      }
-    } catch {
-      // Validation errors already handled in readConfig
-    }
-  })
 
   // Intercept navigation to external URLs and open them in the default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -169,7 +152,7 @@ function createWindow() {
 
 // Setup IPC handlers
 function setupHandlers() {
-  setupConfigHandlers()
+  setupConfigHandlers(() => mainWindow)
   setupSkillsHandlers()
   setupScriptHandlers(() => mainWindow)
   setupTerminalHandlers(
