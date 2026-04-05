@@ -3,17 +3,25 @@ import { X, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 
 type ToastType = 'success' | 'error' | 'warning'
 
+export interface ToastAction {
+  label: string
+  icon?: React.ReactNode
+  onClick: () => void
+}
+
 interface Toast {
   id: number
   message: string
   type: ToastType
+  actions?: ToastAction[]
+  persistent?: boolean
 }
 
 let toastId = 0
 const listeners = new Set<(toast: Toast) => void>()
 
-export function showToast(message: string, type: ToastType = 'success') {
-  const toast: Toast = { id: ++toastId, message, type }
+export function showToast(message: string, type: ToastType = 'success', options?: { actions?: ToastAction[], persistent?: boolean }) {
+  const toast: Toast = { id: ++toastId, message, type, ...options }
   listeners.forEach(listener => listener(toast))
 }
 
@@ -23,9 +31,11 @@ export function ToastContainer() {
   useEffect(() => {
     const listener = (toast: Toast) => {
       setToasts(prev => [...prev, toast])
-      setTimeout(() => {
-        setToasts(prev => prev.filter(t => t.id !== toast.id))
-      }, 4000)
+      if (!toast.persistent) {
+        setTimeout(() => {
+          setToasts(prev => prev.filter(t => t.id !== toast.id))
+        }, 4000)
+      }
     }
 
     listeners.add(listener)
@@ -55,18 +65,36 @@ export function ToastContainer() {
           key={toast.id}
           className={`
             bg-bg-secondary border ${borderColors[toast.type]} rounded-xl
-            p-4 flex items-center gap-3 min-w-[300px] max-w-[400px]
+            p-4 min-w-[300px] max-w-[450px]
             shadow-lg animate-slide-in
           `}
         >
-          {icons[toast.type]}
-          <span className="flex-1 text-sm">{toast.message}</span>
-          <button
-            onClick={() => removeToast(toast.id)}
-            className="text-text-secondary hover:text-white transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className={`flex ${toast.actions ? 'items-start' : 'items-center'} gap-3`}>
+            {icons[toast.type]}
+            <div className="flex-1">
+              <span className="text-sm">{toast.message}</span>
+              {toast.actions && (
+                <div className="flex gap-2 mt-3">
+                  {toast.actions.map(action => (
+                    <button
+                      key={action.label}
+                      onClick={() => { action.onClick(); removeToast(toast.id) }}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+                    >
+                      {action.icon}
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => removeToast(toast.id)}
+              className="text-text-secondary hover:text-white transition-colors flex-shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       ))}
     </div>

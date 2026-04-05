@@ -1,0 +1,220 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://magic-slash.io/config-schema.json",
+  "title": "Magic Slash Config",
+  "description": "Configuration file for Magic Slash (~/.config/magic-slash/config.json)",
+  "type": "object",
+  "required": ["version", "repositories"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the config (e.g. \"0.32.3\")"
+    },
+    "repositories": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Map of repository name to its configuration",
+      "additionalProperties": {
+        "$ref": "#/definitions/RepositoryConfig"
+      }
+    },
+    "agents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Agent"
+      },
+      "description": "List of terminal agents"
+    },
+    "splitEnabled": {
+      "type": "boolean",
+      "description": "Whether split view is enabled"
+    },
+    "splitActive": {
+      "type": "boolean",
+      "description": "Whether split view is currently active"
+    },
+    "theme": {
+      "type": "string",
+      "description": "UI theme name"
+    },
+    "installationMode": {
+      "type": "string",
+      "description": "Installation mode identifier"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "RepositoryConfig": {
+      "type": "object",
+      "required": ["path", "keywords"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(/|~)",
+          "description": "Absolute path to the repository (must start with / or ~)"
+        },
+        "keywords": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Keywords used to identify the repository (at least one non-empty string)"
+        },
+        "color": {
+          "type": "string",
+          "description": "Hex color for the repository (e.g. '#3B82F6')"
+        },
+        "languages": {
+          "type": "object",
+          "properties": {
+            "commit": {
+              "type": "string",
+              "enum": ["en", "fr"]
+            },
+            "pullRequest": {
+              "type": "string",
+              "enum": ["en", "fr"]
+            },
+            "jiraComment": {
+              "type": "string",
+              "enum": ["en", "fr"]
+            },
+            "discussion": {
+              "type": "string",
+              "enum": ["en", "fr"]
+            }
+          },
+          "additionalProperties": false,
+          "description": "Language settings for various outputs"
+        },
+        "commit": {
+          "type": "object",
+          "properties": {
+            "format": {
+              "type": "string",
+              "enum": ["angular", "conventional", "gitmoji", "none"]
+            },
+            "style": {
+              "type": "string",
+              "enum": ["single-line", "multi-line"]
+            },
+            "coAuthor": {
+              "type": "boolean"
+            },
+            "includeTicketId": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Commit message settings"
+        },
+        "resolve": {
+          "type": "object",
+          "properties": {
+            "commitMode": {
+              "type": "string",
+              "enum": ["new", "amend"]
+            },
+            "format": {
+              "type": "string",
+              "enum": ["angular", "conventional", "gitmoji", "none"]
+            },
+            "style": {
+              "type": "string",
+              "enum": ["single-line", "multi-line"]
+            },
+            "useCommitConfig": {
+              "type": "boolean"
+            },
+            "replyToComments": {
+              "type": "boolean"
+            },
+            "replyLanguage": {
+              "type": "string",
+              "enum": ["en", "fr"]
+            }
+          },
+          "additionalProperties": false,
+          "description": "Review resolve settings"
+        },
+        "pullRequest": {
+          "type": "object",
+          "properties": {
+            "autoLinkTickets": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Pull request settings"
+        },
+        "issues": {
+          "type": "object",
+          "properties": {
+            "commentOnPR": {
+              "type": "boolean"
+            },
+            "jiraUrl": {
+              "type": "string"
+            },
+            "githubIssuesUrl": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Issue tracking settings"
+        },
+        "branches": {
+          "type": "object",
+          "properties": {
+            "development": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Branch naming settings"
+        },
+        "worktreeFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Files to copy from main repo to worktree"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Agent": {
+      "type": "object",
+      "required": ["id", "name", "repositories"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "repositories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tsCreate": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Terminal metadata"
+        },
+        "splitPane": {
+          "type": "string",
+          "enum": ["left", "right"]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,12 +1,13 @@
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, RotateCcw } from 'lucide-react'
 import { useStore } from './store'
 import { useConfig } from './hooks/useConfig'
 import { useTerminals } from './hooks/useTerminals'
 import { TitleBar } from './components/TitleBar'
 import { Sidebar } from './components/Sidebar'
 import { AgentInfoSidebar } from './components/AgentInfoSidebar'
-import { ToastContainer } from './components/Toast'
+import { ToastContainer, showToast } from './components/Toast'
+import { VSCodeIcon } from './components/agent-info-sidebar/icons'
 import { UpdateOverlay } from './components/UpdateOverlay'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { ConfigPage } from './pages/Config'
@@ -115,6 +116,39 @@ export function App() {
 
   useEffect(() => {
     loadConfig()
+  }, [loadConfig])
+
+  // Listen for config validation errors from main process
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.config.onValidationErrors((data) => {
+      const count = data.errors.length
+      showToast(
+        `Invalid configuration: ${count} error${count > 1 ? 's' : ''} found in config.json`,
+        'error',
+        {
+          persistent: true,
+          actions: [
+            {
+              label: 'Reset to defaults',
+              icon: <RotateCcw className="w-3.5 h-3.5" />,
+              onClick: async () => {
+                await window.electronAPI.config.repair()
+                loadConfig()
+                showToast('Configuration repaired successfully', 'success')
+              },
+            },
+            {
+              label: 'Open in VS Code',
+              icon: <VSCodeIcon className="w-3.5 h-3.5" />,
+              onClick: () => {
+                window.electronAPI.shell.openInVSCode(data.configPath)
+              },
+            },
+          ],
+        }
+      )
+    })
+    return () => { unsubscribe() }
   }, [loadConfig])
 
   // Keyboard shortcut: Cmd+B to toggle left sidebar

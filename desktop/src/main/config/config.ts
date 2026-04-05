@@ -1,7 +1,9 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import type { RepositoryConfig, TerminalMetadata, Agent } from '../../types'
+import type { Config, RepositoryConfig, TerminalMetadata, Agent } from '../../types'
+import { validateConfig, hasCriticalErrors } from './schema-validator'
+import { DEFAULT_REPOSITORY_FIELDS } from './defaults'
 
 /** Settings input where each field can be its normal type, 'default', or null (to reset) */
 type SettingsInput<T> = {
@@ -44,14 +46,6 @@ export function isExcludedRepositoryPath(repoPath: string): boolean {
  */
 export function filterValidRepositories(repositories: string[]): string[] {
   return repositories.filter(repo => !isExcludedRepositoryPath(repo))
-}
-
-export interface Config {
-  version: string
-  repositories: Record<string, RepositoryConfig>
-  agents?: Agent[]
-  splitEnabled?: boolean
-  splitActive?: boolean
 }
 
 export function createDefaultMetadata(): TerminalMetadata {
@@ -109,6 +103,27 @@ export function readConfig(): Config {
       writeConfig(config)
     }
 
+    // Validate config against JSON Schema
+    try {
+      const validation = validateConfig(config)
+      if (!validation.valid) {
+        if (hasCriticalErrors(validation.errors)) {
+          console.error('Critical config validation errors:', validation.errors)
+          throw new Error(`Invalid config: ${validation.errors.join('; ')}`)
+        }
+        // Non-critical errors: warn but continue (graceful degradation)
+        for (const err of validation.errors) {
+          console.warn(`Config validation warning: ${err}`)
+        }
+      }
+    } catch (validationError) {
+      // Re-throw critical errors, but don't crash on schema loading failures
+      if (validationError instanceof Error && validationError.message.startsWith('Invalid config:')) {
+        throw validationError
+      }
+      console.warn('Config schema validation skipped:', validationError)
+    }
+
     return config
   } catch (error) {
     console.error('Error reading config:', error)
@@ -139,16 +154,7 @@ export function addRepository(name: string, repoPath: string, keywords: string[]
   config.repositories[name] = {
     path: repoPath,
     keywords: keywords.length > 0 ? keywords : [name],
-    color: '#3B82F6',
-    languages: { commit: 'en', pullRequest: 'en', jiraComment: 'en', discussion: 'en' },
-    commit: { style: 'single-line', format: 'angular', coAuthor: true, includeTicketId: true },
-    resolve: {
-      commitMode: 'new', format: 'angular', style: 'single-line',
-      useCommitConfig: true, replyToComments: true, replyLanguage: 'en'
-    },
-    pullRequest: { autoLinkTickets: true },
-    issues: { commentOnPR: true, jiraUrl: '', githubIssuesUrl: '' },
-    branches: { development: '' }
+    ...DEFAULT_REPOSITORY_FIELDS,
   }
   writeConfig(config)
   return config

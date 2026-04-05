@@ -15,6 +15,7 @@ import {
   updateSplitEnabled,
   updateSplitActive,
 } from '../config/config'
+import { repairConfig } from '../config/migrate'
 import {
   validateRepoName,
   validateRepoPath,
@@ -198,6 +199,11 @@ export function setupConfigHandlers() {
   // Update PR template
   ipcMain.handle('config:updatePRTemplate', async (_event, { repoPath, content }) => {
     return updatePRTemplate(repoPath, content)
+  })
+
+  // Repair config (fix invalid values with defaults)
+  ipcMain.handle('config:repair', async () => {
+    return repairConfig()
   })
 
   // Command history handlers
