@@ -59,7 +59,7 @@ jobs:
 
       - name: Run yamllint
         run: |
-          pip install yamllint
+          pip install --break-system-packages yamllint
           npm run lint:yaml
 
       - name: Run ESLint
@@ -160,6 +160,25 @@ jobs:
       - name: Verify prerequisites check
         run: |
           # Test that the script correctly identifies missing prerequisites
-          # (claude won't be installed in CI, so it should fail gracefully)
-          bash install/install.sh 2>&1 | grep -q "prerequisites" || true
+          # (claude won't be installed in CI, so it should fail with actionable message)
+          OUTPUT=$(bash install/install.sh 2>&1 || true)
+          echo "$OUTPUT"
+          # Should mention the missing tool name
+          echo "$OUTPUT" | grep -q "claude" || { echo "FAIL: output should mention 'claude'"; exit 1; }
+          # Should include an install suggestion
+          HAS_HINT=false
+          echo "$OUTPUT" | grep -q "Install:" && HAS_HINT=true
+          echo "$OUTPUT" | grep -q "claude.ai/download" && HAS_HINT=true
+          [ "$HAS_HINT" = true ] || { echo "FAIL: should include install suggestion"; exit 1; }
+          # Should report missing prerequisites
+          echo "$OUTPUT" | grep -q "prerequisites" || { echo "FAIL: output should mention prerequisites"; exit 1; }
+        shell: bash
+
+      - name: Test --dry-run flag
+        run: |
+          # --dry-run should exit 0 (preflight will still fail for missing claude)
+          # but we can verify it prints the dry-run banner before failing
+          OUTPUT=$(bash install/install.sh --dry-run 2>&1 || true)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q "\[DRY RUN\]" || { echo "FAIL: output should contain [DRY RUN]"; exit 1; }
         shell: bash
