@@ -173,7 +173,6 @@ select_option() {
 
 # Logo color
 PURPLE='\033[0;35m'
-BLUE='\033[0;34m'
 
 print_logo() {
   echo ""
