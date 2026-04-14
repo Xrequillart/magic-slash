@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0] - 2026-04-14
+
+### Added
+
+- **Start**: Add plan review sub-agent step and use `AskUserQuestion` for approval
+- **Install**: Add preflight checks, rollback mechanism, and dry-run mode
+- **Install**: Handle Ctrl+C to cleanly exit installer
+- **Install**: Make Atlassian integration optional
+
+### Changed
+
+- **Install**: Redesign ASCII logo as single-line layout
+- **Dependencies**: Bump vitest from 4.1.2 to 4.1.4, globals from 17.4.0 to 17.5.0, typescript-eslint linters group, softprops/action-gh-release from 2 to 3
+
+### Fixed
+
+- **Install**: Remove unused `blue` variable flagged by shellcheck
+
 ## [0.32.5] - 2026-04-05
 
 ### Added
@@ -987,6 +1005,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.36.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.36.0
 [0.32.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.5
 [0.32.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.4
 [0.32.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.3
