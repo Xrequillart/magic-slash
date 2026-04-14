@@ -183,6 +183,12 @@ If some PRs are merged and others are not, display a warning listing which PRs a
 
 ## Step 4: Update the Jira/GitHub ticket
 
+### Check Atlassian integration
+
+Read `integrations.atlassian` from `~/.config/magic-slash/config.json`. Default: `true`.
+
+If `integrations.atlassian` is `false`, skip the entire "For Jira tickets" section below. Only execute "For GitHub issues".
+
 ### For Jira tickets
 
 If a Jira ticket ID is found, use the MCP Atlassian tools:

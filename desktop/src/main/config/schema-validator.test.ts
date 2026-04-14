@@ -174,11 +174,11 @@ describe('validateConfig', () => {
     expect(result.errors.some(e => e.includes('version') && e.includes('semver'))).toBe(true)
   })
 
-  it('should fail for empty repositories object', () => {
+  it('should pass for empty repositories object (fresh install)', () => {
     const config = { version: '1.0.0', repositories: {} }
     const result = validateConfig(config)
-    expect(result.valid).toBe(false)
-    expect(result.errors.some(e => e.includes('repositories') && e.includes('at least 1'))).toBe(true)
+    expect(result.valid).toBe(true)
+    expect(result.errors).toHaveLength(0)
   })
 
   it('should fail for an invalid splitPane value on agent', () => {

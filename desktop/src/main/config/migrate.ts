@@ -82,6 +82,12 @@ export function migrateConfig(appVersion?: string): boolean {
     }
   }
 
+  // Migrate integrations (default: both enabled for backward compatibility)
+  if (!config.integrations) {
+    config.integrations = { github: true, atlassian: true }
+    changed = true
+  }
+
   if (changed) {
     // Create backup before writing migrated config
     createBackup()

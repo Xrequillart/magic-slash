@@ -13,7 +13,6 @@
     },
     "repositories": {
       "type": "object",
-      "minProperties": 1,
       "description": "Map of repository name to its configuration",
       "additionalProperties": {
         "$ref": "#/definitions/RepositoryConfig"
@@ -34,9 +33,18 @@
       "type": "boolean",
       "description": "Whether split view is currently active"
     },
-    "theme": {
-      "type": "string",
-      "description": "UI theme name"
+    "integrations": {
+      "type": "object",
+      "properties": {
+        "github": {
+          "const": true
+        },
+        "atlassian": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Enabled integrations (github is always true)"
     },
     "installationMode": {
       "type": "string",

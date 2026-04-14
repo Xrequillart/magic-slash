@@ -34,7 +34,17 @@ If missing, display `MSG_CONFIG_ERROR` and stop.
 
 Once the repo is identified (step 3), read `.repositories.<name>.languages.discussion` from config. Default: `"en"`. Until the repo is identified, use English for all messages.
 
-### 0.3: Determine development branch (execute after repo is identified in step 3)
+### 0.3: Check Atlassian integration
+
+Read `integrations.atlassian` from config. Default: `true` (backward compatibility).
+
+```bash
+jq -r '.integrations.atlassian // true' "$CONFIG_FILE"
+```
+
+Store the result as `$ATLASSIAN_ENABLED`. If `false`, only GitHub issue format (`#123`) is accepted in Step 1.
+
+### 0.4: Determine development branch (execute after repo is identified in step 3)
 
 Read `.repositories.<name>.branches.development` from config.
 
@@ -48,6 +58,11 @@ Store the result as `$DEV_BRANCH`.
 Analyze `$ARGUMENTS`:
 
 - **Jira**: Alphabetic prefix + hyphen + digits (regex: `^[A-Za-z]+-\d+$`, normalize to uppercase) → Step 2A
+  - **If `$ATLASSIAN_ENABLED` is `false`**: Do not match Jira format. If the user provides a Jira ID (e.g., `PROJ-123`), display:
+    > ⚠️ Atlassian integration is not configured. Only GitHub issues (#123) are supported.
+    > To enable Atlassian, re-run the installer: `curl -fsSL https://magic-slash.io/install.sh | bash`
+    
+    Then stop.
 - **GitHub**: Number with optional `#` (regex: `^#?\d+$`) → Step 2B
 - **Unrecognized**: Ask user to clarify.
 
