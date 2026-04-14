@@ -323,6 +323,20 @@ Read the matching plan template from `references/plan-template-{type}-{lang}.md`
 
 Keep the plan focused: aim for **3-7 implementation steps**, each with 2-3 concrete actions. A plan that's too detailed wastes context; too vague and the implementation drifts.
 
+### 5.2.3: Plan review (via sub-agent)
+
+Launch an `Agent` to review the implementation plan. Provide: ticket summary (ID, title, description, acceptance criteria), codebase exploration summary (from step 5.1), and the full proposed plan.
+
+The agent reviews the plan on these axes:
+- **Completeness**: Does the plan cover all acceptance criteria?
+- **Step ordering**: Are dependencies between steps respected?
+- **Missing files**: Are there impacted files forgotten (tests, types, migrations, configs)?
+- **Over-engineering**: Does the plan do more than what the ticket asks for?
+
+The agent returns a short list of actionable suggestions, or explicitly states the plan looks good.
+
+Integrate pertinent suggestions into the plan before proceeding. Do not blindly apply all suggestions — use judgment to filter out noise.
+
 ### 5.2.5: Dispatcher (execution strategy)
 
 Analyze the plan to choose between **Solo** and **Multi-agent**:
@@ -337,11 +351,16 @@ Display `MSG_STRATEGY_SOLO` or `MSG_STRATEGY_MULTI` as part of the plan output.
 
 ### 5.3: Request approval
 
-Display `MSG_APPROVAL`. Never start implementation without explicit user approval.
+Use `AskUserQuestion` with `MSG_APPROVAL` as the question text and the following options:
+- Option 1: Approve and start implementation
+- Option 2: Request modifications to the plan
+- Option 3: Reject and stop
 
-- **Positive** (oui, yes, ok, go, let's go, c'est parti, allons-y) → Step 5.4
-- **Negative or questions** → Adjust plan, re-request approval
-- **Modifications** → Update plan, present again
+Never start implementation without explicit user approval.
+
+- **Approve** → Step 5.4
+- **Modifications** → Adjust plan based on feedback, present again, re-request approval
+- **Reject** → Stop
 
 ### 5.4: Implementation
 
