@@ -173,19 +173,16 @@ select_option() {
 
 # Logo color
 PURPLE='\033[0;35m'
+BLUE='\033[0;34m'
 
 print_logo() {
   echo ""
-  echo -e "   ${BOLD}                    _        ${NC}"
-  echo -e "   ${BOLD} _ __ ___   __ _  __ _(_) ___  ${NC}"
-  echo -e "   ${BOLD}| '_ \` _ \\ / _\` |/ _\` | |/ __| ${NC}"
-  echo -e "   ${BOLD}| | | | | | (_| | (_| | | (__  ${NC}"
-  echo -e "   ${BOLD}|_| |_| |_|\\__,_|\\__, |_|\\___| ${NC}"
-  echo -e "   ${PURPLE}    __${NC}${BOLD}           |___/      ${NC}"
-  echo -e "   ${PURPLE}   / /${NC}${BOLD}__| | __ _ ___| |__   ${NC}"
-  echo -e "   ${PURPLE}  / /${NC}${BOLD}/ __| |/ _\` / __| '_ \\  ${NC}"
-  echo -e "   ${PURPLE} / /${NC}${BOLD}\\__ \\ | (_| \\__ \\ | | | ${NC}"
-  echo -e "   ${PURPLE}/_/ ${NC}${BOLD}|___/_|\\__,_|___/_| |_| ${NC}"
+  echo -e "   ${BOLD}                       _           ${PURPLE}__${NC}${BOLD}   _           _${NC}"
+  echo -e "   ${BOLD} _ __ ___   __ _  __ _(_) ___     ${PURPLE}/ /${NC}${BOLD}__| | __ _ ___| |__${NC}"
+  echo -e "   ${BOLD}| '_ \` _ \\ / _\` |/ _\` | |/ __|   ${PURPLE}/ /${NC}${BOLD} __| |/ _\` / __| '_ \\ ${NC}"
+  echo -e "   ${BOLD}| | | | | | (_| | (_| | | (__   ${PURPLE}/ /${NC}${BOLD}\\__ \\ | (_| \\__ \\ | | |${NC}"
+  echo -e "   ${BOLD}|_| |_| |_|\\__,_|\\__, |_|\\___| ${NC}${PURPLE}/_/${NC}${BOLD} |___/_|\\__,_|___/_| |_|${NC}${BOLD}.${NC}"
+  echo -e "   ${BOLD}                 |___/${NC}"
   echo ""
 }
 
