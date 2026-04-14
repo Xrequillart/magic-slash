@@ -349,14 +349,53 @@ echo "✅ All prerequisites are installed"
 echo ""
 
 # ============================================
+# 1b. INTEGRATION SELECTION
+# ============================================
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "   Which integrations do you want to use?"
+echo ""
+
+# Detect existing integration choice for pre-selection on reconfigure
+ATLASSIAN_ENABLED=true
+if [ -f "$CONFIG_FILE" ]; then
+  EXISTING_ATLASSIAN=$(jq -r '.integrations.atlassian // "true"' "$CONFIG_FILE" 2>/dev/null)
+  if [ "$EXISTING_ATLASSIAN" = "false" ]; then
+    ATLASSIAN_ENABLED=false
+  fi
+fi
+
+if [ "$DRY_RUN" = true ]; then
+  echo -e "   ${CYAN}[DRY RUN]${NC} would: prompt for integration selection"
+  echo -e "   ${CYAN}[DRY RUN]${NC} current: ATLASSIAN_ENABLED=$ATLASSIAN_ENABLED"
+else
+  if [ "$ATLASSIAN_ENABLED" = true ]; then
+    select_option "Atlassian + GitHub  (Jira, Confluence, PRs, issues, reviews)" "GitHub only         (PRs, issues, reviews)"
+  else
+    select_option "GitHub only         (PRs, issues, reviews)" "Atlassian + GitHub  (Jira, Confluence, PRs, issues, reviews)"
+  fi
+
+  if [ "$ATLASSIAN_ENABLED" = true ]; then
+    # First option was Atlassian+GitHub
+    [ $SELECT_RESULT -eq 1 ] && ATLASSIAN_ENABLED=false
+  else
+    # First option was GitHub only
+    [ $SELECT_RESULT -eq 1 ] && ATLASSIAN_ENABLED=true
+  fi
+fi
+
+echo ""
+
+CLAUDE_CONFIG="$HOME/.claude.json"
+
+if [ "$ATLASSIAN_ENABLED" = true ]; then
+# ============================================
 # 2. MCP ATLASSIAN CONFIGURATION (JIRA + CONFLUENCE)
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "2. MCP Atlassian configuration (Jira + Confluence)"
 echo ""
-
-CLAUDE_CONFIG="$HOME/.claude.json"
 
 # Check if MCP Atlassian is already configured
 SKIP_JIRA=false
@@ -411,6 +450,8 @@ else
 fi
 
 echo ""
+
+fi  # end ATLASSIAN_ENABLED check
 
 # ============================================
 # 3. MCP GITHUB CONFIGURATION
@@ -576,12 +617,6 @@ else
     'mcp__github__get_pull_request_reviews'
     'mcp__github__create_pull_request'
     'mcp__github__create_pull_request_review'
-    # Atlassian MCP tools
-    'mcp__atlassian__getAccessibleAtlassianResources'
-    'mcp__atlassian__getJiraIssue'
-    'mcp__atlassian__getTransitionsForJiraIssue'
-    'mcp__atlassian__transitionJiraIssue'
-    'mcp__atlassian__addCommentToJiraIssue'
     # Common Bash commands used by skills
     'Bash(git *)'
     'Bash(npm *)'
@@ -592,6 +627,17 @@ else
     'Bash(gh *)'
   )
 
+  # Atlassian MCP tools (only if enabled)
+  if [ "$ATLASSIAN_ENABLED" = true ]; then
+    MAGIC_SLASH_PERMS+=(
+      'mcp__atlassian__getAccessibleAtlassianResources'
+      'mcp__atlassian__getJiraIssue'
+      'mcp__atlassian__getTransitionsForJiraIssue'
+      'mcp__atlassian__transitionJiraIssue'
+      'mcp__atlassian__addCommentToJiraIssue'
+    )
+  fi
+
   # Build a JSON array of all permissions, then merge in a single jq call
   PERMS_JSON=$(printf '%s\n' "${MAGIC_SLASH_PERMS[@]}" | jq -R . | jq -s .)
   TMP_SETTINGS=$(mktemp)
@@ -600,6 +646,14 @@ else
     .permissions.allow //= [] |
     .permissions.allow += ($newPerms - .permissions.allow)
   ' "$CLAUDE_SETTINGS" > "$TMP_SETTINGS" && mv "$TMP_SETTINGS" "$CLAUDE_SETTINGS"
+
+  # Remove Atlassian permissions if switching to GitHub-only
+  if [ "$ATLASSIAN_ENABLED" = false ]; then
+    TMP_SETTINGS=$(mktemp)
+    jq '
+      .permissions.allow |= map(select(startswith("mcp__atlassian__") | not))
+    ' "$CLAUDE_SETTINGS" > "$TMP_SETTINGS" && mv "$TMP_SETTINGS" "$CLAUDE_SETTINGS"
+  fi
 fi
 
 echo "   ✅ Permissions configured (MCP tools + common commands auto-allowed)"
@@ -611,8 +665,8 @@ if [ "$DRY_RUN" = true ]; then
 else
   mkdir -p "$CONFIG_DIR"
   if [ ! -f "$CONFIG_FILE" ]; then
-    jq -n --arg version "$CURRENT_VERSION" \
-      '{"version": $version, "repositories": {}}' > "$CONFIG_FILE"
+    jq -n --arg version "$CURRENT_VERSION" --argjson atlassian "$ATLASSIAN_ENABLED" \
+      '{"version": $version, "integrations": {"github": true, "atlassian": $atlassian}, "repositories": {}}' > "$CONFIG_FILE"
     push_rollback "rm -f '$CONFIG_FILE'"
   else
     # Back up config before modifying
@@ -620,8 +674,8 @@ else
     push_rollback "mv '$CONFIG_FILE.magic-slash.bak' '$CONFIG_FILE'"
     # Update version in existing config file
     TMP_FILE=$(mktemp)
-    jq --arg version "$CURRENT_VERSION" \
-      '.version = $version | del(.installationMode)' "$CONFIG_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$CONFIG_FILE"
+    jq --arg version "$CURRENT_VERSION" --argjson atlassian "$ATLASSIAN_ENABLED" \
+      '.version = $version | .integrations = {"github": true, "atlassian": $atlassian} | del(.installationMode)' "$CONFIG_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$CONFIG_FILE"
   fi
 fi
 
@@ -735,7 +789,9 @@ echo ""
 echo "✅ Magic Slash v$CURRENT_VERSION installed successfully!"
 echo ""
 echo "Created files:"
+if [ "$ATLASSIAN_ENABLED" = true ]; then
 echo "  • MCP Atlassian  : ~/.claude.json (OAuth - Jira + Confluence)"
+fi
 echo "  • MCP GitHub     : ~/.claude.json"
 echo "  • Config         : ~/.config/magic-slash/config.json"
 echo "  • Skills         : ~/.claude/skills/{magic-start,magic-continue,magic-commit,magic-pr,magic-review,magic-resolve,magic-done}/SKILL.md"
@@ -751,7 +807,9 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "🚀 You're ready! Try these commands in Claude Code:"
 echo ""
+if [ "$ATLASSIAN_ENABLED" = true ]; then
 echo "   /magic:start PROJ-123   Start a Jira ticket"
+fi
 echo "   /magic:start #42       Start a GitHub issue"
 echo "   /magic:commit          Create a commit"
 echo "   /magic:pr              Push and create a Pull Request"
@@ -762,7 +820,11 @@ echo ""
 echo "   💡 Type /magic: to see all commands"
 echo ""
 echo "   Or use natural language:"
+if [ "$ATLASSIAN_ENABLED" = true ]; then
 echo "   'démarre PROJ-123'  'ready to commit'  'create the PR'"
+else
+echo "   'start #42'  'ready to commit'  'create the PR'"
+fi
 echo ""
 
 # END_OF_INSTALL_SCRIPT

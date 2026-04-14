@@ -89,6 +89,11 @@ export function readConfig(): Config {
       needsWrite = true
     }
 
+    if (!config.integrations) {
+      config.integrations = { github: true, atlassian: true }
+      needsWrite = true
+    }
+
     // Ensure all agents have a splitPane value
     if (config.agents && config.agents.length > 0) {
       for (const agent of config.agents) {

@@ -80,6 +80,10 @@ export interface Config {
   agents?: Agent[]
   splitEnabled?: boolean
   splitActive?: boolean
+  integrations?: {
+    github: true
+    atlassian?: boolean
+  }
 }
 
 export interface PRTemplate {

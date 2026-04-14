@@ -2,7 +2,7 @@
 name: magic:pr
 description: Pushes code, creates a GitHub Pull Request, and updates the linked Jira/GitHub ticket. Use this skill when the user indicates their coding work is done and they want to create or finalize a PR — even if they don't explicitly say "PR". Triggers on phrases like: "done", "terminé", "j'ai fini", "create PR", "créer la PR", "ready for PR", "prêt pour la PR", "ship it", "envoie la sauce", "let's get this merged", "push my changes", "pousse tout ça", "wrap it up", "c'est bon pour moi", or any completion signal in English or French.
 argument-hint: <base-branch> (optional, e.g., develop, staging)
-allowed-tools: Bash(*), mcp__github__*, mcp__atlassian__*, AskUserQuestion
+allowed-tools: Bash(*), Read, mcp__github__*, mcp__atlassian__*, AskUserQuestion
 ---
 
 # magic-slash v0.32.5 - /pr
@@ -415,7 +415,9 @@ Prepare the PR content:
 
 Add this section at the end of the PR description.
 
-For **Jira** tickets, adapt the Jira URL based on the user's domain (retrieved via `mcp__atlassian__getAccessibleAtlassianResources`):
+For **Jira** tickets: only if `integrations.atlassian` is `true`. If `false`, skip the Jira link — use the ticket ID as plain text without a URL.
+
+For **Jira** tickets (when Atlassian is enabled), adapt the Jira URL based on the user's domain (retrieved via `mcp__atlassian__getAccessibleAtlassianResources`):
 
 ```markdown
 ## Linked Issues
@@ -482,6 +484,12 @@ This command is silent and never blocks the process.
 ## Step 7: Update the Jira/GitHub ticket
 
 Use `$TICKET_ID` (extracted in Step 0.1). If `$TICKET_ID` is empty, use `AskUserQuestion` to ask the user if they want to link a ticket manually (and which one). If they decline, skip to Step 7.3.
+
+### 7.0: Check Atlassian integration
+
+Read `integrations.atlassian` from `~/.config/magic-slash/config.json`. Default: `true`.
+
+If `integrations.atlassian` is `false`, skip Step 7.1 entirely (Jira ticket update). Only execute Step 7.2 (GitHub issues).
 
 ### 7.1: Jira tickets (pattern `[A-Z]+-\d+`)
 
