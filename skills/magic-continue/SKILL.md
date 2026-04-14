@@ -2,7 +2,7 @@
 name: magic:continue
 description: This skill should be used when the user mentions a ticket ID like "PROJ-123", "#456", says "continue", "reprendre", "resume work on", "je reprends", "switch to", "basculer sur", or indicates they want to resume working on an existing task.
 argument-hint: <TICKET-ID>
-allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, mcp__atlassian__*, mcp__github__*
+allowed-tools: Bash(*), Read, Write, AskUserQuestion, mcp__atlassian__*, mcp__github__*
 ---
 
 # magic-slash v0.36.0 - /continue

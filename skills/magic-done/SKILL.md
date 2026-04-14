@@ -4,6 +4,10 @@ description: This skill should be used when the user says "the PR is merged", "l
 allowed-tools: Bash(*), AskUserQuestion, mcp__github__*, mcp__atlassian__*
 ---
 
+## References
+
+- `references/messages.md` — All user-facing message templates (EN/FR)
+
 # magic-slash v0.36.0 - /done
 
 > The steps below must be executed in order because each one depends on the previous result — for example, cleanup must only happen after confirming the merge, and the Jira transition must happen before the summary so it can reflect the actual state.
@@ -52,25 +56,7 @@ fi
 
 #### If the config does not exist
 
-##### In English
-```text
-❌ Magic Slash configuration not found
-
-Please create the config file at:
-  ~/.config/magic-slash/config.json
-
-See documentation: https://github.com/magic-slash/config
-```
-
-##### In French
-```text
-❌ Configuration Magic Slash introuvable
-
-Veuillez créer le fichier de configuration :
-  ~/.config/magic-slash/config.json
-
-Voir la documentation : https://github.com/magic-slash/config
-```
+Display **MSG_CONFIG_ERROR** (see `references/messages.md`).
 
 ## Step 1: Extract the ticket ID
 
@@ -153,25 +139,7 @@ For each found PR, use `mcp__github__get_pull_request` and check the `merged` fi
 
 ### If the PR is NOT merged
 
-Display a message and stop:
-
-#### In English
-```text
-⚠️ The PR #{PR_NUMBER} is not yet merged.
-
-Please merge the PR on GitHub first, then run /magic:done again.
-
-🔗 PR: {PR_URL}
-```
-
-#### In French
-```text
-⚠️ La PR #{PR_NUMBER} n'est pas encore mergée.
-
-Merci de merger la PR sur GitHub d'abord, puis relance /magic:done.
-
-🔗 PR : {PR_URL}
-```
+Display **MSG_PR_NOT_MERGED** (see `references/messages.md`) and stop.
 
 ### If the PR IS merged
 
@@ -201,23 +169,7 @@ Note: If you don't know the `cloudId`, first use `mcp__atlassian__getAccessibleA
 
 #### Jira comment format based on `.languages.jiraComment`
 
-**In English (jiraComment: "en" or absent):**
-
-```text
-✅ Task completed — PR merged.
-
-{For each PR:}
-🔗 PR: {PR_URL} (merged)
-```
-
-**In French (jiraComment: "fr"):**
-
-```text
-✅ Tâche terminée — PR mergée.
-
-{Pour chaque PR :}
-🔗 PR : {PR_URL} (mergée)
-```
+Use **MSG_JIRA_DONE_COMMENT** (see `references/messages.md`).
 
 If the "Done" transition doesn't exist, try:
 
@@ -235,11 +187,7 @@ If the "Done" transition doesn't exist, try:
 
 ### For GitHub issues
 
-If the ticket is a GitHub issue, add a comment (do NOT close the issue — let the PR auto-close handle it):
-
-```text
-✅ Task completed — PR #{PR_NUMBER} merged.
-```
+If the ticket is a GitHub issue, add a comment using **MSG_GITHUB_DONE_COMMENT** (see `references/messages.md`). Do NOT close the issue — let the PR auto-close handle it.
 
 ## Step 5: Update Magic Slash metadata (desktop app only)
 
@@ -319,19 +267,7 @@ Either way, do not insert any verification commands (such as `git worktree list`
 
 ### Error handling
 
-If the `git worktree remove` fails, display a warning based on `.languages.discussion` and continue:
-
-#### In English (discussion: "en" or absent)
-```text
-⚠️ Could not remove worktree {WORKTREE_PATH} automatically.
-Manual cleanup: git worktree remove --force {WORKTREE_PATH}
-```
-
-#### In French (discussion: "fr")
-```text
-⚠️ Impossible de supprimer le worktree {WORKTREE_PATH} automatiquement.
-Nettoyage manuel : git worktree remove --force {WORKTREE_PATH}
-```
+If the `git worktree remove` fails, display **MSG_WORKTREE_REMOVE_FAILED** (see `references/messages.md`) based on `.languages.discussion` and continue.
 
 After displaying the warning, immediately proceed to the next worktree (or to Step 6 if this was the last one). Do not retry the failed command or run diagnostic commands. If the failure is unclear or unexpected, use AskUserQuestion to let the user decide how to proceed.
 
@@ -350,37 +286,7 @@ Display a summary based on `.languages.discussion`. The summary must reflect wha
 | Ticket | `{TICKET-ID} → Done` | `{TICKET-ID} → already Done` or `{TICKET-ID} → ⚠️ transition skipped` | `{TICKET-ID} → ⚠️ transition failed` |
 | Cleanup | `Worktree removed, branch deleted` | `⚠️ Skipped (uncommitted changes)` or `N/A (no worktree)` | `⚠️ Failed (see warning above)` |
 
-### In English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Task finalized for {TICKET-ID}
-
-🔗 PR       : #{PR_NUMBER} (merged)
-🎫 Ticket   : {TICKET_STATUS}
-🧹 Cleanup  : {CLEANUP_STATUS}
-
-You can close this agent (⌘W).
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-### In French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Tâche finalisée pour {TICKET-ID}
-
-🔗 PR       : #{PR_NUMBER} (mergée)
-🎫 Ticket   : {TICKET_STATUS}
-🧹 Nettoyage : {CLEANUP_STATUS}
-
-Tu peux fermer cet agent (⌘W).
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+Display **MSG_DONE_SUMMARY** (see `references/messages.md`) based on `.languages.discussion`, replacing the dynamic fields from the table above.
 
 ## Step 7: Multi-repo summary (if applicable)
 
@@ -388,46 +294,4 @@ If multiple PRs were found across worktrees, display a combined summary based on
 
 Adapt the cleanup and ticket lines using the same dynamic fields from Step 6.
 
-### In English (discussion: "en" or absent)
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Task finalized for {TICKET-ID} (Full-Stack)
-
-PRs:
-  • api-PROJ-123: #{PR_NUMBER_1} (merged)
-  • web-PROJ-123: #{PR_NUMBER_2} (merged)
-
-Cleanup:
-  • api-PROJ-123: {CLEANUP_STATUS}
-  • web-PROJ-123: {CLEANUP_STATUS}
-
-🎫 Ticket: {TICKET_STATUS}
-
-You can close this agent (⌘W).
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-### In French (discussion: "fr")
-
-```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Tâche finalisée pour {TICKET-ID} (Full-Stack)
-
-PRs :
-  • api-PROJ-123 : #{PR_NUMBER_1} (mergée)
-  • web-PROJ-123 : #{PR_NUMBER_2} (mergée)
-
-Nettoyage :
-  • api-PROJ-123 : {CLEANUP_STATUS}
-  • web-PROJ-123 : {CLEANUP_STATUS}
-
-🎫 Ticket : {TICKET_STATUS}
-
-Tu peux fermer cet agent (⌘W).
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+Display **MSG_DONE_SUMMARY_FULLSTACK** (see `references/messages.md`) based on `.languages.discussion`, replacing the dynamic fields accordingly.

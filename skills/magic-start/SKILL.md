@@ -13,7 +13,7 @@ Follow each step in order. Each step builds on the previous one.
 
 ## References
 
-- `references/messages-{lang}.md` — All messages (MSG_*). Read the file matching `languages.discussion` (`en` or `fr`).
+- `references/messages.md` — All bilingual messages (MSG_*). Read relevant sections as needed (not the whole file at once).
 - `references/node-setup.md` — Node.js version manager detection. Read before installing dependencies (Step 4.3).
 - `references/plan-template-{type}-{lang}.md` — Implementation plan template. Read the matching file (`single`/`fullstack` + `en`/`fr`) in Step 5.2.
 - `references/glossary.md` — EN/FR terminology for git concepts. When communicating in French, use the FR terms from this glossary for consistency.

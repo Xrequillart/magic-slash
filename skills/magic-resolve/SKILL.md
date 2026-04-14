@@ -2,7 +2,7 @@
 name: magic:resolve
 description: This skill should be used when the user says "resolve", "résoudre", "fix review comments", "corriger les commentaires", "address feedback", "traiter les retours", "fix the review", "corriger la review", "apply review changes", "appliquer les corrections", or indicates they want to address code review feedback on a pull request.
 argument-hint: <TICKET-ID> (optional)
-allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, mcp__github__*, mcp__atlassian__*
+allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__github__*
 ---
 
 # magic-slash v0.36.0 - /resolve
@@ -76,35 +76,9 @@ Store the result as `$GH_AVAILABLE` (`true` or `false`). If `gh` is not availabl
 
 ### 0.1: Detect and activate Node.js version
 
-Before executing any command that depends on Node.js (git push with pre-push hooks), detect if the current worktree requires a specific Node.js version.
+Read `references/node-setup.md` to detect the Node.js version manager and set `$NODE_PREFIX`.
 
 **For multi-repo**: Re-execute this step each time you switch to a different worktree, as each repo may require a different Node.js version.
-
-```bash
-if [ -f ".nvmrc" ] || [ -f ".node-version" ]; then
-  if [ -f "$HOME/.nvm/nvm.sh" ]; then
-    echo "NVM"
-  elif [ -d "$HOME/.local/share/fnm" ] || [ -d "$HOME/.fnm" ]; then
-    echo "FNM"
-  else
-    echo "NO_MANAGER"
-  fi
-elif [ -f "package.json" ] && grep -q '"volta"' package.json 2>/dev/null; then
-  echo "VOLTA"
-else
-  echo "NONE"
-fi
-```
-
-Store the activation prefix as `$NODE_PREFIX`:
-
-| Result | `$NODE_PREFIX` |
-| ------ | -------------- |
-| `NVM` | `source ~/.nvm/nvm.sh && nvm use &&` |
-| `FNM` | `eval "$(fnm env)" && fnm use &&` |
-| `VOLTA` | *(empty)* |
-| `NONE` | *(empty)* |
-| `NO_MANAGER` | *(empty)* + display warning |
 
 ### 0.2: Extract the ticket ID from the current worktree
 
@@ -607,6 +581,7 @@ If you resolved comments in multiple worktrees, display **`MSG_MULTI_REPO_FINAL`
 
 ---
 
-## Messages Reference
+## References
 
-All message templates (bilingual EN/FR) are in `references/messages.md`. Read that file to get the exact template for each `MSG_*` referenced throughout this skill. Select the variant matching `languages.discussion` config value (default: `en`).
+- `references/messages.md` — All bilingual message templates (EN/FR). Read relevant sections as needed (not the whole file at once).
+- `references/node-setup.md` — Node.js version manager detection. Read before any Node.js-dependent command (Step 0.1).

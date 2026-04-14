@@ -154,53 +154,9 @@ If a worktree fails during its PR cycle (push error, API failure, etc.):
 
 ## Step 0.6: Detect and activate Node.js version
 
-Before executing any command that depends on Node.js (git push with pre-push hooks, npm/yarn/pnpm commands), detect if the current worktree requires a specific Node.js version.
+Read `references/node-setup.md` to detect the Node.js version manager and set `$NODE_PREFIX`.
 
 **For multi-repo**: Re-execute this step each time you switch to a different worktree, as each repo may require a different Node.js version.
-
-### 0.6.1: Detect the version file and version manager
-
-```bash
-if [ -f ".nvmrc" ] || [ -f ".node-version" ]; then
-  if [ -f "$HOME/.nvm/nvm.sh" ]; then
-    echo "NVM"
-  elif [ -d "$HOME/.local/share/fnm" ] || [ -d "$HOME/.fnm" ]; then
-    echo "FNM"
-  else
-    echo "NO_MANAGER"
-  fi
-elif [ -f "package.json" ] && grep -q '"volta"' package.json 2>/dev/null; then
-  echo "VOLTA"
-else
-  echo "NONE"
-fi
-```
-
-### 0.6.2: Store the activation prefix
-
-Based on the detection result, store the activation prefix as `$NODE_PREFIX`:
-
-| Result       | `$NODE_PREFIX`                               | Notes                                                         |
-| ------------ | -------------------------------------------- | ------------------------------------------------------------- |
-| `NVM`        | `source ~/.nvm/nvm.sh && nvm use &&`         | Activates nvm and switches to the version in `.nvmrc`         |
-| `FNM`        | `eval "$(fnm env)" && fnm use &&`            | Activates fnm and switches to the version in `.node-version`  |
-| `VOLTA`      | *(empty)*                                    | Volta uses shims, no activation needed                        |
-| `NONE`       | *(empty)*                                    | No version file found, use system Node                        |
-| `NO_MANAGER` | *(empty)*                                    | Display **`MSG_NODE_NO_MANAGER`**                             |
-
-### Usage
-
-For all subsequent bash commands that depend on Node.js, **prepend `$NODE_PREFIX`**:
-
-```bash
-# Instead of:
-git push -u origin branch-name
-
-# Use (if $NODE_PREFIX is set):
-source ~/.nvm/nvm.sh && nvm use && git push -u origin branch-name
-```
-
-If `$NODE_PREFIX` is empty, run commands normally without any prefix.
 
 ---
 
@@ -464,6 +420,8 @@ Use `mcp__github__create_pull_request`:
 - **Base**: The branch resolved in step 6.0
 - **Head**: The current branch
 
+If the PR creation fails, retry once. If it fails again, display **`MSG_PR_CREATION_FAILED`** and ask the user if they want to: (1) Retry, (2) Create the PR manually on GitHub. Display the branch name and base branch to help with manual creation.
+
 ## Step 6.4: Update Magic Slash metadata
 
 > This updates the Magic Slash Desktop UI with the PR link, status, and title. Without it, the user sees stale data in the app. Always run this after creating the PR.
@@ -525,6 +483,7 @@ If you created PRs in multiple worktrees, display **`MSG_MULTI_REPO_FINAL`**, su
 
 ---
 
-## Messages Reference
+## References
 
-All bilingual message templates (EN/FR) are in `references/messages.md`. Read that file when you need the exact wording for any `MSG_*` message. Each message has an `en` and `fr` variant — select based on `languages.discussion` config value (default: `en`).
+- `references/messages.md` — All bilingual message templates (EN/FR). Read relevant sections as needed (not the whole file at once).
+- `references/node-setup.md` — Node.js version manager detection. Read before any Node.js-dependent command (Step 0.6).

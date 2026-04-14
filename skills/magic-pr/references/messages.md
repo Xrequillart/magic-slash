@@ -236,6 +236,36 @@ Options :
 Choix (1/2) :
 ```
 
+## MSG_PR_CREATION_FAILED
+
+### en
+
+```text
+❌ PR creation failed after retry.
+
+Branch: {head_branch} → {base_branch}
+
+Options:
+1. Retry
+2. Create the PR manually on GitHub
+
+Choose (1/2):
+```
+
+### fr
+
+```text
+❌ La création de la PR a échoué après nouvelle tentative.
+
+Branche : {head_branch} → {base_branch}
+
+Options :
+1. Réessayer
+2. Créer la PR manuellement sur GitHub
+
+Choix (1/2) :
+```
+
 ## MSG_PR_PREVIEW
 
 ### en

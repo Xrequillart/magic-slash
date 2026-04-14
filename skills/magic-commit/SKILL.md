@@ -1,7 +1,7 @@
 ---
 name: magic:commit
 description: This skill should be used when the user says "commit", "je suis pret a committer", "on commit", "create a commit", "faire un commit", "committer les changements", "save my changes", "enregistrer mes changements", "pret a committer", "ready to commit", or indicates they want to save their current changes as a commit.
-allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep
+allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, AskUserQuestion
 ---
 
 # magic-slash v0.36.0 - /commit
@@ -31,7 +31,7 @@ else
 fi
 ```
 
-If the config does not exist, display the error message from `references/messages.md` (section "Config not found") and stop.
+If the config does not exist, display the error message from `references/messages.md` (MSG_CONFIG_ERROR) and stop.
 
 ### 0.2: Determine languages
 
@@ -69,7 +69,7 @@ For each found worktree, check for changes:
 git -C {WORKTREE_PATH} status --porcelain
 ```
 
-If multiple worktrees have changes, display the multi-repo summary (see `references/messages.md`), then execute Steps 1-6 for each worktree sequentially, changing directory before each cycle.
+If multiple worktrees have changes, display the multi-repo summary (see `references/messages.md` MSG_MULTI_REPO_SUMMARY), then execute Steps 1-6 for each worktree sequentially, changing directory before each cycle.
 
 ### 0.4: Detect Node.js version
 
@@ -110,7 +110,7 @@ Scan for files that should not be committed:
 - `node_modules/`, `vendor/`, `.next/`, `dist/`
 - Binary files larger than 5MB (check with `find . -size +5M -not -path './.git/*'`)
 
-If any are detected, warn the user (see `references/messages.md`) and exclude them from staging.
+If any are detected, warn the user (see `references/messages.md` MSG_SENSITIVE_FILES) and exclude them from staging.
 
 ### 2.3: Stage safe files
 
@@ -234,7 +234,7 @@ If the commit fails, classify the error and act accordingly. The goal is to unbl
 | ----- | ---------- | -------- | ------ |
 | 1 - Auto | Formatter | Prettier, Black, gofmt | Fix automatically, re-stage, retry |
 | 2 - Semi-auto | Linter | ESLint --fix, Pylint, Rubocop | Fix, inform user, retry |
-| 3 - Manual | Type check, tests, secrets | TypeScript, Jest, mypy | Ask the user (see `references/messages.md` for the prompt) |
+| 3 - Manual | Type check, tests, secrets | TypeScript, Jest, mypy | Ask the user (see `references/messages.md` MSG_HOOK_MANUAL_FIX) |
 
 **Auto-correction process (levels 1-2 only):**
 
@@ -252,7 +252,7 @@ If the commit fails, classify the error and act accordingly. The goal is to unbl
 git log -1 --oneline
 ```
 
-Display the commit confirmation (see `references/messages.md`).
+Display the commit confirmation (see `references/messages.md` MSG_COMMIT_SUCCESS).
 
 ### 6.1: Update Magic Slash status
 
@@ -266,4 +266,4 @@ This curl notifies Magic Slash Desktop so it can update its UI. Without it, the 
 
 ## Step 7: Multi-repo summary (if applicable)
 
-If you committed in multiple worktrees, display a final summary listing all commits created across repos (see `references/messages.md`).
+If you committed in multiple worktrees, display a final summary listing all commits created across repos (see `references/messages.md` MSG_MULTI_REPO_FINAL).
