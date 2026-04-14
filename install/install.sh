@@ -80,6 +80,15 @@ push_rollback() {
 rollback_and_cleanup() {
   local exit_code=$?
   show_cursor
+
+  # If interrupted by user (Ctrl+C), show message and exit immediately
+  if [ "$exit_code" -eq 130 ] || [ "$INTERRUPTED" = true ]; then
+    echo ""
+    echo -e "   ${YELLOW}Installation cancelled by user.${NC}"
+    echo ""
+    exit 130
+  fi
+
   echo ""
 
   if [ "$exit_code" -ne 0 ] && [ "$INSTALL_SUCCESS" = false ] && [ "$DRY_RUN" = false ]; then
@@ -105,7 +114,9 @@ rollback_and_cleanup() {
     [ -n "${SKILLS_BACKUP_DIR:-}" ] && rm -rf "$SKILLS_BACKUP_DIR" 2>/dev/null || true
   fi
 }
-trap rollback_and_cleanup EXIT INT TERM
+INTERRUPTED=false
+trap rollback_and_cleanup EXIT
+trap 'INTERRUPTED=true; exit 130' INT TERM
 
 # Arrow key selection menu
 # Usage: select_option "Option1" "Option2" ...
