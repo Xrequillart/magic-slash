@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.1] - 2026-04-14
+
+### Added
+
+- **Evals**: Add 8 new eval test cases — negative cases, French commit triggers, and malformed input entries
+
+### Changed
+
+- **Skills**: Standardize `allowed-tools` frontmatter declarations across all 7 skills (add `AskUserQuestion` to 4 skills, remove over-declared tools from 2 skills)
+- **Skills**: Unify bilingual messages pattern — create `references/messages.md` for magic-review, magic-done; normalize magic-commit messages format; merge magic-start per-language files into single bilingual file
+- **Skills**: Extract shared `references/node-setup.md` for magic-pr and magic-resolve
+- **Review**: Add Atlassian integration check (Step 12.0) before Jira comment to prevent MCP failures when Atlassian is disabled
+- **PR**: Add retry-once error handling for PR creation failures
+
 ## [0.36.0] - 2026-04-14
 
 ### Added
@@ -1005,6 +1019,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.36.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.36.1
 [0.36.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.36.0
 [0.32.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.5
 [0.32.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.32.4
