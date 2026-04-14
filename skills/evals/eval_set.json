@@ -208,5 +208,61 @@
     "expected_skill": "magic:pr",
     "notes": "French — changes ready, let's create PR",
     "difficulty": "easy"
+  },
+  {
+    "id": 31,
+    "query": "explain this function to me",
+    "expected_skill": null,
+    "notes": "General coding help — should not trigger any magic-slash skill",
+    "difficulty": "medium"
+  },
+  {
+    "id": 32,
+    "query": "what time is it",
+    "expected_skill": null,
+    "notes": "Completely unrelated to dev workflow",
+    "difficulty": "easy"
+  },
+  {
+    "id": 33,
+    "query": "help me debug this error",
+    "expected_skill": null,
+    "notes": "Debugging request — not a magic-slash workflow trigger",
+    "difficulty": "medium"
+  },
+  {
+    "id": 34,
+    "query": "refactor the auth module",
+    "expected_skill": null,
+    "notes": "Code change request without ticket context",
+    "difficulty": "hard"
+  },
+  {
+    "id": 35,
+    "query": "on commit les changements",
+    "expected_skill": "magic:commit",
+    "notes": "French commit trigger",
+    "difficulty": "easy"
+  },
+  {
+    "id": 36,
+    "query": "je suis prêt à committer",
+    "expected_skill": "magic:commit",
+    "notes": "French ready-to-commit phrase — listed in skill description",
+    "difficulty": "easy"
+  },
+  {
+    "id": 37,
+    "query": "start PROJ",
+    "expected_skill": null,
+    "notes": "Malformed Jira ID — missing digits. Should ask for clarification, not trigger start",
+    "difficulty": "hard"
+  },
+  {
+    "id": 38,
+    "query": "commit --amend",
+    "expected_skill": "magic:commit",
+    "notes": "Commit with git flag — should still trigger commit skill",
+    "difficulty": "medium"
   }
 ]
