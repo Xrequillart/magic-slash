@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.0] - 2026-04-15
+
+### Added
+
+- **Desktop**: Add tray icon menu bar mode with quick launch hotkey
+
+### Changed
+
+- **Desktop**: Undo IPC batching and xterm skip from 0198e59
+
+### Fixed
+
+- **Desktop**: Remove unused imports in tray-manager
+
 ## [0.36.4] - 2026-04-15
 
 ### Changed
@@ -1037,6 +1051,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.37.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.37.0
 [0.36.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.36.4
 [0.36.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.36.3
 [0.36.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.36.2
