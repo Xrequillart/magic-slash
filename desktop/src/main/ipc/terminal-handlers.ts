@@ -28,6 +28,23 @@ let showNotification: (title: string, body: string) => void
 const lastNotificationTime = new Map<string, number>()
 const NOTIFICATION_COOLDOWN = 30000 // 30 seconds between notifications per terminal
 
+// Batch PTY data per terminal to reduce IPC message frequency
+const dataBuffers = new Map<string, string>()
+const dataTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const BATCH_INTERVAL_MS = 16 // ~1 frame at 60fps
+
+function flushDataBuffer(id: string) {
+  const buffered = dataBuffers.get(id)
+  dataBuffers.delete(id)
+  dataTimers.delete(id)
+  if (buffered) {
+    const mainWindow = getMainWindow()
+    if (mainWindow) {
+      mainWindow.webContents.send('terminal:data', { id, data: buffered })
+    }
+  }
+}
+
 // Helper to show notification with cooldown and focus check
 function maybeShowNotification(
   id: string,
@@ -57,9 +74,10 @@ function maybeShowNotification(
 function createTerminalCallbacks(id: string, name: string) {
   return {
     onData: (data: string) => {
-      const mainWindow = getMainWindow()
-      if (mainWindow) {
-        mainWindow.webContents.send('terminal:data', { id, data })
+      // Batch data chunks within a single frame to reduce IPC message volume
+      dataBuffers.set(id, (dataBuffers.get(id) ?? '') + data)
+      if (!dataTimers.has(id)) {
+        dataTimers.set(id, setTimeout(() => flushDataBuffer(id), BATCH_INTERVAL_MS))
       }
     },
     onStateChange: (state: string, previousState: string) => {
