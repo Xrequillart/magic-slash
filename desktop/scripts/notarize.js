@@ -7,6 +7,23 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function isRetryable(message) {
+  const retryablePatterns = [
+    'timed out',
+    'timeout',
+    'ETIMEDOUT',
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'socket hang up',
+    'network',
+    '503',
+    '502',
+    '500',
+  ]
+  const lower = message.toLowerCase()
+  return retryablePatterns.some((p) => lower.includes(p.toLowerCase()))
+}
+
 exports.default = async function notarizing(context) {
   const { electronPlatformName, appOutDir } = context
   if (electronPlatformName !== 'darwin') {
@@ -27,7 +44,6 @@ exports.default = async function notarizing(context) {
       console.log(`Notarizing ${appPath} (attempt ${attempt}/${MAX_RETRIES})...`)
 
       await notarize({
-        tool: 'notarytool',
         appPath,
         appleId: process.env.APPLE_ID,
         appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
@@ -40,12 +56,15 @@ exports.default = async function notarizing(context) {
       const message = error.message || String(error)
       console.error(`Notarization attempt ${attempt}/${MAX_RETRIES} failed:\n${message}`)
 
-      if (attempt < MAX_RETRIES) {
+      if (attempt < MAX_RETRIES && isRetryable(message)) {
         const delay = BASE_DELAY_MS * attempt
         console.log(`Retrying in ${delay / 1000}s...`)
         await sleep(delay)
-      } else {
+      } else if (attempt >= MAX_RETRIES) {
         throw new Error(`Notarization failed after ${MAX_RETRIES} attempts. Last error: ${message}`)
+      } else {
+        // Non-retryable error (e.g. auth failure, invalid credentials)
+        throw new Error(`Notarization failed (non-retryable): ${message}`)
       }
     }
   }
