@@ -1,5 +1,12 @@
 const { notarize } = require('@electron/notarize')
 
+const MAX_RETRIES = 3
+const BASE_DELAY_MS = 15_000 // 15 seconds
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 exports.default = async function notarizing(context) {
   const { electronPlatformName, appOutDir } = context
   if (electronPlatformName !== 'darwin') {
@@ -15,15 +22,31 @@ exports.default = async function notarizing(context) {
   const appName = context.packager.appInfo.productFilename
   const appPath = `${appOutDir}/${appName}.app`
 
-  console.log(`Notarizing ${appPath}...`)
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`Notarizing ${appPath} (attempt ${attempt}/${MAX_RETRIES})...`)
 
-  await notarize({
-    tool: 'notarytool',
-    appPath,
-    appleId: process.env.APPLE_ID,
-    appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
-    teamId: process.env.APPLE_TEAM_ID,
-  })
+      await notarize({
+        tool: 'notarytool',
+        appPath,
+        appleId: process.env.APPLE_ID,
+        appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
+        teamId: process.env.APPLE_TEAM_ID,
+      })
 
-  console.log('Notarization complete')
+      console.log('Notarization complete')
+      return
+    } catch (error) {
+      const message = error.message || String(error)
+      console.error(`Notarization attempt ${attempt}/${MAX_RETRIES} failed:\n${message}`)
+
+      if (attempt < MAX_RETRIES) {
+        const delay = BASE_DELAY_MS * attempt
+        console.log(`Retrying in ${delay / 1000}s...`)
+        await sleep(delay)
+      } else {
+        throw new Error(`Notarization failed after ${MAX_RETRIES} attempts. Last error: ${message}`)
+      }
+    }
+  }
 }

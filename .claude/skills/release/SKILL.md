@@ -326,27 +326,36 @@ Resume des modifications pour la version X.Y.Z :
   CHANGELOG.md                                  Nouvelle section ajoutee
 ```
 
-### 7.3 : Commit de release (interactif)
+### 7.3 : Commit, tag et push de release
 
-Cette etape execute les operations git de maniere interactive via `AskUserQuestion`. Chaque operation est proposee, confirmee, puis executee.
+Cette etape execute toutes les operations git en une seule interaction. L'utilisateur confirme une seule fois, puis le commit, le tag et le push s'enchainent automatiquement.
 
-#### 7.3.1 : Pre-vol — afficher le diff
+#### 7.3.1 : Pre-vol et confirmation unique
 
 Execute `git diff --stat` via `Bash` pour afficher un apercu de tous les fichiers modifies.
 
-Presente le resultat et utilise `AskUserQuestion` pour proposer le commit :
+Presente le resultat et utilise `AskUserQuestion` pour proposer l'ensemble des operations :
 
 ```text
 Voici les fichiers modifies pour la release X.Y.Z :
 
 <resultat du git diff --stat>
 
-Voulez-vous creer le commit de release ? (oui/non)
+Voulez-vous lancer la release ? Cela va :
+  1. Creer le commit : chore(release): bump version to X.Y.Z
+  2. Creer le tag : vX.Y.Z
+  3. Pousser vers origin (commit + tag)
+
+(oui/non)
 ```
 
 Si l'utilisateur refuse, arrete le processus de release ici.
 
-#### 7.3.2 : Staging et commit
+#### 7.3.2 : Execution automatique (commit + tag + push)
+
+Si l'utilisateur a confirme, enchaine les 3 operations sans poser de questions supplementaires.
+
+**Etape A — Staging et commit** :
 
 **IMPORTANT** : Ne fais PAS `git add -A`. Stage uniquement les fichiers specifiques que le skill a modifies pour eviter de contaminer le commit de release avec des fichiers non lies :
 
@@ -364,79 +373,49 @@ Puis execute le commit :
 git commit -m "chore(release): bump version to X.Y.Z"
 ```
 
-**Gestion d'erreur** : Si le commit echoue (hook pre-commit par exemple), affiche l'erreur et utilise `AskUserQuestion` :
-
-```text
-Le commit a echoue avec l'erreur suivante :
-
-<message d'erreur>
-
-Voulez-vous :
-- 'retry' pour reessayer apres correction
-- 'abort' pour arreter le processus de release
-```
-
-Si l'utilisateur choisit 'retry', relance le commit. Si 'abort', arrete.
-
-Affiche la confirmation : `Commit de release cree.`
-
-#### 7.3.3 : Creation du tag
-
-Utilise `AskUserQuestion` pour proposer la creation du tag :
-
-```text
-Voulez-vous creer le tag vX.Y.Z ? (oui/non)
-```
-
-Si oui, execute :
+**Etape B — Creation du tag** :
 
 ```bash
 git tag vX.Y.Z
 ```
 
-**Gestion d'erreur** : Si le tag existe deja, utilise `AskUserQuestion` :
+Si le tag existe deja, utilise `git tag -f vX.Y.Z` pour l'ecraser.
 
-```text
-Le tag vX.Y.Z existe deja.
-
-Voulez-vous :
-- 'force' pour ecraser le tag existant (git tag -f vX.Y.Z)
-- 'abort' pour arreter
-```
-
-Affiche la confirmation : `Tag vX.Y.Z cree.`
-
-#### 7.3.4 : Push vers le remote
-
-Utilise `AskUserQuestion` pour proposer le push :
-
-```text
-Voulez-vous pousser le commit et le tag vers origin ? (oui/non)
-
-Note : le workflow CI creera automatiquement la release GitHub a partir du tag.
-```
-
-Si oui, execute :
+**Etape C — Push vers origin** :
 
 ```bash
 git push origin main --tags
 ```
 
-**Gestion d'erreur** : Si le push est rejete, utilise `AskUserQuestion` :
+**Gestion d'erreur** : Si une des 3 operations echoue, arrete la sequence, affiche l'erreur et utilise `AskUserQuestion` :
 
 ```text
-Le push a ete rejete avec l'erreur suivante :
+L'operation a echoue a l'etape [A/B/C] avec l'erreur suivante :
 
 <message d'erreur>
 
 Voulez-vous :
-- 'pull' pour faire un git pull --rebase puis reessayer
-- 'abort' pour arreter
+- 'retry' pour reessayer
+- 'abort' pour arreter le processus de release
 ```
 
-Si 'pull', execute `git pull --rebase origin main` puis relance le push.
+Si 'retry' et que c'est le push qui a echoue, tente d'abord `git pull --rebase origin main` avant de relancer le push.
 
-Affiche la confirmation : `Push effectue. Le workflow CI va creer la release GitHub automatiquement.`
+#### 7.3.3 : Message de succes
+
+Une fois les 3 operations reussies, affiche le message de succes suivant :
+
+```text
+🚀✨ Release vX.Y.Z shipped! ✨🚀
+
+   📦 Commit    chore(release): bump version to X.Y.Z
+   🏷️  Tag       vX.Y.Z
+   ☁️  Push      origin/main
+
+   🔗 https://github.com/xrequillart/magic-slash/releases/tag/vX.Y.Z
+
+🎉 Le workflow CI va creer la release GitHub automatiquement.
+```
 
 ## Gestion des erreurs
 
