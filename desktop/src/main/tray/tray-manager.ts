@@ -1,4 +1,4 @@
-import { Tray, Menu, BrowserWindow, app } from 'electron'
+import { Tray, Menu, BrowserWindow } from 'electron'
 import { getIconForState, type AggregateState } from './tray-icons'
 import { AgentStateAggregator } from './agent-state-aggregator'
 
@@ -42,18 +42,6 @@ export class TrayManager {
 
     // Initial state
     this.aggregator.update()
-  }
-
-  private toggleMainWindow(): void {
-    const win = this.getMainWindow()
-    if (!win) return
-
-    if (win.isVisible() && win.isFocused()) {
-      win.hide()
-    } else {
-      win.show()
-      win.focus()
-    }
   }
 
   /** Show and focus the main window, then run an optional callback with it. */
