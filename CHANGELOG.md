@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.3] - 2026-04-15
+
+### Added
+
+- **Install**: Add Read permissions for skill reference files and magic-slash config to auto-allow during installation
+
 ## [0.36.2] - 2026-04-15
 
 ### Added
@@ -1025,6 +1031,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.36.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.36.3
 [0.36.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.36.2
 [0.36.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.36.1
 [0.36.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.36.0
