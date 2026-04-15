@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone } from 'lucide-react'
 import { RepoPage } from './RepoPage'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
@@ -13,6 +13,7 @@ function WelcomePage() {
   const [isAdding, setIsAdding] = useState(false)
   const [appVersion, setAppVersion] = useState('')
   const [loadingWhatsNew, setLoadingWhatsNew] = useState(false)
+  const [autoStart, setAutoStart] = useState(false)
 
   const repos = Object.entries(config?.repositories || {})
   const projectNames = repos.map(([name]) => name)
@@ -38,9 +39,10 @@ function WelcomePage() {
     return counts
   }, [terminals, repos])
 
-  // Fetch app version
+  // Fetch app version and auto-start state
   useEffect(() => {
     window.electronAPI.updater.getVersion().then(setAppVersion)
+    window.electronAPI.config.getAutoStart().then(setAutoStart)
   }, [])
 
   const handleWhatsNew = async () => {
@@ -236,6 +238,42 @@ function WelcomePage() {
         </div>
       </div>
 
+      {/* Background App Section */}
+      <div>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <MonitorSmartphone className="w-4 h-4" />
+          <span>Background App</span>
+        </div>
+        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">Launch at login</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">Start Magic Slash automatically when you log in</div>
+            </div>
+            <button
+              onClick={() => {
+                const newValue = !autoStart
+                setAutoStart(newValue)
+                window.electronAPI.config.setAutoStart(newValue)
+              }}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                autoStart ? 'bg-accent' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+                autoStart ? 'translate-x-[18px]' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+          <div className="border-t border-white/5 pt-4">
+            <div className="text-sm font-medium mb-1">Menu bar</div>
+            <div className="text-xs text-text-secondary/50">
+              Magic Slash runs in the menu bar. Click the tray icon to see agent status, or right-click for quick actions. Closing the window hides it to the tray.
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Keyboard Shortcuts Section */}
       <div>
         <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
@@ -287,6 +325,10 @@ function WelcomePage() {
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Toggle Split View</span>
               <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> /</kbd>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-text-secondary">Quick Launch</span>
+              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> <span className="text-sm">⇧</span> M</kbd>
             </div>
           </div>
         </div>

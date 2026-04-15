@@ -54,6 +54,13 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist/renderer'
+    outDir: 'dist/renderer',
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        popover: resolve(__dirname, 'popover.html'),
+        'quick-launch': resolve(__dirname, 'quick-launch.html'),
+      },
+    },
   }
 })
