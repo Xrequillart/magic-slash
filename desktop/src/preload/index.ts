@@ -93,6 +93,12 @@ const configApi = {
   updatePRTemplate: (repoPath: string, content: string) =>
     ipcRenderer.invoke('config:updatePRTemplate', { repoPath, content }),
 
+  setAutoStart: (enabled: boolean) =>
+    ipcRenderer.invoke('config:setAutoStart', { enabled }),
+
+  getAutoStart: (): Promise<boolean> =>
+    ipcRenderer.invoke('config:getAutoStart'),
+
 }
 
 // Terminal API
@@ -245,6 +251,38 @@ const scriptsApi = {
     ipcRenderer.invoke('scripts:stop', { id }),
 }
 
+// Tray API (for popover window)
+const trayApi = {
+  getAgents: (): Promise<Array<{ id: string; name: string; state: string; ticketId: string; title: string; createdAt: number }>> =>
+    ipcRenderer.invoke('tray:getAgents'),
+  focusAgent: (id: string) => ipcRenderer.invoke('tray:focusAgent', id),
+  openSettings: () => ipcRenderer.invoke('tray:openSettings'),
+  quit: () => ipcRenderer.invoke('tray:quit'),
+  onFocusAgent: (callback: (data: { id: string }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: string }) => callback(data)
+    ipcRenderer.on('tray:focusAgent', listener)
+    return () => ipcRenderer.removeListener('tray:focusAgent', listener)
+  },
+  onOpenSettings: (callback: () => void) => {
+    const listener = () => callback()
+    ipcRenderer.on('tray:openSettings', listener)
+    return () => ipcRenderer.removeListener('tray:openSettings', listener)
+  },
+}
+
+// Quick Launch API
+const quickLaunchApi = {
+  dispatch: (ticketId: string, action: string) =>
+    ipcRenderer.invoke('quicklaunch:dispatch', { ticketId, action }),
+  close: () => ipcRenderer.invoke('quicklaunch:close'),
+  resize: (height: number) => ipcRenderer.invoke('quicklaunch:resize', { height }),
+  onDispatch: (callback: (data: { ticketId: string; action: string }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { ticketId: string; action: string }) => callback(data)
+    ipcRenderer.on('quicklaunch:dispatch', listener)
+    return () => ipcRenderer.removeListener('quicklaunch:dispatch', listener)
+  },
+}
+
 // Shell API
 const shellApi = {
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:openExternal', url),
@@ -287,6 +325,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updater: updaterApi,
   skills: skillsApi,
   scripts: scriptsApi,
+  tray: trayApi,
+  quickLaunch: quickLaunchApi,
 })
 
 // Type definitions for the renderer
@@ -302,6 +342,8 @@ declare global {
       updater: typeof updaterApi
       skills: typeof skillsApi
       scripts: typeof scriptsApi
+      tray: typeof trayApi
+      quickLaunch: typeof quickLaunchApi
     }
   }
 

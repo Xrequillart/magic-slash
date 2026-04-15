@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+  <title>Magic Slash - Quick Launch</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      color: #ffffff;
+      font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow: hidden;
+    }
+    html, body {
+      height: 100%;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    #root {
+      height: 100%;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    input:focus { outline: none !important; box-shadow: none !important; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/renderer/quick-launch-main.tsx"></script>
+</body>
+</html>

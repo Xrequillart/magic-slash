@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell } from 'electron'
+import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell, globalShortcut } from 'electron'
 import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupTerminalHandlers, cleanupTerminals, restoreAgents } from './ipc/terminal-handlers'
@@ -11,8 +11,17 @@ import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
 import { migrateConfig } from './config/migrate'
+import { readConfig, writeConfig } from './config/config'
+import { TrayManager } from './tray/tray-manager'
+import { AgentStateAggregator } from './tray/agent-state-aggregator'
+import { destroyPopover } from './windows/popover-window'
+import { showQuickLaunch, hideQuickLaunch, isQuickLaunchVisible, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
 
 let mainWindow: BrowserWindow | null = null
+let isQuitting = false
+let forceQuit = false
+let trayManager: TrayManager | null = null
+let aggregator: AgentStateAggregator | null = null
 
 function createMenu() {
   const isMac = process.platform === 'darwin'
@@ -124,6 +133,14 @@ function createWindow() {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
+  // Close-to-tray: hide window instead of closing when tray is active
+  mainWindow.on('close', (event) => {
+    if (!isQuitting && trayManager) {
+      event.preventDefault()
+      mainWindow?.hide()
+    }
+  })
+
   mainWindow.on('closed', () => {
     mainWindow = null
   })
@@ -160,7 +177,14 @@ function setupHandlers() {
     // Notification callback - only show when window is not focused
     (title: string, body: string) => {
       if (Notification.isSupported() && mainWindow && !mainWindow.isFocused()) {
-        new Notification({ title, body }).show()
+        const notification = new Notification({ title, body })
+        notification.on('click', () => {
+          if (mainWindow) {
+            mainWindow.show()
+            mainWindow.focus()
+          }
+        })
+        notification.show()
       }
     }
   )
@@ -218,6 +242,79 @@ function setupHandlers() {
 
     return result.filePaths[0]
   })
+
+  // Tray IPC handlers
+  setupTrayHandlers()
+
+  // Quick Launch IPC handlers
+  setupQuickLaunchHandlers()
+
+  // Auto-start IPC handler
+  ipcMain.handle('config:setAutoStart', async (_event, { enabled }: { enabled: boolean }) => {
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      openAsHidden: true,
+    })
+    const config = readConfig()
+    config.autoStartAtLogin = enabled
+    writeConfig(config)
+    return config
+  })
+
+  ipcMain.handle('config:getAutoStart', async () => {
+    const settings = app.getLoginItemSettings()
+    return settings.openAtLogin
+  })
+}
+
+/** Show and focus the main window, then run an optional callback. */
+function focusMainWindow(callback?: (win: BrowserWindow) => void): void {
+  if (!mainWindow) return
+  mainWindow.show()
+  mainWindow.focus()
+  callback?.(mainWindow)
+}
+
+function setupTrayHandlers() {
+  ipcMain.handle('tray:getAgents', async () => {
+    if (!aggregator) return []
+    return aggregator.getAgentSummaries().map(a => ({
+      id: a.id,
+      name: a.name,
+      state: a.state,
+      ticketId: a.ticketId,
+      title: a.title,
+      createdAt: a.createdAt.getTime(),
+    }))
+  })
+
+  ipcMain.handle('tray:focusAgent', async (_event, id: string) => {
+    focusMainWindow(win => win.webContents.send('tray:focusAgent', { id }))
+  })
+
+  ipcMain.handle('tray:openSettings', async () => {
+    focusMainWindow(win => win.webContents.send('tray:openSettings'))
+  })
+
+  ipcMain.handle('tray:quit', async () => {
+    forceQuit = true
+    app.quit()
+  })
+}
+
+function setupQuickLaunchHandlers() {
+  ipcMain.handle('quicklaunch:dispatch', async (_event, { ticketId, action }: { ticketId: string; action: string }) => {
+    hideQuickLaunch()
+    focusMainWindow(win => win.webContents.send('quicklaunch:dispatch', { ticketId, action }))
+  })
+
+  ipcMain.handle('quicklaunch:close', async () => {
+    hideQuickLaunch()
+  })
+
+  ipcMain.handle('quicklaunch:resize', async (_event, { height }: { height: number }) => {
+    resizeQuickLaunch(height)
+  })
 }
 
 app.whenReady().then(async () => {
@@ -241,6 +338,34 @@ app.whenReady().then(async () => {
     setUpdaterMainWindow(mainWindow)
   }
 
+  // Initialize tray icon and agent state aggregator
+  aggregator = new AgentStateAggregator()
+  trayManager = new TrayManager(aggregator, () => mainWindow, () => {
+    forceQuit = true
+    app.quit()
+  })
+  trayManager.init()
+  aggregator.startPolling()
+
+  // Apply auto-start setting from config
+  const config = readConfig()
+  if (config.autoStartAtLogin !== undefined) {
+    app.setLoginItemSettings({
+      openAtLogin: config.autoStartAtLogin,
+      openAsHidden: true,
+    })
+  }
+
+  // Register global shortcut: Cmd+Shift+M for Quick Launch
+  const registered = globalShortcut.register('CommandOrControl+Shift+Space', () => {
+    if (isQuickLaunchVisible()) {
+      hideQuickLaunch()
+    } else {
+      showQuickLaunch()
+    }
+  })
+  console.log(`[QuickLaunch] Global shortcut registered: ${registered}`)
+
   // Check for app updates on startup
   checkForUpdatesOnStartup()
 
@@ -255,7 +380,10 @@ app.whenReady().then(async () => {
   })
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (mainWindow) {
+      mainWindow.show()
+      mainWindow.focus()
+    } else {
       createWindow()
       // Connect updater to new window
       if (mainWindow) {
@@ -286,6 +414,10 @@ async function initializeHooksAndSessions() {
           previousState: null
         })
       }
+      // Update tray icon state
+      if (aggregator) {
+        aggregator.update()
+      }
     })
 
     setMetadataCallback((terminalId: string, metadata: Record<string, string | string[] | Record<string, { prUrl?: string }>>) => {
@@ -295,6 +427,10 @@ async function initializeHooksAndSessions() {
           id: terminalId,
           metadata
         })
+      }
+      // Update tray (metadata changes may affect display)
+      if (aggregator) {
+        aggregator.update()
       }
     })
 
@@ -334,20 +470,55 @@ async function initializeHooksAndSessions() {
 
     // Restore terminal sessions after hooks are ready
     restoreAgents()
+
+    // Trigger initial tray state update after agents are restored
+    setTimeout(() => {
+      if (aggregator) aggregator.update()
+    }, 1000)
   } catch (error) {
     console.error('Failed to initialize hooks:', error)
   }
 }
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  // On macOS with tray, don't quit when all windows are closed
+  if (process.platform !== 'darwin' && !trayManager) {
     cleanupTerminals()
     app.quit()
   }
 })
 
-app.on('before-quit', async () => {
+app.on('before-quit', async (event) => {
+  // If tray is active and this isn't a force quit (from tray "Quit" button),
+  // just hide the window and stay in the menu bar
+  if (trayManager && !forceQuit && !isUpdating) {
+    event.preventDefault()
+    mainWindow?.hide()
+    return
+  }
+
+  isQuitting = true
   if (isUpdating) return
+
+  // Cleanup global shortcuts
+  globalShortcut.unregisterAll()
+
+  // Destroy auxiliary windows
+  destroyPopover()
+  destroyQuickLaunch()
+
+  // Stop aggregator polling
+  if (aggregator) {
+    aggregator.stopPolling()
+    aggregator = null
+  }
+
+  // Destroy tray
+  if (trayManager) {
+    trayManager.destroy()
+    trayManager = null
+  }
+
   cleanupTerminals()
   await stopStatusServer()
 })

@@ -80,6 +80,7 @@ export interface Config {
   agents?: Agent[]
   splitEnabled?: boolean
   splitActive?: boolean
+  autoStartAtLogin?: boolean
   integrations?: {
     github: true
     atlassian?: boolean

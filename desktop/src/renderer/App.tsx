@@ -46,7 +46,7 @@ function ErrorScreen({ error }: { error: string }) {
 export function App() {
   const { currentPage, closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, noReposWarningShown, setNoReposWarningShown, setCurrentPage } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
-  const { killTerminal } = useTerminals()
+  const { killTerminal, launchClaudeTerminal } = useTerminals()
   useWindowSplitMode()
   const confirmCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [showNoReposModal, setShowNoReposModal] = useState(false)
@@ -102,6 +102,47 @@ export function App() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [closeAgentModal, handleCloseAgent, closeCloseAgentModal])
+
+  // Listen for tray:focusAgent IPC events
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.tray.onFocusAgent((data) => {
+      const { setActiveTerminal, setCurrentPage } = useStore.getState()
+      setCurrentPage('terminals')
+      setActiveTerminal(data.id)
+    })
+    return () => { unsubscribe() }
+  }, [])
+
+  // Listen for tray:openSettings IPC events
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.tray.onOpenSettings(() => {
+      const { setCurrentPage } = useStore.getState()
+      setCurrentPage('config')
+    })
+    return () => { unsubscribe() }
+  }, [])
+
+  // Listen for quicklaunch:dispatch IPC events
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.quickLaunch.onDispatch(async (data) => {
+      const prompt = data.ticketId // contains the raw input text
+      const store = useStore.getState()
+      store.setCurrentPage('terminals')
+
+      // Find first repo to use as cwd
+      const repos = store.config?.repositories || {}
+      const firstRepo = Object.values(repos)[0]
+      const cwd = firstRepo?.path || '~/Documents'
+
+      // Launch a new agent and send the exact prompt as typed
+      const terminal = await launchClaudeTerminal(prompt, cwd)
+
+      setTimeout(() => {
+        window.electronAPI.terminal.write(terminal.id, prompt + '\n')
+      }, 2000)
+    })
+    return () => { unsubscribe() }
+  }, [launchClaudeTerminal])
 
   // Prevent default Electron behavior of navigating to dropped files
   useEffect(() => {
