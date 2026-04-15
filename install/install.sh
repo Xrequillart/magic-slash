@@ -603,6 +603,10 @@ else
 
   # Permissions needed by magic:* skills
   MAGIC_SLASH_PERMS=(
+    # Skill reference files (messages, node-setup, glossary, api, plan templates...)
+    "Read($HOME/.claude/skills/magic-*)"
+    # Magic Slash config
+    "Read($HOME/.config/magic-slash/*)"
     # Desktop communication
     'Bash(*http://127.0.0.1:*)'
     # GitHub MCP tools
