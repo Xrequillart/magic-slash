@@ -24,9 +24,6 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
   const [showScrollButton, setShowScrollButton] = useState(false)
   const needsResizeRef = useRef(false)
   const dragCounterRef = useRef(0)
-  const isVisibleRef = useRef(isVisible)
-  const missedDataWhileHiddenRef = useRef(false)
-
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -167,13 +164,6 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
     const prevChunkTailRef = { current: '' }
     const unsubscribe = window.electronAPI.terminal.onData(({ id, data }) => {
       if (id === terminal.id) {
-        // Skip GPU rendering when terminal is not visible — data will be replayed
-        // via getBuffer() when the terminal becomes visible again (needsResizeRef)
-        if (!isVisibleRef.current) {
-          missedDataWhileHiddenRef.current = true
-          return
-        }
-
         // Detect alternate screen buffer transitions (handle split sequences)
         const combined = prevChunkTailRef.current + data
         if (combined.includes('\x1b[?1049h') || combined.includes('\x1b[?47h')) {
@@ -234,28 +224,6 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
       xterm.dispose()
     }
   }, [terminal.id])
-
-  // Keep isVisibleRef in sync with the isVisible prop
-  useEffect(() => {
-    const wasHidden = !isVisibleRef.current
-    isVisibleRef.current = isVisible
-
-    // Terminal just became visible and missed data while hidden — reload from buffer
-    if (isVisible && wasHidden && missedDataWhileHiddenRef.current && xtermRef.current) {
-      missedDataWhileHiddenRef.current = false
-      const xterm = xtermRef.current
-      window.electronAPI.terminal.getBuffer(terminal.id).then((buffer) => {
-        if (buffer && buffer.length > 0) {
-          xterm.clear()
-          xterm.write(buffer, () => {
-            xterm.scrollToBottom()
-          })
-        }
-      }).catch((error) => {
-        console.error('Failed to reload terminal buffer:', error)
-      })
-    }
-  }, [isVisible, terminal.id])
 
   // Handle resize - use ResizeObserver to detect container size changes
   useEffect(() => {
