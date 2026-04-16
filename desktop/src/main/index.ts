@@ -356,8 +356,8 @@ app.whenReady().then(async () => {
     })
   }
 
-  // Register global shortcut: Cmd+Shift+M for Quick Launch
-  const registered = globalShortcut.register('CommandOrControl+Shift+Space', () => {
+  // Register global shortcut: Ctrl+Space for Quick Launch
+  const registered = globalShortcut.register('Control+Space', () => {
     if (isQuickLaunchVisible()) {
       hideQuickLaunch()
     } else {

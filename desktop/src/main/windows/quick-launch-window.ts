@@ -26,6 +26,7 @@ export function createQuickLaunchWindow(): BrowserWindow {
     transparent: true,
     hasShadow: true,
     roundedCorners: true,
+    visibleOnAllWorkspaces: true,
     vibrancy: 'popover',
     visualEffectState: 'active',
     webPreferences: {
