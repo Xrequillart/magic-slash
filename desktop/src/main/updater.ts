@@ -55,10 +55,30 @@ export type UpdateStatus =
 export let isUpdating = false
 let currentPhase: 'check' | 'download' | 'install' = 'check'
 let mainWindow: BrowserWindow | null = null
+let currentStatus: UpdateStatus = { type: 'not-available' }
+let statusListeners: Array<(status: UpdateStatus) => void> = []
+let periodicCheckTimer: ReturnType<typeof setInterval> | null = null
+
+const PERIODIC_CHECK_INTERVAL = 5 * 60 * 1000 // 5 minutes
 
 function sendStatus(status: UpdateStatus) {
+  currentStatus = status
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('updater:status', status)
+  }
+  for (const listener of statusListeners) {
+    listener(status)
+  }
+}
+
+export function getUpdateStatus(): UpdateStatus {
+  return currentStatus
+}
+
+export function onUpdateStatusChange(listener: (status: UpdateStatus) => void): () => void {
+  statusListeners.push(listener)
+  return () => {
+    statusListeners = statusListeners.filter(l => l !== listener)
   }
 }
 
@@ -95,32 +115,9 @@ export function setupAutoUpdater() {
         ? info.releaseNotes.map(n => typeof n === 'string' ? n : n.note).join('\n')
         : undefined
     sendStatus({ type: 'downloaded', version: info.version, releaseNotes: notes || undefined })
-    // Persist to disk (main process) so the renderer can read it after restart.
-    // We cannot rely on the renderer's localStorage because forceCloseAllWindows()
-    // destroys the renderer before Chromium may have flushed LevelDB to disk.
     if (notes) {
       savePendingWhatsNew(info.version, notes)
     }
-    // Clean up resources then restart
-    setTimeout(async () => {
-      isUpdating = true
-      try {
-        cleanupAllTerminals()
-        await stopStatusServer()
-      } catch (err) {
-        console.error('[Updater] Pre-install cleanup error:', err)
-      }
-
-      try {
-        // On macOS, open windows can prevent app.quit() from completing.
-        // Destroy all windows before calling quitAndInstall to ensure clean exit.
-        forceCloseAllWindows()
-        autoUpdater.quitAndInstall(true, true)
-      } catch (err) {
-        console.error('[Updater] quitAndInstall failed:', err)
-        isUpdating = false
-      }
-    }, 3000)
   })
 
   autoUpdater.on('error', (err: Error) => {
@@ -136,6 +133,10 @@ export function setupAutoUpdater() {
       console.error('[Updater] Check failed:', err)
       return null
     }
+  })
+
+  ipcMain.handle('updater:install', async () => {
+    await installUpdate()
   })
 
   ipcMain.handle('updater:getVersion', () => {
@@ -185,4 +186,44 @@ export async function checkForUpdatesOnStartup() {
       sendStatus({ type: 'error', message: (err as Error).message })
     }
   }, 1000)
+}
+
+export async function installUpdate(): Promise<void> {
+  if (currentStatus.type !== 'downloaded') return
+
+  isUpdating = true
+  try {
+    cleanupAllTerminals()
+    await stopStatusServer()
+  } catch (err) {
+    console.error('[Updater] Pre-install cleanup error:', err)
+  }
+
+  try {
+    forceCloseAllWindows()
+    autoUpdater.quitAndInstall(true, true)
+  } catch (err) {
+    console.error('[Updater] quitAndInstall failed:', err)
+    isUpdating = false
+  }
+}
+
+export function startPeriodicUpdateCheck(): void {
+  if (periodicCheckTimer || process.env.VITE_DEV_SERVER_URL) return
+
+  periodicCheckTimer = setInterval(async () => {
+    if (currentStatus.type === 'downloaded' || currentStatus.type === 'downloading') return
+    try {
+      await autoUpdater.checkForUpdates()
+    } catch (err) {
+      console.error('[Updater] Periodic check failed:', err)
+    }
+  }, PERIODIC_CHECK_INTERVAL)
+}
+
+export function stopPeriodicUpdateCheck(): void {
+  if (periodicCheckTimer) {
+    clearInterval(periodicCheckTimer)
+    periodicCheckTimer = null
+  }
 }

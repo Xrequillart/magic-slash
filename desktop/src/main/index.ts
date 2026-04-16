@@ -6,7 +6,7 @@ import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallb
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks } from './hooks/claude-hooks-config'
 import { setStatusServerPort, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalRepositoriesFromHook } from './pty/terminal-manager'
-import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpdating } from './updater'
+import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpdating, startPeriodicUpdateCheck, stopPeriodicUpdateCheck } from './updater'
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
@@ -368,8 +368,9 @@ app.whenReady().then(async () => {
   })
   console.log(`[QuickLaunch] Global shortcut registered: ${registered}`)
 
-  // Check for app updates on startup
+  // Check for app updates on startup, then every 5 minutes
   checkForUpdatesOnStartup()
+  startPeriodicUpdateCheck()
 
   // Update skills in background (after app update check)
   updateSkills().catch(err => {
@@ -501,6 +502,9 @@ app.on('before-quit', async (event) => {
 
   isQuitting = true
   if (isUpdating) return
+
+  // Stop periodic update checks
+  stopPeriodicUpdateCheck()
 
   // Cleanup global shortcuts
   globalShortcut.unregisterAll()

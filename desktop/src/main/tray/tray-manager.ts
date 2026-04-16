@@ -1,6 +1,8 @@
 import { Tray, Menu, BrowserWindow, app, shell } from 'electron'
 import { getIconForState, type AggregateState } from './tray-icons'
 import { AgentStateAggregator } from './agent-state-aggregator'
+import { getUpdateStatus, onUpdateStatusChange, installUpdate, type UpdateStatus } from '../updater'
+import { autoUpdater } from 'electron-updater'
 
 const GITHUB_URL = 'https://github.com/xrequillart/magic-slash'
 const DOCS_URL = 'https://magic-slash.io'
@@ -12,6 +14,7 @@ export class TrayManager {
   private onQuit: () => void
   private pulseTimer: ReturnType<typeof setInterval> | null = null
   private pulseOn = true
+  private unsubscribeUpdate: (() => void) | null = null
 
   constructor(
     aggregator: AgentStateAggregator,
@@ -40,6 +43,10 @@ export class TrayManager {
       this.updateIcon(state)
       this.updateTitle(count)
       this.updatePulse(state)
+      this.rebuildMenu()
+    })
+
+    this.unsubscribeUpdate = onUpdateStatusChange(() => {
       this.rebuildMenu()
     })
 
@@ -78,11 +85,14 @@ export class TrayManager {
           { type: 'separator' as const },
         ]
 
+    const updateItem = this.buildUpdateMenuItem()
+
     const menu = Menu.buildFromTemplate([
       {
         label: `Magic Slash v${app.getVersion()}`,
         enabled: false,
       },
+      updateItem,
       { type: 'separator' },
       ...agentItems,
       {
@@ -120,6 +130,37 @@ export class TrayManager {
     ])
 
     this.tray.setContextMenu(menu)
+  }
+
+  private buildUpdateMenuItem(): Electron.MenuItemConstructorOptions {
+    const status: UpdateStatus = getUpdateStatus()
+
+    switch (status.type) {
+      case 'checking':
+        return { label: 'Checking for updates…', enabled: false }
+      case 'available':
+        return { label: `Downloading v${status.version}…`, enabled: false }
+      case 'downloading': {
+        const pct = Math.round(status.progress)
+        return { label: `Downloading update… ${pct}%`, enabled: false }
+      }
+      case 'downloaded':
+        return {
+          label: `↻ Restart to update (v${status.version})`,
+          click: () => installUpdate(),
+        }
+      case 'error':
+        return {
+          label: 'Check for Updates (last check failed)',
+          click: () => { autoUpdater.checkForUpdates().catch(() => {}) },
+        }
+      case 'not-available':
+      default:
+        return {
+          label: 'Check for Updates',
+          click: () => { autoUpdater.checkForUpdates().catch(() => {}) },
+        }
+    }
   }
 
   private stateEmoji(state: string): string {
@@ -167,6 +208,10 @@ export class TrayManager {
   }
 
   destroy(): void {
+    if (this.unsubscribeUpdate) {
+      this.unsubscribeUpdate()
+      this.unsubscribeUpdate = null
+    }
     if (this.pulseTimer) {
       clearInterval(this.pulseTimer)
       this.pulseTimer = null
