@@ -1,6 +1,9 @@
-import { Tray, Menu, BrowserWindow } from 'electron'
+import { Tray, Menu, BrowserWindow, app, shell } from 'electron'
 import { getIconForState, type AggregateState } from './tray-icons'
 import { AgentStateAggregator } from './agent-state-aggregator'
+
+const GITHUB_URL = 'https://github.com/xrequillart/magic-slash'
+const DOCS_URL = 'https://magic-slash.io'
 
 export class TrayManager {
   private tray: Tray | null = null
@@ -76,6 +79,11 @@ export class TrayManager {
         ]
 
     const menu = Menu.buildFromTemplate([
+      {
+        label: `Magic Slash v${app.getVersion()}`,
+        enabled: false,
+      },
+      { type: 'separator' },
       ...agentItems,
       {
         label: 'Show Window',
@@ -91,6 +99,19 @@ export class TrayManager {
       },
       { type: 'separator' },
       {
+        label: 'Changelog',
+        click: () => shell.openExternal(`${GITHUB_URL}/releases/tag/v${app.getVersion()}`),
+      },
+      {
+        label: 'Documentation',
+        click: () => shell.openExternal(DOCS_URL),
+      },
+      {
+        label: 'GitHub',
+        click: () => shell.openExternal(GITHUB_URL),
+      },
+      { type: 'separator' },
+      {
         label: 'Quit Magic Slash',
         click: () => {
           this.onQuit()
@@ -103,12 +124,12 @@ export class TrayManager {
 
   private stateEmoji(state: string): string {
     switch (state) {
-      case 'working': return '🟠'
-      case 'waiting': return '🔴'
-      case 'idle': return '🟢'
+      case 'working': return '⚡'
+      case 'waiting': return '⏳'
+      case 'idle': return '💤'
       case 'completed': return '✅'
       case 'error': return '❌'
-      default: return '⚪'
+      default: return '❔'
     }
   }
 
