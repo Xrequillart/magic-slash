@@ -26,7 +26,6 @@ export function createQuickLaunchWindow(): BrowserWindow {
     transparent: true,
     hasShadow: true,
     roundedCorners: true,
-    visibleOnAllWorkspaces: true,
     vibrancy: 'popover',
     visualEffectState: 'active',
     webPreferences: {
@@ -36,6 +35,8 @@ export function createQuickLaunchWindow(): BrowserWindow {
       sandbox: false,
     },
   })
+
+  quickLaunchWindow.setVisibleOnAllWorkspaces(true)
 
   const url = process.env.VITE_DEV_SERVER_URL
     ? `${process.env.VITE_DEV_SERVER_URL}quick-launch.html`
