@@ -419,7 +419,20 @@ Each step must be actionable: describe what the user should do and what they sho
 
 #### 5.5.2: Confidence evaluation loop
 
-Evaluate the implementation on ALL 5 axes below, then compute a confidence score using the aggregation formula.
+The confidence evaluation is performed by an **independent critic agent** — a separate sub-agent that has no knowledge of the implementation plan, the implementation conversation, or the decisions made along the way. This prevents self-serving bias: the agent that wrote the code must not be the one grading it.
+
+**What the critic agent receives** (and nothing else):
+- Ticket summary: ID, title, description, acceptance criteria
+- The diff: output of `git diff HEAD` in the worktree + list of untracked files
+- The rubric below (axes, calibration, scoring formula)
+- The worktree path (so it can read files for context — but it must not modify any file)
+
+**What the critic agent does NOT receive**:
+- The implementation plan
+- The codebase exploration summary
+- Any prior conversation context or implementation decisions
+
+##### Evaluation rubric (passed verbatim to the critic agent)
 
 **Evaluation axes** — evaluate every axis, mark N/A only when genuinely inapplicable (e.g., test coverage when the project has no test suite):
 - **Acceptance criteria coverage**: Were all acceptance criteria from the ticket addressed?
@@ -453,9 +466,28 @@ For each axis, assign one of: **MET** | **PARTIALLY MET** | **NOT MET** | **N/A*
 
 After selecting the base score from the table, apply one adjustment: if the majority of remaining axes (excluding the NOT MET ones) are MET rather than PARTIALLY MET, add +1 to the score (max 10). Note: the minimum axis rule cap is applied after this adjustment.
 
-Be honest — a score of 6 with clear attention points is more useful than an inflated 9.
+**Critic mindset**: approach the evaluation as an external code reviewer who has never seen this code before. A score of 6 with clear attention points is more useful than an inflated 9. When in doubt between two ratings for an axis, choose the lower one.
 
-**Auto-fix loop** (max 3 iterations):
+**Expected output format** from the critic agent (structured text, not JSON):
+
+```
+AXIS RESULTS:
+- Acceptance criteria coverage: {MET|PARTIALLY MET|NOT MET|N/A} — {one-sentence justification}
+- Pattern consistency: {MET|PARTIALLY MET|NOT MET|N/A} — {one-sentence justification}
+- Test coverage: {MET|PARTIALLY MET|NOT MET|N/A} — {one-sentence justification}
+- Edge cases: {MET|PARTIALLY MET|NOT MET|N/A} — {one-sentence justification}
+- Scope adherence: {MET|PARTIALLY MET|NOT MET|N/A} — {one-sentence justification}
+
+SCORE: {number}/10
+
+POSITIVE POINTS:
+- {point}
+
+ATTENTION POINTS:
+- {point}
+```
+
+##### Auto-fix loop (max 3 iterations)
 
 ```
 iteration = 0
@@ -463,19 +495,25 @@ prev_axis_states = {}
 regressed_axes_history = set()
 
 LOOP:
-  1. Evaluate confidence → score, axis_results, positive_points, attention_points
-     axis_results is a dict mapping each of the 5 axes to its evaluation state (MET, PARTIALLY MET, NOT MET, or N/A):
-       { "acceptance_criteria": "MET"|"PARTIALLY MET"|"NOT MET"|"N/A",
-         "pattern_consistency": ...,
-         "test_coverage": ...,
-         "edge_cases": ...,
-         "scope_adherence": ... }
+  1. Collect the diff for the critic:
+       git diff HEAD           (in the worktree)
+       git ls-files --others --exclude-standard  (untracked files)
 
-  2. IF score >= 8 → EXIT loop
+  2. Launch a critic Agent with:
+       - Ticket summary: ID, title, description, acceptance criteria (from step 2)
+       - The diff collected in step 1
+       - The full evaluation rubric above (axes, calibration, scoring, output format)
+       - The worktree path (read-only access for context)
+       - Instruction: "You are an independent code reviewer. You have NOT seen the implementation
+         plan or any prior conversation. Evaluate the diff against the ticket requirements using
+         ONLY the rubric provided. Do not modify any file."
+     Parse the agent's response → score, axis_results, positive_points, attention_points
 
-  3. IF iteration >= 3 → EXIT loop (display summary with current score)
+  3. IF score >= 8 → EXIT loop
 
-  4. Regression check (skip when iteration == 0):
+  4. IF iteration >= 3 → EXIT loop (display summary with current score)
+
+  5. Regression check (skip when iteration == 0):
      Compare axis_results to prev_axis_states.
      For each axis, detect any worsening transition:
        MET → PARTIALLY MET, MET → NOT MET, or PARTIALLY MET → NOT MET.
@@ -487,31 +525,31 @@ LOOP:
        (i.e., the same axis regresses a second time), EXIT loop immediately with a warning:
        "Axis '<name>' has regressed twice — exiting auto-fix to avoid oscillation."
 
-  5. Save current state: prev_axis_states = copy(axis_results)
+  6. Save current state: prev_axis_states = copy(axis_results)
 
-  6. Identify the single most critical attention point using this priority:
+  7. Identify the single most critical attention point using this priority:
      a. Any regressed axis (worsened since previous iteration) — regressions first
      b. Acceptance criteria gaps (a ticket requirement is functionally unmet)
      c. NOT MET axes by severity (fewest positive signals first)
      d. PARTIALLY MET axes by severity (fewest positive signals first)
      Pick the first match; ties are broken by the axis order above.
 
-  7. Display MSG_AUTOFIX with:
+  8. Display MSG_AUTOFIX with:
      - The current score
-     - The selected attention point (from step 6)
+     - The selected attention point (from step 7)
      - The user-facing iteration number: iteration + 1 (1-indexed for display; internal counter is 0-indexed)
 
-  8. Launch an Agent with:
+  9. Launch a fix Agent with:
      - The worktree path
      - The list of modifiable files (only files changed during implementation)
      - A precise description of the selected attention point to fix
      - Instruction: "Do no harm — fix only the described issue; do not alter unrelated code or degrade any axis that currently passes"
 
-  9. Wait for the agent to complete
+  10. Wait for the fix agent to complete
 
-  10. iteration += 1
+  11. iteration += 1
 
-  11. GOTO LOOP
+  12. GOTO LOOP
 ```
 
 #### 5.5.3: Display final summary
