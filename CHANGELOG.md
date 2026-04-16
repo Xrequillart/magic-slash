@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.1] - 2026-04-16
+
+### Added
+
+- **Desktop**: Add version header, changelog/docs/GitHub links to tray menu
+- **Desktop**: Replace colored circle emojis with expressive emojis in tray agent states
+
 ## [0.37.0] - 2026-04-15
 
 ### Added
@@ -1051,6 +1058,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.37.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.37.1
 [0.37.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.37.0
 [0.36.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.36.4
 [0.36.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.36.3
