@@ -5,7 +5,7 @@ argument-hint: <base-branch> (optional, e.g., develop, staging)
 allowed-tools: Bash(*), Read, mcp__github__*, mcp__atlassian__*, AskUserQuestion
 ---
 
-# magic-slash v0.38.0 - /pr
+# magic-slash v0.38.1 - /pr
 
 > Follow each step in order. Skipping steps leads to broken PRs, stale Jira tickets, or a desynchronized Desktop UI.
 >

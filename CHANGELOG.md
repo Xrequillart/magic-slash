@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.1] - 2026-04-16
+
+### Fixed
+
+- **Desktop**: Sync tray menu with app by tracking individual agent state and title changes
+
 ## [0.38.0] - 2026-04-16
 
 ### Added
@@ -1074,6 +1080,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.38.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.38.1
 [0.38.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.38.0
 [0.37.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.37.2
 [0.37.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.37.1
