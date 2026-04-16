@@ -124,12 +124,12 @@ export class TrayManager {
 
   private stateEmoji(state: string): string {
     switch (state) {
-      case 'working': return '⚡'
-      case 'waiting': return '⏳'
-      case 'idle': return '💤'
+      case 'working': return '🔥'
+      case 'waiting': return '💬'
+      case 'idle': return '😴'
       case 'completed': return '✅'
       case 'error': return '❌'
-      default: return '❔'
+      default: return '❓'
     }
   }
 
