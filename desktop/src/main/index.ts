@@ -186,7 +186,9 @@ function setupHandlers() {
         })
         notification.show()
       }
-    }
+    },
+    // Agent change callback - update tray state
+    () => { if (aggregator) aggregator.update() },
   )
 
   // Window control handlers

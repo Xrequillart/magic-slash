@@ -23,6 +23,7 @@ import {
 
 let getMainWindow: () => BrowserWindow | null
 let showNotification: (title: string, body: string) => void
+let onAgentChange: (() => void) | null = null
 
 // Track last notification time per terminal to avoid spam
 const lastNotificationTime = new Map<string, number>()
@@ -164,10 +165,12 @@ export function restoreAgents() {
 
 export function setupTerminalHandlers(
   mainWindowGetter: () => BrowserWindow | null,
-  notificationCallback: (title: string, body: string) => void
+  notificationCallback: (title: string, body: string) => void,
+  agentChangeCallback?: () => void,
 ) {
   getMainWindow = mainWindowGetter
   showNotification = notificationCallback
+  onAgentChange = agentChangeCallback || null
 
   // Create a new terminal
   ipcMain.handle('terminal:create', async (_event, { id, name, cwd }) => {
@@ -318,12 +321,14 @@ export function setupTerminalHandlers(
   ipcMain.handle('terminal:updateMetadata', async (_event, { id, metadata }) => {
     if (typeof id !== 'string' || typeof metadata !== 'object' || metadata === null) return
     updateTerminalMetadataFromHook(id, metadata)
+    onAgentChange?.()
   })
 
   // Update terminal repositories
   ipcMain.handle('terminal:updateRepositories', async (_event, { id, repositories }) => {
     if (typeof id !== 'string' || !Array.isArray(repositories)) return
     updateTerminalRepositoriesFromHook(id, repositories)
+    onAgentChange?.()
     // Notify renderer
     const mainWindow = getMainWindow()
     if (mainWindow) {

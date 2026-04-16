@@ -16,6 +16,7 @@ export class AgentStateAggregator extends EventEmitter {
   private currentState: AggregateState = 'none'
   private activeCount = 0
   private pollTimer: ReturnType<typeof setInterval> | null = null
+  private fingerprint = ''
 
   getState(): AggregateState {
     return this.currentState
@@ -67,13 +68,21 @@ export class AgentStateAggregator extends EventEmitter {
       }
     }
 
-    const stateChanged = newState !== this.currentState
-    const countChanged = count !== this.activeCount
+    // Build a fingerprint that captures individual agent states and titles
+    // so we detect changes even when the aggregate state stays the same
+    const newFingerprint = terminals
+      .map(t => `${t.id}:${t.state}:${t.metadata?.title || t.name}`)
+      .join('|')
+
+    const changed = newState !== this.currentState
+      || count !== this.activeCount
+      || newFingerprint !== this.fingerprint
 
     this.currentState = newState
     this.activeCount = count
+    this.fingerprint = newFingerprint
 
-    if (stateChanged || countChanged) {
+    if (changed) {
       this.emit('change', { state: newState, count })
     }
   }
