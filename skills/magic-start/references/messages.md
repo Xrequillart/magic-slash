@@ -563,10 +563,22 @@ Sauvegarder dans la config pour les prochains worktrees ? (o/n)
 ## Decisions made
 {decisions}
 
+## How to test
+{test_steps}
+
+## Confidence assessment
+{confidence_score}/10
+
+✅ Positive points:
+{positive_points}
+
+⚠️ Attention points:
+{attention_points}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 💡 Next steps:
-   • Test the changes
+   • Test the changes (see "How to test" above)
    • Run /commit to create a commit
    • Run /pr to create a Pull Request
 ```
@@ -590,10 +602,22 @@ Sauvegarder dans la config pour les prochains worktrees ? (o/n)
 ## Décisions prises
 {decisions}
 
+## Comment tester
+{test_steps}
+
+## Évaluation de confiance
+{confidence_score}/10
+
+✅ Points positifs :
+{positive_points}
+
+⚠️ Points d'attention :
+{attention_points}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 💡 Prochaines étapes :
-   • Teste les changements
+   • Teste les changements (voir « Comment tester » ci-dessus)
    • Lance /commit pour créer un commit
    • Lance /pr pour créer une Pull Request
 ```
@@ -626,13 +650,28 @@ Sauvegarder dans la config pour les prochains worktrees ? (o/n)
 ## Summary of changes
 {summary}
 
+## Decisions made
+{decisions}
+
 ## How the repos interact
 {interaction}
+
+## How to test
+{test_steps}
+
+## Confidence assessment
+{confidence_score}/10
+
+✅ Positive points:
+{positive_points}
+
+⚠️ Attention points:
+{attention_points}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 💡 Next steps:
-   • Test the changes in both repos
+   • Test the changes in both repos (see "How to test" above)
    • Run /commit in each worktree to create commits
    • Run /pr to create a Pull Request
 ```
@@ -663,15 +702,44 @@ Sauvegarder dans la config pour les prochains worktrees ? (o/n)
 ## Résumé des changements
 {summary}
 
+## Décisions prises
+{decisions}
+
 ## Interaction entre les repos
 {interaction}
+
+## Comment tester
+{test_steps}
+
+## Évaluation de confiance
+{confidence_score}/10
+
+✅ Points positifs :
+{positive_points}
+
+⚠️ Points d'attention :
+{attention_points}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 💡 Prochaines étapes :
-   • Teste les changements dans les deux repos
+   • Teste les changements dans les deux repos (voir « Comment tester » ci-dessus)
    • Lance /commit dans chaque worktree pour créer les commits
    • Lance /pr pour créer une Pull Request
+```
+
+## MSG_AUTOFIX
+
+### en
+
+```text
+🔧 Confidence: {confidence_score}/10 — fixing: {attention_point}... (iteration {n}/3)
+```
+
+### fr
+
+```text
+🔧 Confiance : {confidence_score}/10 — correction : {attention_point}... (itération {n}/3)
 ```
 
 ## MSG_SIMPLIFY

@@ -404,9 +404,138 @@ git ls-files --others --exclude-standard
 4. Launch an `Agent` with: worktree path, changed files list (only these modifiable), instruction to invoke `/simplify` (may explore full codebase but modify only changed files).
 5. If no issues found, continue silently.
 
-### 5.5: Final summary
+### 5.5: Confidence assessment and final summary
 
-Display `MSG_FINAL_SUMMARY` (or `MSG_FINAL_SUMMARY_FULLSTACK`).
+This step runs as an iterative loop: evaluate confidence, auto-fix if needed, then display the final summary.
+
+#### 5.5.1: How to test
+
+Generate 2-5 concrete manual testing steps based on:
+- The acceptance criteria from the ticket
+- The actual changes made (new routes, UI components, modified logic)
+- Any setup required (env vars, seed data, running a specific service)
+
+Each step must be actionable: describe what the user should do and what they should expect to see. Include specific URLs, commands, or UI paths when possible.
+
+#### 5.5.2: Confidence evaluation loop
+
+Evaluate the implementation on ALL 5 axes below, then compute a confidence score using the aggregation formula.
+
+**Evaluation axes** — evaluate every axis, mark N/A only when genuinely inapplicable (e.g., test coverage when the project has no test suite):
+- **Acceptance criteria coverage**: Were all acceptance criteria from the ticket addressed?
+- **Pattern consistency**: Do the changes follow existing codebase conventions?
+- **Test coverage**: Were tests added/updated when the project has a test suite?
+- **Edge cases**: Were error handling and boundary conditions considered?
+- **Scope adherence**: Did the implementation stay within the ticket scope?
+
+For each axis, assign one of: **MET** | **PARTIALLY MET** | **NOT MET** | **N/A**
+
+**Calibration examples** (one sentence per axis to anchor MET vs PARTIALLY MET):
+- **Acceptance criteria coverage**: MET = every acceptance criterion from the ticket is addressed in the implementation; PARTIALLY MET = most criteria addressed but one minor criterion is deferred or incomplete.
+- **Pattern consistency**: MET = changes follow all observed codebase conventions (naming, structure, error handling style); PARTIALLY MET = mostly follows conventions with minor deviations (e.g., slightly different naming in one file).
+- **Test coverage**: MET = tests added or updated covering the main paths and at least one edge case; PARTIALLY MET = tests cover the happy path but miss edge cases or error scenarios.
+- **Edge cases**: MET = error handling and boundary conditions are explicitly handled (null checks, empty states, limits); PARTIALLY MET = common errors handled but some boundary conditions left unguarded.
+- **Scope adherence**: MET = implementation stays strictly within the ticket scope with no unrelated changes; PARTIALLY MET = minor tangential cleanup included alongside the scoped work.
+
+**Minimum axis rule**: if fewer than 3 axes are non-N/A, cap the maximum score at **8** — too few axes provide insufficient signal for a perfect score.
+
+**Score determination** (apply to non-N/A axes only, follow top-to-bottom and stop at the first match):
+
+| # | Condition | Score |
+|---|-----------|-------|
+| 1 | All axes MET | **10** |
+| 2 | All axes MET except exactly one PARTIALLY MET | **9** |
+| 3 | All axes at least PARTIALLY MET, with exactly two PARTIALLY MET | **7** |
+| 4 | All axes at least PARTIALLY MET, with three or more PARTIALLY MET | **6** |
+| 5 | Exactly one axis NOT MET, rest MET or PARTIALLY MET | **5** |
+| 6 | Exactly two axes NOT MET | **3** |
+| 7 | Three or more axes NOT MET | **1** |
+
+After selecting the base score from the table, apply one adjustment: if the majority of remaining axes (excluding the NOT MET ones) are MET rather than PARTIALLY MET, add +1 to the score (max 10). Note: the minimum axis rule cap is applied after this adjustment.
+
+Be honest — a score of 6 with clear attention points is more useful than an inflated 9.
+
+**Auto-fix loop** (max 3 iterations):
+
+```
+iteration = 0
+prev_axis_states = {}
+regressed_axes_history = set()
+
+LOOP:
+  1. Evaluate confidence → score, axis_results, positive_points, attention_points
+     axis_results is a dict mapping each of the 5 axes to its evaluation state (MET, PARTIALLY MET, NOT MET, or N/A):
+       { "acceptance_criteria": "MET"|"PARTIALLY MET"|"NOT MET"|"N/A",
+         "pattern_consistency": ...,
+         "test_coverage": ...,
+         "edge_cases": ...,
+         "scope_adherence": ... }
+
+  2. IF score >= 8 → EXIT loop
+
+  3. IF iteration >= 3 → EXIT loop (display summary with current score)
+
+  4. Regression check (skip when iteration == 0):
+     Compare axis_results to prev_axis_states.
+     For each axis, detect any worsening transition:
+       MET → PARTIALLY MET, MET → NOT MET, or PARTIALLY MET → NOT MET.
+     For each regressed axis:
+       → Flag it as a REGRESSION in the displayed summary.
+       → Prepend it to attention_points so the regression is prioritized for the next fix.
+       → Add the axis name to regressed_axes_history.
+     Oscillation guard: if any axis already existed in regressed_axes_history before this iteration
+       (i.e., the same axis regresses a second time), EXIT loop immediately with a warning:
+       "Axis '<name>' has regressed twice — exiting auto-fix to avoid oscillation."
+
+  5. Save current state: prev_axis_states = copy(axis_results)
+
+  6. Identify the single most critical attention point using this priority:
+     a. Any regressed axis (worsened since previous iteration) — regressions first
+     b. Acceptance criteria gaps (a ticket requirement is functionally unmet)
+     c. NOT MET axes by severity (fewest positive signals first)
+     d. PARTIALLY MET axes by severity (fewest positive signals first)
+     Pick the first match; ties are broken by the axis order above.
+
+  7. Display MSG_AUTOFIX with:
+     - The current score
+     - The selected attention point (from step 6)
+     - The user-facing iteration number: iteration + 1 (1-indexed for display; internal counter is 0-indexed)
+
+  8. Launch an Agent with:
+     - The worktree path
+     - The list of modifiable files (only files changed during implementation)
+     - A precise description of the selected attention point to fix
+     - Instruction: "Do no harm — fix only the described issue; do not alter unrelated code or degrade any axis that currently passes"
+
+  9. Wait for the agent to complete
+
+  10. iteration += 1
+
+  11. GOTO LOOP
+```
+
+#### 5.5.3: Display final summary
+
+Display `MSG_FINAL_SUMMARY` (or `MSG_FINAL_SUMMARY_FULLSTACK` for multi-repo). Populate **all** placeholders using the sources below.
+
+**Data generated in step 5.5:**
+- `{confidence_score}` — final score from the evaluation loop (5.5.2)
+- `{test_steps}` — manual testing steps generated in 5.5.1
+- `{positive_points}` — strengths identified during confidence evaluation (5.5.2)
+- `{attention_points}` — remaining concerns after auto-fix iterations (5.5.2)
+
+**Data available from prior steps / context:**
+- `{TICKET-ID}` — ticket identifier (available since step 1)
+- `{modified_files}` — list files changed during implementation (`git diff --name-only HEAD` in the worktree, from step 5.4.5)
+- `{created_files}` — list untracked files added during implementation (`git ls-files --others --exclude-standard` in the worktree, from step 5.4.5)
+- `{summary}` — concise description of what was implemented (synthesize from the plan and actual changes)
+- `{decisions}` — key implementation decisions made during planning and implementation (e.g., library choices, architectural trade-offs, deviations from the original plan)
+
+**Fullstack-only placeholders** (for `MSG_FINAL_SUMMARY_FULLSTACK`):
+- `{backend_path}`, `{frontend_path}` — worktree paths (available since step 4)
+- `{backend_modified}`, `{backend_created}` — same as `{modified_files}`/`{created_files}` but scoped to the backend worktree
+- `{frontend_modified}`, `{frontend_created}` — same but scoped to the frontend worktree
+- `{interaction}` — summary of how the backend and frontend changes interact (e.g., new API endpoints consumed by the frontend); derive from the cross-repo interactions noted in the step 5.1 exploration and the actual changes made
 
 ---
 
