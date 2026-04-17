@@ -1,14 +1,37 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import type { Config, RepositoryConfig, TerminalMetadata, Agent } from '../../types'
+import type { Config, RepositoryConfig } from '../../types'
 import { validateConfig, hasCriticalErrors } from './schema-validator'
 import { DEFAULT_REPOSITORY_FIELDS } from './defaults'
+import { expandPath } from './validation'
 
 /** Settings input where each field can be its normal type, 'default', or null (to reset) */
 type SettingsInput<T> = {
   [K in keyof T]?: T[K] | 'default' | null
 }
+
+/**
+ * Applies a single settings field: removes on 'default'/null/resetValue,
+ * sets if the value passes the validator.
+ */
+function applySetting<T extends Record<string, unknown>>(
+  obj: T,
+  key: keyof T,
+  value: unknown,
+  validator: (v: unknown) => boolean,
+  resetValues: unknown[] = ['default', null],
+): void {
+  if (value === undefined) return
+  if (resetValues.includes(value)) {
+    delete obj[key]
+  } else if (validator(value)) {
+    obj[key] = value as T[keyof T]
+  }
+}
+
+const isOneOf = (allowed: string[]) => (v: unknown) => typeof v === 'string' && allowed.includes(v)
+const isBool = (v: unknown) => typeof v === 'boolean'
 
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'magic-slash')
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
@@ -19,14 +42,7 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
  */
 export function isExcludedRepositoryPath(repoPath: string): boolean {
   const home = os.homedir()
-
-  // Expand ~ to home directory
-  const expandedPath = repoPath.startsWith('~')
-    ? path.join(home, repoPath.slice(1))
-    : repoPath
-
-  // Normalize path (remove trailing slashes)
-  const normalizedPath = path.normalize(expandedPath)
+  const normalizedPath = path.normalize(expandPath(repoPath))
 
   const excludedPaths = [
     path.join(home, 'Documents'),
@@ -46,19 +62,6 @@ export function isExcludedRepositoryPath(repoPath: string): boolean {
  */
 export function filterValidRepositories(repositories: string[]): string[] {
   return repositories.filter(repo => !isExcludedRepositoryPath(repo))
-}
-
-export function createDefaultMetadata(): TerminalMetadata {
-  return {
-    title: '',
-    branchName: '',
-    ticketId: '',
-    description: '',
-    status: '',
-    fullStackTaskId: '',
-    relatedWorktrees: [],
-    repositoryMetadata: {}
-  }
 }
 
 export function readConfig(): Config {
@@ -92,16 +95,6 @@ export function readConfig(): Config {
     if (!config.integrations) {
       config.integrations = { github: true, atlassian: true }
       needsWrite = true
-    }
-
-    // Ensure all agents have a splitPane value
-    if (config.agents && config.agents.length > 0) {
-      for (const agent of config.agents) {
-        if (!agent.splitPane) {
-          agent.splitPane = 'left'
-          needsWrite = true
-        }
-      }
     }
 
     if (needsWrite) {
@@ -224,46 +217,14 @@ export function updateRepositoryCommitSettings(name: string, settings: SettingsI
     throw new Error(`Repository '${name}' not found`)
   }
 
-  config.repositories[name].commit = config.repositories[name].commit || {}
+  const commit = config.repositories[name].commit = config.repositories[name].commit || {}
 
-  // Validate and set style
-  if (settings.style !== undefined) {
-    if (settings.style === 'default' || settings.style === null) {
-      delete config.repositories[name].commit!.style
-    } else if (['single-line', 'multi-line'].includes(settings.style)) {
-      config.repositories[name].commit!.style = settings.style
-    }
-  }
+  applySetting(commit, 'style', settings.style, isOneOf(['single-line', 'multi-line']))
+  applySetting(commit, 'format', settings.format, isOneOf(['conventional', 'angular', 'gitmoji', 'none']))
+  applySetting(commit, 'coAuthor', settings.coAuthor, isBool)
+  applySetting(commit, 'includeTicketId', settings.includeTicketId, isBool)
 
-  // Validate and set format
-  if (settings.format !== undefined) {
-    if (settings.format === 'default' || settings.format === null) {
-      delete config.repositories[name].commit!.format
-    } else if (['conventional', 'angular', 'gitmoji', 'none'].includes(settings.format)) {
-      config.repositories[name].commit!.format = settings.format
-    }
-  }
-
-  // Validate and set coAuthor
-  if (settings.coAuthor !== undefined) {
-    if (settings.coAuthor === 'default' || settings.coAuthor === null) {
-      delete config.repositories[name].commit!.coAuthor
-    } else if (typeof settings.coAuthor === 'boolean') {
-      config.repositories[name].commit!.coAuthor = settings.coAuthor
-    }
-  }
-
-  // Validate and set includeTicketId
-  if (settings.includeTicketId !== undefined) {
-    if (settings.includeTicketId === 'default' || settings.includeTicketId === null) {
-      delete config.repositories[name].commit!.includeTicketId
-    } else if (typeof settings.includeTicketId === 'boolean') {
-      config.repositories[name].commit!.includeTicketId = settings.includeTicketId
-    }
-  }
-
-  // Clean up empty commit object
-  if (Object.keys(config.repositories[name].commit || {}).length === 0) {
+  if (Object.keys(commit).length === 0) {
     delete config.repositories[name].commit
   }
 
@@ -277,64 +238,16 @@ export function updateRepositoryResolveSettings(name: string, settings: Settings
     throw new Error(`Repository '${name}' not found`)
   }
 
-  config.repositories[name].resolve = config.repositories[name].resolve || {}
+  const resolve = config.repositories[name].resolve = config.repositories[name].resolve || {}
 
-  // Validate and set commitMode
-  if (settings.commitMode !== undefined) {
-    if (settings.commitMode === 'default' || settings.commitMode === null) {
-      delete config.repositories[name].resolve!.commitMode
-    } else if (['new', 'amend'].includes(settings.commitMode)) {
-      config.repositories[name].resolve!.commitMode = settings.commitMode
-    }
-  }
+  applySetting(resolve, 'commitMode', settings.commitMode, isOneOf(['new', 'amend']))
+  applySetting(resolve, 'format', settings.format, isOneOf(['conventional', 'angular', 'gitmoji', 'none']))
+  applySetting(resolve, 'style', settings.style, isOneOf(['single-line', 'multi-line']))
+  applySetting(resolve, 'useCommitConfig', settings.useCommitConfig, isBool)
+  applySetting(resolve, 'replyToComments', settings.replyToComments, isBool)
+  applySetting(resolve, 'replyLanguage', settings.replyLanguage, isOneOf(['en', 'fr']))
 
-  // Validate and set format
-  if (settings.format !== undefined) {
-    if (settings.format === 'default' || settings.format === null) {
-      delete config.repositories[name].resolve!.format
-    } else if (['conventional', 'angular', 'gitmoji', 'none'].includes(settings.format)) {
-      config.repositories[name].resolve!.format = settings.format
-    }
-  }
-
-  // Validate and set style
-  if (settings.style !== undefined) {
-    if (settings.style === 'default' || settings.style === null) {
-      delete config.repositories[name].resolve!.style
-    } else if (['single-line', 'multi-line'].includes(settings.style)) {
-      config.repositories[name].resolve!.style = settings.style
-    }
-  }
-
-  // Validate and set useCommitConfig
-  if (settings.useCommitConfig !== undefined) {
-    if (settings.useCommitConfig === 'default' || settings.useCommitConfig === null) {
-      delete config.repositories[name].resolve!.useCommitConfig
-    } else if (typeof settings.useCommitConfig === 'boolean') {
-      config.repositories[name].resolve!.useCommitConfig = settings.useCommitConfig
-    }
-  }
-
-  // Validate and set replyToComments
-  if (settings.replyToComments !== undefined) {
-    if (settings.replyToComments === 'default' || settings.replyToComments === null) {
-      delete config.repositories[name].resolve!.replyToComments
-    } else if (typeof settings.replyToComments === 'boolean') {
-      config.repositories[name].resolve!.replyToComments = settings.replyToComments
-    }
-  }
-
-  // Validate and set replyLanguage
-  if (settings.replyLanguage !== undefined) {
-    if (settings.replyLanguage === 'default' || settings.replyLanguage === null) {
-      delete config.repositories[name].resolve!.replyLanguage
-    } else if (['en', 'fr'].includes(settings.replyLanguage)) {
-      config.repositories[name].resolve!.replyLanguage = settings.replyLanguage
-    }
-  }
-
-  // Clean up empty resolve object
-  if (Object.keys(config.repositories[name].resolve || {}).length === 0) {
+  if (Object.keys(resolve).length === 0) {
     delete config.repositories[name].resolve
   }
 
@@ -348,19 +261,11 @@ export function updateRepositoryPullRequestSettings(name: string, settings: Sett
     throw new Error(`Repository '${name}' not found`)
   }
 
-  config.repositories[name].pullRequest = config.repositories[name].pullRequest || {}
+  const pullRequest = config.repositories[name].pullRequest = config.repositories[name].pullRequest || {}
 
-  // Validate and set autoLinkTickets
-  if (settings.autoLinkTickets !== undefined) {
-    if (settings.autoLinkTickets === 'default' || settings.autoLinkTickets === null) {
-      delete config.repositories[name].pullRequest!.autoLinkTickets
-    } else if (typeof settings.autoLinkTickets === 'boolean') {
-      config.repositories[name].pullRequest!.autoLinkTickets = settings.autoLinkTickets
-    }
-  }
+  applySetting(pullRequest, 'autoLinkTickets', settings.autoLinkTickets, isBool)
 
-  // Clean up empty pullRequest object
-  if (Object.keys(config.repositories[name].pullRequest || {}).length === 0) {
+  if (Object.keys(pullRequest).length === 0) {
     delete config.repositories[name].pullRequest
   }
 
@@ -374,37 +279,14 @@ export function updateRepositoryIssuesSettings(name: string, settings: SettingsI
     throw new Error(`Repository '${name}' not found`)
   }
 
-  config.repositories[name].issues = config.repositories[name].issues || {}
+  const issues = config.repositories[name].issues = config.repositories[name].issues || {}
+  const isString = (v: unknown) => typeof v === 'string'
 
-  // Validate and set commentOnPR
-  if (settings.commentOnPR !== undefined) {
-    if (settings.commentOnPR === 'default' || settings.commentOnPR === null) {
-      delete config.repositories[name].issues!.commentOnPR
-    } else if (typeof settings.commentOnPR === 'boolean') {
-      config.repositories[name].issues!.commentOnPR = settings.commentOnPR
-    }
-  }
+  applySetting(issues, 'commentOnPR', settings.commentOnPR, isBool)
+  applySetting(issues, 'jiraUrl', settings.jiraUrl, isString, ['', null])
+  applySetting(issues, 'githubIssuesUrl', settings.githubIssuesUrl, isString, ['', null])
 
-  // Validate and set jiraUrl
-  if (settings.jiraUrl !== undefined) {
-    if (settings.jiraUrl === '' || settings.jiraUrl === null) {
-      delete config.repositories[name].issues!.jiraUrl
-    } else if (typeof settings.jiraUrl === 'string') {
-      config.repositories[name].issues!.jiraUrl = settings.jiraUrl
-    }
-  }
-
-  // Validate and set githubIssuesUrl
-  if (settings.githubIssuesUrl !== undefined) {
-    if (settings.githubIssuesUrl === '' || settings.githubIssuesUrl === null) {
-      delete config.repositories[name].issues!.githubIssuesUrl
-    } else if (typeof settings.githubIssuesUrl === 'string') {
-      config.repositories[name].issues!.githubIssuesUrl = settings.githubIssuesUrl
-    }
-  }
-
-  // Clean up empty issues object
-  if (Object.keys(config.repositories[name].issues || {}).length === 0) {
+  if (Object.keys(issues).length === 0) {
     delete config.repositories[name].issues
   }
 
@@ -418,19 +300,11 @@ export function updateRepositoryBranchSettings(name: string, settings: SettingsI
     throw new Error(`Repository '${name}' not found`)
   }
 
-  config.repositories[name].branches = config.repositories[name].branches || {}
+  const branches = config.repositories[name].branches = config.repositories[name].branches || {}
 
-  // Validate and set development branch
-  if (settings.development !== undefined) {
-    if (settings.development === '' || settings.development === null) {
-      delete config.repositories[name].branches!.development
-    } else if (typeof settings.development === 'string') {
-      config.repositories[name].branches!.development = settings.development
-    }
-  }
+  applySetting(branches, 'development', settings.development, (v) => typeof v === 'string', ['', null])
 
-  // Clean up empty branches object
-  if (Object.keys(config.repositories[name].branches || {}).length === 0) {
+  if (Object.keys(branches).length === 0) {
     delete config.repositories[name].branches
   }
 
@@ -487,116 +361,6 @@ export function renameRepository(oldName: string, newName: string): Config {
   return config
 }
 
-export function saveAgent(id: string, name: string, repositories: string[], metadata?: TerminalMetadata, tsCreate?: number): Config {
-  const config = readConfig()
-  config.agents = config.agents || []
-
-  // Filter out excluded paths (Documents, Desktop, etc.)
-  const validRepositories = filterValidRepositories(repositories)
-
-  // Preserve existing tsCreate if re-saving
-  const existingAgent = config.agents.find(a => a.id === id)
-
-  // Remove existing agent with same id
-  config.agents = config.agents.filter(a => a.id !== id)
-
-  // Add new agent with complete metadata (default values merged with provided)
-  const agent: Agent = {
-    id,
-    name,
-    repositories: validRepositories,
-    tsCreate: tsCreate ?? existingAgent?.tsCreate ?? Date.now(),
-    metadata: {
-      ...createDefaultMetadata(),
-      ...metadata
-    },
-    ...(existingAgent?.splitPane ? { splitPane: existingAgent.splitPane } : {}),
-  }
-  config.agents.push(agent)
-
-  writeConfig(config)
-  return config
-}
-
-export function updateAgentMetadata(id: string, metadata: Partial<TerminalMetadata>): Config {
-  const config = readConfig()
-  config.agents = config.agents || []
-
-  const agent = config.agents.find(a => a.id === id)
-  if (agent) {
-    // Merge repositoryMetadata instead of replacing it
-    const existingRepoMetadata = agent.metadata?.repositoryMetadata || {}
-    const newRepoMetadata = metadata.repositoryMetadata || {}
-    const mergedRepoMetadata = { ...existingRepoMetadata, ...newRepoMetadata }
-
-    agent.metadata = {
-      ...agent.metadata,
-      ...metadata,
-      repositoryMetadata: Object.keys(mergedRepoMetadata).length > 0 ? mergedRepoMetadata : undefined
-    }
-    // Clean undefined values
-    Object.keys(agent.metadata).forEach(key => {
-      if (agent.metadata![key as keyof TerminalMetadata] === undefined) {
-        delete agent.metadata![key as keyof TerminalMetadata]
-      }
-    })
-    writeConfig(config)
-  }
-  return config
-}
-
-export function updateAgentRepositories(id: string, repositories: string[]): Config {
-  const config = readConfig()
-  config.agents = config.agents || []
-
-  const agent = config.agents.find(a => a.id === id)
-  if (agent) {
-    // Filter out excluded paths (Documents, Desktop, etc.)
-    agent.repositories = filterValidRepositories(repositories)
-    writeConfig(config)
-  }
-  return config
-}
-
-export function removeAgent(id: string): Config {
-  const config = readConfig()
-  if (config.agents) {
-    config.agents = config.agents.filter(a => a.id !== id)
-    writeConfig(config)
-  }
-  return config
-}
-
-export function getAgents(): Agent[] {
-  const config = readConfig()
-  // Deduplicate agents by ID (keep last occurrence)
-  const agentsMap = new Map<string, Agent>()
-  for (const agent of config.agents || []) {
-    // Migration: if agent doesn't have repositories, create empty array
-    if (!agent.repositories) {
-      agent.repositories = []
-    }
-    // Migration: ensure complete metadata structure
-    agent.metadata = {
-      ...createDefaultMetadata(),
-      ...agent.metadata
-    }
-    agentsMap.set(agent.id, agent)
-  }
-  return Array.from(agentsMap.values())
-}
-
-export function updateAgentSplitPane(id: string, pane: 'left' | 'right'): Config {
-  const config = readConfig()
-  config.agents = config.agents || []
-  const agent = config.agents.find(a => a.id === id)
-  if (agent) {
-    agent.splitPane = pane
-    writeConfig(config)
-  }
-  return config
-}
-
 export function updateSplitEnabled(enabled: boolean): Config {
   const config = readConfig()
   config.splitEnabled = enabled
@@ -611,11 +375,4 @@ export function updateSplitActive(active: boolean): Config {
   return config
 }
 
-export function clearAllAgents(): Config {
-  const config = readConfig()
-  config.agents = []
-  writeConfig(config)
-  return config
-}
-
-export { CONFIG_FILE }
+export { CONFIG_DIR, CONFIG_FILE }

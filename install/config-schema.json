@@ -18,13 +18,6 @@
         "$ref": "#/definitions/RepositoryConfig"
       }
     },
-    "agents": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Agent"
-      },
-      "description": "List of terminal agents"
-    },
     "splitEnabled": {
       "type": "boolean",
       "description": "Whether split view is enabled"
@@ -190,36 +183,6 @@
             "type": "string"
           },
           "description": "Files to copy from main repo to worktree"
-        }
-      },
-      "additionalProperties": false
-    },
-    "Agent": {
-      "type": "object",
-      "required": ["id", "name", "repositories"],
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "repositories": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "tsCreate": {
-          "type": "number"
-        },
-        "metadata": {
-          "type": "object",
-          "description": "Terminal metadata"
-        },
-        "splitPane": {
-          "type": "string",
-          "enum": ["left", "right"]
         }
       },
       "additionalProperties": false
