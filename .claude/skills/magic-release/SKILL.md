@@ -1,5 +1,5 @@
 ---
-name: release
+name: magic:release
 description: magic-slash - This skill should be used when the user says "release", "prepare release", "preparer la release", "nouvelle version", "new version", "bump version", or indicates they want to prepare a new version release.
 argument-hint: <VERSION>
 allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, AskUserQuestion
