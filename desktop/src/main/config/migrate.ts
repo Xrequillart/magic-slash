@@ -1,13 +1,11 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import * as os from 'os'
-import { readConfig, writeConfig, createDefaultMetadata } from './config'
+import { readConfig, writeConfig, CONFIG_DIR, CONFIG_FILE } from './config'
+import { writeAgents, AGENTS_FILE } from './agents'
 import { validateConfig } from './schema-validator'
 import { DEFAULT_REPOSITORY_FIELDS } from './defaults'
 import type { RepositoryConfig } from '../../types'
 
-const CONFIG_DIR = path.join(os.homedir(), '.config', 'magic-slash')
-const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
 const CONFIG_BACKUP = path.join(CONFIG_DIR, 'config.json.bak')
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -45,8 +43,39 @@ function createBackup(): boolean {
 }
 
 export function migrateConfig(appVersion?: string): boolean {
-  const config = readConfig()
   let changed = false
+
+  // Migrate agents from config.json to agents.json
+  const rawConfig = (() => {
+    try {
+      if (fs.existsSync(CONFIG_FILE)) {
+        return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
+      }
+    } catch { /* ignore */ }
+    return null
+  })()
+
+  if (rawConfig && Array.isArray(rawConfig.agents) && rawConfig.agents.length > 0 && !fs.existsSync(AGENTS_FILE)) {
+    // agents.json doesn't exist yet — migrate agents from config.json
+    writeAgents(rawConfig.agents)
+  }
+
+  if (rawConfig && 'agents' in rawConfig) {
+    // Remove agents key from config.json (whether or not we just migrated)
+    delete rawConfig.agents
+    try {
+      if (!fs.existsSync(CONFIG_DIR)) {
+        fs.mkdirSync(CONFIG_DIR, { recursive: true })
+      }
+      fs.writeFileSync(CONFIG_FILE, JSON.stringify(rawConfig, null, 2))
+    } catch (error) {
+      console.error('Error removing agents key from config.json:', error)
+    }
+    changed = true
+  }
+
+  // Read config AFTER agents migration to avoid re-introducing agents key
+  const config = readConfig()
 
   // Sync config version with app version
   if (appVersion && config.version !== appVersion) {
@@ -61,22 +90,6 @@ export function migrateConfig(appVersion?: string): boolean {
       const merged = deepMergeDefaults(DEFAULT_REPOSITORY_FIELDS as unknown as Record<string, unknown>, repo as unknown as Record<string, unknown>) as unknown as RepositoryConfig
       if (JSON.stringify(merged) !== JSON.stringify(repo)) {
         config.repositories[name] = merged
-        changed = true
-      }
-    }
-  }
-
-  // Migrate agents
-  if (config.agents && Array.isArray(config.agents)) {
-    for (const agent of config.agents) {
-      if (!agent.repositories) {
-        agent.repositories = []
-        changed = true
-      }
-      const defaultMeta = createDefaultMetadata()
-      const mergedMeta = { ...defaultMeta, ...agent.metadata }
-      if (JSON.stringify(mergedMeta) !== JSON.stringify(agent.metadata)) {
-        agent.metadata = mergedMeta
         changed = true
       }
     }

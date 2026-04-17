@@ -17,9 +17,9 @@ import {
 import {
   saveAgent,
   removeAgent,
-  getAgents,
+  readAgents,
   updateAgentSplitPane,
-} from '../config/config'
+} from '../config/agents'
 
 let getMainWindow: () => BrowserWindow | null
 let showNotification: (title: string, body: string) => void
@@ -120,7 +120,7 @@ function createTerminalCallbacks(id: string, name: string) {
 export function restoreAgents() {
   try {
     // Filter out sidebar agents (VS Code extension)
-    const agents = getAgents().filter(a => !a.id.startsWith('sidebar-'))
+    const agents = readAgents().filter(a => !a.id.startsWith('sidebar-'))
 
     // Only restore if there are no running terminals yet
     const existingTerminals = getAllTerminals()
@@ -260,7 +260,7 @@ export function setupTerminalHandlers(
     const terminal = getTerminal(id)
     if (!terminal) return null
 
-    const savedAgents = getAgents()
+    const savedAgents = readAgents()
     const savedAgent = savedAgents.find(a => a.id === id)
 
     return {
@@ -277,7 +277,7 @@ export function setupTerminalHandlers(
 
   // Get all terminals
   ipcMain.handle('terminal:getAll', async () => {
-    const savedAgents = getAgents()
+    const savedAgents = readAgents()
     const agentMap = new Map(savedAgents.map(a => [a.id, a]))
     return getAllTerminals().map(t => ({
       id: t.id,
@@ -298,15 +298,9 @@ export function setupTerminalHandlers(
     return getTerminalCwd(id)
   })
 
-  // Get saved agents
-  ipcMain.handle('terminal:getSessions', async () => {
-    return getAgents()
-  })
-
-  // Get saved agents (new API)
-  ipcMain.handle('terminal:getAgents', async () => {
-    return getAgents()
-  })
+  const handleGetAgents = async () => readAgents()
+  ipcMain.handle('terminal:getSessions', handleGetAgents) // legacy alias
+  ipcMain.handle('terminal:getAgents', handleGetAgents)
 
   // Update agent split pane assignment
   ipcMain.handle('terminal:updateSplitPane', async (_event, { id, pane }) => {

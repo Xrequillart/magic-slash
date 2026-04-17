@@ -24,7 +24,6 @@ function validConfig() {
         worktreeFiles: ['.env']
       }
     },
-    agents: [],
     splitEnabled: false,
     splitActive: false
   }
@@ -62,7 +61,7 @@ describe('validateConfig', () => {
           // No languages, commit, resolve, pullRequest, issues, branches, worktreeFiles
         }
       }
-      // No agents, splitEnabled, splitActive
+      // No splitEnabled, splitActive
     }
     const result = validateConfig(config)
     expect(result.valid).toBe(true)
@@ -181,15 +180,15 @@ describe('validateConfig', () => {
     expect(result.errors).toHaveLength(0)
   })
 
-  it('should fail for an invalid splitPane value on agent', () => {
+  it('should fail for unknown additional properties', () => {
     const config = {
       version: '1.0.0',
       repositories: { 'test': { path: '/a', keywords: ['k'] } },
-      agents: [{ id: '1', name: 'agent1', repositories: [], splitPane: 'center' }]
+      agents: [{ id: '1', name: 'agent1', repositories: [] }]
     }
     const result = validateConfig(config)
     expect(result.valid).toBe(false)
-    expect(result.errors.some(e => e.includes('splitPane'))).toBe(true)
+    expect(result.errors.some(e => e.includes('unknown property') && e.includes('agents'))).toBe(true)
   })
 })
 

@@ -3,13 +3,11 @@ import * as os from 'os'
 import * as fs from 'fs'
 import * as path from 'path'
 import { execSync, execFileSync } from 'child_process'
-import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata } from '../config/config'
+import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
 import { expandPath } from '../config/validation'
 import { getCommonPaths } from '../utils/paths'
-import type { TerminalMetadata } from '../../types'
-export type { TerminalMetadata }
-
-export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
+import type { TerminalMetadata, TerminalState } from '../../types'
+export type { TerminalMetadata, TerminalState }
 
 const DEFAULT_PTY_ROWS = 40
 
@@ -597,24 +595,12 @@ export function launchClaude(
   return terminal
 }
 
-// Update terminal metadata from hook callback
 export function updateTerminalMetadataFromHook(terminalId: string, metadata: Partial<TerminalMetadata>) {
   const terminal = terminals.get(terminalId)
   if (!terminal) return
 
-  // Merge repositoryMetadata instead of replacing it
-  const existingRepoMetadata = terminal.metadata.repositoryMetadata || {}
-  const newRepoMetadata = metadata.repositoryMetadata || {}
-  const mergedRepoMetadata = { ...existingRepoMetadata, ...newRepoMetadata }
+  terminal.metadata = mergeMetadata(terminal.metadata, metadata)
 
-  // Merge new metadata with existing
-  terminal.metadata = {
-    ...terminal.metadata,
-    ...metadata,
-    repositoryMetadata: Object.keys(mergedRepoMetadata).length > 0 ? mergedRepoMetadata : undefined
-  }
-
-  // Persist metadata to disk
   try {
     updateAgentMetadata(terminalId, metadata)
   } catch (e) {
@@ -624,12 +610,6 @@ export function updateTerminalMetadataFromHook(terminalId: string, metadata: Par
   if (terminal.onMetadataChange) {
     terminal.onMetadataChange(terminal.metadata)
   }
-}
-
-// Get terminal metadata
-export function getTerminalMetadata(id: string): TerminalMetadata | null {
-  const terminal = terminals.get(id)
-  return terminal ? terminal.metadata : null
 }
 
 // Update terminal repositories from hook callback
@@ -651,8 +631,3 @@ export function updateTerminalRepositoriesFromHook(terminalId: string, repositor
   }
 }
 
-// Get terminal repositories
-export function getTerminalRepositories(id: string): string[] | null {
-  const terminal = terminals.get(id)
-  return terminal ? terminal.repositories : null
-}

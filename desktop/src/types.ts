@@ -77,7 +77,6 @@ export interface Agent {
 export interface Config {
   version: string
   repositories: Record<string, RepositoryConfig>
-  agents?: Agent[]
   splitEnabled?: boolean
   splitActive?: boolean
   autoStartAtLogin?: boolean
