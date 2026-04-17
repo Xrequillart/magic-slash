@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.39.6] - 2026-04-17
+
+### Added
+
+- **Docs**: Add magic:audit skill for pre-release documentation validation
+- **Docs**: Add Quick Launch and Menu Bar sections to desktop page
+
+### Changed
+
+- **Docs**: Add menu bar integration card to documentation page
+
 ## [0.39.5] - 2026-04-17
 
 ### Changed
@@ -1126,6 +1137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.39.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.39.6
 [0.39.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.39.5
 [0.39.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.39.4
 [0.39.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.39.3
