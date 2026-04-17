@@ -28,6 +28,13 @@ export function QuickLaunch() {
 
   useEffect(() => {
     inputRef.current?.focus()
+    const handleFocus = () => {
+      setInput('')
+      setSelectedIndex(0)
+      inputRef.current?.focus()
+    }
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
   }, [])
 
   useEffect(() => {
