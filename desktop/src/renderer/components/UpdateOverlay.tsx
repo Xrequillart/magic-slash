@@ -300,8 +300,8 @@ export function UpdateOverlay() {
       {showConfetti && (
         <canvas ref={confettiRef} className="absolute inset-0 w-full h-full pointer-events-none z-[101]" />
       )}
-      <div className={`bg-bg-secondary/90 border border-border/50 rounded-2xl shadow-2xl w-80 h-52 flex items-center justify-center ${showConfetti ? 'animate-tada' : ''}`}>
-        <div className="flex flex-col items-center gap-6 px-12">
+      <div className={`bg-bg-secondary/90 border border-border/50 rounded-2xl shadow-2xl w-80 py-10 flex items-center justify-center ${showConfetti ? 'animate-tada' : ''}`}>
+        <div className="flex flex-col items-center gap-5 px-10">
           {/* Icon */}
           <div className="w-16 h-16 flex items-center justify-center">
             {status.type === 'checking' && (
@@ -339,7 +339,26 @@ export function UpdateOverlay() {
               </>
             )}
             {status.type === 'downloaded' && (
-              <p className="text-[#393BFF] text-lg">Restarting...</p>
+              <>
+                <p className="text-[#393BFF] text-lg mb-4">Update ready!</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setVisible(false)
+                      setShowConfetti(false)
+                    }}
+                    className="px-4 py-1.5 rounded-lg text-sm text-text-secondary hover:text-white border border-border/50 hover:border-border transition-colors"
+                  >
+                    Later
+                  </button>
+                  <button
+                    onClick={() => window.electronAPI.updater.install()}
+                    className="px-4 py-1.5 rounded-lg text-sm text-white bg-[#393BFF] hover:bg-[#393BFF]/80 transition-colors"
+                  >
+                    Restart now
+                  </button>
+                </div>
+              </>
             )}
             {status.type === 'error' && (
               <p className="text-red text-sm">

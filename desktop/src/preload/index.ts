@@ -301,6 +301,7 @@ export type UpdateStatus =
 // Updater API
 const updaterApi = {
   check: () => ipcRenderer.invoke('updater:check'),
+  install: () => ipcRenderer.invoke('updater:install'),
   getVersion: (): Promise<string> => ipcRenderer.invoke('updater:getVersion'),
   getPendingWhatsNew: (): Promise<{ version: string; releaseNotes: string } | null> =>
     ipcRenderer.invoke('updater:getPendingWhatsNew'),
