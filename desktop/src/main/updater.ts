@@ -57,10 +57,6 @@ let currentPhase: 'check' | 'download' | 'install' = 'check'
 let mainWindow: BrowserWindow | null = null
 let currentStatus: UpdateStatus = { type: 'not-available' }
 let statusListeners: Array<(status: UpdateStatus) => void> = []
-let periodicCheckTimer: ReturnType<typeof setInterval> | null = null
-
-const PERIODIC_CHECK_INTERVAL = 5 * 60 * 1000 // 5 minutes
-
 function sendStatus(status: UpdateStatus) {
   currentStatus = status
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -208,22 +204,3 @@ export async function installUpdate(): Promise<void> {
   }
 }
 
-export function startPeriodicUpdateCheck(): void {
-  if (periodicCheckTimer || process.env.VITE_DEV_SERVER_URL) return
-
-  periodicCheckTimer = setInterval(async () => {
-    if (currentStatus.type === 'downloaded' || currentStatus.type === 'downloading') return
-    try {
-      await autoUpdater.checkForUpdates()
-    } catch (err) {
-      console.error('[Updater] Periodic check failed:', err)
-    }
-  }, PERIODIC_CHECK_INTERVAL)
-}
-
-export function stopPeriodicUpdateCheck(): void {
-  if (periodicCheckTimer) {
-    clearInterval(periodicCheckTimer)
-    periodicCheckTimer = null
-  }
-}
