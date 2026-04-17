@@ -1262,6 +1262,136 @@
             margin: 0;
         }
 
+        /* ── 10. Quick Launch — dark indigo ── */
+        .dsk-quicklaunch {
+            padding-top: 14rem;
+            padding-bottom: 14rem;
+            background:
+                radial-gradient(rgba(99, 102, 241, 0.08) 1px, transparent 1px),
+                #D9E8FF;
+            background-size: 20px 20px;
+        }
+        .dsk-quicklaunch .dsk-section-title { color: #000; }
+        .dsk-quicklaunch .dsk-section-desc { color: rgba(0, 0, 0, 0.55); }
+        .dsk-quicklaunch .dsk-section-visual {
+            background: none;
+            border: none;
+            width: 420px;
+            height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dsk-spotlight {
+            width: 100%;
+            background: rgba(30, 30, 40, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+            font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .dsk-spotlight-input {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 18px;
+        }
+        .dsk-spotlight-input svg {
+            width: 20px;
+            height: 20px;
+            color: rgba(255, 255, 255, 0.3);
+            flex-shrink: 0;
+        }
+        .dsk-spotlight-text {
+            font-size: 0.95rem;
+            color: #fff;
+            white-space: nowrap;
+            position: relative;
+            min-height: 1.3em;
+        }
+        .dsk-spotlight-text::after {
+            content: '';
+            display: inline-block;
+            width: 2px;
+            height: 1.1em;
+            background: #6366f1;
+            vertical-align: text-bottom;
+            margin-left: 1px;
+            animation: spotlight-blink 0.8s step-end infinite;
+        }
+        .dsk-spotlight-kbd {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .dsk-spotlight-kbd kbd {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 5px;
+            padding: 2px 6px;
+            line-height: 1.4;
+        }
+        .dsk-spotlight-hint {
+            padding: 0 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transform: translateY(-4px);
+            transition: opacity 0.3s ease, transform 0.3s ease, max-height 0.3s ease, padding 0.3s ease;
+        }
+        .dsk-spotlight-hint.visible {
+            opacity: 1;
+            max-height: 60px;
+            padding: 10px 18px;
+            transform: translateY(0);
+        }
+        .dsk-spotlight-hint-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 7px;
+            background: rgba(99, 102, 241, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .dsk-spotlight-hint-icon svg {
+            width: 14px;
+            height: 14px;
+            color: #818cf8;
+        }
+        .dsk-spotlight-hint-label {
+            font-size: 0.78rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .dsk-spotlight-hint-label strong {
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 600;
+        }
+
+        @keyframes spotlight-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* ── 11. Tray — soft gray ── */
+        .dsk-tray {
+            background: linear-gradient(to bottom, #D9E8FF, #C0D4F5);
+        }
+        .dsk-tray .dsk-section-title { color: #000; }
+        .dsk-tray .dsk-section-desc { color: rgba(0, 0, 0, 0.55); }
+
         /* ── Responsive ── */
         @media (max-width: 768px) {
             .dsk-hero { padding: 8rem 1.5rem 3rem; }
@@ -2242,6 +2372,40 @@
         </div>
     </section>
 
+    <!-- ── Quick Launch — content left + visual right ── -->
+    <section class="dsk-section dsk-quicklaunch">
+        <div class="dsk-section-inner">
+            <div class="dsk-section-content">
+                <h2 class="dsk-section-title" data-i18n="desktopApp.feat10Title">Quick Launch</h2>
+                <p class="dsk-section-desc" data-i18n="desktopApp.feat10Desc">Hit &#8963;Space to open a Spotlight-style command palette. Search agents, dispatch skills, or jump to any repository &mdash; all without leaving the keyboard. The input resets on each open so you're always starting fresh.</p>
+            </div>
+            <div class="dsk-section-visual">
+                <div class="dsk-spotlight">
+                    <div class="dsk-spotlight-input">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <span class="dsk-spotlight-text" id="spotlight-typed"></span>
+                    </div>
+                    <div class="dsk-spotlight-hint">
+                        <div class="dsk-spotlight-hint-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        </div>
+                        <span class="dsk-spotlight-hint-label"><strong>/magic:start</strong> &mdash; Start a task from a ticket</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Tray integration — dark, visual left + content right ── -->
+    <section class="dsk-section dsk-tray">
+        <div class="dsk-section-inner" style="flex-direction:column;text-align:center;">
+            <div class="dsk-section-content" style="align-items:center;">
+                <h2 class="dsk-section-title" data-i18n="desktopApp.feat11Title">Menu bar integration</h2>
+                <p class="dsk-section-desc" style="max-width:600px;" data-i18n="desktopApp.feat11Desc">magic-slash lives in your macOS menu bar. A lightweight popover gives you a quick overview of running agents and their status without bringing the full window to the foreground. Click to expand, or let it stay quietly in the tray.</p>
+            </div>
+        </div>
+    </section>
+
     <!-- ── CTA ── -->
     <section class="cta-section">
         <div class="cta-inner">
@@ -2314,7 +2478,7 @@
     <script src="script.js"></script>
     <script>
         (function() {
-            var sections = ['.dsk-split', '.dsk-tracking', '.dsk-notifs', '.dsk-context', '.dsk-budget'];
+            var sections = ['.dsk-split', '.dsk-tracking', '.dsk-notifs', '.dsk-context', '.dsk-budget', '.dsk-quicklaunch'];
             sections.forEach(function(sel) {
                 var section = document.querySelector(sel);
                 if (!section) return;
@@ -2329,6 +2493,58 @@
                 }, { threshold: 0.3 });
                 observer.observe(section);
             });
+        })();
+
+        (function() {
+            var text = '/magic:start PROJ-123';
+            var el = document.getElementById('spotlight-typed');
+            if (!el) return;
+            var section = document.querySelector('.dsk-quicklaunch');
+            var hint = section.querySelector('.dsk-spotlight-hint');
+            var charIndex = 0;
+            var timer = null;
+            var pauseTimer = null;
+
+            function type() {
+                if (charIndex <= text.length) {
+                    el.textContent = text.slice(0, charIndex);
+                    if (charIndex === 1 && hint) hint.classList.add('visible');
+                    charIndex++;
+                    var delay = 60 + Math.random() * 60;
+                    timer = setTimeout(type, delay);
+                } else {
+                    pauseTimer = setTimeout(reset, 2400);
+                }
+            }
+
+            function reset() {
+                charIndex = 0;
+                el.textContent = '';
+                if (hint) hint.classList.remove('visible');
+                pauseTimer = setTimeout(type, 800);
+            }
+
+            function stop() {
+                clearTimeout(timer);
+                clearTimeout(pauseTimer);
+                timer = null;
+                pauseTimer = null;
+                charIndex = 0;
+                el.textContent = '';
+                if (hint) hint.classList.remove('visible');
+            }
+
+            var obs = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        stop();
+                        pauseTimer = setTimeout(type, 500);
+                    } else {
+                        stop();
+                    }
+                });
+            }, { threshold: 0.3 });
+            obs.observe(section);
         })();
     </script>
 </body>

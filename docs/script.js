@@ -125,6 +125,10 @@ var i18n = {
         'desktopApp.feat8Desc': 'Per-repo commit style, language, PR templates, and worktree config. One team, ten repos, ten conventions.',
         'desktopApp.feat9Title': 'Real-time notifications',
         'desktopApp.feat9Desc': 'When an agent finishes a task, hits an error, or needs your input, you get a native macOS notification instantly. No need to watch the screen or poll for updates — just keep working and let the app tell you when something needs your attention.',
+        'desktopApp.feat10Title': 'Quick Launch',
+        'desktopApp.feat10Desc': 'Hit ⌃Space to open a Spotlight-style command palette. Search agents, dispatch skills, or jump to any repository — all without leaving the keyboard. The input resets on each open so you\'re always starting fresh.',
+        'desktopApp.feat11Title': 'Menu bar integration',
+        'desktopApp.feat11Desc': 'magic-slash lives in your macOS menu bar. A lightweight popover gives you a quick overview of running agents and their status without bringing the full window to the foreground. Click to expand, or let it stay quietly in the tray.',
         // Parallel Agents
         'parallel.title': '12 agents. 12 tasks. Zero wait.',
         'parallel.p1': 'Run up to 12 agents in parallel, each working on its own ticket in its own worktree. Start a feature, fix a bug, and refactor an endpoint — all at the same time.',
@@ -400,6 +404,10 @@ var i18n = {
         'desktopApp.feat8Desc': 'Style de commit, langue, templates PR et config worktree par repo. Une équipe, dix repos, dix conventions.',
         'desktopApp.feat9Title': 'Notifications en temps réel',
         'desktopApp.feat9Desc': 'Quand un agent termine une tâche, rencontre une erreur ou attend votre intervention, vous recevez une notification macOS native instantanément. Pas besoin de surveiller l\u2019écran — continuez à travailler et laissez l\u2019app vous prévenir quand quelque chose requiert votre attention.',
+        'desktopApp.feat10Title': 'Quick Launch',
+        'desktopApp.feat10Desc': 'Appuyez sur ⌃Espace pour ouvrir une palette de commandes style Spotlight. Recherchez des agents, lancez des skills ou naviguez vers n\u2019importe quel repo — sans quitter le clavier. Le champ se réinitialise à chaque ouverture.',
+        'desktopApp.feat11Title': 'Intégration barre de menus',
+        'desktopApp.feat11Desc': 'magic-slash vit dans votre barre de menus macOS. Un popover léger vous donne un aperçu rapide des agents en cours et de leur statut sans afficher la fenêtre principale. Cliquez pour agrandir, ou laissez-le tranquille dans le tray.',
         // Parallel Agents
         'parallel.title': '12 agents. 12 tâches. Zéro attente.',
         'parallel.p1': 'Lancez jusqu\'à 12 agents en parallèle, chacun sur son propre ticket dans son propre worktree. Démarrez une feature, corrigez un bug et refactorez un endpoint — en même temps.',
