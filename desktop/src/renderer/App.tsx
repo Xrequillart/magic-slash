@@ -134,12 +134,12 @@ export function App() {
       const firstRepo = Object.values(repos)[0]
       const cwd = firstRepo?.path || '~/Documents'
 
-      // Launch a new agent and send the exact prompt as typed
-      const terminal = await launchClaudeTerminal(prompt, cwd)
+      // Name the agent "Claude N" like Cmd+N does
+      const count = store.terminals.length + 1
+      const agentName = `Claude ${count}`
 
-      setTimeout(() => {
-        window.electronAPI.terminal.write(terminal.id, prompt + '\n')
-      }, 2000)
+      // Launch agent with the prompt passed directly as a CLI argument
+      await launchClaudeTerminal(agentName, cwd, prompt)
     })
     return () => { unsubscribe() }
   }, [launchClaudeTerminal])

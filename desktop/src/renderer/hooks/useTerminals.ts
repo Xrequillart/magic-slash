@@ -145,9 +145,9 @@ export function useTerminals() {
     loadExistingTerminals()
   }, [])
 
-  const launchClaudeTerminal = useCallback(async (name: string, cwd: string) => {
+  const launchClaudeTerminal = useCallback(async (name: string, cwd: string, initialPrompt?: string) => {
     const id = `claude-${Date.now()}`
-    const result = await window.electronAPI.terminal.launchClaude(id, name, cwd)
+    const result = await window.electronAPI.terminal.launchClaude(id, name, cwd, initialPrompt)
 
     const terminalInfo: TerminalInfo = {
       id: result.id,

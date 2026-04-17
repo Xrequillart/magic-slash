@@ -199,7 +199,7 @@ export function setupTerminalHandlers(
   })
 
   // Launch Claude in a new terminal
-  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd }) => {
+  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd, initialPrompt }) => {
     if (typeof id !== 'string' || typeof name !== 'string') {
       throw new Error('terminal:launchClaude requires id (string) and name (string)')
     }
@@ -214,7 +214,9 @@ export function setupTerminalHandlers(
       callbacks.onBranchChange,
       callbacks.onMetadataChange,
       undefined,
-      callbacks.onRepositoriesChange
+      callbacks.onRepositoriesChange,
+      undefined,
+      typeof initialPrompt === 'string' ? initialPrompt : undefined
     )
 
     // Save agent to disk immediately

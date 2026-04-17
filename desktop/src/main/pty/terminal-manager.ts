@@ -413,7 +413,8 @@ export function launchClaude(
   onMetadataChange?: (metadata: TerminalMetadata) => void,
   initialMetadata?: TerminalMetadata,
   onRepositoriesChange?: (repositories: string[]) => void,
-  initialRepositories?: string[]
+  initialRepositories?: string[],
+  initialPrompt?: string
 ): Terminal {
   const shell = getDefaultShell()
   const expandedCwd = expandPath(cwd)
@@ -423,9 +424,16 @@ export function launchClaude(
   // Track when PTY process started for stable-run detection
   let ptyStartTime = Date.now()
 
+  // Only pass the prompt as a CLI arg on first spawn, not on restarts
+  let pendingPrompt = initialPrompt || null
+
   // Function to create and attach a new PTY process
   const createPtyProcess = (currentCwd: string, cols: number = 120, rows: number = DEFAULT_PTY_ROWS) => {
-    const ptyProcess = pty.spawn(shell, ['-li', '-c', 'claude'], {
+    const claudeCmd = pendingPrompt
+      ? `claude ${JSON.stringify(pendingPrompt)}`
+      : 'claude'
+    pendingPrompt = null
+    const ptyProcess = pty.spawn(shell, ['-li', '-c', claudeCmd], {
       name: 'xterm-256color',
       cols,
       rows,

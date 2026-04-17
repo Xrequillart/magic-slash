@@ -106,8 +106,8 @@ const terminalApi = {
   create: (id: string, name: string, cwd: string) =>
     ipcRenderer.invoke('terminal:create', { id, name, cwd }),
 
-  launchClaude: (id: string, name: string, cwd: string) =>
-    ipcRenderer.invoke('terminal:launchClaude', { id, name, cwd }),
+  launchClaude: (id: string, name: string, cwd: string, initialPrompt?: string) =>
+    ipcRenderer.invoke('terminal:launchClaude', { id, name, cwd, initialPrompt }),
 
   write: (id: string, data: string) =>
     ipcRenderer.invoke('terminal:write', { id, data }),
