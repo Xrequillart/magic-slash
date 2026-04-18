@@ -51,12 +51,14 @@ export function HistoryPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 pb-6">
+    <div className="h-full flex flex-col">
+      <div className="flex-1 overflow-auto p-6">
+    <div className="flex flex-col gap-10 animate-fade-in max-w-[62rem] mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Clock className="w-5 h-5 text-text-secondary" />
-          <h2 className="text-lg font-semibold text-white">History</h2>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">History</h1>
+          <p className="text-sm text-text-secondary mt-1">Track your agents' activity across all repositories.</p>
         </div>
         {!showConfirm ? (
           <button
@@ -134,6 +136,8 @@ export function HistoryPage() {
           </div>
         </div>
       ))}
+    </div>
+      </div>
     </div>
   )
 }
