@@ -93,6 +93,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateLaunchMode = useCallback(async (mode: string) => {
+    const result = await window.electronAPI.config.updateLaunchMode(mode)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const validatePath = useCallback(async (path: string) => {
     return window.electronAPI.config.validatePath(path)
   }, [])
@@ -127,6 +133,7 @@ export function useConfig() {
     updateRepositoryWorktreeFilesSettings,
     updateSplitEnabled,
     updateSpotlight,
+    updateLaunchMode,
     validatePath,
     getPRTemplate,
     createPRTemplate,

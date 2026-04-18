@@ -65,6 +65,11 @@
       },
       "additionalProperties": false,
       "description": "Spotlight (Quick Launch) global shortcut settings"
+    },
+    "launchMode": {
+      "type": "string",
+      "enum": ["plan", "default", "acceptEdits", "auto", "bypassPermissions"],
+      "description": "Permission mode for Claude Code agents"
     }
   },
   "additionalProperties": false,

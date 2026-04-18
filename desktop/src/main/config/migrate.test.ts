@@ -103,6 +103,7 @@ describe('migrateConfig — agents migration', () => {
       'Control+Space', 'Control+Shift+Space', 'Alt+Space', 'Alt+Shift+Space',
       'Control+M', 'Control+Shift+M', 'Alt+M', 'Alt+Shift+M',
     ]
+    const VALID_LAUNCH_MODES = ['plan', 'default', 'acceptEdits', 'auto', 'bypassPermissions']
     const mockDefaultSpotlight = { enabled: true, shortcut: 'Control+Space' }
     vi.doMock('./defaults', () => ({
       DEFAULT_REPOSITORY_FIELDS: {
@@ -129,6 +130,8 @@ describe('migrateConfig — agents migration', () => {
           typeof record.shortcut === 'string' &&
           VALID_SHORTCUTS.includes(record.shortcut)
       },
+      isValidLaunchMode: (value: unknown) =>
+        typeof value === 'string' && VALID_LAUNCH_MODES.includes(value),
     }))
 
     vi.resetModules()
@@ -219,5 +222,118 @@ describe('migrateConfig — agents migration', () => {
 
     // agents.json should NOT be created (not a valid array)
     expect(fs.existsSync(agentsFile)).toBe(false)
+  })
+})
+
+describe('migrateConfig — launchMode sanitization', () => {
+  let migrateConfig: typeof import('./migrate').migrateConfig
+
+  beforeEach(async () => {
+    vi.doMock('./config', () => ({
+      CONFIG_DIR: tmpDir,
+      CONFIG_FILE: configFile,
+      readConfig: () => {
+        try {
+          return JSON.parse(fs.readFileSync(configFile, 'utf8'))
+        } catch {
+          return { version: 'unknown', repositories: {}, splitEnabled: false, splitActive: false }
+        }
+      },
+      writeConfig: (config: unknown) => {
+        fs.writeFileSync(configFile, JSON.stringify(config, null, 2))
+      },
+      filterValidRepositories: (repos: string[]) => repos,
+    }))
+
+    vi.doMock('./agents', () => ({
+      writeAgents: (agents: unknown[]) => {
+        fs.writeFileSync(agentsFile, JSON.stringify(agents, null, 2))
+      },
+      AGENTS_FILE: agentsFile,
+    }))
+
+    vi.doMock('./schema-validator', () => ({
+      validateConfig: () => ({ valid: true, errors: [] }),
+      hasCriticalErrors: () => false,
+    }))
+
+    const VALID_SHORTCUTS = [
+      'Control+Space', 'Control+Shift+Space', 'Alt+Space', 'Alt+Shift+Space',
+      'Control+M', 'Control+Shift+M', 'Alt+M', 'Alt+Shift+M',
+    ]
+    const VALID_LAUNCH_MODES = ['plan', 'default', 'acceptEdits', 'auto', 'bypassPermissions']
+    const mockDefaultSpotlight = { enabled: true, shortcut: 'Control+Space' }
+    vi.doMock('./defaults', () => ({
+      DEFAULT_REPOSITORY_FIELDS: {
+        color: '#3B82F6',
+        languages: { commit: 'en', pullRequest: 'en', jiraComment: 'en', discussion: 'en' },
+        commit: { style: 'single-line', format: 'angular', coAuthor: true, includeTicketId: true },
+        resolve: {
+          commitMode: 'new', format: 'angular', style: 'single-line',
+          useCommitConfig: true, replyToComments: true, replyLanguage: 'en',
+        },
+        pullRequest: { autoLinkTickets: true },
+        issues: { commentOnPR: true, jiraUrl: '', githubIssuesUrl: '' },
+        branches: { development: '' },
+        worktreeFiles: [],
+      },
+      DEFAULT_SPOTLIGHT: mockDefaultSpotlight,
+      VALID_SPOTLIGHT_SHORTCUTS: VALID_SHORTCUTS,
+      isValidSpotlightShortcut: (value: unknown) =>
+        typeof value === 'string' && VALID_SHORTCUTS.includes(value),
+      isValidSpotlightConfig: (obj: unknown) => {
+        if (typeof obj !== 'object' || obj === null) return false
+        const record = obj as Record<string, unknown>
+        return typeof record.enabled === 'boolean' &&
+          typeof record.shortcut === 'string' &&
+          VALID_SHORTCUTS.includes(record.shortcut)
+      },
+      isValidLaunchMode: (value: unknown) =>
+        typeof value === 'string' && VALID_LAUNCH_MODES.includes(value),
+    }))
+
+    vi.resetModules()
+    const mod = await import('./migrate')
+    migrateConfig = mod.migrateConfig
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should reset an invalid launchMode to undefined', () => {
+    writeConfigFile(minimalConfig({ launchMode: 'turbo' }))
+
+    migrateConfig('1.0.0')
+
+    const config = readConfigFile() as Record<string, unknown>
+    expect(config).not.toHaveProperty('launchMode')
+  })
+
+  it('should preserve a valid launchMode during migration', () => {
+    writeConfigFile(minimalConfig({ launchMode: 'auto' }))
+
+    migrateConfig('1.0.0')
+
+    const config = readConfigFile() as Record<string, unknown>
+    expect(config.launchMode).toBe('auto')
+  })
+
+  it('should not add launchMode when it is absent from config', () => {
+    writeConfigFile(minimalConfig())
+
+    migrateConfig('1.0.0')
+
+    const config = readConfigFile() as Record<string, unknown>
+    expect(config).not.toHaveProperty('launchMode')
+  })
+
+  it('should reset launchMode when it is a non-string value', () => {
+    writeConfigFile(minimalConfig({ launchMode: 123 }))
+
+    migrateConfig('1.0.0')
+
+    const config = readConfigFile() as Record<string, unknown>
+    expect(config).not.toHaveProperty('launchMode')
   })
 })
