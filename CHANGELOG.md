@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.41.0] - 2026-04-18
+
+### Added
+
+- **Desktop**: Add history page with daily agent activity timeline
+
 ## [0.40.0] - 2026-04-18
 
 ### Added
@@ -1155,6 +1161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.41.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.41.0
 [0.40.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.40.0
 [0.39.8]: https://github.com/xrequillart/magic-slash/releases/tag/v0.39.8
 [0.39.7]: https://github.com/xrequillart/magic-slash/releases/tag/v0.39.7
