@@ -389,6 +389,7 @@ export function Sidebar() {
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const shortcutKey = isMac ? '⌘N' : 'Ctrl+N'
   const skillsShortcutKey = isMac ? '⌘;' : 'Ctrl+;'
+  const historyShortcutKey = isMac ? '⌘H' : 'Ctrl+H'
   const settingsShortcutKey = isMac ? '⌘,' : 'Ctrl+,'
 
   // Listen for Command+; keyboard shortcut to open skills
@@ -397,6 +398,20 @@ export function Sidebar() {
       if ((e.metaKey || e.ctrlKey) && e.key === ';') {
         e.preventDefault()
         setCurrentPage('skills')
+        setActiveTerminal(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [setCurrentPage, setActiveTerminal])
+
+  // Listen for Command+H keyboard shortcut to open history
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
+        e.preventDefault()
+        setCurrentPage('history')
         setActiveTerminal(null)
       }
     }
@@ -462,6 +477,23 @@ export function Sidebar() {
           <Sparkles className="w-4 h-4" />
           <span>Skills</span>
           <span className="ml-auto text-xs opacity-50">{skillsShortcutKey}</span>
+        </button>
+
+        {/* History button */}
+        <button
+          onClick={() => {
+            setCurrentPage('history')
+            setActiveTerminal(null)
+          }}
+          className={`w-full flex items-center justify-center gap-2 px-2.5 py-2.5 text-sm font-medium rounded-lg transition-all ${
+            currentPage === 'history'
+              ? 'bg-white/10 text-white'
+              : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>History</span>
+          <span className="ml-auto text-xs opacity-50">{historyShortcutKey}</span>
         </button>
 
         {/* Settings button */}

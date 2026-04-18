@@ -27,7 +27,7 @@ interface AppState {
   rightPaneTerminalIds: string[]
 
   // UI
-  currentPage: 'config' | 'terminals' | 'skills'
+  currentPage: 'config' | 'terminals' | 'skills' | 'history'
   rightSidebar: 'info' | null
   leftSidebarVisible: boolean
   iconSidebarVisible: boolean
@@ -61,7 +61,7 @@ interface AppState {
   toggleSplitActive: () => void
   moveTerminalToPane: (id: string, pane: 'left' | 'right') => void
 
-  setCurrentPage: (page: 'config' | 'terminals' | 'skills') => void
+  setCurrentPage: (page: 'config' | 'terminals' | 'skills' | 'history') => void
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void
   toggleLeftSidebar: () => void

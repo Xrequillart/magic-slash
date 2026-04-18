@@ -121,6 +121,19 @@ export interface CommandHistoryEntry {
   count: number  // Usage frequency
 }
 
+export type HistoryAction = 'started' | 'committed' | 'pr_created' | 'review' | 'merged' | 'done'
+
+export interface HistoryEntry {
+  id: string
+  agentId: string
+  agentName: string
+  action: HistoryAction
+  ticketId?: string
+  description?: string
+  repositories: string[]
+  timestamp: number
+}
+
 export type ScriptCategory = 'dev' | 'build' | 'test' | 'lint' | 'other'
 export type PackageManager = 'npm' | 'yarn' | 'pnpm' | 'bun'
 

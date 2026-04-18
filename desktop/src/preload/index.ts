@@ -213,6 +213,14 @@ const historyApi = {
     ipcRenderer.invoke('history:getLast', { repoPath }),
 }
 
+// Activity History API
+const activityHistoryApi = {
+  getAll: () => ipcRenderer.invoke('activityHistory:getAll'),
+  add: (params: { agentId: string; agentName: string; action: string; ticketId?: string; description?: string; repositories: string[] }) =>
+    ipcRenderer.invoke('activityHistory:add', params),
+  clear: () => ipcRenderer.invoke('activityHistory:clear'),
+}
+
 // Window API
 const windowApi = {
   minimize: () => ipcRenderer.invoke('window:minimize'),
@@ -323,6 +331,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   config: configApi,
   terminal: terminalApi,
   history: historyApi,
+  activityHistory: activityHistoryApi,
   window: windowApi,
   dialog: dialogApi,
   shell: shellApi,
@@ -340,6 +349,7 @@ declare global {
       config: typeof configApi
       terminal: typeof terminalApi
       history: typeof historyApi
+      activityHistory: typeof activityHistoryApi
       window: typeof windowApi
       dialog: typeof dialogApi
       shell: typeof shellApi
