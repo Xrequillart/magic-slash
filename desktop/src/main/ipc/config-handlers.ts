@@ -16,10 +16,11 @@ import {
   updateRepositoryWorktreeFilesSettings,
   updateSplitEnabled,
   updateSplitActive,
+  updateLaunchMode,
 } from '../config/config'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { repairConfig } from '../config/migrate'
-import { isValidSpotlightShortcut } from '../config/defaults'
+import { isValidSpotlightShortcut, isValidLaunchMode } from '../config/defaults'
 import { validateConfig } from '../config/schema-validator'
 import {
   validateRepoName,
@@ -177,6 +178,14 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
     writeConfig(config)
     const result = reRegisterSpotlightShortcut()
     return { config, registered: result.registered }
+  })
+
+  ipcMain.handle('config:updateLaunchMode', async (_event, { mode }: { mode: string }) => {
+    if (!isValidLaunchMode(mode)) {
+      throw new Error(`Invalid launch mode: '${mode}'. Must be one of: plan, default, acceptEdits, auto, bypassPermissions.`)
+    }
+    const config = updateLaunchMode(mode)
+    return { config }
   })
 
   // Validate path

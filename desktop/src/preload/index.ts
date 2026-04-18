@@ -57,6 +57,9 @@ const configApi = {
   updateSpotlight: (spotlight: { enabled: boolean; shortcut: string }) =>
     ipcRenderer.invoke('config:updateSpotlight', spotlight),
 
+  updateLaunchMode: (mode: string) =>
+    ipcRenderer.invoke('config:updateLaunchMode', { mode }),
+
   repair: (): Promise<{ repaired: boolean; fixes: string[] }> =>
     ipcRenderer.invoke('config:repair'),
 

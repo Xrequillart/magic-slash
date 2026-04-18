@@ -1,4 +1,4 @@
-import type { RepositoryConfig, SpotlightConfig, SpotlightShortcut } from '../../types'
+import type { RepositoryConfig, SpotlightConfig, SpotlightShortcut, LaunchMode } from '../../types'
 
 export const VALID_SPOTLIGHT_SHORTCUTS: readonly SpotlightShortcut[] = [
   'Control+Space',
@@ -22,6 +22,18 @@ export function isValidSpotlightConfig(obj: unknown): obj is SpotlightConfig {
 }
 
 export const DEFAULT_SPOTLIGHT: SpotlightConfig = { enabled: true, shortcut: 'Control+Space' }
+
+const VALID_LAUNCH_MODES: readonly LaunchMode[] = [
+  'plan',
+  'default',
+  'acceptEdits',
+  'auto',
+  'bypassPermissions',
+] as const
+
+export function isValidLaunchMode(value: unknown): value is LaunchMode {
+  return typeof value === 'string' && (VALID_LAUNCH_MODES as readonly string[]).includes(value)
+}
 
 export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keywords'> = {
   color: '#3B82F6',

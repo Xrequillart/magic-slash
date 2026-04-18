@@ -190,6 +190,49 @@ describe('validateConfig', () => {
     expect(result.valid).toBe(false)
     expect(result.errors.some(e => e.includes('unknown property') && e.includes('agents'))).toBe(true)
   })
+
+  // --- launchMode tests ---
+
+  it('should pass for a valid launchMode', () => {
+    const config = {
+      ...validConfig(),
+      launchMode: 'auto'
+    }
+    const result = validateConfig(config)
+    expect(result.valid).toBe(true)
+    expect(result.errors).toHaveLength(0)
+  })
+
+  it('should pass for each valid launchMode value', () => {
+    for (const mode of ['plan', 'default', 'acceptEdits', 'auto', 'bypassPermissions']) {
+      const config = {
+        ...validConfig(),
+        launchMode: mode
+      }
+      const result = validateConfig(config)
+      expect(result.valid).toBe(true)
+      expect(result.errors).toHaveLength(0)
+    }
+  })
+
+  it('should fail for an invalid launchMode value', () => {
+    const config = {
+      ...validConfig(),
+      launchMode: 'turbo'
+    }
+    const result = validateConfig(config)
+    expect(result.valid).toBe(false)
+    expect(result.errors.some(e => e.includes('launchMode') && e.includes('must be one of'))).toBe(true)
+  })
+
+  it('should pass when launchMode is omitted (it is optional)', () => {
+    const config = validConfig()
+    // Ensure launchMode is not set
+    delete (config as Record<string, unknown>).launchMode
+    const result = validateConfig(config)
+    expect(result.valid).toBe(true)
+    expect(result.errors).toHaveLength(0)
+  })
 })
 
 describe('hasCriticalErrors', () => {

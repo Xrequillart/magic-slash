@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import type { Config, RepositoryConfig } from '../../types'
+import type { Config, RepositoryConfig, LaunchMode } from '../../types'
 import { validateConfig, hasCriticalErrors } from './schema-validator'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
 import { expandPath } from './validation'
@@ -380,6 +380,13 @@ export function updateSplitEnabled(enabled: boolean): Config {
 export function updateSplitActive(active: boolean): Config {
   const config = readConfig()
   config.splitActive = active
+  writeConfig(config)
+  return config
+}
+
+export function updateLaunchMode(mode: LaunchMode): Config {
+  const config = readConfig()
+  config.launchMode = mode
   writeConfig(config)
   return config
 }

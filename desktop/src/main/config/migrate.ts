@@ -3,7 +3,7 @@ import * as path from 'path'
 import { readConfig, writeConfig, CONFIG_DIR, CONFIG_FILE } from './config'
 import { writeAgents, AGENTS_FILE } from './agents'
 import { validateConfig } from './schema-validator'
-import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
+import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig, isValidLaunchMode } from './defaults'
 import type { RepositoryConfig } from '../../types'
 
 const CONFIG_BACKUP = path.join(CONFIG_DIR, 'config.json.bak')
@@ -107,6 +107,11 @@ export function migrateConfig(appVersion?: string): boolean {
     if (!isValidSpotlightConfig(config.spotlight)) {
       config.spotlight = { ...DEFAULT_SPOTLIGHT }
     }
+    changed = true
+  }
+
+  if (config.launchMode !== undefined && !isValidLaunchMode(config.launchMode)) {
+    config.launchMode = undefined
     changed = true
   }
 

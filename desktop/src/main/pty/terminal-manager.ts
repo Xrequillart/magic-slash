@@ -3,6 +3,7 @@ import * as os from 'os'
 import * as fs from 'fs'
 import * as path from 'path'
 import { execSync, execFileSync } from 'child_process'
+import { readConfig } from '../config/config'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
 import { expandPath } from '../config/validation'
 import { getCommonPaths } from '../utils/paths'
@@ -427,9 +428,11 @@ export function launchClaude(
 
   // Function to create and attach a new PTY process
   const createPtyProcess = (currentCwd: string, cols: number = 120, rows: number = DEFAULT_PTY_ROWS) => {
+    const launchMode = readConfig().launchMode
+    const modeFlag = launchMode && launchMode !== 'default' ? ` --permission-mode ${launchMode}` : ''
     const claudeCmd = pendingPrompt
-      ? `claude ${JSON.stringify(pendingPrompt)}`
-      : 'claude'
+      ? `claude${modeFlag} ${JSON.stringify(pendingPrompt)}`
+      : `claude${modeFlag}`
     pendingPrompt = null
     const ptyProcess = pty.spawn(shell, ['-li', '-c', claudeCmd], {
       name: 'xterm-256color',

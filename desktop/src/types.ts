@@ -89,6 +89,8 @@ export interface SpotlightConfig {
   shortcut: SpotlightShortcut
 }
 
+export type LaunchMode = 'plan' | 'default' | 'acceptEdits' | 'auto' | 'bypassPermissions'
+
 export interface Config {
   version: string
   repositories: Record<string, RepositoryConfig>
@@ -100,6 +102,7 @@ export interface Config {
     atlassian?: boolean
   }
   spotlight?: SpotlightConfig
+  launchMode?: LaunchMode
 }
 
 export interface PRTemplate {
