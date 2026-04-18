@@ -213,6 +213,24 @@ export function TerminalsPage() {
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const shortcutKey = isMac ? '⌘N' : 'Ctrl+N'
 
+  // Memoize filtered terminal lists using zone assignments
+  const primaryTerminals = useMemo(
+    () => isSplitMode ? terminals.filter(t => !rightPaneTerminalIds.includes(t.id)) : terminals,
+    [terminals, isSplitMode, rightPaneTerminalIds]
+  )
+  const secondaryTerminals = useMemo(
+    () => isSplitMode ? terminals.filter(t => rightPaneTerminalIds.includes(t.id)) : [],
+    [terminals, isSplitMode, rightPaneTerminalIds]
+  )
+
+  // Guarded focus handlers - only update store when pane actually changes
+  const handlePrimaryFocus = useCallback(() => {
+    if (focusedPane !== 'primary') setFocusedPane('primary')
+  }, [focusedPane, setFocusedPane])
+  const handleSecondaryFocus = useCallback(() => {
+    if (focusedPane !== 'secondary') setFocusedPane('secondary')
+  }, [focusedPane, setFocusedPane])
+
   if (terminals.length === 0) {
     return (
       <div className="h-full flex items-center justify-center animate-fade-in">
@@ -233,24 +251,6 @@ export function TerminalsPage() {
       </div>
     )
   }
-
-  // Memoize filtered terminal lists using zone assignments
-  const primaryTerminals = useMemo(
-    () => isSplitMode ? terminals.filter(t => !rightPaneTerminalIds.includes(t.id)) : terminals,
-    [terminals, isSplitMode, rightPaneTerminalIds]
-  )
-  const secondaryTerminals = useMemo(
-    () => isSplitMode ? terminals.filter(t => rightPaneTerminalIds.includes(t.id)) : [],
-    [terminals, isSplitMode, rightPaneTerminalIds]
-  )
-
-  // Guarded focus handlers - only update store when pane actually changes
-  const handlePrimaryFocus = useCallback(() => {
-    if (focusedPane !== 'primary') setFocusedPane('primary')
-  }, [focusedPane, setFocusedPane])
-  const handleSecondaryFocus = useCallback(() => {
-    if (focusedPane !== 'secondary') setFocusedPane('secondary')
-  }, [focusedPane, setFocusedPane])
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
