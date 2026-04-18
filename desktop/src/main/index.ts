@@ -10,6 +10,7 @@ import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpd
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
+import { registerActivityHistoryHandlers } from './ipc/activity-history-handlers'
 import { migrateConfig } from './config/migrate'
 import { readConfig, writeConfig } from './config/config'
 import { TrayManager } from './tray/tray-manager'
@@ -38,7 +39,7 @@ function createMenu() {
               { type: 'separator' as const },
               { role: 'services' as const },
               { type: 'separator' as const },
-              { role: 'hide' as const },
+              { role: 'hide' as const, accelerator: '' },
               { role: 'hideOthers' as const },
               { role: 'unhide' as const },
               { type: 'separator' as const },
@@ -173,6 +174,7 @@ function setupHandlers() {
   setupConfigHandlers(() => mainWindow)
   setupSkillsHandlers()
   setupScriptHandlers(() => mainWindow)
+  registerActivityHistoryHandlers()
   setupTerminalHandlers(
     () => mainWindow,
     // Notification callback - only show when window is not focused

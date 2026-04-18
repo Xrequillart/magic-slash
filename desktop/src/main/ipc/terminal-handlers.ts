@@ -20,6 +20,8 @@ import {
   readAgents,
   updateAgentSplitPane,
 } from '../config/agents'
+import { addHistoryEntry } from '../config/activity-history'
+import type { HistoryAction } from '../../types'
 
 let getMainWindow: () => BrowserWindow | null
 let showNotification: (title: string, body: string) => void
@@ -27,6 +29,8 @@ let onAgentChange: (() => void) | null = null
 
 // Track last notification time per terminal to avoid spam
 const lastNotificationTime = new Map<string, number>()
+// Track previous metadata status per terminal for history entries
+const previousStatus = new Map<string, string>()
 const NOTIFICATION_COOLDOWN = 30000 // 30 seconds between notifications per terminal
 
 // Helper to show notification with cooldown and focus check
@@ -95,6 +99,7 @@ function createTerminalCallbacks(id: string, name: string) {
       if (mainWindow) {
         mainWindow.webContents.send('terminal:exit', { id, exitCode })
       }
+      previousStatus.delete(id)
     },
     onBranchChange: (branchName: string | null) => {
       const mainWindow = getMainWindow()
@@ -106,6 +111,32 @@ function createTerminalCallbacks(id: string, name: string) {
       const mainWindow = getMainWindow()
       if (mainWindow) {
         mainWindow.webContents.send('terminal:metadata', { id, metadata })
+      }
+
+      // Track status changes and create history entries
+      const newStatus = metadata.status || ''
+      const oldStatus = previousStatus.get(id) || ''
+      if (newStatus && newStatus !== oldStatus) {
+        const statusToAction: Record<string, HistoryAction> = {
+          'in progress': 'started',
+          'committed': 'committed',
+          'PR created': 'pr_created',
+          'in review': 'review',
+          'PR merged': 'merged',
+        }
+        const action = statusToAction[newStatus]
+        if (action) {
+          const t = getTerminal(id)
+          addHistoryEntry({
+            agentId: id,
+            agentName: t?.metadata?.title || t?.name || name,
+            action,
+            ticketId: t?.metadata?.ticketId,
+            description: t?.metadata?.description,
+            repositories: t?.repositories || [],
+          })
+        }
+        previousStatus.set(id, newStatus)
       }
     },
     onRepositoriesChange: (repositories: string[]) => {

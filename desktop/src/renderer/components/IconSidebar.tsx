@@ -1,4 +1,4 @@
-import { Bot, Settings, Circle, AlertTriangle, Sparkles } from 'lucide-react'
+import { Bot, Settings, Circle, AlertTriangle, Sparkles, Clock } from 'lucide-react'
 import { useStore } from '../store'
 import { stateColorsIcon as stateColors, stateBgColorsIcon as stateBgColors } from '../utils/stateColors'
 import { useMemo } from 'react'
@@ -66,6 +66,19 @@ export function IconSidebar() {
         title="Skills"
       >
         <Sparkles className="w-5 h-5" />
+      </button>
+
+      {/* History button */}
+      <button
+        onClick={() => setCurrentPage('history')}
+        className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
+          currentPage === 'history'
+            ? 'text-accent bg-accent/20'
+            : 'text-text-secondary hover:text-white hover:bg-bg-tertiary'
+        }`}
+        title="History"
+      >
+        <Clock className="w-5 h-5" />
       </button>
 
       {/* Spacer to push Configuration to bottom */}
