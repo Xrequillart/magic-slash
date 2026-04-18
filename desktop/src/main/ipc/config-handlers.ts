@@ -1,6 +1,7 @@
 import { ipcMain, type BrowserWindow } from 'electron'
 import {
   readConfig,
+  writeConfig,
   CONFIG_FILE,
   addRepository,
   updateRepository,
@@ -16,7 +17,9 @@ import {
   updateSplitEnabled,
   updateSplitActive,
 } from '../config/config'
+import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { repairConfig } from '../config/migrate'
+import { isValidSpotlightShortcut } from '../config/defaults'
 import { validateConfig } from '../config/schema-validator'
 import {
   validateRepoName,
@@ -159,6 +162,21 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
   ipcMain.handle('config:updateSplitActive', async (_event, { active }) => {
     const config = updateSplitActive(active)
     return { config }
+  })
+
+  // Update spotlight settings (enable/disable + shortcut)
+  ipcMain.handle('config:updateSpotlight', async (_event, { enabled, shortcut }: { enabled: boolean; shortcut: string }) => {
+    if (typeof enabled !== 'boolean') {
+      throw new Error('Invalid spotlight enabled value: must be a boolean')
+    }
+    if (!isValidSpotlightShortcut(shortcut)) {
+      throw new Error(`Invalid spotlight shortcut: '${shortcut}'. Must be one of the supported accelerators.`)
+    }
+    const config = readConfig()
+    config.spotlight = { enabled, shortcut }
+    writeConfig(config)
+    const result = reRegisterSpotlightShortcut()
+    return { config, registered: result.registered }
   })
 
   // Validate path

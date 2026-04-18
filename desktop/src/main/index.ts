@@ -15,7 +15,8 @@ import { readConfig, writeConfig } from './config/config'
 import { TrayManager } from './tray/tray-manager'
 import { AgentStateAggregator } from './tray/agent-state-aggregator'
 import { destroyPopover } from './windows/popover-window'
-import { showQuickLaunch, hideQuickLaunch, isQuickLaunchVisible, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
+import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
+import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
@@ -358,15 +359,8 @@ app.whenReady().then(async () => {
     })
   }
 
-  // Register global shortcut: Ctrl+Space for Quick Launch
-  const registered = globalShortcut.register('Control+Space', () => {
-    if (isQuickLaunchVisible()) {
-      hideQuickLaunch()
-    } else {
-      showQuickLaunch()
-    }
-  })
-  console.log(`[QuickLaunch] Global shortcut registered: ${registered}`)
+  // Register global shortcut for Quick Launch (from config)
+  reRegisterSpotlightShortcut()
 
   // Check for app updates on startup
   checkForUpdatesOnStartup()
