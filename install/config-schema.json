@@ -42,6 +42,29 @@
     "installationMode": {
       "type": "string",
       "description": "Installation mode identifier"
+    },
+    "spotlight": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "shortcut": {
+          "type": "string",
+          "enum": [
+            "Control+Space",
+            "Control+Shift+Space",
+            "Alt+Space",
+            "Alt+Shift+Space",
+            "Control+M",
+            "Control+Shift+M",
+            "Alt+M",
+            "Alt+Shift+M"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Spotlight (Quick Launch) global shortcut settings"
     }
   },
   "additionalProperties": false,

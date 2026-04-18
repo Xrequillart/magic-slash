@@ -3,7 +3,7 @@ import * as path from 'path'
 import * as os from 'os'
 import type { Config, RepositoryConfig } from '../../types'
 import { validateConfig, hasCriticalErrors } from './schema-validator'
-import { DEFAULT_REPOSITORY_FIELDS } from './defaults'
+import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
 import { expandPath } from './validation'
 
 /** Settings input where each field can be its normal type, 'default', or null (to reset) */
@@ -94,6 +94,15 @@ export function readConfig(): Config {
 
     if (!config.integrations) {
       config.integrations = { github: true, atlassian: true }
+      needsWrite = true
+    }
+
+    if (!isValidSpotlightConfig(config.spotlight)) {
+      config.spotlight = { ...DEFAULT_SPOTLIGHT, ...(typeof config.spotlight === 'object' && config.spotlight !== null ? config.spotlight : {}) }
+      // Re-validate after merge; if still invalid, reset to pure defaults
+      if (!isValidSpotlightConfig(config.spotlight)) {
+        config.spotlight = { ...DEFAULT_SPOTLIGHT }
+      }
       needsWrite = true
     }
 

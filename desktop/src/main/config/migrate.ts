@@ -3,7 +3,7 @@ import * as path from 'path'
 import { readConfig, writeConfig, CONFIG_DIR, CONFIG_FILE } from './config'
 import { writeAgents, AGENTS_FILE } from './agents'
 import { validateConfig } from './schema-validator'
-import { DEFAULT_REPOSITORY_FIELDS } from './defaults'
+import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
 import type { RepositoryConfig } from '../../types'
 
 const CONFIG_BACKUP = path.join(CONFIG_DIR, 'config.json.bak')
@@ -98,6 +98,15 @@ export function migrateConfig(appVersion?: string): boolean {
   // Migrate integrations (default: both enabled for backward compatibility)
   if (!config.integrations) {
     config.integrations = { github: true, atlassian: true }
+    changed = true
+  }
+
+  if (!isValidSpotlightConfig(config.spotlight)) {
+    config.spotlight = { ...DEFAULT_SPOTLIGHT, ...(typeof config.spotlight === 'object' && config.spotlight !== null ? config.spotlight : {}) }
+    // Re-validate after merge; if still invalid, reset to pure defaults
+    if (!isValidSpotlightConfig(config.spotlight)) {
+      config.spotlight = { ...DEFAULT_SPOTLIGHT }
+    }
     changed = true
   }
 

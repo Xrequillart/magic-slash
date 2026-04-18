@@ -1,4 +1,27 @@
-import type { RepositoryConfig } from '../../types'
+import type { RepositoryConfig, SpotlightConfig, SpotlightShortcut } from '../../types'
+
+export const VALID_SPOTLIGHT_SHORTCUTS: readonly SpotlightShortcut[] = [
+  'Control+Space',
+  'Control+Shift+Space',
+  'Alt+Space',
+  'Alt+Shift+Space',
+  'Control+M',
+  'Control+Shift+M',
+  'Alt+M',
+  'Alt+Shift+M',
+] as const
+
+export function isValidSpotlightShortcut(value: unknown): value is SpotlightShortcut {
+  return typeof value === 'string' && (VALID_SPOTLIGHT_SHORTCUTS as readonly string[]).includes(value)
+}
+
+export function isValidSpotlightConfig(obj: unknown): obj is SpotlightConfig {
+  if (typeof obj !== 'object' || obj === null) return false
+  const record = obj as Record<string, unknown>
+  return typeof record.enabled === 'boolean' && isValidSpotlightShortcut(record.shortcut)
+}
+
+export const DEFAULT_SPOTLIGHT: SpotlightConfig = { enabled: true, shortcut: 'Control+Space' }
 
 export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keywords'> = {
   color: '#3B82F6',

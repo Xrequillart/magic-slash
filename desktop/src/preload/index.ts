@@ -54,6 +54,9 @@ const configApi = {
   updateSplitActive: (active: boolean) =>
     ipcRenderer.invoke('config:updateSplitActive', { active }),
 
+  updateSpotlight: (spotlight: { enabled: boolean; shortcut: string }) =>
+    ipcRenderer.invoke('config:updateSpotlight', spotlight),
+
   repair: (): Promise<{ repaired: boolean; fixes: string[] }> =>
     ipcRenderer.invoke('config:repair'),
 

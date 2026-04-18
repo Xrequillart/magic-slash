@@ -87,6 +87,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateSpotlight = useCallback(async (spotlight: { enabled: boolean; shortcut: string }) => {
+    const result = await window.electronAPI.config.updateSpotlight(spotlight)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const validatePath = useCallback(async (path: string) => {
     return window.electronAPI.config.validatePath(path)
   }, [])
@@ -120,6 +126,7 @@ export function useConfig() {
     updateRepositoryBranchSettings,
     updateRepositoryWorktreeFilesSettings,
     updateSplitEnabled,
+    updateSpotlight,
     validatePath,
     getPRTemplate,
     createPRTemplate,

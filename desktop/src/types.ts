@@ -74,6 +74,21 @@ export interface Agent {
   splitPane?: 'left' | 'right'
 }
 
+export type SpotlightShortcut =
+  | 'Control+Space'
+  | 'Control+Shift+Space'
+  | 'Alt+Space'
+  | 'Alt+Shift+Space'
+  | 'Control+M'
+  | 'Control+Shift+M'
+  | 'Alt+M'
+  | 'Alt+Shift+M'
+
+export interface SpotlightConfig {
+  enabled: boolean
+  shortcut: SpotlightShortcut
+}
+
 export interface Config {
   version: string
   repositories: Record<string, RepositoryConfig>
@@ -84,6 +99,7 @@ export interface Config {
     github: true
     atlassian?: boolean
   }
+  spotlight?: SpotlightConfig
 }
 
 export interface PRTemplate {

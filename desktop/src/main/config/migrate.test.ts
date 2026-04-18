@@ -99,6 +99,11 @@ describe('migrateConfig — agents migration', () => {
     }))
 
     // Mock defaults
+    const VALID_SHORTCUTS = [
+      'Control+Space', 'Control+Shift+Space', 'Alt+Space', 'Alt+Shift+Space',
+      'Control+M', 'Control+Shift+M', 'Alt+M', 'Alt+Shift+M',
+    ]
+    const mockDefaultSpotlight = { enabled: true, shortcut: 'Control+Space' }
     vi.doMock('./defaults', () => ({
       DEFAULT_REPOSITORY_FIELDS: {
         color: '#3B82F6',
@@ -112,6 +117,17 @@ describe('migrateConfig — agents migration', () => {
         issues: { commentOnPR: true, jiraUrl: '', githubIssuesUrl: '' },
         branches: { development: '' },
         worktreeFiles: [],
+      },
+      DEFAULT_SPOTLIGHT: mockDefaultSpotlight,
+      VALID_SPOTLIGHT_SHORTCUTS: VALID_SHORTCUTS,
+      isValidSpotlightShortcut: (value: unknown) =>
+        typeof value === 'string' && VALID_SHORTCUTS.includes(value),
+      isValidSpotlightConfig: (obj: unknown) => {
+        if (typeof obj !== 'object' || obj === null) return false
+        const record = obj as Record<string, unknown>
+        return typeof record.enabled === 'boolean' &&
+          typeof record.shortcut === 'string' &&
+          VALID_SHORTCUTS.includes(record.shortcut)
       },
     }))
 

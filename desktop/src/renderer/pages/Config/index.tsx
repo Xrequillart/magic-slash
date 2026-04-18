@@ -1,19 +1,69 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle } from 'lucide-react'
 import { RepoPage } from './RepoPage'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
+import type { SpotlightShortcut } from '../../../types'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 
+const SPOTLIGHT_OPTIONS: { label: string; value: string }[] = [
+  { label: '\u2303 Space', value: 'Control+Space' },
+  { label: '\u2303\u21E7 Space', value: 'Control+Shift+Space' },
+  { label: '\u2325 Space', value: 'Alt+Space' },
+  { label: '\u2325\u21E7 Space', value: 'Alt+Shift+Space' },
+  { label: '\u2303 M', value: 'Control+M' },
+  { label: '\u2303\u21E7 M', value: 'Control+Shift+M' },
+  { label: '\u2325 M', value: 'Alt+M' },
+  { label: '\u2325\u21E7 M', value: 'Alt+Shift+M' },
+]
+
 function WelcomePage() {
   const { config, terminals, splitEnabled, toggleSplitEnabled } = useStore()
-  const { addRepository, updateSplitEnabled } = useConfig()
+  const { addRepository, updateSplitEnabled, updateSpotlight } = useConfig()
   const [githubStatus, setGithubStatus] = useState<Record<string, boolean>>({})
   const [isAdding, setIsAdding] = useState(false)
   const [appVersion, setAppVersion] = useState('')
   const [loadingWhatsNew, setLoadingWhatsNew] = useState(false)
   const [autoStart, setAutoStart] = useState(false)
+  const [spotlightEnabled, setSpotlightEnabled] = useState(config?.spotlight?.enabled ?? true)
+  const [spotlightShortcut, setSpotlightShortcut] = useState(config?.spotlight?.shortcut ?? 'Control+Space')
+  const [spotlightError, setSpotlightError] = useState(false)
+
+  const configSpotlightEnabled = config?.spotlight?.enabled
+  const configSpotlightShortcut = config?.spotlight?.shortcut
+  useEffect(() => {
+    if (configSpotlightEnabled !== undefined) setSpotlightEnabled(configSpotlightEnabled)
+    if (configSpotlightShortcut !== undefined) setSpotlightShortcut(configSpotlightShortcut)
+  }, [configSpotlightEnabled, configSpotlightShortcut])
+
+  const handleSpotlightToggle = async () => {
+    const newEnabled = !spotlightEnabled
+    setSpotlightEnabled(newEnabled)
+    setSpotlightError(false)
+    try {
+      const result = await updateSpotlight({ enabled: newEnabled, shortcut: spotlightShortcut })
+      if (newEnabled && !result.registered) {
+        setSpotlightError(true)
+      }
+    } catch {
+      setSpotlightEnabled(!newEnabled) // revert on error
+    }
+  }
+
+  const handleSpotlightShortcutChange = async (newShortcut: SpotlightShortcut) => {
+    const previousShortcut = spotlightShortcut
+    setSpotlightShortcut(newShortcut)
+    setSpotlightError(false)
+    try {
+      const result = await updateSpotlight({ enabled: spotlightEnabled, shortcut: newShortcut })
+      if (spotlightEnabled && !result.registered) {
+        setSpotlightError(true)
+      }
+    } catch {
+      setSpotlightShortcut(previousShortcut)
+    }
+  }
 
   const repos = Object.entries(config?.repositories || {})
   const projectNames = repos.map(([name]) => name)
@@ -238,6 +288,59 @@ function WelcomePage() {
         </div>
       </div>
 
+      {/* Spotlight Section */}
+      <div>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <Search className="w-4 h-4" />
+          <span>Spotlight</span>
+        </div>
+        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">Enable global shortcut</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">Open the Quick Launch panel from anywhere with a keyboard shortcut</div>
+            </div>
+            <button
+              onClick={handleSpotlightToggle}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                spotlightEnabled ? 'bg-accent' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+                spotlightEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+          <div className="border-t border-white/5 pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Shortcut</div>
+                <div className="text-xs text-text-secondary/50 mt-0.5">Choose the keyboard shortcut to toggle Quick Launch</div>
+              </div>
+              <div className="relative">
+                <select
+                  value={spotlightShortcut}
+                  onChange={(e) => handleSpotlightShortcutChange(e.target.value as SpotlightShortcut)}
+                  disabled={!spotlightEnabled}
+                  className="w-52 px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
+                >
+                  {SPOTLIGHT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+          {spotlightError && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-red/10 border border-red/20 rounded-lg text-xs text-red">
+              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>Failed to register shortcut. It may be in use by another application. Try a different shortcut.</span>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Background App Section */}
       <div>
         <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
@@ -328,7 +431,13 @@ function WelcomePage() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Quick Launch</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> <span className="text-sm">⇧</span> M</kbd>
+              {spotlightEnabled ? (
+                <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary">
+                  {SPOTLIGHT_OPTIONS.find(o => o.value === spotlightShortcut)?.label ?? spotlightShortcut}
+                </kbd>
+              ) : (
+                <span className="px-2 py-0.5 text-xs text-text-secondary/40">Disabled</span>
+              )}
             </div>
           </div>
         </div>
