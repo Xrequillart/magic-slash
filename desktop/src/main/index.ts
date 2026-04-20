@@ -352,13 +352,16 @@ app.whenReady().then(async () => {
   trayManager.init()
   aggregator.startPolling()
 
-  // Apply auto-start setting from config
+  // Apply auto-start setting from config (only if it differs to avoid macOS notification spam)
   const config = readConfig()
   if (config.autoStartAtLogin !== undefined) {
-    app.setLoginItemSettings({
-      openAtLogin: config.autoStartAtLogin,
-      openAsHidden: true,
-    })
+    const current = app.getLoginItemSettings()
+    if (current.openAtLogin !== config.autoStartAtLogin) {
+      app.setLoginItemSettings({
+        openAtLogin: config.autoStartAtLogin,
+        openAsHidden: true,
+      })
+    }
   }
 
   // Register global shortcut for Quick Launch (from config)
