@@ -193,7 +193,7 @@ export function AgentInfoSidebar() {
 
     const fetchGitDataForRepo = async (repoPath: string): Promise<RepoGitData> => {
       const repoConfig = getRepoConfig(repoPath)
-      const targetBranch = repoConfig?.branches?.development || 'develop'
+      const targetBranch = metadata?.baseBranch || repoConfig?.branches?.development
 
       let stats: RepoGitData['stats'] = null
       let commits: RepoGitData['commits'] = null
@@ -261,7 +261,7 @@ export function AgentInfoSidebar() {
       isMounted = false
       clearInterval(interval)
     }
-  }, [activeTerminal?.repositories, getRepoConfig])
+  }, [activeTerminal?.repositories, getRepoConfig, metadata?.baseBranch])
 
   // Listen for Command+W keyboard shortcut to close agent
   useEffect(() => {
