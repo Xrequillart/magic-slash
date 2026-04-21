@@ -383,7 +383,7 @@ export function AgentInfoSidebar() {
               terminalId: activeTerminal.id,
               terminalName: activeTerminal.name,
             })}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.08] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.08] rounded-lg hover:bg-white/[0.12] hover:text-white transition-colors"
           >
             <X className="w-3 h-3" />
             <span>Close agent</span>
