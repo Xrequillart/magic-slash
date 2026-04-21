@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, memo } from 'react'
-import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, ChevronDown, ChevronLeft, Sparkles, X, Eye, Play, CheckCircle2, Moon } from 'lucide-react'
+import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, Sparkles, X, Eye, Play, CheckCircle2, Moon } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
@@ -113,8 +113,6 @@ interface WorkflowGroupProps {
   groupKey: WorkflowGroupKey
   label: string
   terminals: TerminalWithRepos[]
-  isCollapsed: boolean
-  onToggle: () => void
   activeTerminalId: string | null
   splitTerminalId: string | null
   isSplitMode: boolean
@@ -128,8 +126,6 @@ const WorkflowGroup = memo(function WorkflowGroup({
   groupKey,
   label,
   terminals,
-  isCollapsed,
-  onToggle,
   activeTerminalId,
   splitTerminalId,
   isSplitMode,
@@ -146,10 +142,7 @@ const WorkflowGroup = memo(function WorkflowGroup({
   return (
     <div className="flex flex-col">
       {/* Group header */}
-      <button
-        onClick={onToggle}
-        className="flex items-center gap-2 px-2 py-1.5 text-sm text-text-secondary/50 hover:text-white transition-colors w-full"
-      >
+      <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-text-secondary/50 w-full">
         <span className={`flex items-center ${config.color}`}>
           {config.spinner ? (
             <span className="loader-spinner-sm flex-shrink-0" />
@@ -159,32 +152,23 @@ const WorkflowGroup = memo(function WorkflowGroup({
         </span>
         <span className="font-medium truncate">{label}</span>
         <span className="text-text-secondary/30 text-xs">{terminals.length}</span>
-        <span className="ml-auto">
-          {isCollapsed ? (
-            <ChevronLeft className="w-3 h-3" />
-          ) : (
-            <ChevronDown className="w-3 h-3" />
-          )}
-        </span>
-      </button>
+      </div>
 
       {/* Agent list */}
-      {!isCollapsed && (
-        <div className="flex flex-col gap-1">
-          {terminals.map(terminal => (
-            <AgentItem
-              key={terminal.id}
-              terminal={terminal}
-              isActive={activeTerminalId === terminal.id}
-              isSplitTarget={isSplitMode && splitTerminalId === terminal.id}
-              onSelect={(e) => onSelectTerminal(terminal.id, e)}
-              colorMap={colorMap}
-              now={now}
-              draggable={draggable}
-            />
-          ))}
-        </div>
-      )}
+      <div className="flex flex-col gap-1">
+        {terminals.map(terminal => (
+          <AgentItem
+            key={terminal.id}
+            terminal={terminal}
+            isActive={activeTerminalId === terminal.id}
+            isSplitTarget={isSplitMode && splitTerminalId === terminal.id}
+            onSelect={(e) => onSelectTerminal(terminal.id, e)}
+            colorMap={colorMap}
+            now={now}
+            draggable={draggable}
+          />
+        ))}
+      </div>
     </div>
   )
 })
@@ -287,15 +271,6 @@ export function Sidebar() {
     return () => window.removeEventListener('resize', handleResize)
   }, [width, getMaxWidth])
 
-  // Collapsed state: Done and Idle collapsed by default
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
-    const initial = new Set<string>()
-    for (const group of WORKFLOW_GROUPS) {
-      if (group.collapsedByDefault) initial.add(group.key)
-    }
-    return initial
-  })
-
   // Group terminals by workflow status
   const { groups, projectNames } = useGroupedTerminals()
   const { leftGroups, rightGroups } = useSplitGroupedTerminals()
@@ -309,17 +284,6 @@ export function Sidebar() {
     [projectNames, config?.repositories]
   )
 
-  const toggleGroup = useCallback((groupName: string) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev)
-      if (next.has(groupName)) {
-        next.delete(groupName)
-      } else {
-        next.add(groupName)
-      }
-      return next
-    })
-  }, [])
 
   const handleSelectTerminal = useCallback((id: string, e?: React.MouseEvent) => {
     setCurrentPage('terminals')
@@ -551,8 +515,6 @@ export function Sidebar() {
                   groupKey={key}
                   label={label}
                   terminals={leftGroups[key]}
-                  isCollapsed={collapsedGroups.has(key)}
-                  onToggle={() => toggleGroup(key)}
                   activeTerminalId={focusedPane === 'primary' ? activeTerminalId : null}
                   splitTerminalId={null}
                   isSplitMode={false}
@@ -589,8 +551,6 @@ export function Sidebar() {
                   groupKey={key}
                   label={label}
                   terminals={rightGroups[key]}
-                  isCollapsed={collapsedGroups.has(key)}
-                  onToggle={() => toggleGroup(key)}
                   activeTerminalId={focusedPane === 'secondary' ? splitTerminalId : null}
                   splitTerminalId={null}
                   isSplitMode={false}
@@ -615,8 +575,6 @@ export function Sidebar() {
                 groupKey={key}
                 label={label}
                 terminals={groups[key]}
-                isCollapsed={collapsedGroups.has(key)}
-                onToggle={() => toggleGroup(key)}
                 activeTerminalId={activeTerminalId}
                 splitTerminalId={splitTerminalId}
                 isSplitMode={isSplitMode}

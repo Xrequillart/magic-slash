@@ -16,13 +16,12 @@ export interface TerminalWithRepos extends TerminalInfo {
 export const WORKFLOW_GROUPS: {
   key: WorkflowGroupKey
   label: string
-  collapsedByDefault: boolean
 }[] = [
-  { key: 'backlog',          label: 'Backlog',          collapsedByDefault: false },
-  { key: 'needs_attention',  label: 'Needs attention',  collapsedByDefault: false },
-  { key: 'in_progress',      label: 'In progress',      collapsedByDefault: false },
-  { key: 'in_review',        label: 'In review',        collapsedByDefault: false },
-  { key: 'done',             label: 'Done',             collapsedByDefault: true },
+  { key: 'backlog',          label: 'Backlog' },
+  { key: 'needs_attention',  label: 'Needs attention' },
+  { key: 'in_progress',      label: 'In progress' },
+  { key: 'in_review',        label: 'In review' },
+  { key: 'done',             label: 'Done' },
 ]
 
 export function classifyTerminal(terminal: TerminalInfo): WorkflowGroupKey {
