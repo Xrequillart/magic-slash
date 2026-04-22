@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Clock, Trash2, ChevronRight } from 'lucide-react'
 import { useActivityHistory } from '../../hooks/useActivityHistory'
 import type { HistoryAction } from '../../../types'
@@ -26,20 +26,43 @@ export function HistoryPage() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [closingGroups, setClosingGroups] = useState<Set<string>>(new Set())
   const groupSizes = useRef<Map<string, number>>(new Map())
+  const expandedRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const closingRef = useRef<Set<string>>(new Set())
+
+  const collapseGroup = useCallback((groupId: string) => {
+    if (closingRef.current.has(groupId)) return
+    closingRef.current.add(groupId)
+    setClosingGroups(c => new Set(c).add(groupId))
+    const count = groupSizes.current.get(groupId) || 3
+    const totalMs = CARD_ANIM_MS + (count - 1) * CARD_STAGGER_MS + 50
+    setTimeout(() => {
+      closingRef.current.delete(groupId)
+      setClosingGroups(c => { const n = new Set(c); n.delete(groupId); return n })
+      setExpandedGroups(p => { const n = new Set(p); n.delete(groupId); return n })
+    }, totalMs)
+  }, [])
 
   const toggleGroup = useCallback((groupId: string) => {
     if (expandedGroups.has(groupId)) {
-      setClosingGroups(c => new Set(c).add(groupId))
-      const count = groupSizes.current.get(groupId) || 3
-      const totalMs = CARD_ANIM_MS + (count - 1) * CARD_STAGGER_MS + 50
-      setTimeout(() => {
-        setClosingGroups(c => { const n = new Set(c); n.delete(groupId); return n })
-        setExpandedGroups(p => { const n = new Set(p); n.delete(groupId); return n })
-      }, totalMs)
+      collapseGroup(groupId)
     } else {
       setExpandedGroups(prev => new Set(prev).add(groupId))
     }
-  }, [expandedGroups])
+  }, [expandedGroups, collapseGroup])
+
+  useEffect(() => {
+    if (expandedGroups.size === 0) return
+    const handleClick = (e: MouseEvent) => {
+      for (const groupId of expandedGroups) {
+        const el = expandedRefs.current.get(groupId)
+        if (el && !el.contains(e.target as Node)) {
+          collapseGroup(groupId)
+        }
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [expandedGroups, collapseGroup])
 
   const handleClear = useCallback(async () => {
     await clear()
@@ -134,7 +157,7 @@ export function HistoryPage() {
                 return (
                   <div
                     key={groupId}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.06] transition-all duration-200 ${isDimmed ? 'opacity-30' : ''}`}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.06] transition-all duration-200 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}
                   >
                     <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${config.color}`} />
                     <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
@@ -159,9 +182,16 @@ export function HistoryPage() {
               const firstTime = formatTime(tg.entries[tg.entries.length - 1].timestamp)
               const lastTime = formatTime(tg.entries[0].timestamp)
               return (
-                <div key={groupId} className="flex flex-col gap-1">
+                <div
+                  key={groupId}
+                  className="flex flex-col gap-1"
+                  ref={el => {
+                    if (el) expandedRefs.current.set(groupId, el)
+                    else expandedRefs.current.delete(groupId)
+                  }}
+                >
                   <div
-                    className={`rounded-lg bg-white/[0.04] border border-white/[0.08] transition-all duration-200 ${isDimmed ? 'opacity-30' : ''}`}
+                    className={`rounded-lg bg-white/[0.04] border border-white/[0.08] transition-all duration-200 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}
                   >
                     <button
                       onClick={() => toggleGroup(groupId)}
