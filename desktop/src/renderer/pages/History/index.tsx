@@ -157,7 +157,7 @@ export function HistoryPage() {
                 return (
                   <div
                     key={groupId}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.06] transition-all duration-200 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] transition-all duration-200 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}
                   >
                     <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${config.color}`} />
                     <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
