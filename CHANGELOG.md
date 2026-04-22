@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.43.1] - 2026-04-22
+
+### Added
+
+- **Desktop**: Add today button to schedule agent date picker
+- **Desktop**: Add default time setting for scheduled agents
+- **Desktop**: Show scheduled agent banner in right sidebar
+
+### Changed
+
+- **Desktop**: Increase repo name font-size to match ticket title
+- **Desktop**: Remove schedule button from agent list in sidebar
+
 ## [0.43.0] - 2026-04-22
 
 ### Added
@@ -1246,6 +1259,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.43.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.1
 [0.43.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.0
 [0.42.11]: https://github.com/xrequillart/magic-slash/releases/tag/v0.42.11
 [0.42.10]: https://github.com/xrequillart/magic-slash/releases/tag/v0.42.10
