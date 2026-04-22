@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo } from '../../types'
+import type { Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, Agent } from '../../types'
 
 interface CloseAgentModalData {
   terminalId: string
@@ -26,8 +26,11 @@ interface AppState {
   splitActive: boolean
   rightPaneTerminalIds: string[]
 
+  // Scheduled agents
+  scheduledAgents: Agent[]
+
   // UI
-  currentPage: 'config' | 'terminals' | 'skills' | 'history'
+  currentPage: 'config' | 'terminals' | 'skills' | 'history' | 'scheduled'
   rightSidebar: 'info' | null
   leftSidebarVisible: boolean
   iconSidebarVisible: boolean
@@ -61,7 +64,13 @@ interface AppState {
   toggleSplitActive: () => void
   moveTerminalToPane: (id: string, pane: 'left' | 'right') => void
 
-  setCurrentPage: (page: 'config' | 'terminals' | 'skills' | 'history') => void
+  // Scheduled agent actions
+  setScheduledAgents: (agents: Agent[]) => void
+  addScheduledAgent: (agent: Agent) => void
+  updateScheduledAgent: (agent: Agent) => void
+  removeScheduledAgent: (id: string) => void
+
+  setCurrentPage: (page: 'config' | 'terminals' | 'skills' | 'history' | 'scheduled') => void
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void
   toggleLeftSidebar: () => void
@@ -99,6 +108,8 @@ export const useStore = create<AppState>()(
         splitEnabled: false,
         splitActive: false,
         rightPaneTerminalIds: [],
+
+        scheduledAgents: [],
 
         currentPage: 'terminals',
         rightSidebar: null,
@@ -241,6 +252,23 @@ export const useStore = create<AppState>()(
             }
           })
         },
+
+        // Scheduled agent actions
+        setScheduledAgents: (scheduledAgents) => set({ scheduledAgents }),
+        addScheduledAgent: (agent) =>
+          set((state) => ({
+            scheduledAgents: [...state.scheduledAgents, agent],
+          })),
+        updateScheduledAgent: (agent) =>
+          set((state) => ({
+            scheduledAgents: state.scheduledAgents.map(a =>
+              a.id === agent.id ? agent : a
+            ),
+          })),
+        removeScheduledAgent: (id) =>
+          set((state) => ({
+            scheduledAgents: state.scheduledAgents.filter(a => a.id !== id),
+          })),
 
         setCurrentPage: (currentPage) => set({ currentPage }),
         setRightSidebar: (rightSidebar) => set({ rightSidebar }),

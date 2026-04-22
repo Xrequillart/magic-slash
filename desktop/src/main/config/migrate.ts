@@ -115,6 +115,12 @@ export function migrateConfig(appVersion?: string): boolean {
     changed = true
   }
 
+  // Migrate schedulerEnabled (default: true)
+  if (config.schedulerEnabled === undefined) {
+    config.schedulerEnabled = true
+    changed = true
+  }
+
   if (changed) {
     // Create backup before writing migrated config
     createBackup()
