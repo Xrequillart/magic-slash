@@ -39,7 +39,7 @@ export function RepositoryCard({
     <div className="bg-white/[0.06] rounded-xl p-3">
       {/* Repo header */}
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-white/90 font-medium text-xs truncate" title={repoPath}>
+        <span className="text-white/90 font-medium text-sm truncate" title={repoPath}>
           {repoName}
         </span>
         <div className="flex items-center gap-1.5 ml-auto">
