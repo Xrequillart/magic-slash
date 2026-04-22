@@ -1,8 +1,9 @@
 import { useMemo, useState, useEffect, useCallback, memo } from 'react'
-import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, Sparkles, X, Eye, CheckCircle2, Zap } from 'lucide-react'
+import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, Sparkles, X, Eye, CheckCircle2, Zap, CalendarClock } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
+import { useScheduledAgents } from '../hooks/useScheduledAgents'
 import { useGroupedTerminals, useSplitGroupedTerminals, WORKFLOW_GROUPS, type WorkflowGroupKey, type TerminalWithRepos } from '../hooks/useGroupedTerminals'
 import { getProjectColorMap } from '../utils/projectColors'
 import { stateColors, stateBgColors, stateHoverBgColors } from '../utils/stateColors'
@@ -68,9 +69,10 @@ interface AgentItemProps {
   colorMap: Record<string, string>
   now: number
   draggable?: boolean
+  onSchedule?: () => void
 }
 
-const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, onSelect, colorMap, now: _now, draggable }: AgentItemProps) {
+const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, onSelect, colorMap, now: _now, draggable, onSchedule }: AgentItemProps) {
   return (
     <button
       onClick={onSelect}
@@ -80,7 +82,7 @@ const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, o
         e.dataTransfer.effectAllowed = 'move'
       }}
       className={`
-        w-full flex items-center gap-2 px-3 py-2 text-xs transition-all rounded-lg
+        w-full flex items-center gap-2 px-3 py-2 text-xs transition-all rounded-lg group/agent
         ${draggable ? 'cursor-pointer active:cursor-grab' : 'cursor-pointer'}
         ${isActive || isSplitTarget
           ? `${stateBgColors[terminal.state]} text-white`
@@ -91,6 +93,15 @@ const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, o
       <div className="flex-1 text-left min-w-0">
         <div className="truncate font-medium">{terminal.metadata?.title || terminal.name}</div>
       </div>
+      {onSchedule && (
+        <span
+          onClick={(e) => { e.stopPropagation(); onSchedule() }}
+          className="p-0.5 rounded hover:bg-white/10 opacity-0 group-hover/agent:opacity-100 transition-opacity flex-shrink-0"
+          title="Schedule this agent"
+        >
+          <CalendarClock className="w-3 h-3 text-text-secondary/50 hover:text-accent" />
+        </span>
+      )}
       {terminal.matchingProjects.length > 0 && (
         <div className="flex items-center gap-1 flex-shrink-0">
           {terminal.matchingProjects.map((project) => (
@@ -119,6 +130,8 @@ interface WorkflowGroupProps {
   colorMap: Record<string, string>
   now: number
   draggable?: boolean
+  scheduledIds?: Set<string>
+  onScheduleAgent?: () => void
 }
 
 const WorkflowGroup = memo(function WorkflowGroup({
@@ -132,6 +145,8 @@ const WorkflowGroup = memo(function WorkflowGroup({
   colorMap,
   now,
   draggable,
+  scheduledIds,
+  onScheduleAgent,
 }: WorkflowGroupProps) {
   if (terminals.length === 0) return null
 
@@ -165,6 +180,7 @@ const WorkflowGroup = memo(function WorkflowGroup({
             colorMap={colorMap}
             now={now}
             draggable={draggable}
+            onSchedule={onScheduleAgent && scheduledIds && !scheduledIds.has(terminal.id) ? onScheduleAgent : undefined}
           />
         ))}
       </div>
@@ -216,6 +232,22 @@ export function Sidebar() {
   const { currentPage, setCurrentPage, terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds } = useStore()
   const { setActiveTerminal } = useTerminals()
   const { scriptTerminals, stopScript } = useScriptRunner()
+  const { scheduledAgents } = useScheduledAgents()
+
+  const scheduledCount = useMemo(
+    () => scheduledAgents.filter(a => a.schedule?.enabled).length,
+    [scheduledAgents]
+  )
+
+  const scheduledAgentIds = useMemo(
+    () => new Set(scheduledAgents.map(a => a.id)),
+    [scheduledAgents]
+  )
+
+  const handleScheduleAgent = useCallback(() => {
+    setCurrentPage('scheduled')
+    setActiveTerminal(null)
+  }, [setCurrentPage, setActiveTerminal])
 
   const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
@@ -353,6 +385,7 @@ export function Sidebar() {
   const shortcutKey = isMac ? '⌘N' : 'Ctrl+N'
   const skillsShortcutKey = isMac ? '⌘;' : 'Ctrl+;'
   const historyShortcutKey = isMac ? '⌘H' : 'Ctrl+H'
+  const scheduledShortcutKey = isMac ? '⌘L' : 'Ctrl+L'
   const settingsShortcutKey = isMac ? '⌘,' : 'Ctrl+,'
 
   // Listen for Command+; keyboard shortcut to open skills
@@ -375,6 +408,20 @@ export function Sidebar() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
         e.preventDefault()
         setCurrentPage('history')
+        setActiveTerminal(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [setCurrentPage, setActiveTerminal])
+
+  // Listen for Command+L keyboard shortcut to open scheduled
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
+        e.preventDefault()
+        setCurrentPage('scheduled')
         setActiveTerminal(null)
       }
     }
@@ -459,6 +506,28 @@ export function Sidebar() {
           <span className="ml-auto text-xs opacity-50">{historyShortcutKey}</span>
         </button>
 
+        {/* Scheduled button */}
+        <button
+          onClick={() => {
+            setCurrentPage('scheduled')
+            setActiveTerminal(null)
+          }}
+          className={`w-full flex items-center justify-center gap-2 px-2.5 py-2 text-xs font-medium rounded-lg transition-all ${
+            currentPage === 'scheduled'
+              ? 'bg-white/10 text-white'
+              : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
+          }`}
+        >
+          <CalendarClock className="w-3.5 h-3.5" />
+          <span>Scheduled</span>
+          {scheduledCount > 0 && (
+            <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium">
+              {scheduledCount}
+            </span>
+          )}
+          <span className="ml-auto text-xs opacity-50">{scheduledShortcutKey}</span>
+        </button>
+
         {/* Settings button */}
         <button
           onClick={() => {
@@ -521,6 +590,8 @@ export function Sidebar() {
                   colorMap={colorMap}
                   now={now}
                   draggable
+                  scheduledIds={scheduledAgentIds}
+                  onScheduleAgent={handleScheduleAgent}
                 />
               ))}
               {terminals.filter(t => !rightPaneTerminalIds.includes(t.id)).length === 0 && (
@@ -557,6 +628,8 @@ export function Sidebar() {
                   colorMap={colorMap}
                   now={now}
                   draggable
+                  scheduledIds={scheduledAgentIds}
+                  onScheduleAgent={handleScheduleAgent}
                 />
               ))}
               {rightPaneTerminalIds.length === 0 && (
@@ -580,6 +653,8 @@ export function Sidebar() {
                 onSelectTerminal={handleSelectTerminal}
                 colorMap={colorMap}
                 now={now}
+                scheduledIds={scheduledAgentIds}
+                onScheduleAgent={handleScheduleAgent}
               />
             ))}
           </div>

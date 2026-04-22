@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, CalendarClock } from 'lucide-react'
 import { RepoPage } from './RepoPage'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
@@ -39,6 +39,7 @@ function WelcomePage() {
   const [spotlightError, setSpotlightError] = useState(false)
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
   const [showBypassWarning, setShowBypassWarning] = useState(false)
+  const [schedulerEnabled, setSchedulerEnabled] = useState(config?.schedulerEnabled ?? true)
 
   const configSpotlightEnabled = config?.spotlight?.enabled
   const configSpotlightShortcut = config?.spotlight?.shortcut
@@ -51,6 +52,11 @@ function WelcomePage() {
   useEffect(() => {
     if (configLaunchMode !== undefined) setLaunchMode(configLaunchMode)
   }, [configLaunchMode])
+
+  const configSchedulerEnabled = config?.schedulerEnabled
+  useEffect(() => {
+    if (configSchedulerEnabled !== undefined) setSchedulerEnabled(configSchedulerEnabled)
+  }, [configSchedulerEnabled])
 
   const handleSpotlightToggle = async () => {
     const newEnabled = !spotlightEnabled
@@ -373,6 +379,41 @@ function WelcomePage() {
               }`} />
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Scheduler Section */}
+      <div>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <CalendarClock className="w-4 h-4" />
+          <span>Scheduler</span>
+        </div>
+        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">Enable scheduler</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">Allow scheduled agents to run automatically at defined times</div>
+            </div>
+            <button
+              onClick={() => {
+                const newValue = !schedulerEnabled
+                setSchedulerEnabled(newValue)
+                window.electronAPI.scheduler.setEnabled(newValue)
+              }}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                schedulerEnabled ? 'bg-accent' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+                schedulerEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+          {!schedulerEnabled && (
+            <div className="text-xs text-text-secondary/50">
+              Schedules are preserved but no agents will run automatically.
+            </div>
+          )}
         </div>
       </div>
 

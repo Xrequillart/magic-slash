@@ -7,7 +7,7 @@ import { readConfig } from '../config/config'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
 import { expandPath } from '../config/validation'
 import { getCommonPaths } from '../utils/paths'
-import type { TerminalMetadata, TerminalState } from '../../types'
+import type { TerminalMetadata, TerminalState, LaunchMode } from '../../types'
 export type { TerminalMetadata, TerminalState }
 
 const DEFAULT_PTY_ROWS = 40
@@ -413,7 +413,8 @@ export function launchClaude(
   initialMetadata?: TerminalMetadata,
   onRepositoriesChange?: (repositories: string[]) => void,
   initialRepositories?: string[],
-  initialPrompt?: string
+  initialPrompt?: string,
+  launchModeOverride?: LaunchMode
 ): Terminal {
   const shell = getDefaultShell()
   const expandedCwd = expandPath(cwd)
@@ -428,7 +429,7 @@ export function launchClaude(
 
   // Function to create and attach a new PTY process
   const createPtyProcess = (currentCwd: string, cols: number = 120, rows: number = DEFAULT_PTY_ROWS) => {
-    const launchMode = readConfig().launchMode
+    const launchMode = launchModeOverride ?? readConfig().launchMode
     const modeFlag = launchMode && launchMode !== 'default' ? ` --permission-mode ${launchMode}` : ''
     const claudeCmd = pendingPrompt
       ? `claude${modeFlag} ${JSON.stringify(pendingPrompt)}`

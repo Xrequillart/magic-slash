@@ -18,12 +18,15 @@ import { AgentStateAggregator } from './tray/agent-state-aggregator'
 import { destroyPopover } from './windows/popover-window'
 import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
 import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
+import { Scheduler } from './scheduler/scheduler'
+import { setupSchedulerHandlers } from './ipc/scheduler-handlers'
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
 let forceQuit = false
 let trayManager: TrayManager | null = null
 let aggregator: AgentStateAggregator | null = null
+let scheduler: Scheduler | null = null
 
 function createMenu() {
   const isMac = process.platform === 'darwin'
@@ -180,24 +183,33 @@ function setupHandlers() {
   setupSkillsHandlers()
   setupScriptHandlers(() => mainWindow)
   registerActivityHistoryHandlers()
+  // Notification callback - only show when window is not focused
+  const notificationCallback = (title: string, body: string) => {
+    if (Notification.isSupported() && mainWindow && !mainWindow.isFocused()) {
+      const notification = new Notification({ title, body })
+      notification.on('click', () => {
+        if (mainWindow) {
+          mainWindow.show()
+          mainWindow.focus()
+        }
+      })
+      notification.show()
+    }
+  }
+
   setupTerminalHandlers(
     () => mainWindow,
-    // Notification callback - only show when window is not focused
-    (title: string, body: string) => {
-      if (Notification.isSupported() && mainWindow && !mainWindow.isFocused()) {
-        const notification = new Notification({ title, body })
-        notification.on('click', () => {
-          if (mainWindow) {
-            mainWindow.show()
-            mainWindow.focus()
-          }
-        })
-        notification.show()
-      }
-    },
+    notificationCallback,
     // Agent change callback - update tray state
     () => { if (aggregator) aggregator.update() },
   )
+
+  // Initialize scheduler and its IPC handlers
+  scheduler = new Scheduler(
+    () => mainWindow,
+    notificationCallback,
+  )
+  setupSchedulerHandlers(scheduler)
 
   // Window control handlers
   ipcMain.handle('window:minimize', () => {
@@ -477,6 +489,11 @@ async function initializeHooksAndSessions() {
     // Restore terminal sessions after hooks are ready
     restoreAgents()
 
+    // Start scheduler after agents are restored
+    if (scheduler) {
+      scheduler.start()
+    }
+
     // Trigger initial tray state update after agents are restored
     setTimeout(() => {
       if (aggregator) aggregator.update()
@@ -505,6 +522,12 @@ app.on('before-quit', async (event) => {
 
   isQuitting = true
   if (isUpdating) return
+
+  // Stop scheduler
+  if (scheduler) {
+    scheduler.stop()
+    scheduler = null
+  }
 
   // Cleanup global shortcuts
   globalShortcut.unregisterAll()

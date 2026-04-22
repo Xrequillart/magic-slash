@@ -14,6 +14,7 @@ import { ConfigPage } from './pages/Config'
 import { TerminalsPage } from './pages/Terminals'
 import { SkillsPage } from './pages/Skills'
 import { HistoryPage } from './pages/History'
+import { ScheduledPage } from './pages/Scheduled'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useWindowSplitMode } from './hooks/useWindowSplitMode'
 
@@ -259,6 +260,13 @@ export function App() {
           <div className={`absolute inset-0 overflow-auto ${currentPage === 'history' ? 'block' : 'hidden'}`}>
             <div className="max-w-5xl mx-auto p-6 h-full">
               <HistoryPage />
+            </div>
+          </div>
+
+          {/* Scheduled Page */}
+          <div className={`absolute inset-0 overflow-auto ${currentPage === 'scheduled' ? 'block' : 'hidden'}`}>
+            <div className="max-w-5xl mx-auto p-6 h-full">
+              <ScheduledPage />
             </div>
           </div>
 

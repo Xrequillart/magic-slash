@@ -59,19 +59,45 @@ function maybeShowNotification(
   showNotification(title, body)
 }
 
-function createTerminalCallbacks(id: string, name: string) {
+/**
+ * Creates the base IPC-forwarding callbacks for a terminal.
+ * Used by both terminal-handlers and the scheduler to avoid duplication.
+ */
+export function createBaseCallbacks(id: string, windowGetter: () => BrowserWindow | null) {
   return {
     onData: (data: string) => {
-      const mainWindow = getMainWindow()
-      if (mainWindow) {
-        mainWindow.webContents.send('terminal:data', { id, data })
-      }
+      const win = windowGetter()
+      if (win) win.webContents.send('terminal:data', { id, data })
     },
     onStateChange: (state: string, previousState: string) => {
-      const mainWindow = getMainWindow()
-      if (mainWindow) {
-        mainWindow.webContents.send('terminal:state', { id, state, previousState })
-      }
+      const win = windowGetter()
+      if (win) win.webContents.send('terminal:state', { id, state, previousState })
+    },
+    onExit: (exitCode: number) => {
+      const win = windowGetter()
+      if (win) win.webContents.send('terminal:exit', { id, exitCode })
+    },
+    onBranchChange: (branchName: string | null) => {
+      const win = windowGetter()
+      if (win) win.webContents.send('terminal:branch', { id, branchName })
+    },
+    onMetadataChange: (metadata: TerminalMetadata) => {
+      const win = windowGetter()
+      if (win) win.webContents.send('terminal:metadata', { id, metadata })
+    },
+    onRepositoriesChange: (repositories: string[]) => {
+      const win = windowGetter()
+      if (win) win.webContents.send('terminal:repositories', { id, repositories })
+    },
+  }
+}
+
+function createTerminalCallbacks(id: string, name: string) {
+  const base = createBaseCallbacks(id, getMainWindow)
+  return {
+    onData: base.onData,
+    onStateChange: (state: string, previousState: string) => {
+      base.onStateChange(state, previousState)
 
       const t = getTerminal(id)
       const displayName = t?.metadata?.title || name
@@ -95,23 +121,12 @@ function createTerminalCallbacks(id: string, name: string) {
       }
     },
     onExit: (exitCode: number) => {
-      const mainWindow = getMainWindow()
-      if (mainWindow) {
-        mainWindow.webContents.send('terminal:exit', { id, exitCode })
-      }
+      base.onExit(exitCode)
       previousStatus.delete(id)
     },
-    onBranchChange: (branchName: string | null) => {
-      const mainWindow = getMainWindow()
-      if (mainWindow) {
-        mainWindow.webContents.send('terminal:branch', { id, branchName })
-      }
-    },
+    onBranchChange: base.onBranchChange,
     onMetadataChange: (metadata: TerminalMetadata) => {
-      const mainWindow = getMainWindow()
-      if (mainWindow) {
-        mainWindow.webContents.send('terminal:metadata', { id, metadata })
-      }
+      base.onMetadataChange(metadata)
 
       // Track status changes and create history entries
       const newStatus = metadata.status || ''
@@ -139,19 +154,14 @@ function createTerminalCallbacks(id: string, name: string) {
         previousStatus.set(id, newStatus)
       }
     },
-    onRepositoriesChange: (repositories: string[]) => {
-      const mainWindow = getMainWindow()
-      if (mainWindow) {
-        mainWindow.webContents.send('terminal:repositories', { id, repositories })
-      }
-    }
+    onRepositoriesChange: base.onRepositoriesChange,
   }
 }
 
 export function restoreAgents() {
   try {
-    // Filter out sidebar agents (VS Code extension)
-    const agents = readAgents().filter(a => !a.id.startsWith('sidebar-'))
+    // Filter out sidebar agents (VS Code extension) and idle scheduled agents
+    const agents = readAgents().filter(a => !a.id.startsWith('sidebar-') && !a.schedule?.enabled)
 
     // Only restore if there are no running terminals yet
     const existingTerminals = getAllTerminals()
@@ -329,7 +339,12 @@ export function setupTerminalHandlers(
     return getTerminalCwd(id)
   })
 
-  const handleGetAgents = async () => readAgents()
+  const handleGetAgents = async () => {
+    const agents = readAgents()
+    const runningIds = new Set(getAllTerminals().map(t => t.id))
+    // Exclude scheduled agents unless they have an active terminal
+    return agents.filter(a => !a.schedule?.enabled || runningIds.has(a.id))
+  }
   ipcMain.handle('terminal:getSessions', handleGetAgents) // legacy alias
   ipcMain.handle('terminal:getAgents', handleGetAgents)
 

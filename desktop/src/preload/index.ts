@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig } from '../types'
+import type { TerminalMetadata, RepositoryConfig, Schedule } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -329,6 +329,29 @@ const updaterApi = {
   },
 }
 
+// Scheduler API
+const schedulerApi = {
+  create: (name: string, repositories: string[], schedule: Schedule) =>
+    ipcRenderer.invoke('scheduler:create', name, repositories, schedule),
+  update: (id: string, schedule: Schedule, name?: string, repositories?: string[]) =>
+    ipcRenderer.invoke('scheduler:update', id, schedule, name, repositories),
+  clear: (id: string) =>
+    ipcRenderer.invoke('scheduler:clear', id),
+  delete: (id: string) =>
+    ipcRenderer.invoke('scheduler:delete', id),
+  executeNow: (id: string) =>
+    ipcRenderer.invoke('scheduler:executeNow', id),
+  getScheduled: () =>
+    ipcRenderer.invoke('scheduler:getScheduled'),
+  setEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke('scheduler:setEnabled', enabled),
+  onScheduleUpdate: (callback: (data: { agentId: string }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { agentId: string }) => callback(data)
+    ipcRenderer.on('scheduler:updated', listener)
+    return () => ipcRenderer.removeListener('scheduler:updated', listener)
+  },
+}
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   config: configApi,
@@ -343,6 +366,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   scripts: scriptsApi,
   tray: trayApi,
   quickLaunch: quickLaunchApi,
+  scheduler: schedulerApi,
 })
 
 // Type definitions for the renderer
@@ -361,6 +385,7 @@ declare global {
       scripts: typeof scriptsApi
       tray: typeof trayApi
       quickLaunch: typeof quickLaunchApi
+      scheduler: typeof schedulerApi
     }
   }
 
