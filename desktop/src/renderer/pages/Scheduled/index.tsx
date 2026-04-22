@@ -224,13 +224,22 @@ function ScheduleForm({
       {frequency === 'once' && (
         <div>
           <label className="block text-xs text-text-secondary mb-1.5">Date</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            min={new Date().toISOString().split('T')[0]}
-            className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
-          />
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              className="flex-1 px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+            />
+            <button
+              type="button"
+              onClick={() => setDate(new Date().toISOString().split('T')[0])}
+              className="px-3 py-2 text-xs font-medium bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
+            >
+              Today
+            </button>
+          </div>
         </div>
       )}
 
