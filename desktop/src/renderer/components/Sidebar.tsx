@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, memo } from 'react'
-import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, Sparkles, X, Eye, Play, CheckCircle2, Moon } from 'lucide-react'
+import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, Sparkles, X, Eye, CheckCircle2, Zap } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
@@ -54,9 +54,8 @@ const WORKFLOW_GROUP_CONFIG: Record<WorkflowGroupKey, {
   spinner?: boolean
   color: string
 }> = {
-  backlog:         { icon: Moon, color: 'text-text-secondary/50' },
-  needs_attention: { icon: AlertTriangle, color: 'text-text-secondary/50' },
-  in_progress:     { icon: Play, color: 'text-text-secondary/50' },
+  needs_attention: { icon: AlertTriangle, color: 'text-yellow' },
+  active:          { icon: Zap, color: 'text-text-secondary/50' },
   in_review:       { icon: Eye, color: 'text-text-secondary/50' },
   done:            { icon: CheckCircle2, color: 'text-text-secondary/50' },
 }
@@ -142,8 +141,8 @@ const WorkflowGroup = memo(function WorkflowGroup({
   return (
     <div className="flex flex-col">
       {/* Group header */}
-      <div className="flex items-center gap-2 px-2 py-1 text-xs text-text-secondary/50 w-full">
-        <span className={`flex items-center ${config.color}`}>
+      <div className={`flex items-center gap-2 px-2 py-1 text-xs w-full ${config.color}`}>
+        <span className="flex items-center">
           {config.spinner ? (
             <span className="loader-spinner-sm flex-shrink-0" />
           ) : IconComponent ? (
@@ -151,7 +150,7 @@ const WorkflowGroup = memo(function WorkflowGroup({
           ) : null}
         </span>
         <span className="font-medium truncate">{label}</span>
-        <span className="text-text-secondary/30 text-xs">{terminals.length}</span>
+        <span className="opacity-50 text-xs">{terminals.length}</span>
       </div>
 
       {/* Agent list */}

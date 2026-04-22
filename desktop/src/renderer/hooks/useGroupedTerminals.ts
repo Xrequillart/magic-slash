@@ -4,10 +4,9 @@ import type { TerminalInfo, Config, RepositoryConfig } from '../../types'
 
 export type WorkflowGroupKey =
   | 'needs_attention'
+  | 'active'
   | 'in_review'
-  | 'in_progress'
   | 'done'
-  | 'backlog'
 
 export interface TerminalWithRepos extends TerminalInfo {
   matchingProjects: string[]
@@ -17,9 +16,8 @@ export const WORKFLOW_GROUPS: {
   key: WorkflowGroupKey
   label: string
 }[] = [
-  { key: 'backlog',          label: 'Backlog' },
   { key: 'needs_attention',  label: 'Needs attention' },
-  { key: 'in_progress',      label: 'In progress' },
+  { key: 'active',           label: 'Active' },
   { key: 'in_review',        label: 'In review' },
   { key: 'done',             label: 'Done' },
 ]
@@ -28,24 +26,20 @@ export function classifyTerminal(terminal: TerminalInfo): WorkflowGroupKey {
   const { state } = terminal
   const status = terminal.metadata?.status || ''
 
-  // Real-time state: only error/waiting override workflow status
   if (state === 'error' || state === 'waiting') return 'needs_attention'
 
-  // Workflow status
   if (['PR created', 'in review', 'changes requested'].includes(status)) return 'in_review'
-  if (['in progress', 'committed', 'ready for PR'].includes(status)) return 'in_progress'
   if (status === 'PR merged') return 'done'
 
-  return 'backlog'
+  return 'active'
 }
 
 function groupTerminals(terminalList: TerminalInfo[], config: Config | null) {
   const groups: Record<WorkflowGroupKey, TerminalWithRepos[]> = {
     needs_attention: [],
+    active: [],
     in_review: [],
-    in_progress: [],
     done: [],
-    backlog: [],
   }
 
   for (const terminal of terminalList) {
