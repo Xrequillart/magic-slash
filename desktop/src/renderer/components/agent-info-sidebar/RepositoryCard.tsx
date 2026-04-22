@@ -39,7 +39,7 @@ export function RepositoryCard({
     <div className="bg-white/[0.06] rounded-xl p-3">
       {/* Repo header */}
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-white/90 font-medium text-base truncate" title={repoPath}>
+        <span className="text-white/90 font-medium text-xs truncate" title={repoPath}>
           {repoName}
         </span>
         <div className="flex items-center gap-1.5 ml-auto">
@@ -47,7 +47,7 @@ export function RepositoryCard({
           {/* Open in VSCode button */}
           <button
             onClick={() => window.electronAPI.shell.openInVSCode(repoPath)}
-            className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-semibold text-text-secondary/50 border border-dashed border-border/40 rounded hover:border-[#007ACC]/50 hover:text-[#007ACC] hover:bg-[#007ACC]/5 transition-colors"
+            className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary/50 border border-dashed border-border/40 rounded hover:border-[#007ACC]/50 hover:text-[#007ACC] hover:bg-[#007ACC]/5 transition-colors"
           >
             <VSCodeIcon className="w-3 h-3" />
             Open
@@ -64,7 +64,7 @@ export function RepositoryCard({
               <div className="flex items-center gap-1.5 px-2 py-1.5 bg-white/[0.06] rounded-md min-w-0">
                 <GitBranch className="w-3 h-3 text-text-secondary/50 flex-shrink-0" />
                 <span
-                  className="text-text-secondary/70 text-[12px] font-medium truncate"
+                  className="text-text-secondary/70 text-[10px] font-medium truncate"
                   title={resolvedBaseBranch}
                 >
                   {resolvedBaseBranch}
@@ -77,7 +77,7 @@ export function RepositoryCard({
           <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1.5 bg-white/[0.06] rounded-md">
             <GitBranch className="w-3.5 h-3.5 text-green/70 flex-shrink-0" />
             <span
-              className="text-green text-[13px] font-medium truncate"
+              className="text-green text-xs font-medium truncate"
               title={gitData.branch}
             >
               {gitData.branch}
@@ -144,7 +144,7 @@ export function RepositoryCard({
                     {file.path.split('/').pop()}
                   </span>
                   {(file.additions > 0 || file.deletions > 0) && (
-                    <span className="flex-shrink-0 text-[11px] text-text-secondary/40">
+                    <span className="flex-shrink-0 text-[10px] text-text-secondary/40">
                       {file.additions > 0 && <span className="text-green">+{file.additions}</span>}
                       {file.additions > 0 && file.deletions > 0 && ' '}
                       {file.deletions > 0 && <span className="text-red">-{file.deletions}</span>}
@@ -170,7 +170,7 @@ export function RepositoryCard({
             {gitData.commits.commits.slice(0, 5).map((commit) => (
               <div
                 key={commit.hash}
-                className="flex items-center gap-2 text-sm py-0.5"
+                className="flex items-center gap-2 text-xs py-0.5"
               >
                 <span className="text-text-secondary/60 truncate flex-1" title={commit.subject}>
                   {commit.subject}

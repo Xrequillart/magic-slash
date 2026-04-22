@@ -31,7 +31,7 @@ export function RepositorySelector({
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
           <div className="flex items-center gap-2">
             <Folder className="w-4 h-4 text-purple" />
-            <span className="text-base font-semibold text-white">Select repositories</span>
+            <span className="text-xs font-semibold text-white">Select repositories</span>
           </div>
           <button
             onClick={onClose}
@@ -52,7 +52,7 @@ export function RepositorySelector({
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 transition-colors text-left"
               >
                 <Folder className="w-4 h-4 text-purple/50 flex-shrink-0" />
-                <span className="flex-1 text-white/80 font-medium text-sm">{repo.name}</span>
+                <span className="flex-1 text-white/80 font-medium text-xs">{repo.name}</span>
                 {isAttached && (
                   <Check className="w-4 h-4 text-green" />
                 )}
@@ -61,7 +61,7 @@ export function RepositorySelector({
           })}
 
           {availableRepos.length === 0 && (
-            <div className="text-center py-8 text-sm text-text-secondary/50">
+            <div className="text-center py-8 text-xs text-text-secondary/50">
               No repositories configured
             </div>
           )}

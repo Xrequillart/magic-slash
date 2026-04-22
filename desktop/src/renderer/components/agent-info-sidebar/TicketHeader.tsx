@@ -70,15 +70,15 @@ export function TicketHeader({
           ticketLink ? (
             <button
               onClick={() => window.electronAPI.shell.openExternal(ticketLink)}
-              className="text-white text-sm font-semibold hover:underline cursor-pointer bg-transparent border-none p-0"
+              className="text-white text-xs font-semibold hover:underline cursor-pointer bg-transparent border-none p-0"
             >
               {metadata.ticketId}
             </button>
           ) : (
-            <span className="text-white text-sm font-semibold">{metadata.ticketId}</span>
+            <span className="text-white text-xs font-semibold">{metadata.ticketId}</span>
           )
         ) : (
-          <span className="text-text-secondary/40 text-base">No ticket</span>
+          <span className="text-text-secondary/40 text-xs">No ticket</span>
         )}
         {metadata && (
           <div ref={statusRef} className="relative">
@@ -87,7 +87,7 @@ export function TicketHeader({
               return (
                 <button
                   onClick={() => setIsStatusOpen(!isStatusOpen)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium cursor-pointer border-none ${statusOption.bg} ${statusOption.text}`}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer border-none ${statusOption.bg} ${statusOption.text}`}
                 >
                   {statusOption.label}
                   <ChevronDown className={`w-3 h-3 transition-transform ${isStatusOpen ? 'rotate-180' : ''}`} />
@@ -106,7 +106,7 @@ export function TicketHeader({
                         onStatusChange?.(option.value)
                         setIsStatusOpen(false)
                       }}
-                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-white/10 transition-colors border-none cursor-pointer ${
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-white/10 transition-colors border-none cursor-pointer ${
                         isSelected ? 'bg-white/5' : ''
                       }`}
                     >
@@ -140,7 +140,7 @@ export function TicketHeader({
             }}
             onBlur={saveTitle}
             placeholder="Enter title..."
-            className="flex-1 bg-bg-tertiary border border-accent rounded px-2 py-1 text-white font-semibold text-lg focus:outline-none"
+            className="flex-1 bg-bg-tertiary border border-accent rounded px-2 py-1 text-white font-semibold text-sm focus:outline-none"
           />
         </div>
       ) : (
@@ -149,9 +149,9 @@ export function TicketHeader({
           onClick={startEditingTitle}
         >
           {metadata?.title ? (
-            <h2 className="flex-1 text-white font-semibold text-lg leading-tight break-words">{metadata.title}</h2>
+            <h2 className="flex-1 text-white font-semibold text-sm leading-tight break-words">{metadata.title}</h2>
           ) : (
-            <h2 className="flex-1 text-text-secondary/40 italic text-lg">Click to add title</h2>
+            <h2 className="flex-1 text-text-secondary/40 italic text-sm">Click to add title</h2>
           )}
           <Edit2 className="w-3.5 h-3.5 text-text-secondary/30 hover:text-text-secondary/60 transition-colors flex-shrink-0 mt-0.5" />
         </div>
@@ -171,7 +171,7 @@ export function TicketHeader({
               }}
               placeholder="Enter description..."
               rows={3}
-              className="w-full bg-bg-tertiary border border-accent rounded px-2 py-1.5 text-sm text-white/70 focus:outline-none resize-none leading-relaxed"
+              className="w-full bg-bg-tertiary border border-accent rounded px-2 py-1.5 text-xs text-white/70 focus:outline-none resize-none leading-relaxed"
             />
             <div className="flex items-center justify-between">
               <span className="text-xs text-text-secondary/40">⌘Enter to save, Esc to cancel</span>
@@ -191,11 +191,11 @@ export function TicketHeader({
           >
             <div className="flex items-start gap-2">
               {metadata?.description ? (
-                <div className="flex-1 text-sm text-white/60 whitespace-pre-wrap break-words leading-relaxed">
+                <div className="flex-1 text-xs text-white/60 whitespace-pre-wrap break-words leading-relaxed">
                   {metadata.description}
                 </div>
               ) : (
-                <span className="flex-1 text-sm text-text-secondary/40 italic">Click to add description</span>
+                <span className="flex-1 text-xs text-text-secondary/40 italic">Click to add description</span>
               )}
               <Edit2 className="w-3 h-3 text-text-secondary/30 hover:text-text-secondary/60 transition-colors flex-shrink-0 mt-0.5" />
             </div>

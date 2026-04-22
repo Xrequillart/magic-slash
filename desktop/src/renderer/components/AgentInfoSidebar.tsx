@@ -375,7 +375,7 @@ export function AgentInfoSidebar() {
       <div className="flex items-center justify-between px-4 pt-3">
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 text-purple" />
-          <span className="font-semibold text-sm">{activeTerminal ? `${activeTerminal.name} Info` : 'Agent Info'}</span>
+          <span className="font-semibold text-xs">{activeTerminal ? `${activeTerminal.name} Info` : 'Agent Info'}</span>
         </div>
         {activeTerminal && canClose ? (
           <button
@@ -402,7 +402,7 @@ export function AgentInfoSidebar() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto" style={{ fontFamily: "'Cera Pro', -apple-system, BlinkMacSystemFont, sans-serif" }}>
         {!activeTerminal ? (
-          <div className="px-4 py-8 text-center text-text-secondary text-sm">
+          <div className="px-4 py-8 text-center text-text-secondary text-xs">
             No active agent
           </div>
         ) : (
@@ -447,7 +447,7 @@ export function AgentInfoSidebar() {
                 onClick={() => setIsRepoModalOpen(true)}
                 className="w-full py-4 text-center border border-dashed border-border/50 rounded-lg hover:border-text-secondary/50 hover:bg-white/5 transition-colors"
               >
-                <div className="text-[13px] text-text-secondary/50">
+                <div className="text-xs text-text-secondary/50">
                   Add a repository
                 </div>
               </button>
