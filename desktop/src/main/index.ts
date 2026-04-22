@@ -108,6 +108,7 @@ function createWindow() {
     height: 800,
     minWidth: 900,
     minHeight: 600,
+    show: false,
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 16, y: 12 },
     transparent: true,
@@ -124,6 +125,10 @@ function createWindow() {
       // IPC is mediated through contextBridge in preload/index.ts.
       sandbox: false,
     },
+  })
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show()
   })
 
   // In development, load from Vite dev server
