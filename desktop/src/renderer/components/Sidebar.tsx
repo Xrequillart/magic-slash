@@ -69,10 +69,9 @@ interface AgentItemProps {
   colorMap: Record<string, string>
   now: number
   draggable?: boolean
-  onSchedule?: () => void
 }
 
-const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, onSelect, colorMap, now: _now, draggable, onSchedule }: AgentItemProps) {
+const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, onSelect, colorMap, now: _now, draggable }: AgentItemProps) {
   return (
     <button
       onClick={onSelect}
@@ -93,15 +92,6 @@ const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, o
       <div className="flex-1 text-left min-w-0">
         <div className="truncate font-medium">{terminal.metadata?.title || terminal.name}</div>
       </div>
-      {onSchedule && (
-        <span
-          onClick={(e) => { e.stopPropagation(); onSchedule() }}
-          className="p-0.5 rounded hover:bg-white/10 opacity-0 group-hover/agent:opacity-100 transition-opacity flex-shrink-0"
-          title="Schedule this agent"
-        >
-          <CalendarClock className="w-3 h-3 text-text-secondary/50 hover:text-accent" />
-        </span>
-      )}
       {terminal.matchingProjects.length > 0 && (
         <div className="flex items-center gap-1 flex-shrink-0">
           {terminal.matchingProjects.map((project) => (
@@ -130,8 +120,6 @@ interface WorkflowGroupProps {
   colorMap: Record<string, string>
   now: number
   draggable?: boolean
-  scheduledIds?: Set<string>
-  onScheduleAgent?: () => void
 }
 
 const WorkflowGroup = memo(function WorkflowGroup({
@@ -145,8 +133,6 @@ const WorkflowGroup = memo(function WorkflowGroup({
   colorMap,
   now,
   draggable,
-  scheduledIds,
-  onScheduleAgent,
 }: WorkflowGroupProps) {
   if (terminals.length === 0) return null
 
@@ -180,7 +166,6 @@ const WorkflowGroup = memo(function WorkflowGroup({
             colorMap={colorMap}
             now={now}
             draggable={draggable}
-            onSchedule={onScheduleAgent && scheduledIds && !scheduledIds.has(terminal.id) ? onScheduleAgent : undefined}
           />
         ))}
       </div>
@@ -238,16 +223,6 @@ export function Sidebar() {
     () => scheduledAgents.filter(a => a.schedule?.enabled).length,
     [scheduledAgents]
   )
-
-  const scheduledAgentIds = useMemo(
-    () => new Set(scheduledAgents.map(a => a.id)),
-    [scheduledAgents]
-  )
-
-  const handleScheduleAgent = useCallback(() => {
-    setCurrentPage('scheduled')
-    setActiveTerminal(null)
-  }, [setCurrentPage, setActiveTerminal])
 
   const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
@@ -590,8 +565,6 @@ export function Sidebar() {
                   colorMap={colorMap}
                   now={now}
                   draggable
-                  scheduledIds={scheduledAgentIds}
-                  onScheduleAgent={handleScheduleAgent}
                 />
               ))}
               {terminals.filter(t => !rightPaneTerminalIds.includes(t.id)).length === 0 && (
@@ -628,8 +601,6 @@ export function Sidebar() {
                   colorMap={colorMap}
                   now={now}
                   draggable
-                  scheduledIds={scheduledAgentIds}
-                  onScheduleAgent={handleScheduleAgent}
                 />
               ))}
               {rightPaneTerminalIds.length === 0 && (
@@ -653,8 +624,6 @@ export function Sidebar() {
                 onSelectTerminal={handleSelectTerminal}
                 colorMap={colorMap}
                 now={now}
-                scheduledIds={scheduledAgentIds}
-                onScheduleAgent={handleScheduleAgent}
               />
             ))}
           </div>
