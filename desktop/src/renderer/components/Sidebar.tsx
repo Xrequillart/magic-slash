@@ -683,7 +683,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 py-2 text-xs text-text-secondary flex items-center justify-start gap-2">
-        <span className="opacity-60">v0.42.11</span>
+        <span className="opacity-60">v0.43.0</span>
         <span className="opacity-30">&bull;</span>
         <a
           href="https://xrequillart.github.io/magic-slash/"
