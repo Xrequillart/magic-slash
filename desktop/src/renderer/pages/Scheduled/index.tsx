@@ -470,6 +470,8 @@ export function ScheduledPage() {
   }
 
   return (
+    <div className="h-full flex flex-col">
+      <div className="flex-1 overflow-auto p-6">
     <div className="flex flex-col gap-8 animate-fade-in max-w-[62rem] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -483,7 +485,7 @@ export function ScheduledPage() {
           <button
             onClick={() => setShowForm(true)}
             disabled={repos.length === 0}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/[0.08] rounded-lg hover:bg-white/[0.04] hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>New scheduled agent</span>
@@ -542,6 +544,8 @@ export function ScheduledPage() {
           ))}
         </div>
       )}
+    </div>
+      </div>
     </div>
   )
 }

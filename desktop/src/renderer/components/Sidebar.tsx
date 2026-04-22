@@ -385,6 +385,7 @@ export function Sidebar() {
   const shortcutKey = isMac ? '⌘N' : 'Ctrl+N'
   const skillsShortcutKey = isMac ? '⌘;' : 'Ctrl+;'
   const historyShortcutKey = isMac ? '⌘H' : 'Ctrl+H'
+  const scheduledShortcutKey = isMac ? '⌘L' : 'Ctrl+L'
   const settingsShortcutKey = isMac ? '⌘,' : 'Ctrl+,'
 
   // Listen for Command+; keyboard shortcut to open skills
@@ -407,6 +408,20 @@ export function Sidebar() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
         e.preventDefault()
         setCurrentPage('history')
+        setActiveTerminal(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [setCurrentPage, setActiveTerminal])
+
+  // Listen for Command+L keyboard shortcut to open scheduled
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
+        e.preventDefault()
+        setCurrentPage('scheduled')
         setActiveTerminal(null)
       }
     }
@@ -506,10 +521,11 @@ export function Sidebar() {
           <CalendarClock className="w-3.5 h-3.5" />
           <span>Scheduled</span>
           {scheduledCount > 0 && (
-            <span className="ml-auto text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium">
+            <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium">
               {scheduledCount}
             </span>
           )}
+          <span className="ml-auto text-xs opacity-50">{scheduledShortcutKey}</span>
         </button>
 
         {/* Settings button */}
