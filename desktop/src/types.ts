@@ -119,6 +119,7 @@ export interface Config {
   spotlight?: SpotlightConfig
   launchMode?: LaunchMode
   schedulerEnabled?: boolean
+  schedulerDefaultTime?: string
 }
 
 export interface PRTemplate {

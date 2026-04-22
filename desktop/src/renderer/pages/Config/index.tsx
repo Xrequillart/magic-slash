@@ -40,6 +40,7 @@ function WelcomePage() {
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
   const [showBypassWarning, setShowBypassWarning] = useState(false)
   const [schedulerEnabled, setSchedulerEnabled] = useState(config?.schedulerEnabled ?? true)
+  const [schedulerDefaultTime, setSchedulerDefaultTime] = useState(config?.schedulerDefaultTime ?? '09:00')
 
   const configSpotlightEnabled = config?.spotlight?.enabled
   const configSpotlightShortcut = config?.spotlight?.shortcut
@@ -57,6 +58,11 @@ function WelcomePage() {
   useEffect(() => {
     if (configSchedulerEnabled !== undefined) setSchedulerEnabled(configSchedulerEnabled)
   }, [configSchedulerEnabled])
+
+  const configSchedulerDefaultTime = config?.schedulerDefaultTime
+  useEffect(() => {
+    if (configSchedulerDefaultTime !== undefined) setSchedulerDefaultTime(configSchedulerDefaultTime)
+  }, [configSchedulerDefaultTime])
 
   const handleSpotlightToggle = async () => {
     const newEnabled = !spotlightEnabled
@@ -409,6 +415,26 @@ function WelcomePage() {
               }`} />
             </button>
           </div>
+          {schedulerEnabled && (
+            <div className="border-t border-white/5 pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">Default time</div>
+                  <div className="text-xs text-text-secondary/50 mt-0.5">Default time for new scheduled agents</div>
+                </div>
+                <input
+                  type="time"
+                  value={schedulerDefaultTime}
+                  onChange={(e) => {
+                    const newTime = e.target.value
+                    setSchedulerDefaultTime(newTime)
+                    window.electronAPI.scheduler.setDefaultTime(newTime)
+                  }}
+                  className="px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                />
+              </div>
+            </div>
+          )}
           {!schedulerEnabled && (
             <div className="text-xs text-text-secondary/50">
               Schedules are preserved but no agents will run automatically.

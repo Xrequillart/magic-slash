@@ -101,4 +101,15 @@ export function setupSchedulerHandlers(scheduler: Scheduler) {
     writeConfig(config)
     return config
   })
+
+  // Set scheduler default time
+  ipcMain.handle('scheduler:setDefaultTime', async (_event, time: string) => {
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+      throw new Error(`Invalid time format: '${time}'. Must be HH:mm (24-hour).`)
+    }
+    const config = readConfig()
+    config.schedulerDefaultTime = time
+    writeConfig(config)
+    return config
+  })
 }

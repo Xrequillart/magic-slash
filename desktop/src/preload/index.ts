@@ -345,6 +345,8 @@ const schedulerApi = {
     ipcRenderer.invoke('scheduler:getScheduled'),
   setEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('scheduler:setEnabled', enabled),
+  setDefaultTime: (time: string) =>
+    ipcRenderer.invoke('scheduler:setDefaultTime', time),
   onScheduleUpdate: (callback: (data: { agentId: string }) => void) => {
     const listener = (_event: IpcRendererEvent, data: { agentId: string }) => callback(data)
     ipcRenderer.on('scheduler:updated', listener)

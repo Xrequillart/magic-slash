@@ -121,6 +121,12 @@ export function migrateConfig(appVersion?: string): boolean {
     changed = true
   }
 
+  // Migrate schedulerDefaultTime (default: '09:00')
+  if (config.schedulerDefaultTime === undefined) {
+    config.schedulerDefaultTime = '09:00'
+    changed = true
+  }
+
   if (changed) {
     // Create backup before writing migrated config
     createBackup()

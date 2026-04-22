@@ -118,6 +118,7 @@ function ScheduleForm({
   initialName,
   initialRepo,
   repos,
+  defaultTime,
   onSubmit,
   onCancel,
   submitLabel,
@@ -126,6 +127,7 @@ function ScheduleForm({
   initialName?: string
   initialRepo?: string
   repos: [string, { path: string }][]
+  defaultTime?: string
   onSubmit: (name: string, repo: string, schedule: Schedule) => void
   onCancel: () => void
   submitLabel: string
@@ -134,7 +136,7 @@ function ScheduleForm({
   const [repo, setRepo] = useState(initialRepo || (repos[0]?.[1]?.path || ''))
   const [command, setCommand] = useState(initialSchedule?.command || '')
   const [frequency, setFrequency] = useState<ScheduleFrequency>(initialSchedule?.frequency || 'once')
-  const [time, setTime] = useState(initialSchedule?.time || '09:00')
+  const [time, setTime] = useState(initialSchedule?.time || defaultTime || '09:00')
   const [date, setDate] = useState(initialSchedule?.date || '')
   const [dayOfWeek, setDayOfWeek] = useState<number>(initialSchedule?.dayOfWeek ?? 1)
   const [dayOfMonth, setDayOfMonth] = useState<number>(initialSchedule?.dayOfMonth ?? 1)
@@ -506,6 +508,7 @@ export function ScheduledPage() {
       {showForm && (
         <ScheduleForm
           repos={repos}
+          defaultTime={config?.schedulerDefaultTime}
           onSubmit={handleCreate}
           onCancel={() => setShowForm(false)}
           submitLabel="Schedule"
@@ -519,6 +522,7 @@ export function ScheduledPage() {
           initialName={editingAgent.name}
           initialRepo={editingAgent.repositories[0]}
           repos={repos}
+          defaultTime={config?.schedulerDefaultTime}
           onSubmit={handleUpdate}
           onCancel={() => setEditingAgent(null)}
           submitLabel="Update schedule"

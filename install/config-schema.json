@@ -70,6 +70,15 @@
       "type": "string",
       "enum": ["plan", "default", "acceptEdits", "auto", "bypassPermissions"],
       "description": "Permission mode for Claude Code agents"
+    },
+    "schedulerEnabled": {
+      "type": "boolean",
+      "description": "Whether the scheduler is enabled"
+    },
+    "schedulerDefaultTime": {
+      "type": "string",
+      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+      "description": "Default time for new scheduled agents (HH:mm format)"
     }
   },
   "additionalProperties": false,
