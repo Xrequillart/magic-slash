@@ -1,10 +1,49 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import type { HistoryEntry } from '../../types'
+import type { HistoryEntry, TicketEventGroup } from '../../types'
 
 export interface HistoryGroup {
   label: string
   date: string
   entries: HistoryEntry[]
+  ticketGroups: TicketEventGroup[]
+}
+
+function getGroupKey(entry: HistoryEntry): string {
+  return entry.ticketId || entry.agentId
+}
+
+function groupConsecutiveByTicket(entries: HistoryEntry[]): TicketEventGroup[] {
+  if (entries.length === 0) return []
+
+  const groups: TicketEventGroup[] = []
+  let currentKey = getGroupKey(entries[0])
+  let currentEntries: HistoryEntry[] = [entries[0]]
+
+  for (let i = 1; i < entries.length; i++) {
+    const entry = entries[i]
+    const key = getGroupKey(entry)
+
+    if (key === currentKey) {
+      currentEntries.push(entry)
+    } else {
+      groups.push(buildGroup(currentKey, currentEntries))
+      currentKey = key
+      currentEntries = [entry]
+    }
+  }
+  groups.push(buildGroup(currentKey, currentEntries))
+
+  return groups
+}
+
+function buildGroup(key: string, entries: HistoryEntry[]): TicketEventGroup {
+  return {
+    key,
+    ticketId: entries[0].ticketId,
+    agentName: entries[0].agentName,
+    lastAction: entries[0].action,
+    entries: [...entries],
+  }
 }
 
 function getDateKey(timestamp: number): string {
@@ -70,11 +109,15 @@ export function useActivityHistory() {
     // Sort groups by date descending, entries within each group by timestamp descending
     const sortedKeys = Array.from(grouped.keys()).sort((a, b) => b.localeCompare(a))
 
-    return sortedKeys.map(key => ({
-      label: getDayLabel(key),
-      date: key,
-      entries: grouped.get(key)!.sort((a, b) => b.timestamp - a.timestamp),
-    }))
+    return sortedKeys.map(key => {
+      const sorted = grouped.get(key)!.sort((a, b) => b.timestamp - a.timestamp)
+      return {
+        label: getDayLabel(key),
+        date: key,
+        entries: sorted,
+        ticketGroups: groupConsecutiveByTicket(sorted),
+      }
+    })
   }, [entries])
 
   const clear = useCallback(async () => {

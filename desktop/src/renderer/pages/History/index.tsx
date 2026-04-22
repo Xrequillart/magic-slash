@@ -1,7 +1,10 @@
-import { useState, useCallback } from 'react'
-import { Clock, Trash2 } from 'lucide-react'
+import { useState, useCallback, useRef } from 'react'
+import { Clock, Trash2, ChevronRight } from 'lucide-react'
 import { useActivityHistory } from '../../hooks/useActivityHistory'
 import type { HistoryAction } from '../../../types'
+
+const CARD_ANIM_MS = 150
+const CARD_STAGGER_MS = 50
 
 const ACTION_CONFIG: Record<HistoryAction, { label: string; color: string }> = {
   started: { label: 'Started', color: 'bg-green' },
@@ -20,6 +23,23 @@ function formatTime(timestamp: number): string {
 export function HistoryPage() {
   const { groups, loading, clear } = useActivityHistory()
   const [showConfirm, setShowConfirm] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [closingGroups, setClosingGroups] = useState<Set<string>>(new Set())
+  const groupSizes = useRef<Map<string, number>>(new Map())
+
+  const toggleGroup = useCallback((groupId: string) => {
+    if (expandedGroups.has(groupId)) {
+      setClosingGroups(c => new Set(c).add(groupId))
+      const count = groupSizes.current.get(groupId) || 3
+      const totalMs = CARD_ANIM_MS + (count - 1) * CARD_STAGGER_MS + 50
+      setTimeout(() => {
+        setClosingGroups(c => { const n = new Set(c); n.delete(groupId); return n })
+        setExpandedGroups(p => { const n = new Set(p); n.delete(groupId); return n })
+      }, totalMs)
+    } else {
+      setExpandedGroups(prev => new Set(prev).add(groupId))
+    }
+  }, [expandedGroups])
 
   const handleClear = useCallback(async () => {
     await clear()
@@ -49,6 +69,8 @@ export function HistoryPage() {
       </div>
     )
   }
+
+  const hasExpanded = expandedGroups.size > 0
 
   return (
     <div className="h-full flex flex-col">
@@ -99,37 +121,111 @@ export function HistoryPage() {
 
           {/* Entries */}
           <div className="flex flex-col gap-1">
-            {group.entries.map(entry => {
-              const config = ACTION_CONFIG[entry.action]
-              return (
-                <div
-                  key={entry.id}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.06] transition-colors"
-                >
-                  {/* Color dot */}
-                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${config.color}`} />
+            {group.ticketGroups.map((tg, idx) => {
+              const groupId = `${group.date}-${idx}`
+              const isExpanded = expandedGroups.has(groupId)
+              const isSingle = tg.entries.length === 1
 
-                  {/* Time */}
-                  <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
-                    {formatTime(entry.timestamp)}
-                  </span>
+              const isDimmed = hasExpanded && !isExpanded
 
-                  {/* Agent name */}
-                  <span className="text-sm font-medium text-white truncate">
-                    {entry.agentName}
-                  </span>
-
-                  {/* Ticket ID */}
-                  {entry.ticketId && (
-                    <span className="text-xs text-accent/80 bg-accent/10 px-2 py-0.5 rounded flex-shrink-0">
-                      {entry.ticketId}
+              if (isSingle) {
+                const entry = tg.entries[0]
+                const config = ACTION_CONFIG[entry.action]
+                return (
+                  <div
+                    key={groupId}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.06] transition-all duration-200 ${isDimmed ? 'opacity-30' : ''}`}
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${config.color}`} />
+                    <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
+                      {formatTime(entry.timestamp)}
                     </span>
-                  )}
+                    <span className="text-sm font-medium text-white truncate">
+                      {entry.agentName}
+                    </span>
+                    {entry.ticketId && (
+                      <span className="text-xs text-accent/80 bg-accent/10 px-2 py-0.5 rounded flex-shrink-0">
+                        {entry.ticketId}
+                      </span>
+                    )}
+                    <span className="text-xs text-text-secondary ml-auto flex-shrink-0">
+                      {config.label}
+                    </span>
+                  </div>
+                )
+              }
 
-                  {/* Action label */}
-                  <span className="text-xs text-text-secondary ml-auto flex-shrink-0">
-                    {config.label}
-                  </span>
+              const lastConfig = ACTION_CONFIG[tg.lastAction]
+              const firstTime = formatTime(tg.entries[tg.entries.length - 1].timestamp)
+              const lastTime = formatTime(tg.entries[0].timestamp)
+              return (
+                <div key={groupId} className="flex flex-col gap-1">
+                  <div
+                    className={`rounded-lg bg-white/[0.04] border border-white/[0.08] transition-all duration-200 ${isDimmed ? 'opacity-30' : ''}`}
+                  >
+                    <button
+                      onClick={() => toggleGroup(groupId)}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.06] transition-colors rounded-lg text-left"
+                    >
+                      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${lastConfig.color}`} />
+                      <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
+                        {firstTime} → {lastTime}
+                      </span>
+                      <span className="text-sm font-medium text-white truncate">
+                        {tg.agentName}
+                      </span>
+                      {tg.ticketId && (
+                        <span className="text-xs text-accent/80 bg-accent/10 px-2 py-0.5 rounded flex-shrink-0">
+                          {tg.ticketId}
+                        </span>
+                      )}
+                      <span className="text-xs text-text-secondary/50 flex-shrink-0">
+                        {tg.entries.length} events
+                      </span>
+                      <span className="text-xs text-text-secondary ml-auto flex-shrink-0">
+                        {lastConfig.label}
+                      </span>
+                      <ChevronRight
+                        className={`w-4 h-4 text-text-secondary/40 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                      />
+                    </button>
+                  </div>
+                  {isExpanded && (() => {
+                    groupSizes.current.set(groupId, tg.entries.length)
+                    const isClosing = closingGroups.has(groupId)
+                    return tg.entries.map((entry, i) => {
+                      const config = ACTION_CONFIG[entry.action]
+                      const delay = isClosing
+                        ? (tg.entries.length - 1 - i) * CARD_STAGGER_MS
+                        : i * CARD_STAGGER_MS
+                      return (
+                        <div
+                          key={entry.id}
+                          className="flex items-center gap-3 px-4 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.06] overflow-hidden"
+                          style={{
+                            animation: `${isClosing ? 'card-slide-in' : 'card-slide-out'} ${CARD_ANIM_MS}ms ease both`,
+                            animationDelay: `${delay}ms`,
+                          }}
+                        >
+                          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${config.color}`} />
+                          <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
+                            {formatTime(entry.timestamp)}
+                          </span>
+                          <span className="text-sm font-medium text-white truncate">
+                            {entry.agentName}
+                          </span>
+                          {entry.ticketId && (
+                            <span className="text-xs text-accent/80 bg-accent/10 px-2 py-0.5 rounded flex-shrink-0">
+                              {entry.ticketId}
+                            </span>
+                          )}
+                          <span className="text-xs text-text-secondary ml-auto flex-shrink-0">
+                            {config.label}
+                          </span>
+                        </div>
+                      )
+                    })
+                  })()}
                 </div>
               )
             })}

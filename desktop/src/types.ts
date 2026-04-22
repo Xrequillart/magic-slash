@@ -137,6 +137,14 @@ export interface HistoryEntry {
   timestamp: number
 }
 
+export interface TicketEventGroup {
+  key: string
+  ticketId?: string
+  agentName: string
+  lastAction: HistoryAction
+  entries: HistoryEntry[]
+}
+
 export type ScriptCategory = 'dev' | 'build' | 'test' | 'lint' | 'other'
 export type PackageManager = 'npm' | 'yarn' | 'pnpm' | 'bun'
 
