@@ -15,7 +15,71 @@
             color: #000;
         }
 
-        /* Hero */
+        /* ── Skills Nav ── */
+        .skills-nav {
+            position: fixed;
+            top: 76px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 32px);
+            max-width: 1100px;
+            height: 44px;
+            z-index: 99;
+            display: flex;
+            justify-content: center;
+            border-radius: 100px;
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .skills-nav.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .skills-nav:hover {
+            background: rgba(255, 255, 255, 0.55);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+        }
+        .skills-nav-inner {
+            max-width: 100%;
+            width: 100%;
+            padding: 0 0.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            overflow-x: auto;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .skills-nav-inner::-webkit-scrollbar { display: none; }
+        .skills-nav-item {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: rgba(0, 0, 0, 0.35);
+            text-decoration: none;
+            padding: 10px 10px;
+            white-space: nowrap;
+            border-radius: 100px;
+            transition: color 0.2s ease, background 0.2s ease;
+            flex: 1;
+            text-align: center;
+        }
+        .skills-nav-item:hover {
+            color: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.04);
+        }
+        .skills-nav-item.active {
+            color: #393BFF;
+            background: rgba(57, 59, 255, 0.08);
+        }
+
+        /* ── Hero ── */
         .skills-hero {
             padding: 12rem 0 6rem;
             max-width: 1100px;
@@ -58,10 +122,13 @@
             grid-template-columns: 1fr 1fr;
             gap: 3rem;
             align-items: center;
-            padding: 4rem 0;
+            padding: 6rem 0;
         }
         .skill-item + .skill-item {
             border-top: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        .skill-item:nth-child(even) .skill-terminal {
+            order: 2;
         }
 
         .skill-content {
@@ -86,12 +153,9 @@
             padding: 5px 12px;
             border-radius: 6px;
             width: fit-content;
-        }
-        .skill-cmd {
             background: rgba(57, 59, 255, 0.1);
             color: #393BFF;
         }
-
         .skill-title {
             font-family: "Cera Pro", system-ui, sans-serif;
             font-size: 1.6rem;
@@ -123,147 +187,85 @@
             transition: opacity 0.2s ease;
             width: fit-content;
         }
-        .skill-link:hover {
-            opacity: 0.85;
-        }
-        .skill-link svg {
-            width: 14px;
-            height: 14px;
-        }
+        .skill-link:hover { opacity: 0.85; }
+        .skill-link svg { width: 14px; height: 14px; }
 
-        .skill-screenshot {
-            border-radius: 50px;
+        /* ── Terminal mockup ── */
+        .skill-terminal {
+            background: #0a0a0a;
+            border-radius: 12px;
             overflow: hidden;
-            border: none;
-            max-width: 300px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.1);
         }
-        .skill-screenshot img {
-            width: 100%;
-            display: block;
-        }
-
-        /* ── Dark overview section ── */
-        .skills-overview {
-            background:
-                linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-                #000;
-            background-size: 48px 48px;
-            padding: 8rem 0;
-        }
-        .skills-overview-inner {
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-        .skills-overview-title {
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 2.2rem;
-            font-weight: 900;
-            color: #fff;
-            margin: 0 0 1rem;
-            line-height: 1.2;
-        }
-        .skills-overview-subtitle {
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 1.05rem;
-            color: rgba(255, 255, 255, 0.45);
-            margin: 0 0 3.5rem;
-            line-height: 1.6;
-            max-width: 600px;
-        }
-        .skills-overview-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 1.5rem;
-        }
-        .skills-overview-card {
-            background: #000;
-            border: 1px solid #27272a;
-            border-radius: 14px;
-            padding: 1.5rem;
+        .skill-terminal-bar {
+            padding: 12px 16px;
             display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.04);
         }
-        .skills-overview-card-cmd {
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .terminal-dot.red { background: #ff5f57; }
+        .terminal-dot.yellow { background: #febc2e; }
+        .terminal-dot.green { background: #28c840; }
+        .skill-terminal-body {
+            padding: 20px 24px 24px;
             font-family: "JetBrains Mono", monospace;
-            font-size: 0.82rem;
-            font-weight: 500;
-            padding: 3px 8px;
-            border-radius: 4px;
-            width: fit-content;
+            font-size: 0.8rem;
+            line-height: 1.9;
         }
-        .skills-overview-card-cmd.blue { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
-        .skills-overview-card-cmd.purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
-        .skills-overview-card-cmd.green { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
-        .skills-overview-card-cmd.cyan { background: rgba(6, 182, 212, 0.2); color: #22d3ee; }
-        .skills-overview-card-cmd.orange { background: rgba(249, 115, 22, 0.2); color: #fb923c; }
+        .terminal-line { color: rgba(255, 255, 255, 0.8); }
+        .terminal-prompt { color: #4ade80; margin-right: 8px; }
+        .terminal-cmd { color: #818cf8; font-weight: 500; }
+        .terminal-muted { color: rgba(255, 255, 255, 0.3); }
+        .terminal-success { color: #4ade80; }
+        .terminal-highlight { color: #fbbf24; }
+        .terminal-info { color: #818cf8; }
+        .terminal-indent { padding-left: 1.5rem; }
 
-        .skills-overview-card-title {
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 1rem;
-            font-weight: 700;
-            color: #fff;
-            margin: 0;
-        }
-        .skills-overview-card-desc {
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 0.88rem;
-            color: rgba(255, 255, 255, 0.4);
-            line-height: 1.6;
-            margin: 0;
-        }
-        .skills-overview-card.span-full {
-            grid-column: span 3;
-            flex-direction: row;
-            align-items: center;
-            gap: 1.5rem;
-        }
-        .skills-overview-card.span-full .skills-overview-card-text {
-            display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
-        }
+        /* ── CTA ── */
+        .cta-section { padding: 6rem 0; }
 
-        .cta-section {
-            padding: 6rem 0;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .skills-hero h1 {
-                font-size: 2.5rem;
+        /* ── Responsive ── */
+        @media (max-width: 1024px) {
+            .skills-hero, .skills-list {
+                padding-left: 2rem;
+                padding-right: 2rem;
             }
+        }
+        @media (max-width: 768px) {
+            .skills-hero {
+                padding-top: 8rem;
+                padding-bottom: 4rem;
+            }
+            .skills-hero h1 { font-size: 2.5rem; }
             .skill-item {
                 grid-template-columns: 1fr;
                 gap: 2rem;
                 padding: 3rem 0;
             }
-            .skill-item:nth-child(even) .skill-screenshot {
-                order: 0;
+            .skill-item:nth-child(even) .skill-terminal { order: 0; }
+            .skill-terminal-body {
+                font-size: 0.72rem;
+                padding: 16px 18px 20px;
+                overflow-x: auto;
             }
-            .skill-item:nth-child(even) .skill-content {
-                order: 0;
+            .skills-nav-item {
+                padding: 12px 10px;
+                font-size: 0.72rem;
             }
-            .skills-overview-grid {
-                grid-template-columns: 1fr;
-            }
-            .skills-overview-card.span-full {
-                grid-column: span 1;
-                flex-direction: column;
-            }
-            .skills-overview-title {
-                font-size: 1.8rem;
-            }
+        }
+        @media (max-width: 480px) {
+            .skills-hero h1 { font-size: 2rem; }
+            .skill-terminal-body { font-size: 0.68rem; }
         }
     </style>
 </head>
 <body>
-    <div class="mobile-blocker">
-        <h2>This site is optimized for desktop</h2>
-        <p>It is not available on mobile or tablet.<br>Please visit on a computer!</p>
-    </div>
     <!-- Logo symbol -->
     <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden">
         <symbol id="magic-slash-logo" viewBox="0 0 583 105">
@@ -276,11 +278,24 @@
             <path d="M268.162 83.7939C262.591 83.7939 257.688 82.5682 253.454 80.1168C249.294 77.6654 246.025 74.2483 243.648 69.8654C241.271 65.4826 240.082 60.5055 240.082 54.934C240.082 49.4369 241.271 44.5341 243.648 40.2255C246.025 35.917 249.294 32.537 253.454 30.0856C257.688 27.5599 262.591 26.297 268.162 26.297C274.477 26.297 279.899 27.8199 284.431 30.8656C286.505 32.2595 288.306 33.8714 289.835 35.701C292.945 39.4199 290.697 44.6828 286.286 46.6908L283.522 47.9491C280.447 49.3483 276.993 47.7119 274.291 45.6855C272.805 44.497 270.837 43.9027 268.385 43.9027C265.488 43.9027 263.037 44.9055 261.031 46.9112C259.099 48.9169 258.134 51.5912 258.134 54.934C258.134 58.4255 259.099 61.174 261.031 63.1797C263.037 65.1111 265.488 66.0769 268.385 66.0769C270.837 66.0769 272.805 65.5197 274.291 64.4054C276.971 62.3951 280.401 60.7991 283.466 62.152L286.136 63.3309C290.618 65.3089 292.912 70.6217 289.755 74.368C288.218 76.1929 286.405 77.8121 284.319 79.2254C279.788 82.2711 274.402 83.7939 268.162 83.7939Z" fill="currentColor"/>
             <path d="M232.534 73.264C232.534 78.2795 228.468 82.3454 223.453 82.3454C218.437 82.3454 214.372 78.2795 214.372 73.264V36.827C214.372 31.8115 218.437 27.7456 223.453 27.7456C228.468 27.7456 232.534 31.8115 232.534 36.827V73.264ZM213.034 10.4742C213.034 7.27997 214 4.75427 215.931 2.89713C217.863 0.965709 220.389 0 223.509 0C226.703 0 229.229 0.965709 231.086 2.89713C232.943 4.75427 233.871 7.27997 233.871 10.4742C233.871 13.5199 232.943 16.0085 231.086 17.9399C229.229 19.7971 226.703 20.7256 223.509 20.7256C220.389 20.7256 217.863 19.7971 215.931 17.9399C214 16.0085 213.034 13.5199 213.034 10.4742Z" fill="currentColor"/>
             <path d="M174.79 104.742C171.893 104.742 168.884 104.297 165.764 103.405C162.719 102.514 159.859 101.028 157.184 98.9482C154.584 96.9425 152.467 94.1939 150.833 90.7025C150.279 89.5959 150.731 88.2504 151.839 87.7009L156.849 85.2177C160.21 83.5516 164.159 84.636 166.837 87.2642C167.262 87.681 167.659 88.0281 167.993 88.2511C169.85 89.4396 172.19 90.0339 175.013 90.0339C178.059 90.0339 180.547 89.0311 182.479 87.0253C184.484 85.0939 185.487 82.1597 185.487 78.2225V62.5112H186.601V42.5655H185.487L188.464 33.1382C189.478 29.9281 192.456 27.7456 195.822 27.7456C200.083 27.7456 203.538 31.2003 203.538 35.4619V74.2111C203.538 80.6739 202.424 86.1711 200.196 90.7025C197.967 95.2339 194.699 98.6882 190.39 101.065C186.156 103.517 180.956 104.742 174.79 104.742ZM172.339 79.5597C167.51 79.5597 163.201 78.4454 159.413 76.2168C155.624 73.914 152.653 70.7568 150.499 66.7454C148.344 62.734 147.267 58.1655 147.267 53.0398C147.267 47.9141 148.307 43.3455 150.387 39.3341C152.542 35.2484 155.476 32.0541 159.19 29.7513C162.904 27.4485 167.176 26.297 172.004 26.297C176.461 26.297 180.361 27.4485 183.704 29.7513C187.047 31.9799 189.647 35.0998 191.504 39.1113C193.436 43.0484 194.401 47.6912 194.401 53.0398C194.401 58.6112 193.473 63.4026 191.616 67.414C189.833 71.3511 187.27 74.3597 183.927 76.4397C180.659 78.5197 176.796 79.5597 172.339 79.5597ZM176.016 63.7369C178.987 63.7369 181.439 62.734 183.37 60.7283C185.376 58.6483 186.379 56.0855 186.379 53.0398C186.379 49.8455 185.376 47.2455 183.37 45.2398C181.439 43.1598 178.987 42.1198 176.016 42.1198C172.97 42.1198 170.444 43.1598 168.439 45.2398C166.507 47.2455 165.541 49.8455 165.541 53.0398C165.541 56.0855 166.507 58.6483 168.439 60.7283C170.444 62.734 172.97 63.7369 176.016 63.7369Z" fill="currentColor"/>
-            <path d="M109.638 83.7939C105.776 83.7939 102.358 83.0511 99.387 81.5654C96.4156 80.0054 94.0756 77.8511 92.367 75.1025C90.7327 72.2797 89.9156 69.0854 89.9156 65.5197C89.9156 61.6569 90.807 58.3883 92.5899 55.714C94.447 52.9655 96.8613 50.8855 99.8327 49.4741C102.878 47.9884 106.221 47.2455 109.861 47.2455C115.284 47.2455 119.704 48.5084 123.121 51.0341C126.538 53.4855 128.767 57.1255 129.807 61.954L122.453 60.2826V47.9141C122.453 46.0569 121.784 44.4598 120.447 43.1227C119.11 41.7855 117.03 41.117 114.207 41.117C112.201 41.117 109.898 41.377 107.298 41.897C106.872 41.9823 106.441 42.0797 106.006 42.1891C102.11 43.1692 97.7822 41.6179 96.2902 37.8878C94.9545 34.5485 96.3932 30.7035 99.7811 29.4965C101.369 28.9308 103.021 28.4215 104.736 27.9684C108.673 26.8542 112.758 26.297 116.993 26.297C122.118 26.297 126.427 27.2256 129.918 29.0827C133.484 30.9399 136.158 33.577 137.941 36.9941C139.724 40.337 140.615 44.3112 140.615 48.9169V73.5869C140.615 78.424 136.694 82.3454 131.857 82.3454C128.047 82.3454 124.674 79.8823 123.515 76.2531L122.007 71.5368L129.807 69.0854C128.693 73.6168 126.464 77.2197 123.121 79.8939C119.853 82.4939 115.358 83.7939 109.638 83.7939ZM115.767 71.5368C117.847 71.5368 119.518 70.9797 120.781 69.8654C122.044 68.7511 122.675 67.3026 122.675 65.5197C122.675 63.8112 122.044 62.3997 120.781 61.2854C119.518 60.1712 117.847 59.614 115.767 59.614C113.538 59.614 111.793 60.1712 110.53 61.2854C109.341 62.3997 108.747 63.8112 108.747 65.5197C108.747 67.3026 109.341 68.7511 110.53 69.8654C111.793 70.9797 113.538 71.5368 115.767 71.5368Z" fill="currentColor"/>
+            <path d="M109.638 83.7939C105.776 83.7939 102.358 83.0511 99.387 81.5654C96.4156 80.0054 94.0756 77.8511 92.367 75.1025C90.7327 72.2797 89.9156 69.0854 89.9156 65.5197C89.9156 61.6569 90.807 58.3883 92.5899 55.714C94.447 52.9655 96.8613 50.8855 99.8327 49.4741C102.878 47.9884 106.221 47.2455 109.861 47.2455C115.284 47.2455 119.704 48.5084 123.121 51.0341C126.538 53.4855 128.767 57.1255 129.807 61.954L122.453 60.2826V47.9141C122.453 46.0569 121.784 44.4598 120.447 43.1227C119.11 41.7855 117.03 41.117 114.207 41.117C112.201 41.117 109.898 41.377 107.298 41.897C106.872 41.9823 106.441 42.0797 106.006 42.1891C102.11 43.1692 97.7822 41.6179 96.2902 37.8878C94.9545 35.0499 96.3932 31.2045 99.7811 29.9974C101.369 29.4321 103.021 28.9226 104.736 28.4699C108.673 27.3556 112.758 26.297 116.993 26.297C122.118 26.297 126.427 27.2256 129.918 29.0827C133.484 30.9399 136.158 33.577 137.941 36.9941C139.724 40.337 140.615 44.3112 140.615 48.9169V73.5869C140.615 78.424 136.694 82.3454 131.857 82.3454C128.047 82.3454 124.674 79.8823 123.515 76.2531L122.007 71.5368L129.807 69.0854C128.693 73.6168 126.464 77.2197 123.121 79.8939C119.853 82.4939 115.358 83.7939 109.638 83.7939ZM115.767 71.5368C117.847 71.5368 119.518 70.9797 120.781 69.8654C122.044 68.7511 122.675 67.3026 122.675 65.5197C122.675 63.8112 122.044 62.3997 120.781 61.2854C119.518 60.1712 117.847 59.614 115.767 59.614C113.538 59.614 111.793 60.1712 110.53 61.2854C109.341 62.3997 108.747 63.8112 108.747 65.5197C108.747 67.3026 109.341 68.7511 110.53 69.8654C111.793 70.9797 113.538 71.5368 115.767 71.5368Z" fill="currentColor"/>
             <path d="M9.02568 82.3454C4.04093 82.3454 0 78.3045 0 73.3197V39.3527C0 32.9423 5.19667 27.7456 11.6071 27.7456H13.3714L16.9371 38.9998L10.3628 38.3313C12.2199 36.2513 14.3371 34.3199 16.7142 32.537C19.1656 30.6799 21.8399 29.1942 24.737 28.0799C27.6342 26.8913 30.6799 26.297 33.8741 26.297C37.4398 26.297 40.2998 26.9285 42.4541 28.1913C44.6827 29.4542 46.3912 31.1627 47.5798 33.317C48.7684 35.397 49.5855 37.7741 50.0312 40.4484C50.5512 43.1227 50.8112 45.9084 50.8112 48.8055V73.3197C50.8112 78.3045 46.7703 82.3454 41.7855 82.3454C36.8008 82.3454 32.7599 78.3045 32.7599 73.3197V50.9226C32.7599 48.0998 32.3142 46.2427 31.4227 45.3512C30.5313 44.4598 29.3799 44.0141 27.9685 44.0141C25.9628 44.0141 23.9942 44.5712 22.0628 45.6855C20.2056 46.7255 18.3114 48.2112 16.3799 50.1426L12.4799 41.117H18.0514V73.3197C18.0514 78.3045 14.0105 82.3454 9.02568 82.3454ZM74.3783 82.3454C69.3627 82.3454 65.2969 78.2795 65.2969 73.264V50.9226C65.2969 48.0998 64.8512 46.2427 63.9597 45.3512C63.1426 44.4598 62.0283 44.0141 60.6169 44.0141C58.6855 44.0141 56.7541 44.5712 54.8226 45.6855C52.8912 46.7255 50.9598 48.2112 49.0284 50.1426L43.1227 38.3313C44.9798 36.2513 47.097 34.3199 49.4741 32.537C51.9255 30.6799 54.5998 29.1942 57.4969 28.0799C60.394 26.8913 63.4026 26.297 66.5226 26.297C70.0883 26.297 72.9854 26.9285 75.214 28.1913C77.4425 29.4542 79.1511 31.1627 80.3397 33.317C81.5282 35.397 82.3454 37.7741 82.7911 40.4484C83.2368 43.1227 83.4597 45.9084 83.4597 48.8055V73.264C83.4597 78.2795 79.3938 82.3454 74.3783 82.3454Z" fill="currentColor"/>
             <path d="M290.573 93.0429C288.572 97.1462 283.661 98.9001 279.514 96.993C275.232 95.0243 273.408 89.9182 275.474 85.6814L311.79 11.1932C313.79 7.09009 318.702 5.33596 322.849 7.24308C327.131 9.21218 328.955 14.3187 326.889 18.5552L290.573 93.0429Z" fill="#393BFF"/>
         </symbol>
     </svg>
+
+    <!-- Skills Nav (sticky) -->
+    <nav class="skills-nav" id="skillsNav">
+        <div class="skills-nav-inner">
+            <a href="#skill-start" class="skills-nav-item active">/start</a>
+            <a href="#skill-continue" class="skills-nav-item">/continue</a>
+            <a href="#skill-commit" class="skills-nav-item">/commit</a>
+            <a href="#skill-pr" class="skills-nav-item">/pr</a>
+            <a href="#skill-review" class="skills-nav-item">/review</a>
+            <a href="#skill-resolve" class="skills-nav-item">/resolve</a>
+            <a href="#skill-done" class="skills-nav-item">/done</a>
+        </div>
+    </nav>
 
     <header class="site-header header-fade">
         <div class="header-inner">
@@ -378,24 +393,26 @@
         <div class="skills-hero-label" data-i18n="skills.label">Skills</div>
         <h1 data-i18n="skills.heroTitle" data-i18n-html>7 skills.<br>Entire workflow.</h1>
         <p class="skills-hero-intro" data-i18n="skills.heroSubtitle">From ticket to merge in seven slash commands. Each skill handles one step of your development cycle. No context switching, no copy-pasting. Just flow.</p>
-        <div class="hero-cta" style="justify-content: flex-start;">
-            <a href="documentation.html#quick-start" class="btn-get-started" data-i18n="hero.cta">Get started</a>
-            <div class="install-box">
-                <code>curl -fsSL https://magic-slash.io/install.sh | bash</code>
-                <button class="copy-btn" onclick="copyCommand(this)">
-                    <i data-feather="copy"></i>
-                </button>
-            </div>
-        </div>
     </div>
 
     <!-- Skills List -->
     <div class="skills-list">
 
         <!-- 1. /magic:start -->
-        <div class="skill-item">
-            <div class="skill-screenshot">
-                <img src="mascot-start.png" alt="/magic:start">
+        <div class="skill-item" id="skill-start">
+            <div class="skill-terminal">
+                <div class="skill-terminal-bar">
+                    <span class="terminal-dot red"></span>
+                    <span class="terminal-dot yellow"></span>
+                    <span class="terminal-dot green"></span>
+                </div>
+                <div class="skill-terminal-body">
+                    <div class="terminal-line"><span class="terminal-prompt">$</span> <span class="terminal-cmd">/magic:start PROJ-42</span></div>
+                    <div class="terminal-line"><span class="terminal-muted">&rarr; Fetching PROJ-42 from Jira...</span></div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> <span class="terminal-highlight">"Add user authentication flow"</span></div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> Branch <span class="terminal-info">feature/PROJ-42-add-user-auth</span> created</div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> Worktree ready &mdash; agent starting...</div>
+                </div>
             </div>
             <div class="skill-content">
                 <span class="skill-number">01</span>
@@ -407,9 +424,21 @@
         </div>
 
         <!-- 2. /magic:continue -->
-        <div class="skill-item">
-            <div class="skill-screenshot">
-                <img src="mascot-continue.png" alt="/magic:continue">
+        <div class="skill-item" id="skill-continue">
+            <div class="skill-terminal">
+                <div class="skill-terminal-bar">
+                    <span class="terminal-dot red"></span>
+                    <span class="terminal-dot yellow"></span>
+                    <span class="terminal-dot green"></span>
+                </div>
+                <div class="skill-terminal-body">
+                    <div class="terminal-line"><span class="terminal-prompt">$</span> <span class="terminal-cmd">/magic:continue</span></div>
+                    <div class="terminal-line"><span class="terminal-muted">&rarr; Available worktrees:</span></div>
+                    <div class="terminal-line terminal-indent"><span class="terminal-highlight">1.</span> PROJ-42 &mdash; Add user authentication flow</div>
+                    <div class="terminal-line terminal-indent"><span class="terminal-highlight">2.</span> PROJ-38 &mdash; Fix dashboard loading state</div>
+                    <div class="terminal-line"><span class="terminal-muted">&rarr; Resuming PROJ-42...</span></div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> Context loaded &mdash; ready to code</div>
+                </div>
             </div>
             <div class="skill-content">
                 <span class="skill-number">02</span>
@@ -421,9 +450,19 @@
         </div>
 
         <!-- 3. /magic:commit -->
-        <div class="skill-item">
-            <div class="skill-screenshot">
-                <img src="mascot-commit.png" alt="/magic:commit">
+        <div class="skill-item" id="skill-commit">
+            <div class="skill-terminal">
+                <div class="skill-terminal-bar">
+                    <span class="terminal-dot red"></span>
+                    <span class="terminal-dot yellow"></span>
+                    <span class="terminal-dot green"></span>
+                </div>
+                <div class="skill-terminal-body">
+                    <div class="terminal-line"><span class="terminal-prompt">$</span> <span class="terminal-cmd">/magic:commit</span></div>
+                    <div class="terminal-line"><span class="terminal-muted">&rarr; Analyzing diff... 3 files changed</span></div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> <span class="terminal-info">feat(auth): add JWT token validation middleware</span></div>
+                    <div class="terminal-line"><span class="terminal-muted">&nbsp;&nbsp;[PROJ-42] 3 files changed, 127 insertions(+)</span></div>
+                </div>
             </div>
             <div class="skill-content">
                 <span class="skill-number">03</span>
@@ -435,9 +474,19 @@
         </div>
 
         <!-- 4. /magic:pr -->
-        <div class="skill-item">
-            <div class="skill-screenshot">
-                <img src="mascot-pr.png" alt="/magic:pr">
+        <div class="skill-item" id="skill-pr">
+            <div class="skill-terminal">
+                <div class="skill-terminal-bar">
+                    <span class="terminal-dot red"></span>
+                    <span class="terminal-dot yellow"></span>
+                    <span class="terminal-dot green"></span>
+                </div>
+                <div class="skill-terminal-body">
+                    <div class="terminal-line"><span class="terminal-prompt">$</span> <span class="terminal-cmd">/magic:pr</span></div>
+                    <div class="terminal-line"><span class="terminal-muted">&rarr; Pushing to origin/feature/PROJ-42...</span></div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> PR <span class="terminal-highlight">#87</span> created &mdash; <span class="terminal-info">"Add user authentication flow"</span></div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> Jira PROJ-42 &rarr; <span class="terminal-highlight">In Review</span></div>
+                </div>
             </div>
             <div class="skill-content">
                 <span class="skill-number">04</span>
@@ -449,9 +498,21 @@
         </div>
 
         <!-- 5. /magic:review -->
-        <div class="skill-item">
-            <div class="skill-screenshot">
-                <img src="mascot-review.png" alt="/magic:review">
+        <div class="skill-item" id="skill-review">
+            <div class="skill-terminal">
+                <div class="skill-terminal-bar">
+                    <span class="terminal-dot red"></span>
+                    <span class="terminal-dot yellow"></span>
+                    <span class="terminal-dot green"></span>
+                </div>
+                <div class="skill-terminal-body">
+                    <div class="terminal-line"><span class="terminal-prompt">$</span> <span class="terminal-cmd">/magic:review #87</span></div>
+                    <div class="terminal-line"><span class="terminal-muted">&rarr; Fetching PR #87 diff...</span></div>
+                    <div class="terminal-line"><span class="terminal-muted">&rarr; Reviewing against team conventions...</span></div>
+                    <div class="terminal-line"><span class="terminal-highlight">&nbsp;&nbsp;src/auth.ts:24</span> &mdash; Consider constant-time comparison</div>
+                    <div class="terminal-line"><span class="terminal-highlight">&nbsp;&nbsp;src/auth.ts:41</span> &mdash; Missing error handling for expired tokens</div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> 2 comments posted</div>
+                </div>
             </div>
             <div class="skill-content">
                 <span class="skill-number">05</span>
@@ -463,9 +524,21 @@
         </div>
 
         <!-- 6. /magic:resolve -->
-        <div class="skill-item">
-            <div class="skill-screenshot">
-                <img src="mascot-resolve.png" alt="/magic:resolve">
+        <div class="skill-item" id="skill-resolve">
+            <div class="skill-terminal">
+                <div class="skill-terminal-bar">
+                    <span class="terminal-dot red"></span>
+                    <span class="terminal-dot yellow"></span>
+                    <span class="terminal-dot green"></span>
+                </div>
+                <div class="skill-terminal-body">
+                    <div class="terminal-line"><span class="terminal-prompt">$</span> <span class="terminal-cmd">/magic:resolve #87</span></div>
+                    <div class="terminal-line"><span class="terminal-muted">&rarr; Reading 2 review comments...</span></div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> Fixed: constant-time comparison in <span class="terminal-highlight">auth.ts:24</span></div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> Fixed: error handling in <span class="terminal-highlight">auth.ts:41</span></div>
+                    <div class="terminal-line"><span class="terminal-muted">&rarr; Force-pushing...</span></div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> All threads resolved</div>
+                </div>
             </div>
             <div class="skill-content">
                 <span class="skill-number">06</span>
@@ -477,9 +550,21 @@
         </div>
 
         <!-- 7. /magic:done -->
-        <div class="skill-item">
-            <div class="skill-screenshot">
-                <img src="mascot-done.png" alt="/magic:done">
+        <div class="skill-item" id="skill-done">
+            <div class="skill-terminal">
+                <div class="skill-terminal-bar">
+                    <span class="terminal-dot red"></span>
+                    <span class="terminal-dot yellow"></span>
+                    <span class="terminal-dot green"></span>
+                </div>
+                <div class="skill-terminal-body">
+                    <div class="terminal-line"><span class="terminal-prompt">$</span> <span class="terminal-cmd">/magic:done</span></div>
+                    <div class="terminal-line"><span class="terminal-muted">&rarr; Merging PR #87...</span></div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> PR merged into <span class="terminal-info">main</span></div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> Branch <span class="terminal-info">feature/PROJ-42</span> deleted</div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> Worktree cleaned up</div>
+                    <div class="terminal-line"><span class="terminal-success">&#10003;</span> Jira PROJ-42 &rarr; <span class="terminal-highlight">Done</span></div>
+                </div>
             </div>
             <div class="skill-content">
                 <span class="skill-number">07</span>
@@ -491,54 +576,6 @@
         </div>
 
     </div>
-
-    <!-- Overview (dark section) -->
-    <section class="skills-overview">
-        <div class="skills-overview-inner">
-            <h2 class="skills-overview-title" data-i18n="skills.overviewTitle">At a glance.</h2>
-            <p class="skills-overview-subtitle" data-i18n="skills.overviewSubtitle">Seven commands. One complete development cycle.</p>
-
-            <div class="skills-overview-grid">
-                <div class="skills-overview-card">
-                    <span class="skills-overview-card-cmd blue">/magic:start</span>
-                    <h3 class="skills-overview-card-title" data-i18n="skills.overviewStartTitle">Start</h3>
-                    <p class="skills-overview-card-desc" data-i18n="skills.overviewStartDesc">Fetch ticket, create worktree, start coding.</p>
-                </div>
-                <div class="skills-overview-card">
-                    <span class="skills-overview-card-cmd blue">/magic:continue</span>
-                    <h3 class="skills-overview-card-title" data-i18n="skills.overviewContinueTitle">Continue</h3>
-                    <p class="skills-overview-card-desc" data-i18n="skills.overviewContinueDesc">Resume work on an existing ticket.</p>
-                </div>
-                <div class="skills-overview-card">
-                    <span class="skills-overview-card-cmd purple">/magic:commit</span>
-                    <h3 class="skills-overview-card-title" data-i18n="skills.overviewCommitTitle">Commit</h3>
-                    <p class="skills-overview-card-desc" data-i18n="skills.overviewCommitDesc">Stage, message, commit &mdash; with context.</p>
-                </div>
-                <div class="skills-overview-card">
-                    <span class="skills-overview-card-cmd green">/magic:pr</span>
-                    <h3 class="skills-overview-card-title" data-i18n="skills.overviewPrTitle">Pull Request</h3>
-                    <p class="skills-overview-card-desc" data-i18n="skills.overviewPrDesc">Push, create PR, update Jira.</p>
-                </div>
-                <div class="skills-overview-card">
-                    <span class="skills-overview-card-cmd cyan">/magic:review</span>
-                    <h3 class="skills-overview-card-title" data-i18n="skills.overviewReviewTitle">Review</h3>
-                    <p class="skills-overview-card-desc" data-i18n="skills.overviewReviewDesc">Automated code review with inline comments.</p>
-                </div>
-                <div class="skills-overview-card">
-                    <span class="skills-overview-card-cmd orange">/magic:resolve</span>
-                    <h3 class="skills-overview-card-title" data-i18n="skills.overviewResolveTitle">Resolve</h3>
-                    <p class="skills-overview-card-desc" data-i18n="skills.overviewResolveDesc">Fix review comments, force-push.</p>
-                </div>
-                <div class="skills-overview-card span-full">
-                    <span class="skills-overview-card-cmd green">/magic:done</span>
-                    <div class="skills-overview-card-text">
-                        <h3 class="skills-overview-card-title" data-i18n="skills.overviewDoneTitle">Done</h3>
-                        <p class="skills-overview-card-desc" data-i18n="skills.overviewDoneDesc">Merge, clean up, transition Jira to Done. Full circle.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- CTA -->
     <section class="cta-section">
@@ -610,5 +647,47 @@
     </footer>
 
     <script src="script.js"></script>
+    <script>
+    (function() {
+        var nav = document.getElementById('skillsNav');
+        var hero = document.querySelector('.skills-hero');
+        var items = document.querySelectorAll('.skills-nav-item');
+        var sections = [];
+
+        items.forEach(function(item) {
+            var id = item.getAttribute('href').substring(1);
+            var section = document.getElementById(id);
+            if (section) sections.push({ el: section, link: item });
+        });
+
+        window.addEventListener('scroll', function() {
+            var heroBottom = hero.getBoundingClientRect().bottom;
+            if (heroBottom < 130) {
+                nav.classList.add('visible');
+            } else {
+                nav.classList.remove('visible');
+            }
+
+            var scrollPos = window.scrollY + 200;
+            var current = null;
+            sections.forEach(function(s) {
+                if (s.el.offsetTop <= scrollPos) current = s;
+            });
+            items.forEach(function(item) { item.classList.remove('active'); });
+            if (current) current.link.classList.add('active');
+        });
+
+        items.forEach(function(item) {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                var id = this.getAttribute('href').substring(1);
+                var el = document.getElementById(id);
+                if (el) {
+                    window.scrollTo({ top: el.offsetTop - 140, behavior: 'smooth' });
+                }
+            });
+        });
+    })();
+    </script>
 </body>
 </html>
