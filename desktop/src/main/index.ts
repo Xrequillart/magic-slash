@@ -20,6 +20,7 @@ import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './window
 import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
 import { Scheduler } from './scheduler/scheduler'
 import { setupSchedulerHandlers } from './ipc/scheduler-handlers'
+import { setupProfileHandlers } from './ipc/profile-handlers'
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
@@ -183,6 +184,7 @@ function setupHandlers() {
   setupSkillsHandlers()
   setupScriptHandlers(() => mainWindow)
   registerActivityHistoryHandlers()
+  setupProfileHandlers()
   // Notification callback - only show when window is not focused
   const notificationCallback = (title: string, body: string) => {
     if (Notification.isSupported() && mainWindow && !mainWindow.isFocused()) {

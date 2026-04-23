@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, Schedule } from '../types'
+import type { TerminalMetadata, RepositoryConfig, Schedule, UserProfile } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -354,6 +354,12 @@ const schedulerApi = {
   },
 }
 
+// Profile API
+const profileApi = {
+  get: (): Promise<UserProfile | null> => ipcRenderer.invoke('profile:get'),
+  save: (data: UserProfile) => ipcRenderer.invoke('profile:save', data),
+}
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   config: configApi,
@@ -369,6 +375,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   tray: trayApi,
   quickLaunch: quickLaunchApi,
   scheduler: schedulerApi,
+  profile: profileApi,
 })
 
 // Type definitions for the renderer
@@ -388,6 +395,7 @@ declare global {
       tray: typeof trayApi
       quickLaunch: typeof quickLaunchApi
       scheduler: typeof schedulerApi
+      profile: typeof profileApi
     }
   }
 

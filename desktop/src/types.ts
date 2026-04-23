@@ -195,3 +195,35 @@ export interface BranchCommit {
   relativeDate: string
   isPushed: boolean
 }
+
+export interface UserProfile {
+  name: string
+  role: 'product' | 'dev' | 'design' | 'qa' | 'ops' | 'manager' | 'other'
+  technical_level: 'beginner' | 'intermediate' | 'expert'
+  communication_style?: 'simple' | 'technical' | 'detailed'
+  languages?: string[]
+  freeText?: string
+}
+
+// Shared display labels for profile fields (used by wizard + profile section)
+export const ROLE_LABELS: Record<UserProfile['role'], string> = {
+  product: 'Product',
+  dev: 'Dev',
+  design: 'Design',
+  qa: 'QA',
+  ops: 'Ops',
+  manager: 'Manager',
+  other: 'Other',
+}
+
+export const LEVEL_LABELS: Record<UserProfile['technical_level'], string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  expert: 'Expert',
+}
+
+export const STYLE_LABELS: Record<NonNullable<UserProfile['communication_style']>, string> = {
+  simple: 'Simple',
+  technical: 'Technical',
+  detailed: 'Detailed',
+}
