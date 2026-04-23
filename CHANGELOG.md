@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.43.4] - 2026-04-23
+
+### Added
+
+- **Desktop**: Add user profile onboarding wizard
+
+### Changed
+
+- **Landing**: Rework homepage with hero meta, responsive layout and mobile-blocker removal
+- **Landing**: Rework skills page with terminal mockups, sticky nav and overview removal
+
 ## [0.43.3] - 2026-04-23
 
 ### Changed
@@ -1271,6 +1282,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.43.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.4
 [0.43.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.3
 [0.43.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.2
 [0.43.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.1
