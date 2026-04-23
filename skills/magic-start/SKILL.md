@@ -72,7 +72,7 @@ Use `mcp__atlassian__getJiraIssue` to retrieve ticket details. If you don't know
 
 If the MCP call fails (timeout, auth error), retry once. If it fails again, ask the user to provide the ticket title and description manually so the workflow can continue.
 
-→ Continue to Step 2.5, then Step 2.6.
+→ Continue to Step 2.5, then Step 2.6, then Step 2.7.
 
 ## Step 2B: Retrieve the GitHub issue
 
@@ -100,7 +100,7 @@ Use `mcp__github__get_issue` for each repo — launch all calls in parallel for 
 - **Single issue**: Use it. Scope = that repo.
 - **Multiple issues**: Use `AskUserQuestion` with the list of issues as options. Display `MSG_GITHUB_MULTI_ISSUE` as the question text.
 
-→ Continue to Step 2.5, then Step 2.6.
+→ Continue to Step 2.5, then Step 2.6, then Step 2.7.
 
 ## Step 2.5: Update Magic Slash Desktop metadata
 
@@ -135,6 +135,19 @@ This step never blocks the process. On failure, display a warning and continue.
 2. If found: Add via `mcp__github__update_issue` (keep existing labels)
 3. If not found: Continue without modification (do not create a label)
 4. On failure: Display `MSG_LABEL_FAILED`
+
+## Step 2.7: Generate branch slug
+
+Generate a short, human-readable slug from the ticket title to append to the branch name.
+
+```bash
+SLUG=$(echo "$TICKET_TITLE" | \
+  tr '[:upper:]' '[:lower:]' | \
+  sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | \
+  cut -d'-' -f1-5 | cut -c1-30 | sed 's/-$//')
+```
+
+If `$SLUG` is empty after processing (e.g., title with only special characters), skip the slug — the branch name falls back to the ticket ID alone.
 
 ## Step 3: Analyze ticket scope (smart repo selection)
 
@@ -204,17 +217,20 @@ If `git pull --rebase` fails with conflicts, use `AskUserQuestion` with `MSG_REB
 **Create the worktree:**
 
 ```bash
-git worktree add -b feature/$TICKET_ID ../${REPO_NAME}-$TICKET_ID $DEV_BRANCH
+BRANCH_NAME="feature/$TICKET_ID"
+[ -n "$SLUG" ] && BRANCH_NAME="feature/$TICKET_ID-$SLUG"
+git worktree add -b "$BRANCH_NAME" ../${REPO_NAME}-$TICKET_ID $DEV_BRANCH
 ```
 
 If this fails because the branch already exists, use `AskUserQuestion` with `MSG_BRANCH_ALREADY_EXISTS` options:
-- Option 1: `git worktree add ../${REPO_NAME}-$TICKET_ID feature/$TICKET_ID` (use existing branch)
-- Option 2: `git branch -D feature/$TICKET_ID` then retry creation
+- Option 1: `git worktree add ../${REPO_NAME}-$TICKET_ID $BRANCH_NAME` (use existing branch)
+- Option 2: `git branch -D $BRANCH_NAME` then retry creation
 - Option 3: Stop
 
 **Branch naming**:
-- Jira: `feature/PROJ-1234`
-- GitHub: `feature/repo-name-123` (prefix with repo name to avoid conflicts)
+- Jira: `feature/PROJ-1234-implement-stripe-refunds`
+- GitHub: `feature/repo-name-123-add-user-profile` (prefix with repo name to avoid conflicts)
+- If the slug is empty, falls back to `feature/$TICKET_ID` (no trailing hyphen)
 
 **Change to the worktree** — the rest of the skill operates from inside the worktree, so all subsequent file operations and commands target the right directory:
 
