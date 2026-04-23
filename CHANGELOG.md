@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.43.3] - 2026-04-23
+
+### Changed
+
+- **Chore**: Re-release to fix CI publish failure on v0.43.2 (GitHub assets already existed)
+
 ## [0.43.2] - 2026-04-23
 
 ### Changed
@@ -1265,6 +1271,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.43.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.3
 [0.43.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.2
 [0.43.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.1
 [0.43.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.0
