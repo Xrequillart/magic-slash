@@ -219,7 +219,7 @@ Choix (1/2/3) :
 ### en
 
 ```text
-⚠️ Branch feature/{TICKET_ID} already exists.
+⚠️ Branch {BRANCH_NAME} already exists.
 
 Options:
 1. Use the existing branch (checkout into worktree)
@@ -232,7 +232,7 @@ Choose (1/2/3):
 ### fr
 
 ```text
-⚠️ La branche feature/{TICKET_ID} existe déjà.
+⚠️ La branche {BRANCH_NAME} existe déjà.
 
 Options :
 1. Utiliser la branche existante (checkout dans le worktree)
