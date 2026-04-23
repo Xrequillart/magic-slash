@@ -69,3 +69,16 @@ npm run desktop:package  # Package for macOS (.dmg, .zip)
 Config file: `~/.config/magic-slash/config.json`
 
 Contains configured repositories, each with: path, keywords, languages (commit/PR/Jira), commit format (angular), and PR/issues options.
+
+## User Profile
+
+Profile file: `~/.config/magic-slash/profile.md` (YAML frontmatter + markdown body).
+
+At the start of any `/magic:*` skill execution:
+1. Check if `~/.config/magic-slash/profile.md` exists; if not, continue with default behavior
+2. Read the YAML frontmatter fields: `name`, `role`, `technical_level`, `communication_style`, `languages`
+3. Adapt vocabulary and technical depth based on `technical_level` (beginner = simple terms, expert = precise jargon)
+4. Adapt detail level based on `role` (e.g., product/manager gets high-level summaries, dev gets code-level details)
+5. Use `communication_style` to control response format (simple = concise, technical = code-focused, detailed = thorough)
+6. Communicate in the language(s) listed in `languages` when present
+7. Address the user by `name` when natural to do so

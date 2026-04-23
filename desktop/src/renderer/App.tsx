@@ -16,6 +16,7 @@ import { SkillsPage } from './pages/Skills'
 import { HistoryPage } from './pages/History'
 import { ScheduledPage } from './pages/Scheduled'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { ProfileOnboardingWizard } from './components/ProfileOnboardingWizard'
 import { useWindowSplitMode } from './hooks/useWindowSplitMode'
 
 function LoadingScreen() {
@@ -52,6 +53,17 @@ export function App() {
   useWindowSplitMode()
   const confirmCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [showNoReposModal, setShowNoReposModal] = useState(false)
+  const [showProfileWizard, setShowProfileWizard] = useState(false)
+
+  // Check if user profile exists on mount
+  useEffect(() => {
+    if (configLoading) return
+    window.electronAPI.profile.get().then((profile) => {
+      if (!profile) {
+        setShowProfileWizard(true)
+      }
+    }).catch(() => {})
+  }, [configLoading])
 
   // Check if there are no repos configured
   const hasNoRepos = useMemo(() => {
@@ -332,6 +344,12 @@ export function App() {
           </div>
         </div>
       )}
+
+      {/* Profile Onboarding Wizard */}
+      <ProfileOnboardingWizard
+        isOpen={showProfileWizard}
+        onClose={() => setShowProfileWizard(false)}
+      />
 
       {/* No Repos Warning Modal */}
       {showNoReposModal && (

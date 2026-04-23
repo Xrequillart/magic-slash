@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, CalendarClock } from 'lucide-react'
+import { ProfileSection } from './ProfileSection'
 import { RepoPage } from './RepoPage'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
@@ -227,6 +228,9 @@ function WelcomePage() {
           Manage your repositories and configure Magic Slash
         </p>
       </div>
+
+      {/* Profile Section */}
+      <ProfileSection />
 
       {/* Repositories Section */}
       <div>

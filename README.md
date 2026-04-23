@@ -261,6 +261,7 @@ npm run desktop:package
 | ----------------------------------- | ------------------------------------- |
 | `~/.claude/settings.json`           | Atlassian & GitHub MCP configuration  |
 | `~/.config/magic-slash/config.json` | Repository paths, keywords, settings  |
+| `~/.config/magic-slash/profile.md`  | User profile (role, level, preferences) |
 | `~/.local/bin/magic-slash`          | CLI command to launch the desktop app |
 | `~/.claude/skills/magic-slash/`     | Installed skills (all 7 skills)       |
 
@@ -377,6 +378,21 @@ Each repository can be independently configured:
 | `worktreeFiles` | Files to auto-copy from main repo to worktrees (e.g., `.env`) | `[]`    |
 
 > When creating a worktree, Magic Slash copies these files from the main repository. If not configured, it auto-detects common untracked files and offers to save them for future use.
+
+### User profile
+
+On first launch, the Desktop app presents an onboarding wizard to create a user profile. The profile is stored at `~/.config/magic-slash/profile.md` and contains:
+
+| Field                | Type         | Required | Description                                           |
+| -------------------- | ------------ | -------- | ----------------------------------------------------- |
+| `name`               | text         | yes      | First name, used to personalize responses             |
+| `role`               | select       | yes      | Product / Dev / Design / QA / Ops / Manager / Other   |
+| `technical_level`    | select       | yes      | Beginner / Intermediate / Expert                      |
+| `communication_style`| select       | no       | Simple / Technical / Detailed                         |
+| `languages`          | multi-select | no       | Preferred languages (English, Français)               |
+| Free text            | textarea     | no       | Anything else Claude should know                      |
+
+All `/magic:*` skills read this profile to adapt their communication — vocabulary, detail level, and language — based on the user's role and technical level. The profile can be edited anytime from **Settings > Profile** in the Desktop app.
 
 ### Keywords
 
