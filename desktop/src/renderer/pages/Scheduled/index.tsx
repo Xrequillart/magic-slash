@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react'
-import { Plus, Clock, Play, Trash2, Pencil, Check, XCircle, AlertTriangle, ChevronDown } from 'lucide-react'
+import { useState, useMemo, useRef, useCallback } from 'react'
+import { Plus, Clock, Play, Trash2, Pencil, Check, XCircle, AlertTriangle, ChevronDown, FolderGit2 } from 'lucide-react'
 import { useScheduledAgents } from '../../hooks/useScheduledAgents'
 import { useStore } from '../../store'
 import { showToast } from '../../components/Toast'
+import { useClickOutside } from '../../hooks/useClickOutside'
+import { getProjectColorMap } from '../../utils/projectColors'
 import type { Schedule, ScheduleFrequency, Agent } from '../../../types'
 
 const FREQUENCY_OPTIONS: { value: ScheduleFrequency; label: string }[] = [
@@ -126,12 +128,13 @@ function ScheduleForm({
   initialSchedule?: Schedule
   initialName?: string
   initialRepo?: string
-  repos: [string, { path: string }][]
+  repos: [string, { path: string; color?: string }][]
   defaultTime?: string
   onSubmit: (name: string, repo: string, schedule: Schedule) => void
   onCancel: () => void
   submitLabel: string
 }) {
+  const { config } = useStore()
   const [name, setName] = useState(initialName || '')
   const [repo, setRepo] = useState(initialRepo || (repos[0]?.[1]?.path || ''))
   const [command, setCommand] = useState(initialSchedule?.command || '')
@@ -140,6 +143,23 @@ function ScheduleForm({
   const [date, setDate] = useState(initialSchedule?.date || '')
   const [dayOfWeek, setDayOfWeek] = useState<number>(initialSchedule?.dayOfWeek ?? 1)
   const [dayOfMonth, setDayOfMonth] = useState<number>(initialSchedule?.dayOfMonth ?? 1)
+
+  const [isRepoOpen, setIsRepoOpen] = useState(false)
+  const repoRef = useRef<HTMLDivElement>(null)
+  const closeRepo = useCallback(() => setIsRepoOpen(false), [])
+  useClickOutside(repoRef, isRepoOpen, closeRepo)
+
+  const colorMap = useMemo(() => {
+    const names = repos.map(([n]) => n)
+    return getProjectColorMap(names, config?.repositories as Record<string, { color?: string }>)
+  }, [repos, config?.repositories])
+
+  const selectedRepoEntry = repos.find(([, rc]) => rc.path === repo)
+  const selectedRepoName = selectedRepoEntry?.[0] || ''
+  const selectedRepoPath = selectedRepoEntry?.[1]?.path || ''
+  const selectedColor = colorMap[selectedRepoName] || '#6366f1'
+
+  const frequencyIndex = FREQUENCY_OPTIONS.findIndex(o => o.value === frequency)
 
   const handleSubmit = () => {
     if (!name.trim() || !command.trim() || !repo) {
@@ -176,20 +196,61 @@ function ScheduleForm({
         />
       </div>
 
-      {/* Repository */}
+      {/* Repository - Custom select */}
       <div>
         <label className="block text-xs text-text-secondary mb-1.5">Repository</label>
-        <div className="relative">
-          <select
-            value={repo}
-            onChange={(e) => setRepo(e.target.value)}
-            className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+        <div ref={repoRef} className="relative">
+          <button
+            onClick={() => setIsRepoOpen(!isRepoOpen)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 bg-bg border border-white/10 rounded-lg text-sm cursor-pointer hover:border-white/20 transition-colors text-left"
           >
-            {repos.map(([repoName, repoConfig]) => (
-              <option key={repoName} value={repoConfig.path}>{repoName}</option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: `${selectedColor}15` }}
+            >
+              <FolderGit2 className="w-4 h-4" style={{ color: selectedColor }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-white truncate">{selectedRepoName || 'Select repository'}</div>
+              <div className="text-[11px] text-text-secondary/50 truncate">{selectedRepoPath}</div>
+            </div>
+            <ChevronDown className={`w-4 h-4 text-text-secondary/50 flex-shrink-0 transition-transform ${isRepoOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isRepoOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-bg-tertiary border border-border/50 rounded-lg shadow-xl py-1 overflow-hidden max-h-[240px] overflow-y-auto">
+              {repos.map(([repoName, repoConfig]) => {
+                const color = colorMap[repoName] || '#6366f1'
+                const isSelected = repoConfig.path === repo
+                return (
+                  <button
+                    key={repoName}
+                    onClick={() => {
+                      setRepo(repoConfig.path)
+                      setIsRepoOpen(false)
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/10 transition-colors border-none cursor-pointer ${
+                      isSelected ? 'bg-white/5' : ''
+                    }`}
+                  >
+                    <div
+                      className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${color}15` }}
+                    >
+                      <FolderGit2 className="w-3.5 h-3.5" style={{ color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-sm truncate ${isSelected ? 'text-white font-medium' : 'text-text-secondary'}`}>
+                        {repoName}
+                      </div>
+                      <div className="text-[10px] text-text-secondary/40 truncate">{repoConfig.path}</div>
+                    </div>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-white flex-shrink-0" />}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -205,27 +266,35 @@ function ScheduleForm({
         />
       </div>
 
-      {/* Frequency */}
+      {/* Frequency - Segmented toggle */}
       <div>
         <label className="block text-xs text-text-secondary mb-1.5">Frequency</label>
-        <div className="relative">
-          <select
-            value={frequency}
-            onChange={(e) => setFrequency(e.target.value as ScheduleFrequency)}
-            className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
-          >
-            {FREQUENCY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+        <div className="relative grid bg-bg border border-white/10 rounded-lg p-1" style={{ gridTemplateColumns: `repeat(${FREQUENCY_OPTIONS.length}, 1fr)` }}>
+          <div
+            className="absolute top-1 bottom-1 bg-accent/20 rounded-md transition-all duration-200 ease-out"
+            style={{
+              left: `calc(${frequencyIndex} * (100% - 8px) / ${FREQUENCY_OPTIONS.length} + 4px)`,
+              width: `calc((100% - 8px) / ${FREQUENCY_OPTIONS.length})`,
+            }}
+          />
+          {FREQUENCY_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setFrequency(opt.value)}
+              className={`relative z-10 px-1 py-1.5 rounded-md text-[11px] font-medium transition-colors duration-200 text-center border-none cursor-pointer ${
+                frequency === opt.value ? 'text-accent' : 'text-text-secondary/50 hover:text-text-secondary'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Date picker for once */}
+      {/* Date + Time on the same line for "once" */}
       {frequency === 'once' && (
         <div>
-          <label className="block text-xs text-text-secondary mb-1.5">Date</label>
+          <label className="block text-xs text-text-secondary mb-1.5">Date & Time</label>
           <div className="flex gap-2">
             <input
               type="date"
@@ -241,58 +310,82 @@ function ScheduleForm({
             >
               Today
             </button>
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="w-[120px] px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+            />
           </div>
         </div>
       )}
 
-      {/* Day of week for weekly */}
+      {/* Day of week for weekly + Time */}
       {frequency === 'weekly' && (
         <div>
-          <label className="block text-xs text-text-secondary mb-1.5">Day of week</label>
-          <div className="relative">
-            <select
-              value={dayOfWeek}
-              onChange={(e) => setDayOfWeek(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
-            >
-              {DAY_NAMES.map((dayName, idx) => (
-                <option key={idx} value={idx}>{dayName}</option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+          <label className="block text-xs text-text-secondary mb-1.5">Day & Time</label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <select
+                value={dayOfWeek}
+                onChange={(e) => setDayOfWeek(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+              >
+                {DAY_NAMES.map((dayName, idx) => (
+                  <option key={idx} value={idx}>{dayName}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+            </div>
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="w-[120px] px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+            />
           </div>
         </div>
       )}
 
-      {/* Day of month for monthly */}
+      {/* Day of month for monthly + Time */}
       {frequency === 'monthly' && (
         <div>
-          <label className="block text-xs text-text-secondary mb-1.5">Day of month</label>
-          <div className="relative">
-            <select
-              value={dayOfMonth}
-              onChange={(e) => setDayOfMonth(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
-            >
-              {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+          <label className="block text-xs text-text-secondary mb-1.5">Day & Time</label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <select
+                value={dayOfMonth}
+                onChange={(e) => setDayOfMonth(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+              >
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+            </div>
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="w-[120px] px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+            />
           </div>
         </div>
       )}
 
-      {/* Time */}
-      <div>
-        <label className="block text-xs text-text-secondary mb-1.5">Time</label>
-        <input
-          type="time"
-          value={time}
-          onChange={(e) => setTime(e.target.value)}
-          className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
-        />
-      </div>
+      {/* Time for daily/weekdays */}
+      {(frequency === 'daily' || frequency === 'weekdays') && (
+        <div>
+          <label className="block text-xs text-text-secondary mb-1.5">Time</label>
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+          />
+        </div>
+      )}
 
       {/* Security warning */}
       <div className="flex items-start gap-2 px-3 py-2.5 bg-yellow/10 border border-yellow/20 rounded-lg">
@@ -430,7 +523,7 @@ export function ScheduledPage() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
 
   const repos = useMemo(() => {
-    return Object.entries(config?.repositories || {}).map(([name, repo]) => [name, repo] as [string, { path: string }])
+    return Object.entries(config?.repositories || {}).map(([name, repo]) => [name, repo] as [string, { path: string; color?: string }])
   }, [config?.repositories])
 
   const handleCreate = async (name: string, repo: string, schedule: Schedule) => {
