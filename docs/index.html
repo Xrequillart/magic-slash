@@ -11,10 +11,6 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="mobile-blocker">
-        <h2>This site is optimized for desktop</h2>
-        <p>It is not available on mobile or tablet.<br>Please visit on a computer!</p>
-    </div>
     <!-- Logo symbol (inline to avoid CORS issues with file://) -->
     <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden">
         <symbol id="magic-slash-logo" viewBox="0 0 583 105">
@@ -116,7 +112,7 @@
                 </button>
                 <div class="header-lang-dropdown" id="langDropdown">
                     <a href="#" class="lang-option" data-lang="en">English</a>
-                    <a href="#" class="lang-option" data-lang="fr">Français</a>
+                    <a href="#" class="lang-option" data-lang="fr">Fran&ccedil;ais</a>
                 </div>
             </div>
             <a href="documentation.html#quick-start" class="header-cta-btn" data-i18n="nav.getStarted">Get started</a>
@@ -138,6 +134,16 @@
                             <i data-feather="copy"></i>
                         </button>
                     </div>
+                </div>
+                <div class="hero-meta hero-fade">
+                    <a href="https://github.com/xrequillart/magic-slash" target="_blank" class="hero-meta-link">
+                        <i data-feather="github"></i>
+                        <span>GitHub</span>
+                        <span class="hero-meta-stars" id="githubStars"></span>
+                        <i data-feather="star" class="hero-meta-star-icon"></i>
+                    </a>
+                    <span class="hero-meta-sep"></span>
+                    <span class="hero-meta-label">Free &amp; open-source</span>
                 </div>
             </div>
         </div>
@@ -244,7 +250,7 @@
                             <div class="desktop-terminal-content" id="desktop-terminal-content">
                                 <!-- Phase 1: /start PROJ-142 -->
                                 <div class="workflow-line phase-1-line cli-prompt">
-                                    <span class="cli-prompt-icon">❯</span>
+                                    <span class="cli-prompt-icon">&#10095;</span>
                                     <span class="command" data-text="/magic:start PROJ-142"></span>
                                 </div>
                                 <div class="workflow-line phase-1-line cli-response">
@@ -296,7 +302,7 @@
 
                                 <!-- Phase 2: /commit -->
                                 <div class="workflow-line phase-2-line cli-prompt" style="margin-top: 16px">
-                                    <span class="cli-prompt-icon purple">❯</span>
+                                    <span class="cli-prompt-icon purple">&#10095;</span>
                                     <span class="command purple" data-text="/magic:commit"></span>
                                 </div>
                                 <div class="workflow-line phase-2-line cli-response purple">
@@ -322,7 +328,7 @@
 
                                 <!-- Phase 3: /pr -->
                                 <div class="workflow-line phase-3-line cli-prompt" style="margin-top: 16px">
-                                    <span class="cli-prompt-icon green">❯</span>
+                                    <span class="cli-prompt-icon green">&#10095;</span>
                                     <span class="command green" data-text="/magic:pr"></span>
                                 </div>
                                 <div class="workflow-line phase-3-line cli-response green">
@@ -339,20 +345,20 @@
                                     <div class="cli-status phase-3-status-3">
                                         <span class="cli-status-icon"><span class="loader green"></span><span class="checkmark"><i data-feather="check"></i></span></span>
                                         <span class="cli-status-text">Updating Jira ticket...</span>
-                                        <span class="cli-status-result result">PROJ-142 → "To be reviewed"</span>
+                                        <span class="cli-status-result result">PROJ-142 &rarr; "To be reviewed"</span>
                                     </div>
                                 </div>
 
                                 <!-- Phase 4: /review -->
                                 <div class="workflow-line phase-4-line cli-prompt" style="margin-top: 16px">
-                                    <span class="cli-prompt-icon cyan">❯</span>
+                                    <span class="cli-prompt-icon cyan">&#10095;</span>
                                     <span class="command cyan" data-text="/magic:review 87"></span>
                                 </div>
                                 <div class="workflow-line phase-4-line cli-response cyan">
                                     <div class="cli-status phase-4-status-1">
                                         <span class="cli-status-icon"><span class="loader cyan"></span><span class="checkmark"><i data-feather="check"></i></span></span>
                                         <span class="cli-status-text">Fetching PR #87...</span>
-                                        <span class="cli-status-result result">3 files, +10 −1</span>
+                                        <span class="cli-status-result result">3 files, +10 &minus;1</span>
                                     </div>
                                     <div class="cli-status phase-4-status-2">
                                         <span class="cli-status-icon"><span class="loader cyan"></span><span class="checkmark"><i data-feather="check"></i></span></span>
@@ -367,7 +373,7 @@
 
                                 <!-- Phase 5: /resolve -->
                                 <div class="workflow-line phase-5-line cli-prompt" style="margin-top: 16px">
-                                    <span class="cli-prompt-icon orange">❯</span>
+                                    <span class="cli-prompt-icon orange">&#10095;</span>
                                     <span class="command orange" data-text="/magic:resolve"></span>
                                 </div>
                                 <div class="workflow-line phase-5-line cli-response orange">
@@ -390,7 +396,7 @@
 
                                 <!-- Phase 6: /done -->
                                 <div class="workflow-line phase-6-line cli-prompt" style="margin-top: 16px">
-                                    <span class="cli-prompt-icon green">❯</span>
+                                    <span class="cli-prompt-icon green">&#10095;</span>
                                     <span class="command green" data-text="/magic:done"></span>
                                 </div>
                                 <div class="workflow-line phase-6-line cli-response green">
@@ -407,7 +413,7 @@
                                     <div class="cli-status phase-6-status-3">
                                         <span class="cli-status-icon"><span class="loader green"></span><span class="checkmark"><i data-feather="check"></i></span></span>
                                         <span class="cli-status-text">Transitioning Jira...</span>
-                                        <span class="cli-status-result result">PROJ-142 → "Done"</span>
+                                        <span class="cli-status-result result">PROJ-142 &rarr; "Done"</span>
                                     </div>
                                     <div class="cli-success-banner phase-6-status-4">
                                         <span class="success-check"><i data-feather="check"></i></span>
@@ -475,19 +481,6 @@
     </div>
     </div>
 
-    <!-- ── Skills Banner ── -->
-    <section class="skills-banner">
-        <div class="skills-banner-inner">
-            <img src="mascot-ninja.png" alt="magic-slash mascot" class="skills-banner-mascot">
-            <div class="skills-banner-content">
-                <h2 class="skills-banner-title" data-i18n="skillsBanner.title" data-i18n-html>7 skills.<br>Entire workflow.</h2>
-                <p class="skills-banner-subtitle" data-i18n="skillsBanner.subtitle">From ticket to merge in seven slash commands. Each skill handles one step of your development cycle — grab a ticket, code, commit, open a PR, review, resolve comments, and close. Run multiple tasks in parallel using Git worktrees — each agent works in its own isolated branch, so nothing conflicts. No context switching, no copy-pasting. Just flow.</p>
-                <a href="skills.html" class="skills-banner-cta" data-i18n="skillsBanner.cta" data-i18n-html>Discover the skills <i data-feather="arrow-right"></i></a>
-
-            </div>
-        </div>
-    </section>
-
     <!-- ── Complete Flow Section (sticky scroll) ── -->
     <section class="flow-section">
         <div class="flow-inner">
@@ -504,54 +497,54 @@
                         <div class="flow-mockup-body">
                             <!-- Step 1: /magic:start -->
                             <div class="flow-terminal-content active" data-flow-content="1">
-                                <div class="flow-cmd"><span class="flow-prompt">❯</span> /magic:start PROJ-142</div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Fetching Jira ticket PROJ-142…</span></div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Analysing ticket…</span><span class="flow-result">BACKEND</span></div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Creating worktree…</span><span class="flow-result">feature/PROJ-142</span></div>
-                                <div class="flow-line success"><span class="flow-check"><i data-feather="check"></i></span><span>Ready! Starting work…</span></div>
+                                <div class="flow-cmd"><span class="flow-prompt">&#10095;</span> /magic:start PROJ-142</div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Fetching Jira ticket PROJ-142&hellip;</span></div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Analysing ticket&hellip;</span><span class="flow-result">BACKEND</span></div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Creating worktree&hellip;</span><span class="flow-result">feature/PROJ-142</span></div>
+                                <div class="flow-line success"><span class="flow-check"><i data-feather="check"></i></span><span>Ready! Starting work&hellip;</span></div>
                             </div>
                             <!-- Step 2: /magic:continue -->
                             <div class="flow-terminal-content" data-flow-content="2">
-                                <div class="flow-cmd"><span class="flow-prompt">❯</span> /magic:continue PROJ-142</div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Finding worktree…</span><span class="flow-result">feature/PROJ-142</span></div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Loading ticket context…</span><span class="flow-result">PROJ-142</span></div>
-                                <div class="flow-line success"><span class="flow-check"><i data-feather="check"></i></span><span>Resuming work…</span></div>
+                                <div class="flow-cmd"><span class="flow-prompt">&#10095;</span> /magic:continue PROJ-142</div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Finding worktree&hellip;</span><span class="flow-result">feature/PROJ-142</span></div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Loading ticket context&hellip;</span><span class="flow-result">PROJ-142</span></div>
+                                <div class="flow-line success"><span class="flow-check"><i data-feather="check"></i></span><span>Resuming work&hellip;</span></div>
                             </div>
                             <!-- Step 3: /magic:commit -->
                             <div class="flow-terminal-content" data-flow-content="3">
-                                <div class="flow-cmd"><span class="flow-prompt">❯</span> /magic:commit</div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Staging changes…</span><span class="flow-result">3 files staged</span></div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Generating commit message…</span></div>
+                                <div class="flow-cmd"><span class="flow-prompt">&#10095;</span> /magic:commit</div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Staging changes&hellip;</span><span class="flow-result">3 files staged</span></div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Generating commit message&hellip;</span></div>
                                 <div class="flow-line commit-msg"><span class="flow-check"><i data-feather="check"></i></span><span>feat(auth): add JWT middleware</span></div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Committing…</span><span class="flow-result">Commit created!</span></div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Committing&hellip;</span><span class="flow-result">Commit created!</span></div>
                             </div>
                             <!-- Step 4: /magic:pr -->
                             <div class="flow-terminal-content" data-flow-content="4">
-                                <div class="flow-cmd"><span class="flow-prompt">❯</span> /magic:pr</div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Pushing to remote…</span><span class="flow-result">origin/feature/PROJ-142</span></div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Creating pull request…</span><span class="flow-result">PR #87 created</span></div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Updating Jira ticket…</span><span class="flow-result">PROJ-142 → "To be reviewed"</span></div>
+                                <div class="flow-cmd"><span class="flow-prompt">&#10095;</span> /magic:pr</div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Pushing to remote&hellip;</span><span class="flow-result">origin/feature/PROJ-142</span></div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Creating pull request&hellip;</span><span class="flow-result">PR #87 created</span></div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Updating Jira ticket&hellip;</span><span class="flow-result">PROJ-142 &rarr; "To be reviewed"</span></div>
                             </div>
                             <!-- Step 5: /magic:review -->
                             <div class="flow-terminal-content" data-flow-content="5">
-                                <div class="flow-cmd"><span class="flow-prompt">❯</span> /magic:review 87</div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Fetching PR #87…</span><span class="flow-result">3 files, +10 −1</span></div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Reviewing code…</span><span class="flow-result">2 comments</span></div>
+                                <div class="flow-cmd"><span class="flow-prompt">&#10095;</span> /magic:review 87</div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Fetching PR #87&hellip;</span><span class="flow-result">3 files, +10 &minus;1</span></div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Reviewing code&hellip;</span><span class="flow-result">2 comments</span></div>
                                 <div class="flow-line success"><span class="flow-check"><i data-feather="check"></i></span><span>Approved with suggestions</span></div>
                             </div>
                             <!-- Step 6: /magic:resolve -->
                             <div class="flow-terminal-content" data-flow-content="6">
-                                <div class="flow-cmd"><span class="flow-prompt">❯</span> /magic:resolve</div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Fetching review comments…</span><span class="flow-result">2 comments</span></div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Applying fixes…</span><span class="flow-result">2 files updated</span></div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Force-pushing…</span><span class="flow-result">All comments resolved</span></div>
+                                <div class="flow-cmd"><span class="flow-prompt">&#10095;</span> /magic:resolve</div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Fetching review comments&hellip;</span><span class="flow-result">2 comments</span></div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Applying fixes&hellip;</span><span class="flow-result">2 files updated</span></div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Force-pushing&hellip;</span><span class="flow-result">All comments resolved</span></div>
                             </div>
                             <!-- Step 7: /magic:done -->
                             <div class="flow-terminal-content" data-flow-content="7">
-                                <div class="flow-cmd"><span class="flow-prompt">❯</span> /magic:done</div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Merging PR #87…</span><span class="flow-result">Merged</span></div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Cleaning up branch…</span><span class="flow-result">feature/PROJ-142 deleted</span></div>
-                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Transitioning Jira…</span><span class="flow-result">PROJ-142 → "Done"</span></div>
+                                <div class="flow-cmd"><span class="flow-prompt">&#10095;</span> /magic:done</div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Merging PR #87&hellip;</span><span class="flow-result">Merged</span></div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Cleaning up branch&hellip;</span><span class="flow-result">feature/PROJ-142 deleted</span></div>
+                                <div class="flow-line"><span class="flow-check"><i data-feather="check"></i></span><span>Transitioning Jira&hellip;</span><span class="flow-result">PROJ-142 &rarr; "Done"</span></div>
                                 <div class="flow-line flow-success-banner"><span class="flow-check"><i data-feather="check"></i></span><span>Task complete!</span></div>
                             </div>
                         </div>
@@ -606,43 +599,33 @@
         </div>
     </section>
 
-    <!-- ── Feature Sections ── -->
-    <div class="content-sections">
-
-        <!-- Plugs into your stack -->
-        <section class="stack-section">
-            <div class="stack-inner">
-                <img src="mascot-stack.png" alt="magic-slash integrations" class="stack-mascot">
-                <div class="stack-content">
-                    <h2 class="stack-title" data-i18n="section5.title">Plugs into your stack.</h2>
-                    <p class="stack-desc" data-i18n="section5.p1">Native integrations with GitHub for PRs, issues, and reviews. Jira for tickets and status sync. VS Code to open files and projects.</p>
-                    <p class="stack-desc" data-i18n="section5.p2">Full Git support with worktrees and branches. Everything connected, nothing manual.</p>
-                    <div class="stack-logos">
-                        <div class="stack-logo-item">
-                            <img src="claude-logo.png" alt="Claude Code" class="stack-logo-img">
-                            <span class="stack-logo-label">Claude Code</span>
-                        </div>
-                        <div class="stack-logo-item">
-                            <img src="github-logo.png" alt="GitHub" class="stack-logo-img">
-                            <span class="stack-logo-label">GitHub</span>
-                        </div>
-                        <div class="stack-logo-item">
-                            <img src="jira-logo.png" alt="Jira" class="stack-logo-img">
-                            <span class="stack-logo-label">Jira</span>
-                        </div>
-                        <div class="stack-logo-item">
-                            <img src="git-logo.png" alt="Git" class="stack-logo-img">
-                            <span class="stack-logo-label">Git</span>
-                        </div>
-                        <div class="stack-logo-item">
-                            <img src="vscode-logo.png" alt="VS Code" class="stack-logo-img">
-                            <span class="stack-logo-label">VS Code</span>
-                        </div>
-                    </div>
-                    <a href="documentation.html#configuration" class="stack-btn" data-i18n="section5.seeDocs" data-i18n-html>See docs <i data-feather="arrow-right"></i></a>
+    <!-- ── Why we're building this ── -->
+    <section class="why-section">
+        <div class="why-inner">
+            <h2 class="why-title" data-i18n="why.title">Why we're building this.</h2>
+            <div class="why-grid">
+                <div class="why-item">
+                    <span class="why-number">01</span>
+                    <h3 class="why-item-title" data-i18n="why.point1Title">Jira meets Claude Code.</h3>
+                    <p class="why-item-desc" data-i18n="why.point1Desc">Your tickets live in Jira, your code lives in Claude Code. magic-slash bridges the two so every command knows what you're working on, why, and for whom.</p>
+                </div>
+                <div class="why-item">
+                    <span class="why-number">02</span>
+                    <h3 class="why-item-title" data-i18n="why.point2Title">Zero context loss.</h3>
+                    <p class="why-item-desc" data-i18n="why.point2Desc">No more rephrasing ticket specs into prompts. magic-slash feeds the full Jira description, acceptance criteria, and metadata straight to Claude Code. Human prompt meets well-defined specs — nothing gets lost in translation.</p>
+                </div>
+                <div class="why-item">
+                    <span class="why-number">03</span>
+                    <h3 class="why-item-title" data-i18n="why.point3Title">One command instead of ten.</h3>
+                    <p class="why-item-desc" data-i18n="why.point3Desc">We kept typing the same prompts to start a task, create a branch, commit, push, and open a PR. Now it's just <code>/magic:start PROJ-123</code> — fast, consistent, and done.</p>
                 </div>
             </div>
-        </section>
+            <a href="story.html" class="why-btn" data-i18n="why.cta" data-i18n-html>Read our story <i data-feather="arrow-right"></i></a>
+        </div>
+    </section>
+
+    <!-- ── Feature Sections ── -->
+    <div class="content-sections">
 
         <!-- Desktop App -->
         <section class="desktopapp-section">
@@ -749,72 +732,41 @@
                         <p class="desktopapp-feature-desc" data-i18n="desktopApp.feat4Desc">Every action mapped to a shortcut. Navigate, split, toggle sidebars — all without the mouse.</p>
                     </div>
                 </div>
-                <div class="desktopapp-feature">
-                    <div class="desktopapp-feature-icon"><i data-feather="pie-chart"></i></div>
-                    <div class="desktopapp-feature-text">
-                        <h3 class="desktopapp-feature-title" data-i18n="desktopApp.feat5Title">Skills budget</h3>
-                        <p class="desktopapp-feature-desc" data-i18n="desktopApp.feat5Desc">Token and character usage per skill with weight categories. Create and manage skills with per-repo scoping.</p>
-                    </div>
-                </div>
-                <div class="desktopapp-feature">
-                    <div class="desktopapp-feature-icon"><i data-feather="play"></i></div>
-                    <div class="desktopapp-feature-text">
-                        <h3 class="desktopapp-feature-title" data-i18n="desktopApp.feat6Title">Script runner</h3>
-                        <p class="desktopapp-feature-desc" data-i18n="desktopApp.feat6Desc">Run package.json scripts from the panel. Test results are parsed and surfaced as toast notifications.</p>
-                    </div>
-                </div>
-                <div class="desktopapp-feature">
-                    <div class="desktopapp-feature-icon"><i data-feather="download-cloud"></i></div>
-                    <div class="desktopapp-feature-text">
-                        <h3 class="desktopapp-feature-title" data-i18n="desktopApp.feat7Title">Auto-updates</h3>
-                        <p class="desktopapp-feature-desc" data-i18n="desktopApp.feat7Desc">Silent background updates with release notes on restart. Always up to date, zero effort.</p>
-                    </div>
-                </div>
-                <div class="desktopapp-feature">
-                    <div class="desktopapp-feature-icon"><i data-feather="sliders"></i></div>
-                    <div class="desktopapp-feature-text">
-                        <h3 class="desktopapp-feature-title" data-i18n="desktopApp.feat8Title">Per-repo configuration</h3>
-                        <p class="desktopapp-feature-desc" data-i18n="desktopApp.feat8Desc">Per-repo commit style, language, PR templates, and worktree config. One team, ten repos, ten conventions.</p>
-                    </div>
-                </div>
             </div>
         </section>
 
-        <!-- Parallel Agents -->
-        <section class="parallel-section">
-            <div class="parallel-inner">
-                <div class="parallel-content">
-                    <h2 class="parallel-title" data-i18n="parallel.title">12 agents. 12 tasks. Zero wait.</h2>
-                    <p class="parallel-desc" data-i18n="parallel.p1">Run up to 12 agents in parallel, each working on its own ticket in its own worktree. Start a feature, fix a bug, and refactor an endpoint — all at the same time.</p>
-                    <p class="parallel-desc" data-i18n="parallel.p2">No queuing, no context-switching. Every agent runs independently with full access to your stack.</p>
-                    <a href="desktop.html" class="parallel-btn" data-i18n="parallel.seeDocs" data-i18n-html>See docs <i data-feather="arrow-right"></i></a>
+        <!-- Plugs into your stack -->
+        <section class="stack-section">
+            <div class="stack-inner">
+                <img src="mascot-stack.png" alt="magic-slash integrations" class="stack-mascot">
+                <div class="stack-content">
+                    <h2 class="stack-title" data-i18n="section5.title">Plugs into your stack.</h2>
+                    <p class="stack-desc" data-i18n="section5.p1">Native integrations with GitHub for PRs, issues, and reviews. Jira for tickets and status sync. VS Code to open files and projects.</p>
+                    <p class="stack-desc" data-i18n="section5.p2">Full Git support with worktrees and branches. Everything connected, nothing manual.</p>
+                    <div class="stack-logos">
+                        <div class="stack-logo-item">
+                            <img src="claude-logo.png" alt="Claude Code" class="stack-logo-img">
+                            <span class="stack-logo-label">Claude Code</span>
+                        </div>
+                        <div class="stack-logo-item">
+                            <img src="github-logo.png" alt="GitHub" class="stack-logo-img">
+                            <span class="stack-logo-label">GitHub</span>
+                        </div>
+                        <div class="stack-logo-item">
+                            <img src="jira-logo.png" alt="Jira" class="stack-logo-img">
+                            <span class="stack-logo-label">Jira</span>
+                        </div>
+                        <div class="stack-logo-item">
+                            <img src="git-logo.png" alt="Git" class="stack-logo-img">
+                            <span class="stack-logo-label">Git</span>
+                        </div>
+                        <div class="stack-logo-item">
+                            <img src="vscode-logo.png" alt="VS Code" class="stack-logo-img">
+                            <span class="stack-logo-label">VS Code</span>
+                        </div>
+                    </div>
+                    <a href="documentation.html#configuration" class="stack-btn" data-i18n="section5.seeDocs" data-i18n-html>See docs <i data-feather="arrow-right"></i></a>
                 </div>
-                <img src="mascot-parallel.png" alt="12 parallel agents" class="parallel-mascot">
-            </div>
-        </section>
-
-        <!-- Why we're building this -->
-        <section class="why-section">
-            <div class="why-inner">
-                <h2 class="why-title" data-i18n="why.title">Why we're building this.</h2>
-                <div class="why-grid">
-                    <div class="why-item">
-                        <span class="why-number">01</span>
-                        <h3 class="why-item-title" data-i18n="why.point1Title">Jira meets Claude Code.</h3>
-                        <p class="why-item-desc" data-i18n="why.point1Desc">Your tickets live in Jira, your code lives in Claude Code. magic-slash bridges the two so every command knows what you're working on, why, and for whom.</p>
-                    </div>
-                    <div class="why-item">
-                        <span class="why-number">02</span>
-                        <h3 class="why-item-title" data-i18n="why.point2Title">Zero context loss.</h3>
-                        <p class="why-item-desc" data-i18n="why.point2Desc">No more rephrasing ticket specs into prompts. magic-slash feeds the full Jira description, acceptance criteria, and metadata straight to Claude Code. Human prompt meets well-defined specs — nothing gets lost in translation.</p>
-                    </div>
-                    <div class="why-item">
-                        <span class="why-number">03</span>
-                        <h3 class="why-item-title" data-i18n="why.point3Title">One command instead of ten.</h3>
-                        <p class="why-item-desc" data-i18n="why.point3Desc">We kept typing the same prompts to start a task, create a branch, commit, push, and open a PR. Now it's just <code>/magic:start PROJ-123</code> — fast, consistent, and done.</p>
-                    </div>
-                </div>
-                <a href="story.html" class="why-btn" data-i18n="why.cta" data-i18n-html>Read our story <i data-feather="arrow-right"></i></a>
             </div>
         </section>
 

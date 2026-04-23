@@ -3437,39 +3437,61 @@ h1 {
     height: 16px;
 }
 
-/* ── Mobile/Tablet blocker ── */
-.mobile-blocker {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 99999;
-    background: #D9E8FF;
-    color: #000000;
-    flex-direction: column;
+/* ── Hero meta line ── */
+.hero-meta {
+    display: flex;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    padding: 2rem;
-    font-family: 'JetBrains Mono', monospace;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
 }
-.mobile-blocker h2 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
+.hero-meta-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.5);
+    text-decoration: none;
+    transition: color 0.2s;
 }
-.mobile-blocker p {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    opacity: 0.9;
+.hero-meta-link:hover {
+    color: #000;
 }
-
-@media (max-width: 775px) {
-    .mobile-blocker {
-        display: flex;
-    }
-    body {
-        overflow: hidden;
-    }
+.hero-meta-link svg {
+    width: 15px;
+    height: 15px;
+}
+.hero-meta-stars {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.75rem;
+    color: rgba(0, 0, 0, 0.4);
+}
+.hero-meta-stars:empty {
+    display: none;
+}
+.hero-meta-stars:empty + .hero-meta-star-icon {
+    display: none;
+}
+.hero-meta-star-icon {
+    width: 13px;
+    height: 13px;
+    color: rgba(0, 0, 0, 0.4);
+    margin-left: -0.2rem;
+}
+.hero-meta-sep {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
+}
+.hero-meta-label {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 0.85rem;
+    color: rgba(0, 0, 0, 0.4);
+    font-weight: 500;
 }
 
 /* ── Responsive ── */
@@ -3506,10 +3528,53 @@ h1 {
     .flow-step:last-child {
         min-height: auto;
     }
+    .stack-inner {
+        flex-direction: column;
+        gap: 3rem;
+    }
+    .stack-mascot {
+        width: 240px;
+    }
+    .desktopapp-inner {
+        flex-direction: column;
+        gap: 3rem;
+    }
+    .desktopapp-mockup {
+        width: 100%;
+        max-width: 580px;
+    }
+    .desktopapp-features {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+    .why-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+    .cta-inner {
+        flex-direction: column;
+        text-align: center;
+        gap: 2.5rem;
+    }
+    .cta-content {
+        align-items: center;
+        text-align: center;
+        margin-left: 0;
+    }
+    .cta-mascot {
+        width: 200px;
+    }
+    .cta-install-box {
+        width: 100%;
+        max-width: 480px;
+    }
 }
 @media (max-width: 768px) {
     h1 {
         font-size: 2.5rem;
+    }
+    .hero {
+        padding-top: 15vh;
     }
     .section-header {
         font-size: 2rem;
@@ -3524,21 +3589,77 @@ h1 {
     .header-nav {
         display: none;
     }
+    .header-cta-btn {
+        display: none;
+    }
+    .hero-cta {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .install-box {
+        max-width: 100%;
+    }
+    .install-box code {
+        font-size: 11px;
+    }
+    .hero-meta {
+        gap: 0.5rem;
+    }
+    .desktop-mockup-section {
+        display: none;
+    }
+    .why-section,
+    .stack-section,
+    .desktopapp-section,
+    .faq-section,
+    .cta-section {
+        padding: 5rem 1.5rem;
+    }
+    .why-title,
+    .stack-title,
+    .desktopapp-title,
+    .parallel-title,
+    .cta-title {
+        font-size: 1.8rem;
+    }
+    .flow-section {
+        padding: 5rem 1.5rem;
+    }
+    .flow-title {
+        font-size: 1.8rem;
+    }
+    .flow-header {
+        margin-bottom: 3rem;
+    }
+    .faq-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+    .faq-title {
+        font-size: 1.8rem;
+    }
+    .footer-inner {
+        padding: 3rem 1.5rem 1.5rem;
+    }
     .footer-top {
         flex-direction: column;
         gap: 2.5rem;
     }
     .footer-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 2rem;
-        flex-wrap: wrap;
     }
     .footer-column {
-        min-width: 120px;
+        min-width: 0;
     }
     .footer-bottom {
         flex-direction: column-reverse;
         align-items: flex-start;
         gap: 1rem;
+    }
+    .footer-logo {
+        width: 140px;
     }
     .desktop-body {
         flex-direction: column;
@@ -3559,5 +3680,66 @@ h1 {
     }
     .desktop-right {
         display: none;
+    }
+    .stack-inner {
+        gap: 2rem;
+    }
+    .stack-mascot {
+        width: 180px;
+    }
+    .stack-logos {
+        flex-wrap: wrap;
+        gap: 1.25rem;
+    }
+    .desktopapp-mockup {
+        display: none;
+    }
+    .cta-section {
+        padding: 4rem 1.5rem;
+    }
+    .cta-inner {
+        gap: 2rem;
+    }
+    .cta-mascot {
+        width: 140px;
+    }
+    .cta-title {
+        font-size: 1.6rem;
+    }
+    .cta-subtitle {
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+    }
+    .cta-install-box {
+        width: 100%;
+        padding: 8px 12px;
+    }
+    .cta-install-box code {
+        font-size: 10px;
+    }
+}
+@media (max-width: 480px) {
+    h1 {
+        font-size: 2rem;
+    }
+    .hero {
+        padding-top: 12vh;
+    }
+    .btn-get-started {
+        font-size: 1rem;
+        padding: 12px 24px;
+    }
+    .hero-cta .install-box {
+        padding: 8px 10px;
+    }
+    .hero-cta .install-box code {
+        font-size: 9.5px;
+    }
+    .footer-columns {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    .cta-install-box code {
+        font-size: 9px;
     }
 }

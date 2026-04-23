@@ -766,6 +766,17 @@ fetch('https://api.github.com/repos/xrequillart/magic-slash/releases/latest')
     })
     .catch(function() {});
 
+// Fetch GitHub stars count
+fetch('https://api.github.com/repos/xrequillart/magic-slash')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.stargazers_count !== undefined) {
+            var el = document.getElementById('githubStars');
+            if (el) el.textContent = data.stargazers_count;
+        }
+    })
+    .catch(function() {});
+
 // ── Desktop terminal animation ──
 (function() {
     var terminal = document.querySelector('.desktop-main-terminal');
