@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.43.5] - 2026-04-24
+
+### Changed
+
+- **Landing**: Add v2 platform vision document
+
+### Fixed
+
+- **Desktop**: Restore agents with empty repositories on app restart
+
 ## [0.43.4] - 2026-04-23
 
 ### Added
@@ -1282,6 +1292,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.43.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.5
 [0.43.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.4
 [0.43.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.3
 [0.43.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.2
