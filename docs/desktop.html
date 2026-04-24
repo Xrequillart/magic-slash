@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="magic-slash Desktop App — Track every Claude Code agent in real time. Split view, context panel, notifications, keyboard shortcuts, and more.">
     <title>Desktop App - magic-slash</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -236,18 +237,10 @@
 
         /* ── 2. Live tracking — black ── */
         .dsk-tracking {
-            background:
-                repeating-linear-gradient(
-                    -45deg,
-                    transparent,
-                    transparent 23px,
-                    rgba(255, 255, 255, 0.04) 23px,
-                    rgba(255, 255, 255, 0.04) 24px
-                ),
-                #000;
+            background: #D9E8FF;
         }
-        .dsk-tracking .dsk-section-title { color: #fff; }
-        .dsk-tracking .dsk-section-desc { color: rgba(255, 255, 255, 0.55); }
+        .dsk-tracking .dsk-section-title { color: #000; }
+        .dsk-tracking .dsk-section-desc { color: rgba(0, 0, 0, 0.55); }
         .dsk-tracking .dsk-section-visual {
             width: 300px;
             height: auto;
@@ -259,8 +252,7 @@
         /* Sidebar mockup */
         .dsk-sidebar-mockup {
             width: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(16px);
+            background: #0a0a0b;
             border-radius: 12px;
             border: 1px solid #27272a;
             box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
@@ -409,7 +401,7 @@
             100% { opacity: 1; transform: translateY(0); }
         }
 
-        /* ── 3. Context panel — pink ── */
+        /* ── 3. Context panel — light blue ── */
         .dsk-context {
             background: #D9E8FF;
         }
@@ -682,7 +674,266 @@
             100% { opacity: 1; transform: translateY(0); }
         }
 
-        /* ── 4. Keyboard — dark with grid ── */
+        /* ── 4. Script runner — darker blue ── */
+        .dsk-runner {
+            background: linear-gradient(to bottom, #D9E8FF, #C0D4F5 30%, #C0D4F5 70%, #D9E8FF);
+        }
+        .dsk-runner .dsk-section-title { color: #000; }
+        .dsk-runner .dsk-section-desc { color: rgba(0, 0, 0, 0.55); }
+        .dsk-runner .dsk-section-visual {
+            background: none;
+            border: none;
+            width: 400px;
+            height: auto;
+            border-radius: 0;
+            display: block;
+        }
+
+        /* Script runner mockup — reset the 72px global icon override */
+        .dsk-runner-mockup i,
+        .dsk-runner-mockup svg {
+            width: 14px;
+            height: 14px;
+            stroke-width: 2;
+        }
+        .dsk-runner-mockup {
+            width: 100%;
+            background: #0a0a0b;
+            border-radius: 12px;
+            border: 1px solid #27272a;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+            font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .dsk-runner-titlebar {
+            height: 32px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            border-bottom: 1px solid #27272a;
+        }
+        .dsk-runner-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 14px 6px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: rgba(161,161,170,0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .dsk-runner-header i,
+        .dsk-runner-header svg { width: 12px; height: 12px; }
+        .dsk-runner-scripts {
+            padding: 4px 8px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .dsk-runner-script {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.65rem;
+        }
+        .dsk-runner-script.s-running {
+            background: rgba(99,102,241,0.08);
+        }
+        .dsk-runner-play {
+            width: 14px;
+            height: 14px;
+            color: #6366f1;
+            flex-shrink: 0;
+        }
+        .dsk-runner-name {
+            color: rgba(255,255,255,0.9);
+            font-weight: 500;
+        }
+        .dsk-runner-cmd {
+            margin-left: auto;
+            font-size: 0.55rem;
+            color: #52525b;
+            font-family: "JetBrains Mono", monospace;
+        }
+        .dsk-runner-output {
+            border-top: 1px solid #1a1a1e;
+            padding: 10px 14px;
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.58rem;
+            line-height: 1.8;
+        }
+        .dsk-runner-output-line.s-pass { color: #22c55e; }
+        .dsk-runner-output-line.s-fail { color: #ef4444; }
+        .dsk-runner-output-line.s-info { color: #52525b; }
+        .dsk-runner-result {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-top: 1px solid #1a1a1e;
+            font-size: 0.62rem;
+            font-weight: 500;
+        }
+        .dsk-runner-result i,
+        .dsk-runner-result svg { width: 13px; height: 13px; }
+        .dsk-runner-result.s-pass { color: #22c55e; }
+
+        /* Runner stagger animation */
+        .dsk-runner-script,
+        .dsk-runner-output-line,
+        .dsk-runner-result {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+        .dsk-runner.visible .dsk-runner-script,
+        .dsk-runner.visible .dsk-runner-output-line,
+        .dsk-runner.visible .dsk-runner-result {
+            animation: dsk-runner-in 0.4s ease forwards;
+        }
+        .dsk-runner.visible .dsk-runner-script:nth-child(1) { animation-delay: 0s; }
+        .dsk-runner.visible .dsk-runner-script:nth-child(2) { animation-delay: 0.1s; }
+        .dsk-runner.visible .dsk-runner-script:nth-child(3) { animation-delay: 0.2s; }
+        .dsk-runner.visible .dsk-runner-script:nth-child(4) { animation-delay: 0.3s; }
+        .dsk-runner.visible .dsk-runner-output-line:nth-child(1) { animation-delay: 0.5s; }
+        .dsk-runner.visible .dsk-runner-output-line:nth-child(2) { animation-delay: 0.65s; }
+        .dsk-runner.visible .dsk-runner-output-line:nth-child(3) { animation-delay: 0.8s; }
+        .dsk-runner.visible .dsk-runner-output-line:nth-child(4) { animation-delay: 0.95s; }
+        .dsk-runner.visible .dsk-runner-output-line:nth-child(5) { animation-delay: 1.1s; }
+        .dsk-runner.visible .dsk-runner-output-line:nth-child(6) { animation-delay: 1.25s; }
+        .dsk-runner.visible .dsk-runner-result { animation-delay: 1.5s; }
+        @keyframes dsk-runner-in {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── 5. Quick Launch — dark indigo ── */
+        .dsk-quicklaunch {
+            padding-top: 14rem;
+            padding-bottom: 14rem;
+            background:
+                radial-gradient(rgba(99, 102, 241, 0.08) 1px, transparent 1px),
+                #D9E8FF;
+            background-size: 20px 20px;
+        }
+        .dsk-quicklaunch .dsk-section-title { color: #000; }
+        .dsk-quicklaunch .dsk-section-desc { color: rgba(0, 0, 0, 0.55); }
+        .dsk-quicklaunch .dsk-section-visual {
+            background: none;
+            border: none;
+            width: 420px;
+            height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dsk-spotlight {
+            width: 100%;
+            background: rgba(30, 30, 40, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+            font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .dsk-spotlight-input {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 18px;
+        }
+        .dsk-spotlight-input svg {
+            width: 20px;
+            height: 20px;
+            color: rgba(255, 255, 255, 0.3);
+            flex-shrink: 0;
+        }
+        .dsk-spotlight-text {
+            font-size: 0.95rem;
+            color: #fff;
+            white-space: nowrap;
+            position: relative;
+            min-height: 1.3em;
+        }
+        .dsk-spotlight-text::after {
+            content: '';
+            display: inline-block;
+            width: 2px;
+            height: 1.1em;
+            background: #6366f1;
+            vertical-align: text-bottom;
+            margin-left: 1px;
+            animation: spotlight-blink 0.8s step-end infinite;
+        }
+        .dsk-spotlight-kbd {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .dsk-spotlight-kbd kbd {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 5px;
+            padding: 2px 6px;
+            line-height: 1.4;
+        }
+        .dsk-spotlight-hint {
+            padding: 0 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transform: translateY(-4px);
+            transition: opacity 0.3s ease, transform 0.3s ease, max-height 0.3s ease, padding 0.3s ease;
+        }
+        .dsk-spotlight-hint.visible {
+            opacity: 1;
+            max-height: 60px;
+            padding: 10px 18px;
+            transform: translateY(0);
+        }
+        .dsk-spotlight-hint-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 7px;
+            background: rgba(99, 102, 241, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .dsk-spotlight-hint-icon svg {
+            width: 14px;
+            height: 14px;
+            color: #818cf8;
+        }
+        .dsk-spotlight-hint-label {
+            font-size: 0.78rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .dsk-spotlight-hint-label strong {
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 600;
+        }
+
+        @keyframes spotlight-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* ── 6. Keyboard — dark with grid ── */
         .dsk-keyboard {
             background:
                 linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
@@ -753,7 +1004,180 @@
             .dsk-kb-bubbles { display: none; }
         }
 
-        /* ── 5. Skills budget — light blue ── */
+        /* Keyboard shortcut grid */
+        .dsk-kb-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 2rem;
+            width: 100%;
+            max-width: 560px;
+        }
+        .dsk-kb-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 14px 10px;
+            text-align: center;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .dsk-kb-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.06);
+        }
+        .dsk-kb-key {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 6px;
+        }
+        .dsk-kb-label {
+            font-size: 0.55rem;
+            color: rgba(255, 255, 255, 0.3);
+        }
+        /* Stagger animation for keyboard cards */
+        .dsk-kb-card {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        .dsk-keyboard.visible .dsk-kb-card {
+            animation: dsk-kb-card-in 0.4s ease forwards;
+        }
+        .dsk-keyboard.visible .dsk-kb-card:nth-child(1) { animation-delay: 0.1s; }
+        .dsk-keyboard.visible .dsk-kb-card:nth-child(2) { animation-delay: 0.15s; }
+        .dsk-keyboard.visible .dsk-kb-card:nth-child(3) { animation-delay: 0.2s; }
+        .dsk-keyboard.visible .dsk-kb-card:nth-child(4) { animation-delay: 0.25s; }
+        .dsk-keyboard.visible .dsk-kb-card:nth-child(5) { animation-delay: 0.3s; }
+        .dsk-keyboard.visible .dsk-kb-card:nth-child(6) { animation-delay: 0.35s; }
+        .dsk-keyboard.visible .dsk-kb-card:nth-child(7) { animation-delay: 0.4s; }
+        .dsk-keyboard.visible .dsk-kb-card:nth-child(8) { animation-delay: 0.45s; }
+        @keyframes dsk-kb-card-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 768px) {
+            .dsk-kb-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* ── 7. Notifications — pink ── */
+        .dsk-notifs {
+            background: #FFF0F7;
+        }
+        .dsk-notifs .dsk-section-title { color: #000; }
+        .dsk-notifs .dsk-section-desc { color: rgba(0, 0, 0, 0.55); }
+
+        .dsk-notif-anim {
+            width: 340px;
+            height: 320px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            position: relative;
+            padding-top: 20px;
+        }
+        .dsk-notif-toast {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+            padding: 14px 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            width: 300px;
+            position: absolute;
+            opacity: 0;
+            transform: translateX(40px) scale(0.95);
+        }
+        .dsk-notif-toast:nth-child(1) {
+            z-index: 4;
+            top: 20px;
+        }
+        .dsk-notif-toast:nth-child(2) {
+            z-index: 3;
+            top: 90px;
+        }
+        .dsk-notif-toast:nth-child(3) {
+            z-index: 2;
+            top: 160px;
+        }
+        .dsk-notif-toast:nth-child(4) {
+            z-index: 1;
+            top: 230px;
+        }
+        .dsk-notifs.visible .dsk-notif-toast:nth-child(1) {
+            animation: notif-loop 8s ease infinite;
+        }
+        .dsk-notifs.visible .dsk-notif-toast:nth-child(2) {
+            animation: notif-loop 8s ease infinite 0.4s;
+        }
+        .dsk-notifs.visible .dsk-notif-toast:nth-child(3) {
+            animation: notif-loop 8s ease infinite 0.8s;
+        }
+        .dsk-notifs.visible .dsk-notif-toast:nth-child(4) {
+            animation: notif-loop 8s ease infinite 1.2s;
+        }
+        .dsk-notif-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #393BFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .dsk-notif-icon svg {
+            width: 18px;
+            height: 18px;
+            color: #fff;
+        }
+        .dsk-notif-body {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+        .dsk-notif-app {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: rgba(0, 0, 0, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .dsk-notif-title {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #000;
+        }
+        .dsk-notif-msg {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.8rem;
+            color: rgba(0, 0, 0, 0.5);
+            line-height: 1.4;
+        }
+        .dsk-notif-time {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.7rem;
+            color: rgba(0, 0, 0, 0.3);
+            margin-left: auto;
+            flex-shrink: 0;
+            align-self: flex-start;
+            padding-top: 2px;
+        }
+
+        @keyframes notif-loop {
+            0%   { opacity: 0; transform: translateX(40px) scale(0.95); }
+            6%   { opacity: 1; transform: translateX(0) scale(1); }
+            72%  { opacity: 1; transform: translateX(0) scale(1); }
+            82%  { opacity: 0; transform: translateX(40px) scale(0.97); }
+            100% { opacity: 0; transform: translateX(40px) scale(0.95); }
+        }
+
+        /* ── 8. Skills budget — light blue ── */
         .dsk-budget {
             background: #D9E8FF;
             position: relative;
@@ -1050,154 +1474,7 @@
             animation-delay: 0.55s;
         }
 
-        /* ── 6. Script runner — darker blue ── */
-        .dsk-runner {
-            background: linear-gradient(to bottom, #D9E8FF, #C0D4F5 30%, #C0D4F5 70%, #D9E8FF);
-        }
-        .dsk-runner .dsk-section-title { color: #000; }
-        .dsk-runner .dsk-section-desc { color: rgba(0, 0, 0, 0.55); }
-        .dsk-runner .dsk-section-visual {
-            background: none;
-            border: none;
-            width: 400px;
-            height: 360px;
-        }
-        .dsk-runner .dsk-section-visual i { color: #0a0a0a; }
-
-        /* ── 7. Notifications — pink ── */
-        .dsk-notifs {
-            background: #FFF0F7;
-        }
-        .dsk-notifs .dsk-section-title { color: #000; }
-        .dsk-notifs .dsk-section-desc { color: rgba(0, 0, 0, 0.55); }
-
-        .dsk-notif-anim {
-            width: 340px;
-            height: 320px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            position: relative;
-            padding-top: 20px;
-        }
-        .dsk-notif-toast {
-            background: #fff;
-            border-radius: 14px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
-            padding: 14px 16px;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            width: 300px;
-            position: absolute;
-            opacity: 0;
-            transform: translateX(40px) scale(0.95);
-        }
-        .dsk-notif-toast:nth-child(1) {
-            z-index: 4;
-            top: 20px;
-        }
-        .dsk-notif-toast:nth-child(2) {
-            z-index: 3;
-            top: 90px;
-        }
-        .dsk-notif-toast:nth-child(3) {
-            z-index: 2;
-            top: 160px;
-        }
-        .dsk-notif-toast:nth-child(4) {
-            z-index: 1;
-            top: 230px;
-        }
-        .dsk-notifs.visible .dsk-notif-toast:nth-child(1) {
-            animation: notif-loop 8s ease infinite;
-        }
-        .dsk-notifs.visible .dsk-notif-toast:nth-child(2) {
-            animation: notif-loop 8s ease infinite 0.4s;
-        }
-        .dsk-notifs.visible .dsk-notif-toast:nth-child(3) {
-            animation: notif-loop 8s ease infinite 0.8s;
-        }
-        .dsk-notifs.visible .dsk-notif-toast:nth-child(4) {
-            animation: notif-loop 8s ease infinite 1.2s;
-        }
-        .dsk-notif-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            background: #393BFF;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        .dsk-notif-icon svg {
-            width: 18px;
-            height: 18px;
-            color: #fff;
-        }
-        .dsk-notif-body {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 0;
-        }
-        .dsk-notif-app {
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 0.7rem;
-            font-weight: 700;
-            color: rgba(0, 0, 0, 0.4);
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }
-        .dsk-notif-title {
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: #000;
-        }
-        .dsk-notif-msg {
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 0.8rem;
-            color: rgba(0, 0, 0, 0.5);
-            line-height: 1.4;
-        }
-        .dsk-notif-time {
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 0.7rem;
-            color: rgba(0, 0, 0, 0.3);
-            margin-left: auto;
-            flex-shrink: 0;
-            align-self: flex-start;
-            padding-top: 2px;
-        }
-
-        @keyframes notif-loop {
-            0%   { opacity: 0; transform: translateX(40px) scale(0.95); }
-            6%   { opacity: 1; transform: translateX(0) scale(1); }
-            72%  { opacity: 1; transform: translateX(0) scale(1); }
-            82%  { opacity: 0; transform: translateX(40px) scale(0.97); }
-            100% { opacity: 0; transform: translateX(40px) scale(0.95); }
-        }
-
-        /* ── 8. Auto-updates — black ── */
-        .dsk-updates {
-            background:
-                radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-                #000;
-            background-size: 24px 24px;
-        }
-        .dsk-updates .dsk-section-title { color: #fff; }
-        .dsk-updates .dsk-section-desc { color: rgba(255, 255, 255, 0.55); }
-        .dsk-updates .dsk-section-visual {
-            background: none;
-            border: none;
-            width: 400px;
-            height: 360px;
-        }
-
-        /* ── 8. Per-repo config — pink ── */
+        /* ── 9. Per-repo config — pink ── */
         .dsk-config {
             background: #FFF0F7;
         }
@@ -1262,135 +1539,519 @@
             margin: 0;
         }
 
-        /* ── 10. Quick Launch — dark indigo ── */
-        .dsk-quicklaunch {
-            padding-top: 14rem;
-            padding-bottom: 14rem;
+        /* ── 10. Scheduled Tasks ── */
+        .dsk-scheduled {
             background:
-                radial-gradient(rgba(99, 102, 241, 0.08) 1px, transparent 1px),
-                #D9E8FF;
-            background-size: 20px 20px;
+                repeating-linear-gradient(
+                    -45deg,
+                    transparent,
+                    transparent 23px,
+                    rgba(255, 255, 255, 0.04) 23px,
+                    rgba(255, 255, 255, 0.04) 24px
+                ),
+                #000;
         }
-        .dsk-quicklaunch .dsk-section-title { color: #000; }
-        .dsk-quicklaunch .dsk-section-desc { color: rgba(0, 0, 0, 0.55); }
-        .dsk-quicklaunch .dsk-section-visual {
+        .dsk-scheduled .dsk-section-title { color: #fff; }
+        .dsk-scheduled .dsk-section-desc { color: rgba(255, 255, 255, 0.55); }
+        .dsk-scheduled .dsk-section-visual {
+            width: 400px;
+            height: auto;
             background: none;
             border: none;
-            width: 420px;
+            border-radius: 0;
+            display: block;
+        }
+        .dsk-sched-mockup i,
+        .dsk-sched-mockup svg {
+            width: 14px;
+            height: 14px;
+            stroke-width: 2;
+        }
+        .dsk-sched-mockup {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(16px);
+            border-radius: 12px;
+            border: 1px solid #27272a;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+            font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .dsk-sched-titlebar {
+            height: 32px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            border-bottom: 1px solid #27272a;
+        }
+        .dsk-sched-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 14px 6px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: rgba(161,161,170,0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .dsk-sched-header i,
+        .dsk-sched-header svg { width: 12px; height: 12px; }
+        .dsk-sched-cards {
+            padding: 4px 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .dsk-sched-card {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .dsk-sched-card-top {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .dsk-sched-card-icon { width: 14px; height: 14px; color: #6366f1; flex-shrink: 0; }
+        .dsk-sched-card-name {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #fff;
+            flex: 1;
+        }
+        .dsk-sched-card-freq {
+            font-size: 0.48rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 4px;
+            background: rgba(99,102,241,0.1);
+            color: #6366f1;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            flex-shrink: 0;
+        }
+        .dsk-sched-card-disabled {
+            font-size: 0.48rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.04);
+            color: #3f3f46;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            flex-shrink: 0;
+        }
+        .dsk-sched-card-cmd {
+            font-size: 0.55rem;
+            color: #52525b;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        .dsk-sched-card-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.5rem;
+        }
+        .dsk-sched-card-next {
+            color: #a1a1aa;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .dsk-sched-card-next i,
+        .dsk-sched-card-next svg { width: 10px; height: 10px; }
+        .dsk-sched-card-last {
+            margin-left: auto;
+            color: #22c55e;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .dsk-sched-card-last i,
+        .dsk-sched-card-last svg { width: 10px; height: 10px; }
+        /* Scheduled cards stagger */
+        .dsk-sched-card {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        .dsk-scheduled.visible .dsk-sched-card {
+            animation: dsk-sched-in 0.5s ease forwards;
+        }
+        .dsk-scheduled.visible .dsk-sched-card:nth-child(1) { animation-delay: 0.1s; }
+        .dsk-scheduled.visible .dsk-sched-card:nth-child(2) { animation-delay: 0.25s; }
+        .dsk-scheduled.visible .dsk-sched-card:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dsk-sched-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── 11. History ── */
+        .dsk-history {
+            background: #FFF0F7;
+        }
+        .dsk-history .dsk-section-title { color: #000; }
+        .dsk-history .dsk-section-desc { color: rgba(0, 0, 0, 0.55); }
+        .dsk-history .dsk-section-visual {
+            width: 380px;
+            height: auto;
+            background: none;
+            border: none;
+            border-radius: 0;
+            display: block;
+        }
+        .dsk-hist-mockup i,
+        .dsk-hist-mockup svg {
+            width: 12px;
+            height: 12px;
+            stroke-width: 2;
+        }
+        .dsk-hist-mockup {
+            width: 100%;
+            background: #0a0a0b;
+            border-radius: 12px;
+            border: 1px solid #27272a;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+            font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .dsk-hist-titlebar {
+            height: 32px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            border-bottom: 1px solid #27272a;
+        }
+        .dsk-hist-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 14px 4px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: rgba(161,161,170,0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .dsk-hist-header i,
+        .dsk-hist-header svg { width: 12px; height: 12px; }
+        .dsk-hist-day {
+            padding: 8px 14px 2px;
+            font-size: 0.52rem;
+            font-weight: 600;
+            color: rgba(161,161,170,0.35);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .dsk-hist-entries {
+            padding: 4px 8px 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .dsk-hist-entry {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.6rem;
+        }
+        .dsk-hist-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .dsk-hist-time {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.52rem;
+            color: #3f3f46;
+            flex-shrink: 0;
+            width: 32px;
+        }
+        .dsk-hist-agent {
+            font-weight: 500;
+            color: #a1a1aa;
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .dsk-hist-ticket {
+            font-size: 0.48rem;
+            font-weight: 600;
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: rgba(99,102,241,0.1);
+            color: #6366f1;
+            flex-shrink: 0;
+        }
+        .dsk-hist-action {
+            font-size: 0.5rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        /* History stagger animation */
+        .dsk-hist-entry {
+            opacity: 0;
+            transform: translateX(-8px);
+        }
+        .dsk-history.visible .dsk-hist-entry {
+            animation: dsk-hist-in 0.4s ease forwards;
+        }
+        .dsk-history.visible .dsk-hist-entries:first-of-type .dsk-hist-entry:nth-child(1) { animation-delay: 0.1s; }
+        .dsk-history.visible .dsk-hist-entries:first-of-type .dsk-hist-entry:nth-child(2) { animation-delay: 0.2s; }
+        .dsk-history.visible .dsk-hist-entries:first-of-type .dsk-hist-entry:nth-child(3) { animation-delay: 0.3s; }
+        .dsk-history.visible .dsk-hist-entries:last-of-type .dsk-hist-entry:nth-child(1) { animation-delay: 0.5s; }
+        .dsk-history.visible .dsk-hist-entries:last-of-type .dsk-hist-entry:nth-child(2) { animation-delay: 0.6s; }
+        .dsk-history.visible .dsk-hist-entries:last-of-type .dsk-hist-entry:nth-child(3) { animation-delay: 0.7s; }
+        @keyframes dsk-hist-in {
+            from { opacity: 0; transform: translateX(-8px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ── 12. Auto-updates — black ── */
+        .dsk-updates {
+            background:
+                radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+                #000;
+            background-size: 24px 24px;
+        }
+        .dsk-updates .dsk-section-title { color: #fff; }
+        .dsk-updates .dsk-section-desc { color: rgba(255, 255, 255, 0.55); }
+        .dsk-updates .dsk-section-visual {
+            background: none;
+            border: none;
+            width: 340px;
             height: auto;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .dsk-spotlight {
+        /* Auto-updates mockup */
+        .dsk-update-mockup i,
+        .dsk-update-mockup svg {
+            width: 24px;
+            height: 24px;
+            stroke-width: 2;
+        }
+        .dsk-update-mockup {
             width: 100%;
-            background: rgba(30, 30, 40, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 14px;
-            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            max-width: 300px;
+            background: rgba(15, 15, 20, 0.95);
+            border: 1px solid #27272a;
+            border-radius: 16px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
             overflow: hidden;
             font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 28px 24px;
+            text-align: center;
         }
-        .dsk-spotlight-input {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px 18px;
-        }
-        .dsk-spotlight-input svg {
-            width: 20px;
-            height: 20px;
-            color: rgba(255, 255, 255, 0.3);
-            flex-shrink: 0;
-        }
-        .dsk-spotlight-text {
-            font-size: 0.95rem;
-            color: #fff;
-            white-space: nowrap;
-            position: relative;
-            min-height: 1.3em;
-        }
-        .dsk-spotlight-text::after {
-            content: '';
-            display: inline-block;
-            width: 2px;
-            height: 1.1em;
-            background: #6366f1;
-            vertical-align: text-bottom;
-            margin-left: 1px;
-            animation: spotlight-blink 0.8s step-end infinite;
-        }
-        .dsk-spotlight-kbd {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            flex-shrink: 0;
-        }
-        .dsk-spotlight-kbd kbd {
-            font-family: "Cera Pro", system-ui, sans-serif;
-            font-size: 0.65rem;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.3);
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 5px;
-            padding: 2px 6px;
-            line-height: 1.4;
-        }
-        .dsk-spotlight-hint {
-            padding: 0 18px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            opacity: 0;
-            max-height: 0;
-            overflow: hidden;
-            transform: translateY(-4px);
-            transition: opacity 0.3s ease, transform 0.3s ease, max-height 0.3s ease, padding 0.3s ease;
-        }
-        .dsk-spotlight-hint.visible {
-            opacity: 1;
-            max-height: 60px;
-            padding: 10px 18px;
-            transform: translateY(0);
-        }
-        .dsk-spotlight-hint-icon {
-            width: 28px;
-            height: 28px;
-            border-radius: 7px;
-            background: rgba(99, 102, 241, 0.15);
+        .dsk-update-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: rgba(99, 102, 241, 0.12);
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
+            margin: 0 auto 16px;
         }
-        .dsk-spotlight-hint-icon svg {
-            width: 14px;
-            height: 14px;
-            color: #818cf8;
+        .dsk-update-icon i,
+        .dsk-update-icon svg { width: 24px; height: 24px; color: #6366f1; }
+        .dsk-update-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
         }
-        .dsk-spotlight-hint-label {
-            font-size: 0.78rem;
-            color: rgba(255, 255, 255, 0.5);
-        }
-        .dsk-spotlight-hint-label strong {
-            color: rgba(255, 255, 255, 0.8);
+        .dsk-update-version {
+            font-size: 0.75rem;
+            color: #6366f1;
             font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .dsk-update-progress {
+            width: 100%;
+            height: 6px;
+            border-radius: 99px;
+            background: rgba(255,255,255,0.06);
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .dsk-update-progress-fill {
+            height: 100%;
+            border-radius: 99px;
+            background: #393BFF;
+            width: 0%;
+        }
+        .dsk-update-pct {
+            font-size: 0.6rem;
+            color: #52525b;
+            font-family: "JetBrains Mono", monospace;
+            margin-bottom: 20px;
+            opacity: 0;
+        }
+        .dsk-update-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            opacity: 0;
+        }
+        .dsk-update-btn {
+            padding: 7px 18px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border: none;
+            cursor: default;
+            font-family: inherit;
+        }
+        .dsk-update-btn.s-secondary {
+            background: rgba(255,255,255,0.06);
+            color: #a1a1aa;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .dsk-update-btn.s-primary {
+            background: #393BFF;
+            color: #fff;
+        }
+        /* Update animation on scroll */
+        .dsk-updates.visible .dsk-update-progress-fill {
+            width: 100%;
+            transition: width 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s;
+        }
+        .dsk-updates.visible .dsk-update-pct {
+            animation: dsk-budget-fade 0.4s ease forwards 2s;
+        }
+        .dsk-updates.visible .dsk-update-buttons {
+            animation: dsk-budget-fade 0.4s ease forwards 2.2s;
         }
 
-        @keyframes spotlight-blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-
-        /* ── 11. Tray — soft gray ── */
+        /* ── 13. Menu bar / Tray — soft blue ── */
         .dsk-tray {
             background: linear-gradient(to bottom, #D9E8FF, #C0D4F5);
         }
         .dsk-tray .dsk-section-title { color: #000; }
         .dsk-tray .dsk-section-desc { color: rgba(0, 0, 0, 0.55); }
+
+        /* Tray popover mockup */
+        .dsk-tray .dsk-section-visual {
+            width: 280px;
+            height: auto;
+            background: none;
+            border: none;
+            border-radius: 0;
+            display: block;
+            flex-shrink: 0;
+        }
+        .dsk-tray-mockup i,
+        .dsk-tray-mockup svg {
+            width: 13px;
+            height: 13px;
+            stroke-width: 2;
+        }
+        .dsk-tray-mockup {
+            width: 100%;
+            background: rgba(20, 20, 25, 0.95);
+            border: 1px solid #27272a;
+            border-radius: 12px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+            font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .dsk-tray-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 14px;
+            border-bottom: 1px solid #1a1a1e;
+        }
+        .dsk-tray-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #fff;
+            flex: 1;
+        }
+        .dsk-tray-badge {
+            font-size: 0.52rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 99px;
+            background: rgba(99, 102, 241, 0.15);
+            color: #6366f1;
+        }
+        .dsk-tray-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .dsk-tray-actions i,
+        .dsk-tray-actions svg { width: 13px; height: 13px; color: #52525b; }
+        .dsk-tray-agents {
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .dsk-tray-agent {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 0.65rem;
+        }
+        .dsk-tray-agent-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .dsk-tray-agent-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .dsk-tray-agent-name {
+            color: #e4e4e7;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.65rem;
+        }
+        .dsk-tray-agent-status {
+            font-size: 0.52rem;
+            margin-top: 2px;
+        }
+        .dsk-tray-agent-time {
+            font-size: 0.5rem;
+            color: #3f3f46;
+            flex-shrink: 0;
+            font-family: "JetBrains Mono", monospace;
+        }
+        /* Tray stagger animation */
+        .dsk-tray-agent {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+        .dsk-tray.visible .dsk-tray-agent {
+            animation: dsk-tray-in 0.4s ease forwards;
+        }
+        .dsk-tray.visible .dsk-tray-agent:nth-child(1) { animation-delay: 0.1s; }
+        .dsk-tray.visible .dsk-tray-agent:nth-child(2) { animation-delay: 0.25s; }
+        .dsk-tray.visible .dsk-tray-agent:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dsk-tray-in {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
 
         /* ── Responsive ── */
         @media (max-width: 768px) {
@@ -1635,7 +2296,7 @@
                             <div class="desktop-terminal-content" id="desktop-terminal-content">
                                 <!-- Phase 1: /start PROJ-142 -->
                                 <div class="workflow-line phase-1-line cli-prompt">
-                                    <span class="cli-prompt-icon">❯</span>
+                                    <span class="cli-prompt-icon">&#10095;</span>
                                     <span class="command" data-text="/magic:start PROJ-142"></span>
                                 </div>
                                 <div class="workflow-line phase-1-line cli-response">
@@ -1687,7 +2348,7 @@
 
                                 <!-- Phase 2: /commit -->
                                 <div class="workflow-line phase-2-line cli-prompt" style="margin-top: 16px">
-                                    <span class="cli-prompt-icon purple">❯</span>
+                                    <span class="cli-prompt-icon purple">&#10095;</span>
                                     <span class="command purple" data-text="/magic:commit"></span>
                                 </div>
                                 <div class="workflow-line phase-2-line cli-response purple">
@@ -1713,7 +2374,7 @@
 
                                 <!-- Phase 3: /pr -->
                                 <div class="workflow-line phase-3-line cli-prompt" style="margin-top: 16px">
-                                    <span class="cli-prompt-icon green">❯</span>
+                                    <span class="cli-prompt-icon green">&#10095;</span>
                                     <span class="command green" data-text="/magic:pr"></span>
                                 </div>
                                 <div class="workflow-line phase-3-line cli-response green">
@@ -1730,20 +2391,20 @@
                                     <div class="cli-status phase-3-status-3">
                                         <span class="cli-status-icon"><span class="loader green"></span><span class="checkmark"><i data-feather="check"></i></span></span>
                                         <span class="cli-status-text">Updating Jira ticket...</span>
-                                        <span class="cli-status-result result">PROJ-142 → "To be reviewed"</span>
+                                        <span class="cli-status-result result">PROJ-142 &rarr; "To be reviewed"</span>
                                     </div>
                                 </div>
 
                                 <!-- Phase 4: /review -->
                                 <div class="workflow-line phase-4-line cli-prompt" style="margin-top: 16px">
-                                    <span class="cli-prompt-icon cyan">❯</span>
+                                    <span class="cli-prompt-icon cyan">&#10095;</span>
                                     <span class="command cyan" data-text="/magic:review 87"></span>
                                 </div>
                                 <div class="workflow-line phase-4-line cli-response cyan">
                                     <div class="cli-status phase-4-status-1">
                                         <span class="cli-status-icon"><span class="loader cyan"></span><span class="checkmark"><i data-feather="check"></i></span></span>
                                         <span class="cli-status-text">Fetching PR #87...</span>
-                                        <span class="cli-status-result result">3 files, +10 −1</span>
+                                        <span class="cli-status-result result">3 files, +10 &minus;1</span>
                                     </div>
                                     <div class="cli-status phase-4-status-2">
                                         <span class="cli-status-icon"><span class="loader cyan"></span><span class="checkmark"><i data-feather="check"></i></span></span>
@@ -1758,7 +2419,7 @@
 
                                 <!-- Phase 5: /resolve -->
                                 <div class="workflow-line phase-5-line cli-prompt" style="margin-top: 16px">
-                                    <span class="cli-prompt-icon orange">❯</span>
+                                    <span class="cli-prompt-icon orange">&#10095;</span>
                                     <span class="command orange" data-text="/magic:resolve"></span>
                                 </div>
                                 <div class="workflow-line phase-5-line cli-response orange">
@@ -1781,7 +2442,7 @@
 
                                 <!-- Phase 6: /done -->
                                 <div class="workflow-line phase-6-line cli-prompt" style="margin-top: 16px">
-                                    <span class="cli-prompt-icon green">❯</span>
+                                    <span class="cli-prompt-icon green">&#10095;</span>
                                     <span class="command green" data-text="/magic:done"></span>
                                 </div>
                                 <div class="workflow-line phase-6-line cli-response green">
@@ -1798,7 +2459,7 @@
                                     <div class="cli-status phase-6-status-3">
                                         <span class="cli-status-icon"><span class="loader green"></span><span class="checkmark"><i data-feather="check"></i></span></span>
                                         <span class="cli-status-text">Transitioning Jira...</span>
-                                        <span class="cli-status-result result">PROJ-142 → "Done"</span>
+                                        <span class="cli-status-result result">PROJ-142 &rarr; "Done"</span>
                                     </div>
                                     <div class="cli-success-banner phase-6-status-4">
                                         <span class="success-check"><i data-feather="check"></i></span>
@@ -1865,75 +2526,6 @@
         </div>
     </div>
 
-    <!-- ── 1. Split view — light blue, visual left + content right ── -->
-    <section class="dsk-section dsk-split">
-        <div class="dsk-section-inner">
-            <div class="dsk-section-visual">
-                <div class="dsk-split-mockup">
-                    <div class="dsk-split-titlebar">
-                        <div class="dsk-split-dots"><span></span><span></span><span></span></div>
-                    </div>
-                    <div class="dsk-split-body">
-                        <div class="dsk-split-pane">
-                            <div class="dsk-split-pane-header">
-                                <img class="dsk-split-logo" src="claudecode-color.png" alt="Claude Code">
-                                <span class="dsk-split-name">Claude Code</span>
-                            </div>
-                            <div class="dsk-split-meta">claude-opus-4 &middot; /auth-middleware</div>
-                            <div class="dsk-split-line">
-                                <span class="s-prompt">&#10095;</span>
-                                <span class="s-cmd">/magic:start PROJ-142</span>
-                            </div>
-                            <div class="dsk-split-line">
-                                <span class="s-check"><i data-feather="check"></i></span>
-                                <span class="s-text">Fetching ticket...</span>
-                            </div>
-                            <div class="dsk-split-line">
-                                <span class="s-check"><i data-feather="check"></i></span>
-                                <span class="s-text">Creating worktree...</span>
-                                <span class="s-result">feature/PROJ-142</span>
-                            </div>
-                            <div class="dsk-split-line s-success">
-                                <span class="s-check"><i data-feather="check"></i></span>
-                                <span class="s-text">Ready! Coding...</span>
-                            </div>
-                        </div>
-                        <div class="dsk-split-divider"></div>
-                        <div class="dsk-split-pane">
-                            <div class="dsk-split-pane-header">
-                                <img class="dsk-split-logo" src="claudecode-color.png" alt="Claude Code">
-                                <span class="dsk-split-name">Claude Code</span>
-                            </div>
-                            <div class="dsk-split-meta">claude-opus-4 &middot; /api-refactor</div>
-                            <div class="dsk-split-line">
-                                <span class="s-prompt">&#10095;</span>
-                                <span class="s-cmd">/magic:review 87</span>
-                            </div>
-                            <div class="dsk-split-line">
-                                <span class="s-check"><i data-feather="check"></i></span>
-                                <span class="s-text">Fetching PR #87...</span>
-                                <span class="s-result">3 files</span>
-                            </div>
-                            <div class="dsk-split-line">
-                                <span class="s-check"><i data-feather="check"></i></span>
-                                <span class="s-text">Reviewing code...</span>
-                                <span class="s-result">2 comments</span>
-                            </div>
-                            <div class="dsk-split-line s-success">
-                                <span class="s-check"><i data-feather="check"></i></span>
-                                <span class="s-text">Approved with suggestions</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="dsk-section-content">
-                <h2 class="dsk-section-title" data-i18n="desktopApp.feat1Title">Split view</h2>
-                <p class="dsk-section-desc" data-i18n="desktopApp.feat1Desc">Run two agents side by side in a split terminal view. Drag and drop agents between the left and right panes to reorganize on the fly. Each pane scrolls and focuses independently &mdash; perfect for coding in one while reviewing a PR in the other, or comparing two implementations without ever switching tabs.</p>
-            </div>
-        </div>
-    </section>
-
     <!-- ── 2. Live agent tracking — black, content left + visual right ── -->
     <section class="dsk-section dsk-tracking">
         <div class="dsk-section-inner">
@@ -1950,12 +2542,12 @@
                         <div class="dsk-sidebar-action">
                             <i data-feather="plus"></i>
                             <span>New agent</span>
-                            <span class="s-shortcut">⌘N</span>
+                            <span class="s-shortcut">&#8984;N</span>
                         </div>
                         <div class="dsk-sidebar-action">
                             <i data-feather="zap"></i>
                             <span>Skills</span>
-                            <span class="s-shortcut">⌘;</span>
+                            <span class="s-shortcut">&#8984;;</span>
                         </div>
                     </div>
                     <div class="dsk-sidebar-body">
@@ -2028,85 +2620,14 @@
             </div>
         </div>
     </section>
-
-    <!-- ── Notifications — pink, visual left + content right ── -->
-    <section class="dsk-section dsk-notifs">
-        <div class="dsk-section-inner">
-            <div class="dsk-notif-anim">
-                <div class="dsk-notif-toast">
-                    <div class="dsk-notif-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
-                    <div class="dsk-notif-body">
-                        <span class="dsk-notif-app">magic-slash</span>
-                        <span class="dsk-notif-title">PROJ-123 &middot; auth-middleware</span>
-                        <span class="dsk-notif-msg">Agent is waiting for your input</span>
-                    </div>
-                    <span class="dsk-notif-time">now</span>
-                </div>
-                <div class="dsk-notif-toast">
-                    <div class="dsk-notif-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
-                    <div class="dsk-notif-body">
-                        <span class="dsk-notif-app">magic-slash</span>
-                        <span class="dsk-notif-title">PROJ-456 &middot; api-refactor</span>
-                        <span class="dsk-notif-msg">Task completed successfully</span>
-                    </div>
-                    <span class="dsk-notif-time">now</span>
-                </div>
-                <div class="dsk-notif-toast">
-                    <div class="dsk-notif-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
-                    <div class="dsk-notif-body">
-                        <span class="dsk-notif-app">magic-slash</span>
-                        <span class="dsk-notif-title">PROJ-789 &middot; db-migration</span>
-                        <span class="dsk-notif-msg">Test suite failed &mdash; 2 errors</span>
-                    </div>
-                    <span class="dsk-notif-time">now</span>
-                </div>
-                <div class="dsk-notif-toast">
-                    <div class="dsk-notif-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
-                    <div class="dsk-notif-body">
-                        <span class="dsk-notif-app">magic-slash</span>
-                        <span class="dsk-notif-title">PROJ-321 &middot; fix-login</span>
-                        <span class="dsk-notif-msg">PR #92 merged</span>
-                    </div>
-                    <span class="dsk-notif-time">now</span>
-                </div>
-            </div>
-            <div class="dsk-section-content">
-                <h2 class="dsk-section-title" data-i18n="desktopApp.feat9Title">Real-time notifications</h2>
-                <p class="dsk-section-desc" data-i18n="desktopApp.feat9Desc">When an agent finishes a task, hits an error, or needs your input, you get a native macOS notification instantly. No need to watch the screen or poll for updates &mdash; just keep working and let the app tell you when something needs your attention.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- ── 4. Keyboard-first — dark with grid pattern, content left + visual right ── -->
-    <section class="dsk-section dsk-keyboard">
-        <div class="dsk-section-inner">
-            <div class="dsk-kb-bubbles">
-                <div class="dsk-kb-bubble">&#8984;N</div>
-                <div class="dsk-kb-bubble">&#8984;/</div>
-                <div class="dsk-kb-bubble">&#8984;&#8593;</div>
-                <div class="dsk-kb-bubble">&#8984;D</div>
-                <div class="dsk-kb-bubble">&#8984;B</div>
-                <div class="dsk-kb-bubble">&#8984;&#8595;</div>
-                <div class="dsk-kb-bubble">&#8984;\</div>
-                <div class="dsk-kb-bubble">&#8984;I</div>
-                <div class="dsk-kb-bubble">&#8984;;</div>
-                <div class="dsk-kb-bubble">&#8984;K</div>
-                <div class="dsk-kb-bubble">&#8984;W</div>
-                <div class="dsk-kb-bubble">&#8984;R</div>
-            </div>
-            <div class="dsk-section-content">
-                <h2 class="dsk-section-title" data-i18n="desktopApp.feat4Title">Keyboard-first</h2>
-                <p class="dsk-section-desc" data-i18n="desktopApp.feat4Desc">Every action in the app is mapped to a keyboard shortcut. Navigate agents, toggle views, switch panes, create and manage tasks &mdash; all without reaching for the mouse. Designed for developers who live in the terminal and expect the same speed everywhere.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- ── 3. Context panel — pink, visual left + content right ── -->
+    <!-- ── 3. Context panel — light blue, content left + visual right ── -->
     <section class="dsk-section dsk-context">
         <div class="dsk-section-inner">
             <div class="dsk-section-content">
                 <h2 class="dsk-section-title" data-i18n="desktopApp.feat3Title">Context panel</h2>
-                <p class="dsk-section-desc" data-i18n="desktopApp.feat3Desc">A resizable sidebar dedicated to the active agent, showing everything you need: the linked Jira ticket with its title, description, and status badge; the current Git branch with uncommitted file changes and a visual additions/deletions gauge; unpushed commits with short hashes and relative dates; and the associated PR with its review status. Everything updates in real time as the agent works.</p>
+                <p class="dsk-section-desc" data-i18n="desktopApp.feat3Desc">A resizable sidebar that gives you full context on the active agent without switching windows. At the top, the linked Jira ticket &mdash; title, description, status badge &mdash; so you always know what the agent is working on and why.</p>
+                <p class="dsk-section-desc" data-i18n="desktopApp.feat3Desc2">Below that, the Git state in real time: current branch, uncommitted file changes with per-file addition/deletion counts, and a visual gauge that shows the diff ratio at a glance. You can see exactly what the agent has touched before it even commits.</p>
+                <p class="dsk-section-desc" data-i18n="desktopApp.feat3Desc3">Further down, the commit history with short hashes and relative timestamps, plus a count of how many commits are ahead of the base branch. And when a PR exists, it appears at the bottom with its review status &mdash; open, approved, or changes requested &mdash; linked directly to GitHub.</p>
             </div>
             <div class="dsk-section-visual">
                 <div class="dsk-ctx-mockup">
@@ -2204,12 +2725,168 @@
             </div>
         </div>
     </section>
-
-    <!-- ── 5. Script runner — blue, visual left + content right ── -->
+    <!-- ── 7. Notifications — pink, visual left + content right ── -->
+    <section class="dsk-section dsk-notifs">
+        <div class="dsk-section-inner">
+            <div class="dsk-notif-anim">
+                <div class="dsk-notif-toast">
+                    <div class="dsk-notif-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+                    <div class="dsk-notif-body">
+                        <span class="dsk-notif-app">magic-slash</span>
+                        <span class="dsk-notif-title">PROJ-123 &middot; auth-middleware</span>
+                        <span class="dsk-notif-msg">Agent is waiting for your input</span>
+                    </div>
+                    <span class="dsk-notif-time">now</span>
+                </div>
+                <div class="dsk-notif-toast">
+                    <div class="dsk-notif-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                    <div class="dsk-notif-body">
+                        <span class="dsk-notif-app">magic-slash</span>
+                        <span class="dsk-notif-title">PROJ-456 &middot; api-refactor</span>
+                        <span class="dsk-notif-msg">Task completed successfully</span>
+                    </div>
+                    <span class="dsk-notif-time">now</span>
+                </div>
+                <div class="dsk-notif-toast">
+                    <div class="dsk-notif-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+                    <div class="dsk-notif-body">
+                        <span class="dsk-notif-app">magic-slash</span>
+                        <span class="dsk-notif-title">PROJ-789 &middot; db-migration</span>
+                        <span class="dsk-notif-msg">Test suite failed &mdash; 2 errors</span>
+                    </div>
+                    <span class="dsk-notif-time">now</span>
+                </div>
+                <div class="dsk-notif-toast">
+                    <div class="dsk-notif-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+                    <div class="dsk-notif-body">
+                        <span class="dsk-notif-app">magic-slash</span>
+                        <span class="dsk-notif-title">PROJ-321 &middot; fix-login</span>
+                        <span class="dsk-notif-msg">PR #92 merged</span>
+                    </div>
+                    <span class="dsk-notif-time">now</span>
+                </div>
+            </div>
+            <div class="dsk-section-content">
+                <h2 class="dsk-section-title" data-i18n="desktopApp.feat9Title">Real-time notifications</h2>
+                <p class="dsk-section-desc" data-i18n="desktopApp.feat9Desc">When an agent finishes a task, hits an error, or needs your input, you get a native macOS notification instantly. No need to watch the screen or poll for updates &mdash; just keep working and let the app tell you when something needs your attention.</p>
+            </div>
+        </div>
+    </section>
+    <!-- ── 1. Split view — light blue, visual left + content right ── -->
+    <section class="dsk-section dsk-split">
+        <div class="dsk-section-inner">
+            <div class="dsk-section-visual">
+                <div class="dsk-split-mockup">
+                    <div class="dsk-split-titlebar">
+                        <div class="dsk-split-dots"><span></span><span></span><span></span></div>
+                    </div>
+                    <div class="dsk-split-body">
+                        <div class="dsk-split-pane">
+                            <div class="dsk-split-pane-header">
+                                <img class="dsk-split-logo" src="claudecode-color.png" alt="Claude Code">
+                                <span class="dsk-split-name">Claude Code</span>
+                            </div>
+                            <div class="dsk-split-meta">claude-opus-4 &middot; /auth-middleware</div>
+                            <div class="dsk-split-line">
+                                <span class="s-prompt">&#10095;</span>
+                                <span class="s-cmd">/magic:start PROJ-142</span>
+                            </div>
+                            <div class="dsk-split-line">
+                                <span class="s-check"><i data-feather="check"></i></span>
+                                <span class="s-text">Fetching ticket...</span>
+                            </div>
+                            <div class="dsk-split-line">
+                                <span class="s-check"><i data-feather="check"></i></span>
+                                <span class="s-text">Creating worktree...</span>
+                                <span class="s-result">feature/PROJ-142</span>
+                            </div>
+                            <div class="dsk-split-line s-success">
+                                <span class="s-check"><i data-feather="check"></i></span>
+                                <span class="s-text">Ready! Coding...</span>
+                            </div>
+                        </div>
+                        <div class="dsk-split-divider"></div>
+                        <div class="dsk-split-pane">
+                            <div class="dsk-split-pane-header">
+                                <img class="dsk-split-logo" src="claudecode-color.png" alt="Claude Code">
+                                <span class="dsk-split-name">Claude Code</span>
+                            </div>
+                            <div class="dsk-split-meta">claude-opus-4 &middot; /api-refactor</div>
+                            <div class="dsk-split-line">
+                                <span class="s-prompt">&#10095;</span>
+                                <span class="s-cmd">/magic:review 87</span>
+                            </div>
+                            <div class="dsk-split-line">
+                                <span class="s-check"><i data-feather="check"></i></span>
+                                <span class="s-text">Fetching PR #87...</span>
+                                <span class="s-result">3 files</span>
+                            </div>
+                            <div class="dsk-split-line">
+                                <span class="s-check"><i data-feather="check"></i></span>
+                                <span class="s-text">Reviewing code...</span>
+                                <span class="s-result">2 comments</span>
+                            </div>
+                            <div class="dsk-split-line s-success">
+                                <span class="s-check"><i data-feather="check"></i></span>
+                                <span class="s-text">Approved with suggestions</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="dsk-section-content">
+                <h2 class="dsk-section-title" data-i18n="desktopApp.feat1Title">Split view</h2>
+                <p class="dsk-section-desc" data-i18n="desktopApp.feat1Desc">Run two agents side by side in a split terminal view. Drag and drop agents between the left and right panes to reorganize on the fly. Each pane scrolls and focuses independently &mdash; perfect for coding in one while reviewing a PR in the other, or comparing two implementations without ever switching tabs.</p>
+            </div>
+        </div>
+    </section>
+    <!-- ── 4. Script runner — blue, visual left + content right ── -->
     <section class="dsk-section dsk-runner">
         <div class="dsk-section-inner">
             <div class="dsk-section-visual">
-                <img src="mascot-runner.png" alt="Script runner mascot" style="width: 100%; height: 100%; object-fit: contain;">
+                <div class="dsk-runner-mockup">
+                    <div class="dsk-runner-titlebar">
+                        <div class="dsk-split-dots"><span></span><span></span><span></span></div>
+                    </div>
+                    <div class="dsk-runner-header">
+                        <i data-feather="play"></i>
+                        Scripts — stellar-api
+                    </div>
+                    <div class="dsk-runner-scripts">
+                        <div class="dsk-runner-script">
+                            <svg class="dsk-runner-play" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            <span class="dsk-runner-name">dev</span>
+                            <span class="dsk-runner-cmd">npm run dev</span>
+                        </div>
+                        <div class="dsk-runner-script s-running">
+                            <svg style="width:14px;height:14px;color:#ef4444;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                            <span class="dsk-runner-name" style="color:#fff;">test</span>
+                            <span class="dsk-runner-cmd">npm test</span>
+                        </div>
+                        <div class="dsk-runner-script">
+                            <svg class="dsk-runner-play" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            <span class="dsk-runner-name">build</span>
+                            <span class="dsk-runner-cmd">npm run build</span>
+                        </div>
+                        <div class="dsk-runner-script">
+                            <svg class="dsk-runner-play" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            <span class="dsk-runner-name">lint</span>
+                            <span class="dsk-runner-cmd">npm run lint</span>
+                        </div>
+                    </div>
+                    <div class="dsk-runner-output">
+                        <div class="dsk-runner-output-line s-pass">&#10003; auth.test.ts (4 tests)</div>
+                        <div class="dsk-runner-output-line s-pass">&#10003; middleware.test.ts (6 tests)</div>
+                        <div class="dsk-runner-output-line s-pass">&#10003; refresh.test.ts (3 tests)</div>
+                        <div class="dsk-runner-output-line s-info">&nbsp;</div>
+                        <div class="dsk-runner-output-line s-info">Test Files &nbsp;3 passed (3)</div>
+                        <div class="dsk-runner-output-line s-info">Tests &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;13 passed (13)</div>
+                    </div>
+                    <div class="dsk-runner-result s-pass">
+                        <i data-feather="check-circle"></i>
+                        All tests passed &mdash; 13/13
+                    </div>
+                </div>
             </div>
             <div class="dsk-section-content">
                 <h2 class="dsk-section-title" data-i18n="desktopApp.feat6Title">Script runner</h2>
@@ -2219,8 +2896,53 @@
             </div>
         </div>
     </section>
-
-    <!-- ── 6. Skills budget — light blue, content left + visual right ── -->
+    <!-- ── 5. Quick Launch — content left + visual right ── -->
+    <section class="dsk-section dsk-quicklaunch">
+        <div class="dsk-section-inner">
+            <div class="dsk-section-content">
+                <h2 class="dsk-section-title" data-i18n="desktopApp.feat10Title">Quick Launch</h2>
+                <p class="dsk-section-desc" data-i18n="desktopApp.feat10Desc">Hit &#8963;Space to open a Spotlight-style command palette. Search agents, dispatch skills, or jump to any repository &mdash; all without leaving the keyboard. The input resets on each open so you're always starting fresh.</p>
+            </div>
+            <div class="dsk-section-visual">
+                <div class="dsk-spotlight">
+                    <div class="dsk-spotlight-input">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <span class="dsk-spotlight-text" id="spotlight-typed"></span>
+                    </div>
+                    <div class="dsk-spotlight-hint">
+                        <div class="dsk-spotlight-hint-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        </div>
+                        <span class="dsk-spotlight-hint-label"><strong>/magic:start</strong> &mdash; Start a task from a ticket</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ── 6. Keyboard-first — dark with grid pattern ── -->
+    <section class="dsk-section dsk-keyboard">
+        <div class="dsk-section-inner">
+            <div class="dsk-kb-bubbles">
+                <div class="dsk-kb-bubble">&#8984;N</div>
+                <div class="dsk-kb-bubble">&#8984;/</div>
+                <div class="dsk-kb-bubble">&#8984;&#8593;</div>
+                <div class="dsk-kb-bubble">&#8984;D</div>
+                <div class="dsk-kb-bubble">&#8984;B</div>
+                <div class="dsk-kb-bubble">&#8984;&#8595;</div>
+                <div class="dsk-kb-bubble">&#8984;\</div>
+                <div class="dsk-kb-bubble">&#8984;I</div>
+                <div class="dsk-kb-bubble">&#8984;;</div>
+                <div class="dsk-kb-bubble">&#8984;K</div>
+                <div class="dsk-kb-bubble">&#8984;W</div>
+                <div class="dsk-kb-bubble">&#8984;R</div>
+            </div>
+            <div class="dsk-section-content">
+                <h2 class="dsk-section-title" data-i18n="desktopApp.feat4Title">Keyboard-first</h2>
+                <p class="dsk-section-desc" data-i18n="desktopApp.feat4Desc">Every action in the app is mapped to a keyboard shortcut. Navigate agents, toggle views, switch panes, create and manage tasks &mdash; all without reaching for the mouse. Designed for developers who live in the terminal and expect the same speed everywhere.</p>
+            </div>
+        </div>
+    </section>
+    <!-- ── 8. Skills budget — light blue, content left + visual right ── -->
     <section class="dsk-section dsk-budget">
         <div class="dsk-section-inner">
             <div class="dsk-section-content">
@@ -2322,8 +3044,7 @@
             </div>
         </div>
     </section>
-
-    <!-- ── 7. Per-repo config — pink, centered + card grid ── -->
+    <!-- ── 9. Per-repo config — pink, centered + card grid ── -->
     <section class="dsk-section dsk-config">
         <div class="dsk-section-inner">
             <div class="dsk-section-content">
@@ -2354,8 +3075,135 @@
             </div>
         </div>
     </section>
-
-    <!-- ── 8. Auto-updates — black, content left + visual right ── -->
+    <!-- ── 10. Scheduled Tasks ── -->
+    <section class="dsk-section dsk-scheduled">
+        <div class="dsk-section-inner">
+            <div class="dsk-section-content">
+                <h2 class="dsk-section-title" data-i18n="desktopApp.feat12Title">Scheduled agents</h2>
+                <p class="dsk-section-desc" data-i18n="desktopApp.feat12Desc">Set agents to run on a schedule &mdash; daily, weekdays, weekly, or monthly. Define a prompt, pick a repository, and let the agent execute automatically at the scheduled time. Perfect for recurring code reviews, dependency checks, or cleanup tasks.</p>
+                <p class="dsk-section-desc" data-i18n="desktopApp.feat12Desc2">Each schedule shows its frequency, next execution countdown, and last run status. Run any scheduled agent on-demand with a single click, or pause it when you need a break.</p>
+            </div>
+            <div class="dsk-section-visual">
+                <div class="dsk-sched-mockup">
+                    <div class="dsk-sched-titlebar">
+                        <div class="dsk-split-dots"><span></span><span></span><span></span></div>
+                    </div>
+                    <div class="dsk-sched-header">
+                        <i data-feather="clock"></i>
+                        Scheduled agents
+                    </div>
+                    <div class="dsk-sched-cards">
+                        <div class="dsk-sched-card">
+                            <div class="dsk-sched-card-top">
+                                <i data-feather="clock" class="dsk-sched-card-icon"></i>
+                                <span class="dsk-sched-card-name">dep-check</span>
+                                <span class="dsk-sched-card-freq">weekdays</span>
+                            </div>
+                            <div class="dsk-sched-card-cmd">Check for outdated dependencies and security advisories</div>
+                            <div class="dsk-sched-card-meta">
+                                <span class="dsk-sched-card-next"><i data-feather="clock"></i> in 14h (Mon, 09:00)</span>
+                                <span class="dsk-sched-card-last"><i data-feather="check"></i> Fri, 09:01</span>
+                            </div>
+                        </div>
+                        <div class="dsk-sched-card">
+                            <div class="dsk-sched-card-top">
+                                <i data-feather="clock" class="dsk-sched-card-icon"></i>
+                                <span class="dsk-sched-card-name">test-suite</span>
+                                <span class="dsk-sched-card-freq">daily</span>
+                            </div>
+                            <div class="dsk-sched-card-cmd">Run full test suite and report failures</div>
+                            <div class="dsk-sched-card-meta">
+                                <span class="dsk-sched-card-next"><i data-feather="clock"></i> in 6h (Sat, 08:00)</span>
+                                <span class="dsk-sched-card-last" style="color:#ef4444;"><i data-feather="x"></i> Today, 08:02</span>
+                            </div>
+                        </div>
+                        <div class="dsk-sched-card">
+                            <div class="dsk-sched-card-top">
+                                <i data-feather="clock" class="dsk-sched-card-icon" style="color:#3f3f46;"></i>
+                                <span class="dsk-sched-card-name" style="color:#52525b;">cleanup</span>
+                                <span class="dsk-sched-card-freq" style="background:rgba(255,255,255,0.04);color:#3f3f46;">weekly</span>
+                                <span class="dsk-sched-card-disabled">disabled</span>
+                            </div>
+                            <div class="dsk-sched-card-cmd" style="color:#3f3f46;">Clean up stale branches and merged worktrees</div>
+                            <div class="dsk-sched-card-meta">
+                                <span class="dsk-sched-card-next" style="color:#3f3f46;"><i data-feather="clock"></i> paused</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ── 11. History ── -->
+    <section class="dsk-section dsk-history">
+        <div class="dsk-section-inner">
+            <div class="dsk-section-visual">
+                <div class="dsk-hist-mockup">
+                    <div class="dsk-hist-titlebar">
+                        <div class="dsk-split-dots"><span></span><span></span><span></span></div>
+                    </div>
+                    <div class="dsk-hist-header">
+                        <i data-feather="clock"></i>
+                        History
+                    </div>
+                    <div class="dsk-hist-day">Today</div>
+                    <div class="dsk-hist-entries">
+                        <div class="dsk-hist-entry">
+                            <span class="dsk-hist-dot" style="background:#3b82f6;"></span>
+                            <span class="dsk-hist-time">14:32</span>
+                            <span class="dsk-hist-agent">auth-middleware</span>
+                            <span class="dsk-hist-ticket">PROJ-142</span>
+                            <span class="dsk-hist-action" style="color:#3b82f6;">PR created</span>
+                        </div>
+                        <div class="dsk-hist-entry">
+                            <span class="dsk-hist-dot" style="background:#eab308;"></span>
+                            <span class="dsk-hist-time">14:30</span>
+                            <span class="dsk-hist-agent">auth-middleware</span>
+                            <span class="dsk-hist-ticket">PROJ-142</span>
+                            <span class="dsk-hist-action" style="color:#eab308;">Committed</span>
+                        </div>
+                        <div class="dsk-hist-entry">
+                            <span class="dsk-hist-dot" style="background:#22c55e;"></span>
+                            <span class="dsk-hist-time">14:05</span>
+                            <span class="dsk-hist-agent">auth-middleware</span>
+                            <span class="dsk-hist-ticket">PROJ-142</span>
+                            <span class="dsk-hist-action" style="color:#22c55e;">Started</span>
+                        </div>
+                    </div>
+                    <div class="dsk-hist-day">Yesterday</div>
+                    <div class="dsk-hist-entries">
+                        <div class="dsk-hist-entry">
+                            <span class="dsk-hist-dot" style="background:#22c55e;"></span>
+                            <span class="dsk-hist-time">17:45</span>
+                            <span class="dsk-hist-agent">fix-login</span>
+                            <span class="dsk-hist-ticket">PROJ-321</span>
+                            <span class="dsk-hist-action" style="color:#22c55e;">Merged</span>
+                        </div>
+                        <div class="dsk-hist-entry">
+                            <span class="dsk-hist-dot" style="background:#a855f7;"></span>
+                            <span class="dsk-hist-time">16:20</span>
+                            <span class="dsk-hist-agent">fix-login</span>
+                            <span class="dsk-hist-ticket">PROJ-321</span>
+                            <span class="dsk-hist-action" style="color:#a855f7;">In review</span>
+                        </div>
+                        <div class="dsk-hist-entry">
+                            <span class="dsk-hist-dot" style="background:#22c55e;"></span>
+                            <span class="dsk-hist-time">10:15</span>
+                            <span class="dsk-hist-agent">db-migration</span>
+                            <span class="dsk-hist-ticket">PROJ-189</span>
+                            <span class="dsk-hist-action" style="color:#22c55e;">Done</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="dsk-section-content">
+                <h2 class="dsk-section-title" data-i18n="desktopApp.feat13Title">Activity history</h2>
+                <p class="dsk-section-desc" data-i18n="desktopApp.feat13Desc">Every action is logged in a chronological timeline: task started, commit created, PR opened, review completed, ticket closed. Entries are grouped by day and color-coded by action type, so you can scan your week at a glance.</p>
+                <p class="dsk-section-desc" data-i18n="desktopApp.feat13Desc2">Expand any group to drill into individual events, or clear the history when you want a fresh start. It&rsquo;s your development diary &mdash; without writing a word.</p>
+            </div>
+        </div>
+    </section>
+    <!-- ── 12. Auto-updates — black, content left + visual right ── -->
     <section class="dsk-section dsk-updates">
         <div class="dsk-section-inner">
             <div class="dsk-section-content">
@@ -2363,41 +3211,21 @@
                 <p class="dsk-section-desc" data-i18n="desktopApp.feat7Desc">The app checks for updates automatically in the background. When a new version is available, it downloads silently with a progress indicator &mdash; no interruptions. After restart, a "What's New" modal walks you through the latest changes with full release notes. Always up to date, zero effort.</p>
             </div>
             <div class="dsk-section-visual">
-                <img src="mascot-updates.png" alt="Auto-updates mascot" style="width: 100%; height: 100%; object-fit: contain;">
-            </div>
-        </div>
-    </section>
-
-    <!-- ── Quick Launch — content left + visual right ── -->
-    <section class="dsk-section dsk-quicklaunch">
-        <div class="dsk-section-inner">
-            <div class="dsk-section-content">
-                <h2 class="dsk-section-title" data-i18n="desktopApp.feat10Title">Quick Launch</h2>
-                <p class="dsk-section-desc" data-i18n="desktopApp.feat10Desc">Hit &#8963;Space to open a Spotlight-style command palette. Search agents, dispatch skills, or jump to any repository &mdash; all without leaving the keyboard. The input resets on each open so you're always starting fresh.</p>
-            </div>
-            <div class="dsk-section-visual">
-                <div class="dsk-spotlight">
-                    <div class="dsk-spotlight-input">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <span class="dsk-spotlight-text" id="spotlight-typed"></span>
+                <div class="dsk-update-mockup">
+                    <div class="dsk-update-icon">
+                        <i data-feather="download"></i>
                     </div>
-                    <div class="dsk-spotlight-hint">
-                        <div class="dsk-spotlight-hint-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                        </div>
-                        <span class="dsk-spotlight-hint-label"><strong>/magic:start</strong> &mdash; Start a task from a ticket</span>
+                    <div class="dsk-update-title">Update ready!</div>
+                    <div class="dsk-update-version">v0.44.0</div>
+                    <div class="dsk-update-progress">
+                        <div class="dsk-update-progress-fill"></div>
+                    </div>
+                    <div class="dsk-update-pct">100%</div>
+                    <div class="dsk-update-buttons">
+                        <button class="dsk-update-btn s-secondary">Later</button>
+                        <button class="dsk-update-btn s-primary">Restart now</button>
                     </div>
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ── Tray integration — dark, visual left + content right ── -->
-    <section class="dsk-section dsk-tray">
-        <div class="dsk-section-inner" style="flex-direction:column;text-align:center;">
-            <div class="dsk-section-content" style="align-items:center;">
-                <h2 class="dsk-section-title" data-i18n="desktopApp.feat11Title">Menu bar integration</h2>
-                <p class="dsk-section-desc" style="max-width:600px;" data-i18n="desktopApp.feat11Desc">magic-slash lives in your macOS menu bar. A lightweight popover gives you a quick overview of running agents and their status without bringing the full window to the foreground. Click to expand, or let it stay quietly in the tray.</p>
             </div>
         </div>
     </section>
@@ -2405,7 +3233,7 @@
     <!-- ── CTA ── -->
     <section class="cta-section">
         <div class="cta-inner">
-            <img src="mascot-peace.png" alt="magic-slash mascot" class="cta-mascot">
+            <img src="mascot-peace.png" alt="magic-slash mascot" class="cta-mascot" loading="lazy">
             <div class="cta-content">
                 <h2 class="cta-title" data-i18n="cta.title">Start in 30 seconds.</h2>
                 <p class="cta-subtitle" data-i18n="cta.subtitle">Install magic-slash and transform your workflow.</p>
@@ -2474,7 +3302,7 @@
     <script src="script.js"></script>
     <script>
         (function() {
-            var sections = ['.dsk-split', '.dsk-tracking', '.dsk-notifs', '.dsk-context', '.dsk-budget', '.dsk-quicklaunch'];
+            var sections = ['.dsk-split', '.dsk-tracking', '.dsk-context', '.dsk-runner', '.dsk-quicklaunch', '.dsk-keyboard', '.dsk-notifs', '.dsk-budget', '.dsk-scheduled', '.dsk-history', '.dsk-updates'];
             sections.forEach(function(sel) {
                 var section = document.querySelector(sel);
                 if (!section) return;
