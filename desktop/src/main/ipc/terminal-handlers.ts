@@ -1,3 +1,4 @@
+import os from 'os'
 import { ipcMain, BrowserWindow } from 'electron'
 import {
   createTerminal,
@@ -176,9 +177,7 @@ export function restoreAgents() {
     }
 
     for (const agent of agents) {
-      // Use first repository as cwd for PTY
-      const cwd = agent.repositories[0] || ''
-      if (!cwd) continue // Skip agents without repositories
+      const cwd = agent.repositories[0] || os.homedir()
 
       const callbacks = createTerminalCallbacks(agent.id, agent.name)
       launchClaude(
