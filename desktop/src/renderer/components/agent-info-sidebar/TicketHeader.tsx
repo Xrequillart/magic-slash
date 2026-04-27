@@ -140,7 +140,7 @@ export function TicketHeader({
             }}
             onBlur={saveTitle}
             placeholder="Enter title..."
-            className="flex-1 bg-bg-tertiary border border-accent rounded px-2 py-1 text-white font-semibold text-sm focus:outline-none"
+            className="flex-1 bg-white/[0.06] backdrop-blur-md border border-accent rounded px-2 py-1 text-white font-semibold text-sm focus:outline-none"
           />
         </div>
       ) : (
@@ -171,7 +171,7 @@ export function TicketHeader({
               }}
               placeholder="Enter description..."
               rows={3}
-              className="w-full bg-bg-tertiary border border-accent rounded px-2 py-1.5 text-xs text-white/70 focus:outline-none resize-none leading-relaxed"
+              className="w-full bg-white/[0.06] backdrop-blur-md border border-accent rounded px-2 py-1.5 text-xs text-white/70 focus:outline-none resize-none leading-relaxed"
             />
             <div className="flex items-center justify-between">
               <span className="text-xs text-text-secondary/40">⌘Enter to save, Esc to cancel</span>

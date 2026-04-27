@@ -329,7 +329,7 @@ function WelcomePage() {
               <select
                 value={launchMode}
                 onChange={(e) => handleLaunchModeChange(e.target.value as LaunchMode)}
-                className="w-52 px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+                className="w-52 px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
               >
                 {LAUNCH_MODE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -434,7 +434,7 @@ function WelcomePage() {
                     setSchedulerDefaultTime(newTime)
                     window.electronAPI.scheduler.setDefaultTime(newTime)
                   }}
-                  className="px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                  className="px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
                 />
               </div>
             </div>
@@ -481,7 +481,7 @@ function WelcomePage() {
                   value={spotlightShortcut}
                   onChange={(e) => handleSpotlightShortcutChange(e.target.value as SpotlightShortcut)}
                   disabled={!spotlightEnabled}
-                  className="w-52 px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
+                  className="w-52 px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
                 >
                   {SPOTLIGHT_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>

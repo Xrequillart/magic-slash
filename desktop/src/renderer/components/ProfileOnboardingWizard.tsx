@@ -166,7 +166,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your first name"
                 autoFocus
-                className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
                 onKeyDown={(e) => { if (e.key === 'Enter' && canAdvance()) handleNext() }}
               />
             </div>
@@ -186,7 +186,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                     className={`px-3 py-2 text-sm rounded-lg border transition-all ${
                       role === opt.value
                         ? 'bg-accent/10 border-accent/30 text-accent'
-                        : 'bg-bg border-white/10 text-text-secondary hover:bg-white/5 hover:text-white'
+                        : 'bg-white/[0.06] backdrop-blur-md border-white/[0.08] text-text-secondary hover:bg-white/5 hover:text-white'
                     }`}
                   >
                     {opt.label}
@@ -210,7 +210,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                     className={`w-full px-3 py-2.5 text-left rounded-lg border transition-all ${
                       technicalLevel === opt.value
                         ? 'bg-accent/10 border-accent/30'
-                        : 'bg-bg border-white/10 hover:bg-white/5'
+                        : 'bg-white/[0.06] backdrop-blur-md border-white/[0.08] hover:bg-white/5'
                     }`}
                   >
                     <div className={`text-sm font-medium ${technicalLevel === opt.value ? 'text-accent' : 'text-white'}`}>
@@ -237,7 +237,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                     className={`w-full px-3 py-2.5 text-left rounded-lg border transition-all ${
                       communicationStyle === opt.value
                         ? 'bg-accent/10 border-accent/30'
-                        : 'bg-bg border-white/10 hover:bg-white/5'
+                        : 'bg-white/[0.06] backdrop-blur-md border-white/[0.08] hover:bg-white/5'
                     }`}
                   >
                     <div className={`text-sm font-medium ${communicationStyle === opt.value ? 'text-accent' : 'text-white'}`}>
@@ -264,7 +264,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all ${
                       languages.includes(lang)
                         ? 'bg-accent/10 border-accent/30 text-accent'
-                        : 'bg-bg border-white/10 text-text-secondary hover:bg-white/5 hover:text-white'
+                        : 'bg-white/[0.06] backdrop-blur-md border-white/[0.08] text-text-secondary hover:bg-white/5 hover:text-white'
                     }`}
                   >
                     {languages.includes(lang) && <Check className="w-3.5 h-3.5" />}
@@ -286,7 +286,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 onChange={(e) => setFreeText(e.target.value)}
                 placeholder="e.g., I prefer short answers, I work on mobile apps..."
                 rows={4}
-                className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 resize-none"
+                className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 resize-none"
               />
             </div>
           )}

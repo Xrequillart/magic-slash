@@ -192,7 +192,7 @@ function ScheduleForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g., Daily test runner"
-          className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+          className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
         />
       </div>
 
@@ -202,7 +202,7 @@ function ScheduleForm({
         <div ref={repoRef} className="relative">
           <button
             onClick={() => setIsRepoOpen(!isRepoOpen)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 bg-bg border border-white/10 rounded-lg text-sm cursor-pointer hover:border-white/20 transition-colors text-left"
+            className="w-full flex items-center gap-3 px-3 py-2.5 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm cursor-pointer hover:border-white/20 transition-colors text-left"
           >
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -262,14 +262,14 @@ function ScheduleForm({
           onChange={(e) => setCommand(e.target.value)}
           placeholder="e.g., Run all tests and fix any failures"
           rows={3}
-          className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors resize-none"
+          className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors resize-none"
         />
       </div>
 
       {/* Frequency - Segmented toggle */}
       <div>
         <label className="block text-xs text-text-secondary mb-1.5">Frequency</label>
-        <div className="relative grid bg-bg border border-white/10 rounded-lg p-1" style={{ gridTemplateColumns: `repeat(${FREQUENCY_OPTIONS.length}, 1fr)` }}>
+        <div className="relative grid bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg p-1" style={{ gridTemplateColumns: `repeat(${FREQUENCY_OPTIONS.length}, 1fr)` }}>
           <div
             className="absolute top-1 bottom-1 bg-accent/20 rounded-md transition-all duration-200 ease-out"
             style={{
@@ -301,7 +301,7 @@ function ScheduleForm({
               value={date}
               onChange={(e) => setDate(e.target.value)}
               min={new Date().toISOString().split('T')[0]}
-              className="flex-1 px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              className="flex-1 px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
             />
             <button
               type="button"
@@ -314,7 +314,7 @@ function ScheduleForm({
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-[120px] px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              className="w-[120px] px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
             />
           </div>
         </div>
@@ -329,7 +329,7 @@ function ScheduleForm({
               <select
                 value={dayOfWeek}
                 onChange={(e) => setDayOfWeek(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+                className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
               >
                 {DAY_NAMES.map((dayName, idx) => (
                   <option key={idx} value={idx}>{dayName}</option>
@@ -341,7 +341,7 @@ function ScheduleForm({
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-[120px] px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              className="w-[120px] px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
             />
           </div>
         </div>
@@ -356,7 +356,7 @@ function ScheduleForm({
               <select
                 value={dayOfMonth}
                 onChange={(e) => setDayOfMonth(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+                className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
               >
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                   <option key={d} value={d}>{d}</option>
@@ -368,7 +368,7 @@ function ScheduleForm({
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-[120px] px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              className="w-[120px] px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
             />
           </div>
         </div>
@@ -382,7 +382,7 @@ function ScheduleForm({
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}
-            className="w-full px-3 py-2 bg-bg border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+            className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
           />
         </div>
       )}
