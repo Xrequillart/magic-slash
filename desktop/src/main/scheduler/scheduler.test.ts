@@ -3,7 +3,10 @@ import type { Schedule } from '../../types'
 
 // Mock heavy/native dependencies that scheduler.ts transitively imports
 // so we can test the pure logic without node-pty, electron, etc.
-vi.mock('electron', () => ({ BrowserWindow: class {} }))
+vi.mock('electron', () => ({
+  BrowserWindow: class {},
+  powerSaveBlocker: { start: vi.fn(() => 1), stop: vi.fn(), isStarted: vi.fn(() => false) },
+}))
 vi.mock('../config/agents', () => ({
   readAgents: () => [],
   updateAgentSchedule: vi.fn(),
@@ -27,7 +30,7 @@ vi.mock('../ipc/terminal-handlers', () => ({
   }),
 }))
 
-import { shouldRunSchedule, formatDateYMD } from './scheduler'
+import { shouldRunSchedule, shouldCatchUp, formatDateYMD } from './scheduler'
 
 /**
  * Helper: build a valid, enabled schedule with sensible defaults.
@@ -323,5 +326,136 @@ describe('shouldRunSchedule', () => {
       const now = new Date(2026, 3, 22, 9, 0, 0)
       expect(shouldRunSchedule(schedule, now)).toBe(false)
     })
+  })
+})
+
+// --- shouldCatchUp ---
+
+describe('shouldCatchUp', () => {
+  it('should catch up when schedule time falls within sleep window', () => {
+    const schedule = makeSchedule({ frequency: 'daily', time: '05:00' })
+    // Sleep from 4:50 to 5:30
+    const sleepStart = new Date(2026, 3, 28, 4, 50, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 5, 30, 0)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(true)
+  })
+
+  it('should NOT catch up when schedule time is before the sleep window', () => {
+    const schedule = makeSchedule({ frequency: 'daily', time: '05:00' })
+    // Sleep from 6:00 to 7:00
+    const sleepStart = new Date(2026, 3, 28, 6, 0, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 7, 0, 0)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(false)
+  })
+
+  it('should NOT catch up when schedule time is after wake', () => {
+    const schedule = makeSchedule({ frequency: 'daily', time: '08:00' })
+    // Sleep from 4:00 to 6:00
+    const sleepStart = new Date(2026, 3, 28, 4, 0, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 6, 0, 0)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(false)
+  })
+
+  it('should NOT catch up when already executed today', () => {
+    const schedule = makeSchedule({
+      frequency: 'daily',
+      time: '05:00',
+      lastRunAt: new Date(2026, 3, 28, 5, 0, 10).getTime(),
+    })
+    // Sleep from 5:30 to 7:00 (but already ran at 5:00)
+    const sleepStart = new Date(2026, 3, 28, 4, 50, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 7, 0, 0)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(false)
+  })
+
+  it('should catch up once frequency with matching date', () => {
+    const schedule = makeSchedule({
+      frequency: 'once',
+      time: '05:00',
+      date: '2026-04-28',
+    })
+    const sleepStart = new Date(2026, 3, 28, 4, 50, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 5, 30, 0)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(true)
+  })
+
+  it('should NOT catch up once frequency with non-matching date', () => {
+    const schedule = makeSchedule({
+      frequency: 'once',
+      time: '05:00',
+      date: '2026-04-29',
+    })
+    const sleepStart = new Date(2026, 3, 28, 4, 50, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 5, 30, 0)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(false)
+  })
+
+  it('should NOT catch up weekdays frequency on a weekend', () => {
+    const schedule = makeSchedule({ frequency: 'weekdays', time: '05:00' })
+    // 2026-04-25 is a Saturday
+    const sleepStart = new Date(2026, 3, 25, 4, 50, 0).getTime()
+    const wakeTime = new Date(2026, 3, 25, 5, 30, 0)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(false)
+  })
+
+  it('should catch up weekdays frequency on a weekday', () => {
+    const schedule = makeSchedule({ frequency: 'weekdays', time: '05:00' })
+    // 2026-04-28 is a Tuesday
+    const sleepStart = new Date(2026, 3, 28, 4, 50, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 5, 30, 0)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(true)
+  })
+
+  it('should NOT catch up weekly frequency on the wrong day', () => {
+    const schedule = makeSchedule({
+      frequency: 'weekly',
+      time: '05:00',
+      dayOfWeek: 3, // Wednesday
+    })
+    // 2026-04-28 is a Tuesday
+    const sleepStart = new Date(2026, 3, 28, 4, 50, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 5, 30, 0)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(false)
+  })
+
+  it('should catch up weekly frequency on the correct day', () => {
+    const schedule = makeSchedule({
+      frequency: 'weekly',
+      time: '05:00',
+      dayOfWeek: 2, // Tuesday
+    })
+    // 2026-04-28 is a Tuesday
+    const sleepStart = new Date(2026, 3, 28, 4, 50, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 5, 30, 0)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(true)
+  })
+
+  it('should NOT catch up when schedule is disabled', () => {
+    const schedule = makeSchedule({ enabled: false, frequency: 'daily', time: '05:00' })
+    const sleepStart = new Date(2026, 3, 28, 4, 50, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 5, 30, 0)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(false)
+  })
+
+  it('should NOT catch up when schedule is undefined', () => {
+    const sleepStart = new Date(2026, 3, 28, 4, 50, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 5, 30, 0)
+    expect(shouldCatchUp(undefined, sleepStart, wakeTime)).toBe(false)
+  })
+
+  it('should NOT catch up when command is empty', () => {
+    const schedule = makeSchedule({ command: '', frequency: 'daily', time: '05:00' })
+    const sleepStart = new Date(2026, 3, 28, 4, 50, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 5, 30, 0)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(false)
+  })
+
+  it('should catch up overnight sleep spanning midnight', () => {
+    const schedule = makeSchedule({ frequency: 'daily', time: '05:00' })
+    // Sleep from 22:00 on April 27 to 06:00 on April 28
+    const sleepStart = new Date(2026, 3, 27, 22, 0, 0).getTime()
+    const wakeTime = new Date(2026, 3, 28, 6, 0, 0)
+    // scheduledToday = April 28 at 05:00, which is between sleepStart (April 27 22:00) and wakeTime (April 28 06:00)
+    expect(shouldCatchUp(schedule, sleepStart, wakeTime)).toBe(true)
   })
 })

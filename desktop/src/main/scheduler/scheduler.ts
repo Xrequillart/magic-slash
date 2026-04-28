@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, powerSaveBlocker } from 'electron'
 import { readAgents, updateAgentSchedule, saveAgent } from '../config/agents'
 import { readConfig } from '../config/config'
 import {
@@ -69,8 +69,55 @@ export function shouldRunSchedule(schedule: Schedule | undefined, now: Date): bo
   }
 }
 
+/**
+ * Pure-logic check: was a schedule missed during a sleep window?
+ * Returns true if the schedule's time falls between sleepStart and wakeTime,
+ * and the schedule hasn't already been executed in that window.
+ */
+export function shouldCatchUp(
+  schedule: Schedule | undefined,
+  sleepStart: number,
+  wakeTime: Date,
+): boolean {
+  if (!schedule || !schedule.enabled || !schedule.command) return false
+
+  const [hoursStr, minutesStr] = schedule.time.split(':')
+  const targetHour = parseInt(hoursStr, 10)
+  const targetMinute = parseInt(minutesStr, 10)
+
+  // Already executed today at or after the scheduled time
+  if (schedule.lastRunAt) {
+    const lastRun = new Date(schedule.lastRunAt)
+    if (
+      lastRun.getFullYear() === wakeTime.getFullYear() &&
+      lastRun.getMonth() === wakeTime.getMonth() &&
+      lastRun.getDate() === wakeTime.getDate() &&
+      (lastRun.getHours() > targetHour ||
+        (lastRun.getHours() === targetHour && lastRun.getMinutes() >= targetMinute))
+    ) {
+      return false
+    }
+  }
+
+  // Build the would-have-fired timestamp for today (relative to wake date)
+  const scheduledToday = new Date(wakeTime)
+  scheduledToday.setHours(targetHour, targetMinute, 0, 0)
+  const scheduledTs = scheduledToday.getTime()
+
+  // The scheduled time must fall within the sleep window
+  if (scheduledTs < sleepStart || scheduledTs > wakeTime.getTime()) {
+    return false
+  }
+
+  // Reuse frequency logic with lastRunAt cleared to avoid the "already ran this minute" guard
+  const tempSchedule: Schedule = { ...schedule, lastRunAt: null }
+  return shouldRunSchedule(tempSchedule, scheduledToday)
+}
+
 export class Scheduler {
   private intervalId: ReturnType<typeof setInterval> | null = null
+  private powerSaveBlockerId: number | null = null
+  private lastTickTime: number = 0
   private getMainWindow: () => BrowserWindow | null
   private showNotification: (title: string, body: string) => void
 
@@ -84,9 +131,8 @@ export class Scheduler {
 
   start(): void {
     if (this.intervalId) return
-    // Tick every 60 seconds
+    this.lastTickTime = Date.now()
     this.intervalId = setInterval(() => this.tick(), 60_000)
-    // Also tick immediately on start
     this.tick()
   }
 
@@ -95,9 +141,11 @@ export class Scheduler {
       clearInterval(this.intervalId)
       this.intervalId = null
     }
+    this.releasePowerBlocker()
   }
 
   tick(): void {
+    this.lastTickTime = Date.now()
     const config = readConfig()
     if (config.schedulerEnabled === false) return
 
@@ -107,6 +155,8 @@ export class Scheduler {
         this.launchAgent(agent)
       }
     }
+
+    this.updatePowerBlocker()
   }
 
   private shouldRun(agent: Agent): boolean {
@@ -195,6 +245,86 @@ export class Scheduler {
     if (mainWindow) {
       mainWindow.webContents.send('scheduler:updated', { agentId: agent.id })
     }
+  }
+
+  onSuspend(): void {
+    // No-op: lastTickTime already tracks the last known-awake moment.
+  }
+
+  onResume(): void {
+    const now = new Date()
+    const sleepStart = this.lastTickTime
+    const sleepDurationMs = now.getTime() - sleepStart
+
+    if (sleepDurationMs < 120_000) {
+      this.tick()
+      return
+    }
+
+    console.log(`[Scheduler] Catch-up: system was asleep for ${Math.round(sleepDurationMs / 60_000)} minutes`)
+
+    const config = readConfig()
+    if (config.schedulerEnabled === false) {
+      this.lastTickTime = now.getTime()
+      return
+    }
+
+    const agents = readAgents().filter(a => a.schedule?.enabled === true)
+    for (const agent of agents) {
+      if (shouldCatchUp(agent.schedule, sleepStart, now)) {
+        console.log(`[Scheduler] Catching up missed schedule for agent "${agent.name}"`)
+        this.launchAgent(agent)
+      }
+    }
+
+    this.lastTickTime = now.getTime()
+
+    // Also check if anything is due at the current minute
+    for (const agent of agents) {
+      if (shouldRunSchedule(agent.schedule, now)) {
+        const existingTerminals = getAllTerminals()
+        if (!existingTerminals.some(t => t.id === agent.id)) {
+          this.launchAgent(agent)
+        }
+      }
+    }
+
+    this.updatePowerBlocker()
+  }
+
+  private updatePowerBlocker(): void {
+    const hasActiveTerminals = getAllTerminals().length > 0
+    const hasUpcomingSchedule = this.hasScheduleDueSoon(5)
+
+    if (hasActiveTerminals || hasUpcomingSchedule) {
+      if (this.powerSaveBlockerId === null || !powerSaveBlocker.isStarted(this.powerSaveBlockerId)) {
+        this.powerSaveBlockerId = powerSaveBlocker.start('prevent-app-suspension')
+      }
+    } else {
+      this.releasePowerBlocker()
+    }
+  }
+
+  private releasePowerBlocker(): void {
+    if (this.powerSaveBlockerId !== null && powerSaveBlocker.isStarted(this.powerSaveBlockerId)) {
+      powerSaveBlocker.stop(this.powerSaveBlockerId)
+    }
+    this.powerSaveBlockerId = null
+  }
+
+  private hasScheduleDueSoon(minutesAhead: number): boolean {
+    const agents = readAgents().filter(a => a.schedule?.enabled === true)
+    const now = new Date()
+
+    for (let offset = 0; offset <= minutesAhead; offset++) {
+      const future = new Date(now.getTime() + offset * 60_000)
+      for (const agent of agents) {
+        if (shouldRunSchedule(agent.schedule, future)) {
+          return true
+        }
+      }
+    }
+    return false
   }
 
   executeNow(agentId: string): void {

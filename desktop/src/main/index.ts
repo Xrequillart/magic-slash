@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell, globalShortcut } from 'electron'
+import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell, globalShortcut, powerMonitor } from 'electron'
 import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupTerminalHandlers, cleanupTerminals, restoreAgents } from './ipc/terminal-handlers'
@@ -122,6 +122,7 @@ function createWindow() {
       preload: join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      backgroundThrottling: false,
       // sandbox: false is required because the preload script needs access to
       // Node.js APIs (child_process, fs, path) for node-pty terminal management.
       // Security mitigations: contextIsolation=true prevents renderer from accessing
@@ -494,6 +495,19 @@ async function initializeHooksAndSessions() {
     // Start scheduler after agents are restored
     if (scheduler) {
       scheduler.start()
+
+      powerMonitor.on('suspend', () => {
+        scheduler?.onSuspend()
+      })
+      powerMonitor.on('resume', () => {
+        scheduler?.onResume()
+      })
+      powerMonitor.on('lock-screen', () => {
+        scheduler?.onSuspend()
+      })
+      powerMonitor.on('unlock-screen', () => {
+        scheduler?.onResume()
+      })
     }
 
     // Trigger initial tray state update after agents are restored
