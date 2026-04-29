@@ -13,7 +13,7 @@
     "rebuild": "electron-rebuild",
     "package": "npm run build && electron-builder",
     "package:mac": "npm run build && electron-builder --mac",
-    "release": "npm run build && electron-builder --mac --publish always",
+    "release": "npm run build && node scripts/clean-release.js && electron-builder --mac --publish always",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
