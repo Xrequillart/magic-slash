@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.44.0] - 2026-04-29
+
+### Added
+
+- **Desktop**: Add analytics dashboard to history page
+
+### Changed
+
+- **Desktop**: Apply glass effect to all form inputs and selects
+- **Deps**: Bump vitest from 4.1.4 to 4.1.5
+- **Deps**: Bump the linters group with 2 updates
+
+### Fixed
+
+- **Desktop**: Prevent scheduled agents from freezing when MacBook is locked
+
 ## [0.43.6] - 2026-04-24
 
 ### Changed
@@ -1298,6 +1314,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.44.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.44.0
 [0.43.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.6
 [0.43.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.5
 [0.43.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.43.4
