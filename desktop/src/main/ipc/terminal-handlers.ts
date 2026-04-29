@@ -110,6 +110,14 @@ function createTerminalCallbacks(id: string, name: string) {
           'Claude Code needs attention',
           `Agent "${displayName}" is waiting for your input`
         )
+        addHistoryEntry({
+          agentId: id,
+          agentName: displayName,
+          action: 'waiting',
+          ticketId: t?.metadata?.ticketId,
+          description: t?.metadata?.description,
+          repositories: t?.repositories || [],
+        })
       }
 
       if (state === 'completed' && previousState !== 'completed') {
@@ -119,6 +127,14 @@ function createTerminalCallbacks(id: string, name: string) {
           'Task completed',
           `Agent "${displayName}" has finished`
         )
+        addHistoryEntry({
+          agentId: id,
+          agentName: displayName,
+          action: 'completed',
+          ticketId: t?.metadata?.ticketId,
+          description: t?.metadata?.description,
+          repositories: t?.repositories || [],
+        })
       }
     },
     onExit: (exitCode: number) => {
@@ -263,6 +279,15 @@ export function setupTerminalHandlers(
     const tsCreate = Date.now()
     saveAgent(terminal.id, terminal.name, terminal.repositories, terminal.metadata, tsCreate)
 
+    addHistoryEntry({
+      agentId: terminal.id,
+      agentName: terminal.metadata?.title || terminal.name,
+      action: 'agent_created',
+      ticketId: terminal.metadata?.ticketId,
+      description: terminal.metadata?.description,
+      repositories: terminal.repositories,
+    })
+
     return {
       id: terminal.id,
       name: terminal.name,
@@ -290,6 +315,17 @@ export function setupTerminalHandlers(
   // Kill terminal
   ipcMain.handle('terminal:kill', async (_event, { id }) => {
     if (typeof id !== 'string') return
+    const t = getTerminal(id)
+    if (t) {
+      addHistoryEntry({
+        agentId: id,
+        agentName: t.metadata?.title || t.name,
+        action: 'agent_closed',
+        ticketId: t.metadata?.ticketId,
+        description: t.metadata?.description,
+        repositories: t.repositories || [],
+      })
+    }
     killTerminal(id)
     // Remove agent from disk
     removeAgent(id)

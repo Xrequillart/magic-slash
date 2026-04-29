@@ -141,7 +141,17 @@ export interface CommandHistoryEntry {
   count: number  // Usage frequency
 }
 
-export type HistoryAction = 'started' | 'committed' | 'pr_created' | 'review' | 'merged' | 'done'
+export type HistoryAction =
+  | 'started'
+  | 'committed'
+  | 'pr_created'
+  | 'review'
+  | 'merged'
+  | 'done'
+  | 'waiting'
+  | 'completed'
+  | 'agent_created'
+  | 'agent_closed'
 
 export interface HistoryEntry {
   id: string

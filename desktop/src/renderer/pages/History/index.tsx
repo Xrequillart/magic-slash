@@ -9,12 +9,16 @@ const CARD_ANIM_MS = 150
 const CARD_STAGGER_MS = 50
 
 const ACTION_CONFIG: Record<HistoryAction, { label: string; color: string }> = {
+  agent_created: { label: 'Agent created', color: 'bg-accent' },
   started: { label: 'Started', color: 'bg-green' },
+  waiting: { label: 'Waiting for input', color: 'bg-orange' },
+  completed: { label: 'Task completed', color: 'bg-green' },
   committed: { label: 'Committed', color: 'bg-yellow' },
   pr_created: { label: 'PR created', color: 'bg-blue' },
   review: { label: 'In review', color: 'bg-purple' },
   merged: { label: 'Merged', color: 'bg-green' },
   done: { label: 'Done', color: 'bg-teal' },
+  agent_closed: { label: 'Agent closed', color: 'bg-text-secondary' },
 }
 
 function formatTime(timestamp: number): string {
