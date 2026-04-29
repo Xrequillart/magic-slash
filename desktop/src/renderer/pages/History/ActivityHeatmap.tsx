@@ -81,12 +81,9 @@ export function ActivityHeatmap({ heatmapData }: ActivityHeatmapProps) {
 
   const handleMouseEnter = useCallback((e: React.MouseEvent<SVGRectElement>, date: Date, count: number) => {
     const rect = e.currentTarget.getBoundingClientRect()
-    const parent = e.currentTarget.closest('.heatmap-container')
-    if (!parent) return
-    const parentRect = parent.getBoundingClientRect()
     setTooltip({
-      x: rect.left - parentRect.left + CELL_SIZE / 2,
-      y: rect.top - parentRect.top - 8,
+      x: rect.left + CELL_SIZE / 2,
+      y: rect.top - 8,
       date: formatDateLabel(date),
       count,
     })
@@ -163,7 +160,7 @@ export function ActivityHeatmap({ heatmapData }: ActivityHeatmapProps) {
         {/* Tooltip */}
         {tooltip && (
           <div
-            className="absolute pointer-events-none bg-bg-secondary border border-white/[0.12] rounded-lg px-3 py-1.5 text-xs text-white shadow-lg whitespace-nowrap"
+            className="fixed pointer-events-none bg-bg-secondary border border-white/[0.12] rounded-lg px-3 py-1.5 text-xs text-white shadow-lg whitespace-nowrap z-50"
             style={{
               left: tooltip.x,
               top: tooltip.y,
