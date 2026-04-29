@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Clock, Trash2, ChevronRight } from 'lucide-react'
 import { useActivityHistory } from '../../hooks/useActivityHistory'
 import { useHistoryAnalytics } from '../../hooks/useHistoryAnalytics'
-import { MetricCards } from './MetricCards'
 import { ActivityHeatmap } from './ActivityHeatmap'
 import type { HistoryAction } from '../../../types'
 
@@ -25,7 +24,7 @@ function formatTime(timestamp: number): string {
 
 export function HistoryPage() {
   const { groups, loading, clear } = useActivityHistory()
-  const { heatmapData, weeklyStats, avgDevTime, avgReviewTime } = useHistoryAnalytics(groups)
+  const { heatmapData } = useHistoryAnalytics(groups)
   const hasEntries = groups.some(g => g.entries.length > 0)
   const [showConfirm, setShowConfirm] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
@@ -137,16 +136,7 @@ export function HistoryPage() {
       </div>
 
       {/* Analytics dashboard */}
-      {hasEntries && (
-        <div className="flex flex-col gap-4">
-          <MetricCards
-            weeklyStats={weeklyStats}
-            avgDevTime={avgDevTime}
-            avgReviewTime={avgReviewTime}
-          />
-          <ActivityHeatmap heatmapData={heatmapData} />
-        </div>
-      )}
+      {hasEntries && <ActivityHeatmap heatmapData={heatmapData} />}
 
       {hasEntries && <div className="border-t border-white/[0.08]" />}
 

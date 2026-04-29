@@ -1,12 +1,6 @@
 import { useMemo } from 'react'
 import type { HistoryGroup } from './useActivityHistory'
-import {
-  computeHeatmapData,
-  computeWeeklyStats,
-  computeCycleTime,
-} from './historyAnalytics'
-
-export type { WeeklyStats } from './historyAnalytics'
+import { computeHeatmapData } from './historyAnalytics'
 
 export function useHistoryAnalytics(groups: HistoryGroup[]) {
   const entries = useMemo(
@@ -19,15 +13,5 @@ export function useHistoryAnalytics(groups: HistoryGroup[]) {
     [entries],
   )
 
-  const weeklyStats = useMemo(
-    () => computeWeeklyStats(entries),
-    [entries],
-  )
-
-  const { avgDevTime, avgReviewTime } = useMemo(
-    () => computeCycleTime(entries),
-    [entries],
-  )
-
-  return { heatmapData, weeklyStats, avgDevTime, avgReviewTime }
+  return { heatmapData }
 }

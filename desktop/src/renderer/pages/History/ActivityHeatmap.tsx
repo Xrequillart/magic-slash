@@ -98,11 +98,11 @@ export function ActivityHeatmap({ heatmapData }: ActivityHeatmapProps) {
 
   return (
     <div className="bg-white/[0.06] rounded-xl p-4">
-      <div className="overflow-x-auto heatmap-container relative">
+      <div className="heatmap-container relative w-full">
         <svg
-          width={svgWidth}
-          height={svgHeight}
-          className="block"
+          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+          preserveAspectRatio="xMidYMid meet"
+          className="block w-full h-auto"
         >
           {/* Month labels */}
           {monthLabels.map(({ week, label }) => (
