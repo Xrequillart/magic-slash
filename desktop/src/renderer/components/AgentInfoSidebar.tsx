@@ -504,6 +504,7 @@ export function AgentInfoSidebar() {
                     gitData={repoGitData[repoPath]}
                     baseBranch={metadata?.baseBranch}
                     prUrl={getRepoPrUrl(repoPath)}
+                    repoMetadata={metadata?.repositoryMetadata?.[repoPath]}
                     copiedCommitHash={copiedCommitHash}
                     copiedBranch={copiedBranch}
                     onCopyCommitHash={copyCommitHash}
