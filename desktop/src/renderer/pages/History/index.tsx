@@ -16,6 +16,8 @@ const ACTION_CONFIG: Record<HistoryAction, { label: string; color: string }> = {
   committed: { label: 'Committed', color: 'bg-yellow' },
   pr_created: { label: 'PR created', color: 'bg-blue' },
   review: { label: 'In review', color: 'bg-purple' },
+  review_approved: { label: 'Review approved', color: 'bg-green' },
+  review_changes_requested: { label: 'Changes requested', color: 'bg-red' },
   merged: { label: 'Merged', color: 'bg-green' },
   done: { label: 'Done', color: 'bg-teal' },
   agent_closed: { label: 'Agent closed', color: 'bg-text-secondary' },

@@ -2,6 +2,12 @@ export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'erro
 
 export interface RepositoryMetadata {
   prUrl?: string
+  prReviewStatus?: 'approved' | 'changes-requested' | 'commented' | 'pending'
+  prReviewCommentCount?: number
+  prReviewers?: string[]
+  prReviewUpdatedAt?: number
+  prMerged?: boolean
+  prClosed?: boolean
 }
 
 export interface TerminalMetadata {
@@ -120,6 +126,11 @@ export interface Config {
   launchMode?: LaunchMode
   schedulerEnabled?: boolean
   schedulerDefaultTime?: string
+  prReviews?: {
+    enabled?: boolean
+    pollIntervalMs?: number
+    autoLaunchSkills?: boolean
+  }
 }
 
 export interface PRTemplate {
@@ -148,6 +159,8 @@ export type HistoryAction =
   | 'review'
   | 'merged'
   | 'done'
+  | 'review_approved'
+  | 'review_changes_requested'
   | 'waiting'
   | 'completed'
   | 'agent_created'

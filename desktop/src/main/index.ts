@@ -21,6 +21,8 @@ import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
 import { Scheduler } from './scheduler/scheduler'
 import { setupSchedulerHandlers } from './ipc/scheduler-handlers'
 import { setupProfileHandlers } from './ipc/profile-handlers'
+import { PRReviewWatcher } from './pr-review-watcher/watcher'
+import { setupPRReviewHandlers } from './ipc/pr-review-handlers'
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
@@ -28,6 +30,7 @@ let forceQuit = false
 let trayManager: TrayManager | null = null
 let aggregator: AgentStateAggregator | null = null
 let scheduler: Scheduler | null = null
+let prReviewWatcher: PRReviewWatcher | null = null
 
 function createMenu() {
   const isMac = process.platform === 'darwin'
@@ -213,6 +216,13 @@ function setupHandlers() {
     notificationCallback,
   )
   setupSchedulerHandlers(scheduler)
+
+  // Initialize PR review watcher and its IPC handlers
+  prReviewWatcher = new PRReviewWatcher(
+    () => mainWindow,
+    notificationCallback,
+  )
+  setupPRReviewHandlers(prReviewWatcher)
 
   // Window control handlers
   ipcMain.handle('window:minimize', () => {
@@ -510,6 +520,18 @@ async function initializeHooksAndSessions() {
       })
     }
 
+    // Start PR review watcher (default ON unless explicitly disabled)
+    if (prReviewWatcher) {
+      const cfg = readConfig()
+      if (cfg.prReviews?.enabled !== false) {
+        prReviewWatcher.start()
+      }
+
+      // On wake/unlock, kick an immediate tick (suspend is a no-op: the interval pauses naturally).
+      powerMonitor.on('resume', () => prReviewWatcher?.onResume())
+      powerMonitor.on('unlock-screen', () => prReviewWatcher?.onResume())
+    }
+
     // Trigger initial tray state update after agents are restored
     setTimeout(() => {
       if (aggregator) aggregator.update()
@@ -543,6 +565,12 @@ app.on('before-quit', async (event) => {
   if (scheduler) {
     scheduler.stop()
     scheduler = null
+  }
+
+  // Stop PR review watcher
+  if (prReviewWatcher) {
+    prReviewWatcher.stop()
+    prReviewWatcher = null
   }
 
   // Cleanup global shortcuts

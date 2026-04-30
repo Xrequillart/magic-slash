@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, CalendarClock } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, CalendarClock, GitPullRequest } from 'lucide-react'
 import { ProfileSection } from './ProfileSection'
 import { RepoPage } from './RepoPage'
 import { useStore } from '../../store'
@@ -42,6 +42,9 @@ function WelcomePage() {
   const [showBypassWarning, setShowBypassWarning] = useState(false)
   const [schedulerEnabled, setSchedulerEnabled] = useState(config?.schedulerEnabled ?? true)
   const [schedulerDefaultTime, setSchedulerDefaultTime] = useState(config?.schedulerDefaultTime ?? '09:00')
+  const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)
+  const [prWatcherInterval, setPrWatcherInterval] = useState(config?.prReviews?.pollIntervalMs ?? 60_000)
+  const [prWatcherAutoLaunch, setPrWatcherAutoLaunch] = useState(config?.prReviews?.autoLaunchSkills ?? false)
 
   const configSpotlightEnabled = config?.spotlight?.enabled
   const configSpotlightShortcut = config?.spotlight?.shortcut
@@ -64,6 +67,15 @@ function WelcomePage() {
   useEffect(() => {
     if (configSchedulerDefaultTime !== undefined) setSchedulerDefaultTime(configSchedulerDefaultTime)
   }, [configSchedulerDefaultTime])
+
+  const configPrWatcherEnabled = config?.prReviews?.enabled
+  const configPrWatcherInterval = config?.prReviews?.pollIntervalMs
+  const configPrWatcherAutoLaunch = config?.prReviews?.autoLaunchSkills
+  useEffect(() => {
+    if (configPrWatcherEnabled !== undefined) setPrWatcherEnabled(configPrWatcherEnabled)
+    if (configPrWatcherInterval !== undefined) setPrWatcherInterval(configPrWatcherInterval)
+    if (configPrWatcherAutoLaunch !== undefined) setPrWatcherAutoLaunch(configPrWatcherAutoLaunch)
+  }, [configPrWatcherEnabled, configPrWatcherInterval, configPrWatcherAutoLaunch])
 
   const handleSpotlightToggle = async () => {
     const newEnabled = !spotlightEnabled
@@ -443,6 +455,87 @@ function WelcomePage() {
             <div className="text-xs text-text-secondary/50">
               Schedules are preserved but no agents will run automatically.
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* PR Review Watcher Section */}
+      <div>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <GitPullRequest className="w-4 h-4" />
+          <span>PR Review Watcher</span>
+        </div>
+        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">Watch PR reviews</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">Poll GitHub to track review status on agents' pull requests</div>
+            </div>
+            <button
+              onClick={() => {
+                const newValue = !prWatcherEnabled
+                setPrWatcherEnabled(newValue)
+                window.electronAPI.prWatcher.setEnabled(newValue)
+              }}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                prWatcherEnabled ? 'bg-accent' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+                prWatcherEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+          {prWatcherEnabled && (
+            <>
+              <div className="border-t border-white/5 pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium">Polling interval</div>
+                    <div className="text-xs text-text-secondary/50 mt-0.5">How often the GitHub API is polled</div>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={prWatcherInterval}
+                      onChange={(e) => {
+                        const newInterval = parseInt(e.target.value, 10)
+                        setPrWatcherInterval(newInterval)
+                        window.electronAPI.prWatcher.setInterval(newInterval)
+                      }}
+                      className="w-52 px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+                    >
+                      <option value={30_000}>30 seconds</option>
+                      <option value={60_000}>1 minute</option>
+                      <option value={120_000}>2 minutes</option>
+                      <option value={300_000}>5 minutes</option>
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-white/5 pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium">Auto-launch skills</div>
+                    <div className="text-xs text-text-secondary/50 mt-0.5">Send /magic:resolve or /magic:done directly to the agent's terminal. Disabled by default for safety.</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newValue = !prWatcherAutoLaunch
+                      setPrWatcherAutoLaunch(newValue)
+                      window.electronAPI.prWatcher.setAutoLaunchSkills(newValue)
+                    }}
+                    className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                      prWatcherAutoLaunch ? 'bg-accent' : 'bg-white/20'
+                    }`}
+                  >
+                    <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+                      prWatcherAutoLaunch ? 'translate-x-[18px]' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -354,6 +354,36 @@ const schedulerApi = {
   },
 }
 
+// PR Review Watcher API
+const prWatcherApi = {
+  setEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke('prWatcher:setEnabled', enabled),
+  getStatus: (): Promise<{ enabled: boolean; pollIntervalMs: number; watchingCount: number; lastTickAt: number | null }> =>
+    ipcRenderer.invoke('prWatcher:getStatus'),
+  setInterval: (ms: number) =>
+    ipcRenderer.invoke('prWatcher:setInterval', ms),
+  setAutoLaunchSkills: (enabled: boolean) =>
+    ipcRenderer.invoke('prWatcher:setAutoLaunchSkills', enabled),
+  sendCommand: (terminalId: string, command: string): Promise<{ launched: boolean; copied: boolean }> =>
+    ipcRenderer.invoke('prWatcher:sendCommand', { terminalId, command }),
+  onUpdated: (callback: (data: PRWatcherUpdate) => void) => {
+    const listener = (_event: IpcRendererEvent, data: PRWatcherUpdate) => callback(data)
+    ipcRenderer.on('prWatcher:updated', listener)
+    return () => ipcRenderer.removeListener('prWatcher:updated', listener)
+  },
+}
+
+interface PRWatcherUpdate {
+  terminalId: string
+  repoPath: string
+  prUrl: string
+  status: string
+  commentCount: number
+  reviewers: string[]
+  merged: boolean
+  closed: boolean
+}
+
 // Profile API
 const profileApi = {
   get: (): Promise<UserProfile | null> => ipcRenderer.invoke('profile:get'),
@@ -375,6 +405,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   tray: trayApi,
   quickLaunch: quickLaunchApi,
   scheduler: schedulerApi,
+  prWatcher: prWatcherApi,
   profile: profileApi,
 })
 
@@ -395,6 +426,7 @@ declare global {
       tray: typeof trayApi
       quickLaunch: typeof quickLaunchApi
       scheduler: typeof schedulerApi
+      prWatcher: typeof prWatcherApi
       profile: typeof profileApi
     }
   }

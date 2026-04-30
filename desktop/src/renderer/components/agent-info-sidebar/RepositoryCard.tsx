@@ -1,8 +1,10 @@
-import { GitBranch, Copy, Check, ExternalLink, ArrowRight } from 'lucide-react'
+import { GitBranch, Copy, Check, ExternalLink, ArrowRight, CheckCircle2, AlertCircle, MessageSquare, Clock, Wrench, CheckCircle } from 'lucide-react'
 import { GitHubIcon, VSCodeIcon } from './icons'
 import { ScriptsDropdown } from './ScriptsDropdown'
 import { formatRelativeDate } from './utils'
+import { showToast } from '../Toast'
 import type { RepoGitData } from './types'
+import type { RepositoryMetadata } from '../../../types'
 
 interface RepositoryCardProps {
   repoPath: string
@@ -12,10 +14,44 @@ interface RepositoryCardProps {
   gitData: RepoGitData | undefined
   baseBranch: string | undefined
   prUrl: string | undefined
+  repoMetadata?: RepositoryMetadata
   copiedCommitHash: string | null
   copiedBranch: string | null
   onCopyCommitHash: (hash: string) => void
   onCopyBranchName: (branch: string) => void
+}
+
+const REVIEW_STATUS_LABELS: Record<NonNullable<RepositoryMetadata['prReviewStatus']>, string> = {
+  approved: 'Approved',
+  'changes-requested': 'Changes requested',
+  commented: 'Commented',
+  pending: 'Pending',
+}
+
+function ReviewStatusIcon({ status }: { status: NonNullable<RepositoryMetadata['prReviewStatus']> }) {
+  switch (status) {
+    case 'approved':
+      return <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+    case 'changes-requested':
+      return <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+    case 'commented':
+      return <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
+    case 'pending':
+      return <Clock className="w-3.5 h-3.5 text-text-secondary" />
+  }
+}
+
+async function runSlashCommand(terminalId: string, command: string) {
+  try {
+    const result = await window.electronAPI.prWatcher.sendCommand(terminalId, command)
+    if (result.launched) {
+      showToast(`Sent ${command} to the agent`, 'success')
+    } else if (result.copied) {
+      showToast(`Auto-launch disabled — ${command} copied to clipboard`, 'warning')
+    }
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : 'Failed to launch command', 'error')
+  }
 }
 
 export function RepositoryCard({
@@ -26,6 +62,7 @@ export function RepositoryCard({
   gitData,
   baseBranch,
   prUrl,
+  repoMetadata,
   copiedCommitHash,
   copiedBranch,
   onCopyCommitHash,
@@ -229,6 +266,52 @@ export function RepositoryCard({
           </div>
           <ExternalLink className="w-3 h-3 text-accent/50 group-hover:text-accent transition-colors" />
         </button>
+      )}
+
+      {/* PR review status block */}
+      {prUrl && repoMetadata?.prReviewStatus && (
+        <div className="mt-2 bg-white/[0.06] rounded-md p-2 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-xs">
+            <ReviewStatusIcon status={repoMetadata.prReviewStatus} />
+            <span className="text-white/80 font-medium">
+              {REVIEW_STATUS_LABELS[repoMetadata.prReviewStatus]}
+            </span>
+            {repoMetadata.prMerged && (
+              <span className="ml-1 px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 text-[10px] font-semibold uppercase tracking-wide">
+                merged
+              </span>
+            )}
+            {repoMetadata.prReviewCommentCount !== undefined && repoMetadata.prReviewCommentCount > 0 && (
+              <span className="ml-auto flex items-center gap-1 text-text-secondary/70">
+                <MessageSquare className="w-3 h-3" />
+                {repoMetadata.prReviewCommentCount}
+              </span>
+            )}
+          </div>
+          {repoMetadata.prReviewers && repoMetadata.prReviewers.length > 0 && (
+            <div className="text-[10px] text-text-secondary/60 truncate" title={repoMetadata.prReviewers.join(', ')}>
+              by {repoMetadata.prReviewers.join(', ')}
+            </div>
+          )}
+          {(repoMetadata.prReviewStatus === 'changes-requested' || repoMetadata.prReviewStatus === 'commented') && (
+            <button
+              onClick={() => runSlashCommand(agentId, '/magic:resolve')}
+              className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-md text-red-500 text-xs font-medium transition-colors"
+            >
+              <Wrench className="w-3 h-3" />
+              Launch magic-resolve
+            </button>
+          )}
+          {repoMetadata.prMerged === true && (
+            <button
+              onClick={() => runSlashCommand(agentId, '/magic:done')}
+              className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 rounded-md text-green-500 text-xs font-medium transition-colors"
+            >
+              <CheckCircle className="w-3 h-3" />
+              Launch magic-done
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
