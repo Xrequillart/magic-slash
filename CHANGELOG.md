@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.45.2] - 2026-05-04
+
+### Fixed
+
+- **Desktop**: Fix terminal not fitting full window width on initial launch (double RAF for layout computation)
+
 ## [0.45.1] - 2026-05-04
 
 ### Added
@@ -1350,6 +1356,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.45.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.45.2
 [0.45.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.45.1
 [0.45.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.45.0
 [0.44.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.44.3

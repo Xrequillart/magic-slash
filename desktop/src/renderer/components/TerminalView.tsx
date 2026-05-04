@@ -112,17 +112,19 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
     xtermRef.current = xterm
     fitAddonRef.current = fitAddon
 
-    // Delay fit() to ensure xterm's renderer is fully initialized
-    // Then notify main process of the calculated size
+    // Double RAF ensures browser has fully computed the layout (sidebar, flex, etc.)
+    // before we measure the container and fit the terminal
     requestAnimationFrame(() => {
-      if (containerRef.current && fitAddonRef.current && xtermRef.current) {
-        const { offsetWidth, offsetHeight } = containerRef.current
-        if (offsetWidth > 0 && offsetHeight > 0) {
-          fitAddonRef.current.fit()
-          const { cols, rows } = xtermRef.current
-          window.electronAPI.terminal.resize(terminal.id, cols, rows)
+      requestAnimationFrame(() => {
+        if (containerRef.current && fitAddonRef.current && xtermRef.current) {
+          const { offsetWidth, offsetHeight } = containerRef.current
+          if (offsetWidth > 0 && offsetHeight > 0) {
+            fitAddonRef.current.fit()
+            const { cols, rows } = xtermRef.current
+            window.electronAPI.terminal.resize(terminal.id, cols, rows)
+          }
         }
-      }
+      })
     })
 
     // Handle Shift+Enter to insert newline without sending
