@@ -446,7 +446,7 @@ function WelcomePage() {
                     setSchedulerDefaultTime(newTime)
                     window.electronAPI.scheduler.setDefaultTime(newTime)
                   }}
-                  className="px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                  className="px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors [&::-webkit-calendar-picker-indicator]:invert"
                 />
               </div>
             </div>
