@@ -81,7 +81,7 @@ const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, o
         e.dataTransfer.effectAllowed = 'move'
       }}
       className={`
-        w-full flex items-center gap-2 px-3 py-2 text-xs transition-all rounded-lg group/agent
+        w-full flex items-center gap-2 px-2 py-2 text-xs transition-all rounded-lg group/agent
         ${draggable ? 'cursor-pointer active:cursor-grab' : 'cursor-pointer'}
         ${isActive || isSplitTarget
           ? `${stateBgColors[terminal.state]} text-white`
@@ -185,7 +185,7 @@ const ScriptItem = memo(function ScriptItem({ script, isActive, onSelect, onStop
     <button
       onClick={onSelect}
       className={`
-        w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-all rounded-lg group
+        w-full flex items-center gap-2 px-2 py-1.5 text-xs transition-all rounded-lg group
         ${isActive
           ? 'bg-accent/20 text-white'
           : 'text-text-secondary hover:bg-accent/10 hover:text-white'
@@ -433,14 +433,14 @@ export function Sidebar() {
       />
 
       {/* Top actions */}
-      <div className="px-3 pt-3 flex flex-col gap-1">
+      <div className="px-2 pt-3 flex flex-col gap-1">
         {/* New agent button */}
         <button
           onClick={() => {
             const event = new CustomEvent('new-terminal')
             window.dispatchEvent(event)
           }}
-          className="w-full flex items-center justify-center gap-2 px-2.5 py-2 text-xs font-medium text-text-secondary rounded-lg hover:bg-text-secondary/10 hover:text-white transition-all"
+          className="w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium text-text-secondary rounded-lg hover:bg-text-secondary/10 hover:text-white transition-all"
         >
           <Bot className="w-3.5 h-3.5" />
           <span>New agent</span>
@@ -453,7 +453,7 @@ export function Sidebar() {
             setCurrentPage('skills')
             setActiveTerminal(null)
           }}
-          className={`w-full flex items-center justify-center gap-2 px-2.5 py-2 text-xs font-medium rounded-lg transition-all ${
+          className={`w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
             currentPage === 'skills'
               ? 'bg-white/10 text-white'
               : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
@@ -470,7 +470,7 @@ export function Sidebar() {
             setCurrentPage('history')
             setActiveTerminal(null)
           }}
-          className={`w-full flex items-center justify-center gap-2 px-2.5 py-2 text-xs font-medium rounded-lg transition-all ${
+          className={`w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
             currentPage === 'history'
               ? 'bg-white/10 text-white'
               : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
@@ -487,7 +487,7 @@ export function Sidebar() {
             setCurrentPage('scheduled')
             setActiveTerminal(null)
           }}
-          className={`w-full flex items-center justify-center gap-2 px-2.5 py-2 text-xs font-medium rounded-lg transition-all ${
+          className={`w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
             currentPage === 'scheduled'
               ? 'bg-white/10 text-white'
               : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
@@ -509,7 +509,7 @@ export function Sidebar() {
             setCurrentPage('config')
             setActiveTerminal(null)
           }}
-          className={`w-full flex items-center justify-center gap-2 px-2.5 py-2 text-xs font-medium rounded-lg transition-all relative ${
+          className={`w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all relative ${
             currentPage === 'config'
               ? 'bg-white/10 text-white'
               : hasNoRepos
@@ -633,8 +633,8 @@ export function Sidebar() {
       {/* Scripts section */}
       {scriptTerminals.length > 0 && (
         <>
-          <div className="px-4 pt-2 pb-1">
-            <div className="text-xs text-text-secondary/50 uppercase tracking-wider">Scripts</div>
+          <div className="px-2 pt-2 pb-1">
+            <div className="px-2 text-xs text-text-secondary/50 uppercase tracking-wider">Scripts</div>
           </div>
           <div className="px-2 pb-2 flex flex-col gap-1">
             {scriptTerminals.map(script => (
