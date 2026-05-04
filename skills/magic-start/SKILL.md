@@ -325,11 +325,25 @@ Create a `CLAUDE.local.md` in each worktree using `MSG_MULTI_REPO_CONTEXT` from 
 
 Display `MSG_TASK_SUMMARY` (or `MSG_TASK_SUMMARY_FULLSTACK` for multi-repo).
 
-### 5.1: Codebase exploration (via sub-agent)
+### 5.1: Codebase exploration (conditional)
 
-Launch an `Agent` (subagent_type=`Explore`) to explore the codebase. Request a structured summary: (1) project structure & framework, (2) config & stack, (3) existing patterns with file paths, (4) impacted files with current state, (5) cross-repo interactions if full-stack. Target 5-15 files, return summary only — not raw file contents.
+Evaluate whether codebase exploration is needed before launching a sub-agent.
 
-Use the sub-agent's returned summary to create the implementation plan in step 5.2.
+**Skip exploration when ALL of these are true:**
+- The ticket specifies exact files or components to modify
+- The acceptance criteria are precise and self-contained (no ambiguity about what to change)
+- The change is localized (e.g., update a string, add a field, tweak a config)
+
+**Require exploration when ANY of these is true:**
+- The ticket is high-level or vague (e.g., "improve performance", "add a new feature for X")
+- You need to discover existing patterns, conventions, or architecture before implementing
+- The ticket references components whose location or structure you don't know
+- The change spans multiple modules or layers
+- It's a full-stack task (multi-repo)
+
+**If exploration is needed**: Launch an `Agent` (subagent_type=`Explore`) to explore the codebase. Request a structured summary: (1) project structure & framework, (2) config & stack, (3) existing patterns with file paths, (4) impacted files with current state, (5) cross-repo interactions if full-stack. Target 5-15 files, return summary only — not raw file contents. Use the sub-agent's returned summary to create the implementation plan in step 5.2.
+
+**If exploration is skipped**: Proceed directly to step 5.2, building the implementation plan from the ticket information alone.
 
 ### 5.2: Create implementation plan
 
