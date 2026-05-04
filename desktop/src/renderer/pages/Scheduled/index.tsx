@@ -301,7 +301,7 @@ function ScheduleForm({
               value={date}
               onChange={(e) => setDate(e.target.value)}
               min={new Date().toISOString().split('T')[0]}
-              className="flex-1 px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              className="flex-1 px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors [&::-webkit-calendar-picker-indicator]:invert"
             />
             <button
               type="button"
@@ -314,7 +314,7 @@ function ScheduleForm({
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-[120px] px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              className="w-[120px] px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors [&::-webkit-calendar-picker-indicator]:invert"
             />
           </div>
         </div>
@@ -341,7 +341,7 @@ function ScheduleForm({
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-[120px] px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              className="w-[120px] px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors [&::-webkit-calendar-picker-indicator]:invert"
             />
           </div>
         </div>
@@ -368,7 +368,7 @@ function ScheduleForm({
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-[120px] px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              className="w-[120px] px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors [&::-webkit-calendar-picker-indicator]:invert"
             />
           </div>
         </div>
@@ -382,7 +382,7 @@ function ScheduleForm({
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}
-            className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+            className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors [&::-webkit-calendar-picker-indicator]:invert"
           />
         </div>
       )}
