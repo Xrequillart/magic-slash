@@ -25,6 +25,9 @@
     "electron-updater": "^6.7.3",
     "lucide-react": "^0.563.0",
     "node-pty": "^1.0.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "shiki": "^4.0.2",
     "zustand": "^4.5.0"
   },
   "devDependencies": {
