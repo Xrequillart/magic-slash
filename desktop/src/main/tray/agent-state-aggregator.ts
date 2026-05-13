@@ -27,15 +27,17 @@ export class AgentStateAggregator extends EventEmitter {
   }
 
   getAgentSummaries(): AgentSummary[] {
-    return getAllTerminals().map(t => ({
-      id: t.id,
-      name: t.name,
-      state: t.state,
-      ticketId: t.metadata?.ticketId || '',
-      title: t.metadata?.title || t.name,
-      repositories: t.repositories,
-      createdAt: t.createdAt,
-    }))
+    return getAllTerminals()
+      .filter(t => !t.id.startsWith('script-') && !t.id.startsWith('sidebar-'))
+      .map(t => ({
+        id: t.id,
+        name: t.name,
+        state: t.state,
+        ticketId: t.metadata?.ticketId || '',
+        title: t.metadata?.title || t.name,
+        repositories: t.repositories,
+        createdAt: t.createdAt,
+      }))
   }
 
   startPolling(): void {
@@ -51,7 +53,9 @@ export class AgentStateAggregator extends EventEmitter {
   }
 
   update(): void {
-    const terminals = getAllTerminals()
+    const terminals = getAllTerminals().filter(
+      t => !t.id.startsWith('script-') && !t.id.startsWith('sidebar-')
+    )
     const count = terminals.length
     let newState: AggregateState = 'none'
 
