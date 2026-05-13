@@ -4,7 +4,9 @@ interface Props {
 }
 
 const CODE_STYLES = `
-  .shiki code { counter-reset: line; }
+  .shiki code { counter-reset: line; white-space: normal; }
+
+  .shiki code .line { display: block; white-space: pre; }
 
   .shiki code .line::before {
     counter-increment: line;
@@ -22,8 +24,6 @@ const CODE_STYLES = `
 
   /* diff: added lines */
   .shiki code .line[data-diff="add"] {
-    display: inline-block;
-    min-width: 100%;
     background-color: rgba(46,160,67,0.15);
     border-left: 2px solid #2ea043;
     margin-left: -1px;
@@ -37,8 +37,6 @@ const CODE_STYLES = `
 
   /* diff: removed lines */
   .shiki code .line[data-diff="remove"] {
-    display: inline-block;
-    min-width: 100%;
     background-color: rgba(248,81,73,0.15);
     border-left: 2px solid #f85149;
     margin-left: -1px;
