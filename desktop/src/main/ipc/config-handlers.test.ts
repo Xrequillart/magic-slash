@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import * as os from 'os'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -68,8 +68,12 @@ vi.mock('../config/command-history', () => ({
   getLastCommand: vi.fn(),
 }))
 
+vi.mock('shiki', () => ({
+  codeToHtml: vi.fn().mockResolvedValue('<pre><code><span class="line">mocked</span></code></pre>'),
+}))
+
 // Mutable reference for execFileSync so individual tests can override it
-const mockExecFileSync = vi.fn<Parameters<typeof import('child_process').execFileSync>, ReturnType<typeof import('child_process').execFileSync>>()
+const mockExecFileSync: Mock<() => Buffer> = vi.fn()
 
 vi.mock('child_process', () => ({
   execFileSync: (...args: unknown[]) => mockExecFileSync(...(args as Parameters<typeof mockExecFileSync>)),
