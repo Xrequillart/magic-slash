@@ -481,27 +481,29 @@ export function Sidebar() {
           <span className="ml-auto text-xs opacity-50">{historyShortcutKey}</span>
         </button>
 
-        {/* Scheduled button */}
-        <button
-          onClick={() => {
-            setCurrentPage('scheduled')
-            setActiveTerminal(null)
-          }}
-          className={`w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
-            currentPage === 'scheduled'
-              ? 'bg-white/10 text-white'
-              : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
-          }`}
-        >
-          <CalendarClock className="w-3.5 h-3.5" />
-          <span>Scheduled</span>
-          {scheduledCount > 0 && (
-            <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium">
-              {scheduledCount}
-            </span>
-          )}
-          <span className="ml-auto text-xs opacity-50">{scheduledShortcutKey}</span>
-        </button>
+        {/* Scheduled button — only visible when scheduler feature is enabled */}
+        {config?.schedulerEnabled !== false && (
+          <button
+            onClick={() => {
+              setCurrentPage('scheduled')
+              setActiveTerminal(null)
+            }}
+            className={`w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
+              currentPage === 'scheduled'
+                ? 'bg-white/10 text-white'
+                : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
+            }`}
+          >
+            <CalendarClock className="w-3.5 h-3.5" />
+            <span>Scheduled</span>
+            {scheduledCount > 0 && (
+              <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium">
+                {scheduledCount}
+              </span>
+            )}
+            <span className="ml-auto text-xs opacity-50">{scheduledShortcutKey}</span>
+          </button>
+        )}
 
         {/* Settings button */}
         <button

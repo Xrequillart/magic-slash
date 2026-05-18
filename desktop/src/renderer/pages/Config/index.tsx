@@ -27,9 +27,21 @@ const LAUNCH_MODE_OPTIONS: { value: LaunchMode; label: string; description: stri
   { value: 'bypassPermissions', label: 'Bypass', description: 'No permission checks — for sandboxed environments only' },
 ]
 
+type SettingsTab = 'profile' | 'repositories' | 'launch-mode' | 'features' | 'shortcuts' | 'about'
+
+const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
+  { id: 'profile', label: 'Profile' },
+  { id: 'repositories', label: 'Repositories' },
+  { id: 'launch-mode', label: 'Launch Mode' },
+  { id: 'features', label: 'Features' },
+  { id: 'shortcuts', label: 'Shortcuts' },
+  { id: 'about', label: 'About' },
+]
+
 function WelcomePage() {
-  const { config, terminals, splitEnabled, toggleSplitEnabled } = useStore()
+  const { config, terminals, splitEnabled, toggleSplitEnabled, currentPage, setCurrentPage } = useStore()
   const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode } = useConfig()
+  const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [githubStatus, setGithubStatus] = useState<Record<string, boolean>>({})
   const [isAdding, setIsAdding] = useState(false)
   const [appVersion, setAppVersion] = useState('')
@@ -232,7 +244,7 @@ function WelcomePage() {
   }
 
   return (
-    <div className="flex flex-col gap-10 animate-fade-in max-w-[62rem] mx-auto">
+    <div className="flex flex-col gap-6 animate-fade-in max-w-[62rem] mx-auto">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold mb-2">Settings</h1>
@@ -241,11 +253,30 @@ function WelcomePage() {
         </p>
       </div>
 
-      {/* Profile Section */}
-      <ProfileSection />
+      {/* Tab navigation */}
+      <div className="flex items-center gap-1 border-b border-white/[0.08]">
+        {SETTINGS_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-medium transition-all border-b-2 -mb-px ${
+              activeTab === tab.id
+                ? 'border-accent text-white'
+                : 'border-transparent text-text-secondary hover:text-white hover:border-white/20'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Repositories Section */}
-      <div>
+      {/* Profile tab */}
+      {activeTab === 'profile' && (
+        <ProfileSection />
+      )}
+
+      {/* Repositories tab */}
+      {activeTab === 'repositories' && <div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 text-sm text-text-secondary">
             <FolderGit className="w-4 h-4" />
@@ -323,10 +354,10 @@ function WelcomePage() {
             })}
           </div>
         )}
-      </div>
+      </div>}
 
-      {/* Launch Mode Section */}
-      <div>
+      {/* Launch Mode tab */}
+      {activeTab === 'launch-mode' && <div>
         <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
           <Shield className="w-4 h-4" />
           <span>Launch Mode</span>
@@ -376,7 +407,10 @@ function WelcomePage() {
             </div>
           )}
         </div>
-      </div>
+      </div>}
+
+      {/* Features tab */}
+      {activeTab === 'features' && <div className="flex flex-col gap-8">
 
       {/* Split View Section */}
       <div>
@@ -421,6 +455,9 @@ function WelcomePage() {
                 const newValue = !schedulerEnabled
                 setSchedulerEnabled(newValue)
                 window.electronAPI.scheduler.setEnabled(newValue)
+                if (!newValue && currentPage === 'scheduled') {
+                  setCurrentPage('terminals')
+                }
               }}
               className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
                 schedulerEnabled ? 'bg-accent' : 'bg-white/20'
@@ -629,8 +666,10 @@ function WelcomePage() {
         </div>
       </div>
 
-      {/* Keyboard Shortcuts Section */}
-      <div>
+      </div>}
+
+      {/* Shortcuts tab */}
+      {activeTab === 'shortcuts' && <div>
         <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
           <Keyboard className="w-4 h-4" />
           <span>Keyboard Shortcuts</span>
@@ -693,10 +732,10 @@ function WelcomePage() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
-      {/* About Section */}
-      <div>
+      {/* About tab */}
+      {activeTab === 'about' && <div>
         <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
           <Info className="w-4 h-4" />
           <span>About</span>
@@ -726,7 +765,7 @@ function WelcomePage() {
             </button>
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
