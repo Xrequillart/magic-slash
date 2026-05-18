@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.46.0] - 2026-05-18
+
+### Added
+
+- **Desktop**: Add file preview panel with syntax highlighting and diff view
+- **Desktop**: Remove 52-week limit from activity heatmap
+
+### Changed
+
+- **Desktop**: Fix claude.md formatting and title
+- **Desktop**: Restore claude.md title
+- **Test**: Fix vitest 4 mock typing and add shiki mock
+- **Deps**: Bump vitest from 4.1.5 to 4.1.6
+
+### Fixed
+
+- **Desktop**: Exclude scripts from tray menu and agent state
+- **Desktop**: Fix diff line rendering using display block on shiki spans
+
 ## [0.45.3] - 2026-05-05
 
 ### Changed
@@ -1364,6 +1383,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.46.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.46.0
 [0.45.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.45.3
 [0.45.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.45.2
 [0.45.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.45.1
