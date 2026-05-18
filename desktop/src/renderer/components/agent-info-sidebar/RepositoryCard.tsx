@@ -5,6 +5,7 @@ import { formatRelativeDate } from './utils'
 import { showToast } from '../Toast'
 import type { RepoGitData } from './types'
 import type { RepositoryMetadata } from '../../../types'
+import { useStore } from '../../store'
 
 interface RepositoryCardProps {
   repoPath: string
@@ -68,6 +69,7 @@ export function RepositoryCard({
   onCopyCommitHash,
   onCopyBranchName,
 }: RepositoryCardProps) {
+  const setSelectedFile = useStore(s => s.setSelectedFile)
   const hasChanges = gitData?.stats?.isGitRepo && gitData.stats.filesChanged > 0
   const hasCommits = gitData?.commits && gitData.commits.commits.length > 0
   const resolvedBaseBranch = baseBranch || gitData?.commits?.baseBranch
@@ -175,7 +177,8 @@ export function RepositoryCard({
               {gitData.stats.files.map((file, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-1.5 text-xs py-0.5"
+                  className="flex items-center gap-1.5 text-xs py-0.5 cursor-pointer hover:bg-white/10 rounded transition-colors px-1 -mx-1"
+                  onClick={() => setSelectedFile({ repoPath, path: file.path, status: file.status })}
                 >
                   <span className="flex-1 text-text-secondary/60 font-mono truncate" title={file.path}>
                     {file.path.split('/').pop()}

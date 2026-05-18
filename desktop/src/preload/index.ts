@@ -105,6 +105,9 @@ const configApi = {
   getAutoStart: (): Promise<boolean> =>
     ipcRenderer.invoke('config:getAutoStart'),
 
+  readFile: (repoPath: string, filePath: string, status?: string) =>
+    ipcRenderer.invoke('config:readFile', repoPath, filePath, status),
+
 }
 
 // Terminal API

@@ -1,4 +1,8 @@
 import { ipcMain, type BrowserWindow } from 'electron'
+import * as fs from 'fs'
+import * as path from 'path'
+import { execFileSync } from 'child_process'
+import { codeToHtml } from 'shiki'
 import {
   readConfig,
   writeConfig,
@@ -42,6 +46,84 @@ import {
   findBestMatch,
   getLastCommand
 } from '../config/command-history'
+
+interface ParsedDiff {
+  addedNewLines: Set<number>
+  removedBeforeLines: Map<number, string[]>
+}
+
+function parseDiff(diffOutput: string): ParsedDiff {
+  const addedNewLines = new Set<number>()
+  const removedBeforeLines = new Map<number, string[]>()
+  const lines = diffOutput.split('\n')
+  let newLineNum = 0
+
+  for (const line of lines) {
+    const hunk = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
+    if (hunk) { newLineNum = parseInt(hunk[1], 10); continue }
+    if (newLineNum === 0) continue
+    if (line.startsWith('+')) { addedNewLines.add(newLineNum); newLineNum++ }
+    else if (line.startsWith('-')) {
+      const arr = removedBeforeLines.get(newLineNum) ?? []
+      arr.push(line.slice(1))
+      removedBeforeLines.set(newLineNum, arr)
+    } else if (line.startsWith(' ')) { newLineNum++ }
+  }
+  return { addedNewLines, removedBeforeLines }
+}
+
+function escHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function annotateShikiHtml(
+  html: string,
+  diff: ParsedDiff | null,
+  mode: 'normal' | 'all-add' | 'all-remove'
+): string {
+  if (mode === 'all-add') return html.replace(/<span class="line">/g, '<span class="line" data-diff="add">')
+  if (mode === 'all-remove') return html.replace(/<span class="line">/g, '<span class="line" data-diff="remove">')
+  if (!diff) return html
+
+  let lineIndex = 0
+  let result = html.replace(/<span class="line">/g, () => {
+    lineIndex++
+    const removed = diff.removedBeforeLines.get(lineIndex) ?? []
+    diff.removedBeforeLines.delete(lineIndex)
+    const removedHtml = removed.map(c =>
+      `<span class="line" data-diff="remove">${escHtml(c)}</span>`
+    ).join('')
+    const attr = diff.addedNewLines.has(lineIndex) ? ' data-diff="add"' : ''
+    return `${removedHtml}<span class="line"${attr}>`
+  })
+
+  // Trailing removed lines (deleted at end of file)
+  if (diff.removedBeforeLines.size > 0) {
+    const trailing = [...diff.removedBeforeLines.values()].flat()
+      .map(c => `<span class="line" data-diff="remove">${escHtml(c)}</span>`).join('')
+    result = result.replace('</code>', trailing + '</code>')
+  }
+  return result
+}
+
+const KNOWN_LANGS = new Set([
+  'ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs', 'py', 'rs', 'go', 'sh', 'bash',
+  'zsh', 'json', 'jsonc', 'yaml', 'yml', 'toml', 'html', 'css', 'scss',
+  'less', 'vue', 'svelte', 'rb', 'php', 'java', 'kt', 'swift', 'c', 'cpp',
+  'cs', 'sql', 'graphql', 'xml', 'dockerfile', 'tf', 'prisma', 'md',
+])
+
+const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico'])
+
+const MIME_MAP: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+}
 
 export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
   // Get config (also validates and notifies renderer of any errors)
@@ -264,4 +346,96 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
   ipcMain.handle('history:getLast', async (_event, { repoPath }) => {
     return getLastCommand(repoPath)
   })
+
+  ipcMain.handle('config:readFile', (_event, repoPath: string, filePath: string, status?: string) =>
+    readFileForPreview(repoPath, filePath, status)
+  )
+}
+
+export async function readFileForPreview(repoPath: string, filePath: string, status?: string): Promise<object> {
+  const resolvedRepo = path.resolve(repoPath)
+  const resolvedFile = path.resolve(repoPath, filePath)
+
+  if (!resolvedFile.startsWith(resolvedRepo + path.sep) && resolvedFile !== resolvedRepo) {
+    return { error: 'path_traversal' }
+  }
+
+  const ext = path.extname(filePath).toLowerCase()
+  const mimeHint = ext.startsWith('.') ? ext.slice(1) : ext
+
+  if (status === 'deleted') {
+    try {
+      const buffer = execFileSync('git', ['show', `HEAD:${filePath}`], { cwd: repoPath, maxBuffer: 11 * 1024 * 1024 })
+      if (buffer.length > 10 * 1024 * 1024) {
+        return { error: 'too_large', size: buffer.length }
+      }
+
+      // Image detection
+      if (IMAGE_EXTS.has(ext)) {
+        const mime = MIME_MAP[ext] ?? 'image/png'
+        const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`
+        return { content: dataUrl, encoding: 'image', size: buffer.length, mimeHint }
+      }
+
+      // Binary detection (null-byte scan)
+      const sample = buffer.subarray(0, Math.min(512, buffer.length))
+      if (sample.includes(0)) {
+        return { encoding: 'binary', size: buffer.length, mimeHint }
+      }
+
+      // UTF-8 text — highlight server-side, all lines red (file was deleted)
+      const textContent = buffer.toString('utf8')
+      const lang = KNOWN_LANGS.has(mimeHint) ? mimeHint : 'text'
+      const raw = await codeToHtml(textContent, { lang, theme: 'github-dark' }).catch(() => null)
+      const highlightedHtml = raw ? annotateShikiHtml(raw, null, 'all-remove') : null
+      return { content: textContent, highlightedHtml, encoding: 'utf8', size: buffer.length, mimeHint }
+    } catch {
+      return { error: 'not_found' }
+    }
+  }
+
+  let stat: fs.Stats
+  try {
+    stat = fs.statSync(resolvedFile)
+  } catch {
+    return { error: 'not_found' }
+  }
+
+  if (stat.size > 10 * 1024 * 1024) {
+    return { error: 'too_large', size: stat.size }
+  }
+
+  if (IMAGE_EXTS.has(ext)) {
+    const buffer = fs.readFileSync(resolvedFile)
+    const mime = MIME_MAP[ext] ?? 'image/png'
+    const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`
+    return { content: dataUrl, encoding: 'image', size: stat.size, mimeHint }
+  }
+
+  // Null-byte scan: reliable binary detection without loading the full file
+  const fd = fs.openSync(resolvedFile, 'r')
+  const sample = Buffer.alloc(Math.min(512, stat.size))
+  fs.readSync(fd, sample, 0, sample.length, 0)
+  fs.closeSync(fd)
+
+  if (sample.includes(0)) {
+    return { encoding: 'binary', size: stat.size, mimeHint }
+  }
+
+  const content = fs.readFileSync(resolvedFile, 'utf8')
+  const lang = KNOWN_LANGS.has(mimeHint) ? mimeHint : 'text'
+  const raw = await codeToHtml(content, { lang, theme: 'github-dark' }).catch(() => null)
+
+  let highlightedHtml: string | null = raw
+  if (raw) {
+    if (status === 'added' || status === 'untracked') {
+      highlightedHtml = annotateShikiHtml(raw, null, 'all-add')
+    } else if (status === 'modified' || status === 'renamed') {
+      try {
+        const diffOut = execFileSync('git', ['diff', 'HEAD', '--', filePath], { cwd: repoPath }).toString()
+        highlightedHtml = annotateShikiHtml(raw, parseDiff(diffOut), 'normal')
+      } catch { /* leave unhighlighted on error */ }
+    }
+  }
+  return { content, highlightedHtml, encoding: 'utf8', size: stat.size, mimeHint }
 }

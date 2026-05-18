@@ -29,13 +29,13 @@ magic-slash/
 
 ## Tech Stack
 
-| Component | Technologies |
-|-----------|-------------|
-| Root | Node.js 20+, ESLint, commitlint, Vitest |
-| Desktop | Electron 28, React 18, TypeScript, Tailwind CSS, Zustand, xterm.js + node-pty, Vite, electron-builder |
-| Skills | Markdown (SKILL.md) |
-| Docs | Static HTML/CSS/JS, GitHub Pages |
-| Install | Bash |
+| Component | Technologies                                                                                          |
+| --------- | ----------------------------------------------------------------------------------------------------- |
+| Root      | Node.js 20+, ESLint, commitlint, Vitest                                                               |
+| Desktop   | Electron 28, React 18, TypeScript, Tailwind CSS, Zustand, xterm.js + node-pty, Vite, electron-builder |
+| Skills    | Markdown (SKILL.md)                                                                                   |
+| Docs      | Static HTML/CSS/JS, GitHub Pages                                                                      |
+| Install   | Bash                                                                                                  |
 
 ## Useful Commands
 
@@ -75,6 +75,7 @@ Contains configured repositories, each with: path, keywords, languages (commit/P
 Profile file: `~/.config/magic-slash/profile.md` (YAML frontmatter + markdown body).
 
 At the start of any `/magic:*` skill execution:
+
 1. Check if `~/.config/magic-slash/profile.md` exists; if not, continue with default behavior
 2. Read the YAML frontmatter fields: `name`, `role`, `technical_level`, `communication_style`, `languages`
 3. Adapt vocabulary and technical depth based on `technical_level` (beginner = simple terms, expert = precise jargon)

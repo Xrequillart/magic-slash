@@ -18,6 +18,7 @@ import { ScheduledPage } from './pages/Scheduled'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProfileOnboardingWizard } from './components/ProfileOnboardingWizard'
 import { useWindowSplitMode } from './hooks/useWindowSplitMode'
+import FilePreviewPanel from './components/FilePreviewPanel'
 
 function LoadingScreen() {
   return (
@@ -297,6 +298,8 @@ export function App() {
           </ErrorBoundary>
         )}
       </div>
+
+      <FilePreviewPanel />
 
       {/* Toast Notifications */}
       <ToastContainer />

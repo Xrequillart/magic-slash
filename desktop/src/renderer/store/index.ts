@@ -44,6 +44,8 @@ interface AppState {
   // No repos warning modal
   noReposWarningShown: boolean
 
+  selectedFile: { repoPath: string; path: string; status: string } | null
+
   // Actions
   setConfig: (config: Config) => void
   setConfigLoading: (loading: boolean) => void
@@ -87,6 +89,9 @@ interface AppState {
 
   // No repos warning modal actions
   setNoReposWarningShown: (shown: boolean) => void
+
+  setSelectedFile: (file: { repoPath: string; path: string; status: string } | null) => void
+  closeFilePreview: () => void
 }
 
 export const useStore = create<AppState>()(
@@ -120,6 +125,7 @@ export const useStore = create<AppState>()(
 
         closeAgentModal: null,
         noReposWarningShown: false,
+        selectedFile: null,
 
         // Actions
         setConfig: (config) => set({
@@ -270,7 +276,7 @@ export const useStore = create<AppState>()(
             scheduledAgents: state.scheduledAgents.filter(a => a.id !== id),
           })),
 
-        setCurrentPage: (currentPage) => set({ currentPage }),
+        setCurrentPage: (currentPage) => set({ currentPage, selectedFile: null }),
         setRightSidebar: (rightSidebar) => set({ rightSidebar }),
         toggleRightSidebar: (sidebar) => set((state) => ({
           rightSidebar: state.rightSidebar === sidebar ? null : sidebar
@@ -305,6 +311,9 @@ export const useStore = create<AppState>()(
 
         // No repos warning modal actions
         setNoReposWarningShown: (noReposWarningShown) => set({ noReposWarningShown }),
+
+        setSelectedFile: (selectedFile) => set({ selectedFile }),
+        closeFilePreview: () => set({ selectedFile: null }),
       }),
       // Session storage persist for activeTerminalId (cleared on app close)
       {
