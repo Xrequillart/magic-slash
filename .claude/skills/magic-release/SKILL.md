@@ -73,9 +73,40 @@ Mets a jour la version dans `/desktop/package.json` :
 
 Affiche une confirmation pour chaque fichier mis a jour.
 
-## Etape 3 : Mettre a jour la documentation
+## Etape 3 : Mettre a jour les landing pages (docs/)
 
-### 3.1 : README.md
+### 3.1 : docs/script.js — chaines i18n (EN + FR)
+
+Dans `docs/script.js`, remplace les 2 occurrences de la chaine i18n `nav.changelog` (une pour EN, une pour FR) :
+
+Pattern a chercher (regex generique) :
+```
+Changelog <span class="version-badge" id="latestVersion">v[0-9]+\.[0-9]+\.[0-9]+</span>
+```
+
+Remplace le contenu du span par `vX.Y.Z` dans les 2 occurrences.
+
+### 3.2 : docs/*.html — badge version dans le header
+
+Dans chacun des 5 fichiers HTML (`docs/index.html`, `docs/desktop.html`, `docs/skills.html`, `docs/story.html`, `docs/documentation.html`) :
+
+**latestVersion** (span dans le dropdown) — pattern a chercher :
+```
+id="latestVersion">v[0-9]+\.[0-9]+\.[0-9]+</span>
+```
+Remplace le contenu par `vX.Y.Z`.
+
+**headerVersion** (lien dans le header) — pattern a chercher :
+```
+href="https://github.com/xrequillart/magic-slash/releases/tag/v[0-9]+\.[0-9]+\.[0-9]+"[^>]*>v[0-9]+\.[0-9]+\.[0-9]+</a>
+```
+Remplace `tag/vOLD_VERSION` par `tag/vX.Y.Z` et le texte du lien par `vX.Y.Z`.
+
+Affiche une confirmation pour chaque fichier mis a jour.
+
+## Etape 4 : Mettre a jour la documentation
+
+### 4.1 : README.md
 
 Cherche la ligne contenant `"version":` dans le bloc de configuration JSON du README et mets-la a jour :
 
@@ -83,7 +114,7 @@ Cherche la ligne contenant `"version":` dans le bloc de configuration JSON du RE
 "version": "X.Y.Z"
 ```
 
-### 3.2 : docs/documentation.html
+### 4.2 : docs/documentation.html
 
 Cherche les 2 occurrences de `"version":` dans les blocs `<pre>` de la documentation et mets-les a jour :
 
@@ -93,9 +124,9 @@ Cherche les 2 occurrences de `"version":` dans les blocs `<pre>` de la documenta
 
 Affiche une confirmation pour chaque fichier mis a jour.
 
-## Etape 4 : Mettre a jour les skills et l'interface desktop
+## Etape 5 : Mettre a jour les skills et l'interface desktop
 
-### 4.1 : Fichiers SKILL.md (7 fichiers)
+### 5.1 : Fichiers SKILL.md (7 fichiers)
 
 Mets a jour le titre de version dans les 7 fichiers de skills :
 
@@ -121,7 +152,7 @@ Remplace par :
 
 **IMPORTANT** : Ne cherche PAS la version actuelle (`VERSION_ACTUELLE`) dans ces fichiers. Utilise toujours le pattern regex generique ci-dessus pour trouver la ligne, car un fichier peut avoir rate une mise a jour precedente et contenir une version differente.
 
-### 4.2 : desktop/src/renderer/components/Sidebar.tsx
+### 5.2 : desktop/src/renderer/components/Sidebar.tsx
 
 Cherche la version affichee dans le footer de la sidebar en utilisant un pattern regex generique (meme approche que l'etape 4.1) :
 
@@ -143,9 +174,9 @@ Pouvez-vous indiquer la ligne ou se trouve la version a mettre a jour dans deskt
 
 Affiche une confirmation pour chaque fichier mis a jour.
 
-## Etape 5 : Mettre a jour le script d'installation
+## Etape 6 : Mettre a jour le script d'installation
 
-### 5.1 : install/install.sh
+### 6.1 : install/install.sh
 
 Cherche la ligne contenant le fallback de version dans la commande curl/jq (pattern `.tag_name // "v`) et remplace la valeur par defaut.
 
@@ -158,9 +189,9 @@ Remplace `"v0.X.Y"` par `"v{NOUVELLE_VERSION}"`.
 
 Affiche une confirmation.
 
-## Etape 6 : Mettre a jour le CHANGELOG.md
+## Etape 7 : Mettre a jour le CHANGELOG.md
 
-### 6.0 : Collecter les commits depuis la derniere release
+### 7.0 : Collecter les commits depuis la derniere release
 
 Detecte le dernier tag de release :
 
@@ -189,7 +220,7 @@ Pour chaque entree, formate le bullet en utilisant le scope comme prefixe en gra
 - Si le commit a un scope : `- **Scope**: sujet` (premiere lettre du scope en majuscule)
 - Si le commit n'a pas de scope : `- sujet` (premiere lettre en majuscule)
 
-### 6.1 : Creer une nouvelle section pre-remplie
+### 7.1 : Creer une nouvelle section pre-remplie
 
 Ajoute une nouvelle section en haut du changelog (apres l'entete), avec les entrees categorisees collectees a l'etape 6.0 :
 
@@ -216,7 +247,7 @@ Utilise la date du jour au format `YYYY-MM-DD`.
 - Omets les categories vides (pas de section `### Added` si aucun `feat` n'a ete trouve).
 - Si aucun commit n'est trouve (cas rare), cree les 3 sections avec des placeholders `-`.
 
-### 6.2 : Ajouter le lien de release
+### 7.2 : Ajouter le lien de release
 
 Ajoute un nouveau lien en bas du fichier, juste apres les autres liens :
 
@@ -226,7 +257,7 @@ Ajoute un nouveau lien en bas du fichier, juste apres les autres liens :
 
 Assure-toi que le nouveau lien est ajoute AVANT les liens existants (le plus recent en premier dans la liste).
 
-### 6.3 : Presenter le CHANGELOG pour validation
+### 7.3 : Presenter le CHANGELOG pour validation
 
 Utilise `AskUserQuestion` pour presenter le CHANGELOG pre-rempli et demander validation :
 
@@ -252,9 +283,9 @@ Voulez-vous :
 
 Si l'utilisateur repond 'edit', utilise `AskUserQuestion` pour lui demander de decrire ses modifications. Applique-les au CHANGELOG puis continue.
 
-## Etape 7 : Verification et resume
+## Etape 8 : Verification et resume
 
-### 7.1 : Verifier les modifications avec grep
+### 8.1 : Verifier les modifications avec grep
 
 **CRITIQUE** : Cette etape est obligatoire. Tu dois verifier que CHAQUE fichier contient bien la nouvelle version.
 
@@ -300,12 +331,27 @@ else
   echo "  ERREUR  install/install.sh - version X.Y.Z NON trouvee"
   ERRORS=$((ERRORS+1))
 fi && \
+for f in docs/index.html docs/desktop.html docs/skills.html docs/story.html; do
+  if grep -q "vX.Y.Z" "$f"; then
+    echo "  OK  $f"
+  else
+    echo "  ERREUR  $f - version X.Y.Z NON trouvee"
+    ERRORS=$((ERRORS+1))
+  fi
+done && \
+if grep -c "vX.Y.Z" docs/script.js | grep -q "^2$"; then
+  echo "  OK  docs/script.js (2 occurrences i18n)"
+else
+  COUNT=$(grep -c "vX.Y.Z" docs/script.js 2>/dev/null || echo "0")
+  echo "  ERREUR  docs/script.js - attendu 2 occurrences i18n, trouve $COUNT"
+  ERRORS=$((ERRORS+1))
+fi && \
 echo "=== $ERRORS erreur(s) detectee(s) ==="
 ```
 
 **Si des erreurs sont detectees** : corrige immediatement les fichiers concernes et relance la verification jusqu'a ce que toutes les verifications passent (0 erreurs).
 
-### 7.2 : Afficher le resume
+### 8.2 : Afficher le resume
 
 Affiche un resume de tous les fichiers modifies :
 
@@ -316,6 +362,11 @@ Resume des modifications pour la version X.Y.Z :
   desktop/package.json                          {VERSION_ACTUELLE} -> X.Y.Z
   README.md                                     {VERSION_ACTUELLE} -> X.Y.Z
   docs/documentation.html                       {VERSION_ACTUELLE} -> X.Y.Z (2 occurrences)
+  docs/index.html                               v{VERSION_ACTUELLE} -> vX.Y.Z
+  docs/desktop.html                             v{VERSION_ACTUELLE} -> vX.Y.Z
+  docs/skills.html                              v{VERSION_ACTUELLE} -> vX.Y.Z
+  docs/story.html                               v{VERSION_ACTUELLE} -> vX.Y.Z
+  docs/script.js                                v{VERSION_ACTUELLE} -> vX.Y.Z (2 occurrences i18n)
   skills/magic-start/SKILL.md                   v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-continue/SKILL.md                v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-commit/SKILL.md                  v{VERSION_ACTUELLE} -> vX.Y.Z
@@ -328,11 +379,11 @@ Resume des modifications pour la version X.Y.Z :
   CHANGELOG.md                                  Nouvelle section ajoutee
 ```
 
-### 7.3 : Commit, tag et push de release
+### 8.3 : Commit, tag et push de release
 
 Cette etape execute toutes les operations git en une seule interaction. L'utilisateur confirme une seule fois, puis le commit, le tag et le push s'enchainent automatiquement.
 
-#### 7.3.1 : Pre-vol et confirmation unique
+#### 8.3.1 : Pre-vol et confirmation unique
 
 Execute `git diff --stat` via `Bash` pour afficher un apercu de tous les fichiers modifies.
 
@@ -353,7 +404,7 @@ Voulez-vous lancer la release ? Cela va :
 
 Si l'utilisateur refuse, arrete le processus de release ici.
 
-#### 7.3.2 : Execution automatique (commit + tag + push)
+#### 8.3.2 : Execution automatique (commit + tag + push)
 
 Si l'utilisateur a confirme, enchaine les 3 operations sans poser de questions supplementaires.
 
@@ -363,6 +414,7 @@ Si l'utilisateur a confirme, enchaine les 3 operations sans poser de questions s
 
 ```bash
 git add package.json desktop/package.json README.md docs/documentation.html \
+  docs/index.html docs/desktop.html docs/skills.html docs/story.html docs/script.js \
   skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md \
   skills/magic-pr/SKILL.md skills/magic-review/SKILL.md skills/magic-resolve/SKILL.md \
   skills/magic-done/SKILL.md desktop/src/renderer/components/Sidebar.tsx \
@@ -403,7 +455,7 @@ Voulez-vous :
 
 Si 'retry' et que c'est le push qui a echoue, tente d'abord `git pull --rebase origin main` avant de relancer le push.
 
-#### 7.3.3 : Message de succes
+#### 8.3.3 : Message de succes
 
 Une fois les 3 operations reussies, affiche le message de succes suivant :
 
