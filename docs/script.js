@@ -18,7 +18,7 @@ var i18n = {
         'nav.communityCategory': '<i data-feather="users"></i> Community',
         'nav.faq': 'FAQ',
         'nav.updatesCategory': '<i data-feather="zap"></i> Updates',
-        'nav.changelog': 'Changelog <span class="version-badge" id="latestVersion"></span>',
+        'nav.changelog': 'Changelog <span class="version-badge" id="latestVersion">v0.47.0</span>',
         // Hero
         'hero.title': 'The boring parts,<br>automated.',
         'hero.subtitle': 'From ticket to merge — without the busywork.',
@@ -297,7 +297,7 @@ var i18n = {
         'nav.communityCategory': '<i data-feather="users"></i> Communauté',
         'nav.faq': 'FAQ',
         'nav.updatesCategory': '<i data-feather="zap"></i> Mises à jour',
-        'nav.changelog': 'Changelog <span class="version-badge" id="latestVersion"></span>',
+        'nav.changelog': 'Changelog <span class="version-badge" id="latestVersion">v0.47.0</span>',
         // Hero
         'hero.title': 'Les tâches ingrates,<br>automatisées.',
         'hero.subtitle': 'Du ticket au merge — sans la corvée.',
@@ -597,12 +597,6 @@ function setLanguage(lang) {
     // Re-render feather icons after innerHTML replacements
     feather.replace();
 
-    // Restore version badge if available
-    if (window.__latestVersion) {
-        var versionEl = document.getElementById('latestVersion');
-        if (versionEl) versionEl.textContent = window.__latestVersion;
-    }
-
     // Update html lang attribute
     document.documentElement.lang = lang;
 
@@ -750,32 +744,6 @@ function copyCommand(btn) {
         feather.replace();
     }, 2000);
 }
-
-// Fetch latest version from GitHub
-fetch('https://api.github.com/repos/xrequillart/magic-slash/releases/latest')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.tag_name) {
-            window.__latestVersion = data.tag_name;
-            document.getElementById('latestVersion').textContent = data.tag_name;
-            var headerBadge = document.getElementById('headerVersion');
-            headerBadge.textContent = data.tag_name;
-            headerBadge.href = data.html_url;
-            headerBadge.target = '_blank';
-        }
-    })
-    .catch(function() {});
-
-// Fetch GitHub stars count
-fetch('https://api.github.com/repos/xrequillart/magic-slash')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.stargazers_count !== undefined) {
-            var el = document.getElementById('githubStars');
-            if (el) el.textContent = data.stargazers_count;
-        }
-    })
-    .catch(function() {});
 
 // ── Desktop terminal animation ──
 (function() {
