@@ -258,7 +258,9 @@ Si l'utilisateur repond 'edit', utilise `AskUserQuestion` pour lui demander de d
 
 **CRITIQUE** : Cette etape est obligatoire. Tu dois verifier que CHAQUE fichier contient bien la nouvelle version.
 
-Execute la commande suivante pour verifier que tous les fichiers ont ete mis a jour :
+**INTERDIT** : Ne jamais remplacer `ERREUR` par `WARN` ou baisser la severite d'une erreur de verification. Si un fichier ne contient pas la bonne version, c'est une ERREUR qui doit incrementer `ERRORS` et bloquer la release. Il n'existe pas de "warning acceptable" dans cette etape — soit la version est presente, soit c'est une erreur.
+
+Execute la commande suivante **exactement telle quelle** (sans modifier les messages ni les niveaux de severite) pour verifier que tous les fichiers ont ete mis a jour :
 
 ```bash
 echo "=== Verification de la version X.Y.Z ===" && \
