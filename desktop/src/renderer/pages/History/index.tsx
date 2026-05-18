@@ -29,8 +29,8 @@ function formatTime(timestamp: number): string {
 }
 
 export function HistoryPage() {
-  const { groups, loading, clear } = useActivityHistory()
-  const { heatmapData } = useHistoryAnalytics(groups)
+  const { entries, groups, loading, clear } = useActivityHistory()
+  const { heatmapData } = useHistoryAnalytics(entries)
   const hasEntries = groups.some(g => g.entries.length > 0)
   const [showConfirm, setShowConfirm] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())

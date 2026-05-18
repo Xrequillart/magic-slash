@@ -1,13 +1,8 @@
 import { useMemo } from 'react'
-import type { HistoryGroup } from './useActivityHistory'
+import type { HistoryEntry } from '../../types'
 import { computeHeatmapData } from './historyAnalytics'
 
-export function useHistoryAnalytics(groups: HistoryGroup[]) {
-  const entries = useMemo(
-    () => groups.flatMap(g => g.entries),
-    [groups],
-  )
-
+export function useHistoryAnalytics(entries: HistoryEntry[]) {
   const heatmapData = useMemo(
     () => computeHeatmapData(entries),
     [entries],

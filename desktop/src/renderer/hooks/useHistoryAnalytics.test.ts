@@ -36,12 +36,12 @@ describe('computeHeatmapData', () => {
     expect(result.get('2025-06-11')).toBe(1)
   })
 
-  it('excludes entries older than 52 weeks', () => {
+  it('includes entries older than 52 weeks', () => {
     const old = new Date()
     old.setDate(old.getDate() - 365 - 10)
 
     const entries = [makeEntry({ timestamp: old.getTime() })]
     const result = computeHeatmapData(entries)
-    expect(result.size).toBe(0)
+    expect(result.size).toBe(1)
   })
 })

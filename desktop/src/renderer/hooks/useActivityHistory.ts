@@ -129,5 +129,5 @@ export function useActivityHistory() {
     }
   }, [])
 
-  return { groups, loading, error, refresh: loadHistory, clear }
+  return { entries, groups, loading, error, refresh: loadHistory, clear }
 }

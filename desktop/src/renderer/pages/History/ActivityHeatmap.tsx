@@ -7,7 +7,7 @@ interface ActivityHeatmapProps {
 const CELL_SIZE = 12
 const CELL_GAP = 2
 const CELL_STRIDE = CELL_SIZE + CELL_GAP
-const WEEKS = 52
+const MIN_WEEKS = 52
 const DAYS = 7
 const LABEL_WIDTH = 32
 const HEADER_HEIGHT = 16
@@ -49,17 +49,26 @@ interface TooltipState {
 export function ActivityHeatmap({ heatmapData }: ActivityHeatmapProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
-  // Build grid: 52 weeks, right-aligned to today
+  // Build grid: right-aligned to today, spanning from the earliest entry
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  // Find the start date: go back 52 weeks from the end of this week
-  // We want today to be the last cell. dayOfWeek: 0=Sun
   const todayDay = today.getDay()
   // Shift so Sunday=6, Mon=0, ..., Sat=5
   const adjustedDay = todayDay === 0 ? 6 : todayDay - 1
 
-  // Start date is 52 weeks back from the beginning of the current week
+  // Compute how many weeks needed to cover all data
+  const WEEKS = (() => {
+    if (heatmapData.size === 0) return MIN_WEEKS
+    const earliest = [...heatmapData.keys()].reduce((a, b) => (a < b ? a : b))
+    const earliestDate = new Date(earliest)
+    earliestDate.setHours(0, 0, 0, 0)
+    const msPerWeek = 7 * 24 * 60 * 60 * 1000
+    const weeksNeeded = Math.ceil((today.getTime() - earliestDate.getTime()) / msPerWeek) + 1
+    return Math.max(MIN_WEEKS, weeksNeeded)
+  })()
+
+  // Start date is WEEKS back from the beginning of the current week
   const startDate = new Date(today)
   startDate.setDate(startDate.getDate() - adjustedDay - (WEEKS - 1) * 7)
 
