@@ -124,6 +124,7 @@ export interface Config {
   }
   spotlight?: SpotlightConfig
   launchMode?: LaunchMode
+  historyEnabled?: boolean
   schedulerEnabled?: boolean
   schedulerDefaultTime?: string
   prReviews?: {

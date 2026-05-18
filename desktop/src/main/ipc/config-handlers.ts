@@ -236,6 +236,13 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
   })
 
   // Update split enabled setting
+  ipcMain.handle('config:setHistoryEnabled', async (_event, { enabled }: { enabled: boolean }) => {
+    const config = readConfig()
+    config.historyEnabled = enabled
+    writeConfig(config)
+    return { config }
+  })
+
   ipcMain.handle('config:updateSplitEnabled', async (_event, { enabled }) => {
     const config = updateSplitEnabled(enabled)
     return { config }

@@ -48,6 +48,9 @@ const configApi = {
   updateRepositoryWorktreeFilesSettings: (name: string, settings: string[]) =>
     ipcRenderer.invoke('config:updateRepositoryWorktreeFilesSettings', { name, settings }),
 
+  setHistoryEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke('config:setHistoryEnabled', { enabled }),
+
   updateSplitEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('config:updateSplitEnabled', { enabled }),
 

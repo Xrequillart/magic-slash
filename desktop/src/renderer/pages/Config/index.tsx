@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, CalendarClock, GitPullRequest } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, CalendarClock, GitPullRequest, History } from 'lucide-react'
 import { ProfileSection } from './ProfileSection'
 import { RepoPage } from './RepoPage'
 import { useStore } from '../../store'
@@ -52,6 +52,7 @@ function WelcomePage() {
   const [spotlightError, setSpotlightError] = useState(false)
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
   const [showBypassWarning, setShowBypassWarning] = useState(false)
+  const [historyEnabled, setHistoryEnabled] = useState(config?.historyEnabled ?? true)
   const [schedulerEnabled, setSchedulerEnabled] = useState(config?.schedulerEnabled ?? true)
   const [schedulerDefaultTime, setSchedulerDefaultTime] = useState(config?.schedulerDefaultTime ?? '09:00')
   const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)
@@ -69,6 +70,11 @@ function WelcomePage() {
   useEffect(() => {
     if (configLaunchMode !== undefined) setLaunchMode(configLaunchMode)
   }, [configLaunchMode])
+
+  const configHistoryEnabled = config?.historyEnabled
+  useEffect(() => {
+    if (configHistoryEnabled !== undefined) setHistoryEnabled(configHistoryEnabled)
+  }, [configHistoryEnabled])
 
   const configSchedulerEnabled = config?.schedulerEnabled
   useEffect(() => {
@@ -411,6 +417,39 @@ function WelcomePage() {
 
       {/* Features tab */}
       {activeTab === 'features' && <div className="flex flex-col gap-8">
+
+      {/* History Section */}
+      <div>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <History className="w-4 h-4" />
+          <span>History</span>
+        </div>
+        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">Enable history</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">Show activity history in the sidebar</div>
+            </div>
+            <button
+              onClick={() => {
+                const newValue = !historyEnabled
+                setHistoryEnabled(newValue)
+                window.electronAPI.config.setHistoryEnabled(newValue)
+                if (!newValue && currentPage === 'history') {
+                  setCurrentPage('terminals')
+                }
+              }}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                historyEnabled ? 'bg-accent' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+                historyEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Split View Section */}
       <div>
