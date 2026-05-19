@@ -286,7 +286,7 @@ All skipped comments (with their reasons) are tracked and displayed in the Step 
 
 ## Step 5.5: Preview changes before commit
 
-Automated code changes can introduce subtle issues that are hard to catch after the fact. Showing a diff preview before committing gives the user a chance to catch misinterpretations, unintended side effects, or overly aggressive fixes — and to abort cleanly if needed.
+Automated code changes can introduce subtle issues that are hard to catch after the fact. Showing a diff preview before committing gives the user a chance to catch misinterpretations, unintended side effects, or overly aggressive fixes — and to abort cleanly if needed. The preview also lets the user override the configured commit mode for this run only.
 
 After all fixes are applied, display a diff preview so the user can review the automated changes before committing.
 
@@ -294,11 +294,30 @@ After all fixes are applied, display a diff preview so the user can review the a
 git diff
 ```
 
-Display **`MSG_CHANGES_PREVIEW`**, substituting `{TICKET-ID}`, the list of modified files (each with `{file}`, `{fix_summary}`, `{reviewer}`), `{count}`, `{additions}`, and `{deletions}`.
+### Determine the commit mode label and action label
 
-- If the user answers **Y/O**: proceed to Step 5.9
-- If the user answers **n**: abort the resolve, discard changes with `git checkout -- .` and stop
-- If the user answers **diff**: display the full `git diff` output and ask again
+Before displaying the message, compute two display strings based on the active `commitMode` value:
+
+| `commitMode` | `{commit_mode_label}` | `{commit_mode_action}` |
+| ------------ | --------------------- | ---------------------- |
+| `"new"` | `new commit` | `create a new commit (fix: address review feedback)` |
+| `"amend"` | `amend last commit` | `amend the last commit (git commit --amend --no-edit)` |
+
+Display **`MSG_CHANGES_PREVIEW`**, substituting `{TICKET-ID}`, the list of modified files (each with `{file}`, `{fix_summary}`, `{reviewer}`), `{count}`, `{additions}`, `{deletions}`, `{commit_mode_label}`, `{commitMode}` (raw config value), and `{commit_mode_action}`.
+
+### Handle user response
+
+The `Y`/`O` key confirms using the active commit mode. The user may also type `amend` or `new` to override the configured mode for this run only (without modifying the config file).
+
+| Input | Action |
+| ----- | ------ |
+| `Y` / `O` | Proceed to Step 5.9 using the active `commitMode` |
+| `amend` | Override: set `commitMode = "amend"` for this run, proceed to Step 5.9 |
+| `new` | Override: set `commitMode = "new"` for this run, proceed to Step 5.9 |
+| `diff` | Display the full `git diff` output and ask again |
+| `n` | Abort the resolve, discard changes with `git checkout -- .` and stop |
+
+> **Note**: `amend` and `new` are only offered as override options when they differ from the active mode. If `commitMode` is already `"amend"`, typing `amend` is equivalent to `Y`.
 
 ## Step 5.9: Post-fix validation
 
@@ -366,9 +385,9 @@ git add <modified-files>
 
 ### 6.2: Commit
 
-Read the `commitMode` from the resolve config (default: `"new"`).
+Use the effective `commitMode` value — either the one from the resolve config (default: `"new"`) or the override chosen by the user in Step 5.5.
 
-#### When `commitMode` is `"new"` (default)
+#### When effective `commitMode` is `"new"` (default)
 
 Create a commit with a message that clearly indicates it addresses PR review feedback. Use the format/style from the resolve config (or inherit from commit config if `useCommitConfig` is `true`):
 
@@ -378,7 +397,7 @@ git commit -m "fix(pr): address review feedback for {TICKET-ID}"
 
 Where `{TICKET-ID}` is the ticket ID detected in Step 1.
 
-#### When `commitMode` is `"amend"`
+#### When effective `commitMode` is `"amend"`
 
 Amend the last commit without changing the message:
 
@@ -400,19 +419,19 @@ COMMIT_SHA=$(git rev-parse HEAD)
 
 > **Node.js version**: If `$NODE_PREFIX` was determined in Step 0.1, prepend it to the push command.
 
-#### When `commitMode` is `"new"` (default)
+#### When effective `commitMode` is `"new"` (default)
 
 ```bash
 git push
 ```
 
-#### When `commitMode` is `"amend"`
+#### When effective `commitMode` is `"amend"`
 
 ```bash
 git push --force-with-lease
 ```
 
-> **Warning**: When using `commitMode: "amend"`, the commit SHA changes. This invalidates the position of old review comments on GitHub (they will appear as "outdated"). This is expected behavior — the reply in Step 7 will reference the new SHA.
+> **Warning**: When using `commitMode: "amend"` (whether from config or user override), the commit SHA changes. This invalidates the position of old review comments on GitHub (they will appear as "outdated"). This is expected behavior — the reply in Step 7 will reference the new SHA.
 
 ### 6.4: Push hook error handling
 

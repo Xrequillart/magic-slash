@@ -227,9 +227,16 @@ Choix (1/2/3) :
 Files changed: {count}
 Lines added: {additions}, Lines removed: {deletions}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Commit mode: {commit_mode_label}  (config: "{commitMode}")
 
-Proceed with commit? (Y/n/diff)
+Proceed?
+  Y     — {commit_mode_action}
+  amend — amend the last commit (git commit --amend)
+  new   — create a new commit (fix: address review feedback)
+  diff  — show full diff
+  n     — abort
+
+(Y/amend/new/diff/n)
 ```
 
 ### fr
@@ -245,9 +252,16 @@ Proceed with commit? (Y/n/diff)
 Fichiers modifiés : {count}
 Lignes ajoutées : {additions}, Lignes supprimées : {deletions}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Mode commit : {commit_mode_label}  (config : "{commitMode}")
 
-Procéder au commit ? (O/n/diff)
+Procéder ?
+  O     — {commit_mode_action}
+  amend — amender le dernier commit (git commit --amend)
+  new   — créer un nouveau commit (fix: address review feedback)
+  diff  — voir le diff complet
+  n     — abandonner
+
+(O/amend/new/diff/n)
 ```
 
 ## MSG_POST_FIX_VALIDATION
