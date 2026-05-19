@@ -1,31 +1,77 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Clock, Trash2, ChevronRight } from 'lucide-react'
+import { Clock, Trash2, ChevronRight, ChevronLeft } from 'lucide-react'
 import { useActivityHistory } from '../../hooks/useActivityHistory'
 import { useHistoryAnalytics } from '../../hooks/useHistoryAnalytics'
 import { ActivityHeatmap } from './ActivityHeatmap'
-import type { HistoryAction } from '../../../types'
+import type { HistoryAction, HistoryEntry } from '../../../types'
 
 const CARD_ANIM_MS = 150
 const CARD_STAGGER_MS = 50
 
-const ACTION_CONFIG: Record<HistoryAction, { label: string; color: string }> = {
-  agent_created: { label: 'Agent created', color: 'bg-accent' },
-  started: { label: 'Started', color: 'bg-green' },
-  waiting: { label: 'Waiting for input', color: 'bg-orange' },
-  completed: { label: 'Task completed', color: 'bg-green' },
-  committed: { label: 'Committed', color: 'bg-yellow' },
-  pr_created: { label: 'PR created', color: 'bg-blue' },
-  review: { label: 'In review', color: 'bg-purple' },
-  review_approved: { label: 'Review approved', color: 'bg-green' },
-  review_changes_requested: { label: 'Changes requested', color: 'bg-red' },
-  merged: { label: 'Merged', color: 'bg-green' },
-  done: { label: 'Done', color: 'bg-teal' },
-  agent_closed: { label: 'Agent closed', color: 'bg-text-secondary' },
+const ACTION_CONFIG: Record<HistoryAction, { label: string; color: string; dot: string }> = {
+  agent_created: { label: 'Agent created', color: 'bg-accent', dot: 'bg-accent' },
+  started: { label: 'Started', color: 'bg-green', dot: 'bg-green' },
+  waiting: { label: 'Waiting for input', color: 'bg-orange', dot: 'bg-orange' },
+  completed: { label: 'Task completed', color: 'bg-green', dot: 'bg-green' },
+  committed: { label: 'Committed', color: 'bg-yellow', dot: 'bg-yellow' },
+  pr_created: { label: 'PR created', color: 'bg-blue', dot: 'bg-blue' },
+  review: { label: 'In review', color: 'bg-purple', dot: 'bg-purple' },
+  review_approved: { label: 'Review approved', color: 'bg-green', dot: 'bg-green' },
+  review_changes_requested: { label: 'Changes requested', color: 'bg-red', dot: 'bg-red' },
+  merged: { label: 'Merged', color: 'bg-green', dot: 'bg-green' },
+  done: { label: 'Done', color: 'bg-teal', dot: 'bg-teal' },
+  agent_closed: { label: 'Agent closed', color: 'bg-text-secondary', dot: 'bg-text-secondary' },
 }
 
 function formatTime(timestamp: number): string {
   const d = new Date(timestamp)
   return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
+function formatDuration(fromTs: number, toTs: number): string {
+  const diffMs = Math.abs(toTs - fromTs)
+  const diffMin = Math.round(diffMs / 60000)
+  if (diffMin < 1) return '< 1 min'
+  if (diffMin < 60) return `${diffMin} min`
+  const h = Math.floor(diffMin / 60)
+  const m = diffMin % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
+}
+
+function RepoTag({ repo }: { repo: string }) {
+  const name = repo.split('/').pop() ?? repo
+  return (
+    <span className="text-xs text-text-secondary/60 bg-white/[0.04] border border-white/[0.06] px-1.5 py-0.5 rounded font-mono">
+      {name}
+    </span>
+  )
+}
+
+function SingleEntryRow({ entry, isDimmed }: { entry: HistoryEntry; isDimmed: boolean }) {
+  const config = ACTION_CONFIG[entry.action]
+  return (
+    <div className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] transition-all duration-200 min-w-0 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}>
+      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${config.dot}`} />
+      <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
+        {formatTime(entry.timestamp)}
+      </span>
+      <span className="text-sm font-medium text-white truncate min-w-0 flex-1">
+        {entry.agentName}
+      </span>
+      {entry.ticketId && (
+        <span className="text-xs text-accent/80 bg-accent/10 px-2 py-0.5 rounded flex-shrink-0">
+          {entry.ticketId}
+        </span>
+      )}
+      {entry.repositories[0] && <RepoTag repo={entry.repositories[0]} />}
+      {entry.repositories.length > 1 && (
+        <span className="text-xs text-text-secondary/40 flex-shrink-0">+{entry.repositories.length - 1}</span>
+      )}
+      <span className="text-xs text-text-secondary flex-shrink-0">
+        {config.label}
+      </span>
+    </div>
+  )
 }
 
 export function HistoryPage() {
@@ -35,9 +81,15 @@ export function HistoryPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [closingGroups, setClosingGroups] = useState<Set<string>>(new Set())
+  const [dayIndex, setDayIndex] = useState(0)
   const groupSizes = useRef<Map<string, number>>(new Map())
   const expandedRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const closingRef = useRef<Set<string>>(new Set())
+
+  // Reset day index when groups change (e.g. after clear)
+  useEffect(() => {
+    setDayIndex(0)
+  }, [groups.length])
 
   const collapseGroup = useCallback((groupId: string) => {
     if (closingRef.current.has(groupId)) return
@@ -79,6 +131,16 @@ export function HistoryPage() {
     setShowConfirm(false)
   }, [clear])
 
+  const goToPrevDay = useCallback(() => {
+    setDayIndex(i => Math.min(i + 1, groups.length - 1))
+    setExpandedGroups(new Set())
+  }, [groups.length])
+
+  const goToNextDay = useCallback(() => {
+    setDayIndex(i => Math.max(i - 1, 0))
+    setExpandedGroups(new Set())
+  }, [])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -104,180 +166,190 @@ export function HistoryPage() {
   }
 
   const hasExpanded = expandedGroups.size > 0
+  const currentGroup = groups[dayIndex]
+  const isFirstDay = dayIndex === 0
+  const isLastDay = dayIndex === groups.length - 1
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 overflow-auto p-6">
-    <div className="flex flex-col gap-10 animate-fade-in max-w-[62rem] mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">History</h1>
-          <p className="text-sm text-text-secondary mt-1">Track your agents' activity across all repositories.</p>
-        </div>
-        {!showConfirm ? (
-          <button
-            onClick={() => setShowConfirm(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/[0.08] rounded-lg hover:bg-white/[0.04] hover:text-white transition-all"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Clear</span>
-          </button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowConfirm(false)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/[0.08] rounded-lg hover:bg-white/[0.04] hover:text-white transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleClear}
-              className="px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all"
-            >
-              Confirm clear
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Analytics dashboard */}
-      {hasEntries && <ActivityHeatmap heatmapData={heatmapData} />}
-
-      {hasEntries && <div className="border-t border-white/[0.08]" />}
-
-      {/* Day groups */}
-      {groups.map(group => (
-        <div key={group.date} className="flex flex-col gap-2">
-          {/* Day header */}
-          <div className="flex items-center gap-3">
-            <h3 className="text-sm font-medium text-text-secondary">
-              {group.label}
-            </h3>
-            <div className="flex-1 h-px bg-white/[0.08]" />
+        <div className="flex flex-col gap-8 animate-fade-in max-w-[62rem] mx-auto">
+          {/* Header */}
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold">History</h1>
+              <p className="text-sm text-text-secondary mt-1">Track your agents' activity across all repositories.</p>
+            </div>
+            {!showConfirm ? (
+              <button
+                onClick={() => setShowConfirm(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/[0.08] rounded-lg hover:bg-white/[0.04] hover:text-white transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowConfirm(false)}
+                  className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/[0.08] rounded-lg hover:bg-white/[0.04] hover:text-white transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleClear}
+                  className="px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all"
+                >
+                  Confirm clear
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Entries */}
-          <div className="flex flex-col gap-1">
-            {group.ticketGroups.map((tg, idx) => {
-              const groupId = `${group.date}-${idx}`
-              const isExpanded = expandedGroups.has(groupId)
-              const isSingle = tg.entries.length === 1
+          {/* Analytics dashboard */}
+          {hasEntries && <ActivityHeatmap heatmapData={heatmapData} />}
 
-              const isDimmed = hasExpanded && !isExpanded
+          {/* Day navigation */}
+          {hasEntries && (
+            <div className="flex items-center justify-between">
+              <button
+                onClick={goToPrevDay}
+                disabled={isLastDay}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/[0.08] rounded-lg hover:bg-white/[0.04] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Older</span>
+              </button>
 
-              if (isSingle) {
-                const entry = tg.entries[0]
-                const config = ACTION_CONFIG[entry.action]
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-sm font-medium text-white">{currentGroup.label}</span>
+                <span className="text-xs text-text-secondary/50">
+                  {currentGroup.entries.length} {currentGroup.entries.length === 1 ? 'event' : 'events'}
+                  {groups.length > 1 && ` · day ${dayIndex + 1} of ${groups.length}`}
+                </span>
+              </div>
+
+              <button
+                onClick={goToNextDay}
+                disabled={isFirstDay}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/[0.08] rounded-lg hover:bg-white/[0.04] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <span>Newer</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Current day entries */}
+          {currentGroup && (
+            <div className="flex flex-col gap-1">
+              {currentGroup.ticketGroups.map((tg, idx) => {
+                const groupId = `${currentGroup.date}-${idx}`
+                const isExpanded = expandedGroups.has(groupId)
+                const isSingle = tg.entries.length === 1
+                const isDimmed = hasExpanded && !isExpanded
+
+                if (isSingle) {
+                  return (
+                    <SingleEntryRow key={groupId} entry={tg.entries[0]} isDimmed={isDimmed} />
+                  )
+                }
+
+                const lastConfig = ACTION_CONFIG[tg.lastAction]
+                // entries are sorted newest-first; oldest = last element
+                const newestTs = tg.entries[0].timestamp
+                const oldestTs = tg.entries[tg.entries.length - 1].timestamp
+                const firstTime = formatTime(oldestTs)
+                const lastTime = formatTime(newestTs)
+                const duration = formatDuration(oldestTs, newestTs)
+
                 return (
                   <div
                     key={groupId}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] transition-all duration-200 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}
+                    className="flex flex-col gap-1"
+                    ref={el => {
+                      if (el) expandedRefs.current.set(groupId, el)
+                      else expandedRefs.current.delete(groupId)
+                    }}
                   >
-                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${config.color}`} />
-                    <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
-                      {formatTime(entry.timestamp)}
-                    </span>
-                    <span className="text-sm font-medium text-white truncate">
-                      {entry.agentName}
-                    </span>
-                    {entry.ticketId && (
-                      <span className="text-xs text-accent/80 bg-accent/10 px-2 py-0.5 rounded flex-shrink-0">
-                        {entry.ticketId}
-                      </span>
-                    )}
-                    <span className="text-xs text-text-secondary ml-auto flex-shrink-0">
-                      {config.label}
-                    </span>
+                    <div className={`rounded-lg bg-white/[0.04] border border-white/[0.08] transition-all duration-200 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}>
+                      <button
+                        onClick={() => toggleGroup(groupId)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.06] transition-colors rounded-lg text-left min-w-0"
+                      >
+                        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${lastConfig.dot}`} />
+                        <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
+                          {firstTime} → {lastTime}
+                        </span>
+                        <span className="text-sm font-medium text-white truncate min-w-0 flex-1">
+                          {tg.agentName}
+                        </span>
+                        {tg.ticketId && (
+                          <span className="text-xs text-accent/80 bg-accent/10 px-2 py-0.5 rounded flex-shrink-0">
+                            {tg.ticketId}
+                          </span>
+                        )}
+                        {(() => {
+                          const allRepos = [...new Set(tg.entries.flatMap(e => e.repositories))]
+                          return allRepos[0] ? (
+                            <>
+                              <RepoTag repo={allRepos[0]} />
+                              {allRepos.length > 1 && (
+                                <span className="text-xs text-text-secondary/40 flex-shrink-0">+{allRepos.length - 1}</span>
+                              )}
+                            </>
+                          ) : null
+                        })()}
+                        <span className="text-xs text-text-secondary/50 flex-shrink-0">
+                          {tg.entries.length} events · {duration}
+                        </span>
+                        <span className="text-xs text-text-secondary flex-shrink-0">
+                          {lastConfig.label}
+                        </span>
+                        <ChevronRight
+                          className={`w-4 h-4 text-text-secondary/40 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
+                        />
+                      </button>
+                    </div>
+                    {isExpanded && (() => {
+                      groupSizes.current.set(groupId, tg.entries.length)
+                      const isClosing = closingGroups.has(groupId)
+                      return tg.entries.map((entry, i) => {
+                        const config = ACTION_CONFIG[entry.action]
+                        const delay = isClosing
+                          ? (tg.entries.length - 1 - i) * CARD_STAGGER_MS
+                          : i * CARD_STAGGER_MS
+                        return (
+                          <div
+                            key={entry.id}
+                            className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] overflow-hidden min-w-0"
+                            style={{
+                              animation: `${isClosing ? 'card-slide-in' : 'card-slide-out'} ${CARD_ANIM_MS}ms ease both`,
+                              animationDelay: `${delay}ms`,
+                            }}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${config.dot}`} />
+                            <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
+                              {formatTime(entry.timestamp)}
+                            </span>
+                            {entry.description && (
+                              <span className="text-xs text-text-secondary/70 truncate min-w-0 flex-1">
+                                {entry.description}
+                              </span>
+                            )}
+                            <span className="text-xs text-text-secondary flex-shrink-0 ml-auto">
+                              {config.label}
+                            </span>
+                          </div>
+                        )
+                      })
+                    })()}
                   </div>
                 )
-              }
-
-              const lastConfig = ACTION_CONFIG[tg.lastAction]
-              const firstTime = formatTime(tg.entries[tg.entries.length - 1].timestamp)
-              const lastTime = formatTime(tg.entries[0].timestamp)
-              return (
-                <div
-                  key={groupId}
-                  className="flex flex-col gap-1"
-                  ref={el => {
-                    if (el) expandedRefs.current.set(groupId, el)
-                    else expandedRefs.current.delete(groupId)
-                  }}
-                >
-                  <div
-                    className={`rounded-lg bg-white/[0.04] border border-white/[0.08] transition-all duration-200 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}
-                  >
-                    <button
-                      onClick={() => toggleGroup(groupId)}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.06] transition-colors rounded-lg text-left"
-                    >
-                      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${lastConfig.color}`} />
-                      <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
-                        {firstTime} → {lastTime}
-                      </span>
-                      <span className="text-sm font-medium text-white truncate">
-                        {tg.agentName}
-                      </span>
-                      {tg.ticketId && (
-                        <span className="text-xs text-accent/80 bg-accent/10 px-2 py-0.5 rounded flex-shrink-0">
-                          {tg.ticketId}
-                        </span>
-                      )}
-                      <span className="text-xs text-text-secondary/50 flex-shrink-0">
-                        {tg.entries.length} events
-                      </span>
-                      <span className="text-xs text-text-secondary ml-auto flex-shrink-0">
-                        {lastConfig.label}
-                      </span>
-                      <ChevronRight
-                        className={`w-4 h-4 text-text-secondary/40 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                      />
-                    </button>
-                  </div>
-                  {isExpanded && (() => {
-                    groupSizes.current.set(groupId, tg.entries.length)
-                    const isClosing = closingGroups.has(groupId)
-                    return tg.entries.map((entry, i) => {
-                      const config = ACTION_CONFIG[entry.action]
-                      const delay = isClosing
-                        ? (tg.entries.length - 1 - i) * CARD_STAGGER_MS
-                        : i * CARD_STAGGER_MS
-                      return (
-                        <div
-                          key={entry.id}
-                          className="flex items-center gap-3 px-4 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.06] overflow-hidden"
-                          style={{
-                            animation: `${isClosing ? 'card-slide-in' : 'card-slide-out'} ${CARD_ANIM_MS}ms ease both`,
-                            animationDelay: `${delay}ms`,
-                          }}
-                        >
-                          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${config.color}`} />
-                          <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
-                            {formatTime(entry.timestamp)}
-                          </span>
-                          <span className="text-sm font-medium text-white truncate">
-                            {entry.agentName}
-                          </span>
-                          {entry.ticketId && (
-                            <span className="text-xs text-accent/80 bg-accent/10 px-2 py-0.5 rounded flex-shrink-0">
-                              {entry.ticketId}
-                            </span>
-                          )}
-                          <span className="text-xs text-text-secondary ml-auto flex-shrink-0">
-                            {config.label}
-                          </span>
-                        </div>
-                      )
-                    })
-                  })()}
-                </div>
-              )
-            })}
-          </div>
+              })}
+            </div>
+          )}
         </div>
-      ))}
-    </div>
       </div>
     </div>
   )
