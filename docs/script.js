@@ -18,7 +18,7 @@ var i18n = {
         'nav.communityCategory': '<i data-feather="users"></i> Community',
         'nav.faq': 'FAQ',
         'nav.updatesCategory': '<i data-feather="zap"></i> Updates',
-        'nav.changelog': 'Changelog <span class="version-badge" id="latestVersion">v0.47.4</span>',
+        'nav.changelog': 'Changelog <span class="version-badge" id="latestVersion">v0.48.0</span>',
         // Hero
         'hero.title': 'The boring parts,<br>automated.',
         'hero.subtitle': 'From ticket to merge — without the busywork.',
@@ -297,7 +297,7 @@ var i18n = {
         'nav.communityCategory': '<i data-feather="users"></i> Communauté',
         'nav.faq': 'FAQ',
         'nav.updatesCategory': '<i data-feather="zap"></i> Mises à jour',
-        'nav.changelog': 'Changelog <span class="version-badge" id="latestVersion">v0.47.4</span>',
+        'nav.changelog': 'Changelog <span class="version-badge" id="latestVersion">v0.48.0</span>',
         // Hero
         'hero.title': 'Les tâches ingrates,<br>automatisées.',
         'hero.subtitle': 'Du ticket au merge — sans la corvée.',
