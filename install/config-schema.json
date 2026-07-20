@@ -154,7 +154,7 @@
           "properties": {
             "commitMode": {
               "type": "string",
-              "enum": ["new", "amend"]
+              "enum": ["new", "amend", "ask"]
             },
             "format": {
               "type": "string",

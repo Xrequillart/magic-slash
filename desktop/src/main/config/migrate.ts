@@ -155,7 +155,7 @@ export function repairConfig(): { repaired: boolean; fixes: string[] } {
   const validLanguages = ['en', 'fr']
   const validFormats = ['angular', 'conventional', 'gitmoji', 'none']
   const validStyles = ['single-line', 'multi-line']
-  const validCommitModes = ['new', 'amend']
+  const validCommitModes = ['new', 'amend', 'ask']
 
   if (config.repositories) {
     for (const [name, repo] of Object.entries(config.repositories)) {

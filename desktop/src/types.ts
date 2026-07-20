@@ -50,7 +50,7 @@ export interface RepositoryConfig {
     includeTicketId?: boolean
   }
   resolve?: {
-    commitMode?: string        // 'new' | 'amend'
+    commitMode?: string        // 'new' | 'amend' | 'ask'
     format?: string            // 'conventional' | 'angular' | 'gitmoji' | 'none'
     style?: string             // 'single-line' | 'multi-line'
     useCommitConfig?: boolean  // true = inherit from commit settings
