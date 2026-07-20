@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { classifyTerminal } from './useGroupedTerminals'
+import { classifyTerminal } from './groupedTerminals'
 import type { TerminalInfo, TerminalState, TerminalMetadata } from '../../types'
 
 function terminal(state: TerminalState, status?: TerminalMetadata['status']): TerminalInfo {
