@@ -173,9 +173,15 @@ CONFIG_FILE=~/.config/magic-slash/config.json
 # Resolve the repo key whose path matches the current worktree/repo root.
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
 REPO_KEY=$(jq -r --arg pwd "$REPO_ROOT" '
-  .repositories | to_entries[]
-  | select(($pwd | startswith(.value.path)) or (.value.path == $pwd))
-  | .key' "$CONFIG_FILE" | head -n1)
+  .repositories | to_entries
+  # Longest path first so the most specific repo wins on a tie, then match on a
+  # path boundary only. Worktrees are siblings named "{path}-{TICKET}", so the
+  # "-" boundary is accepted alongside exact match and the "/" child boundary.
+  # This prevents /projects/api from mis-matching a /projects/api-v2 worktree.
+  | sort_by(.value.path | length) | reverse
+  | map(select(.value.path as $p
+      | ($pwd == $p) or ($pwd | startswith($p + "/")) or ($pwd | startswith($p + "-"))))
+  | .[0].key // ""' "$CONFIG_FILE")
 
 # Helper: read a resolve field with a fallback default.
 rget() { jq -r --arg k "$REPO_KEY" --arg f "$1" --arg d "$2" \
@@ -197,7 +203,21 @@ else
   RESOLVE_FORMAT=$(rget format "$(cget format angular)")
   RESOLVE_STYLE=$(rget style "$(cget style single-line)")
 fi
+
+# Shell state does NOT persist across Bash invocations in the Claude Code
+# harness, so echo every resolved value: this is what lets the model capture
+# them into context for Steps 5.5, 6, 7 and 7.5. Do not skip these echoes.
+echo "REPO_KEY=$REPO_KEY"
+echo "RESOLVE_COMMIT_MODE=$RESOLVE_COMMIT_MODE"
+echo "RESOLVE_USE_COMMIT_CONFIG=$RESOLVE_USE_COMMIT_CONFIG"
+echo "RESOLVE_FORMAT=$RESOLVE_FORMAT"
+echo "RESOLVE_STYLE=$RESOLVE_STYLE"
+echo "RESOLVE_REPLY=$RESOLVE_REPLY"
+echo "RESOLVE_REPLY_LANG=$RESOLVE_REPLY_LANG"
+echo "RESOLVE_AUTO_REREQUEST=$RESOLVE_AUTO_REREQUEST"
 ```
+
+> **Important**: The `echo` lines above are functionally required, not cosmetic. Because each Bash call runs in a fresh shell, the variable assignments are gone by the next step — the model must read the echoed values from this step's output and carry them forward. Downstream steps reference these captured values (e.g. "the pinned `$RESOLVE_COMMIT_MODE`"), not a live shell variable.
 
 | Variable | Config path | Default |
 | -------- | ----------- | ------- |
