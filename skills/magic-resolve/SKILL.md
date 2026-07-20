@@ -36,16 +36,19 @@ Read `~/.config/magic-slash/config.json` and determine the parameters based on t
 | Style             | `.repositories.<name>.resolve.style`           | *(from commit config)* |
 | Use commit config | `.repositories.<name>.resolve.useCommitConfig` | `true`    |
 | Reply to comments | `.repositories.<name>.resolve.replyToComments` | `true`    |
+| Reply language    | `.repositories.<name>.resolve.replyLanguage`   | `"en"`    |
 | Re-request review | `.repositories.<name>.resolve.autoReRequestReview` | `true`  |
 
 **Logic:**
 - `commitMode: "new"` (default) → create new commit + `git push`
 - `commitMode: "amend"` → `git commit --amend --no-edit` + `git push --force-with-lease`
+- `commitMode: "ask"` → prompt the user for `new` vs `amend` at preview time (Step 5.5); the chosen mode drives Step 6 for this run only
 - `useCommitConfig: true` (default) → format/style are read from `.repositories.<name>.commit.*`
 - `useCommitConfig: false` → format/style are read from `.repositories.<name>.resolve.*`
 - When `commitMode: "amend"`, format/style are irrelevant (no new message)
 - `replyToComments: true` (default) → reply in-thread on each resolved comment (Step 7)
 - `replyToComments: false` → skip Step 7 entirely
+- `replyLanguage` (default `"en"`) → language of the in-thread reply bodies in Step 7 (independent of the discussion language)
 - `autoReRequestReview: true` (default) → automatically re-request review from original reviewers (Step 7.5)
 - `autoReRequestReview: false` → skip Step 7.5, suggest manual re-request in summary
 
@@ -159,6 +162,54 @@ If a worktree fails during its resolve cycle (push error, API failure, etc.):
 1. **Do not stop the entire process** — log the failure for this worktree
 2. **Continue to the next worktree** after displaying **`MSG_MULTI_REPO_FAILURE`**, substituting `{worktree-name}` and `{error reason}`
 3. **Include failed worktrees in the Step 10 summary** with their error status
+
+### 0.7: Read resolve parameters from config
+
+The config was already dumped in Step 0.3. Before proceeding, resolve the current repo (compare `$PWD` against each `.repositories.<name>.path`) and **pin every resolve parameter into concrete shell variables now**, using `jq`. Downstream steps (5.5, 6, 7, 7.5) MUST reference these pinned variables — do not re-derive the values later.
+
+```bash
+CONFIG_FILE=~/.config/magic-slash/config.json
+
+# Resolve the repo key whose path matches the current worktree/repo root.
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
+REPO_KEY=$(jq -r --arg pwd "$REPO_ROOT" '
+  .repositories | to_entries[]
+  | select(($pwd | startswith(.value.path)) or (.value.path == $pwd))
+  | .key' "$CONFIG_FILE" | head -n1)
+
+# Helper: read a resolve field with a fallback default.
+rget() { jq -r --arg k "$REPO_KEY" --arg f "$1" --arg d "$2" \
+  '(.repositories[$k].resolve[$f]) // $d' "$CONFIG_FILE"; }
+cget() { jq -r --arg k "$REPO_KEY" --arg f "$1" --arg d "$2" \
+  '(.repositories[$k].commit[$f]) // $d' "$CONFIG_FILE"; }
+
+RESOLVE_COMMIT_MODE=$(rget commitMode new)             # new | amend | ask
+RESOLVE_USE_COMMIT_CONFIG=$(rget useCommitConfig true) # true | false
+RESOLVE_REPLY=$(rget replyToComments true)             # true | false
+RESOLVE_REPLY_LANG=$(rget replyLanguage en)            # en | fr | ...
+RESOLVE_AUTO_REREQUEST=$(rget autoReRequestReview true)
+
+# Format/style: inherit from commit config when useCommitConfig is true.
+if [ "$RESOLVE_USE_COMMIT_CONFIG" = "true" ]; then
+  RESOLVE_FORMAT=$(cget format angular)
+  RESOLVE_STYLE=$(cget style single-line)
+else
+  RESOLVE_FORMAT=$(rget format "$(cget format angular)")
+  RESOLVE_STYLE=$(rget style "$(cget style single-line)")
+fi
+```
+
+| Variable | Config path | Default |
+| -------- | ----------- | ------- |
+| `$RESOLVE_COMMIT_MODE` | `.repositories.<name>.resolve.commitMode` | `"new"` |
+| `$RESOLVE_USE_COMMIT_CONFIG` | `.repositories.<name>.resolve.useCommitConfig` | `true` |
+| `$RESOLVE_FORMAT` | `resolve.format` (or `commit.format` if `useCommitConfig`) | `"angular"` |
+| `$RESOLVE_STYLE` | `resolve.style` (or `commit.style` if `useCommitConfig`) | `"single-line"` |
+| `$RESOLVE_REPLY` | `.repositories.<name>.resolve.replyToComments` | `true` |
+| `$RESOLVE_REPLY_LANG` | `.repositories.<name>.resolve.replyLanguage` | `"en"` |
+| `$RESOLVE_AUTO_REREQUEST` | `.repositories.<name>.resolve.autoReRequestReview` | `true` |
+
+> **Multi-repo**: Re-run this step for each worktree before its resolve cycle (Step 0.6), since each repo may have its own resolve config.
 
 ## Step 1: Detect the ticket and worktree
 
@@ -294,30 +345,41 @@ After all fixes are applied, display a diff preview so the user can review the a
 git diff
 ```
 
+### Resolve the effective commit mode
+
+The **effective commit mode** for this run is defined as follows, based on `$RESOLVE_COMMIT_MODE` (from Step 0.7):
+
+- `$RESOLVE_COMMIT_MODE` is `"new"` or `"amend"` → the effective mode is that value (the user may still override it below).
+- `$RESOLVE_COMMIT_MODE` is `"ask"` → there is **no default to confirm**. Prompt the user to choose between `new` and `amend` (use `AskUserQuestion`, or accept `new` / `amend` typed at the preview). The chosen value becomes the effective mode for this run only and is **not** written back to the config.
+
+Once resolved, store the value as the effective `commitMode` and use it consistently in Step 6.
+
 ### Determine the commit mode label and action label
 
-Before displaying the message, compute two display strings based on the active `commitMode` value:
+Before displaying the message, compute two display strings based on the effective `commitMode` value:
 
-| `commitMode` | `{commit_mode_label}` | `{commit_mode_action}` |
-| ------------ | --------------------- | ---------------------- |
+| effective `commitMode` | `{commit_mode_label}` | `{commit_mode_action}` |
+| ---------------------- | --------------------- | ---------------------- |
 | `"new"` | `new commit` | `create a new commit (fix: address review feedback)` |
 | `"amend"` | `amend last commit` | `amend the last commit (git commit --amend --no-edit)` |
 
-Display **`MSG_CHANGES_PREVIEW`**, substituting `{TICKET-ID}`, the list of modified files (each with `{file}`, `{fix_summary}`, `{reviewer}`), `{count}`, `{additions}`, `{deletions}`, `{commit_mode_label}`, `{commitMode}` (raw config value), and `{commit_mode_action}`.
+> When `$RESOLVE_COMMIT_MODE` is `"ask"`, resolve the choice **before** computing these labels so the preview reflects the mode the user just picked.
+
+Display **`MSG_CHANGES_PREVIEW`**, substituting `{TICKET-ID}`, the list of modified files (each with `{file}`, `{fix_summary}`, `{reviewer}`), `{count}`, `{additions}`, `{deletions}`, `{commit_mode_label}`, `{commitMode}` (effective value), and `{commit_mode_action}`.
 
 ### Handle user response
 
-The `Y`/`O` key confirms using the active commit mode. The user may also type `amend` or `new` to override the configured mode for this run only (without modifying the config file).
+The `Y`/`O` key confirms using the effective commit mode. The user may also type `amend` or `new` to override the mode for this run only (without modifying the config file).
 
 | Input | Action |
 | ----- | ------ |
-| `Y` / `O` | Proceed to Step 5.9 using the active `commitMode` |
-| `amend` | Override: set `commitMode = "amend"` for this run, proceed to Step 5.9 |
-| `new` | Override: set `commitMode = "new"` for this run, proceed to Step 5.9 |
+| `Y` / `O` | Proceed to Step 5.9 using the effective `commitMode` |
+| `amend` | Override: set effective `commitMode = "amend"` for this run, proceed to Step 5.9 |
+| `new` | Override: set effective `commitMode = "new"` for this run, proceed to Step 5.9 |
 | `diff` | Display the full `git diff` output and ask again |
 | `n` | Abort the resolve, discard changes with `git checkout -- .` and stop |
 
-> **Note**: `amend` and `new` are only offered as override options when they differ from the active mode. If `commitMode` is already `"amend"`, typing `amend` is equivalent to `Y`.
+> **Note**: `amend` and `new` are only offered as override options when they differ from the effective mode. If the effective mode is already `"amend"`, typing `amend` is equivalent to `Y`. When `$RESOLVE_COMMIT_MODE` is `"ask"`, the mandatory choice already happened above, so this table just lets the user switch their pick before confirming.
 
 ## Step 5.9: Post-fix validation
 
@@ -385,11 +447,11 @@ git add <modified-files>
 
 ### 6.2: Commit
 
-Use the effective `commitMode` value — either the one from the resolve config (default: `"new"`) or the override chosen by the user in Step 5.5.
+Use the effective `commitMode` resolved in Step 5.5 — derived from `$RESOLVE_COMMIT_MODE` (Step 0.7), with the `"ask"` prompt or any manual override already applied. It is now always either `"new"` or `"amend"`.
 
 #### When effective `commitMode` is `"new"` (default)
 
-Create a commit with a message that clearly indicates it addresses PR review feedback. Use the format/style from the resolve config (or inherit from commit config if `useCommitConfig` is `true`):
+Create a commit with a message that clearly indicates it addresses PR review feedback. Use `$RESOLVE_FORMAT` and `$RESOLVE_STYLE` (pinned in Step 0.7, already accounting for `useCommitConfig`):
 
 ```bash
 git commit -m "fix(pr): address review feedback for {TICKET-ID}"
@@ -501,7 +563,9 @@ Display **`MSG_PUSH_AUTO_FIX`** during the correction process, substituting the 
 
 ## Step 7: Reply to resolved comments on GitHub
 
-> **Condition**: Only execute this step if `replyToComments` is `true` (default). If `replyToComments` is `false`, skip this step entirely.
+> **Condition**: Only execute this step if `$RESOLVE_REPLY` (from Step 0.7, `resolve.replyToComments`, default `true`) is `true`. If it is `false`, skip this step entirely.
+>
+> **Language**: Write the reply bodies in `$RESOLVE_REPLY_LANG` (from Step 0.7, `resolve.replyLanguage`, default `en`). This is independent of the discussion language — respect `$RESOLVE_REPLY_LANG` even if it differs.
 >
 > **Prerequisite**: If `$GH_AVAILABLE` is `false` (detected in Step 0.0), skip the `gh api` approach and go directly to the MCP fallback.
 
@@ -528,19 +592,19 @@ For each `gh api` call, if it fails with a transient error (HTTP 5xx, network ti
 
 #### Message template
 
-Use **`MSG_REPLY_TEMPLATE`** for the reply body, substituting `{COMMIT_SHA}` (short SHA, first 7 characters from `git rev-parse --short HEAD`) and `{fix_summary}` (concise one-line description of the fix applied).
+Use **`MSG_REPLY_TEMPLATE`** for the reply body, substituting `{COMMIT_SHA}` (short SHA, first 7 characters from `git rev-parse --short HEAD`) and `{fix_summary}` (concise one-line description of the fix applied). Render the template and `{fix_summary}` in `$RESOLVE_REPLY_LANG`.
 
 ### Fallback: `mcp__github__add_issue_comment`
 
 If the `gh` CLI is not available or all `gh api` calls fail, fall back to creating a single consolidated top-level comment using `mcp__github__add_issue_comment`.
 
-Use **`MSG_REPLY_FALLBACK`** for the fallback comment body, substituting `{COMMIT_SHA}` and the list of resolved comments (each with `{file}`, `{line}`, `{fix_summary}`).
+Use **`MSG_REPLY_FALLBACK`** for the fallback comment body, substituting `{COMMIT_SHA}` and the list of resolved comments (each with `{file}`, `{line}`, `{fix_summary}`). Render it in `$RESOLVE_REPLY_LANG`.
 
 > **Note**: If both `gh api` and the MCP fallback fail, log a warning but do not block the workflow.
 
 ## Step 7.5: Re-request review
 
-> **Condition**: Only execute this step if `autoReRequestReview` is `true` (default). If `autoReRequestReview` is `false`, skip this step entirely.
+> **Condition**: Only execute this step if `$RESOLVE_AUTO_REREQUEST` (from Step 0.7, `resolve.autoReRequestReview`, default `true`) is `true`. If it is `false`, skip this step entirely.
 >
 > **Prerequisite**: If `$GH_AVAILABLE` is `false` (detected in Step 0.0), skip this step and add "Request re-review manually" to the Step 9 next steps.
 
