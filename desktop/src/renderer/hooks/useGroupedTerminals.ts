@@ -28,10 +28,15 @@ export function classifyTerminal(terminal: TerminalInfo): WorkflowGroupKey {
 
   if (state === 'error' || state === 'waiting') return 'needs_attention'
 
-  if (['PR created', 'in review', 'changes requested'].includes(status)) return 'in_review'
+  if (['PR created', 'in review', 'changes requested', 'Review addressed'].includes(status)) return 'in_review'
   if (status === 'PR merged') return 'done'
+  if (['', 'in progress', 'committed', 'ready for PR'].includes(status)) return 'active'
 
-  return 'active'
+  // Safety net: a non-empty status we don't explicitly recognize means the
+  // workflow has progressed past the known "active" states (e.g. a newer skill
+  // sent a value the desktop app doesn't know yet). Treat it as in_review rather
+  // than letting it silently fall back to "active" and relocate the card.
+  return 'in_review'
 }
 
 function groupTerminals(terminalList: TerminalInfo[], config: Config | null) {

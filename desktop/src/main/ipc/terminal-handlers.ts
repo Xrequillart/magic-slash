@@ -154,6 +154,7 @@ function createTerminalCallbacks(id: string, name: string) {
           'committed': 'committed',
           'PR created': 'pr_created',
           'in review': 'review',
+          'Review addressed': 'review',
           'PR merged': 'merged',
         }
         const action = statusToAction[newStatus]
