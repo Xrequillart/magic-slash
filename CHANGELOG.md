@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.49.1] - 2026-07-20
+
+### Fixed
+
+- **Desktop**: Decouple terminal grouping logic from react for CI tests
+
 ## [0.49.0] - 2026-07-20
 
 ### Added
@@ -1442,6 +1448,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.49.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.49.1
 [0.49.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.49.0
 [0.48.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.48.0
 [0.47.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.47.4
