@@ -249,7 +249,7 @@ export function updateRepositoryResolveSettings(name: string, settings: Settings
 
   const resolve = config.repositories[name].resolve = config.repositories[name].resolve || {}
 
-  applySetting(resolve, 'commitMode', settings.commitMode, isOneOf(['new', 'amend']))
+  applySetting(resolve, 'commitMode', settings.commitMode, isOneOf(['new', 'amend', 'ask']))
   applySetting(resolve, 'format', settings.format, isOneOf(['conventional', 'angular', 'gitmoji', 'none']))
   applySetting(resolve, 'style', settings.style, isOneOf(['single-line', 'multi-line']))
   applySetting(resolve, 'useCommitConfig', settings.useCommitConfig, isBool)

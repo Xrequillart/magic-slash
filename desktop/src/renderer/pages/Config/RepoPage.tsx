@@ -729,13 +729,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
               >
                 <option value="new">New commit</option>
                 <option value="amend">Amend last commit</option>
+                <option value="ask">Ask (choose at runtime)</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
             </div>
           </div>
 
-          {/* Commit Format Source - only when mode is 'new' */}
-          {resolveCommitModeVal === 'new' && (
+          {/* Commit Format Source - shown when a new commit is possible (new or ask) */}
+          {resolveCommitModeVal !== 'amend' && (
             <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">Commit Format</label>
@@ -755,8 +756,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
           )}
 
-          {/* Custom Style & Format - only when mode is 'new' and useCommitConfig is false */}
-          {resolveCommitModeVal === 'new' && !resolveUseCommitConfigVal && (
+          {/* Custom Style & Format - when a new commit is possible (new or ask) and useCommitConfig is false */}
+          {resolveCommitModeVal !== 'amend' && !resolveUseCommitConfigVal && (
             <>
               <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
                 <div className="flex-1">
@@ -838,15 +839,22 @@ export function RepoPage({ repoName }: RepoPageProps) {
           )}
 
           {/* Preview / Info */}
-          {resolveCommitModeVal === 'new' ? (
+          {resolveCommitModeVal === 'new' && (
             <div className="mt-4 p-3 bg-white/5 border border-white/5 rounded-lg">
               <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">Example</div>
               <pre className="text-sm whitespace-pre-wrap text-text-secondary">{resolvePreview}</pre>
             </div>
-          ) : (
+          )}
+          {resolveCommitModeVal === 'amend' && (
             <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0" />
               <span className="text-sm text-text-secondary">Push will use <code className="text-xs bg-white/10 px-1.5 py-0.5 rounded">--force-with-lease</code></span>
+            </div>
+          )}
+          {resolveCommitModeVal === 'ask' && (
+            <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0 mt-0.5" />
+              <span className="text-sm text-text-secondary">You'll be asked to choose <strong>new commit</strong> or <strong>amend</strong> on each resolve. Choosing amend will push with <code className="text-xs bg-white/10 px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
             </div>
           )}
         </div>

@@ -5,7 +5,7 @@ argument-hint: <base-branch> (optional, e.g., develop, staging)
 allowed-tools: Bash(*), Read, mcp__github__*, mcp__atlassian__*, AskUserQuestion
 ---
 
-# magic-slash v0.47.4 - /pr
+# magic-slash v0.49.1 - /pr
 
 > Follow each step in order. Skipping steps leads to broken PRs, stale Jira tickets, or a desynchronized Desktop UI.
 >
@@ -303,7 +303,8 @@ Then selectively read the **key files** (business logic, API routes, components)
 
 1. From the `--stat` output, identify key files vs secondary files (tests, config, types, lock files)
 2. Read key modified files individually using `Read` to understand the changes in context
-3. Use this understanding to write a meaningful summary and concrete testing instructions in Step 6
+3. While reading, note the user-visible surfaces touched (routes/pages, UI components, API endpoints, CLI commands) and the test environment needed (env vars, seed data, a service to run) — this is the raw material for the manual test scenarios in Step 6
+4. Use this understanding to write a meaningful summary and concrete testing instructions in Step 6
 
 Only use `git diff origin/$DEV_BRANCH..HEAD` for small changes (< 10 files, < 200 lines total). For anything larger, the selective approach above produces better PR descriptions while consuming far less context.
 
@@ -315,7 +316,7 @@ Check if a PR template exists in the project:
 cat .github/PULL_REQUEST_TEMPLATE.md 2>/dev/null || cat .github/pull_request_template.md 2>/dev/null || cat docs/pull_request_template.md 2>/dev/null || echo ""
 ```
 
-If a template exists, you must **strictly follow it** and fill in its sections. For any section related to testing (e.g., "Testing", "How to test", "Test Steps", "Comment tester", "Vérification"), you must **analyze the diff from Step 4.1** to fill it with concrete, specific testing steps based on the actual code changes. Do NOT use generic placeholders.
+If a template exists, you must **strictly follow it** and fill in its sections. For any section related to testing (e.g., "Testing", "How to test", "Test Steps", "Comment tester", "Vérification"), you must **analyze the diff from Step 4.1** to fill it with concrete, specific testing steps based on the actual code changes. Do NOT use generic placeholders. The same rules as the default template apply: write numbered manual scenarios from the user's point of view (each pairing an action with its observable expected result), never "run the automated tests" as the sole content, and — if the PR has no manually testable surface (docs-only, CI, pure refactor) — state that plainly instead of inventing a scenario.
 
 ## Step 5.1: Check for conflicts with base branch
 
@@ -406,6 +407,9 @@ After the user confirms, verify the PR body before passing it to the MCP tool. I
 2. **No unfilled template placeholders**: the body must not contain instruction text inside square brackets (e.g., `[Concise summary of changes]`, `[List of commits]`). Every `[instruction]` from the template must have been replaced with actual content.
 3. **Required section headers present**: the body must contain at least `## Summary` and `## Changes` as distinct lines (or their FR equivalents `## Résumé` and `## Changements` if `languages.pullRequest` is `"fr"`).
 4. **Non-empty sections**: each section heading must be followed by at least one non-blank line of actual content before the next heading or end of body.
+5. **Testing section is a real manual scenario**: locate the testing section under EITHER the default headers (`## How to test` / `## Comment tester`) OR any testing-related project-template heading (e.g. `## Testing`, `### Test Steps`, `## Vérification`, `## QA`) — whichever is present. The section PASSES if it meets EITHER of these conditions:
+   - **Manual scenario**: contains at least one numbered step (a line starting with `1.`) and does NOT consist solely of a test command (e.g. only "run npm test" / "lancer npm test"). A single automated-test line is acceptable only as an optional last line after the manual steps.
+   - **No-surface declaration**: explicitly states there is no manual test surface (docs-only/CI/pure refactor), e.g. "No manual test surface — docs-only change; verify rendering / links". In this case a numbered step is NOT required.
 
 **If any check fails:**
 - Log which check(s) failed

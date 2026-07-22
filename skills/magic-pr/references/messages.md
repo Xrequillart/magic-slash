@@ -321,11 +321,12 @@ Créer cette PR ? (O/n/edit)
 
 ## How to test
 
-[Based on the diff from Step 4.1, write concrete step-by-step testing instructions:
-- Identify the features/fixes changed in the diff
-- For each change, describe how to verify it works
-- Include expected results
-Do NOT use generic placeholders - every step must be specific to the actual changes]
+[Write concrete MANUAL test scenarios from the user's point of view, grounded in the actual diff from Step 4.1 (the user-visible surfaces and test environment identified there):
+- If setup is needed, start with a single prerequisites line (env vars, seed data, a service to run).
+- Then list 2-5 numbered actions. Each step pairs a concrete action (open a URL/page, click a UI element, run a CLI command, call an endpoint) with its observable expected result — action → expected result.
+- Do NOT write "run the automated tests" (npm test, etc.) as the only instruction. A single automated-test line is allowed ONLY as an optional last line AFTER the manual steps.
+- If the PR has no manually testable surface (docs-only, CI, pure refactor), do NOT invent a scenario: state it plainly instead, e.g. "No manual test surface — docs-only change; verify rendering / links".
+Every step must be specific to the actual changes — no generic placeholders.]
 ```
 
 ## MSG_PR_TEMPLATE_FR
@@ -343,11 +344,12 @@ Do NOT use generic placeholders - every step must be specific to the actual chan
 
 ## Comment tester
 
-[À partir du diff récupéré au Step 4.1, rédiger des instructions de test concrètes étape par étape :
-- Identifier les fonctionnalités/corrections modifiées dans le diff
-- Pour chaque changement, décrire comment vérifier qu'il fonctionne
-- Inclure les résultats attendus
-Ne PAS utiliser de placeholders génériques - chaque étape doit être spécifique aux changements réels]
+[Rédiger des scénarios de test MANUELS concrets du point de vue de l'utilisateur, ancrés dans le diff réel du Step 4.1 (les surfaces visibles par l'utilisateur et l'environnement de test identifiés à cette étape) :
+- Si une préparation est nécessaire, commencer par une seule ligne de prérequis (variables d'environnement, données de départ, un service à lancer).
+- Puis lister 2 à 5 actions numérotées. Chaque étape associe une action concrète (ouvrir une URL/page, cliquer sur un élément d'UI, lancer une commande CLI, appeler un endpoint) à son résultat attendu observable — action → résultat attendu.
+- Ne PAS écrire « lancer les tests automatisés » (npm test, etc.) comme seule instruction. Une unique ligne de tests automatisés n'est autorisée QU'EN dernière ligne optionnelle, APRÈS les étapes manuelles.
+- Si la PR n'a aucune surface testable manuellement (docs uniquement, CI, refactoring pur), ne PAS inventer de scénario : le dire clairement à la place, ex. « Aucune surface de test manuel — changement docs uniquement ; vérifier le rendu / les liens ».
+Chaque étape doit être spécifique aux changements réels — pas de placeholders génériques.]
 ```
 
 ## MSG_JIRA_COMMENT
