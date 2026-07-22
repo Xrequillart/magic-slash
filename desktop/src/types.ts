@@ -19,6 +19,12 @@ export interface TerminalUsage {
   durationMs?: number        // cost.total_duration_ms
   linesAdded?: number        // cost.total_lines_added
   linesRemoved?: number      // cost.total_lines_removed
+  // Plan rate limits — only present for Claude.ai Pro/Max subscribers, after the
+  // first API response in the session. Absent for API/Console users.
+  fiveHourPercent?: number   // rate_limits.five_hour.used_percentage (0-100)
+  fiveHourResetsAt?: number  // rate_limits.five_hour.resets_at (unix epoch seconds)
+  sevenDayPercent?: number   // rate_limits.seven_day.used_percentage (0-100)
+  sevenDayResetsAt?: number  // rate_limits.seven_day.resets_at (unix epoch seconds)
   updatedAt?: number         // timestamp of last statusline report
 }
 

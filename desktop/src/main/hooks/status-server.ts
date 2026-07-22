@@ -73,6 +73,10 @@ export function parseStatusLinePayload(body: string): TerminalUsage {
   const data = JSON.parse(body)
   const ctx = data?.context_window ?? {}
   const cost = data?.cost ?? {}
+  const rateLimits = data?.rate_limits ?? {}
+  const fiveHour = rateLimits?.five_hour ?? {}
+  const sevenDay = rateLimits?.seven_day ?? {}
+  const numOrUndef = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined)
 
   const contextWindowSize = typeof ctx.context_window_size === 'number' ? ctx.context_window_size : undefined
   const contextPercent = typeof ctx.used_percentage === 'number' ? ctx.used_percentage : undefined
@@ -95,6 +99,10 @@ export function parseStatusLinePayload(body: string): TerminalUsage {
     durationMs: typeof cost.total_duration_ms === 'number' ? cost.total_duration_ms : undefined,
     linesAdded: typeof cost.total_lines_added === 'number' ? cost.total_lines_added : undefined,
     linesRemoved: typeof cost.total_lines_removed === 'number' ? cost.total_lines_removed : undefined,
+    fiveHourPercent: numOrUndef(fiveHour.used_percentage),
+    fiveHourResetsAt: numOrUndef(fiveHour.resets_at),
+    sevenDayPercent: numOrUndef(sevenDay.used_percentage),
+    sevenDayResetsAt: numOrUndef(sevenDay.resets_at),
   }
 }
 

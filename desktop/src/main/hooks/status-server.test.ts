@@ -16,6 +16,10 @@ describe('parseStatusLinePayload', () => {
       total_lines_added: 120,
       total_lines_removed: 45,
     },
+    rate_limits: {
+      five_hour: { used_percentage: 23.5, resets_at: 1738425600 },
+      seven_day: { used_percentage: 41.2, resets_at: 1738857600 },
+    },
   })
 
   it('extracts cost, model, duration and lines', () => {
@@ -44,12 +48,31 @@ describe('parseStatusLinePayload', () => {
     expect(usage.contextTokens).toBe(500_000)
   })
 
+  it('extracts plan rate limits (5h / 7d) when present', () => {
+    const usage = parseStatusLinePayload(fullPayload)
+    expect(usage.fiveHourPercent).toBe(23.5)
+    expect(usage.fiveHourResetsAt).toBe(1738425600)
+    expect(usage.sevenDayPercent).toBe(41.2)
+    expect(usage.sevenDayResetsAt).toBe(1738857600)
+  })
+
+  it('leaves rate-limit fields undefined for API users (no rate_limits block)', () => {
+    const usage = parseStatusLinePayload('{"cost":{"total_cost_usd":1}}')
+    expect(usage.costUsd).toBe(1)
+    expect(usage.fiveHourPercent).toBeUndefined()
+    expect(usage.fiveHourResetsAt).toBeUndefined()
+    expect(usage.sevenDayPercent).toBeUndefined()
+    expect(usage.sevenDayResetsAt).toBeUndefined()
+  })
+
   it('returns undefined fields for a minimal/empty payload', () => {
     const usage = parseStatusLinePayload('{}')
     expect(usage.costUsd).toBeUndefined()
     expect(usage.contextPercent).toBeUndefined()
     expect(usage.contextTokens).toBeUndefined()
     expect(usage.model).toBeUndefined()
+    expect(usage.fiveHourPercent).toBeUndefined()
+    expect(usage.sevenDayPercent).toBeUndefined()
   })
 
   it('ignores fields with the wrong type', () => {
