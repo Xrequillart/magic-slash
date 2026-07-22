@@ -38,7 +38,7 @@
     "@commitlint/config-conventional": "^21.0.1",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.4.0",
-    "globals": "^17.6.0",
+    "globals": "^17.7.0",
     "typescript-eslint": "^8.59.4",
     "vitest": "^4.1.9"
   },
