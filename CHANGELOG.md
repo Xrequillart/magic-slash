@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.50.0] - 2026-07-22
+
+### Added
+
+- **Desktop**: Show live context usage and cost in agent sidebar
+
+### Changed
+
+- **Deps**: Bump actions/setup-node from 4 to 7
+- **Deps**: Bump vitest from 4.1.9 to 4.1.10
+- **Deps**: Bump globals from 17.6.0 to 17.7.0
+- **Deps**: Bump actions/checkout from 4 to 7
+- **Deps**: Bump the linters group with 4 updates
+
+### Fixed
+
+- **Pr**: Address review feedback
+
 ## [0.49.1] - 2026-07-20
 
 ### Fixed
@@ -1448,6 +1466,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.50.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.50.0
 [0.49.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.49.1
 [0.49.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.49.0
 [0.48.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.48.0
