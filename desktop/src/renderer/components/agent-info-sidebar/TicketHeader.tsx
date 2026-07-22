@@ -11,11 +11,20 @@ const STATUS_OPTIONS = [
   { value: 'PR created',   label: 'PR created',    bg: 'bg-green/20',      text: 'text-green' },
   { value: 'in review',    label: 'in review',     bg: 'bg-blue/20',       text: 'text-blue' },
   { value: 'changes requested', label: 'changes requested', bg: 'bg-red/20', text: 'text-red' },
+  { value: 'Review addressed', label: 'review addressed', bg: 'bg-teal-500/20', text: 'text-teal-400' },
   { value: 'PR merged',    label: 'PR merged',     bg: 'bg-purple/20',     text: 'text-purple' },
 ] as const
 
+// Neutral badge for a non-empty status that isn't in STATUS_OPTIONS (e.g. a newer
+// skill/desktop version drift). Show the raw value rather than silently falling
+// back to "no status", which would hide that the workflow actually progressed.
+const UNKNOWN_STATUS_STYLE = { bg: 'bg-white/10', text: 'text-text-secondary' } as const
+
 function getStatusOption(status: string) {
-  return STATUS_OPTIONS.find(s => s.value === status) ?? STATUS_OPTIONS[0]
+  const match = STATUS_OPTIONS.find(s => s.value === status)
+  if (match) return match
+  if (status) return { value: status, label: status, ...UNKNOWN_STATUS_STYLE }
+  return STATUS_OPTIONS[0]
 }
 
 interface TicketHeaderProps {

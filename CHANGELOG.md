@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.49.1] - 2026-07-20
+
+### Fixed
+
+- **Desktop**: Decouple terminal grouping logic from react for CI tests
+
+## [0.49.0] - 2026-07-20
+
+### Added
+
+- **Resolve**: Pin config settings and add ask commit mode
+
+### Fixed
+
+- **Desktop**: Recognize 'Review addressed' status and guard unknown ones
+- **Resolve**: Echo pinned config vars and harden repo-key path match
+
+## [0.48.0] - 2026-07-10
+
+### Added
+
+- **Pr**: Require concrete manual test scenarios in the how-to-test section
+
+### Changed
+
+- **Deps**: Bump vitest from 4.1.6 to 4.1.9
+
 ## [0.47.4] - 2026-05-19
 
 ### Added
@@ -1421,6 +1448,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.49.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.49.1
+[0.49.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.49.0
+[0.48.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.48.0
 [0.47.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.47.4
 [0.47.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.47.3
 [0.47.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.47.2

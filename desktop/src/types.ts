@@ -15,7 +15,7 @@ export interface TerminalMetadata {
   branchName?: string
   ticketId?: string
   description?: string
-  status?: '' | 'in progress' | 'committed' | 'ready for PR' | 'PR created' | 'in review' | 'changes requested' | 'PR merged'
+  status?: '' | 'in progress' | 'committed' | 'ready for PR' | 'PR created' | 'in review' | 'changes requested' | 'Review addressed' | 'PR merged'
   baseBranch?: string
   fullStackTaskId?: string
   relatedWorktrees?: string[]
@@ -50,7 +50,7 @@ export interface RepositoryConfig {
     includeTicketId?: boolean
   }
   resolve?: {
-    commitMode?: string        // 'new' | 'amend'
+    commitMode?: string        // 'new' | 'amend' | 'ask'
     format?: string            // 'conventional' | 'angular' | 'gitmoji' | 'none'
     style?: string             // 'single-line' | 'multi-line'
     useCommitConfig?: boolean  // true = inherit from commit settings
