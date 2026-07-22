@@ -13,18 +13,32 @@ const STATUSLINE_SCRIPT_PATH = path.join(MAGIC_SLASH_CONFIG_DIR, 'statusline.sh'
 const STATUSLINE_BACKUP_PATH = path.join(MAGIC_SLASH_CONFIG_DIR, 'statusline-original.json')
 const STATUSLINE_MARKER = 'magic-slash/statusline.sh'
 
-const STATUSLINE_SCRIPT = `#!/usr/bin/env bash
+// Wrap a string as a safe single-quoted POSIX shell literal.
+function shSingleQuote(s: string): string {
+  return `'${s.replace(/'/g, `'\\''`)}'`
+}
+
+// Build the statusLine wrapper. The user's original command is baked in as the
+// fallback so a plain `claude` session started OUTSIDE the desktop app (where
+// MAGIC_SLASH_INNER_STATUSLINE is not injected) still renders the user's own
+// statusline. Inside the app the env var takes precedence.
+function buildStatusLineScript(innerCommand: string): string {
+  const baked = shSingleQuote(innerCommand)
+  return `#!/usr/bin/env bash
 # Managed by Magic Slash Desktop — captures Claude Code usage for the app sidebar.
 input=$(cat)
 if [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ]; then
   printf '%s' "$input" | curl -s -X POST --data-binary @- \\
     "http://127.0.0.1:$MAGIC_SLASH_PORT/usage?id=$MAGIC_SLASH_TERMINAL_ID" >/dev/null 2>&1 || true
 fi
-# Relay the user's original statusline if one was configured
-if [ -n "$MAGIC_SLASH_INNER_STATUSLINE" ]; then
-  printf '%s' "$input" | eval "$MAGIC_SLASH_INNER_STATUSLINE"
+# Relay the user's original statusline. The env var (set by the desktop app) wins;
+# otherwise fall back to the command baked in at configuration time.
+INNER=\${MAGIC_SLASH_INNER_STATUSLINE:-${baked}}
+if [ -n "$INNER" ]; then
+  printf '%s' "$input" | eval "$INNER"
 fi
 `
+}
 
 interface StatusLineConfig {
   type?: string
@@ -228,13 +242,10 @@ export function configureClaudeHooks(): void {
  */
 export function configureStatusLine(): string {
   try {
-    // Ensure config dir and write the wrapper script (executable)
+    // Ensure config dir exists
     if (!fs.existsSync(MAGIC_SLASH_CONFIG_DIR)) {
       fs.mkdirSync(MAGIC_SLASH_CONFIG_DIR, { recursive: true })
     }
-    fs.writeFileSync(STATUSLINE_SCRIPT_PATH, STATUSLINE_SCRIPT, { mode: 0o755 })
-    // Re-assert mode in case the file already existed with different perms
-    fs.chmodSync(STATUSLINE_SCRIPT_PATH, 0o755)
 
     const claudeDir = path.dirname(CLAUDE_SETTINGS_PATH)
     if (!fs.existsSync(claudeDir)) {
@@ -254,12 +265,14 @@ export function configureStatusLine(): string {
     let inner = ''
 
     if (existing && !isMagicSlashStatusLine(existing)) {
-      // First time we take over: back up the user's original statusLine and chain it
+      // First time we take over: back up the user's original statusLine and chain it.
+      // The backup MUST succeed before we overwrite — otherwise a later uninstall
+      // could not restore the original and would silently drop the user's config.
       inner = typeof existing.command === 'string' ? existing.command : ''
       try {
         fs.writeFileSync(STATUSLINE_BACKUP_PATH, JSON.stringify(existing))
       } catch (e) {
-        console.error('Failed to back up original statusLine:', e)
+        throw new Error('Failed to back up original statusLine; aborting to avoid data loss', { cause: e })
       }
     } else if (existing && isMagicSlashStatusLine(existing)) {
       // Already ours: recover the original command from the backup to keep chaining
@@ -272,6 +285,12 @@ export function configureStatusLine(): string {
         // non-fatal
       }
     }
+
+    // Write the wrapper script (executable) with the original command baked in as
+    // the fallback, so it works even outside the desktop app.
+    fs.writeFileSync(STATUSLINE_SCRIPT_PATH, buildStatusLineScript(inner), { mode: 0o755 })
+    // Re-assert mode in case the file already existed with different perms
+    fs.chmodSync(STATUSLINE_SCRIPT_PATH, 0o755)
 
     settings.statusLine = {
       type: 'command',
