@@ -1,11 +1,13 @@
 import * as http from 'http'
 import { URL } from 'url'
+import type { TerminalUsage } from '../../types'
 
 type StateCallback = (terminalId: string, state: string) => void
 type MetadataCallback = (terminalId: string, metadata: Record<string, string | string[] | Record<string, { prUrl?: string }>>) => void
 type CommandStartCallback = (terminalId: string, command: string) => void
 type CommandEndCallback = (terminalId: string, exitCode: number) => void
 type RepositoriesCallback = (terminalId: string, repositories: string[]) => void
+type UsageCallback = (terminalId: string, usage: TerminalUsage) => void
 
 let server: http.Server | null = null
 let serverPort: number = 0
@@ -14,6 +16,7 @@ let metadataCallback: MetadataCallback | null = null
 let commandStartCallback: CommandStartCallback | null = null
 let commandEndCallback: CommandEndCallback | null = null
 let repositoriesCallback: RepositoriesCallback | null = null
+let usageCallback: UsageCallback | null = null
 
 export function getServerPort(): number {
   return serverPort
@@ -39,6 +42,62 @@ export function setRepositoriesCallback(callback: RepositoriesCallback) {
   repositoriesCallback = callback
 }
 
+export function setUsageCallback(callback: UsageCallback) {
+  usageCallback = callback
+}
+
+// Read the full request body (used by the POST /usage route)
+function readRequestBody(req: http.IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    let size = 0
+    const MAX_BODY = 256 * 1024 // guard against runaway payloads
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length
+      if (size > MAX_BODY) {
+        reject(new Error('Body too large'))
+        req.destroy()
+        return
+      }
+      chunks.push(chunk)
+    })
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')))
+    req.on('error', reject)
+  })
+}
+
+// Parse the Claude Code statusLine JSON payload into a TerminalUsage object.
+// Field names come from the statusLine stdin schema (context_window.*, cost.*, model.*).
+// Exported for unit testing.
+export function parseStatusLinePayload(body: string): TerminalUsage {
+  const data = JSON.parse(body)
+  const ctx = data?.context_window ?? {}
+  const cost = data?.cost ?? {}
+
+  const contextWindowSize = typeof ctx.context_window_size === 'number' ? ctx.context_window_size : undefined
+  const contextPercent = typeof ctx.used_percentage === 'number' ? ctx.used_percentage : undefined
+  // Prefer the exact token count from the statusline. Deriving from used_percentage loses
+  // precision (a rounded percentage on a 1M-token window jumps in 10k-token steps), so we only
+  // fall back to the percentage estimate when the exact count is unavailable.
+  let contextTokens: number | undefined
+  if (typeof ctx.total_input_tokens === 'number') {
+    contextTokens = ctx.total_input_tokens
+  } else if (contextPercent !== undefined && contextWindowSize !== undefined) {
+    contextTokens = Math.round((contextPercent / 100) * contextWindowSize)
+  }
+
+  return {
+    costUsd: typeof cost.total_cost_usd === 'number' ? cost.total_cost_usd : undefined,
+    contextPercent,
+    contextTokens,
+    contextWindowSize,
+    model: typeof data?.model?.display_name === 'string' ? data.model.display_name : undefined,
+    durationMs: typeof cost.total_duration_ms === 'number' ? cost.total_duration_ms : undefined,
+    linesAdded: typeof cost.total_lines_added === 'number' ? cost.total_lines_added : undefined,
+    linesRemoved: typeof cost.total_lines_removed === 'number' ? cost.total_lines_removed : undefined,
+  }
+}
+
 export function startStatusServer(): Promise<number> {
   return new Promise((resolve, reject) => {
     server = http.createServer((req, res) => {
@@ -53,7 +112,37 @@ export function startStatusServer(): Promise<number> {
       try {
         const url = new URL(req.url, `http://localhost:${serverPort}`)
 
-        if (url.pathname === '/status') {
+        if (url.pathname === '/usage') {
+          // Statusline usage report — carries cost/context/model as a raw JSON body (POST).
+          const terminalId = url.searchParams.get('id')
+
+          // Ignore sidebar terminals (VS Code extension)
+          if (terminalId?.startsWith('sidebar-')) {
+            res.writeHead(200)
+            res.end('OK')
+            return
+          }
+
+          readRequestBody(req)
+            .then((body) => {
+              if (terminalId && body && usageCallback) {
+                try {
+                  const usage = parseStatusLinePayload(body)
+                  usage.updatedAt = Date.now()
+                  usageCallback(terminalId, usage)
+                } catch (e) {
+                  console.error('[Usage] Failed to parse statusline payload:', e)
+                }
+              }
+              res.writeHead(200)
+              res.end('OK')
+            })
+            .catch(() => {
+              res.writeHead(200)
+              res.end('OK')
+            })
+          return
+        } else if (url.pathname === '/status') {
           const terminalId = url.searchParams.get('id')
           const state = url.searchParams.get('state')
 

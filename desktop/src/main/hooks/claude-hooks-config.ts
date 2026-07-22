@@ -4,6 +4,37 @@ import * as os from 'os'
 
 const CLAUDE_SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json')
 const MAGIC_SLASH_HOOK_MARKER = 'magic-slash-desktop'
+
+// StatusLine integration: a wrapper script captures Claude Code's statusline JSON
+// (cost, context usage, model) and POSTs it to the local status server, then relays
+// the user's original statusline so nothing is lost.
+const MAGIC_SLASH_CONFIG_DIR = path.join(os.homedir(), '.config', 'magic-slash')
+const STATUSLINE_SCRIPT_PATH = path.join(MAGIC_SLASH_CONFIG_DIR, 'statusline.sh')
+const STATUSLINE_BACKUP_PATH = path.join(MAGIC_SLASH_CONFIG_DIR, 'statusline-original.json')
+const STATUSLINE_MARKER = 'magic-slash/statusline.sh'
+
+const STATUSLINE_SCRIPT = `#!/usr/bin/env bash
+# Managed by Magic Slash Desktop — captures Claude Code usage for the app sidebar.
+input=$(cat)
+if [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ]; then
+  printf '%s' "$input" | curl -s -X POST --data-binary @- \\
+    "http://127.0.0.1:$MAGIC_SLASH_PORT/usage?id=$MAGIC_SLASH_TERMINAL_ID" >/dev/null 2>&1 || true
+fi
+# Relay the user's original statusline if one was configured
+if [ -n "$MAGIC_SLASH_INNER_STATUSLINE" ]; then
+  printf '%s' "$input" | eval "$MAGIC_SLASH_INNER_STATUSLINE"
+fi
+`
+
+interface StatusLineConfig {
+  type?: string
+  command?: string
+  [key: string]: unknown
+}
+
+function isMagicSlashStatusLine(sl: StatusLineConfig | undefined): boolean {
+  return typeof sl?.command === 'string' && sl.command.includes(STATUSLINE_MARKER)
+}
 const MAGIC_SLASH_PERMISSIONS = [
   // Desktop communication
   'Bash(*http://127.0.0.1:*)',
@@ -71,6 +102,7 @@ interface ClaudeSettings {
     allow?: string[]
     deny?: string[]
   }
+  statusLine?: StatusLineConfig
   [key: string]: unknown
 }
 
@@ -189,6 +221,109 @@ export function configureClaudeHooks(): void {
   }
 }
 
+/**
+ * Configure Claude Code's statusLine to point at our capture wrapper, preserving any
+ * pre-existing user statusLine (chained via MAGIC_SLASH_INNER_STATUSLINE).
+ * Returns the user's original statusLine command to chain (empty string if none).
+ */
+export function configureStatusLine(): string {
+  try {
+    // Ensure config dir and write the wrapper script (executable)
+    if (!fs.existsSync(MAGIC_SLASH_CONFIG_DIR)) {
+      fs.mkdirSync(MAGIC_SLASH_CONFIG_DIR, { recursive: true })
+    }
+    fs.writeFileSync(STATUSLINE_SCRIPT_PATH, STATUSLINE_SCRIPT, { mode: 0o755 })
+    // Re-assert mode in case the file already existed with different perms
+    fs.chmodSync(STATUSLINE_SCRIPT_PATH, 0o755)
+
+    const claudeDir = path.dirname(CLAUDE_SETTINGS_PATH)
+    if (!fs.existsSync(claudeDir)) {
+      fs.mkdirSync(claudeDir, { recursive: true })
+    }
+
+    let settings: ClaudeSettings = {}
+    if (fs.existsSync(CLAUDE_SETTINGS_PATH)) {
+      try {
+        settings = JSON.parse(fs.readFileSync(CLAUDE_SETTINGS_PATH, 'utf-8'))
+      } catch {
+        // Leave settings empty; configureClaudeHooks handles backup of invalid files
+      }
+    }
+
+    const existing = settings.statusLine
+    let inner = ''
+
+    if (existing && !isMagicSlashStatusLine(existing)) {
+      // First time we take over: back up the user's original statusLine and chain it
+      inner = typeof existing.command === 'string' ? existing.command : ''
+      try {
+        fs.writeFileSync(STATUSLINE_BACKUP_PATH, JSON.stringify(existing))
+      } catch (e) {
+        console.error('Failed to back up original statusLine:', e)
+      }
+    } else if (existing && isMagicSlashStatusLine(existing)) {
+      // Already ours: recover the original command from the backup to keep chaining
+      inner = readBackupStatusLineCommand()
+    } else {
+      // No statusLine configured: record "none" so uninstall removes ours cleanly
+      try {
+        fs.writeFileSync(STATUSLINE_BACKUP_PATH, 'null')
+      } catch {
+        // non-fatal
+      }
+    }
+
+    settings.statusLine = {
+      type: 'command',
+      command: `bash ${STATUSLINE_SCRIPT_PATH}`,
+    }
+
+    fs.writeFileSync(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2))
+    console.log('Claude Code statusLine configured successfully')
+    return inner
+  } catch (error) {
+    console.error('Failed to configure Claude Code statusLine:', error)
+    return ''
+  }
+}
+
+function readBackupStatusLineCommand(): string {
+  try {
+    if (!fs.existsSync(STATUSLINE_BACKUP_PATH)) return ''
+    const raw = fs.readFileSync(STATUSLINE_BACKUP_PATH, 'utf-8')
+    const parsed = JSON.parse(raw) as StatusLineConfig | null
+    return typeof parsed?.command === 'string' ? parsed.command : ''
+  } catch {
+    return ''
+  }
+}
+
+function restoreStatusLine(settings: ClaudeSettings): void {
+  if (!isMagicSlashStatusLine(settings.statusLine)) {
+    return
+  }
+  let restored: StatusLineConfig | null = null
+  try {
+    if (fs.existsSync(STATUSLINE_BACKUP_PATH)) {
+      restored = JSON.parse(fs.readFileSync(STATUSLINE_BACKUP_PATH, 'utf-8'))
+    }
+  } catch {
+    restored = null
+  }
+  if (restored && typeof restored === 'object') {
+    settings.statusLine = restored
+  } else {
+    delete settings.statusLine
+  }
+  try {
+    if (fs.existsSync(STATUSLINE_BACKUP_PATH)) {
+      fs.unlinkSync(STATUSLINE_BACKUP_PATH)
+    }
+  } catch {
+    // non-fatal
+  }
+}
+
 export function removeClaudeHooks(): void {
   try {
     if (!fs.existsSync(CLAUDE_SETTINGS_PATH)) {
@@ -198,24 +333,25 @@ export function removeClaudeHooks(): void {
     const content = fs.readFileSync(CLAUDE_SETTINGS_PATH, 'utf-8')
     const settings: ClaudeSettings = JSON.parse(content)
 
-    if (!settings.hooks) {
-      return
-    }
+    // Restore the user's original statusLine (or remove ours if they had none)
+    restoreStatusLine(settings)
 
     // Remove Magic Slash hooks from all events
-    for (const event of Object.keys(settings.hooks)) {
-      if (Array.isArray(settings.hooks[event])) {
-        settings.hooks[event] = settings.hooks[event]!.filter(hook => !isMagicSlashHook(hook))
-        // Remove empty arrays
-        if (settings.hooks[event]!.length === 0) {
-          delete settings.hooks[event]
+    if (settings.hooks) {
+      for (const event of Object.keys(settings.hooks)) {
+        if (Array.isArray(settings.hooks[event])) {
+          settings.hooks[event] = settings.hooks[event]!.filter(hook => !isMagicSlashHook(hook))
+          // Remove empty arrays
+          if (settings.hooks[event]!.length === 0) {
+            delete settings.hooks[event]
+          }
         }
       }
-    }
 
-    // Remove empty hooks object
-    if (Object.keys(settings.hooks).length === 0) {
-      delete settings.hooks
+      // Remove empty hooks object
+      if (Object.keys(settings.hooks).length === 0) {
+        delete settings.hooks
+      }
     }
 
     // Remove Magic Slash permissions

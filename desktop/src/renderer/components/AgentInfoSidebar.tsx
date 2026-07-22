@@ -3,6 +3,7 @@ import { X, Bot, Edit2, Layers, CalendarClock } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { TicketHeader } from './agent-info-sidebar/TicketHeader'
+import { UsageCard } from './agent-info-sidebar/UsageCard'
 import { RepositoryCard } from './agent-info-sidebar/RepositoryCard'
 import { RepositorySelector } from './agent-info-sidebar/RepositorySelector'
 import type { RepoGitData } from './agent-info-sidebar/types'
@@ -447,6 +448,9 @@ export function AgentInfoSidebar() {
                 </div>
               </div>
             )}
+
+            {/* Usage Card (context, cost, model) */}
+            {metadata?.usage && <UsageCard usage={metadata.usage} />}
 
             {/* Ticket Header Card */}
             <TicketHeader

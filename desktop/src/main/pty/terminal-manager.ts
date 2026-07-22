@@ -7,7 +7,7 @@ import { readConfig } from '../config/config'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
 import { expandPath } from '../config/validation'
 import { getCommonPaths } from '../utils/paths'
-import type { TerminalMetadata, TerminalState, LaunchMode } from '../../types'
+import type { TerminalMetadata, TerminalState, LaunchMode, TerminalUsage } from '../../types'
 export type { TerminalMetadata, TerminalState }
 
 const DEFAULT_PTY_ROWS = 40
@@ -73,6 +73,14 @@ let statusServerPort: number = 0
 
 export function setStatusServerPort(port: number) {
   statusServerPort = port
+}
+
+// User's pre-existing statusLine command, preserved and chained by our wrapper script.
+// Empty string means the user had no statusLine (wrapper stays silent in-terminal).
+let innerStatusLine: string = ''
+
+export function setInnerStatusLine(command: string) {
+  innerStatusLine = command || ''
 }
 
 // Update terminal state from hook callback
@@ -450,6 +458,8 @@ export function launchClaude(
         // Magic Slash hook integration
         MAGIC_SLASH_TERMINAL_ID: id,
         ...(statusServerPort > 0 ? { MAGIC_SLASH_PORT: statusServerPort.toString() } : {}),
+        // Chained statusLine: the wrapper relays the user's original statusLine if any
+        ...(innerStatusLine ? { MAGIC_SLASH_INNER_STATUSLINE: innerStatusLine } : {}),
       }
     })
 
@@ -614,6 +624,16 @@ export function updateTerminalMetadataFromHook(terminalId: string, metadata: Par
   if (terminal.onMetadataChange) {
     terminal.onMetadataChange(terminal.metadata)
   }
+}
+
+// Update terminal usage stats from the statusLine wrapper.
+// In-memory only: statusLine fires very frequently and usage is ephemeral session data,
+// so we deliberately skip disk persistence (updateAgentMetadata) and the onMetadataChange
+// callback. The IPC send to the renderer is handled by the caller (setUsageCallback in index.ts).
+export function updateTerminalUsageFromHook(terminalId: string, usage: TerminalUsage) {
+  const terminal = terminals.get(terminalId)
+  if (!terminal) return
+  terminal.metadata = { ...terminal.metadata, usage }
 }
 
 // Update terminal repositories from hook callback
