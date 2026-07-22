@@ -2,10 +2,11 @@ import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell, globalS
 import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupTerminalHandlers, cleanupTerminals, restoreAgents } from './ipc/terminal-handlers'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback } from './hooks/status-server'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback } from './hooks/status-server'
 import { installShellIntegration } from './hooks/shell-integration'
-import { configureClaudeHooks } from './hooks/claude-hooks-config'
-import { setStatusServerPort, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalRepositoriesFromHook } from './pty/terminal-manager'
+import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
+import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook } from './pty/terminal-manager'
+import type { TerminalUsage } from '../types'
 import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpdating } from './updater'
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
@@ -435,6 +436,9 @@ async function initializeHooksAndSessions() {
     // Configure Claude Code hooks (deferred file I/O)
     configureClaudeHooks()
 
+    // Configure the statusLine capture wrapper, preserving any user statusLine
+    setInnerStatusLine(configureStatusLine())
+
     // Set up callbacks for status updates
     setStateCallback((terminalId: string, state: string) => {
       updateTerminalStateFromHook(terminalId, state)
@@ -462,6 +466,18 @@ async function initializeHooksAndSessions() {
       // Update tray (metadata changes may affect display)
       if (aggregator) {
         aggregator.update()
+      }
+    })
+
+    // Usage stats from the statusLine wrapper — in-memory update + single metadata IPC.
+    // Not persisted to disk (see updateTerminalUsageFromHook) since statusLine is high-frequency.
+    setUsageCallback((terminalId: string, usage: TerminalUsage) => {
+      updateTerminalUsageFromHook(terminalId, usage)
+      if (mainWindow) {
+        mainWindow.webContents.send('terminal:metadata', {
+          id: terminalId,
+          metadata: { usage }
+        })
       }
     })
 

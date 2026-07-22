@@ -10,6 +10,18 @@ export interface RepositoryMetadata {
   prClosed?: boolean
 }
 
+export interface TerminalUsage {
+  costUsd?: number           // cost.total_cost_usd
+  contextPercent?: number    // context_window.used_percentage (0-100)
+  contextTokens?: number     // tokens currently occupying the context window
+  contextWindowSize?: number // context_window.context_window_size
+  model?: string             // model.display_name
+  durationMs?: number        // cost.total_duration_ms
+  linesAdded?: number        // cost.total_lines_added
+  linesRemoved?: number      // cost.total_lines_removed
+  updatedAt?: number         // timestamp of last statusline report
+}
+
 export interface TerminalMetadata {
   title?: string
   branchName?: string
@@ -20,6 +32,7 @@ export interface TerminalMetadata {
   fullStackTaskId?: string
   relatedWorktrees?: string[]
   repositoryMetadata?: Record<string, RepositoryMetadata>
+  usage?: TerminalUsage
 }
 
 export interface TerminalInfo {
