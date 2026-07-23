@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { X, Bot, Edit2, Layers, CalendarClock } from 'lucide-react'
+import { X, Bot, Edit2, Layers } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { TicketHeader } from './agent-info-sidebar/TicketHeader'
@@ -7,32 +7,13 @@ import { UsageCard } from './agent-info-sidebar/UsageCard'
 import { RepositoryCard } from './agent-info-sidebar/RepositoryCard'
 import { RepositorySelector } from './agent-info-sidebar/RepositorySelector'
 import type { RepoGitData } from './agent-info-sidebar/types'
-import type { TerminalMetadata, Schedule } from '../../types'
+import type { TerminalMetadata } from '../../types'
 
 const MIN_WIDTH = 288 // w-72
 const DEFAULT_WIDTH = 500
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-function getScheduleLabel(schedule: Schedule): string {
-  switch (schedule.frequency) {
-    case 'once': return schedule.date ? `Once on ${schedule.date}` : 'Once'
-    case 'daily': return `Daily at ${schedule.time}`
-    case 'weekdays': return `Weekdays at ${schedule.time}`
-    case 'weekly':
-      return schedule.dayOfWeek !== null
-        ? `Every ${DAY_NAMES[schedule.dayOfWeek]} at ${schedule.time}`
-        : `Weekly at ${schedule.time}`
-    case 'monthly':
-      return schedule.dayOfMonth !== null
-        ? `Monthly on day ${schedule.dayOfMonth} at ${schedule.time}`
-        : `Monthly at ${schedule.time}`
-    default: return schedule.frequency
-  }
-}
-
 export function AgentInfoSidebar() {
-  const { rightSidebar, toggleRightSidebar, terminals, activeTerminalId, config, openCloseAgentModal, isSplitMode, focusedPane, splitTerminalId, scheduledAgents } = useStore()
+  const { rightSidebar, toggleRightSidebar, terminals, activeTerminalId, config, openCloseAgentModal, isSplitMode, focusedPane, splitTerminalId } = useStore()
   const { updateTerminalMetadata, updateTerminalRepositories } = useTerminals()
   const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
@@ -101,10 +82,6 @@ export function AgentInfoSidebar() {
     ? splitTerminalId
     : activeTerminalId
   const activeTerminal = terminals.find(t => t.id === inspectedTerminalId)
-  const matchingScheduledAgent = useMemo(() => {
-    if (!activeTerminal) return null
-    return scheduledAgents.find(a => a.id === activeTerminal.id) ?? null
-  }, [activeTerminal, scheduledAgents])
   const metadata = activeTerminal?.metadata
   const canClose = metadata?.status === 'PR merged' || !metadata?.status
 
@@ -431,24 +408,6 @@ export function AgentInfoSidebar() {
           </div>
         ) : (
           <div className="p-4 space-y-4">
-            {/* Scheduled Agent Banner */}
-            {matchingScheduledAgent?.schedule && (
-              <div className="flex items-center gap-2.5 px-3 py-2.5 bg-purple/10 border border-purple/20 rounded-xl">
-                <CalendarClock className="w-4 h-4 text-purple flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-purple">Scheduled Agent</div>
-                  <div className="text-[11px] text-purple/60 mt-0.5">
-                    {getScheduleLabel(matchingScheduledAgent.schedule)}
-                    {activeTerminal?.tsCreate && (
-                      <> &middot; Launched {new Date(activeTerminal.tsCreate).toLocaleString(undefined, {
-                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                      })}</>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Usage Card (context, cost, model) */}
             {metadata?.usage && <UsageCard usage={metadata.usage} />}
 

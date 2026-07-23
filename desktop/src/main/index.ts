@@ -19,8 +19,6 @@ import { AgentStateAggregator } from './tray/agent-state-aggregator'
 import { destroyPopover } from './windows/popover-window'
 import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
 import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
-import { Scheduler } from './scheduler/scheduler'
-import { setupSchedulerHandlers } from './ipc/scheduler-handlers'
 import { setupProfileHandlers } from './ipc/profile-handlers'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
 import { setupPRReviewHandlers } from './ipc/pr-review-handlers'
@@ -30,7 +28,6 @@ let isQuitting = false
 let forceQuit = false
 let trayManager: TrayManager | null = null
 let aggregator: AgentStateAggregator | null = null
-let scheduler: Scheduler | null = null
 let prReviewWatcher: PRReviewWatcher | null = null
 
 function createMenu() {
@@ -210,13 +207,6 @@ function setupHandlers() {
     // Agent change callback - update tray state
     () => { if (aggregator) aggregator.update() },
   )
-
-  // Initialize scheduler and its IPC handlers
-  scheduler = new Scheduler(
-    () => mainWindow,
-    notificationCallback,
-  )
-  setupSchedulerHandlers(scheduler)
 
   // Initialize PR review watcher and its IPC handlers
   prReviewWatcher = new PRReviewWatcher(
@@ -518,24 +508,6 @@ async function initializeHooksAndSessions() {
     // Restore terminal sessions after hooks are ready
     restoreAgents()
 
-    // Start scheduler after agents are restored
-    if (scheduler) {
-      scheduler.start()
-
-      powerMonitor.on('suspend', () => {
-        scheduler?.onSuspend()
-      })
-      powerMonitor.on('resume', () => {
-        scheduler?.onResume()
-      })
-      powerMonitor.on('lock-screen', () => {
-        scheduler?.onSuspend()
-      })
-      powerMonitor.on('unlock-screen', () => {
-        scheduler?.onResume()
-      })
-    }
-
     // Start PR review watcher (default ON unless explicitly disabled)
     if (prReviewWatcher) {
       const cfg = readConfig()
@@ -576,12 +548,6 @@ app.on('before-quit', async (event) => {
 
   isQuitting = true
   if (isUpdating) return
-
-  // Stop scheduler
-  if (scheduler) {
-    scheduler.stop()
-    scheduler = null
-  }
 
   // Stop PR review watcher
   if (prReviewWatcher) {

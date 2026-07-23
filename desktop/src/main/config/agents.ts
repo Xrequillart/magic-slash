@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import type { Agent, TerminalMetadata, Schedule } from '../../types'
+import type { Agent, TerminalMetadata } from '../../types'
 import { filterValidRepositories, CONFIG_DIR } from './config'
 
 const AGENTS_FILE = path.join(CONFIG_DIR, 'agents.json')
@@ -116,7 +116,6 @@ export function saveAgent(id: string, name: string, repositories: string[], meta
       ...metadata
     },
     ...(existingAgent?.splitPane ? { splitPane: existingAgent.splitPane } : {}),
-    ...(existingAgent?.schedule ? { schedule: existingAgent.schedule } : {}),
   }
   filtered.push(agent)
 
@@ -154,38 +153,6 @@ export function updateAgentSplitPane(id: string, pane: 'left' | 'right'): void {
   const agent = agents.find(a => a.id === id)
   if (agent) {
     agent.splitPane = pane
-    writeAgents(agents)
-  }
-}
-
-export function createDefaultSchedule(): Schedule {
-  return {
-    enabled: false,
-    command: '',
-    frequency: 'once',
-    time: '09:00',
-    date: null,
-    dayOfWeek: null,
-    dayOfMonth: null,
-    lastRunAt: null,
-    lastRunStatus: null,
-  }
-}
-
-export function updateAgentSchedule(id: string, schedule: Schedule): void {
-  const agents = readAgents()
-  const agent = agents.find(a => a.id === id)
-  if (agent) {
-    agent.schedule = schedule
-    writeAgents(agents)
-  }
-}
-
-export function clearAgentSchedule(id: string): void {
-  const agents = readAgents()
-  const agent = agents.find(a => a.id === id)
-  if (agent) {
-    delete agent.schedule
     writeAgents(agents)
   }
 }
