@@ -93,9 +93,25 @@ enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the
 # old, and new email addresses. If disabled, only the new email is required to
 # confirm.
-double_confirm_changes = true
+# Kept FALSE on purpose: the desktop app confirms an email change with a single
+# 6-digit OTP typed into the app (see confirmEmailChange). With double-confirm on,
+# verifying only the new-address code would leave the change pending while the UI
+# reported success. Single-address confirmation still requires a live session +
+# access to the new inbox.
+double_confirm_changes = false
 # If enabled, users need to confirm their email address before signing in.
 enable_confirmations = false
+
+# Email templates. The desktop app uses Supabase's 6-digit OTP code flow (no deep
+# links / no custom protocol): the user is emailed a code and types it into the
+# app. Both templates MUST include {{ .Token }} so the code is actually delivered.
+[auth.email.template.recovery]
+subject = "Reset your Magic Slash password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new Magic Slash email"
+content_path = "./supabase/templates/email_change.html"
 
 [analytics]
 enabled = false

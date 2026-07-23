@@ -45,5 +45,58 @@ export function useAuth() {
 
   const logout = useCallback(() => window.electronAPI.auth.logout(), [])
 
-  return { status, loading, refresh, login, signup, logout }
+  const requestPasswordReset = useCallback(
+    (email: string) => window.electronAPI.auth.requestPasswordReset(email),
+    [],
+  )
+
+  const confirmPasswordReset = useCallback(
+    (email: string, code: string, newPassword: string) =>
+      window.electronAPI.auth.confirmPasswordReset(email, code, newPassword),
+    [],
+  )
+
+  const updatePassword = useCallback(
+    (newPassword: string) => window.electronAPI.auth.updatePassword(newPassword),
+    [],
+  )
+
+  const requestEmailChange = useCallback(
+    (newEmail: string) => window.electronAPI.auth.requestEmailChange(newEmail),
+    [],
+  )
+
+  const confirmEmailChange = useCallback(
+    async (newEmail: string, code: string) => {
+      const s = await window.electronAPI.auth.confirmEmailChange(newEmail, code)
+      // statusChanged also fires from main, but refresh so this caller sees it too.
+      await refresh()
+      return s
+    },
+    [refresh],
+  )
+
+  const deleteAccount = useCallback(
+    async () => {
+      const s = await window.electronAPI.auth.deleteAccount()
+      await refresh()
+      return s
+    },
+    [refresh],
+  )
+
+  return {
+    status,
+    loading,
+    refresh,
+    login,
+    signup,
+    logout,
+    requestPasswordReset,
+    confirmPasswordReset,
+    updatePassword,
+    requestEmailChange,
+    confirmEmailChange,
+    deleteAccount,
+  }
 }
