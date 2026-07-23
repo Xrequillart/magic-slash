@@ -21,7 +21,9 @@ import {
   updateSplitEnabled,
   updateSplitActive,
   updateLaunchMode,
+  setIntegration,
 } from '../config/config'
+import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { repairConfig } from '../config/migrate'
 import { isValidSpotlightShortcut, isValidLaunchMode } from '../config/defaults'
@@ -291,6 +293,18 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
     }
     const config = updateLaunchMode(mode)
     return { config }
+  })
+
+  // Toggle an integration flag (only atlassian is user-settable). Detection/
+  // display only — no token is ever stored (see ticket #124 locked decisions).
+  ipcMain.handle('config:setIntegration', async (_event, { name, enabled }: { name: 'atlassian'; enabled: boolean }) => {
+    const config = setIntegration(name, enabled)
+    return { config }
+  })
+
+  // GitHub CLI auth status for DISPLAY only (`gh auth status`). No token stored.
+  ipcMain.handle('config:getGitHubAuthStatus', async () => {
+    return getGitHubAuthStatus()
   })
 
   // Validate path

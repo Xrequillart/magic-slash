@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -81,6 +81,12 @@ const configApi = {
 
   hasGitHubRemote: (path: string) =>
     ipcRenderer.invoke('config:hasGitHubRemote', { path }),
+
+  getGitHubAuthStatus: (): Promise<GitHubAuthStatus> =>
+    ipcRenderer.invoke('config:getGitHubAuthStatus'),
+
+  setIntegration: (name: 'atlassian', enabled: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setIntegration', { name, enabled }),
 
   getGitStatus: (path: string) =>
     ipcRenderer.invoke('config:getGitStatus', { path }),
@@ -381,6 +387,33 @@ const usageApi = {
   getSpend: (): Promise<SpendSummary> => ipcRenderer.invoke('usage:getSpend'),
 }
 
+// Auth API (optional cloud auth via Supabase — never required for the app to run)
+const authApi = {
+  status: (): Promise<AuthStatus> => ipcRenderer.invoke('auth:status'),
+  login: (email: string, password: string): Promise<AuthStatus> =>
+    ipcRenderer.invoke('auth:login', { email, password }),
+  signup: (email: string, password: string, opts?: { orgName?: string; invitationToken?: string }): Promise<AuthStatus> =>
+    ipcRenderer.invoke('auth:signup', { email, password, orgName: opts?.orgName, invitationToken: opts?.invitationToken }),
+  logout: (): Promise<AuthStatus> => ipcRenderer.invoke('auth:logout'),
+  onStatusChanged: (callback: (status: AuthStatus) => void) => {
+    const listener = (_event: IpcRendererEvent, status: AuthStatus) => callback(status)
+    ipcRenderer.on('auth:statusChanged', listener)
+    return () => ipcRenderer.removeListener('auth:statusChanged', listener)
+  },
+}
+
+// Org API (organization membership + invitations)
+const orgApi = {
+  current: (): Promise<Org | null> => ipcRenderer.invoke('org:current'),
+  members: (): Promise<Member[]> => ipcRenderer.invoke('org:members'),
+  invitations: (): Promise<Invitation[]> => ipcRenderer.invoke('org:invitations'),
+  invite: (email: string, role?: MembershipRole): Promise<Invitation> =>
+    ipcRenderer.invoke('org:invite', { email, role }),
+  accept: (token: string): Promise<{ orgId: string; config: Config }> =>
+    ipcRenderer.invoke('org:accept', { token }),
+  applySharedConfig: (): Promise<Config> => ipcRenderer.invoke('org:applyShared'),
+}
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   config: configApi,
@@ -398,6 +431,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   prWatcher: prWatcherApi,
   profile: profileApi,
   usage: usageApi,
+  auth: authApi,
+  org: orgApi,
 })
 
 // Type definitions for the renderer
@@ -419,6 +454,8 @@ declare global {
       prWatcher: typeof prWatcherApi
       profile: typeof profileApi
       usage: typeof usageApi
+      auth: typeof authApi
+      org: typeof orgApi
     }
   }
 

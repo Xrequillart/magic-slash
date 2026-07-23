@@ -21,6 +21,8 @@ import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './window
 import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
 import { setupProfileHandlers } from './ipc/profile-handlers'
 import { setupUsageHandlers } from './ipc/usage-handlers'
+import { setupAuthHandlers } from './ipc/auth-handlers'
+import { setupOrgHandlers } from './ipc/org-handlers'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
 import { setupPRReviewHandlers } from './ipc/pr-review-handlers'
 
@@ -189,6 +191,10 @@ function setupHandlers() {
   registerActivityHistoryHandlers()
   setupProfileHandlers()
   setupUsageHandlers()
+  // Cloud (optional): auth + organization. Handlers degrade gracefully when the
+  // Supabase env is missing — they never block boot.
+  setupAuthHandlers(() => mainWindow)
+  setupOrgHandlers()
   // Notification callback - only show when window is not focused
   const notificationCallback = (title: string, body: string) => {
     if (Notification.isSupported() && mainWindow && !mainWindow.isFocused()) {

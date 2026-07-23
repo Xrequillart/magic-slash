@@ -14,6 +14,14 @@ export default defineConfig({
           args.startup()
         },
         vite: {
+          // Bundle the Supabase URL + anon key into the MAIN process build.
+          // The anon key is public/safe to ship (RLS enforces access). When these
+          // env vars are absent at build time they resolve to undefined and the
+          // cloud client stays disabled — the app still boots and works offline.
+          define: {
+            'process.env.MAGIC_SLASH_SUPABASE_URL': JSON.stringify(process.env.MAGIC_SLASH_SUPABASE_URL || ''),
+            'process.env.MAGIC_SLASH_SUPABASE_ANON_KEY': JSON.stringify(process.env.MAGIC_SLASH_SUPABASE_ANON_KEY || ''),
+          },
           build: {
             outDir: 'dist/main',
             minify: 'esbuild',

@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import type { Config, RepositoryConfig, LaunchMode } from '../../types'
+import type { Config, RepositoryConfig, LaunchMode, OrgSharedConfig } from '../../types'
 import { validateConfig, hasCriticalErrors } from './schema-validator'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
 import { expandPath } from './validation'
@@ -387,6 +387,95 @@ export function updateSplitActive(active: boolean): Config {
 export function updateLaunchMode(mode: LaunchMode): Config {
   const config = readConfig()
   config.launchMode = mode
+  writeConfig(config)
+  return config
+}
+
+/**
+ * Toggle an integration flag. github is always true (const true in the schema);
+ * only atlassian is user-settable. DISPLAY/detection only — no token is stored.
+ */
+export function setIntegration(name: 'atlassian', enabled: boolean): Config {
+  const config = readConfig()
+  config.integrations = config.integrations || { github: true }
+  if (name === 'atlassian') {
+    config.integrations.atlassian = enabled
+  }
+  writeConfig(config)
+  return config
+}
+
+/** Persist which cloud org this install is associated with. */
+export function setCurrentOrgId(orgId: string | undefined): Config {
+  const config = readConfig()
+  if (orgId) {
+    config.currentOrgId = orgId
+  } else {
+    delete config.currentOrgId
+  }
+  writeConfig(config)
+  return config
+}
+
+/** Copy accepted source values onto target, but only where target has none yet. */
+function fillUnset(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+  accept: (value: unknown) => boolean,
+): void {
+  for (const [key, value] of Object.entries(source)) {
+    if (accept(value) && target[key] === undefined) {
+      target[key] = value
+    }
+  }
+}
+
+/**
+ * Merge an org's shared config (inherited on invitation onboarding) into the
+ * local config, applied as DEFAULTS over every existing repository: existing
+ * local values always win, so local repo paths and integration toggles are
+ * preserved. Only the shared fields are touched — languages, commit/PR format,
+ * and repo keywords. Missing/malformed input is ignored (never throws on data).
+ */
+export function mergeOrgSharedConfig(shared: OrgSharedConfig, orgId?: string): Config {
+  const config = readConfig()
+  config.repositories = config.repositories || {}
+
+  for (const repo of Object.values(config.repositories)) {
+    // Languages: fill only keys the repo hasn't already set.
+    if (shared.languages && typeof shared.languages === 'object') {
+      repo.languages = repo.languages || {}
+      fillUnset(repo.languages, shared.languages, (v) => typeof v === 'string')
+    }
+
+    // Commit settings: fill only unset fields.
+    if (shared.commit && typeof shared.commit === 'object') {
+      repo.commit = repo.commit || {}
+      fillUnset(repo.commit, shared.commit, (v) => v !== undefined)
+    }
+
+    // Pull request settings: fill only unset fields.
+    if (shared.pullRequest && typeof shared.pullRequest === 'object') {
+      repo.pullRequest = repo.pullRequest || {}
+      fillUnset(repo.pullRequest, shared.pullRequest, (v) => v !== undefined)
+    }
+  }
+
+  // Repo keywords keyed by repo name: apply to a matching local repo only when
+  // it has no meaningful keywords yet (empty or defaulted to its own name).
+  if (shared.repoKeywords && typeof shared.repoKeywords === 'object') {
+    for (const [name, keywords] of Object.entries(shared.repoKeywords)) {
+      const repo = config.repositories[name]
+      if (!repo || !Array.isArray(keywords)) continue
+      const isDefaulted = repo.keywords.length === 0 || (repo.keywords.length === 1 && repo.keywords[0] === name)
+      if (isDefaulted && keywords.length > 0) {
+        repo.keywords = keywords
+      }
+    }
+  }
+
+  if (orgId) config.currentOrgId = orgId
+
   writeConfig(config)
   return config
 }
