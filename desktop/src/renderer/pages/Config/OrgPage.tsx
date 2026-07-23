@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Cloud, Users, Mail, LogOut, LogIn, UserPlus, Shield, Copy, Check, Github, Loader2, Building2, KeyRound, AtSign, Trash2, AlertTriangle } from 'lucide-react'
+import { Cloud, Users, Mail, LogOut, LogIn, UserPlus, Shield, Copy, Check, Github, Loader2, Building2, KeyRound, AtSign, Trash2, AlertTriangle, Archive, X } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useOrg } from '../../hooks/useOrg'
 import { useStore } from '../../store'
@@ -7,11 +7,11 @@ import { LoginScreen } from '../../components/LoginScreen'
 import { Modal } from '../../components/Modal'
 import { InvitationOnboardingWizard } from '../../components/InvitationOnboardingWizard'
 import { showToast } from '../../components/Toast'
-import type { GitHubAuthStatus } from '../../../types'
+import type { GitHubAuthStatus, MembershipRole } from '../../../types'
 
 export function OrgPage() {
   const { status, loading: authLoading, logout, updatePassword, requestEmailChange, confirmEmailChange, deleteAccount } = useAuth()
-  const { org, members, invitations, loading: orgLoading, refresh, invite } = useOrg()
+  const { org, members, invitations, loading: orgLoading, refresh, invite, removeMember, updateRole, leaveOrg, archiveOrg } = useOrg()
   const { config, setConfig } = useStore()
 
   const [showLogin, setShowLogin] = useState(false)
@@ -35,6 +35,13 @@ export function OrgPage() {
   const [showDeleteAccount, setShowDeleteAccount] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
+  // Org member management + archiving.
+  const [showArchive, setShowArchive] = useState(false)
+  const [archiving, setArchiving] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  // user_id currently being mutated (role change / removal), to disable its row.
+  const [busyMember, setBusyMember] = useState<string | null>(null)
+
   // Integration status (DISPLAY only — no tokens stored).
   const [githubStatus, setGithubStatus] = useState<GitHubAuthStatus | null>(null)
   const atlassianEnabled = config?.integrations?.atlassian ?? true
@@ -44,6 +51,64 @@ export function OrgPage() {
   }, [])
 
   const isAdmin = org?.role === 'admin'
+  const currentUserId = status.user?.id
+  const adminCount = members.filter((m) => m.role === 'admin').length
+  // Sole admin: the last admin cannot leave/be demoted without lockout — such a
+  // user must archive the org instead of leaving it.
+  const isSoleAdmin = isAdmin && adminCount <= 1
+
+  const handleChangeRole = useCallback(async (userId: string, role: MembershipRole) => {
+    if (!org) return
+    setBusyMember(userId)
+    try {
+      await updateRole(org.id, userId, role)
+      showToast('Role updated', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to update role', 'error')
+    } finally {
+      setBusyMember(null)
+    }
+  }, [org, updateRole])
+
+  const handleRemoveMember = useCallback(async (userId: string) => {
+    if (!org) return
+    setBusyMember(userId)
+    try {
+      await removeMember(org.id, userId)
+      showToast('Member removed', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to remove member', 'error')
+    } finally {
+      setBusyMember(null)
+    }
+  }, [org, removeMember])
+
+  const handleLeave = useCallback(async () => {
+    if (!org || leaving) return
+    setLeaving(true)
+    try {
+      await leaveOrg(org.id)
+      showToast('You left the organization', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to leave organization', 'error')
+    } finally {
+      setLeaving(false)
+    }
+  }, [org, leaving, leaveOrg])
+
+  const handleArchive = useCallback(async () => {
+    if (!org || archiving) return
+    setArchiving(true)
+    try {
+      await archiveOrg(org.id)
+      showToast('Organization archived', 'success')
+      setShowArchive(false)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to archive organization', 'error')
+    } finally {
+      setArchiving(false)
+    }
+  }, [org, archiving, archiveOrg])
 
   const handleInvite = useCallback(async () => {
     if (inviting || !inviteEmail.trim()) return
@@ -252,15 +317,42 @@ export function OrgPage() {
                   <Loader2 className="w-4 h-4 animate-spin" />
                 </div>
               ) : org ? (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium">{org.name}</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">Your role in this organization</div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium">{org.name}</div>
+                      <div className="text-xs text-text-secondary/50 mt-0.5">Your role in this organization</div>
+                    </div>
+                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium ${isAdmin ? 'bg-accent/15 text-accent' : 'bg-white/10 text-text-secondary'}`}>
+                      {isAdmin && <Shield className="w-3 h-3" />}
+                      {org.role}
+                    </span>
                   </div>
-                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium ${isAdmin ? 'bg-accent/15 text-accent' : 'bg-white/10 text-text-secondary'}`}>
-                    {isAdmin && <Shield className="w-3 h-3" />}
-                    {org.role}
-                  </span>
+                  <div className="border-t border-white/5 pt-3 flex items-center gap-2">
+                    {isSoleAdmin ? (
+                      <p className="text-xs text-text-secondary/50">
+                        You are the last admin. Promote another member before leaving, or archive the organization below.
+                      </p>
+                    ) : (
+                      <button
+                        onClick={handleLeave}
+                        disabled={leaving}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all disabled:opacity-40"
+                      >
+                        {leaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
+                        Leave organization
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => setShowArchive(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all ml-auto"
+                      >
+                        <Archive className="w-3.5 h-3.5" />
+                        Archive organization
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="text-sm text-text-secondary/50 text-center py-2">No organization found for this account.</div>
@@ -279,14 +371,45 @@ export function OrgPage() {
                 {members.length === 0 ? (
                   <div className="text-sm text-text-secondary/50 text-center py-2">No members yet.</div>
                 ) : (
-                  members.map((m) => (
-                    <div key={m.userId} className="flex items-center justify-between py-1">
-                      <span className="text-sm truncate">{m.email ?? m.userId}</span>
-                      <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${m.role === 'admin' ? 'bg-accent/15 text-accent' : 'bg-white/10 text-text-secondary'}`}>
-                        {m.role}
-                      </span>
-                    </div>
-                  ))
+                  members.map((m) => {
+                    const isSelf = m.userId === currentUserId
+                    const rowBusy = busyMember === m.userId
+                    return (
+                      <div key={m.userId} className="flex items-center justify-between gap-2 py-1">
+                        <span className="text-sm truncate flex-1">
+                          {m.email ?? m.userId}
+                          {isSelf && <span className="text-text-secondary/40"> (you)</span>}
+                        </span>
+                        {rowBusy ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-text-secondary/50" />
+                        ) : isAdmin ? (
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={m.role}
+                              onChange={(e) => handleChangeRole(m.userId, e.target.value as MembershipRole)}
+                              className="px-2 py-0.5 bg-white/[0.06] border border-white/10 rounded text-[11px] font-medium text-text-secondary focus:outline-none focus:border-accent transition-colors"
+                            >
+                              <option value="user">user</option>
+                              <option value="admin">admin</option>
+                            </select>
+                            {!isSelf && (
+                              <button
+                                onClick={() => handleRemoveMember(m.userId)}
+                                className="p-1 text-text-secondary/60 rounded hover:bg-red/10 hover:text-red transition-all"
+                                title="Remove member"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${m.role === 'admin' ? 'bg-accent/15 text-accent' : 'bg-white/10 text-text-secondary'}`}>
+                            {m.role}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })
                 )}
               </div>
             </div>
@@ -523,6 +646,43 @@ export function OrgPage() {
             <p className="text-sm text-white">This permanently deletes your account and personal data.</p>
             <p className="text-xs text-text-secondary/60">
               Organizations you created will be removed along with their data. This cannot be undone. Magic Slash keeps working locally without an account.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Archive organization (danger) */}
+      <Modal
+        isOpen={showArchive}
+        onClose={() => setShowArchive(false)}
+        title="Archive organization"
+        footer={
+          <>
+            <button
+              onClick={() => setShowArchive(false)}
+              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleArchive}
+              disabled={archiving}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red hover:bg-red/80 rounded-lg transition-all disabled:opacity-40"
+            >
+              {archiving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
+              Archive organization
+            </button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-red/10 rounded-lg flex-shrink-0">
+            <AlertTriangle className="w-4 h-4 text-red" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm text-white">Archive {org?.name ?? 'this organization'}?</p>
+            <p className="text-xs text-text-secondary/60">
+              The organization and its members lose access — it disappears for everyone. Its data is retained, not deleted, but this cannot be undone from the app.
             </p>
           </div>
         </div>

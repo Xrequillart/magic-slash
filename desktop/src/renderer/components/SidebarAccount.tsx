@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { LogIn, LogOut, Building2, ChevronDown } from 'lucide-react'
+import { LogIn, LogOut, Building2, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { useOrg } from '../hooks/useOrg'
 import { useStore } from '../store'
 import { LoginScreen } from './LoginScreen'
+import { showToast } from './Toast'
 
 /**
  * Derive a friendly display name from an email address. Until GitHub OAuth
@@ -26,12 +28,14 @@ function displayNameFromEmail(email?: string): string {
  */
 export function SidebarAccount() {
   const { status, logout } = useAuth()
+  const { org, orgs, switchOrg } = useOrg()
   const setCurrentPage = useStore((s) => s.setCurrentPage)
   const setSettingsInitialTab = useStore((s) => s.setSettingsInitialTab)
   const setActiveTerminal = useStore((s) => s.setActiveTerminal)
 
   const [showLogin, setShowLogin] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [switching, setSwitching] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Close the menu on outside click or Escape.
@@ -69,6 +73,20 @@ export function SidebarAccount() {
     }
   }, [logout])
 
+  const handleSwitchOrg = useCallback(async (orgId: string) => {
+    if (orgId === org?.id || switching) return
+    setSwitching(orgId)
+    try {
+      await switchOrg(orgId)
+      showToast('Switched organization', 'success')
+      setMenuOpen(false)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to switch organization', 'error')
+    } finally {
+      setSwitching(null)
+    }
+  }, [org, switching, switchOrg])
+
   // Cloud disabled → nothing to show.
   if (!status.enabled) return null
 
@@ -102,6 +120,33 @@ export function SidebarAccount() {
     <div ref={containerRef} className="relative px-2 pb-2">
       {menuOpen && (
         <div className="absolute bottom-full left-2 right-2 mb-1 bg-bg-secondary border border-white/10 rounded-lg shadow-xl backdrop-blur-2xl overflow-hidden z-30">
+          {/* Multi-org switcher — only when the user belongs to more than one org. */}
+          {orgs.length > 1 && (
+            <div className="border-b border-white/10 py-1">
+              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-text-secondary/40">
+                Organizations
+              </div>
+              {orgs.map((o) => {
+                const isActive = o.id === org?.id
+                return (
+                  <button
+                    key={o.id}
+                    onClick={() => handleSwitchOrg(o.id)}
+                    disabled={switching !== null}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-secondary hover:bg-white/10 hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    <Building2 className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{o.name}</span>
+                    {switching === o.id ? (
+                      <Loader2 className="w-3.5 h-3.5 ml-auto shrink-0 animate-spin" />
+                    ) : isActive ? (
+                      <Check className="w-3.5 h-3.5 ml-auto shrink-0 text-accent" />
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           <button
             onClick={openOrganization}
             className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-secondary hover:bg-white/10 hover:text-white transition-colors"

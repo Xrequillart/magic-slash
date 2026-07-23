@@ -417,59 +417,75 @@ export function setCurrentOrgId(orgId: string | undefined): Config {
   return config
 }
 
-/** Copy accepted source values onto target, but only where target has none yet. */
-function fillUnset(
+/**
+ * Copy accepted source values onto target. In 'fill' mode only keys the target
+ * has not set yet are written (local values win); in 'replace' mode every
+ * accepted source key overwrites the target (the org's value wins).
+ */
+function applyValues(
   target: Record<string, unknown>,
   source: Record<string, unknown>,
   accept: (value: unknown) => boolean,
+  mode: 'fill' | 'replace',
 ): void {
   for (const [key, value] of Object.entries(source)) {
-    if (accept(value) && target[key] === undefined) {
+    if (!accept(value)) continue
+    if (mode === 'replace' || target[key] === undefined) {
       target[key] = value
     }
   }
 }
 
 /**
- * Merge an org's shared config (inherited on invitation onboarding) into the
- * local config, applied as DEFAULTS over every existing repository: existing
- * local values always win, so local repo paths and integration toggles are
- * preserved. Only the shared fields are touched — languages, commit/PR format,
- * and repo keywords. Missing/malformed input is ignored (never throws on data).
+ * Merge an org's shared config into the local config across every existing
+ * repository. Only the shared fields are touched — languages, commit/PR format,
+ * and repo keywords; local-only bits (repo paths, integration toggles) are never
+ * modified. Missing/malformed input is ignored (never throws on data).
+ *
+ * Two modes:
+ *  - 'fill' (default): applied as DEFAULTS — existing local values always win.
+ *    Used on invitation onboarding so the invitee keeps anything they set.
+ *  - 'replace': the org's values overwrite the local ones for the shared keys.
+ *    Used when SWITCHING the active org, so the shared config actually swaps to
+ *    reflect the newly-active org instead of retaining the previous org's values.
  */
-export function mergeOrgSharedConfig(shared: OrgSharedConfig, orgId?: string): Config {
+export function mergeOrgSharedConfig(
+  shared: OrgSharedConfig,
+  orgId?: string,
+  mode: 'fill' | 'replace' = 'fill',
+): Config {
   const config = readConfig()
   config.repositories = config.repositories || {}
 
   for (const repo of Object.values(config.repositories)) {
-    // Languages: fill only keys the repo hasn't already set.
     if (shared.languages && typeof shared.languages === 'object') {
       repo.languages = repo.languages || {}
-      fillUnset(repo.languages, shared.languages, (v) => typeof v === 'string')
+      applyValues(repo.languages, shared.languages, (v) => typeof v === 'string', mode)
     }
 
-    // Commit settings: fill only unset fields.
     if (shared.commit && typeof shared.commit === 'object') {
       repo.commit = repo.commit || {}
-      fillUnset(repo.commit, shared.commit, (v) => v !== undefined)
+      applyValues(repo.commit, shared.commit, (v) => v !== undefined, mode)
     }
 
-    // Pull request settings: fill only unset fields.
     if (shared.pullRequest && typeof shared.pullRequest === 'object') {
       repo.pullRequest = repo.pullRequest || {}
-      fillUnset(repo.pullRequest, shared.pullRequest, (v) => v !== undefined)
+      applyValues(repo.pullRequest, shared.pullRequest, (v) => v !== undefined, mode)
     }
   }
 
-  // Repo keywords keyed by repo name: apply to a matching local repo only when
-  // it has no meaningful keywords yet (empty or defaulted to its own name).
+  // Repo keywords keyed by repo name. In 'fill' mode only a repo with no
+  // meaningful keywords yet inherits them; in 'replace' mode the matching repo's
+  // keywords are overwritten with the org's.
   if (shared.repoKeywords && typeof shared.repoKeywords === 'object') {
     for (const [name, keywords] of Object.entries(shared.repoKeywords)) {
       const repo = config.repositories[name]
-      if (!repo || !Array.isArray(keywords)) continue
-      const isDefaulted = repo.keywords.length === 0 || (repo.keywords.length === 1 && repo.keywords[0] === name)
-      if (isDefaulted && keywords.length > 0) {
+      if (!repo || !Array.isArray(keywords) || keywords.length === 0) continue
+      if (mode === 'replace') {
         repo.keywords = keywords
+      } else {
+        const isDefaulted = repo.keywords.length === 0 || (repo.keywords.length === 1 && repo.keywords[0] === name)
+        if (isDefaulted) repo.keywords = keywords
       }
     }
   }

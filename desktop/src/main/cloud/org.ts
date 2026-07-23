@@ -8,6 +8,7 @@ interface OrgRow {
   id: string
   name: string
   created_by: string | null
+  archived_at?: string | null
 }
 
 interface MembershipRow {
@@ -27,38 +28,19 @@ function firstOrg(rel: OrgRow | OrgRow[] | null): OrgRow | null {
  * cloud is disabled, the user is logged out, or has no membership.
  */
 export async function getCurrentOrg(): Promise<Org | null> {
-  const client = await getAuthedClient()
-  if (!client) return null
+  const orgs = await listOrgs()
+  if (orgs.length === 0) return null
 
-  const stored = loadSession()
-  const uid = stored?.user?.id
-  if (!uid) return null
-
-  const { data, error } = await client
-    .from('memberships')
-    .select('org_id, role, organizations(id, name, created_by)')
-    .eq('user_id', uid)
-
-  if (error || !data || data.length === 0) return null
-
-  const rows = data as unknown as MembershipRow[]
   const preferredId = readConfig().currentOrgId
-  const chosen = rows.find(r => r.org_id === preferredId) ?? rows[0]
-  const org = firstOrg(chosen.organizations)
-  if (!org) return null
-
-  return {
-    id: org.id,
-    name: org.name,
-    createdBy: org.created_by ?? undefined,
-    role: chosen.role,
-  }
+  return orgs.find((o) => o.id === preferredId) ?? orgs[0]
 }
 
 /**
- * Members of the given org (defaults to the current org). Emails are not
- * exposed by RLS on auth.users, so only the caller's own email is filled in;
- * others come back without an email (userId + role only).
+ * Members of the given org (defaults to the current org), including every
+ * member's email. Raw RLS on auth.users would only expose the caller's own
+ * email, so this goes through the list_org_members RPC (SECURITY DEFINER, gated
+ * to members of the org) which joins auth.users and returns emails for all
+ * members — safely, since a non-member gets rejected.
  */
 export async function listMembers(orgId?: string): Promise<Member[]> {
   const client = await getAuthedClient()
@@ -67,23 +49,95 @@ export async function listMembers(orgId?: string): Promise<Member[]> {
   const targetOrgId = orgId ?? (await getCurrentOrg())?.id
   if (!targetOrgId) return []
 
+  const { data, error } = await client.rpc('list_org_members', { p_org_id: targetOrgId })
+  if (error || !data) return []
+
+  return (data as Array<{ user_id: string; email: string | null; role: MembershipRole; created_at: string }>).map((row) => ({
+    userId: row.user_id,
+    role: row.role,
+    createdAt: row.created_at ?? undefined,
+    email: row.email ?? undefined,
+  }))
+}
+
+/**
+ * Every non-archived org the current user belongs to (for the multi-org
+ * switcher). Archived orgs are already filtered server-side by the
+ * is_org_member-gated RLS, so a membership row for an archived org never comes
+ * back. Degrades to [] when cloud is off or the user is logged out.
+ */
+export async function listOrgs(): Promise<Org[]> {
+  const client = await getAuthedClient()
+  if (!client) return []
+
+  const stored = loadSession()
+  const uid = stored?.user?.id
+  if (!uid) return []
+
   const { data, error } = await client
     .from('memberships')
-    .select('user_id, role, created_at')
-    .eq('org_id', targetOrgId)
+    .select('org_id, role, organizations(id, name, created_by, archived_at)')
+    .eq('user_id', uid)
 
   if (error || !data) return []
 
-  const stored = loadSession()
-  const selfId = stored?.user?.id
-  const selfEmail = stored?.user?.email
+  const rows = data as unknown as MembershipRow[]
+  const orgs: Org[] = []
+  for (const row of rows) {
+    const org = firstOrg(row.organizations)
+    // Defense-in-depth: skip archived orgs even though RLS already filters them.
+    if (!org || org.archived_at) continue
+    orgs.push({
+      id: org.id,
+      name: org.name,
+      createdBy: org.created_by ?? undefined,
+      role: row.role,
+    })
+  }
+  return orgs
+}
 
-  return data.map((row) => ({
-    userId: row.user_id as string,
-    role: row.role as MembershipRole,
-    createdAt: row.created_at as string | undefined,
-    email: row.user_id === selfId ? selfEmail : undefined,
-  }))
+/** Run a void-returning RPC through the authed client, surfacing failures as thrown errors. */
+async function callVoidRpc(fn: string, args: Record<string, unknown>): Promise<void> {
+  const client = await getAuthedClient()
+  if (!client) throw new Error('Cloud features are not available')
+
+  const { error } = await client.rpc(fn, args)
+  if (error) throw new Error(error.message)
+}
+
+/**
+ * Remove a member from an org (admin only). The remove_member RPC enforces the
+ * admin gate and the last-admin lockout guard server-side.
+ */
+export async function removeMember(orgId: string, userId: string): Promise<void> {
+  await callVoidRpc('remove_member', { p_org_id: orgId, p_user_id: userId })
+}
+
+/**
+ * Leave an org (removes the current user's own membership). The
+ * leave_organization RPC enforces the last-admin lockout guard, so a sole admin
+ * of an org that still has members cannot leave. When the user leaves the active
+ * org we clear the remembered currentOrgId so getCurrentOrg repoints cleanly.
+ */
+export async function leaveOrg(orgId: string): Promise<void> {
+  await callVoidRpc('leave_organization', { p_org_id: orgId })
+  if (readConfig().currentOrgId === orgId) setCurrentOrgId(undefined)
+}
+
+/** Change a member's role (admin only). The RPC enforces the last-admin guard on demotion. */
+export async function updateMemberRole(orgId: string, userId: string, role: MembershipRole): Promise<void> {
+  await callVoidRpc('update_member_role', { p_org_id: orgId, p_user_id: userId, p_role: role })
+}
+
+/**
+ * Archive (soft-delete) an org (admin only). The RPC sets archived_at; the org
+ * then drops out of every read path server-side. When it was the active org we
+ * clear the remembered currentOrgId so getCurrentOrg repoints cleanly.
+ */
+export async function archiveOrg(orgId: string): Promise<void> {
+  await callVoidRpc('archive_organization', { p_org_id: orgId })
+  if (readConfig().currentOrgId === orgId) setCurrentOrgId(undefined)
 }
 
 /** Create an invitation (admin only — RLS enforces the admin gate). */
@@ -159,18 +213,42 @@ export interface AcceptInvitationResult {
   config: Config
 }
 
-/** Read the org's shared config and merge it into the local config (best-effort). */
-async function mergeSharedConfigWith(client: SupabaseClient, orgId: string): Promise<Config> {
+/**
+ * Read the org's shared config and merge it into the local config (best-effort).
+ * 'fill' keeps existing local values (onboarding); 'replace' swaps the shared
+ * keys to the org's values (used when switching the active org).
+ */
+async function mergeSharedConfigWith(
+  client: SupabaseClient,
+  orgId: string,
+  mode: 'fill' | 'replace' = 'fill',
+): Promise<Config> {
   try {
     const { data: shared, error } = await client.rpc('get_org_shared_config', { p_org_id: orgId })
     if (!error && shared) {
-      return mergeOrgSharedConfig(shared as OrgSharedConfig, orgId)
+      return mergeOrgSharedConfig(shared as OrgSharedConfig, orgId, mode)
     }
   } catch (mergeError) {
     // Inheriting shared config is best-effort — never fail over it.
     console.error('[cloud] Failed to merge org shared config:', mergeError)
   }
   return readConfig()
+}
+
+/**
+ * Switch the active org: remember it locally, then RE-APPLY the org's shared
+ * config with REPLACE semantics so the shared skills/agents config (languages,
+ * commit/PR format, repo keywords) actually swaps to the newly-active org rather
+ * than retaining the previous org's values. Returns the updated local config.
+ * Degrades local-first: throws the standard error when cloud is unavailable, and
+ * the shared-config re-apply is best-effort (never fails the switch).
+ */
+export async function switchOrg(orgId: string): Promise<Config> {
+  const client = await getAuthedClient()
+  if (!client) throw new Error('Cloud features are not available')
+
+  setCurrentOrgId(orgId)
+  return mergeSharedConfigWith(client, orgId, 'replace')
 }
 
 /**
