@@ -89,6 +89,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          MAGIC_SLASH_SUPABASE_URL: ${{ secrets.MAGIC_SLASH_SUPABASE_URL }}
+          MAGIC_SLASH_SUPABASE_ANON_KEY: ${{ secrets.MAGIC_SLASH_SUPABASE_ANON_KEY }}
 
   notify:
     name: Post-Release
