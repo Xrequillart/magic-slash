@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, SettingsTab } from '../../types'
+import type { Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, SettingsTab, Org } from '../../types'
 
 interface CloseAgentModalData {
   terminalId: string
@@ -12,6 +12,12 @@ interface AppState {
   config: Config | null
   configLoading: boolean
   configError: string | null
+
+  // Organization (cloud, multi-org). Held globally so the switcher and other
+  // views react live to the active org / membership set. Ephemeral (not
+  // persisted) — refreshed from the main process on mount and after mutations.
+  activeOrg: Org | null
+  orgs: Org[]
 
   // Terminals
   terminals: TerminalInfo[]
@@ -50,6 +56,9 @@ interface AppState {
   setConfig: (config: Config) => void
   setConfigLoading: (loading: boolean) => void
   setConfigError: (error: string | null) => void
+
+  setActiveOrg: (org: Org | null) => void
+  setOrgs: (orgs: Org[]) => void
 
   addTerminal: (terminal: TerminalInfo) => void
   updateTerminalState: (id: string, state: TerminalState) => void
@@ -98,6 +107,9 @@ export const useStore = create<AppState>()(
         configLoading: true,
         configError: null,
 
+        activeOrg: null,
+        orgs: [],
+
         terminals: [],
         activeTerminalId: null,
 
@@ -131,6 +143,9 @@ export const useStore = create<AppState>()(
         }),
         setConfigLoading: (configLoading) => set({ configLoading }),
         setConfigError: (configError) => set({ configError, configLoading: false }),
+
+        setActiveOrg: (activeOrg) => set({ activeOrg }),
+        setOrgs: (orgs) => set({ orgs }),
 
         addTerminal: (terminal) =>
           set((state) => {

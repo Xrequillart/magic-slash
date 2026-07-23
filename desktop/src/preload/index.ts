@@ -413,16 +413,24 @@ const authApi = {
   },
 }
 
-// Org API (organization membership + invitations)
+// Org API (organization membership + invitations + multi-org management)
 const orgApi = {
   current: (): Promise<Org | null> => ipcRenderer.invoke('org:current'),
   members: (): Promise<Member[]> => ipcRenderer.invoke('org:members'),
+  list: (): Promise<Org[]> => ipcRenderer.invoke('org:list'),
   invitations: (): Promise<Invitation[]> => ipcRenderer.invoke('org:invitations'),
   invite: (email: string, role?: MembershipRole): Promise<Invitation> =>
     ipcRenderer.invoke('org:invite', { email, role }),
   accept: (token: string): Promise<{ orgId: string; config: Config }> =>
     ipcRenderer.invoke('org:accept', { token }),
   applySharedConfig: (): Promise<Config> => ipcRenderer.invoke('org:applyShared'),
+  removeMember: (orgId: string, userId: string): Promise<void> =>
+    ipcRenderer.invoke('org:removeMember', { orgId, userId }),
+  leave: (orgId: string): Promise<void> => ipcRenderer.invoke('org:leave', { orgId }),
+  updateRole: (orgId: string, userId: string, role: MembershipRole): Promise<void> =>
+    ipcRenderer.invoke('org:updateRole', { orgId, userId, role }),
+  archive: (orgId: string): Promise<void> => ipcRenderer.invoke('org:archive', { orgId }),
+  switch: (orgId: string): Promise<Config> => ipcRenderer.invoke('org:switch', { orgId }),
 }
 
 // Expose APIs to renderer
