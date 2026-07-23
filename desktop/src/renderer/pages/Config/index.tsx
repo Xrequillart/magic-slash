@@ -65,9 +65,20 @@ const SEAT_TIER_LABELS: Record<string, string> = {
 }
 
 function WelcomePage() {
-  const { config, terminals, splitEnabled, toggleSplitEnabled, currentPage, setCurrentPage, setConfig } = useStore()
+  const { config, terminals, splitEnabled, toggleSplitEnabled, currentPage, setCurrentPage, setConfig, settingsInitialTab, setSettingsInitialTab } = useStore()
   const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode } = useConfig()
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
+
+  // Deep-link support: another view can request a specific settings tab via the
+  // store (e.g. the sidebar account menu → Organization). Consume it once, then
+  // clear it so navigating back to Settings later starts on the default tab.
+  useEffect(() => {
+    if (!settingsInitialTab) return
+    if (SETTINGS_TABS.some((t) => t.id === settingsInitialTab)) {
+      setActiveTab(settingsInitialTab as SettingsTab)
+    }
+    setSettingsInitialTab(null)
+  }, [settingsInitialTab, setSettingsInitialTab])
   const [githubStatus, setGithubStatus] = useState<Record<string, boolean>>({})
   const [isAdding, setIsAdding] = useState(false)
   const [appVersion, setAppVersion] = useState('')
