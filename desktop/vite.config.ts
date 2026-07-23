@@ -1,10 +1,18 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron'
 import renderer from 'vite-plugin-electron-renderer'
 import { resolve } from 'path'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // Load .env / .env.local (any prefix) from the desktop dir, falling back to the
+  // shell's process.env. Lets you point at a Supabase project via an untracked
+  // .env.local instead of exporting env vars before every run.
+  const env = loadEnv(mode, process.cwd(), '')
+  const supabaseUrl = env.MAGIC_SLASH_SUPABASE_URL || process.env.MAGIC_SLASH_SUPABASE_URL || ''
+  const supabaseAnonKey = env.MAGIC_SLASH_SUPABASE_ANON_KEY || process.env.MAGIC_SLASH_SUPABASE_ANON_KEY || ''
+
+  return {
   plugins: [
     react(),
     electron([
@@ -19,8 +27,8 @@ export default defineConfig({
           // env vars are absent at build time they resolve to undefined and the
           // cloud client stays disabled — the app still boots and works offline.
           define: {
-            'process.env.MAGIC_SLASH_SUPABASE_URL': JSON.stringify(process.env.MAGIC_SLASH_SUPABASE_URL || ''),
-            'process.env.MAGIC_SLASH_SUPABASE_ANON_KEY': JSON.stringify(process.env.MAGIC_SLASH_SUPABASE_ANON_KEY || ''),
+            'process.env.MAGIC_SLASH_SUPABASE_URL': JSON.stringify(supabaseUrl),
+            'process.env.MAGIC_SLASH_SUPABASE_ANON_KEY': JSON.stringify(supabaseAnonKey),
           },
           build: {
             outDir: 'dist/main',
@@ -70,5 +78,6 @@ export default defineConfig({
         'quick-launch': resolve(__dirname, 'quick-launch.html'),
       },
     },
+  }
   }
 })
