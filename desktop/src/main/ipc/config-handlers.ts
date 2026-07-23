@@ -243,6 +243,22 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
     return { config }
   })
 
+  // Show/hide the Claude usage card in the sidebar
+  ipcMain.handle('config:setUsageCardEnabled', async (_event, { enabled }: { enabled: boolean }) => {
+    const config = readConfig()
+    config.usageCardEnabled = enabled
+    writeConfig(config)
+    return { config }
+  })
+
+  // Collapse/expand the sidebar usage card (gauges-only)
+  ipcMain.handle('config:setUsageCardMinimized', async (_event, { minimized }: { minimized: boolean }) => {
+    const config = readConfig()
+    config.usageCardMinimized = minimized
+    writeConfig(config)
+    return { config }
+  })
+
   ipcMain.handle('config:updateSplitEnabled', async (_event, { enabled }) => {
     const config = updateSplitEnabled(enabled)
     return { config }

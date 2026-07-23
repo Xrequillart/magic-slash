@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History } from 'lucide-react'
+import { useState, useEffect, useMemo, Fragment } from 'react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins } from 'lucide-react'
 import { ProfileSection } from './ProfileSection'
 import { RepoPage } from './RepoPage'
+import { LimitGauge } from '../../components/agent-info-sidebar/LimitGauge'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
-import type { SpotlightShortcut, LaunchMode } from '../../../types'
+import type { SpotlightShortcut, LaunchMode, ClaudeAccount, SpendSummary } from '../../../types'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 
@@ -27,7 +28,7 @@ const LAUNCH_MODE_OPTIONS: { value: LaunchMode; label: string; description: stri
   { value: 'bypassPermissions', label: 'Bypass', description: 'No permission checks — for sandboxed environments only' },
 ]
 
-type SettingsTab = 'profile' | 'repositories' | 'launch-mode' | 'features' | 'shortcuts' | 'about'
+type SettingsTab = 'profile' | 'repositories' | 'launch-mode' | 'features' | 'shortcuts' | 'usage' | 'about'
 
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: 'profile', label: 'Profile' },
@@ -35,11 +36,34 @@ const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: 'launch-mode', label: 'Launch Mode' },
   { id: 'features', label: 'Features' },
   { id: 'shortcuts', label: 'Shortcuts' },
+  { id: 'usage', label: 'Usage' },
   { id: 'about', label: 'About' },
 ]
 
+function formatTokensCompact(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return `${n}`
+}
+
+function formatUsd(n: number): string {
+  if (n > 0 && n < 0.01) return '<$0.01'
+  if (n >= 1000) return `$${Math.round(n).toLocaleString('en-US')}`
+  return `$${n.toFixed(2)}`
+}
+
+// Human-readable label for a Claude seat tier / billing type.
+const SEAT_TIER_LABELS: Record<string, string> = {
+  team_standard: 'Team',
+  team_premium: 'Team Premium',
+  enterprise: 'Enterprise',
+  max: 'Max',
+  pro: 'Pro',
+}
+
 function WelcomePage() {
-  const { config, terminals, splitEnabled, toggleSplitEnabled, currentPage, setCurrentPage } = useStore()
+  const { config, terminals, splitEnabled, toggleSplitEnabled, currentPage, setCurrentPage, setConfig } = useStore()
   const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode } = useConfig()
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [githubStatus, setGithubStatus] = useState<Record<string, boolean>>({})
@@ -53,6 +77,7 @@ function WelcomePage() {
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
   const [showBypassWarning, setShowBypassWarning] = useState(false)
   const [historyEnabled, setHistoryEnabled] = useState(config?.historyEnabled ?? true)
+  const [usageCardEnabled, setUsageCardEnabled] = useState(config?.usageCardEnabled ?? false)
   const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)
   const [prWatcherInterval, setPrWatcherInterval] = useState(config?.prReviews?.pollIntervalMs ?? 60_000)
   const [prWatcherAutoLaunch, setPrWatcherAutoLaunch] = useState(config?.prReviews?.autoLaunchSkills ?? false)
@@ -73,6 +98,11 @@ function WelcomePage() {
   useEffect(() => {
     if (configHistoryEnabled !== undefined) setHistoryEnabled(configHistoryEnabled)
   }, [configHistoryEnabled])
+
+  const configUsageCardEnabled = config?.usageCardEnabled
+  useEffect(() => {
+    if (configUsageCardEnabled !== undefined) setUsageCardEnabled(configUsageCardEnabled)
+  }, [configUsageCardEnabled])
 
   const configPrWatcherEnabled = config?.prReviews?.enabled
   const configPrWatcherInterval = config?.prReviews?.pollIntervalMs
@@ -154,6 +184,40 @@ function WelcomePage() {
     }
     return counts
   }, [terminals, repos])
+
+  // Latest known Claude account usage (plan rate limits). These are account-global,
+  // so they're identical across agents — pick the most recently reported one that
+  // actually carries plan limits (Claude.ai Pro/Max only).
+  const accountUsage = useMemo(() => {
+    let latest: NonNullable<typeof terminals[number]['metadata']>['usage'] | undefined
+    for (const terminal of terminals) {
+      const usage = terminal.metadata?.usage
+      if (!usage) continue
+      if (typeof usage.fiveHourPercent !== 'number' && typeof usage.sevenDayPercent !== 'number') continue
+      if (!latest || (usage.updatedAt ?? 0) > (latest.updatedAt ?? 0)) {
+        latest = usage
+      }
+    }
+    return latest
+  }, [terminals])
+
+  // Re-render every 30s so the "resets in …" countdowns stay fresh.
+  const [usageNow, setUsageNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setUsageNow(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Claude account identity + estimated spend, sourced from ~/.claude on disk.
+  const [claudeAccount, setClaudeAccount] = useState<ClaudeAccount | null>(null)
+  const [spend, setSpend] = useState<SpendSummary | null>(null)
+  useEffect(() => {
+    if (activeTab !== 'usage') return
+    let cancelled = false
+    window.electronAPI.usage.getAccount().then((a) => { if (!cancelled) setClaudeAccount(a) })
+    window.electronAPI.usage.getSpend().then((s) => { if (!cancelled) setSpend(s) })
+    return () => { cancelled = true }
+  }, [activeTab])
 
   // Fetch app version and auto-start state
   useEffect(() => {
@@ -439,6 +503,37 @@ function WelcomePage() {
         </div>
       </div>
 
+      {/* Usage Card Section */}
+      <div>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <Gauge className="w-4 h-4" />
+          <span>Usage card</span>
+        </div>
+        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">Show usage card in sidebar</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">Display the connected account and the Session (5h) / Weekly (7d) gauges at the bottom of the sidebar</div>
+            </div>
+            <button
+              onClick={async () => {
+                const newValue = !usageCardEnabled
+                setUsageCardEnabled(newValue)
+                const result = await window.electronAPI.config.setUsageCardEnabled(newValue)
+                setConfig(result.config)
+              }}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                usageCardEnabled ? 'bg-accent' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+                usageCardEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Split View Section */}
       <div>
         <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
@@ -699,6 +794,129 @@ function WelcomePage() {
                 <span className="px-2 py-0.5 text-xs text-text-secondary/40">Disabled</span>
               )}
             </div>
+          </div>
+        </div>
+      </div>}
+
+      {/* Usage tab */}
+      {activeTab === 'usage' && <div className="flex flex-col lg:flex-row gap-6">
+
+        {/* Left column: account + estimated spend */}
+        <div className="flex-1 min-w-0 flex flex-col gap-6">
+          {/* Current account */}
+          <div>
+            <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+              <User className="w-4 h-4" />
+              <span>Current account</span>
+            </div>
+            <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+              {claudeAccount ? (
+                <div className="space-y-2 text-sm">
+                  {claudeAccount.displayName && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-text-secondary/60">Name</span>
+                      <span className="font-medium">{claudeAccount.displayName}</span>
+                    </div>
+                  )}
+                  {claudeAccount.emailAddress && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-text-secondary/60">Email</span>
+                      <span className="font-mono text-xs">{claudeAccount.emailAddress}</span>
+                    </div>
+                  )}
+                  {claudeAccount.organizationName && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-text-secondary/60">Organization</span>
+                      <span className="font-medium">{claudeAccount.organizationName}</span>
+                    </div>
+                  )}
+                  {claudeAccount.seatTier && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-text-secondary/60">Plan</span>
+                      <span className="px-1.5 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-medium">
+                        {SEAT_TIER_LABELS[claudeAccount.seatTier] ?? claudeAccount.seatTier}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm text-text-secondary/50 text-center py-2">
+                  No Claude account detected.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Estimated spend & tokens */}
+          <div>
+            <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+              <Coins className="w-4 h-4" />
+              <span>Spend &amp; tokens</span>
+            </div>
+            <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+              {spend?.hasData ? (
+                <>
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2 text-sm items-baseline">
+                    <span className="text-text-secondary/50 text-xs uppercase tracking-wider"></span>
+                    <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">Tokens</span>
+                    <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">Est. cost</span>
+
+                    {([
+                      { label: 'Today', b: spend.today },
+                      { label: 'This week', b: spend.week },
+                      { label: 'All time', b: spend.allTime },
+                    ]).map(({ label, b }) => (
+                      <Fragment key={label}>
+                        <span className="text-text-secondary">{label}</span>
+                        <span className="font-mono text-right">{formatTokensCompact(b.tokens)}</span>
+                        <span className="font-mono text-right text-white">~{formatUsd(b.costUsd)}</span>
+                      </Fragment>
+                    ))}
+                  </div>
+                  <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
+                    Cost is an estimate (tokens × public API pricing), not billed spend — your plan is a subscription.
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-text-secondary/50 text-center py-2">
+                  No usage history found in ~/.claude yet.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right column: account rate-limit gauges */}
+        <div className="lg:w-[280px] shrink-0">
+          <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+            <Gauge className="w-4 h-4" />
+            <span>Rate limits</span>
+          </div>
+          <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+            {accountUsage ? (
+              <div className="flex items-start justify-center gap-8 py-2">
+                {typeof accountUsage.fiveHourPercent === 'number' && (
+                  <LimitGauge
+                    label="Session (5h)"
+                    percent={accountUsage.fiveHourPercent}
+                    resetsAt={accountUsage.fiveHourResetsAt}
+                    now={usageNow}
+                  />
+                )}
+                {typeof accountUsage.sevenDayPercent === 'number' && (
+                  <LimitGauge
+                    label="Weekly (7d)"
+                    percent={accountUsage.sevenDayPercent}
+                    resetsAt={accountUsage.sevenDayResetsAt}
+                    now={usageNow}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="text-sm text-text-secondary/50 text-center py-4">
+                No live rate-limit data yet — available for Claude.ai Pro/Max after the first agent activity.
+              </div>
+            )}
           </div>
         </div>
       </div>}

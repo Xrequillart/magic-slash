@@ -28,6 +28,28 @@ export interface TerminalUsage {
   updatedAt?: number         // timestamp of last statusline report
 }
 
+// Signed-in Claude account (from ~/.claude.json oauthAccount).
+export interface ClaudeAccount {
+  displayName?: string
+  emailAddress?: string
+  organizationName?: string
+  seatTier?: string       // e.g. 'team_standard'
+  billingType?: string    // e.g. 'stripe_subscription'
+}
+
+// One spend/usage bucket. costUsd is an API-equivalent ESTIMATE, not billed spend.
+export interface SpendBucket {
+  tokens: number
+  costUsd: number
+}
+
+export interface SpendSummary {
+  today: SpendBucket
+  week: SpendBucket
+  allTime: SpendBucket
+  hasData: boolean
+}
+
 export interface TerminalMetadata {
   title?: string
   branchName?: string
@@ -129,6 +151,8 @@ export interface Config {
   spotlight?: SpotlightConfig
   launchMode?: LaunchMode
   historyEnabled?: boolean
+  usageCardEnabled?: boolean    // show the Claude usage card in the sidebar
+  usageCardMinimized?: boolean  // sidebar usage card collapsed to gauges only
   prReviews?: {
     enabled?: boolean
     pollIntervalMs?: number

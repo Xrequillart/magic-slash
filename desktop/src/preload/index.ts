@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -50,6 +50,10 @@ const configApi = {
 
   setHistoryEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('config:setHistoryEnabled', { enabled }),
+  setUsageCardEnabled: (enabled: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setUsageCardEnabled', { enabled }),
+  setUsageCardMinimized: (minimized: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setUsageCardMinimized', { minimized }),
 
   updateSplitEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('config:updateSplitEnabled', { enabled }),
@@ -371,6 +375,12 @@ const profileApi = {
   save: (data: UserProfile) => ipcRenderer.invoke('profile:save', data),
 }
 
+// Usage API (Claude account + estimated spend)
+const usageApi = {
+  getAccount: (): Promise<ClaudeAccount | null> => ipcRenderer.invoke('usage:getAccount'),
+  getSpend: (): Promise<SpendSummary> => ipcRenderer.invoke('usage:getSpend'),
+}
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   config: configApi,
@@ -387,6 +397,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   quickLaunch: quickLaunchApi,
   prWatcher: prWatcherApi,
   profile: profileApi,
+  usage: usageApi,
 })
 
 // Type definitions for the renderer
@@ -407,6 +418,7 @@ declare global {
       quickLaunch: typeof quickLaunchApi
       prWatcher: typeof prWatcherApi
       profile: typeof profileApi
+      usage: typeof usageApi
     }
   }
 

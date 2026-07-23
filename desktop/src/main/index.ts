@@ -20,6 +20,7 @@ import { destroyPopover } from './windows/popover-window'
 import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
 import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
 import { setupProfileHandlers } from './ipc/profile-handlers'
+import { setupUsageHandlers } from './ipc/usage-handlers'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
 import { setupPRReviewHandlers } from './ipc/pr-review-handlers'
 
@@ -187,6 +188,7 @@ function setupHandlers() {
   setupScriptHandlers(() => mainWindow)
   registerActivityHistoryHandlers()
   setupProfileHandlers()
+  setupUsageHandlers()
   // Notification callback - only show when window is not focused
   const notificationCallback = (title: string, body: string) => {
     if (Notification.isSupported() && mainWindow && !mainWindow.isFocused()) {
