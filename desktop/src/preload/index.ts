@@ -395,6 +395,17 @@ const authApi = {
   signup: (email: string, password: string, opts?: { orgName?: string; invitationToken?: string }): Promise<AuthStatus> =>
     ipcRenderer.invoke('auth:signup', { email, password, orgName: opts?.orgName, invitationToken: opts?.invitationToken }),
   logout: (): Promise<AuthStatus> => ipcRenderer.invoke('auth:logout'),
+  requestPasswordReset: (email: string): Promise<void> =>
+    ipcRenderer.invoke('auth:requestPasswordReset', { email }),
+  confirmPasswordReset: (email: string, code: string, newPassword: string): Promise<void> =>
+    ipcRenderer.invoke('auth:confirmPasswordReset', { email, code, newPassword }),
+  updatePassword: (newPassword: string): Promise<void> =>
+    ipcRenderer.invoke('auth:updatePassword', { newPassword }),
+  requestEmailChange: (newEmail: string): Promise<void> =>
+    ipcRenderer.invoke('auth:requestEmailChange', { newEmail }),
+  confirmEmailChange: (newEmail: string, code: string): Promise<AuthStatus> =>
+    ipcRenderer.invoke('auth:confirmEmailChange', { newEmail, code }),
+  deleteAccount: (): Promise<AuthStatus> => ipcRenderer.invoke('auth:deleteAccount'),
   onStatusChanged: (callback: (status: AuthStatus) => void) => {
     const listener = (_event: IpcRendererEvent, status: AuthStatus) => callback(status)
     ipcRenderer.on('auth:statusChanged', listener)
