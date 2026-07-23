@@ -6,7 +6,7 @@ import { OrgPage } from './OrgPage'
 import { LimitGauge } from '../../components/agent-info-sidebar/LimitGauge'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
-import type { SpotlightShortcut, LaunchMode, ClaudeAccount, SpendSummary } from '../../../types'
+import type { SpotlightShortcut, LaunchMode, ClaudeAccount, SpendSummary, SettingsTab } from '../../../types'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 
@@ -28,8 +28,6 @@ const LAUNCH_MODE_OPTIONS: { value: LaunchMode; label: string; description: stri
   { value: 'auto', label: 'Auto', description: 'Auto-approves most actions based on configured allowlists' },
   { value: 'bypassPermissions', label: 'Bypass', description: 'No permission checks — for sandboxed environments only' },
 ]
-
-type SettingsTab = 'profile' | 'repositories' | 'organization' | 'launch-mode' | 'features' | 'shortcuts' | 'usage' | 'about'
 
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: 'profile', label: 'Profile' },
@@ -67,16 +65,15 @@ const SEAT_TIER_LABELS: Record<string, string> = {
 function WelcomePage() {
   const { config, terminals, splitEnabled, toggleSplitEnabled, currentPage, setCurrentPage, setConfig, settingsInitialTab, setSettingsInitialTab } = useStore()
   const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode } = useConfig()
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
-
   // Deep-link support: another view can request a specific settings tab via the
-  // store (e.g. the sidebar account menu → Organization). Consume it once, then
-  // clear it so navigating back to Settings later starts on the default tab.
+  // store (e.g. the sidebar account menu → Organization). Initialise straight
+  // from it so the requested tab paints on first render (no Profile → target
+  // flash), then clear the store value once so later visits start on the default.
+  const [activeTab, setActiveTab] = useState<SettingsTab>(settingsInitialTab ?? 'profile')
+
   useEffect(() => {
     if (!settingsInitialTab) return
-    if (SETTINGS_TABS.some((t) => t.id === settingsInitialTab)) {
-      setActiveTab(settingsInitialTab as SettingsTab)
-    }
+    setActiveTab(settingsInitialTab)
     setSettingsInitialTab(null)
   }, [settingsInitialTab, setSettingsInitialTab])
   const [githubStatus, setGithubStatus] = useState<Record<string, boolean>>({})

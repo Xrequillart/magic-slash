@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo } from '../../types'
+import type { Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, SettingsTab } from '../../types'
 
 interface CloseAgentModalData {
   terminalId: string
@@ -30,7 +30,7 @@ interface AppState {
   currentPage: 'config' | 'terminals' | 'skills' | 'history'
   // When set, the Config page selects this settings tab on mount, then resets it
   // to null. Lets other views (e.g. the sidebar account menu) deep-link a tab.
-  settingsInitialTab: string | null
+  settingsInitialTab: SettingsTab | null
   rightSidebar: 'info' | null
   leftSidebarVisible: boolean
   iconSidebarVisible: boolean
@@ -67,7 +67,7 @@ interface AppState {
   moveTerminalToPane: (id: string, pane: 'left' | 'right') => void
 
   setCurrentPage: (page: 'config' | 'terminals' | 'skills' | 'history') => void
-  setSettingsInitialTab: (tab: string | null) => void
+  setSettingsInitialTab: (tab: SettingsTab | null) => void
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void
   toggleLeftSidebar: () => void
