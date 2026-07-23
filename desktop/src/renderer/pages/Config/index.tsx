@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, Fragment } from 'react'
 import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins } from 'lucide-react'
 import { ProfileSection } from './ProfileSection'
 import { RepoPage } from './RepoPage'
+import { OrgPage } from './OrgPage'
 import { LimitGauge } from '../../components/agent-info-sidebar/LimitGauge'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
@@ -28,11 +29,12 @@ const LAUNCH_MODE_OPTIONS: { value: LaunchMode; label: string; description: stri
   { value: 'bypassPermissions', label: 'Bypass', description: 'No permission checks — for sandboxed environments only' },
 ]
 
-type SettingsTab = 'profile' | 'repositories' | 'launch-mode' | 'features' | 'shortcuts' | 'usage' | 'about'
+type SettingsTab = 'profile' | 'repositories' | 'organization' | 'launch-mode' | 'features' | 'shortcuts' | 'usage' | 'about'
 
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: 'profile', label: 'Profile' },
   { id: 'repositories', label: 'Repositories' },
+  { id: 'organization', label: 'Organization' },
   { id: 'launch-mode', label: 'Launch Mode' },
   { id: 'features', label: 'Features' },
   { id: 'shortcuts', label: 'Shortcuts' },
@@ -331,6 +333,11 @@ function WelcomePage() {
       {/* Profile tab */}
       {activeTab === 'profile' && (
         <ProfileSection />
+      )}
+
+      {/* Organization tab */}
+      {activeTab === 'organization' && (
+        <OrgPage />
       )}
 
       {/* Repositories tab */}

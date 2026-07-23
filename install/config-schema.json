@@ -79,6 +79,10 @@
       "type": "string",
       "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
       "description": "Default time for new scheduled agents (HH:mm format)"
+    },
+    "currentOrgId": {
+      "type": "string",
+      "description": "Cloud org this install is associated with (optional local hint)"
     }
   },
   "additionalProperties": false,

@@ -158,6 +158,75 @@ export interface Config {
     pollIntervalMs?: number
     autoLaunchSkills?: boolean
   }
+  // Cloud: the org the local install is currently associated with (set after
+  // signing up / accepting an invitation). Purely a local hint — never required.
+  currentOrgId?: string
+}
+
+// ---------------------------------------------------------------------------
+// Cloud: auth & organization (optional — the app works fully without any of it)
+// ---------------------------------------------------------------------------
+
+export type MembershipRole = 'user' | 'admin'
+
+export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
+
+/** Signed-in cloud user identity (subset of the Supabase session). */
+export interface CloudUser {
+  id: string
+  email?: string
+}
+
+/** Result of any auth query. `enabled` is false when Supabase env is missing. */
+export interface AuthStatus {
+  enabled: boolean
+  loggedIn: boolean
+  user?: CloudUser
+}
+
+export interface Org {
+  id: string
+  name: string
+  createdBy?: string
+  role: MembershipRole
+}
+
+export interface Member {
+  userId: string
+  email?: string
+  role: MembershipRole
+  createdAt?: string
+}
+
+export interface Invitation {
+  id: string
+  email: string
+  role: MembershipRole
+  status: InvitationStatus
+  token: string
+  expiresAt?: string | null
+  createdAt?: string
+}
+
+/** Shared org config the invitee inherits (never includes local repo paths). */
+export interface OrgSharedConfig {
+  languages?: Record<string, string>
+  commit?: {
+    style?: string
+    format?: string
+    coAuthor?: boolean
+    includeTicketId?: boolean
+  }
+  pullRequest?: {
+    autoLinkTickets?: boolean
+  }
+  repoKeywords?: Record<string, string[]>
+}
+
+/** GitHub CLI auth status — DISPLAY ONLY. No token is ever stored. */
+export interface GitHubAuthStatus {
+  loggedIn: boolean
+  account?: string
 }
 
 export interface PRTemplate {

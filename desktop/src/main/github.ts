@@ -8,6 +8,32 @@ export function getGitHubToken(): string | null {
   }
 }
 
+/** Extract the account handle from `gh auth status` output (either format). */
+function parseGhAccount(text: string): string | undefined {
+  return text.match(/account\s+(\S+)/i)?.[1] || text.match(/Logged in to \S+ as (\S+)/i)?.[1]
+}
+
+/**
+ * Detects GitHub CLI auth status for DISPLAY only — no token is ever stored.
+ * Parses `gh auth status`, which writes to stderr and includes a line like
+ * "✓ Logged in to github.com account <user> (...)". Returns { loggedIn } and,
+ * when available, the detected account handle.
+ */
+export function getGitHubAuthStatus(): { loggedIn: boolean; account?: string } {
+  try {
+    const output = execFileSync('gh', ['auth', 'status'], {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    return { loggedIn: true, account: parseGhAccount(output) }
+  } catch {
+    // gh exits non-zero when not logged in OR when the stored credentials are
+    // invalid/expired. Either way the login is unusable, so report disconnected
+    // even if an account handle still appears in the error output.
+    return { loggedIn: false }
+  }
+}
+
 export function githubHeaders(extra?: Record<string, string>): Record<string, string> {
   const headers: Record<string, string> = { ...extra }
   const token = getGitHubToken()
