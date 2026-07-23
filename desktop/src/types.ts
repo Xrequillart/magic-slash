@@ -171,6 +171,18 @@ export type MembershipRole = 'user' | 'admin'
 
 export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
 
+/** Tabs of the Settings/Config page. Shared so other views (e.g. the sidebar
+ *  account menu) can deep-link a specific tab in a type-safe way. */
+export type SettingsTab =
+  | 'profile'
+  | 'repositories'
+  | 'organization'
+  | 'launch-mode'
+  | 'features'
+  | 'shortcuts'
+  | 'usage'
+  | 'about'
+
 /** Signed-in cloud user identity (subset of the Supabase session). */
 export interface CloudUser {
   id: string

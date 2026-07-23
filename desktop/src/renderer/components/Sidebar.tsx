@@ -6,6 +6,7 @@ import { useScriptRunner } from '../hooks/useScriptRunner'
 import { useGroupedTerminals, useSplitGroupedTerminals, WORKFLOW_GROUPS, type WorkflowGroupKey, type TerminalWithRepos } from '../hooks/useGroupedTerminals'
 import { getProjectColorMap } from '../utils/projectColors'
 import { SidebarUsageCard } from './SidebarUsageCard'
+import { SidebarAccount } from './SidebarAccount'
 import { stateColors, stateBgColors, stateHoverBgColors } from '../utils/stateColors'
 import type { TerminalState, ScriptTerminalInfo } from '../../types'
 
@@ -609,6 +610,9 @@ export function Sidebar() {
 
       {/* Claude usage card */}
       {config?.usageCardEnabled && <SidebarUsageCard />}
+
+      {/* Account / login */}
+      <SidebarAccount />
 
       {/* Footer */}
       <div className="px-4 py-2 text-xs text-text-secondary flex items-center justify-start gap-2">
