@@ -90,20 +90,6 @@ export interface RepositoryConfig {
   worktreeFiles?: string[]  // Files to copy from main repo to worktree (e.g., ".env", ".env.local")
 }
 
-export type ScheduleFrequency = 'once' | 'daily' | 'weekdays' | 'weekly' | 'monthly'
-
-export interface Schedule {
-  enabled: boolean
-  command: string
-  frequency: ScheduleFrequency
-  time: string // HH:mm 24h format
-  date: string | null // YYYY-MM-DD, only for 'once'
-  dayOfWeek: number | null // 0-6, only for 'weekly'
-  dayOfMonth: number | null // 1-31, only for 'monthly'
-  lastRunAt: number | null // timestamp
-  lastRunStatus: 'success' | 'error' | null
-}
-
 export interface Agent {
   id: string
   name: string
@@ -111,7 +97,6 @@ export interface Agent {
   tsCreate?: number
   metadata?: TerminalMetadata
   splitPane?: 'left' | 'right'
-  schedule?: Schedule
 }
 
 export type SpotlightShortcut =
@@ -144,8 +129,6 @@ export interface Config {
   spotlight?: SpotlightConfig
   launchMode?: LaunchMode
   historyEnabled?: boolean
-  schedulerEnabled?: boolean
-  schedulerDefaultTime?: string
   prReviews?: {
     enabled?: boolean
     pollIntervalMs?: number

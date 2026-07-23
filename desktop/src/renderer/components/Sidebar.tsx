@@ -1,9 +1,8 @@
 import { useMemo, useState, useEffect, useCallback, memo } from 'react'
-import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, Sparkles, X, Eye, CheckCircle2, Zap, CalendarClock } from 'lucide-react'
+import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, Sparkles, X, Eye, CheckCircle2, Zap } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
-import { useScheduledAgents } from '../hooks/useScheduledAgents'
 import { useGroupedTerminals, useSplitGroupedTerminals, WORKFLOW_GROUPS, type WorkflowGroupKey, type TerminalWithRepos } from '../hooks/useGroupedTerminals'
 import { getProjectColorMap } from '../utils/projectColors'
 import { stateColors, stateBgColors, stateHoverBgColors } from '../utils/stateColors'
@@ -217,12 +216,6 @@ export function Sidebar() {
   const { currentPage, setCurrentPage, terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds } = useStore()
   const { setActiveTerminal } = useTerminals()
   const { scriptTerminals, stopScript } = useScriptRunner()
-  const { scheduledAgents } = useScheduledAgents()
-
-  const scheduledCount = useMemo(
-    () => scheduledAgents.filter(a => a.schedule?.enabled).length,
-    [scheduledAgents]
-  )
 
   const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
@@ -360,7 +353,6 @@ export function Sidebar() {
   const shortcutKey = isMac ? '⌘N' : 'Ctrl+N'
   const skillsShortcutKey = isMac ? '⌘;' : 'Ctrl+;'
   const historyShortcutKey = isMac ? '⌘H' : 'Ctrl+H'
-  const scheduledShortcutKey = isMac ? '⌘L' : 'Ctrl+L'
   const settingsShortcutKey = isMac ? '⌘,' : 'Ctrl+,'
 
   // Listen for Command+; keyboard shortcut to open skills
@@ -383,20 +375,6 @@ export function Sidebar() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
         e.preventDefault()
         setCurrentPage('history')
-        setActiveTerminal(null)
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setCurrentPage, setActiveTerminal])
-
-  // Listen for Command+L keyboard shortcut to open scheduled
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
-        e.preventDefault()
-        setCurrentPage('scheduled')
         setActiveTerminal(null)
       }
     }
@@ -480,30 +458,6 @@ export function Sidebar() {
           <span>History</span>
           <span className="ml-auto text-xs opacity-50">{historyShortcutKey}</span>
         </button>
-
-        {/* Scheduled button — only visible when scheduler feature is enabled */}
-        {config?.schedulerEnabled !== false && (
-          <button
-            onClick={() => {
-              setCurrentPage('scheduled')
-              setActiveTerminal(null)
-            }}
-            className={`w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
-              currentPage === 'scheduled'
-                ? 'bg-white/10 text-white'
-                : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
-            }`}
-          >
-            <CalendarClock className="w-3.5 h-3.5" />
-            <span>Scheduled</span>
-            {scheduledCount > 0 && (
-              <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium">
-                {scheduledCount}
-              </span>
-            )}
-            <span className="ml-auto text-xs opacity-50">{scheduledShortcutKey}</span>
-          </button>
-        )}
 
         {/* Settings button */}
         <button

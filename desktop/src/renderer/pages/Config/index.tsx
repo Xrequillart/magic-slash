@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, CalendarClock, GitPullRequest, History } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History } from 'lucide-react'
 import { ProfileSection } from './ProfileSection'
 import { RepoPage } from './RepoPage'
 import { useStore } from '../../store'
@@ -53,8 +53,6 @@ function WelcomePage() {
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
   const [showBypassWarning, setShowBypassWarning] = useState(false)
   const [historyEnabled, setHistoryEnabled] = useState(config?.historyEnabled ?? true)
-  const [schedulerEnabled, setSchedulerEnabled] = useState(config?.schedulerEnabled ?? true)
-  const [schedulerDefaultTime, setSchedulerDefaultTime] = useState(config?.schedulerDefaultTime ?? '09:00')
   const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)
   const [prWatcherInterval, setPrWatcherInterval] = useState(config?.prReviews?.pollIntervalMs ?? 60_000)
   const [prWatcherAutoLaunch, setPrWatcherAutoLaunch] = useState(config?.prReviews?.autoLaunchSkills ?? false)
@@ -75,16 +73,6 @@ function WelcomePage() {
   useEffect(() => {
     if (configHistoryEnabled !== undefined) setHistoryEnabled(configHistoryEnabled)
   }, [configHistoryEnabled])
-
-  const configSchedulerEnabled = config?.schedulerEnabled
-  useEffect(() => {
-    if (configSchedulerEnabled !== undefined) setSchedulerEnabled(configSchedulerEnabled)
-  }, [configSchedulerEnabled])
-
-  const configSchedulerDefaultTime = config?.schedulerDefaultTime
-  useEffect(() => {
-    if (configSchedulerDefaultTime !== undefined) setSchedulerDefaultTime(configSchedulerDefaultTime)
-  }, [configSchedulerDefaultTime])
 
   const configPrWatcherEnabled = config?.prReviews?.enabled
   const configPrWatcherInterval = config?.prReviews?.pollIntervalMs
@@ -474,64 +462,6 @@ function WelcomePage() {
               }`} />
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Scheduler Section */}
-      <div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-          <CalendarClock className="w-4 h-4" />
-          <span>Scheduler</span>
-        </div>
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">Enable scheduler</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">Allow scheduled agents to run automatically at defined times</div>
-            </div>
-            <button
-              onClick={() => {
-                const newValue = !schedulerEnabled
-                setSchedulerEnabled(newValue)
-                window.electronAPI.scheduler.setEnabled(newValue)
-                if (!newValue && currentPage === 'scheduled') {
-                  setCurrentPage('terminals')
-                }
-              }}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                schedulerEnabled ? 'bg-accent' : 'bg-white/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
-                schedulerEnabled ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
-          </div>
-          {schedulerEnabled && (
-            <div className="border-t border-white/5 pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">Default time</div>
-                  <div className="text-xs text-text-secondary/50 mt-0.5">Default time for new scheduled agents</div>
-                </div>
-                <input
-                  type="time"
-                  value={schedulerDefaultTime}
-                  onChange={(e) => {
-                    const newTime = e.target.value
-                    setSchedulerDefaultTime(newTime)
-                    window.electronAPI.scheduler.setDefaultTime(newTime)
-                  }}
-                  className="px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors [&::-webkit-calendar-picker-indicator]:invert"
-                />
-              </div>
-            </div>
-          )}
-          {!schedulerEnabled && (
-            <div className="text-xs text-text-secondary/50">
-              Schedules are preserved but no agents will run automatically.
-            </div>
-          )}
         </div>
       </div>
 

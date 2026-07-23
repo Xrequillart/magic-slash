@@ -62,7 +62,6 @@ function maybeShowNotification(
 
 /**
  * Creates the base IPC-forwarding callbacks for a terminal.
- * Used by both terminal-handlers and the scheduler to avoid duplication.
  */
 export function createBaseCallbacks(id: string, windowGetter: () => BrowserWindow | null) {
   return {
@@ -178,8 +177,16 @@ function createTerminalCallbacks(id: string, name: string) {
 
 export function restoreAgents() {
   try {
-    // Filter out sidebar agents (VS Code extension) and idle scheduled agents
-    const agents = readAgents().filter(a => !a.id.startsWith('sidebar-') && !a.schedule?.enabled)
+    // Filter out sidebar agents (VS Code extension) and any legacy enabled
+    // scheduled-only records. The cleanup migration normally drops the latter,
+    // but it logs-and-continues if agents.json is unwritable (read-only fs,
+    // full disk, permissions) — so guard here too, mirroring the pre-removal
+    // restore behavior, to never launch such a record as an interactive terminal.
+    const agents = readAgents().filter(a => {
+      if (a.id.startsWith('sidebar-')) return false
+      const legacySchedule = (a as { schedule?: { enabled?: boolean } }).schedule
+      return !legacySchedule?.enabled
+    })
 
     // Only restore if there are no running terminals yet
     const existingTerminals = getAllTerminals()
@@ -376,10 +383,7 @@ export function setupTerminalHandlers(
   })
 
   const handleGetAgents = async () => {
-    const agents = readAgents()
-    const runningIds = new Set(getAllTerminals().map(t => t.id))
-    // Exclude scheduled agents unless they have an active terminal
-    return agents.filter(a => !a.schedule?.enabled || runningIds.has(a.id))
+    return readAgents()
   }
   ipcMain.handle('terminal:getSessions', handleGetAgents) // legacy alias
   ipcMain.handle('terminal:getAgents', handleGetAgents)

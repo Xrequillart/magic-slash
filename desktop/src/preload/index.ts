@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, Schedule, UserProfile } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -335,31 +335,6 @@ const updaterApi = {
   },
 }
 
-// Scheduler API
-const schedulerApi = {
-  create: (name: string, repositories: string[], schedule: Schedule) =>
-    ipcRenderer.invoke('scheduler:create', name, repositories, schedule),
-  update: (id: string, schedule: Schedule, name?: string, repositories?: string[]) =>
-    ipcRenderer.invoke('scheduler:update', id, schedule, name, repositories),
-  clear: (id: string) =>
-    ipcRenderer.invoke('scheduler:clear', id),
-  delete: (id: string) =>
-    ipcRenderer.invoke('scheduler:delete', id),
-  executeNow: (id: string) =>
-    ipcRenderer.invoke('scheduler:executeNow', id),
-  getScheduled: () =>
-    ipcRenderer.invoke('scheduler:getScheduled'),
-  setEnabled: (enabled: boolean) =>
-    ipcRenderer.invoke('scheduler:setEnabled', enabled),
-  setDefaultTime: (time: string) =>
-    ipcRenderer.invoke('scheduler:setDefaultTime', time),
-  onScheduleUpdate: (callback: (data: { agentId: string }) => void) => {
-    const listener = (_event: IpcRendererEvent, data: { agentId: string }) => callback(data)
-    ipcRenderer.on('scheduler:updated', listener)
-    return () => ipcRenderer.removeListener('scheduler:updated', listener)
-  },
-}
-
 // PR Review Watcher API
 const prWatcherApi = {
   setEnabled: (enabled: boolean) =>
@@ -410,7 +385,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   scripts: scriptsApi,
   tray: trayApi,
   quickLaunch: quickLaunchApi,
-  scheduler: schedulerApi,
   prWatcher: prWatcherApi,
   profile: profileApi,
 })
@@ -431,7 +405,6 @@ declare global {
       scripts: typeof scriptsApi
       tray: typeof trayApi
       quickLaunch: typeof quickLaunchApi
-      scheduler: typeof schedulerApi
       prWatcher: typeof prWatcherApi
       profile: typeof profileApi
     }

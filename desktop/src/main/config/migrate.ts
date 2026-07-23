@@ -60,18 +60,58 @@ export function migrateConfig(appVersion?: string): boolean {
     writeAgents(rawConfig.agents)
   }
 
-  if (rawConfig && 'agents' in rawConfig) {
-    // Remove agents key from config.json (whether or not we just migrated)
-    delete rawConfig.agents
-    try {
-      if (!fs.existsSync(CONFIG_DIR)) {
-        fs.mkdirSync(CONFIG_DIR, { recursive: true })
+  if (rawConfig) {
+    // Strip orphaned keys from config.json:
+    // - `agents` (migrated to agents.json)
+    // - `schedulerEnabled` / `schedulerDefaultTime` (scheduled events feature removed)
+    let rawChanged = false
+    for (const key of ['agents', 'schedulerEnabled', 'schedulerDefaultTime']) {
+      if (key in rawConfig) {
+        delete rawConfig[key]
+        rawChanged = true
       }
-      fs.writeFileSync(CONFIG_FILE, JSON.stringify(rawConfig, null, 2))
-    } catch (error) {
-      console.error('Error removing agents key from config.json:', error)
     }
-    changed = true
+    if (rawChanged) {
+      try {
+        if (!fs.existsSync(CONFIG_DIR)) {
+          fs.mkdirSync(CONFIG_DIR, { recursive: true })
+        }
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(rawConfig, null, 2))
+      } catch (error) {
+        console.error('Error removing orphaned keys from config.json:', error)
+      }
+      changed = true
+    }
+  }
+
+  // Clean up agents.json after removing the scheduled events feature:
+  // - Drop agents that were enabled scheduled-only records. They were never
+  //   interactive sessions (they stayed idle until their configured time and
+  //   were excluded from restoreAgents), so keeping them would now wrongly
+  //   launch an interactive terminal on the first startup after upgrade.
+  // - Strip the orphaned `schedule` field from any remaining agent.
+  try {
+    if (fs.existsSync(AGENTS_FILE)) {
+      const rawAgents = JSON.parse(fs.readFileSync(AGENTS_FILE, 'utf8'))
+      if (Array.isArray(rawAgents)) {
+        const cleaned = rawAgents.filter(
+          (agent) => !(agent && typeof agent === 'object' && agent.schedule?.enabled === true)
+        )
+        let agentsChanged = cleaned.length !== rawAgents.length
+        for (const agent of cleaned) {
+          if (agent && typeof agent === 'object' && 'schedule' in agent) {
+            delete agent.schedule
+            agentsChanged = true
+          }
+        }
+        if (agentsChanged) {
+          writeAgents(cleaned)
+          changed = true
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error cleaning agents.json:', error)
   }
 
   // Read config AFTER agents migration to avoid re-introducing agents key
@@ -112,18 +152,6 @@ export function migrateConfig(appVersion?: string): boolean {
 
   if (config.launchMode !== undefined && !isValidLaunchMode(config.launchMode)) {
     config.launchMode = undefined
-    changed = true
-  }
-
-  // Migrate schedulerEnabled (default: true)
-  if (config.schedulerEnabled === undefined) {
-    config.schedulerEnabled = true
-    changed = true
-  }
-
-  // Migrate schedulerDefaultTime (default: '09:00')
-  if (config.schedulerDefaultTime === undefined) {
-    config.schedulerDefaultTime = '09:00'
     changed = true
   }
 
