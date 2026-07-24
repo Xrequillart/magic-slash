@@ -25,6 +25,15 @@ Follow each step in order. Each step builds on the previous one.
 
 ```bash
 CONFIG_FILE=~/.config/magic-slash/config.json
+# Magic Slash Desktop (cloud) is the source of truth. When the app is running, fetch the live
+# config; otherwise fall back to the local file (may be stale, or absent if never installed).
+if [ -n "$MAGIC_SLASH_PORT" ]; then
+  MS_TMP_CONFIG="$(mktemp)"
+  if curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
+     && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
+    CONFIG_FILE="$MS_TMP_CONFIG"
+  fi
+fi
 [ ! -f "$CONFIG_FILE" ] && echo "MISSING" || echo "OK"
 ```
 
@@ -267,8 +276,14 @@ done
 If files detected: Use `AskUserQuestion` with `MSG_WORKTREE_FILES_DETECTED` (y/n). If user says yes, save to config via `jq`:
 
 ```bash
-jq --arg repo "{REPO_NAME}" --argjson files '["file1", "file2"]' \
-  '.repositories[$repo].worktreeFiles = $files' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+# Persist to the cloud via the desktop app when running; otherwise write the local config file.
+if [ -n "$MAGIC_SLASH_PORT" ]; then
+  curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/config/worktree-files?repo=$(echo -n '{REPO_NAME}' | jq -sRr @uri)&files=$(echo -n '["file1","file2"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
+else
+  LOCAL_CONFIG=~/.config/magic-slash/config.json
+  [ -f "$LOCAL_CONFIG" ] && jq --arg repo "{REPO_NAME}" --argjson files '["file1", "file2"]' \
+    '.repositories[$repo].worktreeFiles = $files' "$LOCAL_CONFIG" > "$LOCAL_CONFIG.tmp" && mv "$LOCAL_CONFIG.tmp" "$LOCAL_CONFIG"
+fi
 ```
 
 Then copy the files either way. If no files detected, skip silently.

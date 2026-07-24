@@ -60,6 +60,15 @@ Before starting, verify that the Magic Slash configuration exists and that requi
 
 ```bash
 CONFIG_FILE=~/.config/magic-slash/config.json
+# Magic Slash Desktop (cloud) is the source of truth. When the app is running, fetch the live
+# config; otherwise fall back to the local file (may be stale, or absent if never installed).
+if [ -n "$MAGIC_SLASH_PORT" ]; then
+  MS_TMP_CONFIG="$(mktemp)"
+  if curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
+     && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
+    CONFIG_FILE="$MS_TMP_CONFIG"
+  fi
+fi
 if [ ! -f "$CONFIG_FILE" ]; then
   # Display error based on system language
 fi
@@ -169,6 +178,14 @@ The config was already dumped in Step 0.3. Before proceeding, resolve the curren
 
 ```bash
 CONFIG_FILE=~/.config/magic-slash/config.json
+# Re-resolve against the live config (cloud) when the app is running; else the local file.
+if [ -n "$MAGIC_SLASH_PORT" ]; then
+  MS_TMP_CONFIG="$(mktemp)"
+  if curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
+     && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
+    CONFIG_FILE="$MS_TMP_CONFIG"
+  fi
+fi
 
 # Resolve the repo key whose path matches the current worktree/repo root.
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
