@@ -36,7 +36,7 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
   // channel lifecycle.
   setRealtimeEmitters(
     (change) => getMainWindow()?.webContents.send('org:agentsChanged', change),
-    (status) => getMainWindow()?.webContents.send('org:realtimeStatus', status),
+    (status) => getMainWindow()?.webContents.send('org:realtimeStatusChanged', status),
   )
 
   const check = async (): Promise<ConnectivityStatus> => {

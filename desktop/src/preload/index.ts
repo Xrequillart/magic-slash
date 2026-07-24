@@ -464,8 +464,8 @@ const orgApi = {
   },
   onRealtimeStatus: (callback: (status: RealtimeStatus) => void) => {
     const listener = (_event: IpcRendererEvent, status: RealtimeStatus) => callback(status)
-    ipcRenderer.on('org:realtimeStatus', listener)
-    return () => ipcRenderer.removeListener('org:realtimeStatus', listener)
+    ipcRenderer.on('org:realtimeStatusChanged', listener)
+    return () => ipcRenderer.removeListener('org:realtimeStatusChanged', listener)
   },
   invitations: (): Promise<Invitation[]> => ipcRenderer.invoke('org:invitations'),
   invite: (email: string, role?: MembershipRole): Promise<Invitation> =>

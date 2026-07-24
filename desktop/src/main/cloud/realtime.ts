@@ -117,12 +117,32 @@ function ensureTokenReapply(client: SupabaseClient): void {
   }
 }
 
+// Serialize all start/stop operations. Both `switchOrg` and the connectivity
+// poller can trigger a start, and each start awaits (getAuthedClient, teardown)
+// — without serialization two of them could interleave across an await and
+// orphan a WebSocket channel (the second `channel = client.channel(...)` would
+// overwrite the first without removing it). Chaining every entrypoint onto the
+// previous op means the idempotency guard below always sees a settled state.
+let opLock: Promise<void> = Promise.resolve()
+
+function withLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = opLock.then(fn, fn)
+  // Keep the chain alive and non-rejecting so one failed op can't wedge the lock.
+  opLock = run.then(() => undefined, () => undefined)
+  return run
+}
+
 /**
  * Subscribe to org-scoped agent changes. Idempotent for the same org (a repeat
  * call while already subscribed is a no-op). Switching orgs tears down the old
  * channel first. Degrades to a no-op when cloud is unavailable / logged out.
+ * Serialized against every other start/stop call (see withLock).
  */
-export async function startOrgAgentsRealtime(orgId: string): Promise<void> {
+export function startOrgAgentsRealtime(orgId: string): Promise<void> {
+  return withLock(() => startInternal(orgId))
+}
+
+async function startInternal(orgId: string): Promise<void> {
   if (channel && subscribedOrgId === orgId) return
 
   const client = await getAuthedClient()
@@ -131,7 +151,8 @@ export async function startOrgAgentsRealtime(orgId: string): Promise<void> {
   if (!token) return
 
   // Switching org (or a stale channel) → tear down before re-subscribing.
-  await stopOrgAgentsRealtime()
+  // Internal (unlocked) teardown: we already hold the lock.
+  await stopInternal()
 
   // CRITICAL for RLS: authorize the socket with the user's JWT before subscribe.
   client.realtime.setAuth(token)
@@ -154,11 +175,21 @@ export async function startOrgAgentsRealtime(orgId: string): Promise<void> {
 
 /**
  * Tear down the org-agents channel (sign-out / unauthorized / org switch).
- * Never throws.
+ * Never throws. Serialized against every other start/stop call (see withLock).
  */
-export async function stopOrgAgentsRealtime(): Promise<void> {
+export function stopOrgAgentsRealtime(): Promise<void> {
+  return withLock(stopInternal)
+}
+
+async function stopInternal(): Promise<void> {
   subscribedOrgId = null
-  lastStatus = 'reconnecting'
+  if (lastStatus !== 'reconnecting') {
+    lastStatus = 'reconnecting'
+    // Notify the renderer so a mounted LiveIndicator flips to "Reconnecting…"
+    // immediately, rather than lingering on "Live" through the teardown/
+    // resubscribe window (or indefinitely if the next channel never subscribes).
+    statusEmitter?.(lastStatus)
+  }
   if (authListenerUnsub) {
     authListenerUnsub()
     authListenerUnsub = null

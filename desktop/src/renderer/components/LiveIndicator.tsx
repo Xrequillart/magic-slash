@@ -20,7 +20,7 @@ export function LiveIndicator() {
     let active = true
     window.electronAPI.org.getRealtimeStatus().then((status) => {
       if (active) setRealtime(status)
-    })
+    }).catch(() => { /* stays at 'reconnecting' default */ })
     const unsubscribe = window.electronAPI.org.onRealtimeStatus(setRealtime)
     return () => {
       active = false

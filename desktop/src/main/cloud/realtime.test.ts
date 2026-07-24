@@ -91,6 +91,19 @@ describe('startOrgAgentsRealtime', () => {
     expect(h.state.client.channel).toHaveBeenCalledTimes(1)
   })
 
+  it('serializes concurrent starts so no channel is orphaned', async () => {
+    // Both switchOrg and the connectivity poller can fire a start at once.
+    // Without serialization they interleave across the getAuthedClient await
+    // and each opens a channel, leaking the first. The lock must collapse these
+    // into a single subscription.
+    await Promise.all([
+      startOrgAgentsRealtime('org-1'),
+      startOrgAgentsRealtime('org-1'),
+    ])
+    expect(h.state.client.channel).toHaveBeenCalledTimes(1)
+    expect(getActiveRealtimeOrgId()).toBe('org-1')
+  })
+
   it('does nothing when there is no session token', async () => {
     h.state.token = undefined
     await startOrgAgentsRealtime('org-1')
