@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { RepositoryMetadata } from '../../types'
 
 // Mock the authed client + session store so the realtime module exercises only
 // its own lifecycle logic (no network, no socket). vi.hoisted shares mutable
@@ -44,6 +45,7 @@ import {
   setRealtimeEmitters,
   mapOrgAgentRow,
 } from './realtime'
+import type { OrgAgentRow } from './realtime'
 
 let changes: unknown[]
 let statuses: unknown[]
@@ -197,7 +199,140 @@ describe('mapOrgAgentRow', () => {
       ticketId: 'T-9',
       status: 'committed',
       repositories: [],
+      prReviews: undefined,
       updatedAt: undefined,
+    })
+  })
+
+  // A minimal, valid row helper so each prReviews case only spells out the
+  // metadata under test.
+  const rowWithMeta = (metadata: OrgAgentRow['metadata']): OrgAgentRow => ({
+    id: 'uuid-pr',
+    owner_id: 'u1',
+    name: 'PR Agent',
+    ticket_id: 'T-1',
+    status: 'in progress',
+    repositories: ['/repo'],
+    metadata,
+    updated_at: '2026-07-24T00:00:00Z',
+  })
+
+  describe('prReviews distilled from metadata.repositoryMetadata', () => {
+    it('distills a repo carrying a PR into a full prReviews entry', () => {
+      const agent = mapOrgAgentRow(
+        rowWithMeta({
+          repositoryMetadata: {
+            '/home/alice/api': {
+              prUrl: 'https://github.com/org/api/pull/7',
+              prReviewStatus: 'changes-requested',
+              prReviewers: ['bob', 'carol'],
+              prMerged: false,
+              prClosed: false,
+            },
+          },
+        }),
+      )
+      expect(agent.prReviews).toEqual([
+        {
+          repo: '/home/alice/api',
+          prUrl: 'https://github.com/org/api/pull/7',
+          status: 'changes-requested',
+          reviewers: ['bob', 'carol'],
+          merged: false,
+          closed: false,
+        },
+      ])
+    })
+
+    it('carries merged/closed flags through for a merged PR', () => {
+      const agent = mapOrgAgentRow(
+        rowWithMeta({
+          repositoryMetadata: {
+            '/home/alice/web': {
+              prUrl: 'https://github.com/org/web/pull/3',
+              prReviewStatus: 'approved',
+              prMerged: true,
+              prClosed: true,
+            },
+          },
+        }),
+      )
+      expect(agent.prReviews).toEqual([
+        {
+          repo: '/home/alice/web',
+          prUrl: 'https://github.com/org/web/pull/3',
+          status: 'approved',
+          reviewers: undefined,
+          merged: true,
+          closed: true,
+        },
+      ])
+    })
+
+    it('includes a repo with a review status but no PR url', () => {
+      const agent = mapOrgAgentRow(
+        rowWithMeta({ repositoryMetadata: { '/repo': { prReviewStatus: 'pending' } } }),
+      )
+      expect(agent.prReviews).toEqual([{ repo: '/repo', status: 'pending' }])
+    })
+
+    it('keeps only PR-carrying repos and drops those with no PR state', () => {
+      const agent = mapOrgAgentRow(
+        rowWithMeta({
+          repositoryMetadata: {
+            '/repo/with-pr': { prUrl: 'https://github.com/org/x/pull/1' },
+            '/repo/no-pr': { prReviewCommentCount: 0 },
+          },
+        }),
+      )
+      expect(agent.prReviews).toEqual([
+        { repo: '/repo/with-pr', prUrl: 'https://github.com/org/x/pull/1' },
+      ])
+    })
+
+    it('yields undefined prReviews when the row has no metadata at all', () => {
+      const agent = mapOrgAgentRow({
+        id: 'x',
+        owner_id: null,
+        name: 'N',
+        ticket_id: null,
+        status: null,
+        repositories: [],
+        updated_at: null,
+      })
+      expect(agent.prReviews).toBeUndefined()
+    })
+
+    it('yields undefined prReviews when metadata has no repositoryMetadata', () => {
+      const agent = mapOrgAgentRow(rowWithMeta({ ticketId: 'T-1' }))
+      expect(agent.prReviews).toBeUndefined()
+    })
+
+    it('yields undefined prReviews for an empty repositoryMetadata object', () => {
+      const agent = mapOrgAgentRow(rowWithMeta({ repositoryMetadata: {} }))
+      expect(agent.prReviews).toBeUndefined()
+    })
+
+    it('yields undefined when every repo lacks PR state', () => {
+      const agent = mapOrgAgentRow(
+        rowWithMeta({ repositoryMetadata: { '/a': {}, '/b': { prReviewCommentCount: 2 } } }),
+      )
+      expect(agent.prReviews).toBeUndefined()
+    })
+
+    it('skips malformed (null / non-object) per-repo metadata entries', () => {
+      const agent = mapOrgAgentRow(
+        rowWithMeta({
+          repositoryMetadata: {
+            '/bad-null': null as unknown as RepositoryMetadata,
+            '/bad-string': 'nope' as unknown as RepositoryMetadata,
+            '/good': { prUrl: 'https://github.com/org/g/pull/9' },
+          },
+        }),
+      )
+      expect(agent.prReviews).toEqual([
+        { repo: '/good', prUrl: 'https://github.com/org/g/pull/9' },
+      ])
     })
   })
 })

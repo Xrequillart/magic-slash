@@ -83,6 +83,17 @@
     "currentOrgId": {
       "type": "string",
       "description": "Cloud org this install is associated with (optional local hint)"
+    },
+    "dailyDigest": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false,
+      "description": "Optional daily team digest notification (opt-in, off by default)"
     }
   },
   "additionalProperties": false,

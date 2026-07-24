@@ -1,8 +1,10 @@
+import * as path from 'path'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Config, Invitation, InvitationStatus, Member, MembershipRole, Org, OrgAgent, OrgSharedConfig, UsageStats } from '../../types'
 import { getAuthedClient } from './auth'
 import { loadSession } from './session-store'
 import { readConfig, writeConfig, hydrateConfig, mergeOrgSharedConfig, setCurrentOrgId } from '../config/config'
+import { expandPath } from '../config/validation'
 import { getStore } from '../store/Store'
 import { startOrgAgentsRealtime } from './realtime'
 
@@ -115,6 +117,54 @@ export async function listOrgAgents(): Promise<OrgAgent[]> {
  */
 export async function listOrgUsageStats(): Promise<UsageStats> {
   return getStore().loadOrgUsageStats()
+}
+
+export interface PickUpTaskResult {
+  /** Local working directory (an expanded, configured repo path) to launch in. */
+  cwd: string
+  /** Prompt to hand the fresh agent, carrying ticket/branch/state resumption. */
+  initialPrompt: string
+}
+
+/**
+ * Resolve a colleague's task to something the current user can actually launch
+ * locally. A teammate's OrgAgent.repositories are absolute paths on THEIR machine,
+ * so they never match ours directly — we match by repository name (the last path
+ * segment) against the current user's configured repositories, falling back to an
+ * exact expanded-path match. Throws a user-facing error when no local repo maps,
+ * so the renderer can surface it as a toast (the dashboard also hides the action
+ * when nothing maps). On success returns the local cwd + the `/magic:continue`
+ * prompt that resumes the ticket's branch/state.
+ */
+export function pickUpTask(ticketId: string, repositories: string[]): PickUpTaskResult {
+  if (typeof ticketId !== 'string' || ticketId.trim().length === 0) {
+    throw new Error('pickUpTask requires a ticketId')
+  }
+  // ticketId comes from agents.ticket_id, which any org member can write. It is
+  // embedded in initialPrompt and may later be typed into a PTY, so reject
+  // control characters (newline/CR/NUL) that could inject a second command.
+  if (/[\r\n\0]/.test(ticketId)) {
+    throw new Error('pickUpTask received a ticketId with illegal control characters')
+  }
+  const localRepos = Object.values(readConfig().repositories ?? {})
+  const baseName = (p: string) => path.basename(p.replace(/[/\\]+$/, ''))
+
+  for (const repo of repositories) {
+    if (typeof repo !== 'string' || repo.length === 0) continue
+    const target = baseName(repo)
+    const expandedRepo = expandPath(repo)
+    const match = localRepos.find((r) => {
+      const local = expandPath(r.path)
+      return baseName(local) === target || local === expandedRepo
+    })
+    if (match) {
+      return { cwd: expandPath(match.path), initialPrompt: `/magic:continue ${ticketId}` }
+    }
+  }
+
+  throw new Error(
+    'No matching local repository is configured for this task. Add the repository in Settings to pick it up.',
+  )
 }
 
 /** Run a void-returning RPC through the authed client, surfacing failures as thrown errors. */

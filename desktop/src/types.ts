@@ -162,6 +162,11 @@ export interface Config {
     pollIntervalMs?: number
     autoLaunchSkills?: boolean
   }
+  // Optional daily team digest (opt-in, default OFF): a single OS notification at
+  // 9:00 local summarizing yesterday's team activity (merged PRs / tickets done).
+  dailyDigest?: {
+    enabled: boolean
+  }
   // Cloud: the org the local install is currently associated with (set after
   // signing up / accepting an invitation). Purely a local hint — never required.
   currentOrgId?: string
@@ -221,6 +226,22 @@ export interface Member {
 // row uuid (NOT the app-level metadata.__app.id). It is READ-ONLY — it never
 // feeds the local terminal-restoration cache.
 // ---------------------------------------------------------------------------
+/**
+ * Compact per-repository PR review summary for a teammate's agent, sourced from
+ * the agent row's metadata.repositoryMetadata (already synced org-wide by the
+ * PRReviewWatcher). Read-only; surfaced on the team dashboard so "awaiting
+ * review" / "blocked" work is visible without opening each agent.
+ */
+export interface OrgAgentPRReview {
+  /** Repository path key from repositoryMetadata (owner's local path). */
+  repo: string
+  prUrl?: string
+  status?: RepositoryMetadata['prReviewStatus']
+  reviewers?: string[]
+  merged?: boolean
+  closed?: boolean
+}
+
 export interface OrgAgent {
   /** The `agents` table row id (uuid). Reconcile realtime events by this. */
   id: string
@@ -232,6 +253,8 @@ export interface OrgAgent {
   ticketId?: string
   status?: string
   repositories: string[]
+  /** PR review state per repo, distilled from metadata.repositoryMetadata. */
+  prReviews?: OrgAgentPRReview[]
   /** ISO timestamp of the last write (agents.updated_at). */
   updatedAt?: string
 }

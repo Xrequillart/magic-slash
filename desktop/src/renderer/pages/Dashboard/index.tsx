@@ -1,10 +1,14 @@
-import { useMemo } from 'react'
-import { Users, Bot, Coins, Plus, Minus, Clock, Activity, BarChart3 } from 'lucide-react'
-import type { OrgAgent } from '../../../types'
+import { useMemo, useState } from 'react'
+import { Users, Bot, Coins, Plus, Minus, Clock, Activity, BarChart3, GitPullRequest, AlertOctagon, ExternalLink, ArrowRightCircle } from 'lucide-react'
+import type { OrgAgent, OrgAgentPRReview } from '../../../types'
 import { useOrgAgents } from '../../hooks/useOrgAgents'
 import { useOrgUsageStats } from '../../hooks/useOrgUsageStats'
 import { useOrg } from '../../hooks/useOrg'
+import { useAuth } from '../../hooks/useAuth'
+import { useTerminals } from '../../hooks/useTerminals'
+import { useStore } from '../../store'
 import { LiveIndicator } from '../../components/LiveIndicator'
+import { showToast } from '../../components/Toast'
 import { ActivityHeatmap } from '../History/ActivityHeatmap'
 import { aggregateUsageTotals, aggregateUsageByMember, computeUsageHeatmap, formatUsd } from '../../utils/usageStats'
 
@@ -133,6 +137,41 @@ function StatusPill({ status }: { status?: string }) {
   )
 }
 
+// PR review status → label + badge color for the "awaiting review" widget.
+const PR_STATUS_CONFIG: Record<NonNullable<OrgAgentPRReview['status']>, { label: string; className: string }> = {
+  pending:              { label: 'Awaiting review',    className: 'bg-blue/15 text-blue' },
+  commented:            { label: 'Commented',          className: 'bg-purple/15 text-purple' },
+  'changes-requested':  { label: 'Changes requested',  className: 'bg-red/15 text-red' },
+  approved:             { label: 'Approved',           className: 'bg-green/15 text-green' },
+}
+
+// "Awaiting review" = a live PR (not merged/closed) whose review is still open.
+const AWAITING_REVIEW_STATUSES: ReadonlySet<string> = new Set(['pending', 'commented', 'changes-requested'])
+// Workflow statuses that mean the author is blocked / must act next.
+const BLOCKED_STATUSES: ReadonlySet<string> = new Set(['changes requested'])
+
+interface ReviewItem {
+  agent: OrgAgent
+  review: OrgAgentPRReview
+}
+
+function collectAwaitingReview(agents: OrgAgent[]): ReviewItem[] {
+  const items: ReviewItem[] = []
+  for (const agent of agents) {
+    for (const review of agent.prReviews ?? []) {
+      if (review.merged || review.closed) continue
+      if (review.status && AWAITING_REVIEW_STATUSES.has(review.status)) {
+        items.push({ agent, review })
+      }
+    }
+  }
+  return items
+}
+
+function collectBlocked(agents: OrgAgent[]): OrgAgent[] {
+  return agents.filter((a) => a.status && BLOCKED_STATUSES.has(a.status))
+}
+
 function RepoTag({ repo }: { repo: string }) {
   const name = repo.split('/').pop() ?? repo
   return (
@@ -142,18 +181,37 @@ function RepoTag({ repo }: { repo: string }) {
   )
 }
 
-function AgentRow({ agent }: { agent: OrgAgent }) {
+function TicketBadge({ ticketId }: { ticketId?: string }) {
+  if (!ticketId) return null
+  return (
+    <span className="text-xs text-accent/80 bg-accent/10 px-2 py-0.5 rounded flex-shrink-0">
+      {ticketId}
+    </span>
+  )
+}
+
+function AgentRow({
+  agent,
+  currentUserId,
+  onPickUp,
+  pickingUp,
+}: {
+  agent: OrgAgent
+  currentUserId?: string
+  onPickUp?: (agent: OrgAgent) => void
+  pickingUp?: boolean
+}) {
+  // "Pick up" only makes sense for a teammate's ticketed agent (never your own).
+  const canPickUp =
+    !!onPickUp && !!agent.ticketId && !!agent.ownerId && agent.ownerId !== currentUserId
+
   return (
     <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] min-w-0">
       <Bot className="w-4 h-4 text-text-secondary/60 flex-shrink-0" />
       <span className="text-sm font-medium text-white truncate min-w-0 flex-1">
         {agent.name}
       </span>
-      {agent.ticketId && (
-        <span className="text-xs text-accent/80 bg-accent/10 px-2 py-0.5 rounded flex-shrink-0">
-          {agent.ticketId}
-        </span>
-      )}
+      <TicketBadge ticketId={agent.ticketId} />
       {agent.repositories.slice(0, 2).map((repo) => (
         <RepoTag key={repo} repo={repo} />
       ))}
@@ -161,6 +219,101 @@ function AgentRow({ agent }: { agent: OrgAgent }) {
         <span className="text-xs text-text-secondary/40 flex-shrink-0">+{agent.repositories.length - 2}</span>
       )}
       <StatusPill status={agent.status} />
+      {canPickUp && (
+        <button
+          onClick={() => onPickUp!(agent)}
+          disabled={pickingUp}
+          title={`Launch a local agent on ${agent.ticketId} with /magic:continue`}
+          className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-accent bg-accent/10 border border-accent/20 rounded-lg hover:bg-accent/20 transition-colors flex-shrink-0 disabled:opacity-50"
+        >
+          <ArrowRightCircle className="w-3.5 h-3.5" />
+          <span>{pickingUp ? 'Picking up…' : 'Pick up'}</span>
+        </button>
+      )}
+    </div>
+  )
+}
+
+function OwnerLabel({ agent, emailByOwner }: { agent: OrgAgent; emailByOwner: Map<string, string> }) {
+  const label = agent.ownerId ? emailByOwner.get(agent.ownerId) ?? agent.ownerId : 'Unassigned'
+  return <span className="text-xs text-text-secondary/60 truncate">{label}</span>
+}
+
+/** "PRs awaiting review": teammates' live PRs whose review is still open. */
+function AwaitingReviewSection({ items, emailByOwner }: { items: ReviewItem[]; emailByOwner: Map<string, string> }) {
+  if (items.length === 0) return null
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2 text-sm text-text-secondary">
+        <GitPullRequest className="w-4 h-4" />
+        <span>PRs awaiting review</span>
+        <span className="text-xs text-text-secondary/50">{items.length}</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {items.map(({ agent, review }) => {
+          const pr = review.status ? PR_STATUS_CONFIG[review.status] : undefined
+          return (
+            <div
+              key={`${agent.id}:${review.repo}`}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] min-w-0"
+            >
+              <GitPullRequest className="w-4 h-4 text-purple flex-shrink-0" />
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-sm font-medium text-white truncate">{agent.name}</span>
+                <OwnerLabel agent={agent} emailByOwner={emailByOwner} />
+              </div>
+              <TicketBadge ticketId={agent.ticketId} />
+              <RepoTag repo={review.repo} />
+              {pr && (
+                <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${pr.className}`}>{pr.label}</span>
+              )}
+              {review.prUrl && (
+                <button
+                  onClick={() => review.prUrl && window.electronAPI.shell.openExternal(review.prUrl)}
+                  title="Open the pull request"
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-colors flex-shrink-0"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>View PR</span>
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** "Blocked": agents whose workflow status means the author must act next. */
+function BlockedSection({ agents, emailByOwner }: { agents: OrgAgent[]; emailByOwner: Map<string, string> }) {
+  if (agents.length === 0) return null
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2 text-sm text-text-secondary">
+        <AlertOctagon className="w-4 h-4" />
+        <span>Blocked</span>
+        <span className="text-xs text-text-secondary/50">{agents.length}</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {agents.map((agent) => (
+          <div
+            key={agent.id}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red/[0.04] border border-red/[0.12] min-w-0"
+          >
+            <AlertOctagon className="w-4 h-4 text-red flex-shrink-0" />
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-sm font-medium text-white truncate">{agent.name}</span>
+              <OwnerLabel agent={agent} emailByOwner={emailByOwner} />
+            </div>
+            <TicketBadge ticketId={agent.ticketId} />
+            {agent.repositories.slice(0, 2).map((repo) => (
+              <RepoTag key={repo} repo={repo} />
+            ))}
+            <StatusPill status={agent.status} />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -174,6 +327,11 @@ interface MemberGroup {
 export function DashboardPage() {
   const { agents, loading } = useOrgAgents()
   const { members } = useOrg()
+  const { status: authStatus } = useAuth()
+  const { launchClaudeTerminal, terminals } = useTerminals()
+  const setCurrentPage = useStore((s) => s.setCurrentPage)
+  const [pickingUpId, setPickingUpId] = useState<string | null>(null)
+  const currentUserId = authStatus.user?.id
 
   // owner_id → email, so agents can be grouped under a readable member label.
   const emailByOwner = useMemo(() => {
@@ -183,6 +341,27 @@ export function DashboardPage() {
     }
     return map
   }, [members])
+
+  const awaitingReview = useMemo(() => collectAwaitingReview(agents), [agents])
+  const blocked = useMemo(() => collectBlocked(agents), [agents])
+
+  // Pick up a colleague's task: resolve their repo(s) to a local cwd (main), then
+  // launch a fresh local agent with /magic:continue to resume the ticket.
+  const handlePickUp = async (agent: OrgAgent) => {
+    if (!agent.ticketId) return
+    setPickingUpId(agent.id)
+    try {
+      const { cwd, initialPrompt } = await window.electronAPI.org.pickUpTask(agent.ticketId, agent.repositories)
+      const name = `Claude ${terminals.length + 1}`
+      await launchClaudeTerminal(name, cwd, initialPrompt)
+      setCurrentPage('terminals')
+      showToast(`Picked up ${agent.ticketId}`, 'success')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to pick up task', 'error')
+    } finally {
+      setPickingUpId(null)
+    }
+  }
 
   // Group agents by owner (unassigned/unknown owners fall into a trailing group).
   const groups: MemberGroup[] = useMemo(() => {
@@ -227,8 +406,12 @@ export function DashboardPage() {
         <LiveIndicator />
       </div>
 
-      {/* Body — usage stats + active agents share one scroll container */}
+      {/* Body — attention widgets + usage stats + active agents share one scroll container */}
       <div className="flex-1 overflow-auto flex flex-col gap-8">
+        {/* Attention hooks: PRs awaiting review + blocked work (hidden when empty) */}
+        <AwaitingReviewSection items={awaitingReview} emailByOwner={emailByOwner} />
+        <BlockedSection agents={blocked} emailByOwner={emailByOwner} />
+
         {/* Org usage stats (read is open to any member) */}
         <UsageStatsSection />
 
@@ -257,7 +440,13 @@ export function DashboardPage() {
                   </div>
                   <div className="flex flex-col gap-2">
                     {group.agents.map((agent) => (
-                      <AgentRow key={agent.id} agent={agent} />
+                      <AgentRow
+                        key={agent.id}
+                        agent={agent}
+                        currentUserId={currentUserId}
+                        onPickUp={handlePickUp}
+                        pickingUp={pickingUpId === agent.id}
+                      />
                     ))}
                   </div>
                 </div>

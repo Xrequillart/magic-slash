@@ -1,5 +1,5 @@
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
-import type { OrgAgent, OrgAgentChange, RealtimeStatus } from '../../types'
+import type { OrgAgent, OrgAgentChange, OrgAgentPRReview, RealtimeStatus, RepositoryMetadata } from '../../types'
 import { getAuthedClient } from './auth'
 import { loadSession } from './session-store'
 
@@ -23,8 +23,37 @@ export interface OrgAgentRow {
   ticket_id: string | null
   status: string | null
   repositories: unknown
-  metadata?: { __app?: unknown; ticketId?: string; status?: string } & Record<string, unknown>
+  metadata?: {
+    __app?: unknown
+    ticketId?: string
+    status?: string
+    repositoryMetadata?: Record<string, RepositoryMetadata>
+  } & Record<string, unknown>
   updated_at?: string | null
+}
+
+/**
+ * Distill the org-wide PR review summary from a row's metadata.repositoryMetadata
+ * (populated org-wide by the PRReviewWatcher). Keeps only repos that carry a PR,
+ * so the dashboard's "awaiting review" / "blocked" widgets have exactly what they
+ * need. Returns undefined when no repo has a PR (keeps the OrgAgent shape lean).
+ */
+function extractPRReviews(repoMeta: Record<string, RepositoryMetadata> | undefined): OrgAgentPRReview[] | undefined {
+  if (!repoMeta || typeof repoMeta !== 'object') return undefined
+  const reviews: OrgAgentPRReview[] = []
+  for (const [repo, meta] of Object.entries(repoMeta)) {
+    if (!meta || typeof meta !== 'object') continue
+    if (!meta.prUrl && !meta.prReviewStatus) continue
+    reviews.push({
+      repo,
+      prUrl: meta.prUrl,
+      status: meta.prReviewStatus,
+      reviewers: meta.prReviewers,
+      merged: meta.prMerged,
+      closed: meta.prClosed,
+    })
+  }
+  return reviews.length > 0 ? reviews : undefined
 }
 
 /** Map a raw `agents` DB row (REST or Realtime) to the roster-facing OrgAgent. */
@@ -37,6 +66,7 @@ export function mapOrgAgentRow(row: OrgAgentRow): OrgAgent {
     ticketId: row.ticket_id ?? meta.ticketId ?? undefined,
     status: row.status ?? meta.status ?? undefined,
     repositories: Array.isArray(row.repositories) ? (row.repositories as string[]) : [],
+    prReviews: extractPRReviews(meta.repositoryMetadata),
     updatedAt: row.updated_at ?? undefined,
   }
 }
@@ -47,6 +77,25 @@ type StatusEmitter = (status: RealtimeStatus) => void
 let changeEmitter: ChangeEmitter | null = null
 let statusEmitter: StatusEmitter | null = null
 
+// Additional in-process subscribers to org-agent changes (e.g. the re-engagement
+// notifier). Kept separate from the single renderer-forwarding `changeEmitter`
+// (wired by connectivity-handlers) so a main-process module can observe the same
+// stream without disturbing that forward. Each listener is isolated from the
+// others: a throw in one never blocks the rest or the renderer forward.
+type ChangeListener = (change: OrgAgentChange) => void
+const changeListeners = new Set<ChangeListener>()
+
+/**
+ * Subscribe a main-process listener to org-agent realtime changes. Returns an
+ * unsubscribe function. Independent of the renderer-forwarding emitter.
+ */
+export function addOrgAgentChangeListener(listener: ChangeListener): () => void {
+  changeListeners.add(listener)
+  return () => {
+    changeListeners.delete(listener)
+  }
+}
+
 /**
  * Wire the emitters that forward realtime events + channel health to the
  * renderer. Pass (null, null) to clear (e.g. on teardown).
@@ -54,6 +103,18 @@ let statusEmitter: StatusEmitter | null = null
 export function setRealtimeEmitters(change: ChangeEmitter | null, status: StatusEmitter | null): void {
   changeEmitter = change
   statusEmitter = status
+}
+
+/** Fan a change out to the renderer forward AND every in-process listener. */
+function dispatchChange(change: OrgAgentChange): void {
+  changeEmitter?.(change)
+  for (const listener of changeListeners) {
+    try {
+      listener(change)
+    } catch (error) {
+      console.error('[realtime] org-agent change listener failed:', error)
+    }
+  }
 }
 
 let channel: RealtimeChannel | null = null
@@ -78,16 +139,15 @@ export function getRealtimeStatus(): RealtimeStatus {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function handleChange(payload: any): void {
-  if (!changeEmitter) return
   const eventType = payload?.eventType as OrgAgentChange['eventType']
   if (eventType === 'DELETE') {
     const id = (payload.old as OrgAgentRow | undefined)?.id
-    if (id) changeEmitter({ eventType, id })
+    if (id) dispatchChange({ eventType, id })
     return
   }
   const row = payload?.new as OrgAgentRow | undefined
   if (!row?.id) return
-  changeEmitter({ eventType, id: row.id, agent: mapOrgAgentRow(row) })
+  dispatchChange({ eventType, id: row.id, agent: mapOrgAgentRow(row) })
 }
 
 function mapChannelStatus(status: string): RealtimeStatus {
