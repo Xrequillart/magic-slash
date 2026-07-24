@@ -33,7 +33,7 @@ interface AppState {
   rightPaneTerminalIds: string[]
 
   // UI
-  currentPage: 'config' | 'terminals' | 'skills' | 'history'
+  currentPage: 'config' | 'terminals' | 'skills' | 'history' | 'dashboard'
   // When set, the Config page selects this settings tab on mount, then resets it
   // to null. Lets other views (e.g. the sidebar account menu) deep-link a tab.
   settingsInitialTab: SettingsTab | null
@@ -75,7 +75,7 @@ interface AppState {
   toggleSplitActive: () => void
   moveTerminalToPane: (id: string, pane: 'left' | 'right') => void
 
-  setCurrentPage: (page: 'config' | 'terminals' | 'skills' | 'history') => void
+  setCurrentPage: (page: 'config' | 'terminals' | 'skills' | 'history' | 'dashboard') => void
   setSettingsInitialTab: (tab: SettingsTab | null) => void
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void

@@ -25,6 +25,7 @@ import { setupProfileHandlers } from './ipc/profile-handlers'
 import { setupUsageHandlers } from './ipc/usage-handlers'
 import { setupAuthHandlers } from './ipc/auth-handlers'
 import { setupOrgHandlers } from './ipc/org-handlers'
+import { stopOrgAgentsRealtime } from './cloud/realtime'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
 import { setupPRReviewHandlers } from './ipc/pr-review-handlers'
 
@@ -568,6 +569,9 @@ app.on('before-quit', async (event) => {
     prReviewWatcher.stop()
     prReviewWatcher = null
   }
+
+  // Tear down the org-agents realtime channel
+  void stopOrgAgentsRealtime()
 
   // Cleanup global shortcuts
   globalShortcut.unregisterAll()

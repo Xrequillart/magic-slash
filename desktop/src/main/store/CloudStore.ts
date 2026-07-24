@@ -1,9 +1,10 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, Config, HistoryEntry, OrgSharedConfig, TerminalMetadata } from '../../types'
+import type { Agent, Config, HistoryEntry, OrgAgent, OrgSharedConfig, TerminalMetadata } from '../../types'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
+import { mapOrgAgentRow, type OrgAgentRow } from '../cloud/realtime'
 import type { ConnectivityStatus, Store } from './Store'
 
 // ---------------------------------------------------------------------------
@@ -188,7 +189,7 @@ export class CloudStore implements Store {
 
     const { data, error } = await ctx.client
       .from('agents')
-      .select('id, org_id, owner_id, name, ticket_id, description, branch_name, base_branch, status, repositories, metadata')
+      .select('id, org_id, owner_id, name, ticket_id, description, branch_name, base_branch, status, repositories, metadata, updated_at')
       .eq('org_id', ctx.orgId)
 
     if (error || !data) return []
@@ -232,6 +233,25 @@ export class CloudStore implements Store {
 
     const { error } = await ctx.client.from('agents').upsert(rows, { onConflict: 'id' })
     if (error) throw new Error(`saveAgents failed: ${error.message}`)
+  }
+
+  /**
+   * Org-wide agents roster for the team dashboard. Unlike loadAgents (which maps
+   * to the LOCAL Agent shape and drives terminal restoration), this preserves
+   * owner_id + updated_at so the dashboard can group by member and show recency.
+   * Read-only: never touches the local agents cache. RLS scopes it to the org.
+   */
+  async loadOrgAgents(): Promise<OrgAgent[]> {
+    const ctx = await this.context()
+    if (!ctx) return []
+
+    const { data, error } = await ctx.client
+      .from('agents')
+      .select('id, owner_id, name, ticket_id, status, repositories, metadata, updated_at')
+      .eq('org_id', ctx.orgId)
+
+    if (error || !data) return []
+    return (data as OrgAgentRow[]).map(mapOrgAgentRow)
   }
 
   // -------------------------------------------------------------------------

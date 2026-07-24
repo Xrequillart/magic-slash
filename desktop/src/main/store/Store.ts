@@ -1,4 +1,4 @@
-import type { Config, Agent, HistoryEntry, OrgSharedConfig } from '../../types'
+import type { Config, Agent, HistoryEntry, OrgSharedConfig, OrgAgent } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -26,6 +26,9 @@ export interface Store {
 
   loadAgents(): Promise<Agent[]>
   saveAgents(agents: Agent[]): Promise<void>
+
+  /** Org-wide agents roster (all members) for the team dashboard. Read-only. */
+  loadOrgAgents(): Promise<OrgAgent[]>
 
   /** Most-recent `limit` history entries, oldest-first (matches the legacy read order). */
   loadHistory(limit: number): Promise<HistoryEntry[]>
@@ -55,6 +58,7 @@ export const NOOP_STORE: Store = {
   async saveConfig() { /* no-op */ },
   async loadAgents() { return [] },
   async saveAgents() { /* no-op */ },
+  async loadOrgAgents() { return [] },
   async loadHistory() { return [] },
   async appendHistory() { /* no-op */ },
   async setOrgSharedConfig() { /* no-op */ },

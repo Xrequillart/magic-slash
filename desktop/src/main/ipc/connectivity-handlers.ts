@@ -5,6 +5,13 @@ import { ensureHydrated, rehydrate, resetHydration } from '../store/hydrate'
 import { migrateConfig } from '../config/migrate'
 import { validateAllRepoPaths } from '../config/repo-validation'
 import { restoreAgents } from './terminal-handlers'
+import { getCurrentOrg } from '../cloud/org'
+import {
+  startOrgAgentsRealtime,
+  stopOrgAgentsRealtime,
+  getActiveRealtimeOrgId,
+  setRealtimeEmitters,
+} from '../cloud/realtime'
 
 let restoredOnce = false
 
@@ -24,6 +31,14 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
     getMainWindow()?.webContents.send('repos:invalid', invalid)
   }
 
+  // Forward org-agents realtime events + channel health to the renderer (team
+  // dashboard + live indicator). Wired once; the realtime module holds the
+  // channel lifecycle.
+  setRealtimeEmitters(
+    (change) => getMainWindow()?.webContents.send('org:agentsChanged', change),
+    (status) => getMainWindow()?.webContents.send('org:realtimeStatus', status),
+  )
+
   const check = async (): Promise<ConnectivityStatus> => {
     const status = await getStore().ping()
 
@@ -38,12 +53,25 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
           restoreAgents()
         }
         emitInvalidRepos()
+        // Start the org-agents realtime subscription once the backend is
+        // reachable + authed. Idempotent per org; resolve the org only until a
+        // channel is live to avoid an extra query on every poll.
+        if (!getActiveRealtimeOrgId()) {
+          const org = await getCurrentOrg()
+          if (org) {
+            void startOrgAgentsRealtime(org.id).catch((error) =>
+              console.error('[connectivity] failed to start realtime:', error),
+            )
+          }
+        }
       } catch (error) {
         console.error('[connectivity] hydration failed:', error)
       }
     } else if (status === 'unauthorized') {
       restoredOnce = false
       resetHydration()
+      // Session gone → tear down the realtime channel so the next user starts clean.
+      void stopOrgAgentsRealtime()
     }
 
     getMainWindow()?.webContents.send('connectivity:statusChanged', status)
