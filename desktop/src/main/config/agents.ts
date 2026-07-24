@@ -1,9 +1,6 @@
-import * as fs from 'fs'
-import * as path from 'path'
 import type { Agent, TerminalMetadata } from '../../types'
-import { filterValidRepositories, CONFIG_DIR } from './config'
-
-const AGENTS_FILE = path.join(CONFIG_DIR, 'agents.json')
+import { filterValidRepositories } from './config'
+import { getStore, reportWriteError } from '../store/Store'
 
 export function createDefaultMetadata(): TerminalMetadata {
   return {
@@ -43,61 +40,65 @@ export function mergeMetadata(existing: TerminalMetadata | undefined, incoming: 
 }
 
 /**
- * Reads agents from the dedicated agents.json file.
- * Returns [] if the file is absent or malformed.
- * Performs deduplication, normalization, and validation on load.
+ * Deduplicate + normalize a raw agent list (fill default metadata, repositories
+ * and splitPane, drop entries without a valid id). Applied when hydrating from
+ * the store.
  */
-export function readAgents(): Agent[] {
-  try {
-    if (!fs.existsSync(AGENTS_FILE)) {
-      return []
-    }
-    const content = fs.readFileSync(AGENTS_FILE, 'utf8')
-    const raw = JSON.parse(content)
-
-    if (!Array.isArray(raw)) {
-      console.warn('agents.json is not an array, returning empty list')
-      return []
-    }
-
-    const agentsMap = new Map<string, Agent>()
-    for (const agent of raw) {
-      if (!agent.id || typeof agent.id !== 'string') {
-        continue
-      }
-      if (!agent.repositories) {
-        agent.repositories = []
-      }
-      agent.metadata = {
-        ...createDefaultMetadata(),
-        ...agent.metadata
-      }
-      if (!agent.splitPane) {
-        agent.splitPane = 'left'
-      }
-      agentsMap.set(agent.id, agent)
-    }
-
-    return Array.from(agentsMap.values())
-  } catch (error) {
-    console.error('Error reading agents:', error)
-    return []
+function normalizeAgents(raw: unknown): Agent[] {
+  if (!Array.isArray(raw)) return []
+  const agentsMap = new Map<string, Agent>()
+  for (const agent of raw as Agent[]) {
+    if (!agent.id || typeof agent.id !== 'string') continue
+    if (!agent.repositories) agent.repositories = []
+    agent.metadata = { ...createDefaultMetadata(), ...agent.metadata }
+    if (!agent.splitPane) agent.splitPane = 'left'
+    agentsMap.set(agent.id, agent)
   }
+  return Array.from(agentsMap.values())
+}
+
+// ---------------------------------------------------------------------------
+// In-memory agents cache. Agents live in the Supabase `agents` table (see
+// store/CloudStore.ts) — there is no local agents.json. readAgents() serves the
+// cache synchronously; writeAgents() updates it and writes through to the store.
+// ---------------------------------------------------------------------------
+
+let agentsCache: Agent[] = []
+
+/** Load agents from the store into the cache. Call after auth is established. */
+export async function hydrateAgents(): Promise<Agent[]> {
+  try {
+    agentsCache = normalizeAgents(await getStore().loadAgents())
+  } catch (error) {
+    console.error('Error hydrating agents:', error)
+    agentsCache = []
+  }
+  return agentsCache
+}
+
+/** Drop the cached agents (on sign-out). */
+export function resetAgentsCache(): void {
+  agentsCache = []
 }
 
 /**
- * Writes the agents array to agents.json atomically.
+ * Returns the in-memory agents cache (deduplicated + normalized on hydration).
+ */
+export function readAgents(): Agent[] {
+  return agentsCache
+}
+
+/**
+ * Replace the agents cache and write through to the store.
  */
 export function writeAgents(agents: Agent[]): void {
-  try {
-    if (!fs.existsSync(CONFIG_DIR)) {
-      fs.mkdirSync(CONFIG_DIR, { recursive: true })
-    }
-    fs.writeFileSync(AGENTS_FILE, JSON.stringify(agents, null, 2))
-  } catch (error) {
-    console.error('Error writing agents:', error)
-    throw error
-  }
+  agentsCache = agents
+  void getStore()
+    .saveAgents(agents)
+    .catch((error) => {
+      console.error('Error persisting agents:', error)
+      reportWriteError('agents', error)
+    })
 }
 
 export function saveAgent(id: string, name: string, repositories: string[], metadata?: TerminalMetadata, tsCreate?: number): void {
@@ -156,5 +157,3 @@ export function updateAgentSplitPane(id: string, pane: 'left' | 'right'): void {
     writeAgents(agents)
   }
 }
-
-export { AGENTS_FILE }

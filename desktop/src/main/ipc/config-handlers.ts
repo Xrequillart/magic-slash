@@ -48,6 +48,7 @@ import {
   findBestMatch,
   getLastCommand
 } from '../config/command-history'
+import { ensureHydrated } from '../store/hydrate'
 
 interface ParsedDiff {
   addedNewLines: Set<number>
@@ -130,6 +131,7 @@ const MIME_MAP: Record<string, string> = {
 export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
   // Get config (also validates and notifies renderer of any errors)
   ipcMain.handle('config:get', async () => {
+    await ensureHydrated()
     const config = readConfig()
     try {
       const validation = validateConfig(config)

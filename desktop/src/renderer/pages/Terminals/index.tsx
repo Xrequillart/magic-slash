@@ -23,6 +23,26 @@ export function TerminalsPage() {
     return `Claude ${count}`
   }
 
+  // Strict repo-path guard on ⌘N: if any configured repository points at a
+  // missing folder or a non-git directory, block creation and send the user to
+  // Settings to re-point it (instead of launching a broken agent).
+  const blockOnInvalidRepos = async (): Promise<boolean> => {
+    try {
+      const invalid = await window.electronAPI.config.getInvalidRepos()
+      if (invalid.length > 0) {
+        showToast(
+          `${invalid.length} repository path${invalid.length > 1 ? 's are' : ' is'} invalid. Re-point ${invalid.length > 1 ? 'them' : 'it'} in Settings before launching an agent.`,
+          'error',
+          { actions: [{ label: 'Open settings', onClick: () => setCurrentPage('config') }] },
+        )
+        return true
+      }
+    } catch {
+      // If the check itself fails, don't block creation.
+    }
+    return false
+  }
+
   const handleCreateTerminal = async () => {
     if (isCreating) return
 
@@ -31,6 +51,8 @@ export function TerminalsPage() {
       showToast(`Maximum of ${MAX_AGENTS} agents reached`, 'error')
       return
     }
+
+    if (await blockOnInvalidRepos()) return
 
     setIsCreating(true)
     try {
@@ -50,6 +72,7 @@ export function TerminalsPage() {
       showToast(`Maximum of ${MAX_AGENTS} agents reached`, 'error')
       return
     }
+    if (await blockOnInvalidRepos()) return
     setIsCreating(true)
     try {
       const name = getNextTerminalName()

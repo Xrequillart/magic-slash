@@ -1,61 +1,36 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import * as fs from 'fs'
-import * as path from 'path'
-import * as os from 'os'
+import { describe, it, expect } from 'vitest'
+import type { Config } from '../../types'
+import type { Store } from '../store/Store'
+import { setStore, NOOP_STORE } from '../store/Store'
+import { readConfig, hydrateConfig } from './config'
+import { migrateConfig } from './migrate'
 
-let tmpDir: string
-let configFile: string
-let agentsFile: string
+// There is NO data migration from legacy local JSON files: migrateConfig only
+// normalizes the in-memory config hydrated from the store (fills default repo
+// fields, sanitizes launchMode, syncs the version). These tests seed a fake
+// store, hydrate, then assert on the normalized cache.
 
-beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'migrate-test-'))
-  configFile = path.join(tmpDir, 'config.json')
-  agentsFile = path.join(tmpDir, 'agents.json')
-})
+let saved: Config | null = null
 
-afterEach(() => {
-  fs.rmSync(tmpDir, { recursive: true, force: true })
-  vi.restoreAllMocks()
-})
-
-function writeConfigFile(data: unknown): void {
-  fs.writeFileSync(configFile, JSON.stringify(data, null, 2))
+function fakeStore(initial: Config): Store {
+  saved = structuredClone(initial)
+  return {
+    ...NOOP_STORE,
+    loadConfig: async () => (saved ? structuredClone(saved) : null),
+    saveConfig: async (c) => { saved = structuredClone(c) },
+  }
 }
 
-function readConfigFile(): unknown {
-  return JSON.parse(fs.readFileSync(configFile, 'utf8'))
+async function seed(config: Config): Promise<void> {
+  setStore(fakeStore(config))
+  await hydrateConfig()
 }
 
-function writeAgentsJsonFile(data: unknown): void {
-  fs.writeFileSync(agentsFile, JSON.stringify(data, null, 2))
-}
-
-function readAgentsJsonFile(): unknown {
-  return JSON.parse(fs.readFileSync(agentsFile, 'utf8'))
-}
-
-/**
- * A minimal valid config for migration tests.
- */
-function minimalConfig(overrides: Record<string, unknown> = {}) {
+function minimalConfig(overrides: Partial<Config> = {}): Config {
   return {
     version: '0.32.0',
     repositories: {
-      'test-repo': {
-        path: '/home/user/test-repo',
-        keywords: ['test'],
-        color: '#3B82F6',
-        languages: { commit: 'en', pullRequest: 'en', jiraComment: 'en', discussion: 'en' },
-        commit: { style: 'single-line', format: 'angular', coAuthor: true, includeTicketId: true },
-        resolve: {
-          commitMode: 'new', format: 'angular', style: 'single-line',
-          useCommitConfig: true, replyToComments: true, replyLanguage: 'en',
-        },
-        pullRequest: { autoLinkTickets: true },
-        issues: { commentOnPR: true, jiraUrl: '', githubIssuesUrl: '' },
-        branches: { development: '' },
-        worktreeFiles: [],
-      },
+      'test-repo': { path: '/home/user/test-repo', keywords: ['test'] },
     },
     splitEnabled: false,
     splitActive: false,
@@ -63,277 +38,54 @@ function minimalConfig(overrides: Record<string, unknown> = {}) {
   }
 }
 
-describe('migrateConfig — agents migration', () => {
-  let migrateConfig: typeof import('./migrate').migrateConfig
-
-  beforeEach(async () => {
-    // Mock config module to point to our temp dir
-    vi.doMock('./config', () => ({
-      CONFIG_DIR: tmpDir,
-      CONFIG_FILE: configFile,
-      readConfig: () => {
-        try {
-          return JSON.parse(fs.readFileSync(configFile, 'utf8'))
-        } catch {
-          return { version: 'unknown', repositories: {}, splitEnabled: false, splitActive: false }
-        }
-      },
-      writeConfig: (config: unknown) => {
-        fs.writeFileSync(configFile, JSON.stringify(config, null, 2))
-      },
-      filterValidRepositories: (repos: string[]) => repos,
-    }))
-
-    // Mock agents module to use our temp dir
-    vi.doMock('./agents', () => ({
-      writeAgents: (agents: unknown[]) => {
-        fs.writeFileSync(agentsFile, JSON.stringify(agents, null, 2))
-      },
-      AGENTS_FILE: agentsFile,
-    }))
-
-    // Mock schema-validator to always pass
-    vi.doMock('./schema-validator', () => ({
-      validateConfig: () => ({ valid: true, errors: [] }),
-      hasCriticalErrors: () => false,
-    }))
-
-    // Mock defaults
-    const VALID_SHORTCUTS = [
-      'Control+Space', 'Control+Shift+Space', 'Alt+Space', 'Alt+Shift+Space',
-      'Control+M', 'Control+Shift+M', 'Alt+M', 'Alt+Shift+M',
-    ]
-    const VALID_LAUNCH_MODES = ['plan', 'default', 'acceptEdits', 'auto', 'bypassPermissions']
-    const mockDefaultSpotlight = { enabled: true, shortcut: 'Control+Space' }
-    vi.doMock('./defaults', () => ({
-      DEFAULT_REPOSITORY_FIELDS: {
-        color: '#3B82F6',
-        languages: { commit: 'en', pullRequest: 'en', jiraComment: 'en', discussion: 'en' },
-        commit: { style: 'single-line', format: 'angular', coAuthor: true, includeTicketId: true },
-        resolve: {
-          commitMode: 'new', format: 'angular', style: 'single-line',
-          useCommitConfig: true, replyToComments: true, replyLanguage: 'en',
-        },
-        pullRequest: { autoLinkTickets: true },
-        issues: { commentOnPR: true, jiraUrl: '', githubIssuesUrl: '' },
-        branches: { development: '' },
-        worktreeFiles: [],
-      },
-      DEFAULT_SPOTLIGHT: mockDefaultSpotlight,
-      VALID_SPOTLIGHT_SHORTCUTS: VALID_SHORTCUTS,
-      isValidSpotlightShortcut: (value: unknown) =>
-        typeof value === 'string' && VALID_SHORTCUTS.includes(value),
-      isValidSpotlightConfig: (obj: unknown) => {
-        if (typeof obj !== 'object' || obj === null) return false
-        const record = obj as Record<string, unknown>
-        return typeof record.enabled === 'boolean' &&
-          typeof record.shortcut === 'string' &&
-          VALID_SHORTCUTS.includes(record.shortcut)
-      },
-      isValidLaunchMode: (value: unknown) =>
-        typeof value === 'string' && VALID_LAUNCH_MODES.includes(value),
-    }))
-
-    vi.resetModules()
-    const mod = await import('./migrate')
-    migrateConfig = mod.migrateConfig
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('should migrate agents from config.json to agents.json and remove agents key', () => {
-    const agents = [
-      { id: 'a1', name: 'Agent 1', repositories: ['/repo1'], tsCreate: 1000 },
-      { id: 'a2', name: 'Agent 2', repositories: [], tsCreate: 2000 },
-    ]
-    writeConfigFile(minimalConfig({ agents }))
-
+describe('migrateConfig — repository defaults', () => {
+  it('fills missing default repository fields', async () => {
+    await seed(minimalConfig())
     migrateConfig('1.0.0')
-
-    // agents.json should be created with the agents
-    expect(fs.existsSync(agentsFile)).toBe(true)
-    const writtenAgents = readAgentsJsonFile()
-    expect(writtenAgents).toEqual(agents)
-
-    // config.json should no longer have the agents key
-    const config = readConfigFile() as Record<string, unknown>
-    expect(config).not.toHaveProperty('agents')
+    const repo = readConfig().repositories['test-repo']
+    expect(repo.color).toBe('#3B82F6')
+    expect(repo.languages).toEqual({ commit: 'en', pullRequest: 'en', jiraComment: 'en', discussion: 'en' })
+    expect(repo.commit).toMatchObject({ style: 'single-line', format: 'angular' })
+    // Existing fields are preserved.
+    expect(repo.path).toBe('/home/user/test-repo')
+    expect(repo.keywords).toEqual(['test'])
   })
 
-  it('should not overwrite agents.json if it already exists, but should remove agents key from config', () => {
-    const existingAgents = [
-      { id: 'existing1', name: 'Existing Agent', repositories: [], tsCreate: 500 },
-    ]
-    writeAgentsJsonFile(existingAgents)
-
-    const configAgents = [
-      { id: 'a1', name: 'Config Agent', repositories: [], tsCreate: 1000 },
-    ]
-    writeConfigFile(minimalConfig({ agents: configAgents }))
-
+  it('syncs the version with the app version', async () => {
+    await seed(minimalConfig())
     migrateConfig('1.0.0')
-
-    // agents.json should still contain the pre-existing agents (not overwritten)
-    const writtenAgents = readAgentsJsonFile() as unknown[]
-    expect(writtenAgents).toEqual(existingAgents)
-
-    // config.json should no longer have the agents key
-    const config = readConfigFile() as Record<string, unknown>
-    expect(config).not.toHaveProperty('agents')
+    expect(readConfig().version).toBe('1.0.0')
   })
 
-  it('should not create agents.json when config has no agents key', () => {
-    writeConfigFile(minimalConfig())
-
+  it('defaults integrations when missing', async () => {
+    await seed(minimalConfig())
     migrateConfig('1.0.0')
-
-    expect(fs.existsSync(agentsFile)).toBe(false)
-  })
-
-  it('should not crash on fresh install (no config.json)', () => {
-    // No config.json exists at all
-    expect(() => migrateConfig('1.0.0')).not.toThrow()
-    expect(fs.existsSync(agentsFile)).toBe(false)
-  })
-
-  it('should remove agents key even when agents array is empty', () => {
-    writeConfigFile(minimalConfig({ agents: [] }))
-
-    migrateConfig('1.0.0')
-
-    // agents key was present (empty array) — should be removed
-    const config = readConfigFile() as Record<string, unknown>
-    expect(config).not.toHaveProperty('agents')
-
-    // agents.json should NOT be created (empty array, nothing to migrate)
-    expect(fs.existsSync(agentsFile)).toBe(false)
-  })
-
-  it('should handle config with agents key set to non-array', () => {
-    writeConfigFile(minimalConfig({ agents: 'invalid' }))
-
-    migrateConfig('1.0.0')
-
-    // agents key should still be removed
-    const config = readConfigFile() as Record<string, unknown>
-    expect(config).not.toHaveProperty('agents')
-
-    // agents.json should NOT be created (not a valid array)
-    expect(fs.existsSync(agentsFile)).toBe(false)
+    expect(readConfig().integrations).toEqual({ github: true, atlassian: true })
   })
 })
 
 describe('migrateConfig — launchMode sanitization', () => {
-  let migrateConfig: typeof import('./migrate').migrateConfig
-
-  beforeEach(async () => {
-    vi.doMock('./config', () => ({
-      CONFIG_DIR: tmpDir,
-      CONFIG_FILE: configFile,
-      readConfig: () => {
-        try {
-          return JSON.parse(fs.readFileSync(configFile, 'utf8'))
-        } catch {
-          return { version: 'unknown', repositories: {}, splitEnabled: false, splitActive: false }
-        }
-      },
-      writeConfig: (config: unknown) => {
-        fs.writeFileSync(configFile, JSON.stringify(config, null, 2))
-      },
-      filterValidRepositories: (repos: string[]) => repos,
-    }))
-
-    vi.doMock('./agents', () => ({
-      writeAgents: (agents: unknown[]) => {
-        fs.writeFileSync(agentsFile, JSON.stringify(agents, null, 2))
-      },
-      AGENTS_FILE: agentsFile,
-    }))
-
-    vi.doMock('./schema-validator', () => ({
-      validateConfig: () => ({ valid: true, errors: [] }),
-      hasCriticalErrors: () => false,
-    }))
-
-    const VALID_SHORTCUTS = [
-      'Control+Space', 'Control+Shift+Space', 'Alt+Space', 'Alt+Shift+Space',
-      'Control+M', 'Control+Shift+M', 'Alt+M', 'Alt+Shift+M',
-    ]
-    const VALID_LAUNCH_MODES = ['plan', 'default', 'acceptEdits', 'auto', 'bypassPermissions']
-    const mockDefaultSpotlight = { enabled: true, shortcut: 'Control+Space' }
-    vi.doMock('./defaults', () => ({
-      DEFAULT_REPOSITORY_FIELDS: {
-        color: '#3B82F6',
-        languages: { commit: 'en', pullRequest: 'en', jiraComment: 'en', discussion: 'en' },
-        commit: { style: 'single-line', format: 'angular', coAuthor: true, includeTicketId: true },
-        resolve: {
-          commitMode: 'new', format: 'angular', style: 'single-line',
-          useCommitConfig: true, replyToComments: true, replyLanguage: 'en',
-        },
-        pullRequest: { autoLinkTickets: true },
-        issues: { commentOnPR: true, jiraUrl: '', githubIssuesUrl: '' },
-        branches: { development: '' },
-        worktreeFiles: [],
-      },
-      DEFAULT_SPOTLIGHT: mockDefaultSpotlight,
-      VALID_SPOTLIGHT_SHORTCUTS: VALID_SHORTCUTS,
-      isValidSpotlightShortcut: (value: unknown) =>
-        typeof value === 'string' && VALID_SHORTCUTS.includes(value),
-      isValidSpotlightConfig: (obj: unknown) => {
-        if (typeof obj !== 'object' || obj === null) return false
-        const record = obj as Record<string, unknown>
-        return typeof record.enabled === 'boolean' &&
-          typeof record.shortcut === 'string' &&
-          VALID_SHORTCUTS.includes(record.shortcut)
-      },
-      isValidLaunchMode: (value: unknown) =>
-        typeof value === 'string' && VALID_LAUNCH_MODES.includes(value),
-    }))
-
-    vi.resetModules()
-    const mod = await import('./migrate')
-    migrateConfig = mod.migrateConfig
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('should reset an invalid launchMode to undefined', () => {
-    writeConfigFile(minimalConfig({ launchMode: 'turbo' }))
-
+  it('resets an invalid launchMode', async () => {
+    await seed(minimalConfig({ launchMode: 'turbo' as never }))
     migrateConfig('1.0.0')
-
-    const config = readConfigFile() as Record<string, unknown>
-    expect(config).not.toHaveProperty('launchMode')
+    expect(readConfig().launchMode).toBeUndefined()
   })
 
-  it('should preserve a valid launchMode during migration', () => {
-    writeConfigFile(minimalConfig({ launchMode: 'auto' }))
-
+  it('preserves a valid launchMode', async () => {
+    await seed(minimalConfig({ launchMode: 'auto' }))
     migrateConfig('1.0.0')
-
-    const config = readConfigFile() as Record<string, unknown>
-    expect(config.launchMode).toBe('auto')
+    expect(readConfig().launchMode).toBe('auto')
   })
 
-  it('should not add launchMode when it is absent from config', () => {
-    writeConfigFile(minimalConfig())
-
+  it('does not add launchMode when absent', async () => {
+    await seed(minimalConfig())
     migrateConfig('1.0.0')
-
-    const config = readConfigFile() as Record<string, unknown>
-    expect(config).not.toHaveProperty('launchMode')
+    expect(readConfig().launchMode).toBeUndefined()
   })
 
-  it('should reset launchMode when it is a non-string value', () => {
-    writeConfigFile(minimalConfig({ launchMode: 123 }))
-
+  it('resets a non-string launchMode', async () => {
+    await seed(minimalConfig({ launchMode: 123 as never }))
     migrateConfig('1.0.0')
-
-    const config = readConfigFile() as Record<string, unknown>
-    expect(config).not.toHaveProperty('launchMode')
+    expect(readConfig().launchMode).toBeUndefined()
   })
 })

@@ -22,7 +22,33 @@ import {
   updateAgentSplitPane,
 } from '../config/agents'
 import { addHistoryEntry } from '../config/activity-history'
+import { readConfig } from '../config/config'
+import { expandPath } from '../config/validation'
+import { checkRepoPath } from '../config/repo-validation'
+import { ensureHydrated } from '../store/hydrate'
 import type { HistoryAction } from '../../types'
+
+/**
+ * Strict repo-path guard used on agent creation (⌘N). When the launch cwd maps
+ * to a configured repository, that repository must be a valid git repo (folder
+ * exists AND has .git). Throws a descriptive error otherwise so the renderer can
+ * prompt the user to re-point the folder instead of creating a broken agent.
+ */
+function assertLaunchTargetValid(cwd: unknown): void {
+  if (typeof cwd !== 'string' || cwd.length === 0) return
+  const expanded = expandPath(cwd)
+  const config = readConfig()
+  const match = Object.entries(config.repositories ?? {}).find(
+    ([, repo]) => expandPath(repo.path) === expanded,
+  )
+  if (!match) return
+  const [name, repo] = match
+  const { valid, reason } = checkRepoPath(repo.path)
+  if (!valid) {
+    const detail = reason === 'missing' ? 'the folder no longer exists' : 'it is not a git repository'
+    throw new Error(`Repository "${name}" is invalid: ${detail}. Re-point the folder in Settings before launching an agent.`)
+  }
+}
 
 let getMainWindow: () => BrowserWindow | null
 let showNotification: (title: string, body: string) => void
@@ -267,6 +293,11 @@ export function setupTerminalHandlers(
     if (typeof id !== 'string' || typeof name !== 'string') {
       throw new Error('terminal:launchClaude requires id (string) and name (string)')
     }
+    // The DB is the source of truth; make sure agents/config are loaded before we
+    // save a new agent (so we never clobber the hydrated cache).
+    await ensureHydrated()
+    // Strict repo-path validation on ⌘N.
+    assertLaunchTargetValid(cwd)
     const callbacks = createTerminalCallbacks(id, name)
     const terminal = launchClaude(
       id,
@@ -361,6 +392,7 @@ export function setupTerminalHandlers(
 
   // Get all terminals
   ipcMain.handle('terminal:getAll', async () => {
+    await ensureHydrated()
     const savedAgents = readAgents()
     const agentMap = new Map(savedAgents.map(a => [a.id, a]))
     return getAllTerminals().map(t => ({
@@ -383,6 +415,7 @@ export function setupTerminalHandlers(
   })
 
   const handleGetAgents = async () => {
+    await ensureHydrated()
     return readAgents()
   }
   ipcMain.handle('terminal:getSessions', handleGetAgents) // legacy alias

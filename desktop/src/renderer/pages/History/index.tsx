@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Clock, Trash2, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Clock, ChevronRight, ChevronLeft } from 'lucide-react'
 import { useActivityHistory } from '../../hooks/useActivityHistory'
 import { useHistoryAnalytics } from '../../hooks/useHistoryAnalytics'
 import { ActivityHeatmap } from './ActivityHeatmap'
@@ -75,10 +75,9 @@ function SingleEntryRow({ entry, isDimmed }: { entry: HistoryEntry; isDimmed: bo
 }
 
 export function HistoryPage() {
-  const { entries, groups, loading, clear } = useActivityHistory()
+  const { entries, groups, loading } = useActivityHistory()
   const { heatmapData } = useHistoryAnalytics(entries)
   const hasEntries = groups.some(g => g.entries.length > 0)
-  const [showConfirm, setShowConfirm] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [closingGroups, setClosingGroups] = useState<Set<string>>(new Set())
   const [dayIndex, setDayIndex] = useState(0)
@@ -125,11 +124,6 @@ export function HistoryPage() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [expandedGroups, collapseGroup])
-
-  const handleClear = useCallback(async () => {
-    await clear()
-    setShowConfirm(false)
-  }, [clear])
 
   const goToPrevDay = useCallback(() => {
     setDayIndex(i => Math.min(i + 1, groups.length - 1))
@@ -180,30 +174,6 @@ export function HistoryPage() {
               <h1 className="text-2xl font-semibold">History</h1>
               <p className="text-sm text-text-secondary mt-1">Track your agents' activity across all repositories.</p>
             </div>
-            {!showConfirm ? (
-              <button
-                onClick={() => setShowConfirm(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/[0.08] rounded-lg hover:bg-white/[0.04] hover:text-white transition-all"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear</span>
-              </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/[0.08] rounded-lg hover:bg-white/[0.04] hover:text-white transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleClear}
-                  className="px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all"
-                >
-                  Confirm clear
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Analytics dashboard */}

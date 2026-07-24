@@ -1,10 +1,9 @@
-import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import type { Config, RepositoryConfig, LaunchMode, OrgSharedConfig } from '../../types'
-import { validateConfig, hasCriticalErrors } from './schema-validator'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
 import { expandPath } from './validation'
+import { getStore, reportWriteError } from '../store/Store'
 
 /** Settings input where each field can be its normal type, 'default', or null (to reset) */
 type SettingsInput<T> = {
@@ -64,95 +63,71 @@ export function filterValidRepositories(repositories: string[]): string[] {
   return repositories.filter(repo => !isExcludedRepositoryPath(repo))
 }
 
-export function readConfig(): Config {
-  try {
-    if (!fs.existsSync(CONFIG_FILE)) {
-      const defaultConfig: Config = {
-        version: 'unknown',
-        repositories: {},
-        splitEnabled: false,
-        splitActive: false,
-      }
-      writeConfig(defaultConfig)
-      return defaultConfig
-    }
-    const content = fs.readFileSync(CONFIG_FILE, 'utf8')
-    const config: Config = JSON.parse(content)
-
-    // Migration: ensure config fields have default values
-    let needsWrite = false
-
-    if (config.splitEnabled === undefined) {
-      config.splitEnabled = false
-      needsWrite = true
-    }
-
-    if (config.splitActive === undefined) {
-      config.splitActive = false
-      needsWrite = true
-    }
-
-    if (!config.integrations) {
-      config.integrations = { github: true, atlassian: true }
-      needsWrite = true
-    }
-
-    if (!isValidSpotlightConfig(config.spotlight)) {
-      config.spotlight = { ...DEFAULT_SPOTLIGHT, ...(typeof config.spotlight === 'object' && config.spotlight !== null ? config.spotlight : {}) }
-      // Re-validate after merge; if still invalid, reset to pure defaults
-      if (!isValidSpotlightConfig(config.spotlight)) {
-        config.spotlight = { ...DEFAULT_SPOTLIGHT }
-      }
-      needsWrite = true
-    }
-
-    if (needsWrite) {
-      writeConfig(config)
-    }
-
-    // Validate config against JSON Schema
-    try {
-      const validation = validateConfig(config)
-      if (!validation.valid) {
-        if (hasCriticalErrors(validation.errors)) {
-          console.error('Critical config validation errors:', validation.errors)
-          throw new Error(`Invalid config: ${validation.errors.join('; ')}`)
-        }
-        // Non-critical errors: warn but continue (graceful degradation)
-        for (const err of validation.errors) {
-          console.warn(`Config validation warning: ${err}`)
-        }
-      }
-    } catch (validationError) {
-      // Re-throw critical errors, but don't crash on schema loading failures
-      if (validationError instanceof Error && validationError.message.startsWith('Invalid config:')) {
-        throw validationError
-      }
-      console.warn('Config schema validation skipped:', validationError)
-    }
-
-    return config
-  } catch (error) {
-    console.error('Error reading config:', error)
-    return {
-      version: 'unknown',
-      repositories: {},
-      splitEnabled: false,
-      splitActive: false,
-    }
+function defaultConfig(): Config {
+  return {
+    version: 'unknown',
+    repositories: {},
+    splitEnabled: false,
+    splitActive: false,
   }
 }
 
-export function writeConfig(config: Config): void {
-  try {
-    if (!fs.existsSync(CONFIG_DIR)) {
-      fs.mkdirSync(CONFIG_DIR, { recursive: true })
+/**
+ * Fill in missing default fields on a config loaded from the store. Mirrors the
+ * defaulting the old file-based reader performed on first load.
+ */
+function withDefaults(config: Config): Config {
+  config.repositories = config.repositories || {}
+  if (config.splitEnabled === undefined) config.splitEnabled = false
+  if (config.splitActive === undefined) config.splitActive = false
+  if (!config.integrations) config.integrations = { github: true, atlassian: true }
+  if (!isValidSpotlightConfig(config.spotlight)) {
+    config.spotlight = { ...DEFAULT_SPOTLIGHT, ...(typeof config.spotlight === 'object' && config.spotlight !== null ? config.spotlight : {}) }
+    if (!isValidSpotlightConfig(config.spotlight)) {
+      config.spotlight = { ...DEFAULT_SPOTLIGHT }
     }
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2))
-  } catch (error) {
-    console.error('Error writing config:', error)
-    throw error
   }
+  return config
+}
+
+// ---------------------------------------------------------------------------
+// In-memory config cache. The Supabase database is the SINGLE source of truth
+// (see store/CloudStore.ts); there is no local config.json. readConfig() serves
+// the cache synchronously, writeConfig() updates it and writes through to the
+// store asynchronously, and hydrateConfig() loads it from the store.
+// ---------------------------------------------------------------------------
+
+let configCache: Config | null = null
+
+/** Load the config from the store into the cache. Call after auth is established. */
+export async function hydrateConfig(): Promise<Config> {
+  try {
+    const loaded = await getStore().loadConfig()
+    configCache = withDefaults(loaded ?? defaultConfig())
+  } catch (error) {
+    console.error('Error hydrating config:', error)
+    configCache = withDefaults(defaultConfig())
+  }
+  return configCache
+}
+
+/** Drop the cached config (on sign-out) so a different user never sees stale data. */
+export function resetConfigCache(): void {
+  configCache = null
+}
+
+export function readConfig(): Config {
+  return configCache ?? defaultConfig()
+}
+
+export function writeConfig(config: Config): void {
+  configCache = config
+  void getStore()
+    .saveConfig(config)
+    .catch((error) => {
+      console.error('Error persisting config:', error)
+      reportWriteError('config', error)
+    })
 }
 
 export function addRepository(name: string, repoPath: string, keywords: string[] = []): Config {
@@ -413,6 +388,8 @@ export function setCurrentOrgId(orgId: string | undefined): Config {
   } else {
     delete config.currentOrgId
   }
+  // Point the store at the active org so subsequent reads/writes target it.
+  getStore().setActiveOrgId(orgId)
   writeConfig(config)
   return config
 }

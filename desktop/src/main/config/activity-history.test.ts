@@ -1,61 +1,39 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import * as fs from 'fs'
-import * as path from 'path'
-import * as os from 'os'
+import { describe, it, expect, beforeEach } from 'vitest'
+import type { HistoryEntry } from '../../types'
+import type { Store } from '../store/Store'
+import { setStore, NOOP_STORE } from '../store/Store'
+import { readHistory, addHistoryEntry, hydrateHistory } from './activity-history'
 
-let tmpDir: string
+// History lives in the append-only Supabase `activity_events` table behind the
+// Store — there is no local history.json and no clear operation (dropped: the
+// table is append-only; a read limit replaces the old purge).
 
-beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'activity-history-test-'))
-})
+let appended: HistoryEntry[] = []
 
-afterEach(() => {
-  fs.rmSync(tmpDir, { recursive: true, force: true })
-})
-
-function writeHistoryFile(data: unknown): void {
-  fs.writeFileSync(path.join(tmpDir, 'history.json'), JSON.stringify(data, null, 2))
+function fakeStore(initial: HistoryEntry[] = []): Store {
+  appended = structuredClone(initial)
+  return {
+    ...NOOP_STORE,
+    loadHistory: async (limit) => structuredClone(appended).slice(-limit),
+    appendHistory: async (e) => { appended.push(structuredClone(e)) },
+  }
 }
 
-function readHistoryFile(): unknown {
-  return JSON.parse(fs.readFileSync(path.join(tmpDir, 'history.json'), 'utf8'))
+async function seed(initial: HistoryEntry[] = []): Promise<void> {
+  setStore(fakeStore(initial))
+  await hydrateHistory()
 }
 
-describe('readHistory', () => {
-  let readHistory: typeof import('./activity-history').readHistory
-
-  beforeEach(async () => {
-    vi.doMock('./config', () => ({
-      CONFIG_DIR: tmpDir,
-    }))
-    vi.resetModules()
-    const mod = await import('./activity-history')
-    readHistory = mod.readHistory
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('should return [] when history.json does not exist', () => {
+describe('hydrateHistory / readHistory', () => {
+  it('returns [] when the store has no history', async () => {
+    await seed([])
     expect(readHistory()).toEqual([])
   })
 
-  it('should return [] when file contains non-array', () => {
-    writeHistoryFile({ foo: 'bar' })
-    expect(readHistory()).toEqual([])
-  })
-
-  it('should return [] when file contains invalid JSON', () => {
-    fs.writeFileSync(path.join(tmpDir, 'history.json'), '{broken')
-    expect(readHistory()).toEqual([])
-  })
-
-  it('should return entries when file contains a valid array', () => {
-    const entries = [
+  it('returns the entries loaded from the store', async () => {
+    await seed([
       { id: '1', agentId: 'a1', agentName: 'Claude 1', action: 'started', repositories: [], timestamp: 1000 },
-    ]
-    writeHistoryFile(entries)
+    ])
     const result = readHistory()
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe('1')
@@ -63,24 +41,9 @@ describe('readHistory', () => {
 })
 
 describe('addHistoryEntry', () => {
-  let addHistoryEntry: typeof import('./activity-history').addHistoryEntry
-  let readHistory: typeof import('./activity-history').readHistory
+  beforeEach(async () => { await seed([]) })
 
-  beforeEach(async () => {
-    vi.doMock('./config', () => ({
-      CONFIG_DIR: tmpDir,
-    }))
-    vi.resetModules()
-    const mod = await import('./activity-history')
-    addHistoryEntry = mod.addHistoryEntry
-    readHistory = mod.readHistory
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('should create an entry with all fields', () => {
+  it('creates an entry with all fields', () => {
     const entry = addHistoryEntry({
       agentId: 'a1',
       agentName: 'Claude 1',
@@ -89,7 +52,6 @@ describe('addHistoryEntry', () => {
       description: 'Fix login',
       repositories: ['/repo1'],
     })
-
     expect(entry.id).toBeDefined()
     expect(entry.agentId).toBe('a1')
     expect(entry.agentName).toBe('Claude 1')
@@ -100,37 +62,29 @@ describe('addHistoryEntry', () => {
     expect(entry.timestamp).toBeGreaterThan(0)
   })
 
-  it('should persist to history.json', () => {
-    addHistoryEntry({
-      agentId: 'a1',
-      agentName: 'Claude 1',
-      action: 'committed',
-      repositories: [],
-    })
-
-    const data = readHistoryFile() as unknown[]
-    expect(data).toHaveLength(1)
+  it('appends to the in-memory cache', () => {
+    addHistoryEntry({ agentId: 'a1', agentName: 'Claude 1', action: 'committed', repositories: [] })
+    expect(readHistory()).toHaveLength(1)
   })
 
-  it('should append to existing entries', () => {
-    writeHistoryFile([
+  it('writes through to the store', async () => {
+    addHistoryEntry({ agentId: 'a1', agentName: 'Claude 1', action: 'committed', repositories: [] })
+    await Promise.resolve()
+    expect(appended).toHaveLength(1)
+  })
+
+  it('appends after existing entries', async () => {
+    await seed([
       { id: 'existing', agentId: 'a0', agentName: 'Old', action: 'started', repositories: [], timestamp: 1000 },
     ])
-
-    addHistoryEntry({
-      agentId: 'a1',
-      agentName: 'Claude 1',
-      action: 'committed',
-      repositories: [],
-    })
-
+    addHistoryEntry({ agentId: 'a1', agentName: 'Claude 1', action: 'committed', repositories: [] })
     const result = readHistory()
     expect(result).toHaveLength(2)
     expect(result[0].id).toBe('existing')
   })
 
-  it('should cap entries at 500 by removing oldest', () => {
-    const existing = Array.from({ length: 500 }, (_, i) => ({
+  it('caps the in-memory cache at the read limit (500)', async () => {
+    const existing: HistoryEntry[] = Array.from({ length: 500 }, (_, i) => ({
       id: `entry-${i}`,
       agentId: 'a1',
       agentName: 'Claude',
@@ -138,52 +92,13 @@ describe('addHistoryEntry', () => {
       repositories: [],
       timestamp: i,
     }))
-    writeHistoryFile(existing)
+    await seed(existing)
 
-    addHistoryEntry({
-      agentId: 'a2',
-      agentName: 'Claude 2',
-      action: 'committed',
-      repositories: [],
-    })
+    addHistoryEntry({ agentId: 'a2', agentName: 'Claude 2', action: 'committed', repositories: [] })
 
     const result = readHistory()
     expect(result).toHaveLength(500)
     expect(result[0].id).toBe('entry-1')
     expect(result[result.length - 1].agentName).toBe('Claude 2')
-  })
-})
-
-describe('clearHistory', () => {
-  let clearHistory: typeof import('./activity-history').clearHistory
-  let readHistory: typeof import('./activity-history').readHistory
-
-  beforeEach(async () => {
-    vi.doMock('./config', () => ({
-      CONFIG_DIR: tmpDir,
-    }))
-    vi.resetModules()
-    const mod = await import('./activity-history')
-    clearHistory = mod.clearHistory
-    readHistory = mod.readHistory
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('should clear all entries', () => {
-    writeHistoryFile([
-      { id: '1', agentId: 'a1', agentName: 'Claude', action: 'started', repositories: [], timestamp: 1000 },
-      { id: '2', agentId: 'a1', agentName: 'Claude', action: 'committed', repositories: [], timestamp: 2000 },
-    ])
-
-    clearHistory()
-    expect(readHistory()).toEqual([])
-  })
-
-  it('should handle clearing when file does not exist', () => {
-    clearHistory()
-    expect(readHistory()).toEqual([])
   })
 })

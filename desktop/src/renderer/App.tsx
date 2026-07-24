@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
-import { AlertTriangle, RotateCcw } from 'lucide-react'
+import { AlertTriangle, RotateCcw, FolderOpen } from 'lucide-react'
+import type { InvalidRepo } from '../preload'
 import { useStore } from './store'
 import { useConfig } from './hooks/useConfig'
 import { useTerminals } from './hooks/useTerminals'
@@ -202,6 +203,66 @@ export function App() {
           ],
         }
       )
+    })
+    return () => { unsubscribe() }
+  }, [loadConfig])
+
+  // Surface configured repositories whose folder is missing or is not a git repo,
+  // with a one-click "re-point folder" action. Runs on launch (initial fetch +
+  // the main-process 'repos:invalid' event) so invalid paths are caught early.
+  useEffect(() => {
+    const shownRef = new Set<string>()
+
+    const repointFolder = async (name: string) => {
+      const folder = await window.electronAPI.dialog.openFolder()
+      if (!folder) return
+      try {
+        await window.electronAPI.config.updateRepository(name, { path: folder })
+        loadConfig()
+        showToast(`Re-pointed "${name}"`, 'success')
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : `Failed to re-point "${name}"`, 'error')
+      }
+    }
+
+    const surface = (repos: InvalidRepo[]) => {
+      for (const repo of repos) {
+        if (shownRef.has(repo.name)) continue
+        shownRef.add(repo.name)
+        const why = repo.reason === 'missing' ? 'folder is missing' : 'is not a git repository'
+        showToast(`Repository "${repo.name}" ${why} (${repo.path})`, 'error', {
+          persistent: true,
+          actions: [
+            {
+              label: 'Re-point folder',
+              icon: <FolderOpen className="w-3.5 h-3.5" />,
+              onClick: () => repointFolder(repo.name),
+            },
+          ],
+        })
+      }
+    }
+
+    window.electronAPI.config.getInvalidRepos().then(surface).catch(() => {})
+    const unsubscribe = window.electronAPI.config.onInvalidRepos(surface)
+    return () => { unsubscribe() }
+  }, [loadConfig])
+
+  // A write-through to the cloud failed: the main process already re-synced the
+  // caches from the DB, so the latest change may not have been saved. Tell the
+  // user, and refresh the local config view so it reflects the re-synced state.
+  useEffect(() => {
+    const LABELS: Record<'config' | 'agents' | 'history', string> = {
+      config: 'settings',
+      agents: 'agents',
+      history: 'activity history',
+    }
+    const unsubscribe = window.electronAPI.connectivity.onWriteError(({ kind }) => {
+      showToast(
+        `Failed to save your ${LABELS[kind]} to the cloud. Your latest change may not have been saved — reloaded from the server.`,
+        'error',
+      )
+      if (kind === 'config') loadConfig()
     })
     return () => { unsubscribe() }
   }, [loadConfig])

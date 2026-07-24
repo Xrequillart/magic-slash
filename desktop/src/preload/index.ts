@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -78,6 +78,15 @@ const configApi = {
 
   validatePath: (path: string) =>
     ipcRenderer.invoke('config:validatePath', { path }),
+
+  // Configured repositories whose path is missing or is not a git repository.
+  getInvalidRepos: (): Promise<InvalidRepo[]> => ipcRenderer.invoke('repos:getInvalid'),
+
+  onInvalidRepos: (callback: (repos: InvalidRepo[]) => void) => {
+    const listener = (_event: IpcRendererEvent, repos: InvalidRepo[]) => callback(repos)
+    ipcRenderer.on('repos:invalid', listener)
+    return () => ipcRenderer.removeListener('repos:invalid', listener)
+  },
 
   hasGitHubRemote: (path: string) =>
     ipcRenderer.invoke('config:hasGitHubRemote', { path }),
@@ -232,12 +241,39 @@ const historyApi = {
     ipcRenderer.invoke('history:getLast', { repoPath }),
 }
 
-// Activity History API
+// Activity History API (append-only — no clear: activity_events is append-only)
 const activityHistoryApi = {
   getAll: () => ipcRenderer.invoke('activityHistory:getAll'),
   add: (params: { agentId: string; agentName: string; action: string; ticketId?: string; description?: string; repositories: string[] }) =>
     ipcRenderer.invoke('activityHistory:add', params),
-  clear: () => ipcRenderer.invoke('activityHistory:clear'),
+}
+
+// Connectivity API (cloud is mandatory: the renderer blocks the whole app until
+// the backend reports 'ok'). See main/ipc/connectivity-handlers.ts.
+export type ConnectivityStatus = 'ok' | 'unauthorized' | 'unreachable' | 'disabled'
+
+export type StoreWriteKind = 'config' | 'agents' | 'history'
+
+export interface InvalidRepo {
+  name: string
+  path: string
+  reason: 'missing' | 'not-git'
+}
+
+const connectivityApi = {
+  check: (): Promise<ConnectivityStatus> => ipcRenderer.invoke('connectivity:check'),
+  onStatusChanged: (callback: (status: ConnectivityStatus) => void) => {
+    const listener = (_event: IpcRendererEvent, status: ConnectivityStatus) => callback(status)
+    ipcRenderer.on('connectivity:statusChanged', listener)
+    return () => ipcRenderer.removeListener('connectivity:statusChanged', listener)
+  },
+  // A write-through to the cloud failed; the local cache was re-synced from the
+  // DB (the failed change may be lost). Carries which write failed.
+  onWriteError: (callback: (data: { kind: StoreWriteKind }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { kind: StoreWriteKind }) => callback(data)
+    ipcRenderer.on('store:writeError', listener)
+    return () => ipcRenderer.removeListener('store:writeError', listener)
+  },
 }
 
 // Window API
@@ -424,6 +460,8 @@ const orgApi = {
   accept: (token: string): Promise<{ orgId: string; config: Config }> =>
     ipcRenderer.invoke('org:accept', { token }),
   applySharedConfig: (): Promise<Config> => ipcRenderer.invoke('org:applyShared'),
+  setSharedConfig: (shared: OrgSharedConfig, orgId?: string): Promise<void> =>
+    ipcRenderer.invoke('org:setShared', { shared, orgId }),
   removeMember: (orgId: string, userId: string): Promise<void> =>
     ipcRenderer.invoke('org:removeMember', { orgId, userId }),
   leave: (orgId: string): Promise<void> => ipcRenderer.invoke('org:leave', { orgId }),
@@ -452,6 +490,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   usage: usageApi,
   auth: authApi,
   org: orgApi,
+  connectivity: connectivityApi,
 })
 
 // Type definitions for the renderer
@@ -475,6 +514,7 @@ declare global {
       usage: typeof usageApi
       auth: typeof authApi
       org: typeof orgApi
+      connectivity: typeof connectivityApi
     }
   }
 
