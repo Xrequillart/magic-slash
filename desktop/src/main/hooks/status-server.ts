@@ -8,6 +8,12 @@ type CommandStartCallback = (terminalId: string, command: string) => void
 type CommandEndCallback = (terminalId: string, exitCode: number) => void
 type RepositoriesCallback = (terminalId: string, repositories: string[]) => void
 type UsageCallback = (terminalId: string, usage: TerminalUsage) => void
+// Read-back providers: unlike the callbacks above (terminal → app writes), these let a
+// terminal-run skill READ from the app's in-memory caches (hydrated from the cloud store).
+// Loosely typed on purpose — the values are just JSON-serialized to the response.
+type ConfigProvider = () => unknown
+type AgentProvider = (terminalId: string) => unknown
+type WorktreeFilesWriter = (repo: string, files: string[]) => void
 
 let server: http.Server | null = null
 let serverPort: number = 0
@@ -17,6 +23,9 @@ let commandStartCallback: CommandStartCallback | null = null
 let commandEndCallback: CommandEndCallback | null = null
 let repositoriesCallback: RepositoriesCallback | null = null
 let usageCallback: UsageCallback | null = null
+let configProvider: ConfigProvider | null = null
+let agentProvider: AgentProvider | null = null
+let worktreeFilesWriter: WorktreeFilesWriter | null = null
 
 export function getServerPort(): number {
   return serverPort
@@ -44,6 +53,18 @@ export function setRepositoriesCallback(callback: RepositoriesCallback) {
 
 export function setUsageCallback(callback: UsageCallback) {
   usageCallback = callback
+}
+
+export function setConfigProvider(provider: ConfigProvider) {
+  configProvider = provider
+}
+
+export function setAgentProvider(provider: AgentProvider) {
+  agentProvider = provider
+}
+
+export function setWorktreeFilesWriter(writer: WorktreeFilesWriter) {
+  worktreeFilesWriter = writer
 }
 
 // Read the full request body (used by the POST /usage route)
@@ -272,6 +293,47 @@ export function startStatusServer(): Promise<number> {
               }
             } catch (e) {
               console.error('[Hook Repositories] Failed to parse repos:', e)
+            }
+          }
+
+          res.writeHead(200)
+          res.end('OK')
+        } else if (url.pathname === '/config') {
+          // Read-only: the current config from the app's in-memory cache (hydrated from the
+          // cloud store). Lets skills read the live config instead of a stale local config.json.
+          let payload = '{}'
+          try {
+            if (configProvider) payload = JSON.stringify(configProvider() ?? {})
+          } catch (e) {
+            console.error('[StatusServer] /config provider failed:', e)
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(payload)
+        } else if (url.pathname === '/agent') {
+          // Read-only: the agent/task metadata for a given terminal id (terminalId === agent.id).
+          const terminalId = url.searchParams.get('id')
+          let payload = 'null'
+          try {
+            if (terminalId && agentProvider) payload = JSON.stringify(agentProvider(terminalId) ?? null)
+          } catch (e) {
+            console.error('[StatusServer] /agent provider failed:', e)
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(payload)
+        } else if (url.pathname === '/config/worktree-files') {
+          // Write: persist a repo's worktreeFiles to the cloud store (the one config mutation
+          // skills perform). Kept as GET+query to match the other curl-friendly write routes.
+          const repo = url.searchParams.get('repo')
+          const filesRaw = url.searchParams.get('files')
+
+          if (repo && filesRaw && worktreeFilesWriter) {
+            try {
+              const files = JSON.parse(filesRaw)
+              if (Array.isArray(files)) {
+                worktreeFilesWriter(repo, files.filter((f): f is string => typeof f === 'string'))
+              }
+            } catch (e) {
+              console.error('[StatusServer] /config/worktree-files failed:', e)
             }
           }
 
