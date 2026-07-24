@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import type { AcceptInvitationResult } from '../cloud/org'
+import type { AcceptInvitationResult, PickUpTaskResult } from '../cloud/org'
 import type { Config, Invitation, Member, MembershipRole, Org, OrgAgent, OrgSharedConfig, RealtimeStatus, UsageStats } from '../../types'
 import { getRealtimeStatus } from '../cloud/realtime'
 import {
@@ -13,6 +13,7 @@ import {
   listOrgs,
   listOrgAgents,
   listOrgUsageStats,
+  pickUpTask,
   removeMember,
   leaveOrg,
   updateMemberRole,
@@ -26,6 +27,7 @@ interface OrgIdArgs { orgId: string }
 interface MemberArgs { orgId: string; userId: string }
 interface RoleArgs { orgId: string; userId: string; role: MembershipRole }
 interface SetSharedArgs { shared: OrgSharedConfig; orgId?: string }
+interface PickUpArgs { ticketId: string; repositories: string[] }
 
 export function setupOrgHandlers(): void {
   ipcMain.handle('org:current', async (): Promise<Org | null> => getCurrentOrg())
@@ -37,6 +39,16 @@ export function setupOrgHandlers(): void {
   ipcMain.handle('org:listAgents', async (): Promise<OrgAgent[]> => listOrgAgents())
 
   ipcMain.handle('org:getUsageStats', async (): Promise<UsageStats> => listOrgUsageStats())
+
+  // Pick up a colleague's task: resolve their repo(s) to a LOCAL configured path
+  // and hand back the cwd + `/magic:continue` prompt (renderer launches). Throws a
+  // user-facing error when nothing maps locally.
+  ipcMain.handle('org:pickUpTask', async (_event, { ticketId, repositories }: PickUpArgs): Promise<PickUpTaskResult> => {
+    if (!Array.isArray(repositories)) {
+      throw new Error('org:pickUpTask requires repositories (string[])')
+    }
+    return pickUpTask(ticketId, repositories)
+  })
 
   ipcMain.handle('org:realtimeStatus', async (): Promise<RealtimeStatus> => getRealtimeStatus())
 

@@ -22,6 +22,7 @@ import {
   updateSplitActive,
   updateLaunchMode,
   updateUsageLogsEnabled,
+  updateDailyDigestEnabled,
   setIntegration,
 } from '../config/config'
 import { getGitHubAuthStatus } from '../github'
@@ -267,6 +268,12 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
   // GDPR opt-in for writing usage logs (default OFF). Gates WRITING only.
   ipcMain.handle('config:setUsageLogsEnabled', async (_event, { enabled }: { enabled: boolean }) => {
     const config = updateUsageLogsEnabled(enabled)
+    return { config }
+  })
+
+  // Opt-in daily team digest (default OFF).
+  ipcMain.handle('config:setDailyDigestEnabled', async (_event, { enabled }: { enabled: boolean }) => {
+    const config = updateDailyDigestEnabled(enabled)
     return { config }
   })
 

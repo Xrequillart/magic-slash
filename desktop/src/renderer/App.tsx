@@ -4,6 +4,7 @@ import type { InvalidRepo } from '../preload'
 import { useStore } from './store'
 import { useConfig } from './hooks/useConfig'
 import { useTerminals } from './hooks/useTerminals'
+import { useAuth } from './hooks/useAuth'
 import { TitleBar } from './components/TitleBar'
 import { Sidebar } from './components/Sidebar'
 import { AgentInfoSidebar } from './components/AgentInfoSidebar'
@@ -52,10 +53,26 @@ export function App() {
   const { currentPage, closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, noReposWarningShown, setNoReposWarningShown, setCurrentPage } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal, launchClaudeTerminal } = useTerminals()
+  const { status: authStatus } = useAuth()
   useWindowSplitMode()
   const confirmCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [showNoReposModal, setShowNoReposModal] = useState(false)
   const [showProfileWizard, setShowProfileWizard] = useState(false)
+  const didLandRef = useRef(false)
+
+  // Landing page: when cloud is enabled AND the user is logged in, open on the
+  // team dashboard (the #128 "daily trigger" adoption hook). Runs once, only
+  // while still on the default 'terminals' page, so it never overrides a user's
+  // own navigation and never strands a logged-out user on an empty dashboard.
+  useEffect(() => {
+    if (didLandRef.current) return
+    if (authStatus.enabled && authStatus.loggedIn) {
+      didLandRef.current = true
+      if (useStore.getState().currentPage === 'terminals') {
+        setCurrentPage('dashboard')
+      }
+    }
+  }, [authStatus.enabled, authStatus.loggedIn, setCurrentPage])
 
   // Check if user profile exists on mount
   useEffect(() => {

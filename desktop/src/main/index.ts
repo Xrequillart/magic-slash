@@ -28,6 +28,8 @@ import { setupOrgHandlers } from './ipc/org-handlers'
 import { stopOrgAgentsRealtime } from './cloud/realtime'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
 import { setupPRReviewHandlers } from './ipc/pr-review-handlers'
+import { setupReengagementNotifications } from './notifications/reengagement'
+import { DailyDigestScheduler } from './notifications/daily-digest'
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
@@ -35,6 +37,7 @@ let forceQuit = false
 let trayManager: TrayManager | null = null
 let aggregator: AgentStateAggregator | null = null
 let prReviewWatcher: PRReviewWatcher | null = null
+let dailyDigest: DailyDigestScheduler | null = null
 
 function createMenu() {
   const isMac = process.platform === 'darwin'
@@ -226,6 +229,15 @@ function setupHandlers() {
     notificationCallback,
   )
   setupPRReviewHandlers(prReviewWatcher)
+
+  // Re-engagement notifications: subscribe to the org-agents realtime stream and
+  // notify when a colleague picks up a shared ticket or one of the user's PRs
+  // goes to changes-requested. Fires through the same focus-guarded callback.
+  setupReengagementNotifications(notificationCallback)
+
+  // Optional daily team digest (opt-in — Config.dailyDigest.enabled). Started
+  // unconditionally; it re-reads the flag at fire time and no-ops when disabled.
+  dailyDigest = new DailyDigestScheduler(notificationCallback)
 
   // Window control handlers
   ipcMain.handle('window:minimize', () => {
@@ -535,6 +547,14 @@ async function initializeHooksAndSessions() {
       powerMonitor.on('unlock-screen', () => prReviewWatcher?.onResume())
     }
 
+    // Start the daily digest scheduler and re-arm it on wake/unlock (a slept
+    // machine's setTimeout may be stale or overdue).
+    if (dailyDigest) {
+      dailyDigest.start()
+      powerMonitor.on('resume', () => dailyDigest?.onResume())
+      powerMonitor.on('unlock-screen', () => dailyDigest?.onResume())
+    }
+
     // Trigger initial tray state update after agents are restored
     setTimeout(() => {
       if (aggregator) aggregator.update()
@@ -568,6 +588,12 @@ app.on('before-quit', async (event) => {
   if (prReviewWatcher) {
     prReviewWatcher.stop()
     prReviewWatcher = null
+  }
+
+  // Stop the daily digest scheduler
+  if (dailyDigest) {
+    dailyDigest.stop()
+    dailyDigest = null
   }
 
   // Tear down the org-agents realtime channel

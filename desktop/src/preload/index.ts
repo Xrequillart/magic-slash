@@ -56,6 +56,8 @@ const configApi = {
     ipcRenderer.invoke('config:setUsageCardMinimized', { minimized }),
   setUsageLogsEnabled: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setUsageLogsEnabled', { enabled }),
+  setDailyDigestEnabled: (enabled: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setDailyDigestEnabled', { enabled }),
 
   updateSplitEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('config:updateSplitEnabled', { enabled }),
@@ -460,6 +462,10 @@ const orgApi = {
   listAgents: (): Promise<OrgAgent[]> => ipcRenderer.invoke('org:listAgents'),
   // Team dashboard: org-wide usage stats (read is open to any member).
   getUsageStats: (): Promise<UsageStats> => ipcRenderer.invoke('org:getUsageStats'),
+  // Team dashboard: pick up a colleague's task. Resolves their repo(s) to a LOCAL
+  // configured path; rejects when nothing maps locally. Renderer then launches.
+  pickUpTask: (ticketId: string, repositories: string[]): Promise<{ cwd: string; initialPrompt: string }> =>
+    ipcRenderer.invoke('org:pickUpTask', { ticketId, repositories }),
   getRealtimeStatus: (): Promise<RealtimeStatus> => ipcRenderer.invoke('org:realtimeStatus'),
   onAgentsChanged: (callback: (change: OrgAgentChange) => void) => {
     const listener = (_event: IpcRendererEvent, change: OrgAgentChange) => callback(change)

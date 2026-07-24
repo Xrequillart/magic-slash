@@ -379,6 +379,18 @@ export function updateUsageLogsEnabled(enabled: boolean): Config {
 }
 
 /**
+ * Toggle the optional daily team digest (opt-in, default OFF). When enabled, the
+ * digest scheduler fires one summary notification at 9:00 local. The scheduler
+ * re-reads this flag at fire time, so a toggle takes effect on the next run.
+ */
+export function updateDailyDigestEnabled(enabled: boolean): Config {
+  const config = readConfig()
+  config.dailyDigest = { enabled }
+  writeConfig(config)
+  return config
+}
+
+/**
  * Toggle an integration flag. github is always true (const true in the schema);
  * only atlassian is user-settable. DISPLAY/detection only — no token is stored.
  */
