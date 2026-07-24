@@ -1,38 +1,34 @@
-import * as fs from 'fs'
-import * as path from 'path'
 import * as crypto from 'crypto'
 import type { HistoryEntry, HistoryAction } from '../../types'
-import { CONFIG_DIR } from './config'
+import { getStore, reportWriteError } from '../store/Store'
 
-const HISTORY_FILE = path.join(CONFIG_DIR, 'history.json')
-const MAX_ENTRIES = 500
+// Read limit for the activity feed. activity_events is append-only (there is no
+// clear/purge), so instead of capping on write we simply read the most recent
+// READ_LIMIT entries. This replaces the old MAX_ENTRIES=500 purge.
+const READ_LIMIT = 500
 
-export function readHistory(): HistoryEntry[] {
+// In-memory history cache. History lives in the Supabase `activity_events` table
+// (see store/CloudStore.ts) — there is no local history.json.
+let historyCache: HistoryEntry[] = []
+
+/** Load recent history from the store into the cache. Call after auth is established. */
+export async function hydrateHistory(): Promise<HistoryEntry[]> {
   try {
-    if (!fs.existsSync(HISTORY_FILE)) {
-      return []
-    }
-    const content = fs.readFileSync(HISTORY_FILE, 'utf8')
-    const data = JSON.parse(content)
-    if (!Array.isArray(data)) {
-      return []
-    }
-    return data
+    historyCache = await getStore().loadHistory(READ_LIMIT)
   } catch (error) {
-    console.error('Error reading activity history:', error)
-    return []
+    console.error('Error hydrating activity history:', error)
+    historyCache = []
   }
+  return historyCache
 }
 
-function writeHistory(entries: HistoryEntry[]): void {
-  try {
-    if (!fs.existsSync(CONFIG_DIR)) {
-      fs.mkdirSync(CONFIG_DIR, { recursive: true })
-    }
-    fs.writeFileSync(HISTORY_FILE, JSON.stringify(entries, null, 2))
-  } catch (error) {
-    console.error('Error writing activity history:', error)
-  }
+/** Drop the cached history (on sign-out). */
+export function resetHistoryCache(): void {
+  historyCache = []
+}
+
+export function readHistory(): HistoryEntry[] {
+  return historyCache
 }
 
 export function addHistoryEntry(params: {
@@ -54,18 +50,18 @@ export function addHistoryEntry(params: {
     timestamp: Date.now(),
   }
 
-  const entries = readHistory()
-  entries.push(entry)
-
-  // Purge oldest entries if over the limit
-  if (entries.length > MAX_ENTRIES) {
-    entries.splice(0, entries.length - MAX_ENTRIES)
+  historyCache.push(entry)
+  // Keep the in-memory cache bounded to the read limit (oldest-first order).
+  if (historyCache.length > READ_LIMIT) {
+    historyCache.splice(0, historyCache.length - READ_LIMIT)
   }
 
-  writeHistory(entries)
-  return entry
-}
+  void getStore()
+    .appendHistory(entry)
+    .catch((error) => {
+      console.error('Error persisting activity history:', error)
+      reportWriteError('history', error)
+    })
 
-export function clearHistory(): void {
-  writeHistory([])
+  return entry
 }

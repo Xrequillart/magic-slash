@@ -150,7 +150,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
           <p className="text-xs text-text-secondary/60">
             {mode === 'reset'
               ? 'Reset your password with a 6-digit code sent to your email — no link to click.'
-              : 'Cloud sign-in is optional — Magic Slash works fully without an account. Sign in to manage your organization and invite teammates.'}
+              : 'Sign in to continue. Magic Slash keeps your config, agents and history in your organization’s cloud.'}
           </p>
 
           <div className="space-y-2">

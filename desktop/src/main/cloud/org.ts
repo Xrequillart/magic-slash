@@ -2,7 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Config, Invitation, InvitationStatus, Member, MembershipRole, Org, OrgSharedConfig } from '../../types'
 import { getAuthedClient } from './auth'
 import { loadSession } from './session-store'
-import { readConfig, mergeOrgSharedConfig, setCurrentOrgId } from '../config/config'
+import { readConfig, writeConfig, hydrateConfig, mergeOrgSharedConfig, setCurrentOrgId } from '../config/config'
+import { getStore } from '../store/Store'
 
 interface OrgRow {
   id: string
@@ -247,8 +248,24 @@ export async function switchOrg(orgId: string): Promise<Config> {
   const client = await getAuthedClient()
   if (!client) throw new Error('Cloud features are not available')
 
-  setCurrentOrgId(orgId)
-  return mergeSharedConfigWith(client, orgId, 'replace')
+  // Configs are per (org, user): point the store at the newly-active org and
+  // re-hydrate that org's config row (rather than mutating the current one).
+  getStore().setActiveOrgId(orgId)
+  const config = await hydrateConfig()
+  config.currentOrgId = orgId
+  writeConfig(config)
+  return config
+}
+
+/**
+ * Admin-only: push the org's shared config (languages, commit/PR format, repo
+ * keywords) to the backend via the set_org_shared_config RPC, so every member
+ * inherits it through get_org_shared_config / applySharedConfig.
+ */
+export async function setOrgSharedConfig(shared: OrgSharedConfig, orgId?: string): Promise<void> {
+  const targetOrgId = orgId ?? (await getCurrentOrg())?.id
+  if (!targetOrgId) throw new Error('No organization to update')
+  await getStore().setOrgSharedConfig(targetOrgId, shared)
 }
 
 /**

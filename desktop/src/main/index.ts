@@ -1,7 +1,7 @@
 import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell, globalShortcut, powerMonitor } from 'electron'
 import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
-import { setupTerminalHandlers, cleanupTerminals, restoreAgents } from './ipc/terminal-handlers'
+import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
 import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback } from './hooks/status-server'
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
@@ -12,7 +12,9 @@ import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
 import { registerActivityHistoryHandlers } from './ipc/activity-history-handlers'
-import { migrateConfig } from './config/migrate'
+import { setupConnectivityHandlers } from './ipc/connectivity-handlers'
+import { setStore } from './store/Store'
+import { CloudStore } from './store/CloudStore'
 import { readConfig, writeConfig } from './config/config'
 import { TrayManager } from './tray/tray-manager'
 import { AgentStateAggregator } from './tray/agent-state-aggregator'
@@ -191,10 +193,11 @@ function setupHandlers() {
   registerActivityHistoryHandlers()
   setupProfileHandlers()
   setupUsageHandlers()
-  // Cloud (optional): auth + organization. Handlers degrade gracefully when the
-  // Supabase env is missing — they never block boot.
+  // Cloud is MANDATORY: auth + organization + connectivity gate. The renderer
+  // blocks the whole app behind these until the backend reports 'ok'.
   setupAuthHandlers(() => mainWindow)
   setupOrgHandlers()
+  setupConnectivityHandlers(() => mainWindow)
   // Notification callback - only show when window is not focused
   const notificationCallback = (title: string, body: string) => {
     if (Notification.isSupported() && mainWindow && !mainWindow.isFocused()) {
@@ -352,8 +355,10 @@ function setupQuickLaunchHandlers() {
 }
 
 app.whenReady().then(async () => {
-  // Migrate config to ensure all repositories have complete fields
-  migrateConfig(app.getVersion())
+  // Wire the single source of truth (Supabase). Config, agents and history are
+  // hydrated from the DB after auth + connectivity are established (via the
+  // connectivity gate). Nothing is persisted locally.
+  setStore(new CloudStore())
 
   // Create custom menu (removes Cmd+W close window behavior)
   createMenu()
@@ -419,8 +424,8 @@ app.whenReady().then(async () => {
       if (mainWindow) {
         setUpdaterMainWindow(mainWindow)
       }
-      // Restore terminal sessions when window is reopened on Mac
-      restoreAgents()
+      // Terminal sessions are restored by the connectivity gate once the backend
+      // is reachable + hydrated (see connectivity-handlers.ts), not here.
     }
   })
 })
@@ -513,8 +518,9 @@ async function initializeHooksAndSessions() {
 
     console.log(`Magic Slash hooks configured on port ${port}`)
 
-    // Restore terminal sessions after hooks are ready
-    restoreAgents()
+    // NOTE: terminal sessions are NOT restored here. Under the hydrate-first
+    // model the agents cache is empty until the backend is reachable + hydrated,
+    // so restoration runs once behind the connectivity gate (connectivity-handlers.ts).
 
     // Start PR review watcher (default ON unless explicitly disabled)
     if (prReviewWatcher) {

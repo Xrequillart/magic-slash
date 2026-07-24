@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import type { AcceptInvitationResult } from '../cloud/org'
-import type { Config, Invitation, Member, MembershipRole, Org } from '../../types'
+import type { Config, Invitation, Member, MembershipRole, Org, OrgSharedConfig } from '../../types'
 import {
   getCurrentOrg,
   listMembers,
@@ -8,6 +8,7 @@ import {
   createInvitation,
   acceptInvitation,
   applySharedConfig,
+  setOrgSharedConfig,
   listOrgs,
   removeMember,
   leaveOrg,
@@ -21,6 +22,7 @@ interface AcceptArgs { token: string }
 interface OrgIdArgs { orgId: string }
 interface MemberArgs { orgId: string; userId: string }
 interface RoleArgs { orgId: string; userId: string; role: MembershipRole }
+interface SetSharedArgs { shared: OrgSharedConfig; orgId?: string }
 
 export function setupOrgHandlers(): void {
   ipcMain.handle('org:current', async (): Promise<Org | null> => getCurrentOrg())
@@ -40,6 +42,13 @@ export function setupOrgHandlers(): void {
   )
 
   ipcMain.handle('org:applyShared', async (): Promise<Config> => applySharedConfig())
+
+  ipcMain.handle('org:setShared', async (_event, { shared, orgId }: SetSharedArgs): Promise<void> => {
+    if (typeof shared !== 'object' || shared === null) {
+      throw new Error('org:setShared: "shared" must be a non-null object')
+    }
+    return setOrgSharedConfig(shared, orgId)
+  })
 
   ipcMain.handle('org:removeMember', async (_event, { orgId, userId }: MemberArgs): Promise<void> =>
     removeMember(orgId, userId),

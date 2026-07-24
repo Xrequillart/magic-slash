@@ -12,6 +12,7 @@ import {
   confirmEmailChange,
   deleteAccount,
 } from '../cloud/auth'
+import { resetHydration } from '../store/hydrate'
 
 interface LoginArgs { email: string; password: string }
 interface SignUpArgs { email: string; password: string; orgName?: string; invitationToken?: string }
@@ -42,6 +43,8 @@ export function setupAuthHandlers(getMainWindow: () => BrowserWindow | null): vo
 
   ipcMain.handle('auth:logout', async (): Promise<AuthStatus> => {
     const status = await signOut()
+    // Clear cached config/agents/history so the next user starts clean.
+    resetHydration()
     emit(status)
     return status
   })
@@ -74,6 +77,7 @@ export function setupAuthHandlers(getMainWindow: () => BrowserWindow | null): vo
   // Account deletion (GDPR) — signs the user out; emit the logged-out transition.
   ipcMain.handle('auth:deleteAccount', async (): Promise<AuthStatus> => {
     const status = await deleteAccount()
+    resetHydration()
     emit(status)
     return status
   })

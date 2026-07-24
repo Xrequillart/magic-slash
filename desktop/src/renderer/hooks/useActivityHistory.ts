@@ -120,14 +120,5 @@ export function useActivityHistory() {
     })
   }, [entries])
 
-  const clear = useCallback(async () => {
-    try {
-      await window.electronAPI.activityHistory.clear()
-      setEntries([])
-    } catch (err) {
-      console.error('Error clearing activity history:', err)
-    }
-  }, [])
-
-  return { entries, groups, loading, error, refresh: loadHistory, clear }
+  return { entries, groups, loading, error, refresh: loadHistory }
 }

@@ -1,12 +1,12 @@
-import * as fs from 'fs'
-import * as path from 'path'
-import { readConfig, writeConfig, CONFIG_DIR, CONFIG_FILE } from './config'
-import { writeAgents, AGENTS_FILE } from './agents'
-import { validateConfig } from './schema-validator'
+import { readConfig, writeConfig } from './config'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig, isValidLaunchMode } from './defaults'
 import type { RepositoryConfig } from '../../types'
 
-const CONFIG_BACKUP = path.join(CONFIG_DIR, 'config.json.bak')
+// NOTE: There is deliberately NO data migration from the legacy local JSON files
+// (config.json / agents.json / history.json). The Supabase database is the single
+// source of truth and users start from scratch. These functions only normalize
+// the in-memory config that was hydrated from the store (fill default repository
+// fields, keep enums valid, sync the version) — they never touch the filesystem.
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -27,107 +27,26 @@ function deepMergeDefaults(defaults: Record<string, unknown>, existing: Record<s
 }
 
 /**
- * Creates a backup of the current config file before migration.
- * Only creates a backup if the config file exists.
+ * Normalize the hydrated config: fill missing default repository fields, keep the
+ * spotlight/launchMode/integrations values valid, and sync the version. Writes
+ * through to the store only when something actually changed.
  */
-function createBackup(): boolean {
-  try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      fs.copyFileSync(CONFIG_FILE, CONFIG_BACKUP)
-      return true
-    }
-  } catch (error) {
-    console.warn('Failed to create config backup:', error)
-  }
-  return false
-}
-
 export function migrateConfig(appVersion?: string): boolean {
+  const config = readConfig()
   let changed = false
 
-  // Migrate agents from config.json to agents.json
-  const rawConfig = (() => {
-    try {
-      if (fs.existsSync(CONFIG_FILE)) {
-        return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
-      }
-    } catch { /* ignore */ }
-    return null
-  })()
-
-  if (rawConfig && Array.isArray(rawConfig.agents) && rawConfig.agents.length > 0 && !fs.existsSync(AGENTS_FILE)) {
-    // agents.json doesn't exist yet — migrate agents from config.json
-    writeAgents(rawConfig.agents)
-  }
-
-  if (rawConfig) {
-    // Strip orphaned keys from config.json:
-    // - `agents` (migrated to agents.json)
-    // - `schedulerEnabled` / `schedulerDefaultTime` (scheduled events feature removed)
-    let rawChanged = false
-    for (const key of ['agents', 'schedulerEnabled', 'schedulerDefaultTime']) {
-      if (key in rawConfig) {
-        delete rawConfig[key]
-        rawChanged = true
-      }
-    }
-    if (rawChanged) {
-      try {
-        if (!fs.existsSync(CONFIG_DIR)) {
-          fs.mkdirSync(CONFIG_DIR, { recursive: true })
-        }
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(rawConfig, null, 2))
-      } catch (error) {
-        console.error('Error removing orphaned keys from config.json:', error)
-      }
-      changed = true
-    }
-  }
-
-  // Clean up agents.json after removing the scheduled events feature:
-  // - Drop agents that were enabled scheduled-only records. They were never
-  //   interactive sessions (they stayed idle until their configured time and
-  //   were excluded from restoreAgents), so keeping them would now wrongly
-  //   launch an interactive terminal on the first startup after upgrade.
-  // - Strip the orphaned `schedule` field from any remaining agent.
-  try {
-    if (fs.existsSync(AGENTS_FILE)) {
-      const rawAgents = JSON.parse(fs.readFileSync(AGENTS_FILE, 'utf8'))
-      if (Array.isArray(rawAgents)) {
-        const cleaned = rawAgents.filter(
-          (agent) => !(agent && typeof agent === 'object' && agent.schedule?.enabled === true)
-        )
-        let agentsChanged = cleaned.length !== rawAgents.length
-        for (const agent of cleaned) {
-          if (agent && typeof agent === 'object' && 'schedule' in agent) {
-            delete agent.schedule
-            agentsChanged = true
-          }
-        }
-        if (agentsChanged) {
-          writeAgents(cleaned)
-          changed = true
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error cleaning agents.json:', error)
-  }
-
-  // Read config AFTER agents migration to avoid re-introducing agents key
-  const config = readConfig()
-
-  // Sync config version with app version
   if (appVersion && config.version !== appVersion) {
     config.version = appVersion
     changed = true
   }
 
-  // Migrate repositories
   if (config.repositories) {
     for (const name of Object.keys(config.repositories)) {
       const repo = config.repositories[name]
-      const merged = deepMergeDefaults(DEFAULT_REPOSITORY_FIELDS as unknown as Record<string, unknown>, repo as unknown as Record<string, unknown>) as unknown as RepositoryConfig
+      const merged = deepMergeDefaults(
+        DEFAULT_REPOSITORY_FIELDS as unknown as Record<string, unknown>,
+        repo as unknown as Record<string, unknown>,
+      ) as unknown as RepositoryConfig
       if (JSON.stringify(merged) !== JSON.stringify(repo)) {
         config.repositories[name] = merged
         changed = true
@@ -135,7 +54,6 @@ export function migrateConfig(appVersion?: string): boolean {
     }
   }
 
-  // Migrate integrations (default: both enabled for backward compatibility)
   if (!config.integrations) {
     config.integrations = { github: true, atlassian: true }
     changed = true
@@ -143,7 +61,6 @@ export function migrateConfig(appVersion?: string): boolean {
 
   if (!isValidSpotlightConfig(config.spotlight)) {
     config.spotlight = { ...DEFAULT_SPOTLIGHT, ...(typeof config.spotlight === 'object' && config.spotlight !== null ? config.spotlight : {}) }
-    // Re-validate after merge; if still invalid, reset to pure defaults
     if (!isValidSpotlightConfig(config.spotlight)) {
       config.spotlight = { ...DEFAULT_SPOTLIGHT }
     }
@@ -151,29 +68,19 @@ export function migrateConfig(appVersion?: string): boolean {
   }
 
   if (config.launchMode !== undefined && !isValidLaunchMode(config.launchMode)) {
-    config.launchMode = undefined
+    delete config.launchMode
     changed = true
   }
 
   if (changed) {
-    // Create backup before writing migrated config
-    createBackup()
     writeConfig(config)
-
-    // Validate post-migration
-    const validation = validateConfig(config)
-    if (!validation.valid) {
-      for (const err of validation.errors) {
-        console.warn(`Post-migration validation warning: ${err}`)
-      }
-    }
   }
 
   return changed
 }
 
 export function repairConfig(): { repaired: boolean; fixes: string[] } {
-  // First, run migration to fill in missing fields
+  // First, normalize to fill in missing fields.
   migrateConfig()
 
   const config = readConfig()
@@ -254,7 +161,6 @@ export function repairConfig(): { repaired: boolean; fixes: string[] } {
   }
 
   if (repaired) {
-    createBackup()
     writeConfig(config)
   }
 
