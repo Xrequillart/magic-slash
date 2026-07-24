@@ -31,7 +31,7 @@ curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/agent?id=$MAGIC_SLASH_TERMINAL_ID"
 
 ## Write endpoints
 
-These endpoints update the Magic Slash Desktop UI / cloud store. They are silent (`|| true`) and never block the workflow. Only available when `$MAGIC_SLASH_PORT` and `$MAGIC_SLASH_TERMINAL_ID` are set.
+These endpoints update the Magic Slash Desktop UI / cloud store. They are silent (`|| true`) and never block the workflow. All require `$MAGIC_SLASH_PORT`; the terminal-scoped ones (`/metadata`, `/repositories`) additionally require `$MAGIC_SLASH_TERMINAL_ID`, while `/config/worktree-files` is keyed on `repo=` and needs only the port.
 
 ### `GET /config/worktree-files?repo=<name>&files=<json array>`
 
