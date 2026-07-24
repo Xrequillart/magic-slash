@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
-import { AlertTriangle, RotateCcw, FolderOpen } from 'lucide-react'
+import { AlertTriangle, RotateCcw, FolderOpen, X } from 'lucide-react'
 import type { InvalidRepo } from '../preload'
 import { useStore } from './store'
 import { useConfig } from './hooks/useConfig'
@@ -50,7 +50,7 @@ function ErrorScreen({ error }: { error: string }) {
 }
 
 export function App() {
-  const { currentPage, closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, noReposWarningShown, setNoReposWarningShown, setCurrentPage } = useStore()
+  const { currentPage, closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, noReposWarningShown, setNoReposWarningShown, setCurrentPage, settingsModalOpen, openSettingsModal, closeSettingsModal } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal, launchClaudeTerminal } = useTerminals()
   const { status: authStatus } = useAuth()
@@ -101,8 +101,8 @@ export function App() {
   // Handle going to configuration
   const handleGoToConfig = useCallback(() => {
     setShowNoReposModal(false)
-    setCurrentPage('config')
-  }, [setCurrentPage])
+    openSettingsModal('repositories')
+  }, [openSettingsModal])
 
   // Handle closing an agent
   const handleCloseAgent = useCallback(async () => {
@@ -149,11 +149,28 @@ export function App() {
   // Listen for tray:openSettings IPC events
   useEffect(() => {
     const unsubscribe = window.electronAPI.tray.onOpenSettings(() => {
-      const { setCurrentPage } = useStore.getState()
-      setCurrentPage('config')
+      useStore.getState().openSettingsModal()
     })
     return () => { unsubscribe() }
   }, [])
+
+  // Close the settings modal on Escape, and reset its internal hash route so the
+  // next open lands on the settings home rather than a stale repo sub-page.
+  const handleCloseSettings = useCallback(() => {
+    closeSettingsModal()
+    if (window.location.hash && window.location.hash !== '#/') {
+      window.location.hash = '#/'
+    }
+  }, [closeSettingsModal])
+
+  useEffect(() => {
+    if (!settingsModalOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); handleCloseSettings() }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [settingsModalOpen, handleCloseSettings])
 
   // Listen for quicklaunch:dispatch IPC events
   useEffect(() => {
@@ -245,6 +262,9 @@ export function App() {
 
     const surface = (repos: InvalidRepo[]) => {
       for (const repo of repos) {
+        // A team repo not yet bound to a local folder is an expected state,
+        // surfaced gently in Settings — don't nag with a persistent error toast.
+        if (repo.reason === 'no-local-path') continue
         if (shownRef.has(repo.name)) continue
         shownRef.add(repo.name)
         const why = repo.reason === 'missing' ? 'folder is missing' : 'is not a git repository'
@@ -333,13 +353,6 @@ export function App() {
 
         {/* Main Content */}
         <main className="flex-1 overflow-hidden relative">
-          {/* Config Page */}
-          <div className={`absolute inset-0 overflow-auto ${currentPage === 'config' ? 'block' : 'hidden'}`}>
-            <div className="max-w-5xl mx-auto p-6 h-full">
-              <ConfigPage />
-            </div>
-          </div>
-
           {/* Skills Page */}
           <div className={`absolute inset-0 overflow-auto ${currentPage === 'skills' ? 'block' : 'hidden'}`}>
             <div className="max-w-5xl mx-auto p-6 h-full">
@@ -378,6 +391,35 @@ export function App() {
       </div>
 
       <FilePreviewPanel />
+
+      {/* Settings Modal — centered overlay instead of a full page */}
+      {settingsModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-modal-backdrop p-6"
+          onClick={handleCloseSettings}
+        >
+          <div
+            className="relative bg-bg-secondary border border-white/10 rounded-2xl w-full max-w-6xl h-[85vh] overflow-hidden backdrop-blur-2xl animate-modal-content shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 h-12 border-b border-white/10 shrink-0">
+              <span className="text-sm font-semibold">Settings</span>
+              <button
+                onClick={handleCloseSettings}
+                className="p-1.5 text-text-secondary hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                title="Close (Esc)"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="flex-1 overflow-hidden">
+              <ConfigPage />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notifications */}
       <ToastContainer />

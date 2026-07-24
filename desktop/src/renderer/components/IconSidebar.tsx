@@ -4,7 +4,7 @@ import { stateColorsIcon as stateColors, stateBgColorsIcon as stateBgColors } fr
 import { useMemo } from 'react'
 
 export function IconSidebar() {
-  const { currentPage, setCurrentPage, terminals, iconSidebarVisible, config } = useStore()
+  const { currentPage, setCurrentPage, terminals, iconSidebarVisible, config, openSettingsModal } = useStore()
 
   // Check if there are no repos configured
   const hasNoRepos = useMemo(() => {
@@ -101,15 +101,13 @@ export function IconSidebar() {
 
       {/* Configuration button */}
       <button
-        onClick={() => setCurrentPage('config')}
+        onClick={() => openSettingsModal()}
         className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors relative ${
           hasNoRepos ? 'ring-2 ring-yellow' : ''
         } ${
-          currentPage === 'config'
-            ? 'text-accent bg-accent/20'
-            : hasNoRepos
-              ? 'text-yellow hover:bg-yellow/10'
-              : 'text-text-secondary hover:text-white hover:bg-bg-tertiary'
+          hasNoRepos
+            ? 'text-yellow hover:bg-yellow/10'
+            : 'text-text-secondary hover:text-white hover:bg-bg-tertiary'
         }`}
         title="Configuration"
       >

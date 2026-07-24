@@ -1,5 +1,6 @@
 import * as path from 'path'
 import * as os from 'os'
+import { randomUUID } from 'crypto'
 import type { Config, RepositoryConfig, LaunchMode, OrgSharedConfig } from '../../types'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
 import { expandPath } from './validation'
@@ -130,15 +131,82 @@ export function writeConfig(config: Config): void {
     })
 }
 
+// ---------------------------------------------------------------------------
+// Repository write-through. Repos live in their own tables (repositories +
+// repository_paths), NOT in the config blob. Mutations update the in-memory
+// cache synchronously (so readConfig stays correct and the returned Config is
+// fresh) and write through to the store per-repo — one repo per call, so a change
+// never re-broadcasts every team repo over realtime.
+// ---------------------------------------------------------------------------
+
+/** Set the cache without persisting the blob (repo mutations don't touch the blob). */
+function setConfigCache(config: Config): void {
+  configCache = config
+}
+
+/** Push a repo's shared identity to the store (fire-and-forget, reports failures). */
+function persistRepoIdentity(name: string): void {
+  const repo = readConfig().repositories?.[name]
+  if (!repo?.id) return
+  void getStore()
+    .updateRepository(repo.id, {
+      name,
+      keywords: repo.keywords,
+      color: repo.color,
+      languages: repo.languages,
+      commit: repo.commit,
+      pullRequest: repo.pullRequest,
+      resolve: repo.resolve,
+      issues: repo.issues,
+      branches: repo.branches,
+      worktreeFiles: repo.worktreeFiles,
+    })
+    .catch((error) => reportWriteError('config', error))
+}
+
+/** Push the caller's local path binding for a repo (or clear it when empty). */
+function persistRepoPath(name: string): void {
+  const repo = readConfig().repositories?.[name]
+  if (!repo?.id) return
+  void getStore()
+    .setRepositoryPath(repo.id, repo.path || null)
+    .catch((error) => reportWriteError('config', error))
+}
+
 export function addRepository(name: string, repoPath: string, keywords: string[] = []): Config {
   const config = readConfig()
   config.repositories = config.repositories || {}
-  config.repositories[name] = {
+  const id = randomUUID()
+  const repo: RepositoryConfig = {
+    id,
+    orgId: null,
+    ownerId: null,
     path: repoPath,
+    needsLocalPath: !repoPath,
     keywords: keywords.length > 0 ? keywords : [name],
     ...DEFAULT_REPOSITORY_FIELDS,
   }
-  writeConfig(config)
+  config.repositories[name] = repo
+  setConfigCache(config)
+  // Create the identity row (personal by default) + bind the local path.
+  void getStore()
+    .createRepository({
+      id,
+      ownerId: null,
+      orgId: null,
+      name,
+      keywords: repo.keywords,
+      color: repo.color,
+      languages: repo.languages,
+      commit: repo.commit,
+      pullRequest: repo.pullRequest,
+      resolve: repo.resolve,
+      issues: repo.issues,
+      branches: repo.branches,
+      worktreeFiles: repo.worktreeFiles,
+      path: repoPath || null,
+    })
+    .catch((error) => reportWriteError('config', error))
   return config
 }
 
@@ -148,20 +216,29 @@ export function updateRepository(name: string, updates: Partial<RepositoryConfig
     throw new Error(`Repository '${name}' not found`)
   }
 
+  let pathChanged = false
+  let identityChanged = false
   if (updates.path !== undefined) {
     config.repositories[name].path = updates.path
+    config.repositories[name].needsLocalPath = !updates.path
+    pathChanged = true
   }
   if (updates.keywords !== undefined) {
     config.repositories[name].keywords = updates.keywords
+    identityChanged = true
   }
   if (updates.color !== undefined) {
     config.repositories[name].color = updates.color
+    identityChanged = true
   }
   if (updates.languages !== undefined) {
     config.repositories[name].languages = updates.languages
+    identityChanged = true
   }
 
-  writeConfig(config)
+  setConfigCache(config)
+  if (pathChanged) persistRepoPath(name)
+  if (identityChanged) persistRepoIdentity(name)
   return config
 }
 
@@ -191,7 +268,8 @@ export function updateRepositoryLanguages(name: string, languages: Record<string
     delete config.repositories[name].languages
   }
 
-  writeConfig(config)
+  setConfigCache(config)
+  persistRepoIdentity(name)
   return config
 }
 
@@ -212,7 +290,8 @@ export function updateRepositoryCommitSettings(name: string, settings: SettingsI
     delete config.repositories[name].commit
   }
 
-  writeConfig(config)
+  setConfigCache(config)
+  persistRepoIdentity(name)
   return config
 }
 
@@ -235,7 +314,8 @@ export function updateRepositoryResolveSettings(name: string, settings: Settings
     delete config.repositories[name].resolve
   }
 
-  writeConfig(config)
+  setConfigCache(config)
+  persistRepoIdentity(name)
   return config
 }
 
@@ -253,7 +333,8 @@ export function updateRepositoryPullRequestSettings(name: string, settings: Sett
     delete config.repositories[name].pullRequest
   }
 
-  writeConfig(config)
+  setConfigCache(config)
+  persistRepoIdentity(name)
   return config
 }
 
@@ -274,7 +355,8 @@ export function updateRepositoryIssuesSettings(name: string, settings: SettingsI
     delete config.repositories[name].issues
   }
 
-  writeConfig(config)
+  setConfigCache(config)
+  persistRepoIdentity(name)
   return config
 }
 
@@ -292,7 +374,8 @@ export function updateRepositoryBranchSettings(name: string, settings: SettingsI
     delete config.repositories[name].branches
   }
 
-  writeConfig(config)
+  setConfigCache(config)
+  persistRepoIdentity(name)
   return config
 }
 
@@ -312,7 +395,8 @@ export function updateRepositoryWorktreeFilesSettings(name: string, settings: { 
     }
   }
 
-  writeConfig(config)
+  setConfigCache(config)
+  persistRepoIdentity(name)
   return config
 }
 
@@ -322,8 +406,14 @@ export function deleteRepository(name: string): Config {
     throw new Error(`Repository '${name}' not found`)
   }
 
+  const id = config.repositories[name].id
   delete config.repositories[name]
-  writeConfig(config)
+  setConfigCache(config)
+  if (id) {
+    void getStore()
+      .deleteRepository(id)
+      .catch((error) => reportWriteError('config', error))
+  }
   return config
 }
 
@@ -337,11 +427,35 @@ export function renameRepository(oldName: string, newName: string): Config {
     throw new Error(`Repository '${newName}' already exists`)
   }
 
-  // Copy the repo config to the new name and delete the old one
+  // Copy the repo config to the new name and delete the old one (same id/row).
   config.repositories[newName] = config.repositories[oldName]
   delete config.repositories[oldName]
 
-  writeConfig(config)
+  setConfigCache(config)
+  // The name is a shared identity field — push the rename to the store row.
+  persistRepoIdentity(newName)
+  return config
+}
+
+/**
+ * Change a repo's scope: share it to an org (orgId set) or make it personal
+ * (orgId null). The shared identity row's org_id is updated; RLS enforces that
+ * the caller is a member of the target org when sharing.
+ */
+export function setRepositoryOrg(name: string, orgId: string | null): Config {
+  const config = readConfig()
+  if (!config.repositories || !config.repositories[name]) {
+    throw new Error(`Repository '${name}' not found`)
+  }
+
+  config.repositories[name].orgId = orgId
+  setConfigCache(config)
+  const id = config.repositories[name].id
+  if (id) {
+    void getStore()
+      .updateRepository(id, { orgId })
+      .catch((error) => reportWriteError('config', error))
+  }
   return config
 }
 
@@ -493,6 +607,13 @@ export function mergeOrgSharedConfig(
 
   if (orgId) config.currentOrgId = orgId
 
+  // Persist the merged identity of PERSONAL repos only. Team repos carry their
+  // shared identity centrally in the repositories table, so we must not rewrite
+  // their shared row on a mere org switch/onboarding. currentOrgId is persisted
+  // via the blob below.
+  for (const [name, repo] of Object.entries(config.repositories)) {
+    if (!repo.orgId) persistRepoIdentity(name)
+  }
   writeConfig(config)
   return config
 }

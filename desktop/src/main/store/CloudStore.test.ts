@@ -55,6 +55,8 @@ interface RecordedCall {
 function makeClient(resultsByTable: Record<string, QueryResult>) {
   const calls: RecordedCall[] = []
   const inserts: Record<string, unknown[]> = {}
+  const updates: Record<string, unknown[]> = {}
+  const upserts: Record<string, unknown[]> = {}
 
   function builder(table: string) {
     const result = resultsByTable[table] ?? { data: [], error: null }
@@ -71,6 +73,17 @@ function makeClient(resultsByTable: Record<string, QueryResult>) {
         ;(inserts[table] ??= []).push(payload)
         return b
       },
+      update: (payload: unknown) => {
+        record('update', [payload])
+        ;(updates[table] ??= []).push(payload)
+        return b
+      },
+      upsert: (payload: unknown, ...args: unknown[]) => {
+        record('upsert', [payload, ...args])
+        ;(upserts[table] ??= []).push(payload)
+        return b
+      },
+      delete: (...args: unknown[]) => { record('delete', args); return b },
       then: (resolve: (v: QueryResult) => unknown, reject?: (e: unknown) => unknown) =>
         Promise.resolve(result).then(resolve, reject),
     }
@@ -78,7 +91,7 @@ function makeClient(resultsByTable: Record<string, QueryResult>) {
   }
 
   const from = vi.fn((table: string) => builder(table))
-  return { client: { from }, calls, inserts, from }
+  return { client: { from }, calls, inserts, updates, upserts, from }
 }
 
 const UID = 'user-1'
@@ -359,5 +372,177 @@ describe('loadOrgUsageStats', () => {
 
     const store = new CloudStore()
     await expect(store.loadOrgUsageStats()).resolves.toEqual({ rows: [], capped: false })
+  })
+})
+
+// ── repositories ─────────────────────────────────────────────────────────────
+
+describe('listRepositories', () => {
+  it('maps rows, joins the caller path, and scopes team repos to the active org', async () => {
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      repositories: {
+        data: [
+          { id: 'r1', owner_id: UID, org_id: null, name: 'perso', keywords: ['k'], color: '#fff', languages: { commit: 'en' }, commit: {}, pull_request: {}, resolve: {}, issues: {}, branches: {}, worktree_files: [] },
+          { id: 'r2', owner_id: 'someone', org_id: ORG, name: 'team', keywords: [], color: null, languages: null, commit: null, pull_request: null, resolve: null, issues: null, branches: null, worktree_files: null },
+          { id: 'r3', owner_id: 'someone', org_id: 'other-org', name: 'foreign', keywords: [], color: null, languages: null, commit: null, pull_request: null, resolve: null, issues: null, branches: null, worktree_files: null },
+        ],
+        error: null,
+      },
+      repository_paths: { data: [{ repo_id: 'r1', path: '/Users/me/perso' }], error: null },
+    })
+    h.state.client = client
+
+    const repos = await new CloudStore().listRepositories()
+
+    // r3 (a different org's team repo) is filtered out; r1 personal + r2 active-org team remain.
+    expect(repos.map((r) => r.id)).toEqual(['r1', 'r2'])
+    const perso = repos.find((r) => r.id === 'r1')!
+    expect(perso.path).toBe('/Users/me/perso')
+    expect(perso.orgId).toBeNull()
+    const team = repos.find((r) => r.id === 'r2')!
+    expect(team.path).toBeNull() // caller has no local binding for the team repo
+    expect(team.orgId).toBe(ORG)
+  })
+})
+
+describe('createRepository', () => {
+  it('inserts an identity row owned by the caller and binds the local path', async () => {
+    const { client, inserts, upserts } = makeClient({
+      memberships: membershipsOk,
+      repositories: { data: null, error: null },
+      repository_paths: { data: null, error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().createRepository({
+      id: 'new-1', ownerId: null, orgId: null, name: 'demo',
+      keywords: ['demo'], color: '#123', languages: { commit: 'fr' },
+      commit: { format: 'angular' }, pullRequest: {}, resolve: {}, issues: {}, branches: {}, worktreeFiles: [],
+      path: '/Users/me/demo',
+    })
+
+    const row = inserts.repositories[0] as Record<string, unknown>
+    expect(row.id).toBe('new-1')
+    expect(row.owner_id).toBe(UID)      // owner forced to the caller
+    expect(row.org_id).toBeNull()       // personal by default
+    expect(row.name).toBe('demo')
+    expect(row.pull_request).toEqual({}) // camelCase → snake_case column
+    // The local path is bound in repository_paths, never on the identity row.
+    expect(row).not.toHaveProperty('path')
+    const pathRow = upserts.repository_paths[0] as Record<string, unknown>
+    expect(pathRow).toMatchObject({ repo_id: 'new-1', user_id: UID, path: '/Users/me/demo' })
+  })
+})
+
+describe('updateRepository', () => {
+  it('updates only the shared identity (snake_cased), scoped by id, never the owner', async () => {
+    const { client, updates, calls } = makeClient({
+      memberships: membershipsOk,
+      repositories: { data: null, error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().updateRepository('r2', { name: 'renamed', pullRequest: { autoLinkTickets: true } })
+
+    const row = updates.repositories[0] as Record<string, unknown>
+    expect(row).toEqual({ name: 'renamed', pull_request: { autoLinkTickets: true } })
+    expect(row).not.toHaveProperty('owner_id')
+    expect(calls.some((c) => c.table === 'repositories' && c.method === 'eq' && c.args[0] === 'id' && c.args[1] === 'r2')).toBe(true)
+  })
+
+  it('maps orgId → org_id so sharing / making personal updates the scope', async () => {
+    const { client, updates } = makeClient({ memberships: membershipsOk, repositories: { data: null, error: null } })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.updateRepository('r2', { orgId: ORG })     // share
+    await store.updateRepository('r2', { orgId: null })    // make personal
+
+    expect(updates.repositories[0]).toEqual({ org_id: ORG })
+    expect(updates.repositories[1]).toEqual({ org_id: null })
+  })
+})
+
+describe('setRepositoryPath', () => {
+  it('upserts the binding when a path is given', async () => {
+    const { client, upserts } = makeClient({ memberships: membershipsOk, repository_paths: { data: null, error: null } })
+    h.state.client = client
+    await new CloudStore().setRepositoryPath('r1', '/Users/me/x')
+    expect(upserts.repository_paths[0]).toMatchObject({ repo_id: 'r1', user_id: UID, path: '/Users/me/x' })
+  })
+
+  it('deletes the binding when the path is null/empty (unbind)', async () => {
+    const { client, calls } = makeClient({ memberships: membershipsOk, repository_paths: { data: null, error: null } })
+    h.state.client = client
+    await new CloudStore().setRepositoryPath('r1', null)
+    const del = calls.filter((c) => c.table === 'repository_paths')
+    expect(del.some((c) => c.method === 'delete')).toBe(true)
+    expect(del.some((c) => c.method === 'eq' && c.args[0] === 'repo_id' && c.args[1] === 'r1')).toBe(true)
+    expect(del.some((c) => c.method === 'eq' && c.args[0] === 'user_id' && c.args[1] === UID)).toBe(true)
+  })
+})
+
+describe('loadConfig', () => {
+  it('assembles repositories from the tables and never from the blob', async () => {
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: { data: { launchMode: 'default' } }, error: null },
+      repositories: {
+        data: [{ id: 'r1', owner_id: UID, org_id: null, name: 'perso', keywords: ['perso'], color: null, languages: null, commit: null, pull_request: null, resolve: null, issues: null, branches: null, worktree_files: null }],
+        error: null,
+      },
+      repository_paths: { data: [{ repo_id: 'r1', path: '/p' }], error: null },
+    })
+    h.state.client = client
+
+    const config = await new CloudStore().loadConfig()
+    expect(config?.launchMode).toBe('default')
+    expect(Object.keys(config!.repositories)).toEqual(['perso'])
+    expect(config!.repositories.perso).toMatchObject({ id: 'r1', path: '/p', needsLocalPath: false })
+  })
+
+  it('migrates legacy blob repositories into the repositories table, then strips the blob', async () => {
+    const { client, inserts, upserts } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: { data: { launchMode: 'default', repositories: { legacy: { path: '/old', keywords: ['legacy'] } } } }, error: null },
+      repositories: { data: [], error: null },
+      repository_paths: { data: [], error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().loadConfig()
+
+    // The legacy repo was inserted as a personal row (org_id null, owner = caller).
+    const inserted = inserts.repositories[0] as Record<string, unknown>
+    expect(inserted).toMatchObject({ owner_id: UID, org_id: null, name: 'legacy' })
+    // Its path was bound for the caller.
+    expect(upserts.repository_paths[0]).toMatchObject({ user_id: UID, path: '/old' })
+    // The blob is re-written WITHOUT repositories.
+    const savedBlob = (upserts.configs[0] as { data: Record<string, unknown> }).data
+    expect(savedBlob).not.toHaveProperty('repositories')
+    expect(savedBlob.launchMode).toBe('default')
+  })
+})
+
+describe('saveConfig', () => {
+  it('never stores repositories in the blob but keeps the shared projection', async () => {
+    const { client, upserts } = makeClient({ memberships: membershipsOk, configs: { data: null, error: null } })
+    h.state.client = client
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const config: any = {
+      version: '1',
+      launchMode: 'default',
+      repositories: { demo: { id: 'r1', path: '/p', keywords: ['kw'], commit: { format: 'angular' } } },
+    }
+    await new CloudStore().saveConfig(config)
+
+    const savedBlob = (upserts.configs[0] as { data: Record<string, unknown> }).data
+    expect(savedBlob).not.toHaveProperty('repositories')
+    expect(savedBlob.launchMode).toBe('default')
+    // Shared projection derived from the in-memory repos is still mirrored top-level.
+    expect(savedBlob.repoKeywords).toEqual({ demo: ['kw'] })
+    expect(savedBlob.commit).toEqual({ format: 'angular' })
   })
 })

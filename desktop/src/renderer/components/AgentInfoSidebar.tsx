@@ -88,10 +88,11 @@ export function AgentInfoSidebar() {
   // Get all configured repository paths for the dropdown
   const availableRepos = useMemo(() => {
     if (!config?.repositories) return []
-    return Object.entries(config.repositories).map(([name, repo]) => ({
-      name,
-      path: repo.path
-    }))
+    return Object.entries(config.repositories)
+      // A team repo with no local folder bound on this machine has no usable path,
+      // so it can't be attached to an agent until the user sets its folder in Settings.
+      .filter(([, repo]) => !repo.needsLocalPath && repo.path)
+      .map(([name, repo]) => ({ name, path: repo.path }))
   }, [config?.repositories])
 
   // Current attached repositories for this terminal

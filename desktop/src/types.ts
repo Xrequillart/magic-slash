@@ -75,6 +75,14 @@ export interface TerminalInfo {
 }
 
 export interface RepositoryConfig {
+  // Cloud identity. `id` is the repositories table PK (client-generated on add).
+  // `orgId` null/absent = personal repo; set = shared to that org (team repo).
+  // `needsLocalPath` = true when this user has no local path bound on this
+  // machine yet (the repo shows in a warning state and can't launch agents).
+  id?: string
+  orgId?: string | null
+  ownerId?: string | null
+  needsLocalPath?: boolean
   path: string
   keywords: string[]
   color?: string  // hex color, e.g. '#3B82F6'
@@ -111,6 +119,33 @@ export interface RepositoryConfig {
   }
   worktreeFiles?: string[]  // Files to copy from main repo to worktree (e.g., ".env", ".env.local")
 }
+
+/**
+ * A repository as it lives in the cloud `repositories` table (shared identity,
+ * no path) plus the current user's own local path binding (`path`, null when the
+ * user hasn't cloned/bound it on this machine). The Store speaks this shape;
+ * config.ts maps it to/from the name-keyed Config.repositories record.
+ */
+export interface StoredRepository {
+  id: string
+  ownerId: string | null
+  orgId: string | null
+  name: string
+  keywords: string[]
+  color?: string
+  languages?: RepositoryConfig['languages']
+  commit?: RepositoryConfig['commit']
+  pullRequest?: RepositoryConfig['pullRequest']
+  resolve?: RepositoryConfig['resolve']
+  issues?: RepositoryConfig['issues']
+  branches?: RepositoryConfig['branches']
+  worktreeFiles?: string[]
+  /** The caller's own local path binding, or null when unbound on this machine. */
+  path: string | null
+}
+
+/** Identity fields of a repository (everything except id/owner/path). */
+export type RepositoryIdentity = Omit<StoredRepository, 'id' | 'ownerId' | 'path'>
 
 export interface Agent {
   id: string

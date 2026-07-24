@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, memo } from 'react'
-import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, Sparkles, X, Eye, CheckCircle2, Zap, Users } from 'lucide-react'
+import { Bot, AlertTriangle, Check, Clock, XCircle, Sparkles, X, Eye, CheckCircle2, Zap, Users } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
@@ -215,7 +215,7 @@ const ScriptItem = memo(function ScriptItem({ script, isActive, onSelect, onStop
 })
 
 export function Sidebar() {
-  const { currentPage, setCurrentPage, terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds } = useStore()
+  const { currentPage, setCurrentPage, terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds, openSettingsModal } = useStore()
   const { setActiveTerminal } = useTerminals()
   const { scriptTerminals, stopScript } = useScriptRunner()
 
@@ -344,18 +344,11 @@ export function Sidebar() {
     setDragOverZone(pane)
   }, [])
 
-  // Check if there are no repos configured
-  const hasNoRepos = useMemo(() => {
-    if (!config) return false
-    return Object.keys(config.repositories).length === 0
-  }, [config])
-
   // Detect platform for keyboard shortcut display
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const shortcutKey = isMac ? '⌘N' : 'Ctrl+N'
   const skillsShortcutKey = isMac ? '⌘;' : 'Ctrl+;'
   const historyShortcutKey = isMac ? '⌘H' : 'Ctrl+H'
-  const settingsShortcutKey = isMac ? '⌘,' : 'Ctrl+,'
 
   // Listen for Command+; keyboard shortcut to open skills
   useEffect(() => {
@@ -390,14 +383,14 @@ export function Sidebar() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === ',') {
         e.preventDefault()
-        setCurrentPage('config')
         setActiveTerminal(null)
+        openSettingsModal()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setCurrentPage, setActiveTerminal])
+  }, [openSettingsModal, setActiveTerminal])
 
   return (
     <div
@@ -467,7 +460,7 @@ export function Sidebar() {
             setCurrentPage('dashboard')
             setActiveTerminal(null)
           }}
-          className={`w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
+          className={`w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
             currentPage === 'dashboard'
               ? 'bg-white/10 text-white'
               : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
@@ -477,29 +470,8 @@ export function Sidebar() {
           <span>Team</span>
         </button>
 
-        {/* Settings button */}
-        <button
-          onClick={() => {
-            setCurrentPage('config')
-            setActiveTerminal(null)
-          }}
-          className={`w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all relative ${
-            currentPage === 'config'
-              ? 'bg-white/10 text-white'
-              : hasNoRepos
-                ? 'text-yellow hover:bg-yellow/10'
-                : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
-          }`}
-        >
-          <Settings className="w-3.5 h-3.5" />
-          <span>Settings</span>
-          <span className="ml-auto text-xs opacity-50">{settingsShortcutKey}</span>
-          {hasNoRepos && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow rounded-full flex items-center justify-center">
-              <AlertTriangle className="w-2.5 h-2.5 text-black" />
-            </span>
-          )}
-        </button>
+        {/* Account / Settings — opens the settings modal (or login when signed out) */}
+        <SidebarAccount />
       </div>
 
       {/* Mode toggle + Agents list */}
@@ -626,9 +598,6 @@ export function Sidebar() {
 
       {/* Claude usage card */}
       {config?.usageCardEnabled && <SidebarUsageCard />}
-
-      {/* Account / login */}
-      <SidebarAccount />
 
       {/* Footer */}
       <div className="px-4 py-2 text-xs text-text-secondary flex items-center justify-start gap-2">

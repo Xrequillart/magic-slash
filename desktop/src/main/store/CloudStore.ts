@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, Config, HistoryEntry, OrgAgent, OrgSharedConfig, TerminalMetadata, UsageEventInput, UsageStats } from '../../types'
+import type { Agent, Config, HistoryEntry, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats } from '../../types'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
@@ -38,6 +38,27 @@ interface ActivityEventRow {
   description: string | null
   repositories: string[]
   occurred_at: string
+}
+
+interface RepositoryRow {
+  id: string
+  owner_id: string | null
+  org_id: string | null
+  name: string
+  keywords: string[] | null
+  color: string | null
+  languages: RepositoryConfig['languages'] | null
+  commit: RepositoryConfig['commit'] | null
+  pull_request: RepositoryConfig['pullRequest'] | null
+  resolve: RepositoryConfig['resolve'] | null
+  issues: RepositoryConfig['issues'] | null
+  branches: RepositoryConfig['branches'] | null
+  worktree_files: string[] | null
+}
+
+interface RepositoryPathRow {
+  repo_id: string
+  path: string
 }
 
 // numeric/bigint columns come back from PostgREST as strings — coerced on read.
@@ -144,16 +165,38 @@ export class CloudStore implements Store {
       .eq('user_id', ctx.uid)
       .maybeSingle()
 
-    if (error || !data) return null
+    // A hard query error aborts (caller falls back to defaults); an absent row is
+    // fine (new user) — we still assemble repositories, which may include team
+    // repos inherited via org membership.
+    if (error) return null
 
-    const blob = { ...(data as ConfigRow).data } as Record<string, unknown>
+    const blob = { ...((data as ConfigRow | null)?.data ?? {}) } as Record<string, unknown>
     // Drop the top-level shared projection — it is a mirror, not part of Config.
     for (const key of SHARED_KEYS) delete blob[key]
+
+    // One-shot migration: repos used to live inside the config blob. Move any
+    // that remain into the repositories table (as personal repos) + bind the
+    // local path, then strip them from the blob so this never runs again.
+    const legacy = blob.repositories
+    if (legacy && typeof legacy === 'object' && !Array.isArray(legacy) && Object.keys(legacy).length > 0) {
+      await this.migrateLegacyRepositories(ctx, legacy as Record<string, RepositoryConfig>)
+      delete blob.repositories
+      // Snapshot the blob for the write — `blob` is the same object we return as
+      // `config` below and get `repositories` assigned back onto it.
+      await ctx.client
+        .from('configs')
+        .upsert({ org_id: ctx.orgId, user_id: ctx.uid, data: { ...blob } }, { onConflict: 'org_id,user_id' })
+    } else {
+      delete blob.repositories
+    }
+
     const config = blob as unknown as Config
     // Keep the remembered org id in sync with what we actually loaded.
     if (typeof config.currentOrgId === 'string') {
       this.activeOrgId = config.currentOrgId
     }
+    // Repositories are assembled from their own tables, not the blob.
+    config.repositories = this.toRepositoryRecord(await this.fetchRepositories(ctx))
     return config
   }
 
@@ -161,14 +204,204 @@ export class CloudStore implements Store {
     const ctx = await this.context()
     if (!ctx) return
 
-    // Store the full Config blob AND mirror the shareable keys at top level so
-    // get_org_shared_config keeps working for org admins.
-    const data = { ...config, ...projectSharedFields(config) }
+    // Mirror the shareable keys at top level so get_org_shared_config keeps
+    // working for org admins, but NEVER store `repositories` in the blob — they
+    // are persisted in the repositories/repository_paths tables instead.
+    const data: Record<string, unknown> = { ...config, ...projectSharedFields(config) }
+    delete data.repositories
 
     const { error } = await ctx.client
       .from('configs')
       .upsert({ org_id: ctx.orgId, user_id: ctx.uid, data }, { onConflict: 'org_id,user_id' })
     if (error) throw new Error(`saveConfig failed: ${error.message}`)
+  }
+
+  // -------------------------------------------------------------------------
+  // Repositories (personal + team) — identity in `repositories`, per-user local
+  // path in `repository_paths`.
+  // -------------------------------------------------------------------------
+
+  private repoIdentityToRow(patch: Partial<RepositoryIdentity>): Record<string, unknown> {
+    const row: Record<string, unknown> = {}
+    if (patch.name !== undefined) row.name = patch.name
+    if (patch.orgId !== undefined) row.org_id = patch.orgId
+    if (patch.keywords !== undefined) row.keywords = patch.keywords
+    if (patch.color !== undefined) row.color = patch.color ?? null
+    if (patch.languages !== undefined) row.languages = patch.languages ?? {}
+    if (patch.commit !== undefined) row.commit = patch.commit ?? {}
+    if (patch.pullRequest !== undefined) row.pull_request = patch.pullRequest ?? {}
+    if (patch.resolve !== undefined) row.resolve = patch.resolve ?? {}
+    if (patch.issues !== undefined) row.issues = patch.issues ?? {}
+    if (patch.branches !== undefined) row.branches = patch.branches ?? {}
+    if (patch.worktreeFiles !== undefined) row.worktree_files = patch.worktreeFiles ?? []
+    return row
+  }
+
+  private mapRepositoryRow(row: RepositoryRow, path: string | null): StoredRepository {
+    return {
+      id: row.id,
+      ownerId: row.owner_id,
+      orgId: row.org_id,
+      name: row.name,
+      keywords: row.keywords ?? [],
+      color: row.color ?? undefined,
+      languages: row.languages ?? undefined,
+      commit: row.commit ?? undefined,
+      pullRequest: row.pull_request ?? undefined,
+      resolve: row.resolve ?? undefined,
+      issues: row.issues ?? undefined,
+      branches: row.branches ?? undefined,
+      worktreeFiles: row.worktree_files ?? undefined,
+      path,
+    }
+  }
+
+  /** Map assembled repos to the name-keyed Config.repositories record. */
+  private toRepositoryRecord(repos: StoredRepository[]): Record<string, RepositoryConfig> {
+    const record: Record<string, RepositoryConfig> = {}
+    for (const r of repos) {
+      record[r.name] = {
+        id: r.id,
+        orgId: r.orgId,
+        ownerId: r.ownerId,
+        path: r.path ?? '',
+        needsLocalPath: !r.path,
+        keywords: r.keywords,
+        color: r.color,
+        languages: r.languages,
+        commit: r.commit,
+        pullRequest: r.pullRequest,
+        resolve: r.resolve,
+        issues: r.issues,
+        branches: r.branches,
+        worktreeFiles: r.worktreeFiles,
+      }
+    }
+    return record
+  }
+
+  /** Fetch repos visible to the caller (own personal + active-org team) with the caller's own path. */
+  private async fetchRepositories(ctx: { client: SupabaseClient; uid: string; orgId: string }): Promise<StoredRepository[]> {
+    const [reposRes, pathsRes] = await Promise.all([
+      ctx.client
+        .from('repositories')
+        .select('id, owner_id, org_id, name, keywords, color, languages, commit, pull_request, resolve, issues, branches, worktree_files'),
+      ctx.client.from('repository_paths').select('repo_id, path'),
+    ])
+    if (reposRes.error || !reposRes.data) return []
+
+    const pathById = new Map<string, string>()
+    if (!pathsRes.error && pathsRes.data) {
+      for (const p of pathsRes.data as RepositoryPathRow[]) pathById.set(p.repo_id, p.path)
+    }
+
+    return (reposRes.data as RepositoryRow[])
+      // RLS returns personal (owned) + team repos of ALL the user's orgs; scope
+      // team repos to the ACTIVE org so switching orgs swaps the visible set.
+      .filter((r) => r.org_id === null || r.org_id === ctx.orgId)
+      .map((r) => this.mapRepositoryRow(r, pathById.get(r.id) ?? null))
+  }
+
+  async listRepositories(): Promise<StoredRepository[]> {
+    const ctx = await this.context()
+    if (!ctx) return []
+    return this.fetchRepositories(ctx)
+  }
+
+  async createRepository(repo: StoredRepository): Promise<void> {
+    const ctx = await this.context()
+    if (!ctx) return
+    const { error } = await ctx.client.from('repositories').insert({
+      id: repo.id,
+      owner_id: ctx.uid,
+      org_id: repo.orgId ?? null,
+      name: repo.name,
+      keywords: repo.keywords ?? [],
+      color: repo.color ?? null,
+      languages: repo.languages ?? {},
+      commit: repo.commit ?? {},
+      pull_request: repo.pullRequest ?? {},
+      resolve: repo.resolve ?? {},
+      issues: repo.issues ?? {},
+      branches: repo.branches ?? {},
+      worktree_files: repo.worktreeFiles ?? [],
+    })
+    if (error) throw new Error(`createRepository failed: ${error.message}`)
+    if (repo.path) await this.setRepositoryPath(repo.id, repo.path)
+  }
+
+  async updateRepository(id: string, patch: Partial<RepositoryIdentity>): Promise<void> {
+    const ctx = await this.context()
+    if (!ctx) return
+    const row = this.repoIdentityToRow(patch)
+    if (Object.keys(row).length === 0) return
+    const { error } = await ctx.client.from('repositories').update(row).eq('id', id)
+    if (error) throw new Error(`updateRepository failed: ${error.message}`)
+  }
+
+  async deleteRepository(id: string): Promise<void> {
+    const ctx = await this.context()
+    if (!ctx) return
+    const { error } = await ctx.client.from('repositories').delete().eq('id', id)
+    if (error) throw new Error(`deleteRepository failed: ${error.message}`)
+  }
+
+  async setRepositoryPath(id: string, path: string | null): Promise<void> {
+    const ctx = await this.context()
+    if (!ctx) return
+    if (path && path.trim().length > 0) {
+      const { error } = await ctx.client
+        .from('repository_paths')
+        .upsert({ repo_id: id, user_id: ctx.uid, path }, { onConflict: 'repo_id,user_id' })
+      if (error) throw new Error(`setRepositoryPath failed: ${error.message}`)
+    } else {
+      const { error } = await ctx.client
+        .from('repository_paths')
+        .delete()
+        .eq('repo_id', id)
+        .eq('user_id', ctx.uid)
+      if (error) throw new Error(`setRepositoryPath (clear) failed: ${error.message}`)
+    }
+  }
+
+  /**
+   * Move legacy repos embedded in the config blob into the repositories table as
+   * PERSONAL repos (org_id null), binding the local path. Best-effort and
+   * idempotent: a duplicate-name insert (23505) means a prior run already
+   * migrated it, so it's skipped rather than fatal.
+   */
+  private async migrateLegacyRepositories(
+    ctx: { client: SupabaseClient; uid: string; orgId: string },
+    legacy: Record<string, RepositoryConfig>,
+  ): Promise<void> {
+    for (const [name, repo] of Object.entries(legacy)) {
+      const id = randomUUID()
+      const { error } = await ctx.client.from('repositories').insert({
+        id,
+        owner_id: ctx.uid,
+        org_id: null,
+        name,
+        keywords: repo.keywords ?? [],
+        color: repo.color ?? null,
+        languages: repo.languages ?? {},
+        commit: repo.commit ?? {},
+        pull_request: repo.pullRequest ?? {},
+        resolve: repo.resolve ?? {},
+        issues: repo.issues ?? {},
+        branches: repo.branches ?? {},
+        worktree_files: repo.worktreeFiles ?? [],
+      })
+      if (error) {
+        // 23505 = already migrated (unique (owner_id, name) where org_id is null).
+        if ((error as { code?: string }).code === '23505') continue
+        throw new Error(`migrateLegacyRepositories failed: ${error.message}`)
+      }
+      if (repo.path && repo.path.trim().length > 0) {
+        await ctx.client
+          .from('repository_paths')
+          .upsert({ repo_id: id, user_id: ctx.uid, path: repo.path }, { onConflict: 'repo_id,user_id' })
+      }
+    }
   }
 
   // -------------------------------------------------------------------------

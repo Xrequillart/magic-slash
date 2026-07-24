@@ -37,6 +37,8 @@ interface AppState {
   // When set, the Config page selects this settings tab on mount, then resets it
   // to null. Lets other views (e.g. the sidebar account menu) deep-link a tab.
   settingsInitialTab: SettingsTab | null
+  // Settings now open as a centered modal overlay (not a full page). This gates it.
+  settingsModalOpen: boolean
   rightSidebar: 'info' | null
   leftSidebarVisible: boolean
   iconSidebarVisible: boolean
@@ -77,6 +79,8 @@ interface AppState {
 
   setCurrentPage: (page: 'config' | 'terminals' | 'skills' | 'history' | 'dashboard') => void
   setSettingsInitialTab: (tab: SettingsTab | null) => void
+  openSettingsModal: (tab?: SettingsTab) => void
+  closeSettingsModal: () => void
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void
   toggleLeftSidebar: () => void
@@ -123,6 +127,7 @@ export const useStore = create<AppState>()(
 
         currentPage: 'terminals',
         settingsInitialTab: null,
+        settingsModalOpen: false,
         rightSidebar: null,
         leftSidebarVisible: true,
         iconSidebarVisible: true,
@@ -270,6 +275,8 @@ export const useStore = create<AppState>()(
 
         setCurrentPage: (currentPage) => set({ currentPage, selectedFile: null }),
         setSettingsInitialTab: (settingsInitialTab) => set({ settingsInitialTab }),
+        openSettingsModal: (tab) => set(tab ? { settingsModalOpen: true, settingsInitialTab: tab } : { settingsModalOpen: true }),
+        closeSettingsModal: () => set({ settingsModalOpen: false }),
         setRightSidebar: (rightSidebar) => set({ rightSidebar }),
         toggleRightSidebar: (sidebar) => set((state) => ({
           rightSidebar: state.rightSidebar === sidebar ? null : sidebar

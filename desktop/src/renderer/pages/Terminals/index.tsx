@@ -14,7 +14,7 @@ export function TerminalsPage() {
   const { terminals, activeTerminalId, launchClaudeTerminal, setActiveTerminal, duplicateAgent } = useTerminals()
   const { scriptTerminals } = useScriptRunner()
   const { flatVisualOrder } = useGroupedTerminals()
-  const { toggleRightSidebar, setCurrentPage, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane } = useStore()
+  const { toggleRightSidebar, setCurrentPage, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane, openSettingsModal } = useStore()
   const [isCreating, setIsCreating] = useState(false)
 
   // Generate terminal name based on count
@@ -28,12 +28,16 @@ export function TerminalsPage() {
   // Settings to re-point it (instead of launching a broken agent).
   const blockOnInvalidRepos = async (): Promise<boolean> => {
     try {
-      const invalid = await window.electronAPI.config.getInvalidRepos()
+      // Only genuinely broken paths (missing / not-a-git) block creation. A team
+      // repo not yet bound to a local folder ('no-local-path') is expected and
+      // must not block launching agents on other, valid repos.
+      const invalid = (await window.electronAPI.config.getInvalidRepos())
+        .filter((r) => r.reason !== 'no-local-path')
       if (invalid.length > 0) {
         showToast(
           `${invalid.length} repository path${invalid.length > 1 ? 's are' : ' is'} invalid. Re-point ${invalid.length > 1 ? 'them' : 'it'} in Settings before launching an agent.`,
           'error',
-          { actions: [{ label: 'Open settings', onClick: () => setCurrentPage('config') }] },
+          { actions: [{ label: 'Open settings', onClick: () => openSettingsModal('repositories') }] },
         )
         return true
       }

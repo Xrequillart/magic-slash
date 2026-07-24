@@ -1,4 +1,4 @@
-import type { Config, Agent, HistoryEntry, OrgSharedConfig, OrgAgent, UsageEventInput, UsageStats } from '../../types'
+import type { Config, Agent, HistoryEntry, OrgSharedConfig, OrgAgent, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -23,6 +23,19 @@ export type ConnectivityStatus = 'ok' | 'unauthorized' | 'unreachable' | 'disabl
 export interface Store {
   loadConfig(): Promise<Config | null>
   saveConfig(config: Config): Promise<void>
+
+  // Repositories are first-class rows (personal or team), separate from the
+  // config blob. Identity lives org-wide; the local path is per-user.
+  /** Repos visible to the caller (own personal + active-org team), with the caller's own path. */
+  listRepositories(): Promise<StoredRepository[]>
+  /** Create a repo row (owner = caller). `id` is client-generated; binds `path` when provided. */
+  createRepository(repo: StoredRepository): Promise<void>
+  /** Update a repo's shared identity (and org_id when sharing). Never changes owner. */
+  updateRepository(id: string, patch: Partial<RepositoryIdentity>): Promise<void>
+  /** Delete a repo row (owner or org admin, enforced by RLS). */
+  deleteRepository(id: string): Promise<void>
+  /** Set (or clear, when null) the caller's own local path binding for a repo. */
+  setRepositoryPath(id: string, path: string | null): Promise<void>
 
   loadAgents(): Promise<Agent[]>
   saveAgents(agents: Agent[]): Promise<void>
@@ -62,6 +75,11 @@ export interface Store {
 export const NOOP_STORE: Store = {
   async loadConfig() { return null },
   async saveConfig() { /* no-op */ },
+  async listRepositories() { return [] },
+  async createRepository() { /* no-op */ },
+  async updateRepository() { /* no-op */ },
+  async deleteRepository() { /* no-op */ },
+  async setRepositoryPath() { /* no-op */ },
   async loadAgents() { return [] },
   async saveAgents() { /* no-op */ },
   async loadOrgAgents() { return [] },

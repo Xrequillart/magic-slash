@@ -39,6 +39,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const setRepositoryOrg = useCallback(async (name: string, orgId: string | null) => {
+    const result = await window.electronAPI.config.setRepositoryOrg(name, orgId)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const updateRepositoryLanguages = useCallback(async (name: string, languages: Record<string, string | null>) => {
     const result = await window.electronAPI.config.updateRepositoryLanguages(name, languages)
     setConfig(result.config)
@@ -124,6 +130,7 @@ export function useConfig() {
     updateRepository,
     deleteRepository,
     renameRepository,
+    setRepositoryOrg,
     updateRepositoryLanguages,
     updateRepositoryCommitSettings,
     updateRepositoryResolveSettings,

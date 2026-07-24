@@ -1,11 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { LogIn, LogOut, Building2, ChevronDown, Check, Loader2 } from 'lucide-react'
+import { LogIn, Settings, AlertTriangle } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { useOrg } from '../hooks/useOrg'
 import { useStore } from '../store'
 import { LoginScreen } from './LoginScreen'
-import { showToast } from './Toast'
 
 /**
  * Derive a friendly display name from an email address. Until GitHub OAuth
@@ -21,90 +19,51 @@ function displayNameFromEmail(email?: string): string {
 }
 
 /**
- * Sidebar footer account control. Logged out → a "Login / Sign up" button that
- * opens the existing email/password modal. Logged in → the user's first name
- * with a small menu (organization, sign out). Hidden entirely when cloud is
- * disabled, matching how the rest of the app treats `enabled: false`.
+ * Top-of-sidebar account control (replaces the old Settings button). Logged in →
+ * the user's first name; clicking opens the Settings modal. Logged out → a
+ * "Login / Sign up" button opening the auth modal. When cloud is disabled it
+ * falls back to a plain Settings entry so settings stay reachable. A warning
+ * badge surfaces when no repositories are configured. Organization switching and
+ * sign-out now live inside the Settings modal.
  */
 export function SidebarAccount() {
-  const { status, logout } = useAuth()
-  const { org, orgs, switchOrg } = useOrg()
-  const setCurrentPage = useStore((s) => s.setCurrentPage)
-  const setSettingsInitialTab = useStore((s) => s.setSettingsInitialTab)
+  const { status } = useAuth()
+  const config = useStore((s) => s.config)
+  const openSettingsModal = useStore((s) => s.openSettingsModal)
   const setActiveTerminal = useStore((s) => s.setActiveTerminal)
 
   const [showLogin, setShowLogin] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [switching, setSwitching] = useState<string | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
 
-  // Close the menu on outside click or Escape.
-  useEffect(() => {
-    if (!menuOpen) return
-    const onPointerDown = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setMenuOpen(false)
-      }
-    }
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); setMenuOpen(false) }
-    }
-    window.addEventListener('mousedown', onPointerDown)
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('mousedown', onPointerDown)
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [menuOpen])
+  const hasNoRepos = useMemo(() => {
+    if (!config) return false
+    return Object.keys(config.repositories).length === 0
+  }, [config])
 
-  const openOrganization = useCallback(() => {
-    setMenuOpen(false)
-    setSettingsInitialTab('organization')
+  const openSettings = () => {
     setActiveTerminal(null)
-    setCurrentPage('config')
-  }, [setSettingsInitialTab, setActiveTerminal, setCurrentPage])
+    openSettingsModal()
+  }
 
-  const handleLogout = useCallback(async () => {
-    setMenuOpen(false)
-    try {
-      await logout()
-    } catch {
-      // logout is best-effort; the hook's statusChanged subscription reconciles state.
-    }
-  }, [logout])
+  const WarningBadge = () =>
+    hasNoRepos ? (
+      <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow rounded-full flex items-center justify-center">
+        <AlertTriangle className="w-2.5 h-2.5 text-black" />
+      </span>
+    ) : null
 
-  const handleSwitchOrg = useCallback(async (orgId: string) => {
-    if (orgId === org?.id || switching) return
-    setSwitching(orgId)
-    try {
-      await switchOrg(orgId)
-      showToast('Switched organization', 'success')
-      setMenuOpen(false)
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to switch organization', 'error')
-    } finally {
-      setSwitching(null)
-    }
-  }, [org, switching, switchOrg])
-
-  // Cloud disabled → nothing to show.
-  if (!status.enabled) return null
-
-  if (!status.loggedIn) {
+  // Cloud enabled but signed out → login entry. (In practice the app is gated
+  // behind auth, so this mostly matters before the gate resolves.)
+  if (status.enabled && !status.loggedIn) {
     return (
       <>
-        <div className="px-2 pb-2">
-          <button
-            onClick={() => setShowLogin(true)}
-            className="w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium text-text-secondary rounded-lg hover:bg-text-secondary/10 hover:text-white transition-all"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>Login / Sign up</span>
-          </button>
-        </div>
-        {/* Portal to <body> so the fixed overlay covers the whole app, not just
-            the sidebar (the sidebar's backdrop-filter would otherwise be the
-            containing block for the fixed modal). */}
+        <button
+          onClick={() => setShowLogin(true)}
+          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium text-text-secondary rounded-lg hover:bg-text-secondary/10 hover:text-white transition-all"
+        >
+          <LogIn className="w-3.5 h-3.5" />
+          <span>Login / Sign up</span>
+        </button>
+        {/* Portal to <body> so the fixed overlay covers the whole app. */}
         {createPortal(
           <LoginScreen isOpen={showLogin} onClose={() => setShowLogin(false)} />,
           document.body,
@@ -113,67 +72,41 @@ export function SidebarAccount() {
     )
   }
 
-  const name = displayNameFromEmail(status.user?.email)
-  const initial = name.charAt(0).toUpperCase()
-
-  return (
-    <div ref={containerRef} className="relative px-2 pb-2">
-      {menuOpen && (
-        <div className="absolute bottom-full left-2 right-2 mb-1 bg-bg-secondary border border-white/10 rounded-lg shadow-xl backdrop-blur-2xl overflow-hidden z-30">
-          {/* Multi-org switcher — only when the user belongs to more than one org. */}
-          {orgs.length > 1 && (
-            <div className="border-b border-white/10 py-1">
-              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-text-secondary/40">
-                Organizations
-              </div>
-              {orgs.map((o) => {
-                const isActive = o.id === org?.id
-                return (
-                  <button
-                    key={o.id}
-                    onClick={() => handleSwitchOrg(o.id)}
-                    disabled={switching !== null}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-secondary hover:bg-white/10 hover:text-white transition-colors disabled:opacity-50"
-                  >
-                    <Building2 className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{o.name}</span>
-                    {switching === o.id ? (
-                      <Loader2 className="w-3.5 h-3.5 ml-auto shrink-0 animate-spin" />
-                    ) : isActive ? (
-                      <Check className="w-3.5 h-3.5 ml-auto shrink-0 text-accent" />
-                    ) : null}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-          <button
-            onClick={openOrganization}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-secondary hover:bg-white/10 hover:text-white transition-colors"
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>Account &amp; organization</span>
-          </button>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-secondary hover:bg-white/10 hover:text-white transition-colors"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Sign out</span>
-          </button>
-        </div>
-      )}
-
+  // Signed in → account button opening Settings.
+  if (status.enabled && status.loggedIn) {
+    const name = displayNameFromEmail(status.user?.email)
+    const initial = name.charAt(0).toUpperCase()
+    return (
       <button
-        onClick={() => setMenuOpen((o) => !o)}
-        className="w-full flex items-center gap-2 px-2 py-2 text-xs font-medium text-text-secondary rounded-lg hover:bg-text-secondary/10 hover:text-white transition-all"
+        onClick={openSettings}
+        className={`relative w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
+          hasNoRepos
+            ? 'text-yellow hover:bg-yellow/10'
+            : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
+        }`}
       >
         <span className="flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-[10px] font-semibold shrink-0">
           {initial}
         </span>
         <span className="truncate">{name}</span>
-        <ChevronDown className={`w-3.5 h-3.5 ml-auto shrink-0 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+        <WarningBadge />
       </button>
-    </div>
+    )
+  }
+
+  // Cloud disabled → plain Settings entry so settings stay reachable.
+  return (
+    <button
+      onClick={openSettings}
+      className={`relative w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
+        hasNoRepos
+          ? 'text-yellow hover:bg-yellow/10'
+          : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
+      }`}
+    >
+      <Settings className="w-3.5 h-3.5" />
+      <span>Settings</span>
+      <WarningBadge />
+    </button>
   )
 }

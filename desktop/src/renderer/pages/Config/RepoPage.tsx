@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import {
-  Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft
+  Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen
 } from 'lucide-react'
 import { useConfig } from '../../hooks/useConfig'
+import { useOrg } from '../../hooks/useOrg'
 import { Modal } from '../../components/Modal'
 import { showToast } from '../../components/Toast'
 import { PROJECT_COLORS } from '../../utils/projectColors'
@@ -57,6 +58,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
     updateRepository,
     deleteRepository,
     renameRepository,
+    setRepositoryOrg,
     updateRepositoryLanguages,
     updateRepositoryCommitSettings,
     updateRepositoryResolveSettings,
@@ -70,12 +72,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
     updatePRTemplate,
   } = useConfig()
 
+  const { orgs } = useOrg()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [editedName, setEditedName] = useState(repoName)
 
   // Form state
   const repo = config?.repositories?.[repoName]
+  const scopeOrg = repo?.orgId ? orgs.find((o) => o.id === repo.orgId) : null
 
   const [path, setPath] = useState(repo?.path || '')
   const [keywords, setKeywords] = useState((repo?.keywords || []).join(', '))
@@ -176,6 +180,41 @@ export function RepoPage({ repoName }: RepoPageProps) {
       showToast('Keywords updated')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to update keywords', 'error')
+    }
+  }
+
+  const handleShare = async (orgId: string) => {
+    if (!orgId) return
+    try {
+      await setRepositoryOrg(repoName, orgId)
+      showToast('Repository shared with the organization')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to share repository', 'error')
+    }
+  }
+
+  const handleMakePersonal = async () => {
+    try {
+      await setRepositoryOrg(repoName, null)
+      showToast('Repository is now personal')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to update repository', 'error')
+    }
+  }
+
+  // Bind (or re-point) this machine's local folder for the repo.
+  const handlePickFolder = async () => {
+    const folder = await window.electronAPI.dialog.openFolder()
+    if (!folder) return
+    try {
+      await updateRepository(repoName, { path: folder })
+      setPath(folder)
+      setPathChanged(false)
+      const result = await validatePath(folder)
+      setPathStatus(result)
+      showToast('Local folder set')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to set local folder', 'error')
     }
   }
 
@@ -420,6 +459,81 @@ export function RepoPage({ repoName }: RepoPageProps) {
         </div>
       )}
 
+      {/* No local folder warning (team repo not yet bound on this machine) */}
+      {repo?.needsLocalPath && (
+        <div className="flex items-start gap-4 p-4 mb-6 bg-yellow/10 border border-yellow/20 rounded-xl">
+          <FolderOpen className="w-5 h-5 text-yellow flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-yellow text-sm mb-1">No local folder set</h3>
+            <p className="text-xs text-text-secondary mb-3">
+              This team repository has no local folder on this machine yet. Select where it lives to
+              work on it — the path stays private to you and is never shared with your team.
+            </p>
+            <button
+              onClick={handlePickFolder}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow/15 hover:bg-yellow/25 text-yellow text-xs font-medium rounded-lg transition-colors"
+            >
+              <FolderOpen className="w-3.5 h-3.5" />
+              Select local folder
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Scope / Sharing Section */}
+      <div className="mb-6">
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Scope</h2>
+        <div className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-5 flex items-start justify-between gap-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              {repo?.orgId ? (
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-medium">
+                  <Building2 className="w-3.5 h-3.5" />
+                  Team{scopeOrg ? ` — ${scopeOrg.name}` : ''}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/10 text-text-secondary text-xs font-medium">
+                  <Lock className="w-3.5 h-3.5" />
+                  Personal
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-text-secondary/50">
+              {repo?.orgId
+                ? 'Shared with the organization — every member sees it and binds their own local folder.'
+                : 'Only you can see this repository. Share it with an organization to make it a team repo.'}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 w-72 shrink-0">
+            {repo?.orgId ? (
+              <button
+                onClick={handleMakePersonal}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-white/5 border border-white/10 text-xs rounded-lg hover:text-white transition-colors"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Make personal
+              </button>
+            ) : orgs.length > 0 ? (
+              <div className="relative">
+                <select
+                  value=""
+                  onChange={(e) => handleShare(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>Share with organization…</option>
+                  {orgs.map((o) => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+              </div>
+            ) : (
+              <p className="text-xs text-text-secondary/40 text-right">Join an organization to share repos.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* General Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">General</h2>
@@ -452,12 +566,21 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <p className="text-xs text-text-secondary/50">Local path to the repository</p>
             </div>
             <div className="flex flex-col gap-2 w-72">
-              <input
-                type="text"
-                value={path}
-                onChange={(e) => handlePathChange(e.target.value)}
-                className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={path}
+                  onChange={(e) => handlePathChange(e.target.value)}
+                  className="flex-1 min-w-0 px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                />
+                <button
+                  onClick={handlePickFolder}
+                  title="Choose folder"
+                  className="p-2 bg-white/5 border border-white/10 rounded-lg text-text-secondary hover:text-white transition-colors shrink-0"
+                >
+                  <FolderOpen className="w-4 h-4" />
+                </button>
+              </div>
               {pathStatus && (
                 <div className={`flex items-center gap-1.5 text-xs ${
                   pathStatus.isGit ? 'text-green' : 'text-yellow'

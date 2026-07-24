@@ -27,6 +27,9 @@ const configApi = {
   renameRepository: (oldName: string, newName: string) =>
     ipcRenderer.invoke('config:renameRepository', { oldName, newName }),
 
+  setRepositoryOrg: (name: string, orgId: string | null) =>
+    ipcRenderer.invoke('config:setRepositoryOrg', { name, orgId }),
+
   updateRepositoryLanguages: (name: string, languages: Record<string, string | null>) =>
     ipcRenderer.invoke('config:updateRepositoryLanguages', { name, languages }),
 
@@ -261,7 +264,7 @@ export type StoreWriteKind = 'config' | 'agents' | 'history'
 export interface InvalidRepo {
   name: string
   path: string
-  reason: 'missing' | 'not-git'
+  reason: 'missing' | 'not-git' | 'no-local-path'
 }
 
 const connectivityApi = {

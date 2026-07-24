@@ -11,6 +11,7 @@ import {
   updateRepository,
   deleteRepository,
   renameRepository,
+  setRepositoryOrg,
   updateRepositoryLanguages,
   updateRepositoryCommitSettings,
   updateRepositoryResolveSettings,
@@ -196,6 +197,12 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
     }
 
     const config = renameRepository(oldName, newName)
+    return { config }
+  })
+
+  // Share a repository to an org (orgId) or make it personal (orgId null)
+  ipcMain.handle('config:setRepositoryOrg', async (_event, { name, orgId }: { name: string; orgId: string | null }) => {
+    const config = setRepositoryOrg(name, orgId ?? null)
     return { config }
   })
 
