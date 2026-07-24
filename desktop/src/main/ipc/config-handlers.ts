@@ -21,6 +21,7 @@ import {
   updateSplitEnabled,
   updateSplitActive,
   updateLaunchMode,
+  updateUsageLogsEnabled,
   setIntegration,
 } from '../config/config'
 import { getGitHubAuthStatus } from '../github'
@@ -260,6 +261,12 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
     const config = readConfig()
     config.usageCardMinimized = minimized
     writeConfig(config)
+    return { config }
+  })
+
+  // GDPR opt-in for writing usage logs (default OFF). Gates WRITING only.
+  ipcMain.handle('config:setUsageLogsEnabled', async (_event, { enabled }: { enabled: boolean }) => {
+    const config = updateUsageLogsEnabled(enabled)
     return { config }
   })
 

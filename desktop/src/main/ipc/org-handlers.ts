@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import type { AcceptInvitationResult } from '../cloud/org'
-import type { Config, Invitation, Member, MembershipRole, Org, OrgAgent, OrgSharedConfig, RealtimeStatus } from '../../types'
+import type { Config, Invitation, Member, MembershipRole, Org, OrgAgent, OrgSharedConfig, RealtimeStatus, UsageStats } from '../../types'
 import { getRealtimeStatus } from '../cloud/realtime'
 import {
   getCurrentOrg,
@@ -12,6 +12,7 @@ import {
   setOrgSharedConfig,
   listOrgs,
   listOrgAgents,
+  listOrgUsageStats,
   removeMember,
   leaveOrg,
   updateMemberRole,
@@ -34,6 +35,8 @@ export function setupOrgHandlers(): void {
   ipcMain.handle('org:list', async (): Promise<Org[]> => listOrgs())
 
   ipcMain.handle('org:listAgents', async (): Promise<OrgAgent[]> => listOrgAgents())
+
+  ipcMain.handle('org:getUsageStats', async (): Promise<UsageStats> => listOrgUsageStats())
 
   ipcMain.handle('org:realtimeStatus', async (): Promise<RealtimeStatus> => getRealtimeStatus())
 

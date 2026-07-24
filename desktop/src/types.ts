@@ -153,6 +153,10 @@ export interface Config {
   historyEnabled?: boolean
   usageCardEnabled?: boolean    // show the Claude usage card in the sidebar
   usageCardMinimized?: boolean  // sidebar usage card collapsed to gauges only
+  // GDPR opt-in (default OFF): when true, an aggregated usage snapshot is written
+  // to the org's usage_events table at session end. Gates WRITING your own data
+  // only — reading the org aggregate is open to any member regardless of this flag.
+  usageLogsEnabled?: boolean
   prReviews?: {
     enabled?: boolean
     pollIntervalMs?: number
@@ -244,6 +248,45 @@ export interface OrgAgentChange {
   eventType: 'INSERT' | 'UPDATE' | 'DELETE'
   id: string
   agent?: OrgAgent
+}
+
+// ---------------------------------------------------------------------------
+// Cloud: usage logs & org stats (opt-in). One aggregated snapshot is written per
+// session at session end (never per statusLine event). Writing is GDPR opt-in
+// (Config.usageLogsEnabled, default OFF); reading the org aggregate is open to
+// any org member (RLS scopes it to the org).
+// ---------------------------------------------------------------------------
+
+/** Aggregated end-of-session snapshot to append to the usage_events table. */
+export interface UsageEventInput {
+  /** app agent id ("claude-…"), mapped to the agents.id uuid by the store. */
+  agentId: string
+  model?: string
+  costUsd?: number
+  linesAdded?: number
+  linesRemoved?: number
+  durationMs?: number
+  /** epoch ms; defaults to now when omitted. */
+  occurredAt?: number
+}
+
+/** A single usage_events row, normalized for client-side aggregation. */
+export interface UsageStatRow {
+  userId: string | null
+  agentId: string | null
+  model: string | null
+  costUsd: number
+  tokens: number | null
+  linesAdded: number
+  linesRemoved: number
+  durationMs: number
+  /** ISO timestamp of when the session ended. */
+  occurredAt: string
+}
+
+/** Org-wide usage rows for the dashboard, aggregated client-side by the renderer. */
+export interface UsageStats {
+  rows: UsageStatRow[]
 }
 
 export interface Invitation {

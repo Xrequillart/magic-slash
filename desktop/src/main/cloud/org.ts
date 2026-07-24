@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Config, Invitation, InvitationStatus, Member, MembershipRole, Org, OrgAgent, OrgSharedConfig } from '../../types'
+import type { Config, Invitation, InvitationStatus, Member, MembershipRole, Org, OrgAgent, OrgSharedConfig, UsageStats } from '../../types'
 import { getAuthedClient } from './auth'
 import { loadSession } from './session-store'
 import { readConfig, writeConfig, hydrateConfig, mergeOrgSharedConfig, setCurrentOrgId } from '../config/config'
@@ -106,6 +106,15 @@ export async function listOrgs(): Promise<Org[]> {
  */
 export async function listOrgAgents(): Promise<OrgAgent[]> {
   return getStore().loadOrgAgents()
+}
+
+/**
+ * Org-wide usage stats for the team dashboard. Delegates to the store (org-scoped
+ * by RLS — any member may read, regardless of their own usage-logs opt-in).
+ * Degrades to empty rows when cloud is off or the user is logged out.
+ */
+export async function listOrgUsageStats(): Promise<UsageStats> {
+  return getStore().loadOrgUsageStats()
 }
 
 /** Run a void-returning RPC through the authed client, surfacing failures as thrown errors. */

@@ -1,9 +1,107 @@
 import { useMemo } from 'react'
-import { Users, Bot } from 'lucide-react'
+import { Users, Bot, Coins, Plus, Minus, Clock, Activity, BarChart3 } from 'lucide-react'
 import type { OrgAgent } from '../../../types'
 import { useOrgAgents } from '../../hooks/useOrgAgents'
+import { useOrgUsageStats } from '../../hooks/useOrgUsageStats'
 import { useOrg } from '../../hooks/useOrg'
 import { LiveIndicator } from '../../components/LiveIndicator'
+import { ActivityHeatmap } from '../History/ActivityHeatmap'
+import { aggregateUsageTotals, aggregateUsageByMember, computeUsageHeatmap, formatUsd } from '../../utils/usageStats'
+
+function formatDuration(ms: number): string {
+  const totalMin = Math.round(ms / 60000)
+  if (totalMin < 60) return `${totalMin}m`
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
+
+function StatTile({ icon: Icon, label, value }: { icon: typeof Coins; label: string; value: string }) {
+  return (
+    <div className="bg-white/[0.06] border border-white/[0.08] rounded-xl p-4 flex flex-col gap-1.5 min-w-0">
+      <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+        <span className="truncate">{label}</span>
+      </div>
+      <div className="text-lg font-semibold text-white truncate">{value}</div>
+    </div>
+  )
+}
+
+/**
+ * Org-wide usage stats. Reading is open to any org member (the usage-logs opt-in
+ * only gates WRITING your own data), so this always renders — with a clean empty
+ * state when no member has opted in / produced data yet.
+ */
+function UsageStatsSection() {
+  const { rows, loading } = useOrgUsageStats()
+  const { members } = useOrg()
+
+  const emailByOwner = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const m of members) {
+      if (m.email) map.set(m.userId, m.email)
+    }
+    return map
+  }, [members])
+
+  const totals = useMemo(() => aggregateUsageTotals(rows), [rows])
+  const byMember = useMemo(() => aggregateUsageByMember(rows), [rows])
+  const heatmap = useMemo(() => computeUsageHeatmap(rows), [rows])
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2 text-sm text-text-secondary">
+        <BarChart3 className="w-4 h-4" />
+        <span>Usage</span>
+      </div>
+
+      {loading && rows.length === 0 ? (
+        <div className="py-10 flex items-center justify-center text-text-secondary text-sm">Loading…</div>
+      ) : rows.length === 0 ? (
+        <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+          <BarChart3 className="w-8 h-8 opacity-30" />
+          <p>No usage recorded yet.</p>
+          <p className="text-xs text-text-secondary/60 max-w-sm text-center">
+            Usage logging is opt-in. Members who enable it in Settings will have an aggregated snapshot recorded at the end of each session.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {/* Summary tiles */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <StatTile icon={Coins} label="Total cost" value={formatUsd(totals.costUsd)} />
+            <StatTile icon={Activity} label="Sessions" value={totals.sessions.toLocaleString('en-US')} />
+            <StatTile icon={Plus} label="Lines added" value={totals.linesAdded.toLocaleString('en-US')} />
+            <StatTile icon={Minus} label="Lines removed" value={totals.linesRemoved.toLocaleString('en-US')} />
+            <StatTile icon={Clock} label="Total duration" value={formatDuration(totals.durationMs)} />
+          </div>
+
+          {/* Sessions over time */}
+          <ActivityHeatmap heatmapData={heatmap} />
+
+          {/* Per-member breakdown (always non-empty in this branch — rows.length !== 0) */}
+          <div className="bg-white/[0.06] border border-white/[0.08] rounded-xl p-4 flex flex-col gap-2">
+            <div className="text-xs text-text-secondary mb-1">By member</div>
+            {byMember.map((m) => (
+              <div key={m.userId || '__unassigned__'} className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-white truncate min-w-0">
+                  {m.userId ? emailByOwner.get(m.userId) ?? m.userId : 'Unassigned'}
+                </span>
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <span className="text-xs text-text-secondary/60">
+                    {m.sessions} {m.sessions === 1 ? 'session' : 'sessions'}
+                  </span>
+                  <span className="text-white/90 font-medium tabular-nums">{formatUsd(m.costUsd)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Workflow-status → label + badge color. Statuses mirror
 // TerminalMetadata.status; anything unrecognized falls through to a neutral pill.
@@ -122,33 +220,45 @@ export function DashboardPage() {
         <LiveIndicator />
       </div>
 
-      {/* Body */}
-      {loading && agents.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-text-secondary text-sm">
-          Loading…
-        </div>
-      ) : agents.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-text-secondary text-sm gap-2">
-          <Users className="w-8 h-8 opacity-30" />
-          <p>No active agents in the organization yet.</p>
-        </div>
-      ) : (
-        <div className="flex-1 overflow-auto flex flex-col gap-6">
-          {groups.map((group) => (
-            <div key={group.key} className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 px-1">
-                <span className="text-sm font-medium text-white truncate">{group.label}</span>
-                <span className="text-xs text-text-secondary/50">{group.agents.length}</span>
-              </div>
-              <div className="flex flex-col gap-2">
-                {group.agents.map((agent) => (
-                  <AgentRow key={agent.id} agent={agent} />
-                ))}
-              </div>
+      {/* Body — usage stats + active agents share one scroll container */}
+      <div className="flex-1 overflow-auto flex flex-col gap-8">
+        {/* Org usage stats (read is open to any member) */}
+        <UsageStatsSection />
+
+        {/* Active agents */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            <Bot className="w-4 h-4" />
+            <span>Active agents</span>
+          </div>
+          {loading && agents.length === 0 ? (
+            <div className="py-10 flex items-center justify-center text-text-secondary text-sm">
+              Loading…
             </div>
-          ))}
+          ) : agents.length === 0 ? (
+            <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+              <Users className="w-8 h-8 opacity-30" />
+              <p>No active agents in the organization yet.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-6">
+              {groups.map((group) => (
+                <div key={group.key} className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 px-1">
+                    <span className="text-sm font-medium text-white truncate">{group.label}</span>
+                    <span className="text-xs text-text-secondary/50">{group.agents.length}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {group.agents.map((agent) => (
+                      <AgentRow key={agent.id} agent={agent} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

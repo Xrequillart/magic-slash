@@ -33,6 +33,7 @@ vi.mock('../config/config', () => ({
   updateSplitEnabled: vi.fn(),
   updateSplitActive: vi.fn(),
   updateLaunchMode: vi.fn(),
+  updateUsageLogsEnabled: vi.fn(),
 }))
 
 vi.mock('../config/migrate', () => ({ repairConfig: vi.fn() }))
