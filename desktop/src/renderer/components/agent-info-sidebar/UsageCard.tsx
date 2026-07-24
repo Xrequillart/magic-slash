@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Gauge, DollarSign, Cpu, Clock, RefreshCw } from 'lucide-react'
+import { Gauge, DollarSign, Cpu, Clock, RefreshCw, Minus, Plus } from 'lucide-react'
 import type { TerminalUsage } from '../../../types'
 import { formatTimestamp } from './utils'
 import { gaugeColors } from './LimitGauge'
@@ -45,6 +45,8 @@ export function UsageCard({ usage }: UsageCardProps) {
   const pct = Math.min(100, Math.max(0, contextPercent ?? 0))
   const colors = gaugeColors(pct)
 
+  const [minimized, setMinimized] = useState(false)
+
   // Re-render every 30s so the "updated X ago" label stays fresh.
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -52,6 +54,29 @@ export function UsageCard({ usage }: UsageCardProps) {
     return () => clearInterval(id)
   }, [])
   const relative = typeof updatedAt === 'number' ? formatTimestamp(updatedAt, now) : null
+
+  // Minimized: single-line — "Session" label, small progress bar, percent, expand button.
+  if (minimized) {
+    return (
+      <div className="bg-white/[0.06] rounded-xl px-3 py-2 flex items-center gap-2">
+        <span className="text-xs text-text-secondary/50 uppercase tracking-wider shrink-0">Session</span>
+        <div className="h-1.5 flex-1 min-w-0 rounded-full bg-white/[0.08] overflow-hidden">
+          <div
+            className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className={`font-mono font-medium text-xs shrink-0 ${colors.text}`}>{Math.round(pct)}%</span>
+        <button
+          onClick={() => setMinimized(false)}
+          title="Expand"
+          className="p-0.5 rounded text-text-secondary/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+        >
+          <Plus className="w-3 h-3" />
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white/[0.06] rounded-xl p-4 space-y-3">
@@ -65,12 +90,21 @@ export function UsageCard({ usage }: UsageCardProps) {
             </span>
           )}
         </span>
-        {model && (
-          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple/15 text-purple text-[11px] font-medium">
-            <Cpu className="w-3 h-3" />
-            {model}
-          </span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {model && (
+            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple/15 text-purple text-[11px] font-medium">
+              <Cpu className="w-3 h-3" />
+              {model}
+            </span>
+          )}
+          <button
+            onClick={() => setMinimized(true)}
+            title="Minimize"
+            className="p-0.5 rounded text-text-secondary/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+          >
+            <Minus className="w-3 h-3" />
+          </button>
+        </div>
       </div>
 
       {/* Context usage */}
