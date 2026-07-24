@@ -12,6 +12,7 @@ import { useStore } from '../store'
 export function useOrgUsageStats() {
   const activeOrgId = useStore((s) => s.activeOrg?.id)
   const [rows, setRows] = useState<UsageStatRow[]>([])
+  const [capped, setCapped] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -19,8 +20,10 @@ export function useOrgUsageStats() {
     try {
       const stats = await window.electronAPI.org.getUsageStats()
       setRows(stats.rows)
+      setCapped(stats.capped)
     } catch {
       setRows([])
+      setCapped(false)
     } finally {
       setLoading(false)
     }
@@ -30,5 +33,5 @@ export function useOrgUsageStats() {
     load()
   }, [load, activeOrgId])
 
-  return { rows, loading }
+  return { rows, capped, loading }
 }

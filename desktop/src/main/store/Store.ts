@@ -68,7 +68,7 @@ export const NOOP_STORE: Store = {
   async loadHistory() { return [] },
   async appendHistory() { /* no-op */ },
   async appendUsage() { /* no-op */ },
-  async loadOrgUsageStats() { return { rows: [] } },
+  async loadOrgUsageStats() { return { rows: [], capped: false } },
   async setOrgSharedConfig() { /* no-op */ },
   async ping() { return 'unauthorized' },
   setActiveOrgId() { /* no-op */ },

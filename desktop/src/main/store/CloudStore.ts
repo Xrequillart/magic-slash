@@ -364,17 +364,20 @@ export class CloudStore implements Store {
    */
   async loadOrgUsageStats(): Promise<UsageStats> {
     const ctx = await this.context()
-    if (!ctx) return { rows: [] }
+    if (!ctx) return { rows: [], capped: false }
 
+    const LIMIT = 5000
     const { data, error } = await ctx.client
       .from('usage_events')
       .select('user_id, agent_id, model, cost_usd, tokens, lines_added, lines_removed, duration_ms, occurred_at')
       .eq('org_id', ctx.orgId)
       .order('occurred_at', { ascending: false })
-      .limit(5000)
+      .limit(LIMIT)
 
-    if (error || !data) return { rows: [] }
+    if (error || !data) return { rows: [], capped: false }
 
+    // When the result reaches the cap the aggregated totals are partial; surface it so the UI can warn.
+    const capped = data.length === LIMIT
     const rows = (data as UsageEventRow[]).map((r) => ({
       userId: r.user_id,
       agentId: r.agent_id,
@@ -386,7 +389,7 @@ export class CloudStore implements Store {
       durationMs: toNumber(r.duration_ms),
       occurredAt: r.occurred_at,
     }))
-    return { rows }
+    return { rows, capped }
   }
 
   // -------------------------------------------------------------------------

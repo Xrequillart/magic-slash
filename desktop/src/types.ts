@@ -287,6 +287,8 @@ export interface UsageStatRow {
 /** Org-wide usage rows for the dashboard, aggregated client-side by the renderer. */
 export interface UsageStats {
   rows: UsageStatRow[]
+  /** True when the query hit its row cap, so the aggregated totals are partial (under-counted). */
+  capped: boolean
 }
 
 export interface Invitation {

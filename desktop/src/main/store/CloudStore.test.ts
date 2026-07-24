@@ -218,7 +218,7 @@ describe('loadOrgUsageStats', () => {
     const store = new CloudStore()
     const result = await store.loadOrgUsageStats()
 
-    expect(result).toEqual({ rows: [] })
+    expect(result).toEqual({ rows: [], capped: false })
     expect(from).toHaveBeenCalledWith('usage_events')
     const usageCalls = calls.filter((c) => c.table === 'usage_events')
     expect(usageCalls).toEqual(
@@ -228,6 +228,25 @@ describe('loadOrgUsageStats', () => {
         { table: 'usage_events', method: 'limit', args: [5000] },
       ]),
     )
+  })
+
+  it('flags capped=true when the result reaches the 5000-row limit', async () => {
+    const minimalRow = {
+      user_id: null, agent_id: null, model: null, cost_usd: 0,
+      tokens: null, lines_added: 0, lines_removed: 0, duration_ms: 0,
+      occurred_at: '2026-07-24T00:00:00Z',
+    }
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      usage_events: { data: Array.from({ length: 5000 }, () => minimalRow), error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    const result = await store.loadOrgUsageStats()
+
+    expect(result.capped).toBe(true)
+    expect(result.rows).toHaveLength(5000)
   })
 
   it('maps rows back applying toNumber coercion for string/bigint columns', async () => {
@@ -326,7 +345,7 @@ describe('loadOrgUsageStats', () => {
     h.state.client = null
 
     const store = new CloudStore()
-    await expect(store.loadOrgUsageStats()).resolves.toEqual({ rows: [] })
+    await expect(store.loadOrgUsageStats()).resolves.toEqual({ rows: [], capped: false })
     expect(from).not.toHaveBeenCalled()
     void client
   })
@@ -339,6 +358,6 @@ describe('loadOrgUsageStats', () => {
     h.state.client = client
 
     const store = new CloudStore()
-    await expect(store.loadOrgUsageStats()).resolves.toEqual({ rows: [] })
+    await expect(store.loadOrgUsageStats()).resolves.toEqual({ rows: [], capped: false })
   })
 })
