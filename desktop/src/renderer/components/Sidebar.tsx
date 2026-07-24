@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, memo } from 'react'
-import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, Sparkles, X, Eye, CheckCircle2, Zap } from 'lucide-react'
+import { Bot, Settings, AlertTriangle, Check, Clock, XCircle, Sparkles, X, Eye, CheckCircle2, Zap, Users } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
@@ -459,6 +459,22 @@ export function Sidebar() {
           <Clock className="w-3.5 h-3.5" />
           <span>History</span>
           <span className="ml-auto text-xs opacity-50">{historyShortcutKey}</span>
+        </button>
+
+        {/* Team dashboard button */}
+        <button
+          onClick={() => {
+            setCurrentPage('dashboard')
+            setActiveTerminal(null)
+          }}
+          className={`w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
+            currentPage === 'dashboard'
+              ? 'bg-white/10 text-white'
+              : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>Team</span>
         </button>
 
         {/* Settings button */}

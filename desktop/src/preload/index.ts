@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgAgent, OrgAgentChange, RealtimeStatus } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -454,6 +454,19 @@ const orgApi = {
   current: (): Promise<Org | null> => ipcRenderer.invoke('org:current'),
   members: (): Promise<Member[]> => ipcRenderer.invoke('org:members'),
   list: (): Promise<Org[]> => ipcRenderer.invoke('org:list'),
+  // Team dashboard: org-wide agents roster + live realtime propagation.
+  listAgents: (): Promise<OrgAgent[]> => ipcRenderer.invoke('org:listAgents'),
+  getRealtimeStatus: (): Promise<RealtimeStatus> => ipcRenderer.invoke('org:realtimeStatus'),
+  onAgentsChanged: (callback: (change: OrgAgentChange) => void) => {
+    const listener = (_event: IpcRendererEvent, change: OrgAgentChange) => callback(change)
+    ipcRenderer.on('org:agentsChanged', listener)
+    return () => ipcRenderer.removeListener('org:agentsChanged', listener)
+  },
+  onRealtimeStatus: (callback: (status: RealtimeStatus) => void) => {
+    const listener = (_event: IpcRendererEvent, status: RealtimeStatus) => callback(status)
+    ipcRenderer.on('org:realtimeStatusChanged', listener)
+    return () => ipcRenderer.removeListener('org:realtimeStatusChanged', listener)
+  },
   invitations: (): Promise<Invitation[]> => ipcRenderer.invoke('org:invitations'),
   invite: (email: string, role?: MembershipRole): Promise<Invitation> =>
     ipcRenderer.invoke('org:invite', { email, role }),

@@ -1,9 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Config, Invitation, InvitationStatus, Member, MembershipRole, Org, OrgSharedConfig } from '../../types'
+import type { Config, Invitation, InvitationStatus, Member, MembershipRole, Org, OrgAgent, OrgSharedConfig } from '../../types'
 import { getAuthedClient } from './auth'
 import { loadSession } from './session-store'
 import { readConfig, writeConfig, hydrateConfig, mergeOrgSharedConfig, setCurrentOrgId } from '../config/config'
 import { getStore } from '../store/Store'
+import { startOrgAgentsRealtime } from './realtime'
 
 interface OrgRow {
   id: string
@@ -96,6 +97,15 @@ export async function listOrgs(): Promise<Org[]> {
     })
   }
   return orgs
+}
+
+/**
+ * Org-wide agents roster (all members) for the team dashboard "who is working
+ * on what". Delegates to the store (org-scoped by RLS). Degrades to [] when
+ * cloud is off or the user is logged out.
+ */
+export async function listOrgAgents(): Promise<OrgAgent[]> {
+  return getStore().loadOrgAgents()
 }
 
 /** Run a void-returning RPC through the authed client, surfacing failures as thrown errors. */
@@ -254,6 +264,13 @@ export async function switchOrg(orgId: string): Promise<Config> {
   const config = await hydrateConfig()
   config.currentOrgId = orgId
   writeConfig(config)
+
+  // Re-point the realtime subscription at the newly-active org so the team
+  // dashboard streams the right org's agents (best-effort — never fail the
+  // switch over it).
+  void startOrgAgentsRealtime(orgId).catch((error) =>
+    console.error('[cloud] failed to resubscribe realtime after org switch:', error),
+  )
   return config
 }
 

@@ -210,6 +210,42 @@ export interface Member {
   createdAt?: string
 }
 
+// ---------------------------------------------------------------------------
+// Cloud: org-wide agents roster + realtime (team dashboard "who is working on
+// what"). Distinct from the LOCAL `Agent` shape above: an OrgAgent describes a
+// teammate's agent as seen over the org roster / realtime feed, keyed by the DB
+// row uuid (NOT the app-level metadata.__app.id). It is READ-ONLY — it never
+// feeds the local terminal-restoration cache.
+// ---------------------------------------------------------------------------
+export interface OrgAgent {
+  /** The `agents` table row id (uuid). Reconcile realtime events by this. */
+  id: string
+  /** owner membership user id (auth.users id), or null when ownership was cleared. */
+  ownerId: string | null
+  /** Resolved in the renderer from the org member list (owner_id → email). */
+  ownerEmail?: string
+  name: string
+  ticketId?: string
+  status?: string
+  repositories: string[]
+  /** ISO timestamp of the last write (agents.updated_at). */
+  updatedAt?: string
+}
+
+/** Realtime channel health for the org-agents subscription. */
+export type RealtimeStatus = 'live' | 'reconnecting'
+
+/**
+ * A single org-agents realtime change forwarded to the renderer. `id` is always
+ * the DB row uuid (present for every event, including DELETE) so the renderer
+ * can reconcile by uuid; `agent` carries the mapped row for INSERT/UPDATE only.
+ */
+export interface OrgAgentChange {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE'
+  id: string
+  agent?: OrgAgent
+}
+
 export interface Invitation {
   id: string
   email: string

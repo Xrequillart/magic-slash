@@ -1,4 +1,4 @@
-import { Bot, Settings, Circle, AlertTriangle, Sparkles, Clock } from 'lucide-react'
+import { Bot, Settings, Circle, AlertTriangle, Sparkles, Clock, Users } from 'lucide-react'
 import { useStore } from '../store'
 import { stateColorsIcon as stateColors, stateBgColorsIcon as stateBgColors } from '../utils/stateColors'
 import { useMemo } from 'react'
@@ -82,6 +82,19 @@ export function IconSidebar() {
           <Clock className="w-5 h-5" />
         </button>
       )}
+
+      {/* Team dashboard button */}
+      <button
+        onClick={() => setCurrentPage('dashboard')}
+        className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
+          currentPage === 'dashboard'
+            ? 'text-accent bg-accent/20'
+            : 'text-text-secondary hover:text-white hover:bg-bg-tertiary'
+        }`}
+        title="Team"
+      >
+        <Users className="w-5 h-5" />
+      </button>
 
       {/* Spacer to push Configuration to bottom */}
       <div className="flex-1" />
