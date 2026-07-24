@@ -24,6 +24,16 @@ Atomic commits (one commit = one logical unit of change) are a core expectation.
 
 ```bash
 CONFIG_FILE=~/.config/magic-slash/config.json
+# Magic Slash Desktop (cloud) is the source of truth. When the app is running, fetch the live
+# config; otherwise fall back to the local file (may be stale, or absent if never installed).
+if [ -n "$MAGIC_SLASH_PORT" ]; then
+  MS_TMP_CONFIG="$(mktemp)"
+  trap 'rm -f "$MS_TMP_CONFIG"' EXIT
+  if curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
+     && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
+    CONFIG_FILE="$MS_TMP_CONFIG"
+  fi
+fi
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "CONFIG_MISSING"
 else

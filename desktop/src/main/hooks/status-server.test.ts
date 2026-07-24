@@ -1,5 +1,14 @@
-import { describe, it, expect } from 'vitest'
-import { parseStatusLinePayload } from './status-server'
+import * as http from 'http'
+import { afterAll, beforeAll, describe, it, expect } from 'vitest'
+import {
+  parseStatusLinePayload,
+  startStatusServer,
+  stopStatusServer,
+  getServerPort,
+  setConfigProvider,
+  setAgentProvider,
+  setWorktreeFilesWriter,
+} from './status-server'
 
 describe('parseStatusLinePayload', () => {
   const fullPayload = JSON.stringify({
@@ -85,5 +94,62 @@ describe('parseStatusLinePayload', () => {
     expect(usage.model).toBeUndefined()
     expect(usage.costUsd).toBeUndefined()
     expect(usage.contextPercent).toBeUndefined()
+  })
+})
+
+describe('read-back endpoints', () => {
+  const httpGet = (path: string): Promise<{ status: number; body: string }> =>
+    new Promise((resolve, reject) => {
+      http
+        .get(`http://127.0.0.1:${getServerPort()}${path}`, (res) => {
+          const chunks: Buffer[] = []
+          res.on('data', (c: Buffer) => chunks.push(c))
+          res.on('end', () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf-8') }))
+        })
+        .on('error', reject)
+    })
+
+  beforeAll(async () => {
+    await startStatusServer()
+  })
+
+  afterAll(async () => {
+    await stopStatusServer()
+  })
+
+  it('GET /config returns the provider config as JSON', async () => {
+    setConfigProvider(() => ({ version: '1.0.0', repositories: { api: { path: '/tmp/api', keywords: ['api'] } } }))
+    const { status, body } = await httpGet('/config')
+    expect(status).toBe(200)
+    expect(JSON.parse(body)).toEqual({ version: '1.0.0', repositories: { api: { path: '/tmp/api', keywords: ['api'] } } })
+  })
+
+  it('GET /config returns {} when no provider is set to a throwing value', async () => {
+    setConfigProvider(() => {
+      throw new Error('boom')
+    })
+    const { status, body } = await httpGet('/config')
+    expect(status).toBe(200)
+    expect(body).toBe('{}')
+  })
+
+  it('GET /agent returns the metadata for the given terminal id', async () => {
+    setAgentProvider((id) => (id === 'term-1' ? { id, metadata: { ticketId: 'PROJ-9' } } : null))
+    const found = await httpGet('/agent?id=term-1')
+    expect(JSON.parse(found.body)).toEqual({ id: 'term-1', metadata: { ticketId: 'PROJ-9' } })
+    const missing = await httpGet('/agent?id=nope')
+    expect(missing.body).toBe('null')
+  })
+
+  it('GET /config/worktree-files forwards repo + parsed files to the writer', async () => {
+    let received: { repo: string; files: string[] } | null = null
+    setWorktreeFilesWriter((repo, files) => {
+      received = { repo, files }
+    })
+    const files = encodeURIComponent(JSON.stringify(['.env', '.npmrc', 42]))
+    const { status } = await httpGet(`/config/worktree-files?repo=api&files=${files}`)
+    expect(status).toBe(200)
+    // Non-string entries (42) are filtered out before reaching the writer.
+    expect(received).toEqual({ repo: 'api', files: ['.env', '.npmrc'] })
   })
 })

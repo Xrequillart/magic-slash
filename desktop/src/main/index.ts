@@ -2,7 +2,7 @@ import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell, globalS
 import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback } from './hooks/status-server'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setConfigProvider, setAgentProvider, setWorktreeFilesWriter } from './hooks/status-server'
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
 import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook } from './pty/terminal-manager'
@@ -15,7 +15,8 @@ import { registerActivityHistoryHandlers } from './ipc/activity-history-handlers
 import { setupConnectivityHandlers } from './ipc/connectivity-handlers'
 import { setStore } from './store/Store'
 import { CloudStore } from './store/CloudStore'
-import { readConfig, writeConfig } from './config/config'
+import { readConfig, writeConfig, updateRepositoryWorktreeFilesSettings } from './config/config'
+import { readAgents } from './config/agents'
 import { TrayManager } from './tray/tray-manager'
 import { AgentStateAggregator } from './tray/agent-state-aggregator'
 import { destroyPopover } from './windows/popover-window'
@@ -524,6 +525,15 @@ async function initializeHooksAndSessions() {
           repositories
         })
       }
+    })
+
+    // Read-back providers: let terminal-run skills read the live config/agent metadata
+    // (served from the in-memory caches hydrated from the cloud store) and persist the
+    // one config mutation they perform (worktreeFiles).
+    setConfigProvider(() => readConfig())
+    setAgentProvider((terminalId: string) => readAgents().find((a) => a.id === terminalId) ?? null)
+    setWorktreeFilesWriter((repo: string, files: string[]) => {
+      updateRepositoryWorktreeFilesSettings(repo, { worktreeFiles: files })
     })
 
     // Install shell integration hooks
