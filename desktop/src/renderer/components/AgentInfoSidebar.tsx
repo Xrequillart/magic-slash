@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { X, Bot, Edit2, Layers } from 'lucide-react'
+import { X, Bot, Layers } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { TicketHeader } from './agent-info-sidebar/TicketHeader'
@@ -432,30 +432,8 @@ export function AgentInfoSidebar() {
               onStatusChange={handleStatusChange}
             />
 
-            {/* Repositories Section Header */}
-            <div className="flex items-center justify-between">
-              <div className="text-xs text-text-secondary/50 uppercase tracking-wider">Repositories</div>
-              <button
-                onClick={() => setIsRepoModalOpen(true)}
-                className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.08] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
-              >
-                <Edit2 className="w-3 h-3" />
-                <span>Edit</span>
-                <span className="text-[10px] opacity-50">⌘P</span>
-              </button>
-            </div>
-
             {/* Repository cards with git stats */}
-            {configuredAttachedRepos.length === 0 ? (
-              <button
-                onClick={() => setIsRepoModalOpen(true)}
-                className="w-full py-4 text-center border border-dashed border-border/50 rounded-lg hover:border-text-secondary/50 hover:bg-white/5 transition-colors"
-              >
-                <div className="text-xs text-text-secondary/50">
-                  Add a repository
-                </div>
-              </button>
-            ) : (
+            {configuredAttachedRepos.length > 0 && (
               <div className="space-y-3">
                 {configuredAttachedRepos.map((repoPath) => (
                   <RepositoryCard
@@ -472,10 +450,21 @@ export function AgentInfoSidebar() {
                     copiedBranch={copiedBranch}
                     onCopyCommitHash={copyCommitHash}
                     onCopyBranchName={copyBranchName}
+                    onRemove={() => handleToggleRepository(repoPath)}
                   />
                 ))}
               </div>
             )}
+
+            {/* Add a repository button (always shown) */}
+            <button
+              onClick={() => setIsRepoModalOpen(true)}
+              className="w-full py-4 text-center border border-dashed border-border/50 rounded-lg hover:border-text-secondary/50 hover:bg-white/5 transition-colors"
+            >
+              <div className="text-xs text-text-secondary/50">
+                Add a repository
+              </div>
+            </button>
 
             {/* Full-Stack Task Section */}
             {metadata?.fullStackTaskId && metadata?.relatedWorktrees && metadata.relatedWorktrees.length > 1 && (

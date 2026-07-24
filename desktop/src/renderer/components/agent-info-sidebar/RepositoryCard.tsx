@@ -1,4 +1,4 @@
-import { GitBranch, Copy, Check, ExternalLink, ArrowRight, CheckCircle2, AlertCircle, MessageSquare, Clock, Wrench, CheckCircle } from 'lucide-react'
+import { GitBranch, Copy, Check, ExternalLink, ArrowRight, CheckCircle2, AlertCircle, MessageSquare, Clock, Wrench, CheckCircle, X } from 'lucide-react'
 import { GitHubIcon, VSCodeIcon } from './icons'
 import { ScriptsDropdown } from './ScriptsDropdown'
 import { formatRelativeDate } from './utils'
@@ -20,6 +20,7 @@ interface RepositoryCardProps {
   copiedBranch: string | null
   onCopyCommitHash: (hash: string) => void
   onCopyBranchName: (branch: string) => void
+  onRemove: () => void
 }
 
 const REVIEW_STATUS_LABELS: Record<NonNullable<RepositoryMetadata['prReviewStatus']>, string> = {
@@ -68,6 +69,7 @@ export function RepositoryCard({
   copiedBranch,
   onCopyCommitHash,
   onCopyBranchName,
+  onRemove,
 }: RepositoryCardProps) {
   const setSelectedFile = useStore(s => s.setSelectedFile)
   const hasChanges = gitData?.stats?.isGitRepo && gitData.stats.filesChanged > 0
@@ -90,6 +92,14 @@ export function RepositoryCard({
           >
             <VSCodeIcon className="w-3 h-3" />
             Open
+          </button>
+          {/* Remove repository button */}
+          <button
+            onClick={onRemove}
+            className="flex items-center justify-center p-1 text-text-secondary/50 rounded hover:text-red-500 hover:bg-red-500/10 transition-colors"
+            title="Remove repository"
+          >
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
