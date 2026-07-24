@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, Config, HistoryEntry, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats } from '../../types'
+import type { Agent, Config, HistoryEntry, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
@@ -59,6 +59,15 @@ interface RepositoryRow {
 interface RepositoryPathRow {
   repo_id: string
   path: string
+}
+
+interface ProfileRow {
+  name: string | null
+  role: string | null
+  technical_level: string | null
+  communication_style: string | null
+  languages: string[] | null
+  free_text: string | null
 }
 
 // numeric/bigint columns come back from PostgREST as strings — coerced on read.
@@ -135,6 +144,15 @@ export class CloudStore implements Store {
     const orgId = await this.resolveOrgId(client, uid)
     if (!orgId) return null
     return { client, uid, orgId }
+  }
+
+  /** Client + uid without requiring an active org (for org-independent data like profiles). */
+  private async userContext(): Promise<{ client: SupabaseClient; uid: string } | null> {
+    const client = await getAuthedClient()
+    if (!client) return null
+    const uid = loadSession()?.user?.id
+    if (!uid) return null
+    return { client, uid }
   }
 
   private async resolveOrgId(client: SupabaseClient, uid: string): Promise<string | null> {
@@ -634,6 +652,55 @@ export class CloudStore implements Store {
     if (!client) throw new Error('Cloud features are not available')
     const { error } = await client.rpc('set_org_shared_config', { p_org_id: orgId, p_shared: shared })
     if (error) throw new Error(error.message)
+  }
+
+  // -------------------------------------------------------------------------
+  // Profile (per-user, org-independent)
+  // -------------------------------------------------------------------------
+
+  async loadProfile(): Promise<UserProfile | null> {
+    const ctx = await this.userContext()
+    if (!ctx) return null
+
+    const { data, error } = await ctx.client
+      .from('profiles')
+      .select('name, role, technical_level, communication_style, languages, free_text')
+      .eq('user_id', ctx.uid)
+      .maybeSingle()
+
+    if (error || !data) return null
+    const row = data as ProfileRow
+    // A profile needs the three required fields to be meaningful.
+    if (!row.name || !row.role || !row.technical_level) return null
+
+    const profile: UserProfile = {
+      name: row.name,
+      role: row.role as UserProfile['role'],
+      technical_level: row.technical_level as UserProfile['technical_level'],
+    }
+    if (row.communication_style) profile.communication_style = row.communication_style as UserProfile['communication_style']
+    if (Array.isArray(row.languages) && row.languages.length > 0) profile.languages = row.languages
+    if (row.free_text) profile.freeText = row.free_text
+    return profile
+  }
+
+  async saveProfile(profile: UserProfile): Promise<void> {
+    const ctx = await this.userContext()
+    if (!ctx) return
+
+    const { error } = await ctx.client.from('profiles').upsert(
+      {
+        user_id: ctx.uid,
+        name: profile.name,
+        role: profile.role,
+        technical_level: profile.technical_level,
+        communication_style: profile.communication_style ?? null,
+        languages: profile.languages ?? [],
+        free_text: profile.freeText ?? null,
+      },
+      { onConflict: 'user_id' },
+    )
+    if (error) throw new Error(`saveProfile failed: ${error.message}`)
   }
 
   // -------------------------------------------------------------------------

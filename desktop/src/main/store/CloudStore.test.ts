@@ -525,6 +525,57 @@ describe('loadConfig', () => {
   })
 })
 
+describe('profile', () => {
+  it('loads and maps the current user profile from the profiles table', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      profiles: {
+        data: { name: 'Xavier', role: 'dev', technical_level: 'expert', communication_style: 'technical', languages: ['fr'], free_text: 'likes concise answers' },
+        error: null,
+      },
+    })
+    h.state.client = client
+
+    const profile = await new CloudStore().loadProfile()
+    expect(profile).toEqual({
+      name: 'Xavier',
+      role: 'dev',
+      technical_level: 'expert',
+      communication_style: 'technical',
+      languages: ['fr'],
+      freeText: 'likes concise answers',
+    })
+    // Scoped to the current user.
+    expect(calls.some((c) => c.table === 'profiles' && c.method === 'eq' && c.args[0] === 'user_id' && c.args[1] === UID)).toBe(true)
+  })
+
+  it('returns null when required fields are missing', async () => {
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      profiles: { data: { name: 'Xavier', role: null, technical_level: null, communication_style: null, languages: null, free_text: null }, error: null },
+    })
+    h.state.client = client
+    await expect(new CloudStore().loadProfile()).resolves.toBeNull()
+  })
+
+  it('upserts the profile keyed by user_id', async () => {
+    const { client, upserts } = makeClient({ memberships: membershipsOk, profiles: { data: null, error: null } })
+    h.state.client = client
+
+    await new CloudStore().saveProfile({ name: 'Xavier', role: 'dev', technical_level: 'expert', freeText: 'x' })
+
+    expect(upserts.profiles[0]).toMatchObject({
+      user_id: UID,
+      name: 'Xavier',
+      role: 'dev',
+      technical_level: 'expert',
+      communication_style: null,
+      languages: [],
+      free_text: 'x',
+    })
+  })
+})
+
 describe('saveConfig', () => {
   it('never stores repositories in the blob but keeps the shared projection', async () => {
     const { client, upserts } = makeClient({ memberships: membershipsOk, configs: { data: null, error: null } })

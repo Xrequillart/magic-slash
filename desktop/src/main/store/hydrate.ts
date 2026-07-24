@@ -1,6 +1,7 @@
 import { hydrateConfig, resetConfigCache } from '../config/config'
 import { hydrateAgents, resetAgentsCache } from '../config/agents'
 import { hydrateHistory, resetHistoryCache } from '../config/activity-history'
+import { hydrateProfile } from '../config/profile'
 
 // Coordinates a one-time hydration of the in-memory caches (config, agents,
 // history) from the store once auth + connectivity are established. Every mutating
@@ -19,6 +20,7 @@ export function ensureHydrated(): Promise<void> {
       await hydrateConfig()
       await hydrateAgents()
       await hydrateHistory()
+      await hydrateProfile()
     })().catch((error) => {
       // Allow a later retry if hydration failed.
       hydrationPromise = null

@@ -2,8 +2,31 @@ import * as fs from 'fs'
 import * as path from 'path'
 import type { UserProfile } from '../../types'
 import { CONFIG_DIR } from './config'
+import { getStore } from '../store/Store'
 
 const PROFILE_PATH = path.join(CONFIG_DIR, 'profile.md')
+
+/**
+ * Sync the cloud profile down to the local profile.md file so the /magic:* skills
+ * (which read the file from disk) always see the latest — including edits made on
+ * the web app. If the cloud has no profile yet but a local file exists, migrate it
+ * up (one-shot). Best-effort: never throws.
+ */
+export async function hydrateProfile(): Promise<void> {
+  try {
+    const remote = await getStore().loadProfile()
+    if (remote) {
+      writeProfile(remote)
+      return
+    }
+    const local = readProfile()
+    if (local) {
+      await getStore().saveProfile(local)
+    }
+  } catch {
+    // Best-effort: a stale local profile.md is better than blocking hydration.
+  }
+}
 
 export function readProfile(): UserProfile | null {
   try {

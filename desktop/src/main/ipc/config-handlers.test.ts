@@ -19,6 +19,7 @@ vi.mock('../config/config', () => ({
   readConfig: vi.fn(),
   writeConfig: vi.fn(),
   CONFIG_FILE: '/mock/config.json',
+  CONFIG_DIR: '/mock',
   addRepository: vi.fn(),
   updateRepository: vi.fn(),
   deleteRepository: vi.fn(),

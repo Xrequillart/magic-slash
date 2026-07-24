@@ -1,4 +1,4 @@
-import type { Config, Agent, HistoryEntry, OrgSharedConfig, OrgAgent, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity } from '../../types'
+import type { Config, Agent, HistoryEntry, OrgSharedConfig, OrgAgent, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -56,6 +56,12 @@ export interface Store {
   /** Admin-only: push the org's shared config (languages/commit/pullRequest/repoKeywords). */
   setOrgSharedConfig(orgId: string, shared: OrgSharedConfig): Promise<void>
 
+  // Per-user profile (who the human is) — org-independent. Cloud is the source
+  // of truth; the desktop mirrors it to ~/.config/magic-slash/profile.md so the
+  // /magic:* skills can read it.
+  loadProfile(): Promise<UserProfile | null>
+  saveProfile(profile: UserProfile): Promise<void>
+
   /** Lightweight authed reachability probe used by the connectivity gate. */
   ping(): Promise<ConnectivityStatus>
 
@@ -88,6 +94,8 @@ export const NOOP_STORE: Store = {
   async appendUsage() { /* no-op */ },
   async loadOrgUsageStats() { return { rows: [], capped: false } },
   async setOrgSharedConfig() { /* no-op */ },
+  async loadProfile() { return null },
+  async saveProfile() { /* no-op */ },
   async ping() { return 'unauthorized' },
   setActiveOrgId() { /* no-op */ },
 }
