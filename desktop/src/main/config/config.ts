@@ -367,6 +367,18 @@ export function updateLaunchMode(mode: LaunchMode): Config {
 }
 
 /**
+ * Toggle the GDPR usage-logs opt-in. Default OFF: only when this is true does the
+ * app write an aggregated usage snapshot to usage_events at session end. Reading
+ * the org aggregate is unaffected by this flag.
+ */
+export function updateUsageLogsEnabled(enabled: boolean): Config {
+  const config = readConfig()
+  config.usageLogsEnabled = enabled
+  writeConfig(config)
+  return config
+}
+
+/**
  * Toggle an integration flag. github is always true (const true in the schema);
  * only atlassian is user-settable. DISPLAY/detection only — no token is stored.
  */

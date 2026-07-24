@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, Fragment } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3 } from 'lucide-react'
 import { ProfileSection } from './ProfileSection'
 import { RepoPage } from './RepoPage'
 import { OrgPage } from './OrgPage'
@@ -9,6 +9,7 @@ import { useConfig } from '../../hooks/useConfig'
 import type { SpotlightShortcut, LaunchMode, ClaudeAccount, SpendSummary, SettingsTab } from '../../../types'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
+import { formatUsd } from '../../utils/usageStats'
 
 const SPOTLIGHT_OPTIONS: { label: string; value: string }[] = [
   { label: '\u2303 Space', value: 'Control+Space' },
@@ -47,12 +48,6 @@ function formatTokensCompact(n: number): string {
   return `${n}`
 }
 
-function formatUsd(n: number): string {
-  if (n > 0 && n < 0.01) return '<$0.01'
-  if (n >= 1000) return `$${Math.round(n).toLocaleString('en-US')}`
-  return `$${n.toFixed(2)}`
-}
-
 // Human-readable label for a Claude seat tier / billing type.
 const SEAT_TIER_LABELS: Record<string, string> = {
   team_standard: 'Team',
@@ -88,6 +83,7 @@ function WelcomePage() {
   const [showBypassWarning, setShowBypassWarning] = useState(false)
   const [historyEnabled, setHistoryEnabled] = useState(config?.historyEnabled ?? true)
   const [usageCardEnabled, setUsageCardEnabled] = useState(config?.usageCardEnabled ?? false)
+  const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? false)
   const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)
   const [prWatcherInterval, setPrWatcherInterval] = useState(config?.prReviews?.pollIntervalMs ?? 60_000)
   const [prWatcherAutoLaunch, setPrWatcherAutoLaunch] = useState(config?.prReviews?.autoLaunchSkills ?? false)
@@ -113,6 +109,11 @@ function WelcomePage() {
   useEffect(() => {
     if (configUsageCardEnabled !== undefined) setUsageCardEnabled(configUsageCardEnabled)
   }, [configUsageCardEnabled])
+
+  const configUsageLogsEnabled = config?.usageLogsEnabled
+  useEffect(() => {
+    if (configUsageLogsEnabled !== undefined) setUsageLogsEnabled(configUsageLogsEnabled)
+  }, [configUsageLogsEnabled])
 
   const configPrWatcherEnabled = config?.prReviews?.enabled
   const configPrWatcherInterval = config?.prReviews?.pollIntervalMs
@@ -543,6 +544,39 @@ function WelcomePage() {
             >
               <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
                 usageCardEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Usage Logs Section (GDPR opt-in — off by default) */}
+      <div>
+        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <BarChart3 className="w-4 h-4" />
+          <span>Usage logs</span>
+        </div>
+        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-medium">Share my usage with my organization</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">
+                Off by default (GDPR opt-in). When enabled, an aggregated summary (estimated cost, lines added/removed, duration, model) is recorded for your organization at the end of each session, so admins can track team usage. No prompts or code are ever sent. You can turn it off at any time.
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                const newValue = !usageLogsEnabled
+                setUsageLogsEnabled(newValue)
+                const result = await window.electronAPI.config.setUsageLogsEnabled(newValue)
+                setConfig(result.config)
+              }}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                usageLogsEnabled ? 'bg-accent' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+                usageLogsEnabled ? 'translate-x-[18px]' : 'translate-x-0'
               }`} />
             </button>
           </div>

@@ -1,4 +1,4 @@
-import type { Config, Agent, HistoryEntry, OrgSharedConfig, OrgAgent } from '../../types'
+import type { Config, Agent, HistoryEntry, OrgSharedConfig, OrgAgent, UsageEventInput, UsageStats } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -34,6 +34,12 @@ export interface Store {
   loadHistory(limit: number): Promise<HistoryEntry[]>
   appendHistory(entry: HistoryEntry): Promise<void>
 
+  /** Append ONE aggregated usage snapshot at session end (append-only, fire-and-forget). */
+  appendUsage(event: UsageEventInput): Promise<void>
+
+  /** Org-wide usage rows (all members) for the dashboard, aggregated client-side. Read-only. */
+  loadOrgUsageStats(): Promise<UsageStats>
+
   /** Admin-only: push the org's shared config (languages/commit/pullRequest/repoKeywords). */
   setOrgSharedConfig(orgId: string, shared: OrgSharedConfig): Promise<void>
 
@@ -61,6 +67,8 @@ export const NOOP_STORE: Store = {
   async loadOrgAgents() { return [] },
   async loadHistory() { return [] },
   async appendHistory() { /* no-op */ },
+  async appendUsage() { /* no-op */ },
+  async loadOrgUsageStats() { return { rows: [], capped: false } },
   async setOrgSharedConfig() { /* no-op */ },
   async ping() { return 'unauthorized' },
   setActiveOrgId() { /* no-op */ },

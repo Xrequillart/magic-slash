@@ -22,6 +22,7 @@ import {
   updateAgentSplitPane,
 } from '../config/agents'
 import { addHistoryEntry } from '../config/activity-history'
+import { recordUsageSnapshot } from '../usage/usage-events'
 import { readConfig } from '../config/config'
 import { expandPath } from '../config/validation'
 import { checkRepoPath } from '../config/repo-validation'
@@ -58,7 +59,38 @@ let onAgentChange: (() => void) | null = null
 const lastNotificationTime = new Map<string, number>()
 // Track previous metadata status per terminal for history entries
 const previousStatus = new Map<string, string>()
+// Terminals whose end-of-session usage snapshot has already been flushed, so the
+// kill path and the natural-exit path never write two rows for one session.
+const usageFlushed = new Set<string>()
 const NOTIFICATION_COOLDOWN = 30000 // 30 seconds between notifications per terminal
+
+/**
+ * Flush ONE aggregated usage snapshot for a terminal at session end. Reads the
+ * in-memory usage gauge (populated by the statusLine hook) and appends a single
+ * usage_events row via recordUsageSnapshot (itself a GDPR-gated, fire-and-forget
+ * no-op when the opt-in is off). Deduped per terminal id so it can be called from
+ * both the explicit-kill path and the natural-exit path without double-writing.
+ *
+ * MUST be called BEFORE removeAgent(id) so the store's agentIdMap can still map
+ * the app id → agents.id uuid (mirrors how addHistoryEntry resolves the agent).
+ * tokens is intentionally not derived from contextTokens (a point-in-time context
+ * gauge, not cumulative session tokens) — see recordUsageSnapshot/appendUsage.
+ */
+function flushUsageSnapshot(id: string): void {
+  if (usageFlushed.has(id)) return
+  const usage = getTerminal(id)?.metadata?.usage
+  if (!usage) return
+  usageFlushed.add(id)
+  void recordUsageSnapshot({
+    agentId: id,
+    model: usage.model,
+    costUsd: usage.costUsd,
+    linesAdded: usage.linesAdded,
+    linesRemoved: usage.linesRemoved,
+    durationMs: usage.durationMs,
+    occurredAt: Date.now(),
+  })
+}
 
 // Helper to show notification with cooldown and focus check
 function maybeShowNotification(
@@ -163,6 +195,13 @@ function createTerminalCallbacks(id: string, name: string) {
       }
     },
     onExit: (exitCode: number) => {
+      // Best-effort flush for a session that ends WITHOUT an explicit kill (e.g.
+      // Claude Code exited on its own and exhausted its auto-restarts). This
+      // callback is not invoked during auto-restart (terminal-manager only calls
+      // it once restarts are given up), and killTerminal disposes this listener
+      // before pty.kill so an intentional kill never double-fires here; the
+      // usageFlushed guard defends against any overlap regardless.
+      flushUsageSnapshot(id)
       base.onExit(exitCode)
       previousStatus.delete(id)
     },
@@ -365,9 +404,13 @@ export function setupTerminalHandlers(
         repositories: t.repositories || [],
       })
     }
+    // Flush the aggregated usage snapshot BEFORE removeAgent so the store can still
+    // resolve this agent's uuid (one write per session; GDPR-gated inside).
+    flushUsageSnapshot(id)
     killTerminal(id)
     // Remove agent from disk
     removeAgent(id)
+    usageFlushed.delete(id)
   })
 
   // Get terminal info

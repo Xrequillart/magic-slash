@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgAgent, OrgAgentChange, RealtimeStatus } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgAgent, OrgAgentChange, RealtimeStatus, UsageStats } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -54,6 +54,8 @@ const configApi = {
     ipcRenderer.invoke('config:setUsageCardEnabled', { enabled }),
   setUsageCardMinimized: (minimized: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setUsageCardMinimized', { minimized }),
+  setUsageLogsEnabled: (enabled: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setUsageLogsEnabled', { enabled }),
 
   updateSplitEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('config:updateSplitEnabled', { enabled }),
@@ -456,6 +458,8 @@ const orgApi = {
   list: (): Promise<Org[]> => ipcRenderer.invoke('org:list'),
   // Team dashboard: org-wide agents roster + live realtime propagation.
   listAgents: (): Promise<OrgAgent[]> => ipcRenderer.invoke('org:listAgents'),
+  // Team dashboard: org-wide usage stats (read is open to any member).
+  getUsageStats: (): Promise<UsageStats> => ipcRenderer.invoke('org:getUsageStats'),
   getRealtimeStatus: (): Promise<RealtimeStatus> => ipcRenderer.invoke('org:realtimeStatus'),
   onAgentsChanged: (callback: (change: OrgAgentChange) => void) => {
     const listener = (_event: IpcRendererEvent, change: OrgAgentChange) => callback(change)

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, Config, HistoryEntry, OrgAgent, OrgSharedConfig, TerminalMetadata } from '../../types'
+import type { Agent, Config, HistoryEntry, OrgAgent, OrgSharedConfig, TerminalMetadata, UsageEventInput, UsageStats } from '../../types'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
@@ -38,6 +38,29 @@ interface ActivityEventRow {
   description: string | null
   repositories: string[]
   occurred_at: string
+}
+
+// numeric/bigint columns come back from PostgREST as strings — coerced on read.
+interface UsageEventRow {
+  user_id: string | null
+  agent_id: string | null
+  model: string | null
+  cost_usd: string | number | null
+  tokens: string | number | null
+  lines_added: number | null
+  lines_removed: number | null
+  duration_ms: string | number | null
+  occurred_at: string
+}
+
+/** Coerce a numeric/bigint column (string | number | null) to a number, defaulting to 0. */
+function toNumber(value: string | number | null): number {
+  if (typeof value === 'number') return value
+  if (typeof value === 'string') {
+    const n = Number(value)
+    return Number.isFinite(n) ? n : 0
+  }
+  return 0
 }
 
 /** The four shareable keys, projected to the TOP LEVEL of the config blob so the
@@ -301,6 +324,72 @@ export class CloudStore implements Store {
       occurred_at: new Date(entry.timestamp).toISOString(),
     })
     if (error) throw new Error(`appendHistory failed: ${error.message}`)
+  }
+
+  // -------------------------------------------------------------------------
+  // Usage events (usage_events — append-only, opt-in write / open org read)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Append ONE aggregated usage snapshot at session end. Maps the app agent id to
+   * the agents.id uuid via agentIdMap (exactly like appendHistory). tokens is left
+   * null on purpose: TerminalUsage.contextTokens is a point-in-time context gauge,
+   * not a cumulative session-token count, so it must not be mapped into this row.
+   */
+  async appendUsage(event: UsageEventInput): Promise<void> {
+    const ctx = await this.context()
+    if (!ctx) return
+
+    const agentUuid = this.agentIdMap.get(event.agentId) ?? null
+
+    const { error } = await ctx.client.from('usage_events').insert({
+      org_id: ctx.orgId,
+      user_id: ctx.uid,
+      agent_id: agentUuid,
+      model: event.model ?? null,
+      cost_usd: event.costUsd ?? null,
+      tokens: null,
+      lines_added: event.linesAdded ?? null,
+      lines_removed: event.linesRemoved ?? null,
+      duration_ms: event.durationMs ?? null,
+      occurred_at: new Date(event.occurredAt ?? Date.now()).toISOString(),
+    })
+    if (error) throw new Error(`appendUsage failed: ${error.message}`)
+  }
+
+  /**
+   * Org-wide usage rows for the team dashboard, newest-first. RLS scopes the read
+   * to the org (any member may read — the opt-in only gates writing your own data).
+   * Returns the raw rows for client-side aggregation.
+   */
+  async loadOrgUsageStats(): Promise<UsageStats> {
+    const ctx = await this.context()
+    if (!ctx) return { rows: [], capped: false }
+
+    const LIMIT = 5000
+    const { data, error } = await ctx.client
+      .from('usage_events')
+      .select('user_id, agent_id, model, cost_usd, tokens, lines_added, lines_removed, duration_ms, occurred_at')
+      .eq('org_id', ctx.orgId)
+      .order('occurred_at', { ascending: false })
+      .limit(LIMIT)
+
+    if (error || !data) return { rows: [], capped: false }
+
+    // When the result reaches the cap the aggregated totals are partial; surface it so the UI can warn.
+    const capped = data.length === LIMIT
+    const rows = (data as UsageEventRow[]).map((r) => ({
+      userId: r.user_id,
+      agentId: r.agent_id,
+      model: r.model,
+      costUsd: toNumber(r.cost_usd),
+      tokens: r.tokens === null ? null : toNumber(r.tokens),
+      linesAdded: r.lines_added ?? 0,
+      linesRemoved: r.lines_removed ?? 0,
+      durationMs: toNumber(r.duration_ms),
+      occurredAt: r.occurred_at,
+    }))
+    return { rows, capped }
   }
 
   // -------------------------------------------------------------------------
