@@ -198,8 +198,11 @@ export function OrgPage() {
     }
   }, [deleting, deleteAccount, refresh])
 
+  // Share a web invite link (app.magic-slash.io/invite/<token>) rather than the
+  // raw token: the invitee opens it, signs up, and joins the org in one flow.
   const handleCopyToken = useCallback((token: string) => {
-    navigator.clipboard.writeText(token).then(() => {
+    const link = `https://app.magic-slash.io/invite/${token}`
+    navigator.clipboard.writeText(link).then(() => {
       setCopiedToken(token)
       setTimeout(() => setCopiedToken(null), 1500)
     }).catch(() => {})
@@ -458,10 +461,10 @@ export function OrgPage() {
                           <button
                             onClick={() => handleCopyToken(inv.token)}
                             className="flex items-center gap-1 px-2 py-0.5 text-[11px] text-text-secondary border border-white/10 rounded hover:bg-white/10 hover:text-white transition-all"
-                            title="Copy invitation token"
+                            title="Copy invitation link"
                           >
                             {copiedToken === inv.token ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                            Token
+                            {copiedToken === inv.token ? 'Copied' : 'Invite link'}
                           </button>
                         )}
                       </div>
