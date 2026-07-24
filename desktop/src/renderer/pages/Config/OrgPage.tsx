@@ -11,7 +11,7 @@ import type { GitHubAuthStatus, MembershipRole } from '../../../types'
 
 export function OrgPage() {
   const { status, loading: authLoading, logout, updatePassword, requestEmailChange, confirmEmailChange, deleteAccount } = useAuth()
-  const { org, members, invitations, loading: orgLoading, refresh, invite, removeMember, updateRole, leaveOrg, archiveOrg } = useOrg()
+  const { org, members, invitations, loading: orgLoading, refresh, invite, deleteInvitation, removeMember, updateRole, leaveOrg, archiveOrg } = useOrg()
   const { config, setConfig } = useStore()
 
   const [showLogin, setShowLogin] = useState(false)
@@ -19,6 +19,7 @@ export function OrgPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviting, setInviting] = useState(false)
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
+  const [deletingInvite, setDeletingInvite] = useState<string | null>(null)
 
   // Account management modals.
   const [showChangePassword, setShowChangePassword] = useState(false)
@@ -207,6 +208,18 @@ export function OrgPage() {
       setTimeout(() => setCopiedToken(null), 1500)
     }).catch(() => {})
   }, [])
+
+  const handleDeleteInvitation = useCallback(async (id: string) => {
+    setDeletingInvite(id)
+    try {
+      await deleteInvitation(id)
+      showToast('Invitation deleted', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to delete invitation', 'error')
+    } finally {
+      setDeletingInvite(null)
+    }
+  }, [deleteInvitation])
 
   const handleAtlassianToggle = useCallback(async () => {
     const next = !atlassianEnabled
@@ -467,6 +480,14 @@ export function OrgPage() {
                             {copiedToken === inv.token ? 'Copied' : 'Invite link'}
                           </button>
                         )}
+                        <button
+                          onClick={() => handleDeleteInvitation(inv.id)}
+                          disabled={deletingInvite === inv.id}
+                          className="flex items-center justify-center p-1 text-text-secondary/60 rounded hover:text-red hover:bg-red/10 transition-colors disabled:opacity-50"
+                          title="Delete invitation"
+                        >
+                          {deletingInvite === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
                       </div>
                     ))}
                   </div>

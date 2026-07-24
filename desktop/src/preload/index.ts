@@ -483,6 +483,8 @@ const orgApi = {
   invitations: (): Promise<Invitation[]> => ipcRenderer.invoke('org:invitations'),
   invite: (email: string, role?: MembershipRole): Promise<Invitation> =>
     ipcRenderer.invoke('org:invite', { email, role }),
+  deleteInvitation: (id: string): Promise<void> =>
+    ipcRenderer.invoke('org:deleteInvitation', { id }),
   accept: (token: string): Promise<{ orgId: string; config: Config }> =>
     ipcRenderer.invoke('org:accept', { token }),
   applySharedConfig: (): Promise<Config> => ipcRenderer.invoke('org:applyShared'),

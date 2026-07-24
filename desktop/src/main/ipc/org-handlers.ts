@@ -7,6 +7,7 @@ import {
   listMembers,
   listInvitations,
   createInvitation,
+  deleteInvitation,
   acceptInvitation,
   applySharedConfig,
   setOrgSharedConfig,
@@ -56,6 +57,10 @@ export function setupOrgHandlers(): void {
 
   ipcMain.handle('org:invite', async (_event, { email, role }: InviteArgs): Promise<Invitation> =>
     createInvitation(email, role ?? 'user'),
+  )
+
+  ipcMain.handle('org:deleteInvitation', async (_event, { id }: { id: string }): Promise<void> =>
+    deleteInvitation(id),
   )
 
   ipcMain.handle('org:accept', async (_event, { token }: AcceptArgs): Promise<AcceptInvitationResult> =>

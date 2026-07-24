@@ -57,6 +57,14 @@ export function useOrg() {
     [refresh],
   )
 
+  const deleteInvitation = useCallback(
+    async (id: string) => {
+      await window.electronAPI.org.deleteInvitation(id)
+      await refresh()
+    },
+    [refresh],
+  )
+
   const accept = useCallback(
     async (token: string) => {
       const result = await window.electronAPI.org.accept(token)
@@ -117,6 +125,7 @@ export function useOrg() {
     loading,
     refresh,
     invite,
+    deleteInvitation,
     accept,
     removeMember,
     updateRole,

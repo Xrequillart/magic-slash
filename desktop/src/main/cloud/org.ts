@@ -278,6 +278,15 @@ export async function listInvitations(orgId?: string): Promise<Invitation[]> {
   }))
 }
 
+/** Delete an invitation by id (admin only — RLS enforces the admin gate on DELETE). */
+export async function deleteInvitation(id: string): Promise<void> {
+  const client = await getAuthedClient()
+  if (!client) throw new Error('Cloud features are not available')
+
+  const { error } = await client.from('invitations').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
 export interface AcceptInvitationResult {
   orgId: string
   config: Config
