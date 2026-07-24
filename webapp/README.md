@@ -28,10 +28,11 @@ npm run dev                        # http://localhost:3000
 
 ## Routes
 
-- `/` — landing + download CTA
-- `/invite/[token]` — invitation funnel: preview org → sign up (or sign in) →
-  accept the invitation → download the app
-- `/download` — download the desktop app (macOS)
+- `/` — login (redirects to `/dashboard` when already signed in)
+- `/dashboard` — signed-in home: your organizations + sign out
+- `/organization` — org detail: members (via `list_org_members`), role, org switcher
+- `/invite/[token]` — public invitation funnel: preview org → sign up (or sign in)
+  → accept the invitation (then a link to download the desktop app)
 
 ## Supabase surface used
 

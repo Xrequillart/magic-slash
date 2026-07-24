@@ -10,6 +10,7 @@ const config: Config = {
         ink: '#0a0a0a',
         muted: '#52525b',
         softblue: '#D9E8FF',
+        canvas: '#F4F7FE',
         accent: {
           DEFAULT: '#6366f1',
           hover: '#818cf8',

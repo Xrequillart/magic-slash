@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { getSupabase } from '@/lib/supabase'
 
 interface InvitationPreview {
@@ -20,6 +19,8 @@ function isAlreadyRegistered(message: string): boolean {
   const m = message.toLowerCase()
   return m.includes('already registered') || m.includes('already been registered') || m.includes('user already exists')
 }
+
+const DOWNLOAD_URL = 'https://github.com/xrequillart/magic-slash/releases/latest'
 
 const UNAVAILABLE_COPY: Record<string, string> = {
   accepted: 'This invitation has already been accepted. Just download the app and sign in.',
@@ -145,12 +146,14 @@ export default function InvitePage({ params }: { params: { token: string } }) {
                 {UNAVAILABLE_COPY[preview.status] ?? 'This invitation can no longer be used.'}
               </p>
               {preview.status === 'accepted' && (
-                <Link
-                  href="/download"
+                <a
+                  href={DOWNLOAD_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="mt-6 inline-block rounded-full bg-ink px-6 py-3 font-display text-sm font-medium text-white transition-colors hover:bg-black/80"
                 >
                   Download the app
-                </Link>
+                </a>
               )}
             </div>
           )}
@@ -220,12 +223,14 @@ export default function InvitePage({ params }: { params: { token: string } }) {
                 You&apos;ve joined <span className="font-medium text-ink">{preview.org_name}</span>.
                 Download the app and sign in with your new account to get started.
               </p>
-              <Link
-                href="/download"
+              <a
+                href={DOWNLOAD_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="mt-6 inline-block rounded-full bg-ink px-6 py-3 font-display text-sm font-medium text-white transition-colors hover:bg-black/80"
               >
                 Download the app
-              </Link>
+              </a>
             </div>
           )}
         </div>
