@@ -35,7 +35,6 @@ export default function InvitePage({ params }: { params: { token: string } }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Load the anon-readable preview (org name, invited email, effective status).
   useEffect(() => {
     let active = true
     ;(async () => {
@@ -69,8 +68,6 @@ export default function InvitePage({ params }: { params: { token: string } }) {
     const email = preview.email
 
     try {
-      // 1. Establish a session: sign up (invitees create no org), or sign in if
-      //    an account with this email already exists.
       const signUp = await supabase.auth.signUp({ email, password })
       if (signUp.error) {
         if (isAlreadyRegistered(signUp.error.message)) {
@@ -86,13 +83,11 @@ export default function InvitePage({ params }: { params: { token: string } }) {
           return
         }
       } else if (!signUp.data.session) {
-        // No session → email confirmation is required on this project.
         setError('Check your inbox to confirm your email, then reopen this link to finish.')
         setSubmitting(false)
         return
       }
 
-      // 2. Accept the invitation (requires the session established above).
       const { error: acceptError } = await supabase.rpc('accept_invitation', {
         invitation_token: token,
       })
@@ -110,112 +105,131 @@ export default function InvitePage({ params }: { params: { token: string } }) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6">
-      <div className="w-full rounded-2xl border border-border bg-bg-secondary p-8 shadow-2xl">
-        {phase === 'loading' && (
-          <p className="text-center text-text-secondary">Loading your invitation…</p>
-        )}
+    <main className="flex min-h-screen">
+      {/* Left — illustration */}
+      <aside className="hidden w-1/2 flex-col items-center justify-center bg-softblue px-12 lg:flex">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="absolute left-10 top-8 h-7" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/img/mascot-peace.png" alt="" className="w-64 drop-shadow-xl" />
+        <h2 className="mt-10 max-w-sm text-center font-display text-3xl font-black leading-tight text-ink">
+          Your team is waiting for you.
+        </h2>
+        <p className="mt-3 max-w-sm text-center text-muted">
+          Join your organization on Magic Slash and start shipping with your AI dev agents.
+        </p>
+      </aside>
 
-        {phase === 'invalid' && (
-          <div className="text-center">
-            <h1 className="text-xl font-semibold">Invitation not found</h1>
-            <p className="mt-2 text-sm text-text-secondary">
-              This invitation link is invalid. Ask an admin to send you a new one.
-            </p>
-          </div>
-        )}
+      {/* Right — form */}
+      <section className="flex w-full flex-col items-center justify-center px-6 py-12 lg:w-1/2">
+        {/* mobile logo */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="mb-10 h-7 lg:hidden" />
 
-        {phase === 'unavailable' && preview && (
-          <div className="text-center">
-            <h1 className="text-xl font-semibold">Invitation unavailable</h1>
-            <p className="mt-2 text-sm text-text-secondary">
-              {UNAVAILABLE_COPY[preview.status] ?? 'This invitation can no longer be used.'}
-            </p>
-            {preview.status === 'accepted' && (
+        <div className="w-full max-w-sm">
+          {phase === 'loading' && <p className="text-center text-muted">Loading your invitation…</p>}
+
+          {phase === 'invalid' && (
+            <div className="text-center">
+              <h1 className="font-display text-2xl font-black text-ink">Invitation not found</h1>
+              <p className="mt-2 text-sm text-muted">
+                This invitation link is invalid. Ask an admin to send you a new one.
+              </p>
+            </div>
+          )}
+
+          {phase === 'unavailable' && preview && (
+            <div className="text-center">
+              <h1 className="font-display text-2xl font-black text-ink">Invitation unavailable</h1>
+              <p className="mt-2 text-sm text-muted">
+                {UNAVAILABLE_COPY[preview.status] ?? 'This invitation can no longer be used.'}
+              </p>
+              {preview.status === 'accepted' && (
+                <Link
+                  href="/download"
+                  className="mt-6 inline-block rounded-full bg-ink px-6 py-3 font-display text-sm font-medium text-white transition-colors hover:bg-black/80"
+                >
+                  Download the app
+                </Link>
+              )}
+            </div>
+          )}
+
+          {phase === 'ready' && preview && (
+            <>
+              <div className="mb-8">
+                <span className="inline-flex items-center rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+                  {preview.role === 'admin' ? 'Admin invitation' : 'Team invitation'}
+                </span>
+                <h1 className="mt-4 font-display text-3xl font-black leading-tight text-ink">
+                  Join <span className="text-brand">{preview.org_name}</span>
+                </h1>
+                <p className="mt-2 text-sm text-muted">
+                  Create your Magic Slash account to accept this invitation.
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted">Email</label>
+                  <input
+                    type="email"
+                    value={preview.email}
+                    readOnly
+                    className="w-full cursor-not-allowed rounded-xl border border-black/10 bg-black/[0.03] px-3.5 py-2.5 text-sm text-muted"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted">Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    autoFocus
+                    placeholder="At least 8 characters"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-accent"
+                  />
+                </div>
+
+                {error && (
+                  <div className="rounded-xl border border-red/20 bg-red/5 px-3.5 py-2.5 text-xs text-red">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={submitting || password.length < 8}
+                  className="w-full rounded-full bg-ink px-4 py-3 font-display text-sm font-medium text-white transition-colors hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {submitting ? 'Joining…' : `Accept & join ${preview.org_name}`}
+                </button>
+              </form>
+            </>
+          )}
+
+          {phase === 'done' && preview && (
+            <div className="text-center">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-green/10 text-3xl text-green">
+                ✓
+              </div>
+              <h1 className="font-display text-3xl font-black text-ink">You&apos;re in!</h1>
+              <p className="mt-2 text-sm text-muted">
+                You&apos;ve joined <span className="font-medium text-ink">{preview.org_name}</span>.
+                Download the app and sign in with your new account to get started.
+              </p>
               <Link
                 href="/download"
-                className="mt-6 inline-block rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+                className="mt-6 inline-block rounded-full bg-ink px-6 py-3 font-display text-sm font-medium text-white transition-colors hover:bg-black/80"
               >
                 Download the app
               </Link>
-            )}
-          </div>
-        )}
-
-        {phase === 'ready' && preview && (
-          <>
-            <div className="mb-6 text-center">
-              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-xs font-medium text-accent">
-                {preview.role === 'admin' ? 'Admin invitation' : 'Team invitation'}
-              </div>
-              <h1 className="text-xl font-semibold">
-                Join <span className="text-accent">{preview.org_name}</span>
-              </h1>
-              <p className="mt-2 text-sm text-text-secondary">
-                Create your Magic Slash account to accept this invitation.
-              </p>
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-text-secondary">Email</label>
-                <input
-                  type="email"
-                  value={preview.email}
-                  readOnly
-                  className="w-full cursor-not-allowed rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-sm text-text-secondary"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-text-secondary">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  autoFocus
-                  placeholder="At least 8 characters"
-                  className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-sm text-white focus:border-accent focus:outline-none"
-                />
-              </div>
-
-              {error && (
-                <div className="rounded-lg border border-red/30 bg-red/10 px-3 py-2 text-xs text-red">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={submitting || password.length < 8}
-                className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {submitting ? 'Joining…' : `Accept & join ${preview.org_name}`}
-              </button>
-            </form>
-          </>
-        )}
-
-        {phase === 'done' && preview && (
-          <div className="text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green/15 text-2xl text-green">
-              ✓
-            </div>
-            <h1 className="text-xl font-semibold">You&apos;re in!</h1>
-            <p className="mt-2 text-sm text-text-secondary">
-              You&apos;ve joined <span className="text-white">{preview.org_name}</span>. Download the
-              app and sign in with your new account to get started.
-            </p>
-            <Link
-              href="/download"
-              className="mt-6 inline-block rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
-            >
-              Download the app
-            </Link>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </section>
     </main>
   )
 }

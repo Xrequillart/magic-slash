@@ -1,0 +1,47 @@
+@font-face {
+  font-family: "Avenir";
+  src: url("Avenir-Black.eot");
+  src: url("Avenir-Black.woff2") format("woff2"),
+    url("Avenir-Black.woff") format("woff"),
+    url("Avenir-Black.ttf") format("truetype"),
+    url("Avenir-Black.svg#Avenir-Black") format("svg"),
+    url("Avenir-Black.eot?#iefix") format("embedded-opentype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Avenir";
+  src: url("Avenir-Heavy.eot");
+  src: url("Avenir-Heavy.woff2") format("woff2"),
+    url("Avenir-Heavy.woff") format("woff"),
+    url("Avenir-Heavy.ttf") format("truetype"),
+    url("Avenir-Heavy.svg#Avenir-Heavy") format("svg"),
+    url("Avenir-Heavy.eot?#iefix") format("embedded-opentype");
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Avenir";
+  src: url("Avenir-Medium.eot");
+  src: url("Avenir-Medium.woff2") format("woff2"),
+    url("Avenir-Medium.woff") format("woff"),
+    url("Avenir-Medium.ttf") format("truetype"),
+    url("Avenir-Medium.svg#Avenir-Medium") format("svg"),
+    url("Avenir-Medium.eot?#iefix") format("embedded-opentype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Avenir";
+  src: url("Avenir-Book.eot");
+  src: url("Avenir-Book.woff2") format("woff2"),
+    url("Avenir-Book.woff") format("woff"),
+    url("Avenir-Book.ttf") format("truetype"),
+    url("Avenir-Book.svg#Avenir-Book") format("svg"),
+    url("Avenir-Book.eot?#iefix") format("embedded-opentype");
+  font-weight: 400;
+  font-style: normal;
+}

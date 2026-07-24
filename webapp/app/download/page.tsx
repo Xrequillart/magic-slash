@@ -3,9 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-// Where the binaries come from is still TBD (see plan). For now we link to the
-// GitHub Releases "latest" page, which the release CI already publishes. Swap
-// RELEASES_URL (or wire the Releases API for a direct .dmg) when finalized.
+// Where the binaries come from is still TBD. For now we link to the GitHub
+// Releases "latest" page, which the release CI already publishes.
 const RELEASES_URL = 'https://github.com/xrequillart/magic-slash/releases/latest'
 
 export default function Download() {
@@ -17,15 +16,17 @@ export default function Download() {
   }, [])
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-6 text-center">
-      <h1 className="text-3xl font-semibold tracking-tight">Download Magic Slash</h1>
-      <p className="mt-3 text-text-secondary">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-softblue px-6 text-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/img/mascot.png" alt="" className="mb-8 w-32 drop-shadow-xl" />
+      <h1 className="font-display text-4xl font-black tracking-tight text-ink">Download Magic Slash</h1>
+      <p className="mt-3 max-w-md text-muted">
         The desktop app for macOS (Apple Silicon). Download, open, and sign in — your team
         membership is already set up.
       </p>
 
       {isMac === false && (
-        <div className="mt-5 rounded-lg border border-yellow/30 bg-yellow/10 px-4 py-2 text-sm text-yellow">
+        <div className="mt-5 rounded-xl border border-yellow/30 bg-yellow/10 px-4 py-2 text-sm text-yellow">
           Magic Slash is currently macOS-only. Open this page on a Mac to install it.
         </div>
       )}
@@ -34,12 +35,12 @@ export default function Download() {
         href={RELEASES_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-8 rounded-lg bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+        className="mt-8 rounded-full bg-ink px-7 py-3.5 font-display text-sm font-medium text-white transition-colors hover:bg-black/80"
       >
         Download for macOS
       </a>
 
-      <Link href="/" className="mt-6 text-sm text-text-secondary transition-colors hover:text-white">
+      <Link href="/" className="mt-6 text-sm text-muted transition-colors hover:text-ink">
         ← Back
       </Link>
     </main>

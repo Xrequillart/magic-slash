@@ -1,32 +1,28 @@
 import type { Config } from 'tailwindcss'
 
-// magic-slash product brand — dark theme + indigo accent. Mirrors
-// desktop/tailwind.config.cjs so app.magic-slash.io matches the desktop app.
+// Light theme matching the /docs landing page: soft-blue canvas, black text,
+// Cera Pro (display) + Avenir (body), indigo/brand-blue accents.
 const config: Config = {
-  content: [
-    './app/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-  ],
+  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        bg: {
-          DEFAULT: '#0a0a0b',
-          secondary: '#141416',
-          tertiary: '#1c1c1f',
-        },
+        ink: '#0a0a0a',
+        muted: '#52525b',
+        softblue: '#D9E8FF',
         accent: {
           DEFAULT: '#6366f1',
           hover: '#818cf8',
         },
+        brand: '#393BFF',
         purple: '#a855f7',
         green: '#22c55e',
         red: '#ef4444',
         yellow: '#eab308',
-        blue: '#3b82f6',
-        orange: '#f97316',
-        border: '#27272a',
-        'text-secondary': '#a1a1aa',
+      },
+      fontFamily: {
+        sans: ['Avenir', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"Cera Pro"', 'system-ui', 'sans-serif'],
       },
     },
   },
