@@ -140,6 +140,12 @@ export function pickUpTask(ticketId: string, repositories: string[]): PickUpTask
   if (typeof ticketId !== 'string' || ticketId.trim().length === 0) {
     throw new Error('pickUpTask requires a ticketId')
   }
+  // ticketId comes from agents.ticket_id, which any org member can write. It is
+  // embedded in initialPrompt and may later be typed into a PTY, so reject
+  // control characters (newline/CR/NUL) that could inject a second command.
+  if (/[\r\n\0]/.test(ticketId)) {
+    throw new Error('pickUpTask received a ticketId with illegal control characters')
+  }
   const localRepos = Object.values(readConfig().repositories ?? {})
   const baseName = (p: string) => path.basename(p.replace(/[/\\]+$/, ''))
 

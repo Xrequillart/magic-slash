@@ -72,7 +72,10 @@ export function setupReengagementNotifications(
   }
 
   const unsubscribe = addOrgAgentChangeListener((change: OrgAgentChange) => {
-    myId = loadSession()?.user?.id ?? myId
+    // Re-read per event, letting myId go undefined on sign-out (the !myId guard
+    // below then short-circuits) — no stale fallback that would keep firing
+    // under the former identity while the channel is briefly still connected.
+    myId = loadSession()?.user?.id
     void ensureSeeded()
     if (!myId) return
 

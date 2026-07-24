@@ -17,6 +17,16 @@ vi.mock(import('../config/config'), async (importOriginal) => ({
   readConfig: vi.fn(() => ({ repositories: h.repositories }) as unknown as Config),
 }))
 
+// Importing ./org pulls its module graph, which reaches packages that are not
+// resolvable when the suite runs from the repo root (@supabase/supabase-js via
+// ./auth -> ./supabase-client, and electron via ./session-store). Stub every
+// heavy sibling module ./org imports so none of their transitive imports load —
+// pickUpTask depends on none of them (only readConfig + expandPath).
+vi.mock('./auth', () => ({ getAuthedClient: vi.fn() }))
+vi.mock('./session-store', () => ({ loadSession: vi.fn() }))
+vi.mock('./realtime', () => ({ startOrgAgentsRealtime: vi.fn() }))
+vi.mock('../store/Store', () => ({ getStore: vi.fn() }))
+
 import { pickUpTask } from './org'
 
 // Build a repositories map keyed by name from a list of paths.

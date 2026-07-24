@@ -30,6 +30,10 @@ export function msUntilNextDigest(now: Date = new Date()): number {
 
 export class DailyDigestScheduler {
   private timer: ReturnType<typeof setTimeout> | null = null
+  // Once stopped (e.g. at app quit), arm() is a no-op. This prevents fire()'s
+  // finally block from resurrecting a zombie timer if stop() lands while fire()
+  // is mid-await.
+  private stopped = false
   private showNotification: (title: string, body: string) => void
 
   constructor(showNotification: (title: string, body: string) => void) {
@@ -37,10 +41,12 @@ export class DailyDigestScheduler {
   }
 
   start(): void {
+    this.stopped = false
     this.arm()
   }
 
   stop(): void {
+    this.stopped = true
     if (this.timer) {
       clearTimeout(this.timer)
       this.timer = null
@@ -53,7 +59,11 @@ export class DailyDigestScheduler {
   }
 
   private arm(): void {
-    this.stop()
+    if (this.stopped) return
+    if (this.timer) {
+      clearTimeout(this.timer)
+      this.timer = null
+    }
     this.timer = setTimeout(() => {
       void this.fire()
     }, msUntilNextDigest())
