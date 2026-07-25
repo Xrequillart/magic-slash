@@ -204,7 +204,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
   const [showBypassWarning, setShowBypassWarning] = useState(false)
   const [historyEnabled, setHistoryEnabled] = useState(config?.historyEnabled ?? true)
-  const [usageCardEnabled, setUsageCardEnabled] = useState(config?.usageCardEnabled ?? false)
+  const [usageCardEnabled, setUsageCardEnabled] = useState(config?.usageCardEnabled ?? true)
   const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? false)
   const [dailyDigestEnabled, setDailyDigestEnabled] = useState(config?.dailyDigest?.enabled ?? false)
   const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)

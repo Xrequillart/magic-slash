@@ -97,8 +97,9 @@ User-scoped tables (own-rows-only RLS, independent of any org):
 
 `user_settings` deliberately holds one **nullable** column per option. NULL means
 "the user never chose", which the desktop app distinguishes from `false` — e.g.
-history is ON when unset, and `auto_start_at_login` only touches the macOS login
-item once explicitly set. Defaults live in the app, not the schema.
+history and the sidebar usage card are both ON when unset, while
+`auto_start_at_login` only touches the macOS login item once explicitly set.
+Defaults live in the app, not the schema.
 
 `skill_invocations` and `activity_events` answer different questions and are both
 needed. `activity_events` records status **transitions** (the app only writes when

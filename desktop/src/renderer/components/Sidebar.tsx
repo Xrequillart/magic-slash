@@ -594,8 +594,8 @@ export function Sidebar() {
         </>
       )}
 
-      {/* Claude usage card */}
-      {config?.usageCardEnabled && <SidebarUsageCard />}
+      {/* Claude usage card — opt-out: shown unless explicitly disabled. */}
+      {config?.usageCardEnabled !== false && <SidebarUsageCard />}
 
       {/* Footer */}
       <div className="px-4 py-2 text-xs text-text-secondary flex items-center justify-start gap-2">
