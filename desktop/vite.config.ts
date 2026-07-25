@@ -34,7 +34,14 @@ export default defineConfig(({ mode }) => {
             outDir: 'dist/main',
             minify: 'esbuild',
             rollupOptions: {
-              external: ['electron', 'node-pty'],
+              // bufferutil / utf-8-validate are OPTIONAL native speed-ups that
+              // `ws` requires inside a try/catch. Bundling turns that guarded
+              // require into a hard import, and rollup then emits a stub that
+              // throws "Could not resolve …" the moment dist/main/index.js
+              // loads — the app dies at boot. Keeping them external leaves a
+              // plain runtime require that ws's catch handles (it falls back to
+              // its pure-JS path), exactly as in an unbundled install.
+              external: ['electron', 'node-pty', 'bufferutil', 'utf-8-validate'],
               output: {
                 format: 'cjs',
               }
