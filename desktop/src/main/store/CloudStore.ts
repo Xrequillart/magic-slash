@@ -244,7 +244,9 @@ const SHARED_KEYS = ['languages', 'commit', 'pullRequest', 'repoKeywords'] as co
 /**
  * Single Supabase-backed Store implementation. Config, agents and history all
  * live in the database — nothing is persisted locally. Reads/writes are scoped
- * to the current user's active organization.
+ * to the current user's active organization, and the per-user data inside it
+ * (config, agents, activity) is additionally scoped to the signed-in user: only
+ * the explicitly org-wide readers (loadOrgAgents, loadOrgUsageStats) span members.
  */
 export class CloudStore implements Store {
   private activeOrgId: string | undefined
@@ -634,6 +636,14 @@ export class CloudStore implements Store {
     }
   }
 
+  /**
+   * The caller's OWN agents in the active org. Scoped by owner_id as well as
+   * org_id: RLS lets any member SELECT every agent of the org (the team dashboard
+   * needs that — see loadOrgAgents), but this list drives local terminal
+   * restoration, so it must never hand one member's agents to another. Rows whose
+   * owner_id was nulled by the membership FK (an ex-member's agents) belong to
+   * nobody and are deliberately excluded.
+   */
   async loadAgents(): Promise<Agent[]> {
     const ctx = await this.context()
     if (!ctx) return []
@@ -642,6 +652,7 @@ export class CloudStore implements Store {
       .from('agents')
       .select('id, org_id, owner_id, name, ticket_id, description, branch_name, base_branch, status, repositories, metadata, updated_at')
       .eq('org_id', ctx.orgId)
+      .eq('owner_id', ctx.uid)
 
     if (error || !data) return []
 
@@ -663,10 +674,16 @@ export class CloudStore implements Store {
 
     const desired = new Set(agents.map((a) => a.id))
 
-    // Delete rows whose app agent id no longer exists locally.
+    // Delete rows whose app agent id no longer exists locally. Scoped by owner_id
+    // as well: closing an agent must never reach a teammate's row.
     for (const [appId, uuid] of [...this.agentIdMap.entries()]) {
       if (!desired.has(appId)) {
-        const { error } = await ctx.client.from('agents').delete().eq('org_id', ctx.orgId).eq('id', uuid)
+        const { error } = await ctx.client
+          .from('agents')
+          .delete()
+          .eq('org_id', ctx.orgId)
+          .eq('owner_id', ctx.uid)
+          .eq('id', uuid)
         if (error) throw new Error(`saveAgents (delete) failed: ${error.message}`)
         this.agentIdMap.delete(appId)
         this.agentNameByUuid.delete(uuid)
@@ -709,6 +726,12 @@ export class CloudStore implements Store {
   // History (activity_events — append-only, read-limited)
   // -------------------------------------------------------------------------
 
+  /**
+   * The caller's OWN activity feed. Scoped by user_id for the same reason as
+   * loadAgents: RLS exposes the whole org's events, but the History page is a
+   * personal feed and agent names resolve from the caller's own agents cache, so
+   * a teammate's events would render name-less anyway.
+   */
   async loadHistory(limit: number): Promise<HistoryEntry[]> {
     const ctx = await this.context()
     if (!ctx) return []
@@ -717,6 +740,7 @@ export class CloudStore implements Store {
       .from('activity_events')
       .select('id, agent_id, action, ticket_id, description, repositories, occurred_at')
       .eq('org_id', ctx.orgId)
+      .eq('user_id', ctx.uid)
       .order('occurred_at', { ascending: false })
       .limit(limit)
 

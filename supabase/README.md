@@ -78,7 +78,7 @@ Org-scoped tables (isolation keyed on `org_id`):
 | `organizations`   | Tenant boundary; every other table is scoped to an org.             |
 | `memberships`     | Which users belong to which org, with a `user`/`admin` role.        |
 | `invitations`     | Pending invites to join an org (token + status lifecycle).          |
-| `agents`          | Units of work (ticket/branch/repos), shareable across the org.      |
+| `agents`          | Units of work (ticket/branch/repos): org-readable, owner-writable.  |
 | `skills`          | Org-level custom skills (unique name per org).                      |
 | `configs`         | Per-user configuration blob, scoped to a single org.                |
 | `usage_events`    | Append-only usage/billing telemetry (cost, tokens, lines, timing).  |
@@ -118,9 +118,18 @@ goes through the service role, since RLS keeps each row private to its user.
 - Every `INSERT`/`UPDATE` policy uses `WITH CHECK`, so a user can never write a
   row tagged with another org's `id`.
 - **Admin-gated** writes: `memberships`, `invitations`, and `skills` mutations
-  require the `admin` role. `agents` are writable by any org member. `configs`
-  are private to their owning user. `usage_events` and `activity_events` are
-  append-only (select + insert, no update/delete).
+  require the `admin` role. `configs` are private to their owning user.
+  `usage_events` and `activity_events` are append-only (select + insert, no
+  update/delete).
+- `agents` are **org-readable but owner-writable**: any member may `SELECT` every
+  agent of the org (the team dashboard's "who is working on what" and the
+  Realtime feed depend on it), while `INSERT`/`UPDATE`/`DELETE` are gated to
+  `owner_id = auth.uid()` via `can_write_agent()`. Org admins additionally get
+  writes on owner-*less* rows only — the state the
+  `(org_id, owner_id) → memberships` FK leaves behind when a member is removed —
+  so an ex-member's agents stay cleanable and adoptable. The desktop app mirrors
+  this on read: `loadAgents()` (local terminal restoration) filters on
+  `owner_id`, and only `loadOrgAgents()` spans members.
 - Both user-scoped tables added for settings reference `auth.users` with
   `ON DELETE CASCADE`, so `delete_account()` removes them with the user row — no
   change to that RPC was needed.

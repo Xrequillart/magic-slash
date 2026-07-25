@@ -218,6 +218,101 @@ describe('appendUsage', () => {
   })
 })
 
+// ── agents (per-user scoping) ───────────────────────────────────────────────
+
+describe('agents', () => {
+  const agentRow = (id: string, appId: string, owner: string) => ({
+    id,
+    org_id: ORG,
+    owner_id: owner,
+    name: `Agent ${appId}`,
+    ticket_id: null,
+    description: null,
+    branch_name: null,
+    base_branch: null,
+    status: null,
+    repositories: [],
+    metadata: { __app: { id: appId } },
+  })
+
+  it('loadAgents scopes the select to the caller, not just the org', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [agentRow('uuid-1', 'claude-1', UID)], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents()
+
+    const agentCalls = calls.filter((c) => c.table === 'agents' && c.method === 'eq')
+    expect(agentCalls).toEqual([
+      { table: 'agents', method: 'eq', args: ['org_id', ORG] },
+      { table: 'agents', method: 'eq', args: ['owner_id', UID] },
+    ])
+  })
+
+  it('saveAgents scopes the reconciliation delete to the caller', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [agentRow('uuid-1', 'claude-1', UID)], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents() // populates agentIdMap with claude-1 → uuid-1
+    await store.saveAgents([]) // claude-1 is gone locally → its row is deleted
+
+    // The delete must carry owner_id so it can never reach a teammate's row.
+    const deleteIndex = calls.findIndex((c) => c.table === 'agents' && c.method === 'delete')
+    expect(deleteIndex).toBeGreaterThan(-1)
+    expect(calls.slice(deleteIndex).filter((c) => c.method === 'eq')).toEqual([
+      { table: 'agents', method: 'eq', args: ['org_id', ORG] },
+      { table: 'agents', method: 'eq', args: ['owner_id', UID] },
+      { table: 'agents', method: 'eq', args: ['id', 'uuid-1'] },
+    ])
+  })
+
+  it('saveAgents stamps the caller as owner on every upserted row', async () => {
+    const { client, upserts } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.saveAgents([{ id: 'claude-1', name: 'Agent A', repositories: [] } as Agent])
+
+    const rows = upserts.agents[0] as Array<Record<string, unknown>>
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ org_id: ORG, owner_id: UID, name: 'Agent A' })
+  })
+})
+
+// ── loadHistory (per-user scoping) ──────────────────────────────────────────
+
+describe('loadHistory', () => {
+  it('scopes the activity feed to the caller, not just the org', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      activity_events: { data: [], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadHistory(500)
+
+    const historyCalls = calls.filter((c) => c.table === 'activity_events')
+    expect(historyCalls).toEqual(
+      expect.arrayContaining([
+        { table: 'activity_events', method: 'eq', args: ['org_id', ORG] },
+        { table: 'activity_events', method: 'eq', args: ['user_id', UID] },
+        { table: 'activity_events', method: 'limit', args: [500] },
+      ]),
+    )
+  })
+})
+
 // ── loadOrgUsageStats ───────────────────────────────────────────────────────
 
 describe('loadOrgUsageStats', () => {
