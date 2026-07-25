@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.52.1] - 2026-07-25
+
+### Added
+
+- **Desktop**: Land on agents page with the top agent selected
+
+### Changed
+
+- **Desktop**: Remove every backdrop-filter to fix scroll stutter
+- **Desktop**: Render usage percentages in cera pro
+
+### Fixed
+
+- **Desktop**: Keep ws optional native deps out of the main bundle
+- **Desktop**: Give realtime a ws transport so the team feed connects
+
 ## [0.52.0] - 2026-07-25
 
 ### Added
@@ -1528,6 +1544,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.52.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.52.1
 [0.52.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.52.0
 [0.51.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.51.0
 [0.50.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.50.1
