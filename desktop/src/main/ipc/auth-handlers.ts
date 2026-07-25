@@ -13,6 +13,8 @@ import {
   deleteAccount,
 } from '../cloud/auth'
 import { resetHydration } from '../store/hydrate'
+import { refreshConnectivity } from './connectivity-handlers'
+import { teardownAgentSessions } from './terminal-handlers'
 
 interface LoginArgs { email: string; password: string }
 interface SignUpArgs { email: string; password: string; orgName?: string; invitationToken?: string }
@@ -25,6 +27,21 @@ interface ConfirmEmailChangeArgs { newEmail: string; code: string }
 export function setupAuthHandlers(getMainWindow: () => BrowserWindow | null): void {
   const emit = (status: AuthStatus) => {
     getMainWindow()?.webContents.send('auth:statusChanged', status)
+  }
+
+  /**
+   * Everything that must happen when the app loses its session from the inside
+   * (sign-out, account deletion). Ordered on purpose:
+   *  1. drop the cached config/agents/history so nothing of this user is left,
+   *  2. kill the running agent sessions — they belong to the account,
+   *  3. re-probe the gate so the renderer swaps to the login wall IMMEDIATELY
+   *     instead of at the next 20s poll. That probe also resets the restore
+   *     guard and tears the realtime channel down.
+   */
+  const teardownSession = async (): Promise<void> => {
+    resetHydration()
+    teardownAgentSessions()
+    await refreshConnectivity()
   }
 
   ipcMain.handle('auth:status', async (): Promise<AuthStatus> => getStatus())
@@ -43,8 +60,7 @@ export function setupAuthHandlers(getMainWindow: () => BrowserWindow | null): vo
 
   ipcMain.handle('auth:logout', async (): Promise<AuthStatus> => {
     const status = await signOut()
-    // Clear cached config/agents/history so the next user starts clean.
-    resetHydration()
+    await teardownSession()
     emit(status)
     return status
   })
@@ -77,7 +93,7 @@ export function setupAuthHandlers(getMainWindow: () => BrowserWindow | null): vo
   // Account deletion (GDPR) — signs the user out; emit the logged-out transition.
   ipcMain.handle('auth:deleteAccount', async (): Promise<AuthStatus> => {
     const status = await deleteAccount()
-    resetHydration()
+    await teardownSession()
     emit(status)
     return status
   })

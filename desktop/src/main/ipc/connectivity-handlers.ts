@@ -17,6 +17,26 @@ import {
 let restoredOnce = false
 
 /**
+ * The gate probe, captured at setup so other IPC paths can drive it. Null until
+ * setupConnectivityHandlers() has run.
+ */
+let runCheck: (() => Promise<ConnectivityStatus>) | null = null
+
+/**
+ * Re-run the gate probe NOW and push the result to the renderer.
+ *
+ * The renderer only polls `connectivity:check` every 20s (and on window focus),
+ * so an auth transition triggered from inside the app — signing out from
+ * Settings, deleting the account — would otherwise leave the app rendering as if
+ * still signed in until the next poll. Calling this makes the renderer's gate
+ * flip immediately (and runs the same 'unauthorized' teardown as any other
+ * probe). No-op before the handlers are set up.
+ */
+export async function refreshConnectivity(): Promise<void> {
+  await runCheck?.()
+}
+
+/**
  * Connectivity + hydration gate for the main process. The renderer polls
  * `connectivity:check` (on an interval, on window focus, and before mutating
  * calls); the whole app is blocked in the renderer until this reports 'ok'.
@@ -81,6 +101,8 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
     getMainWindow()?.webContents.send('connectivity:statusChanged', status)
     return status
   }
+
+  runCheck = check
 
   ipcMain.handle('connectivity:check', async (): Promise<ConnectivityStatus> => check())
 

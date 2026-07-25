@@ -68,6 +68,7 @@ interface AppState {
   updateTerminalMetadata: (id: string, metadata: Partial<TerminalMetadata>) => void
   updateTerminalRepositories: (id: string, repositories: string[]) => void
   removeTerminal: (id: string) => void
+  clearTerminals: () => void
   setActiveTerminal: (id: string | null) => void
   setSplitTerminalId: (id: string | null) => void
   setFocusedPane: (pane: 'primary' | 'secondary') => void
@@ -209,6 +210,22 @@ export const useStore = create<AppState>()(
                 state.splitTerminalId === id ? 'primary' : state.focusedPane,
               rightPaneTerminalIds: newRightIds,
             }
+          }),
+
+        // Drop every terminal and the pane layout around them. Used when the app
+        // loses its session: the store is a module singleton that outlives the
+        // gate, so without this the next account would inherit the previous
+        // one's tabs. The PTYs themselves are killed by the main process.
+        clearTerminals: () =>
+          set({
+            terminals: [],
+            activeTerminalId: null,
+            splitTerminalId: null,
+            rightPaneTerminalIds: [],
+            focusedPane: 'primary',
+            scriptTerminals: [],
+            closeAgentModal: null,
+            selectedFile: null,
           }),
 
         setActiveTerminal: (activeTerminalId) =>

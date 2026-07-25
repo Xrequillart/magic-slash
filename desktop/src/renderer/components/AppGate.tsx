@@ -1,6 +1,8 @@
 import { CloudOff, WifiOff, Loader2, RotateCcw } from 'lucide-react'
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { useConnectivity } from '../hooks/useConnectivity'
+import { useStore } from '../store'
 import { LoginScreen } from './LoginScreen'
 
 function FullScreen({ children }: { children: ReactNode }) {
@@ -64,6 +66,16 @@ function ConnectionLost({ onRetry }: { onRetry: () => void }) {
  */
 export function AppGate({ children }: { children: ReactNode }) {
   const { status, recheck } = useConnectivity()
+  const clearTerminals = useStore((s) => s.clearTerminals)
+
+  // Losing the session drops the terminal state. The store outlives this gate
+  // (it is a module singleton, and children only unmount), so the next account
+  // to sign in would otherwise land on the previous one's tabs. Deliberately
+  // scoped to 'unauthorized': 'unreachable' keeps the sessions running, and
+  // useTerminals rebuilds the list from the main process once it clears.
+  useEffect(() => {
+    if (status === 'unauthorized') clearTerminals()
+  }, [status, clearTerminals])
 
   switch (status) {
     case 'ok':

@@ -291,6 +291,19 @@ export function restoreAgents() {
   }
 }
 
+/**
+ * Kill every running agent PTY, keeping the agent records themselves untouched.
+ * Called on sign-out: a session belongs to the account that started it, so it
+ * must not outlive that account's session and leak into the next one (the
+ * renderer rebuilds its list from getAllTerminals() whenever the app remounts).
+ *
+ * The agents stay in the store — scoped to their owner — so the next sign-in
+ * relaunches that user's own agents through restoreAgents(), which deliberately
+ * no-ops while any terminal is still alive and needs this clean slate to run.
+ */
+export function teardownAgentSessions(): void {
+  cleanupAllTerminals()
+}
 
 export function setupTerminalHandlers(
   mainWindowGetter: () => BrowserWindow | null,
