@@ -349,6 +349,8 @@ export function Sidebar() {
   const shortcutKey = isMac ? '⌘N' : 'Ctrl+N'
   const skillsShortcutKey = isMac ? '⌘;' : 'Ctrl+;'
   const historyShortcutKey = isMac ? '⌘H' : 'Ctrl+H'
+  const teamShortcutKey = isMac ? '⌘T' : 'Ctrl+T'
+  const settingsShortcutKey = isMac ? '⌘,' : 'Ctrl+,'
 
   // Listen for Command+; keyboard shortcut to open skills
   useEffect(() => {
@@ -378,19 +380,32 @@ export function Sidebar() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [setCurrentPage, setActiveTerminal])
 
+  // Listen for Command+T keyboard shortcut to open the team dashboard
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 't') {
+        e.preventDefault()
+        setCurrentPage('dashboard')
+        setActiveTerminal(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [setCurrentPage, setActiveTerminal])
+
   // Listen for Command+, keyboard shortcut to open settings
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === ',') {
         e.preventDefault()
-        setActiveTerminal(null)
         openSettingsModal()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [openSettingsModal, setActiveTerminal])
+  }, [openSettingsModal])
 
   return (
     <div
@@ -468,10 +483,11 @@ export function Sidebar() {
         >
           <Users className="w-3.5 h-3.5" />
           <span>Team</span>
+          <span className="ml-auto text-xs opacity-50">{teamShortcutKey}</span>
         </button>
 
         {/* Account / Settings — opens the settings modal (or login when signed out) */}
-        <SidebarAccount />
+        <SidebarAccount shortcutKey={settingsShortcutKey} />
       </div>
 
       {/* Mode toggle + Agents list */}
