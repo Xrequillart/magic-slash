@@ -68,6 +68,10 @@ function OrganizationCard({
   onArchive,
 }: OrganizationCardProps) {
   const isAdmin = org.role === 'admin'
+  // An accepted invitation is a member now — it is already listed (with its role
+  // and actions) in Members just above, so repeating it here is pure noise. Only
+  // invitations that still need attention are shown: pending, expired, revoked.
+  const openInvitations = invitations.filter((inv) => inv.status !== 'accepted')
   const adminCount = members.filter((m) => m.role === 'admin').length
   // Sole admin: the last admin cannot leave without locking everyone out — they
   // must promote someone or archive the org instead.
@@ -150,7 +154,7 @@ function OrganizationCard({
         <div className="px-4 py-3 border-b border-white/5">
           <CardSection
             label="Invitations"
-            count={invitations.length}
+            count={openInvitations.length}
             action={
               <button
                 onClick={() => onInvite(org)}
@@ -161,17 +165,15 @@ function OrganizationCard({
               </button>
             }
           />
-          {invitations.length === 0 ? (
-            <div className="text-xs text-text-secondary/40 py-1">No invitation sent.</div>
+          {openInvitations.length === 0 ? (
+            <div className="text-xs text-text-secondary/40 py-1">No pending invitation.</div>
           ) : (
             <div className="space-y-1">
-              {invitations.map((inv) => (
+              {openInvitations.map((inv) => (
                 <div key={inv.id} className="flex items-center gap-2 text-sm py-0.5">
                   <span className="flex-1 truncate min-w-0">{inv.email}</span>
                   <span className={`flex items-center h-7 px-2 rounded-lg text-[11px] font-medium ${
-                    inv.status === 'pending' ? 'bg-yellow/10 text-yellow'
-                      : inv.status === 'accepted' ? 'bg-green/10 text-green'
-                      : 'bg-white/10 text-text-secondary'
+                    inv.status === 'pending' ? 'bg-yellow/10 text-yellow' : 'bg-white/10 text-text-secondary'
                   }`}>
                     {inv.status}
                   </span>
