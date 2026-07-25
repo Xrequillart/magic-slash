@@ -1,6 +1,7 @@
 import * as crypto from 'crypto'
 import type { HistoryEntry, HistoryAction } from '../../types'
 import { getStore, reportWriteError } from '../store/Store'
+import { readConfig } from './config'
 
 // Read limit for the activity feed. activity_events is append-only (there is no
 // clear/purge), so instead of capping on write we simply read the most recent
@@ -31,6 +32,14 @@ export function readHistory(): HistoryEntry[] {
   return historyCache
 }
 
+/**
+ * Record ONE activity event, unless the user opted out.
+ *
+ * Gated behind Config.historyEnabled (opt-out, default ON). The toggle used to
+ * hide the sidebar entry point only, which meant a user who turned history off
+ * kept writing to `activity_events` — inconsistent with the usage-logs opt-in
+ * next to it. Off now means "don't record", and returns null.
+ */
 export function addHistoryEntry(params: {
   agentId: string
   agentName: string
@@ -38,7 +47,9 @@ export function addHistoryEntry(params: {
   ticketId?: string
   description?: string
   repositories: string[]
-}): HistoryEntry {
+}): HistoryEntry | null {
+  if (readConfig().historyEnabled === false) return null
+
   const entry: HistoryEntry = {
     id: crypto.randomUUID(),
     agentId: params.agentId,

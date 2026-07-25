@@ -1,8 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import type { HistoryEntry } from '../../types'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import type { HistoryEntry, Config } from '../../types'
 import type { Store } from '../store/Store'
 import { setStore, NOOP_STORE } from '../store/Store'
 import { readHistory, addHistoryEntry, hydrateHistory } from './activity-history'
+import { readConfig } from './config'
+
+vi.mock('./config', () => ({ readConfig: vi.fn(() => ({} as Config)) }))
+
+/** Set what readConfig() returns for the next addHistoryEntry call. */
+function mockConfig(config: Partial<Config>): void {
+  vi.mocked(readConfig).mockReturnValue(config as Config)
+}
 
 // History lives in the append-only Supabase `activity_events` table behind the
 // Store — there is no local history.json and no clear operation (dropped: the
@@ -20,6 +28,7 @@ function fakeStore(initial: HistoryEntry[] = []): Store {
 }
 
 async function seed(initial: HistoryEntry[] = []): Promise<void> {
+  mockConfig({})
   setStore(fakeStore(initial))
   await hydrateHistory()
 }
@@ -51,7 +60,7 @@ describe('addHistoryEntry', () => {
       ticketId: 'PROJ-123',
       description: 'Fix login',
       repositories: ['/repo1'],
-    })
+    })!
     expect(entry.id).toBeDefined()
     expect(entry.agentId).toBe('a1')
     expect(entry.agentName).toBe('Claude 1')
@@ -100,5 +109,33 @@ describe('addHistoryEntry', () => {
     expect(result).toHaveLength(500)
     expect(result[0].id).toBe('entry-1')
     expect(result[result.length - 1].agentName).toBe('Claude 2')
+  })
+})
+
+describe('addHistoryEntry — historyEnabled opt-out', () => {
+  beforeEach(async () => { await seed([]) })
+
+  it('records when historyEnabled is true', async () => {
+    mockConfig({ historyEnabled: true })
+    expect(addHistoryEntry({ agentId: 'a1', agentName: 'Claude', action: 'started', repositories: [] })).not.toBeNull()
+    await Promise.resolve()
+    expect(readHistory()).toHaveLength(1)
+    expect(appended).toHaveLength(1)
+  })
+
+  it('records when historyEnabled is absent (opt-out default is ON)', async () => {
+    mockConfig({})
+    expect(addHistoryEntry({ agentId: 'a1', agentName: 'Claude', action: 'started', repositories: [] })).not.toBeNull()
+    await Promise.resolve()
+    expect(readHistory()).toHaveLength(1)
+    expect(appended).toHaveLength(1)
+  })
+
+  it('records nothing — cache or store — when historyEnabled is false', async () => {
+    mockConfig({ historyEnabled: false })
+    expect(addHistoryEntry({ agentId: 'a1', agentName: 'Claude', action: 'started', repositories: [] })).toBeNull()
+    await Promise.resolve()
+    expect(readHistory()).toEqual([])
+    expect(appended).toEqual([])
   })
 })
