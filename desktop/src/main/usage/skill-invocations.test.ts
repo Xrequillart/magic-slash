@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { SkillInvocationInput } from '../../types'
 import type { Store } from '../store/Store'
 import { setStore, NOOP_STORE } from '../store/Store'
+
+// readConfig is mocked so we can flip the activity-recording opt-out per test.
+vi.mock('../config/config', () => ({ readConfig: vi.fn() }))
+import { readConfig } from '../config/config'
 import { recordSkillInvocation } from './skill-invocations'
 
 let recorded: SkillInvocationInput[] = []
@@ -17,6 +21,8 @@ function fakeStore(overrides: Partial<Store> = {}): Store {
 beforeEach(() => {
   recorded = []
   setStore(fakeStore())
+  // Opt-out default: historyEnabled absent means recording is ON.
+  vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {} })
 })
 
 describe('recordSkillInvocation', () => {
@@ -37,10 +43,23 @@ describe('recordSkillInvocation', () => {
   })
 
   it('is not gated by usageLogsEnabled — only the skill name is collected', async () => {
-    // No config mock here on purpose: unlike recordUsageSnapshot, this path must
-    // never consult the GDPR opt-in.
+    // Unlike recordUsageSnapshot, this path must never consult the GDPR opt-in:
+    // usageLogsEnabled off must not stop skill telemetry.
+    vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {}, usageLogsEnabled: false })
     await recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-plan' })
     expect(recorded).toHaveLength(1)
+  })
+
+  it('records when historyEnabled is true', async () => {
+    vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {}, historyEnabled: true })
+    await recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-pr' })
+    expect(recorded).toHaveLength(1)
+  })
+
+  it('records nothing when historyEnabled is false — same opt-out as the activity feed', async () => {
+    vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {}, historyEnabled: false })
+    await recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-pr' })
+    expect(recorded).toEqual([])
   })
 
   it('swallows a store failure — telemetry must never break the hook', async () => {
