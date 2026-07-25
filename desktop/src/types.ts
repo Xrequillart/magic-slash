@@ -218,7 +218,7 @@ export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
 /** Tabs of the Settings/Config page. Shared so other views (e.g. the sidebar
  *  account menu) can deep-link a specific tab in a type-safe way. */
 export type SettingsTab =
-  | 'profile'
+  | 'account'
   | 'repositories'
   | 'organization'
   | 'launch-mode'
