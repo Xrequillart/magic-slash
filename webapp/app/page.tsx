@@ -1,22 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase'
-import { useSession } from '@/lib/session'
+import { HOME_PATH, useRequireGuest } from '@/lib/session'
+import { FullPageLoader } from '@/components/ui'
 
 export default function Login() {
   const router = useRouter()
-  const { session, loading } = useSession()
+  // Already signed in → straight to the dashboard, without painting the form.
+  const { pending } = useRequireGuest()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Already signed in → straight to the dashboard.
-  useEffect(() => {
-    if (!loading && session) router.replace('/dashboard')
-  }, [loading, session, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,8 +26,10 @@ export default function Login() {
       setSubmitting(false)
       return
     }
-    router.replace('/dashboard')
+    router.replace(HOME_PATH)
   }
+
+  if (pending) return <FullPageLoader tone="login" />
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-softblue px-6">

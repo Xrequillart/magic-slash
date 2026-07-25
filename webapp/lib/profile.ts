@@ -53,6 +53,14 @@ export const EMPTY_PROFILE: UserProfile = {
   freeText: '',
 }
 
+/**
+ * Whether the user has actually filled their profile in. A row can exist with
+ * only defaults, so the name — the one field the wizard requires — is the test.
+ */
+export function isProfileComplete(p: UserProfile | null): boolean {
+  return !!p && p.name.trim().length > 0
+}
+
 export async function fetchProfile(): Promise<UserProfile | null> {
   const supabase = getSupabase()
   const { data: userData } = await supabase.auth.getUser()

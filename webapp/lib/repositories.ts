@@ -1,0 +1,248 @@
+import { getSupabase } from './supabase'
+
+/**
+ * Repositories: the shared identity of a repo (name, keywords, conventions)
+ * without any local filesystem path. Paths live in a separate own-rows-only
+ * table because where each member cloned a repo is private — and the webapp,
+ * having no filesystem, never touches them.
+ *
+ * `org_id` NULL means a personal repo; set means shared with that org.
+ *
+ * This table is the desktop app's source of truth for repo config (its CloudStore
+ * assembles the local config from these rows) and it is in the realtime
+ * publication, so edits made here reach every running app live.
+ */
+
+/** Project colors, same palette as the desktop sidebar. */
+export const REPO_COLORS = [
+  '#3B82F6', // blue
+  '#10B981', // green
+  '#F59E0B', // amber
+  '#EF4444', // red
+  '#8B5CF6', // purple
+  '#EC4899', // pink
+  '#06B6D4', // cyan
+  '#F97316', // orange
+]
+
+export interface RepoLanguages {
+  commit?: string
+  pullRequest?: string
+  jiraComment?: string
+  discussion?: string
+}
+
+export interface RepoCommit {
+  style?: string
+  format?: string
+  coAuthor?: boolean
+  includeTicketId?: boolean
+}
+
+export interface RepoResolve {
+  commitMode?: string
+  format?: string
+  style?: string
+  useCommitConfig?: boolean
+  replyToComments?: boolean
+  replyLanguage?: string
+}
+
+export interface RepoPullRequest {
+  autoLinkTickets?: boolean
+}
+
+export interface RepoIssues {
+  commentOnPR?: boolean
+  jiraUrl?: string
+  githubIssuesUrl?: string
+}
+
+export interface RepoBranches {
+  development?: string
+}
+
+export interface Repository {
+  id: string
+  orgId: string | null
+  ownerId: string | null
+  name: string
+  keywords: string[]
+  color: string | null
+  languages: RepoLanguages
+  commit: RepoCommit
+  resolve: RepoResolve
+  pullRequest: RepoPullRequest
+  issues: RepoIssues
+  branches: RepoBranches
+  worktreeFiles: string[]
+  createdAt: string | null
+}
+
+interface RepositoryRow {
+  id: string
+  org_id: string | null
+  owner_id: string | null
+  name: string
+  keywords: string[] | null
+  color: string | null
+  languages: RepoLanguages | null
+  commit: RepoCommit | null
+  resolve: RepoResolve | null
+  pull_request: RepoPullRequest | null
+  issues: RepoIssues | null
+  branches: RepoBranches | null
+  worktree_files: string[] | null
+  created_at: string | null
+}
+
+const COLUMNS =
+  'id, org_id, owner_id, name, keywords, color, languages, commit, resolve, pull_request, issues, branches, worktree_files, created_at'
+
+function toRepository(r: RepositoryRow): Repository {
+  return {
+    id: r.id,
+    orgId: r.org_id,
+    ownerId: r.owner_id,
+    name: r.name,
+    keywords: r.keywords ?? [],
+    color: r.color,
+    languages: r.languages ?? {},
+    commit: r.commit ?? {},
+    resolve: r.resolve ?? {},
+    pullRequest: r.pull_request ?? {},
+    issues: r.issues ?? {},
+    branches: r.branches ?? {},
+    worktreeFiles: r.worktree_files ?? [],
+    createdAt: r.created_at,
+  }
+}
+
+/**
+ * Repos shared with an org, alphabetical. RLS limits SELECT to orgs the caller
+ * belongs to, so a non-member gets [] rather than an error.
+ */
+export async function fetchOrgRepositories(orgId: string): Promise<Repository[]> {
+  const { data, error } = await getSupabase()
+    .from('repositories')
+    .select(COLUMNS)
+    .eq('org_id', orgId)
+    .order('name', { ascending: true })
+  if (error || !data) return []
+  return (data as RepositoryRow[]).map(toRepository)
+}
+
+/** A single repo by id, or null when it doesn't exist or isn't visible. */
+export async function fetchRepository(id: string): Promise<Repository | null> {
+  const { data, error } = await getSupabase()
+    .from('repositories')
+    .select(COLUMNS)
+    .eq('id', id)
+    .maybeSingle()
+  if (error || !data) return null
+  return toRepository(data as RepositoryRow)
+}
+
+/**
+ * Fields the webapp may patch. Deliberately excludes `owner_id` (set once at
+ * creation) and anything path-related (which lives in `repository_paths`).
+ */
+export interface RepositoryPatch {
+  name?: string
+  keywords?: string[]
+  color?: string | null
+  orgId?: string | null
+  languages?: RepoLanguages
+  commit?: RepoCommit
+  resolve?: RepoResolve
+  pullRequest?: RepoPullRequest
+  issues?: RepoIssues
+  branches?: RepoBranches
+  worktreeFiles?: string[]
+}
+
+/**
+ * Writes a patch. The jsonb blocks are replaced wholesale rather than merged, so
+ * callers pass the full block — that matches how the desktop writes them and
+ * avoids a read-modify-write race on individual keys.
+ */
+export async function updateRepository(id: string, patch: RepositoryPatch): Promise<void> {
+  const row: Record<string, unknown> = {}
+  if (patch.name !== undefined) row.name = patch.name.trim()
+  if (patch.keywords !== undefined) row.keywords = patch.keywords
+  if (patch.color !== undefined) row.color = patch.color
+  if (patch.orgId !== undefined) row.org_id = patch.orgId
+  if (patch.languages !== undefined) row.languages = patch.languages
+  if (patch.commit !== undefined) row.commit = patch.commit
+  if (patch.resolve !== undefined) row.resolve = patch.resolve
+  if (patch.pullRequest !== undefined) row.pull_request = patch.pullRequest
+  if (patch.issues !== undefined) row.issues = patch.issues
+  if (patch.branches !== undefined) row.branches = patch.branches
+  if (patch.worktreeFiles !== undefined) row.worktree_files = patch.worktreeFiles
+  if (Object.keys(row).length === 0) return
+
+  const { error } = await getSupabase().from('repositories').update(row).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+/**
+ * Deletes a repo. RLS allows this for the owner or an admin of the org it is
+ * shared with; `repository_paths` rows cascade.
+ */
+export async function deleteRepository(id: string): Promise<void> {
+  const { error } = await getSupabase().from('repositories').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+// ── Defaults ─────────────────────────────────────────────────────────────────
+// The desktop stores null/absent to mean "use the default" and resolves it at
+// read time. These mirror those fallbacks so both surfaces agree on what an
+// unset setting means.
+
+export const DEFAULTS = {
+  language: 'en',
+  commitStyle: 'single-line',
+  commitFormat: 'angular',
+  coAuthor: true,
+  includeTicketId: false,
+  resolveCommitMode: 'new',
+  resolveUseCommitConfig: true,
+  resolveStyle: 'single-line',
+  resolveFormat: 'angular',
+  replyToComments: true,
+  autoLinkTickets: true,
+  commentOnPR: true,
+} as const
+
+/**
+ * Renders the commit message a given format/style produces, for the live example
+ * shown under the commit settings. Ported from the desktop.
+ */
+export function commitExample(format: string, style: string, includeTicketId: boolean): string {
+  const examples: Record<string, { type?: string; scope?: string; emoji?: string; msg: string }> = {
+    conventional: { type: 'feat', msg: 'add user authentication' },
+    angular: { type: 'feat', scope: 'auth', msg: 'add user authentication' },
+    gitmoji: { emoji: '✨', msg: 'add user authentication' },
+    none: { msg: 'Add user authentication' },
+  }
+  const example = examples[format] ?? examples.conventional
+
+  let firstLine: string
+  switch (format) {
+    case 'angular':
+      firstLine = `${example.type}(${example.scope}): ${example.msg}`
+      break
+    case 'gitmoji':
+      firstLine = `${example.emoji} ${example.msg}`
+      break
+    case 'none':
+      firstLine = example.msg
+      break
+    default:
+      firstLine = `${example.type}: ${example.msg}`
+  }
+
+  if (includeTicketId) firstLine += ' [PROJ-123]'
+  if (style === 'multi-line') return `${firstLine}\n\nImplement login flow with session management`
+  return firstLine
+}
