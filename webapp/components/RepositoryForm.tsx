@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Building2,
   GitBranch,
@@ -77,11 +77,21 @@ export function RepositoryForm({
   onDelete: () => void
   saveError: string | null
 }) {
+  // Text fields are drafts: they hold what you typed until you press Save. They
+  // still have to follow the persisted value when *that* changes — after a failed
+  // save the page re-reads the row, and the field must drop the rejected text
+  // rather than keep presenting it as current. Depending on the persisted value
+  // (not the repo object) is what makes this safe: typing doesn't change it, so
+  // the effect never fires mid-edit and can't clobber the draft.
+  const persistedKeywords = repo.keywords.join(', ')
   const [name, setName] = useState(repo.name)
-  const [keywords, setKeywords] = useState(repo.keywords.join(', '))
+  const [keywords, setKeywords] = useState(persistedKeywords)
+
+  useEffect(() => setName(repo.name), [repo.name])
+  useEffect(() => setKeywords(persistedKeywords), [persistedKeywords])
 
   const nameChanged = name.trim() !== repo.name && name.trim().length > 0
-  const keywordsChanged = keywords !== repo.keywords.join(', ')
+  const keywordsChanged = keywords !== persistedKeywords
 
   // Resolved values: absent means "use the default", same as the desktop.
   const lang = (key: keyof Repository['languages']) => repo.languages[key] ?? DEFAULTS.language
@@ -100,12 +110,15 @@ export function RepositoryForm({
   const autoLinkTickets = repo.pullRequest.autoLinkTickets ?? DEFAULTS.autoLinkTickets
   const commentOnPR = repo.issues.commentOnPR ?? DEFAULTS.commentOnPR
 
-  // Patch helpers — each jsonb block is written whole, so spread the current one.
+  // Patch helpers send only the key that changed. The page merges it into the
+  // full jsonb block against the freshest row it holds — merging here instead
+  // would bake in this render's `repo`, and two settings changed back to back
+  // would both write from the same snapshot, the second dropping the first.
   const setLanguage = (key: keyof Repository['languages'], value: string) =>
-    onPatch({ languages: { ...repo.languages, [key]: value } })
-  const setCommit = (patch: Repository['commit']) => onPatch({ commit: { ...repo.commit, ...patch } })
-  const setResolve = (patch: Repository['resolve']) => onPatch({ resolve: { ...repo.resolve, ...patch } })
-  const setIssues = (patch: Repository['issues']) => onPatch({ issues: { ...repo.issues, ...patch } })
+    onPatch({ languages: { [key]: value } })
+  const setCommit = (patch: Repository['commit']) => onPatch({ commit: patch })
+  const setResolve = (patch: Repository['resolve']) => onPatch({ resolve: patch })
+  const setIssues = (patch: Repository['issues']) => onPatch({ issues: patch })
 
   const resolvePreview = useCommitConfig
     ? commitExample(commitFormat, commitStyle, includeTicketId)
@@ -235,7 +248,7 @@ export function RepositoryForm({
           <Input
             type="text"
             value={repo.branches.development ?? ''}
-            onChange={(e) => onPatch({ branches: { ...repo.branches, development: e.target.value } })}
+            onChange={(e) => onPatch({ branches: { development: e.target.value } })}
             placeholder="develop"
             className="w-52"
           />
@@ -413,7 +426,7 @@ export function RepositoryForm({
           <Toggle
             label="Auto-link tickets"
             checked={autoLinkTickets}
-            onChange={(autoLinkTickets) => onPatch({ pullRequest: { ...repo.pullRequest, autoLinkTickets } })}
+            onChange={(autoLinkTickets) => onPatch({ pullRequest: { autoLinkTickets } })}
           />
         </SettingRow>
 

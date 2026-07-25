@@ -162,9 +162,39 @@ export interface RepositoryPatch {
 }
 
 /**
+ * Expands a *shallow* patch into the full-column patch to persist: each jsonb
+ * block is merged key-by-key over `repo`, scalar columns pass through untouched.
+ *
+ * This exists so a caller can send only the setting it changed. Building the
+ * merged block at the call site instead would capture whatever `repo` that render
+ * closed over, and two settings changed before the next render would each write a
+ * block based on the same stale snapshot — the second silently dropping the
+ * first. Expanding against an explicitly supplied `repo` lets the caller pass the
+ * freshest row it has.
+ *
+ * The result is safe both to spread into local state and to hand to
+ * updateRepository, since blocks are stored whole.
+ */
+export function expandPatch(repo: Repository, patch: RepositoryPatch): RepositoryPatch {
+  const out: RepositoryPatch = { ...patch }
+  if (patch.languages) out.languages = { ...repo.languages, ...patch.languages }
+  if (patch.commit) out.commit = { ...repo.commit, ...patch.commit }
+  if (patch.resolve) out.resolve = { ...repo.resolve, ...patch.resolve }
+  if (patch.pullRequest) out.pullRequest = { ...repo.pullRequest, ...patch.pullRequest }
+  if (patch.issues) out.issues = { ...repo.issues, ...patch.issues }
+  if (patch.branches) out.branches = { ...repo.branches, ...patch.branches }
+  return out
+}
+
+/**
  * Writes a patch. The jsonb blocks are replaced wholesale rather than merged, so
- * callers pass the full block — that matches how the desktop writes them and
- * avoids a read-modify-write race on individual keys.
+ * callers pass the full block — that matches how the desktop writes them. Use
+ * expandPatch to build one from a single changed setting.
+ *
+ * Throws when the write touched no row. PostgREST reports an RLS-filtered
+ * UPDATE as a success with zero rows affected, not as an error, so checking
+ * `error` alone would let a forbidden write look like it saved. `.select('id')`
+ * makes the affected rows observable.
  */
 export async function updateRepository(id: string, patch: RepositoryPatch): Promise<void> {
   const row: Record<string, unknown> = {}
@@ -181,17 +211,35 @@ export async function updateRepository(id: string, patch: RepositoryPatch): Prom
   if (patch.worktreeFiles !== undefined) row.worktree_files = patch.worktreeFiles
   if (Object.keys(row).length === 0) return
 
-  const { error } = await getSupabase().from('repositories').update(row).eq('id', id)
+  const { data, error } = await getSupabase()
+    .from('repositories')
+    .update(row)
+    .eq('id', id)
+    .select('id')
   if (error) throw new Error(error.message)
+  if (!data || data.length === 0) {
+    throw new Error('This repository could not be updated — you may not have permission to change it.')
+  }
 }
 
 /**
  * Deletes a repo. RLS allows this for the owner or an admin of the org it is
  * shared with; `repository_paths` rows cascade.
+ *
+ * Throws when nothing was deleted, for the same reason updateRepository does: a
+ * DELETE that RLS filtered out returns no error and zero rows, which would
+ * otherwise read as "deleted" and send the caller off to a success screen.
  */
 export async function deleteRepository(id: string): Promise<void> {
-  const { error } = await getSupabase().from('repositories').delete().eq('id', id)
+  const { data, error } = await getSupabase()
+    .from('repositories')
+    .delete()
+    .eq('id', id)
+    .select('id')
   if (error) throw new Error(error.message)
+  if (!data || data.length === 0) {
+    throw new Error('This repository could not be deleted — only its owner or an org admin can remove it.')
+  }
 }
 
 // ── Defaults ─────────────────────────────────────────────────────────────────

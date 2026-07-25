@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { AlertTriangle, ArrowLeft, FolderGit2, Trash2 } from 'lucide-react'
@@ -8,6 +8,7 @@ import { useRequireSession } from '@/lib/session'
 import { fetchOrgs, type Org } from '@/lib/orgs'
 import {
   deleteRepository,
+  expandPatch,
   fetchRepository,
   updateRepository,
   type Repository,
@@ -37,30 +38,47 @@ export default function RepositoryPage() {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  /**
+   * The freshest known row, updated synchronously — before any await — so two
+   * settings changed in quick succession both merge onto the newer value. React
+   * state alone can't serve this: it only reflects a change on the next render,
+   * so the second change would merge onto a stale snapshot and drop the first.
+   */
+  const latest = useRef<Repository | null>(null)
+
+  /** Sets state and the ref together, so they never disagree. */
+  const store = useCallback((next: Repository | null) => {
+    latest.current = next
+    setRepo(next)
+  }, [])
+
   useEffect(() => {
     if (!session || !id) return
-    fetchRepository(id).then(setRepo)
+    fetchRepository(id).then(store)
     fetchOrgs().then(setOrgs)
-  }, [session, id])
+  }, [session, id, store])
 
   /**
-   * Optimistic save: the form reflects the change at once, and a failure both
-   * surfaces the error and re-reads the row so the UI can't drift from the truth.
+   * Optimistic save of a single changed setting: the form reflects it at once,
+   * and a failure both surfaces the error and re-reads the row so the UI can't
+   * drift from what is actually stored.
    */
   const patch = useCallback(
     async (p: RepositoryPatch) => {
-      if (!id) return
-      setRepo((current) => (current ? { ...current, ...p } : current))
+      const base = latest.current
+      if (!id || !base) return
+
+      const full = expandPatch(base, p)
+      store({ ...base, ...full })
       setSaveError(null)
       try {
-        await updateRepository(id, p)
+        await updateRepository(id, full)
       } catch (err) {
         setSaveError(err instanceof Error ? err.message : 'Failed to save.')
-        const fresh = await fetchRepository(id)
-        setRepo(fresh)
+        store(await fetchRepository(id))
       }
     },
-    [id],
+    [id, store],
   )
 
   const remove = async () => {
