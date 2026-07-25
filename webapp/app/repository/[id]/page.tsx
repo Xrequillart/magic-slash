@@ -48,13 +48,18 @@ export default function RepositoryPage() {
 
   /**
    * Writes run one at a time, chained onto this promise. Concurrent writes would
-   * make the rollback below unsound: a re-read issued by a failing write could
-   * observe the row before a later write committed, and then present — and merge
-   * onto — a row missing a change that did persist.
+   * make the ordering below unsound: a read issued by one write could observe the
+   * row before a later write committed, and then present — and merge onto — a row
+   * missing a change that did persist.
    */
   const queue = useRef<Promise<unknown>>(Promise.resolve())
   const inFlight = useRef(0)
   const resyncNeeded = useRef(false)
+  /**
+   * Bumped on every change. The rollback read compares it before storing, so a
+   * change made while that read was in flight is never overwritten by it.
+   */
+  const generation = useRef(0)
 
   /** Sets state and the ref together, so they never disagree. */
   const store = useCallback((next: Repository | null) => {
@@ -72,10 +77,10 @@ export default function RepositoryPage() {
    * Optimistic save of a single changed setting: the form reflects it immediately,
    * while the write itself is queued behind any earlier one.
    *
-   * On failure the row is re-read so the form can't keep showing something that
-   * wasn't stored — but only once every queued write has settled. Re-reading
-   * straight away could race a write still in flight and roll back a change that
-   * actually succeeded.
+   * State then follows the row the write returns, so it always shows what is
+   * actually stored — a successful write is self-correcting and needs no re-read.
+   * Only a *failure* leaves the optimistic value unbacked, and that is what the
+   * rollback read repairs.
    */
   const patch = useCallback(
     (p: RepositoryPatch) => {
@@ -85,26 +90,42 @@ export default function RepositoryPage() {
       store({ ...base, ...expandPatch(base, p) })
       setSaveError(null)
       inFlight.current += 1
+      generation.current += 1
 
-      queue.current = queue.current.then(async () => {
-        try {
-          // Re-expand against the freshest row: an earlier queued write may have
-          // landed, or a rollback may have moved the base, since this was called.
-          await updateRepository(id, expandPatch(latest.current ?? base, p))
-        } catch (err) {
-          setSaveError(err instanceof Error ? err.message : 'Failed to save.')
-          resyncNeeded.current = true
-        } finally {
-          inFlight.current -= 1
-        }
+      queue.current = queue.current
+        .then(async () => {
+          try {
+            // Re-expand against the freshest row: an earlier queued write may have
+            // landed, or a rollback may have moved the base, since this was called.
+            const saved = await updateRepository(id, expandPatch(latest.current ?? base, p))
+            if (saved) {
+              // The stored row supersedes any optimistic guess, including one an
+              // earlier failure was about to roll back.
+              store(saved)
+              resyncNeeded.current = false
+            }
+          } catch (err) {
+            setSaveError(err instanceof Error ? err.message : 'Failed to save.')
+            resyncNeeded.current = true
+          } finally {
+            inFlight.current -= 1
+          }
 
-        if (inFlight.current === 0 && resyncNeeded.current) {
+          if (inFlight.current !== 0 || !resyncNeeded.current) return
+
+          // Nothing else is queued, so the row read here is the final one.
+          const gen = generation.current
+          const fresh = await fetchRepository(id)
+          // A change made while that read was in flight supersedes it — storing
+          // the older row would erase it from the form while its own write went on
+          // to succeed. That write will store its own result; leave it alone.
+          if (generation.current !== gen || inFlight.current !== 0) return
           resyncNeeded.current = false
-          store(await fetchRepository(id))
-        }
+          store(fresh)
+        })
         // Never leave a rejected promise in the queue: every later write chains
         // onto it, so one unexpected rejection would silently stop all of them.
-      }).catch(() => {})
+        .catch(() => {})
     },
     [id, store],
   )

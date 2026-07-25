@@ -187,16 +187,24 @@ export function expandPatch(repo: Repository, patch: RepositoryPatch): Repositor
 }
 
 /**
- * Writes a patch. The jsonb blocks are replaced wholesale rather than merged, so
- * callers pass the full block — that matches how the desktop writes them. Use
- * expandPatch to build one from a single changed setting.
+ * Writes a patch and returns the stored row. The jsonb blocks are replaced
+ * wholesale rather than merged, so callers pass the full block — that matches how
+ * the desktop writes them. Use expandPatch to build one from a single setting.
+ *
+ * Returning the row lets a caller keep its state on what was actually stored,
+ * rather than on what it hoped would be, without a second round trip.
  *
  * Throws when the write touched no row. PostgREST reports an RLS-filtered
  * UPDATE as a success with zero rows affected, not as an error, so checking
- * `error` alone would let a forbidden write look like it saved. `.select('id')`
- * makes the affected rows observable.
+ * `error` alone would let a forbidden write look like it saved; selecting the
+ * affected rows back is what makes that observable.
+ *
+ * Returns null when the patch was empty and no write was issued.
  */
-export async function updateRepository(id: string, patch: RepositoryPatch): Promise<void> {
+export async function updateRepository(
+  id: string,
+  patch: RepositoryPatch,
+): Promise<Repository | null> {
   const row: Record<string, unknown> = {}
   if (patch.name !== undefined) row.name = patch.name.trim()
   if (patch.keywords !== undefined) row.keywords = patch.keywords
@@ -209,17 +217,18 @@ export async function updateRepository(id: string, patch: RepositoryPatch): Prom
   if (patch.issues !== undefined) row.issues = patch.issues
   if (patch.branches !== undefined) row.branches = patch.branches
   if (patch.worktreeFiles !== undefined) row.worktree_files = patch.worktreeFiles
-  if (Object.keys(row).length === 0) return
+  if (Object.keys(row).length === 0) return null
 
   const { data, error } = await getSupabase()
     .from('repositories')
     .update(row)
     .eq('id', id)
-    .select('id')
+    .select(COLUMNS)
   if (error) throw new Error(error.message)
   if (!data || data.length === 0) {
     throw new Error('This repository could not be updated — you may not have permission to change it.')
   }
+  return toRepository(data[0] as RepositoryRow)
 }
 
 /**
