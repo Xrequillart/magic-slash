@@ -150,6 +150,53 @@ describe('startOrgAgentsRealtime', () => {
     ])
   })
 
+  it('releases the org slot when subscribe() throws, so a later start retries', async () => {
+    // No WebSocket transport / dead socket: subscribe() blows up. Keeping the
+    // org "claimed" here would make the connectivity poller's
+    // !getActiveRealtimeOrgId() guard skip every retry — the app would stay on
+    // "Reconnecting…" for the rest of the session.
+    h.channel.subscribe.mockImplementationOnce(() => {
+      throw new Error('WebSocket not available')
+    })
+
+    await startOrgAgentsRealtime('org-1')
+    expect(getActiveRealtimeOrgId()).toBeNull()
+
+    await startOrgAgentsRealtime('org-1')
+    expect(h.state.client.channel).toHaveBeenCalledTimes(2)
+    expect(getActiveRealtimeOrgId()).toBe('org-1')
+  })
+
+  it('tears the channel down when it never reports SUBSCRIBED within the deadline', async () => {
+    vi.useFakeTimers()
+    try {
+      await startOrgAgentsRealtime('org-1')
+      expect(getActiveRealtimeOrgId()).toBe('org-1')
+
+      // Socket connected but the join never lands: nothing ever calls back.
+      await vi.advanceTimersByTimeAsync(15_000)
+      expect(getActiveRealtimeOrgId()).toBeNull()
+      expect(h.state.client.removeChannel).toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps a live channel past the deadline', async () => {
+    vi.useFakeTimers()
+    try {
+      await startOrgAgentsRealtime('org-1')
+      const statusCb = h.channel.subscribe.mock.calls[0][0] as (s: string) => void
+      statusCb('SUBSCRIBED')
+
+      await vi.advanceTimersByTimeAsync(15_000)
+      expect(getActiveRealtimeOrgId()).toBe('org-1')
+      expect(h.state.client.removeChannel).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('resubscribes on org switch (tears down old channel, opens a new one)', async () => {
     await startOrgAgentsRealtime('org-1')
     await startOrgAgentsRealtime('org-2')

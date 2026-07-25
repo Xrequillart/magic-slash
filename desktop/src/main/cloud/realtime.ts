@@ -123,6 +123,34 @@ let subscribedOrgId: string | null = null
 let authListenerUnsub: (() => void) | null = null
 let lastStatus: RealtimeStatus = 'reconnecting'
 
+// A channel that never reports SUBSCRIBED (socket that won't connect, join push
+// that never lands) would otherwise hold `subscribedOrgId` forever, and the
+// connectivity poller's `!getActiveRealtimeOrgId()` guard would never retry —
+// the app stays on "Reconnecting…" for the rest of the session. Give the join a
+// deadline and release the slot when it passes, so the next poll re-attempts.
+const SUBSCRIBE_DEADLINE_MS = 15_000
+let subscribeWatchdog: ReturnType<typeof setTimeout> | null = null
+
+function clearSubscribeWatchdog(): void {
+  if (subscribeWatchdog) {
+    clearTimeout(subscribeWatchdog)
+    subscribeWatchdog = null
+  }
+}
+
+function armSubscribeWatchdog(orgId: string): void {
+  clearSubscribeWatchdog()
+  subscribeWatchdog = setTimeout(() => {
+    subscribeWatchdog = null
+    // Still waiting on the same channel? Tear it down so a retry can happen.
+    if (lastStatus === 'live' || subscribedOrgId !== orgId) return
+    console.warn('[realtime] org-agents channel never subscribed — tearing down so the next connectivity check retries')
+    void stopOrgAgentsRealtime()
+  }, SUBSCRIBE_DEADLINE_MS)
+  // Never hold the process open for the deadline (matters in tests/teardown).
+  subscribeWatchdog.unref?.()
+}
+
 /** The org id the channel is currently subscribed to, or null when inactive. */
 export function getActiveRealtimeOrgId(): string | null {
   return subscribedOrgId
@@ -220,17 +248,29 @@ async function startInternal(orgId: string): Promise<void> {
 
   activeClient = client
   subscribedOrgId = orgId
-  channel = client
-    .channel('org-agents')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'agents', filter: `org_id=eq.${orgId}` },
-      handleChange,
-    )
-    .subscribe((status: string) => {
-      lastStatus = mapChannelStatus(status)
-      statusEmitter?.(lastStatus)
-    })
+  try {
+    channel = client
+      .channel('org-agents')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'agents', filter: `org_id=eq.${orgId}` },
+        handleChange,
+      )
+      .subscribe((status: string) => {
+        lastStatus = mapChannelStatus(status)
+        if (lastStatus === 'live') clearSubscribeWatchdog()
+        statusEmitter?.(lastStatus)
+      })
+    armSubscribeWatchdog(orgId)
+  } catch (error) {
+    // subscribe() throws when the socket can't even be created. Release the org
+    // slot (rather than leaving it claimed by a channel that doesn't exist) so
+    // the next connectivity check retries instead of wedging on "Reconnecting…".
+    console.error('[realtime] failed to subscribe to org-agents:', error)
+    channel = null
+    activeClient = null
+    subscribedOrgId = null
+  }
 }
 
 /**
@@ -243,6 +283,7 @@ export function stopOrgAgentsRealtime(): Promise<void> {
 
 async function stopInternal(): Promise<void> {
   subscribedOrgId = null
+  clearSubscribeWatchdog()
   if (lastStatus !== 'reconnecting') {
     lastStatus = 'reconnecting'
     // Notify the renderer so a mounted LiveIndicator flips to "Reconnecting…"

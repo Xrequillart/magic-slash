@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createClient, type RealtimeClientOptions, type SupabaseClient } from '@supabase/supabase-js'
+import WebSocketImpl from 'ws'
 
 // The Supabase URL + anon key are injected at build time by vite.config.ts
 // (define block on the main-process build). They are public/safe to ship — RLS
@@ -30,6 +31,16 @@ export function getSupabaseClient(): SupabaseClient | null {
       persistSession: false,
       autoRefreshToken: true,
       detectSessionInUrl: false,
+    },
+    realtime: {
+      // Electron's main process is Node 18 — it has NO global WebSocket, and
+      // realtime-js only auto-detects a native one (it never falls back to the
+      // `ws` package it depends on). Without this the socket silently never
+      // connects: no channel ever reaches SUBSCRIBED, no postgres_changes event
+      // is ever delivered, and the team dashboard sits on "Reconnecting…"
+      // forever. Supplying `ws` explicitly is the documented Node < 22 path;
+      // it can go away once Electron ships a runtime with a native WebSocket.
+      transport: WebSocketImpl as unknown as RealtimeClientOptions['transport'],
     },
   })
   return cachedClient
