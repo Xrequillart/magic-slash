@@ -1,246 +1,386 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Copy, Check, Trash2, Loader2 } from 'lucide-react'
-import { useSession } from '@/lib/session'
-import { fetchOrgs, fetchMembers, type Org, type Member, type Role } from '@/lib/orgs'
+import { useCallback, useEffect, useState } from 'react'
+import { AlertTriangle, Archive, Building2, Loader2, Mail, Plus, UserPlus, Users } from 'lucide-react'
+import { useRequireSession } from '@/lib/session'
 import {
-  fetchInvitations,
-  createInvitation,
-  deleteInvitation,
-  inviteLink,
-  type Invitation,
-} from '@/lib/invitations'
+  acceptInvitation,
+  archiveOrg,
+  createOrg,
+  fetchMembers,
+  fetchOrgs,
+  leaveOrg,
+  removeMember,
+  updateMemberRole,
+  type Member,
+  type Org,
+  type Role,
+} from '@/lib/orgs'
+import { createInvitation, deleteInvitation, fetchInvitations, type Invitation } from '@/lib/invitations'
 import { AppShell } from '@/components/AppShell'
-import { Badge, Button, Card, Eyebrow, Input, Select, type BadgeTone } from '@/components/ui'
+import { Modal } from '@/components/Modal'
+import { OrganizationCard } from '@/components/OrganizationCard'
+import { Button, Card, FullPageLoader, Input, Select, SectionHeader } from '@/components/ui'
 
-function initial(email: string | null): string {
-  return (email?.trim()?.charAt(0) ?? '?').toUpperCase()
+type Status = { kind: 'ok' | 'err'; msg: string } | null
+
+function Note({ status }: { status: Status }) {
+  if (!status) return null
+  return <p className={`mt-2 text-xs ${status.kind === 'ok' ? 'text-green' : 'text-red'}`}>{status.msg}</p>
 }
 
-function RoleBadge({ role }: { role: Role }) {
+/** Empty-state / message panel. */
+function Panel({ icon: Icon, title, hint }: { icon: typeof Users; title: string; hint: string }) {
   return (
-    <Badge tone={role === 'admin' ? 'accent' : 'neutral'}>{role === 'admin' ? 'Admin' : 'Member'}</Badge>
+    <Card className="p-8 text-center">
+      <Icon className="mx-auto mb-3 h-8 w-8 text-black/15" />
+      <p className="text-sm text-muted">{title}</p>
+      <p className="mt-1 text-xs text-muted">{hint}</p>
+    </Card>
   )
 }
 
-const STATUS_TONE: Record<Invitation['status'], BadgeTone> = {
-  pending: 'yellow',
-  accepted: 'green',
-  expired: 'neutral',
-  revoked: 'neutral',
-}
-
 export default function OrganizationPage() {
-  const router = useRouter()
-  const { session, loading } = useSession()
-  const [orgs, setOrgs] = useState<Org[] | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [members, setMembers] = useState<Member[] | null>(null)
-  const [invites, setInvites] = useState<Invitation[] | null>(null)
+  const { session, pending } = useRequireSession()
 
-  // Invite form
+  const [orgs, setOrgs] = useState<Org[] | null>(null)
+  const [membersByOrg, setMembersByOrg] = useState<Record<string, Member[]>>({})
+  const [invitesByOrg, setInvitesByOrg] = useState<Record<string, Invitation[]>>({})
+
+  const [busyMember, setBusyMember] = useState<string | null>(null)
+  const [deletingInvite, setDeletingInvite] = useState<string | null>(null)
+  const [leavingOrgId, setLeavingOrgId] = useState<string | null>(null)
+  const [pageStatus, setPageStatus] = useState<Status>(null)
+
+  // Each modal holds the org it acts on, so one modal serves every card.
+  const [inviteOrg, setInviteOrg] = useState<Org | null>(null)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<Role>('user')
   const [inviting, setInviting] = useState(false)
-  const [inviteError, setInviteError] = useState<string | null>(null)
-  const [copied, setCopied] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [inviteStatus, setInviteStatus] = useState<Status>(null)
 
-  useEffect(() => {
-    if (!loading && !session) router.replace('/')
-  }, [loading, session, router])
+  const [archiveTarget, setArchiveTarget] = useState<Org | null>(null)
+  const [archiving, setArchiving] = useState(false)
+  const [archiveStatus, setArchiveStatus] = useState<Status>(null)
 
-  useEffect(() => {
-    if (!session) return
-    fetchOrgs().then((list) => {
-      setOrgs(list)
-      const requested = new URLSearchParams(window.location.search).get('org')
-      setSelectedId(list.find((o) => o.id === requested)?.id ?? list[0]?.id ?? null)
-    })
-  }, [session])
+  const [showCreate, setShowCreate] = useState(false)
+  const [createName, setCreateName] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [createStatus, setCreateStatus] = useState<Status>(null)
 
-  const selected = useMemo(() => orgs?.find((o) => o.id === selectedId) ?? null, [orgs, selectedId])
-  const isAdmin = selected?.role === 'admin'
+  const [showJoin, setShowJoin] = useState(false)
+  const [joinToken, setJoinToken] = useState('')
+  const [joining, setJoining] = useState(false)
+  const [joinStatus, setJoinStatus] = useState<Status>(null)
 
-  const loadInvites = useCallback((orgId: string) => {
-    fetchInvitations(orgId).then(setInvites)
+  const currentUserId = session?.user.id
+
+  /** Reload the org list and, for each, its members and invitations. */
+  const reload = useCallback(async () => {
+    const list = await fetchOrgs()
+    setOrgs(list)
+    const entries = await Promise.all(
+      list.map(async (o) => {
+        const [members, invites] = await Promise.all([fetchMembers(o.id), fetchInvitations(o.id)])
+        return [o.id, members, invites] as const
+      }),
+    )
+    setMembersByOrg(Object.fromEntries(entries.map(([id, members]) => [id, members])))
+    setInvitesByOrg(Object.fromEntries(entries.map(([id, , invites]) => [id, invites])))
   }, [])
 
   useEffect(() => {
-    if (!selectedId) return
-    setMembers(null)
-    setInvites(null)
-    fetchMembers(selectedId).then(setMembers)
-    loadInvites(selectedId)
-  }, [selectedId, loadInvites])
+    if (!session) return
+    reload()
+  }, [session, reload])
 
-  const submitInvite = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedId || inviting) return
-    setInviting(true)
-    setInviteError(null)
-    try {
-      await createInvitation(selectedId, inviteEmail, inviteRole)
-      setInviteEmail('')
-      setInviteRole('user')
-      loadInvites(selectedId)
-    } catch (err) {
-      setInviteError(err instanceof Error ? err.message : 'Failed to send invitation')
-    } finally {
-      setInviting(false)
-    }
+  /** Runs an action, surfaces its error, and refreshes on success. */
+  const run = useCallback(
+    async (action: () => Promise<unknown>, fallback: string, setStatus: (s: Status) => void) => {
+      setStatus(null)
+      try {
+        await action()
+        await reload()
+        return true
+      } catch (err) {
+        setStatus({ kind: 'err', msg: err instanceof Error ? err.message : fallback })
+        return false
+      }
+    },
+    [reload],
+  )
+
+  const changeRole = async (orgId: string, userId: string, role: Role) => {
+    setBusyMember(userId)
+    await run(() => updateMemberRole(orgId, userId, role), 'Failed to update role.', setPageStatus)
+    setBusyMember(null)
   }
 
-  const copyLink = (token: string) => {
-    navigator.clipboard.writeText(inviteLink(token)).then(() => {
-      setCopied(token)
-      setTimeout(() => setCopied(null), 1500)
-    }).catch(() => {})
+  const kickMember = async (orgId: string, userId: string) => {
+    setBusyMember(userId)
+    await run(() => removeMember(orgId, userId), 'Failed to remove member.', setPageStatus)
+    setBusyMember(null)
+  }
+
+  const leave = async (orgId: string) => {
+    setLeavingOrgId(orgId)
+    await run(() => leaveOrg(orgId), 'Failed to leave organization.', setPageStatus)
+    setLeavingOrgId(null)
   }
 
   const removeInvite = async (id: string) => {
-    if (!selectedId) return
-    setDeletingId(id)
-    try {
-      await deleteInvitation(id)
-      loadInvites(selectedId)
-    } catch {
-      /* surfaced by the list not changing */
-    } finally {
-      setDeletingId(null)
+    setDeletingInvite(id)
+    await run(() => deleteInvitation(id), 'Failed to delete invitation.', setPageStatus)
+    setDeletingInvite(null)
+  }
+
+  const submitInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inviteOrg || inviting || !inviteEmail.trim()) return
+    setInviting(true)
+    const ok = await run(
+      () => createInvitation(inviteOrg.id, inviteEmail, inviteRole),
+      'Failed to create invitation.',
+      setInviteStatus,
+    )
+    setInviting(false)
+    if (ok) setInviteOrg(null)
+  }
+
+  const submitCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (creating || !createName.trim()) return
+    setCreating(true)
+    const ok = await run(() => createOrg(createName), 'Failed to create organization.', setCreateStatus)
+    setCreating(false)
+    if (ok) {
+      setShowCreate(false)
+      setCreateName('')
     }
   }
 
-  if (loading || !session) {
-    return <div className="flex min-h-screen items-center justify-center bg-canvas text-muted">Loading…</div>
+  const submitJoin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (joining || !joinToken.trim()) return
+    setJoining(true)
+    const ok = await run(() => acceptInvitation(joinToken), 'Failed to join organization.', setJoinStatus)
+    setJoining(false)
+    if (ok) {
+      setShowJoin(false)
+      setJoinToken('')
+    }
   }
+
+  const submitArchive = async () => {
+    if (!archiveTarget || archiving) return
+    setArchiving(true)
+    const ok = await run(() => archiveOrg(archiveTarget.id), 'Failed to archive organization.', setArchiveStatus)
+    setArchiving(false)
+    if (ok) setArchiveTarget(null)
+  }
+
+  if (pending || !session) return <FullPageLoader />
 
   return (
     <AppShell email={session.user.email ?? undefined}>
-      <Eyebrow>/organization</Eyebrow>
+      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">Organizations</h1>
 
-      {orgs && orgs.length === 0 ? (
-        <>
-          <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">Organization</h1>
-          <div className="mt-8 rounded-2xl border border-black/5 bg-white p-8 text-center text-sm text-muted">
-            You&apos;re not part of any organization yet.
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">
-              {selected?.name ?? '…'}
-            </h1>
-            {orgs && orgs.length > 1 && (
-              <Select
-                value={selectedId ?? ''}
-                onChange={(e) => setSelectedId(e.target.value)}
-                className="w-auto"
-              >
-                {orgs.map((o) => (
-                  <option key={o.id} value={o.id}>{o.name}</option>
-                ))}
-              </Select>
-            )}
-          </div>
-          {selected && (
-            <p className="mt-3 text-muted">You are {selected.role === 'admin' ? 'an admin' : 'a member'} of this organization.</p>
-          )}
+      <div className="mt-10">
+        <SectionHeader
+          icon={Building2}
+          title={orgs ? `Your organizations (${orgs.length})` : 'Your organizations'}
+        />
 
-          {/* Members */}
-          <h2 className="mt-12 mb-4 flex items-center gap-2 font-mono text-xs font-medium tracking-tight text-muted">
-            /members
-            {members && <span className="rounded-full bg-black/[0.05] px-2 py-0.5 text-muted">{members.length}</span>}
-          </h2>
-          <Card className="overflow-hidden">
-            {members === null ? (
-              <p className="p-6 text-sm text-muted">Loading…</p>
-            ) : (
-              <ul className="divide-y divide-black/5">
-                {members.map((m) => (
-                  <li key={m.userId} className="flex items-center gap-3 px-5 py-3.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 font-display text-sm font-bold text-brand">
-                      {initial(m.email)}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-sm text-ink">
-                      {m.email ?? m.userId}
-                      {m.userId === session.user.id && <span className="ml-2 text-xs text-muted">(you)</span>}
-                    </span>
-                    <RoleBadge role={m.role} />
-                  </li>
-                ))}
-              </ul>
-            )}
+        {orgs === null ? (
+          <Card className="flex items-center justify-center p-8 text-muted">
+            <Loader2 className="h-4 w-4 animate-spin" />
           </Card>
+        ) : orgs.length === 0 ? (
+          <Panel
+            icon={Users}
+            title="You do not belong to any organization."
+            hint="Create one, or join with an invitation."
+          />
+        ) : (
+          <div className="space-y-4">
+            {orgs.map((o) => (
+              <OrganizationCard
+                key={o.id}
+                org={o}
+                members={membersByOrg[o.id] ?? null}
+                invitations={invitesByOrg[o.id] ?? null}
+                currentUserId={currentUserId}
+                busyMember={busyMember}
+                deletingInvite={deletingInvite}
+                leaving={leavingOrgId === o.id}
+                onInvite={(org) => {
+                  setInviteOrg(org)
+                  setInviteEmail('')
+                  setInviteRole('user')
+                  setInviteStatus(null)
+                }}
+                onChangeRole={changeRole}
+                onRemoveMember={kickMember}
+                onDeleteInvitation={removeInvite}
+                onLeave={leave}
+                onArchive={(org) => {
+                  setArchiveTarget(org)
+                  setArchiveStatus(null)
+                }}
+              />
+            ))}
+          </div>
+        )}
 
-          {/* Invitations — admins only */}
-          {isAdmin && (
-            <>
-              <h2 className="mt-12 mb-4 font-mono text-xs font-medium tracking-tight text-muted">/invitations</h2>
+        <Note status={pageStatus} />
 
-              <form
-                onSubmit={submitInvite}
-                className="flex flex-col gap-3 rounded-2xl border border-black/5 bg-white p-5 sm:flex-row sm:items-center"
-              >
-                <Input
-                  type="email"
-                  required
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="teammate@company.com"
-                  className="flex-1"
-                />
-                <Select
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as Role)}
-                  className="sm:w-32"
-                >
-                  <option value="user">Member</option>
-                  <option value="admin">Admin</option>
-                </Select>
-                <Button type="submit" disabled={inviting || !inviteEmail} className="shrink-0">
-                  {inviting ? 'Sending…' : 'Send invite'}
-                </Button>
-              </form>
-              {inviteError && <p className="mt-2 text-xs text-red">{inviteError}</p>}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setCreateName('')
+              setCreateStatus(null)
+              setShowCreate(true)
+            }}
+            className="border border-black/10"
+          >
+            <Plus className="h-4 w-4" />
+            Create an organization
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setJoinToken('')
+              setJoinStatus(null)
+              setShowJoin(true)
+            }}
+            className="border border-black/10"
+          >
+            <UserPlus className="h-4 w-4" />
+            Join an organization
+          </Button>
+        </div>
+      </div>
 
-              {invites && invites.length > 0 && (
-                <Card className="mt-4 overflow-hidden">
-                  <ul className="divide-y divide-black/5">
-                    {invites.map((inv) => (
-                      <li key={inv.id} className="flex items-center gap-3 px-5 py-3.5">
-                        <span className="min-w-0 flex-1 truncate text-sm text-ink">{inv.email}</span>
-                        <Badge tone={STATUS_TONE[inv.status]}>{inv.status}</Badge>
-                        {inv.status === 'pending' && (
-                          <button
-                            onClick={() => copyLink(inv.token)}
-                            className="flex items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-[11px] text-muted transition-colors hover:bg-black/[0.04] hover:text-ink"
-                            title="Copy invitation link"
-                          >
-                            {copied === inv.token ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                            {copied === inv.token ? 'Copied' : 'Link'}
-                          </button>
-                        )}
-                        <button
-                          onClick={() => removeInvite(inv.id)}
-                          disabled={deletingId === inv.id}
-                          className="flex items-center justify-center rounded-lg p-1.5 text-muted transition-colors hover:bg-red/10 hover:text-red disabled:opacity-40"
-                          title="Delete invitation"
-                        >
-                          {deletingId === inv.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-              )}
-            </>
-          )}
-        </>
-      )}
+      {/* Invite a member */}
+      <Modal
+        open={inviteOrg !== null}
+        onClose={() => setInviteOrg(null)}
+        icon={Mail}
+        title={inviteOrg ? `Invite to ${inviteOrg.name}` : 'Invite'}
+      >
+        <form onSubmit={submitInvite} className="space-y-3 pb-1">
+          <p className="text-xs text-muted">
+            An invitation link is generated — copy it from the list and send it to your colleague.
+          </p>
+          <Input
+            type="email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="colleague@example.com"
+            autoFocus
+          />
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-muted">Role</span>
+            <Select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value as Role)}
+              className="w-auto"
+            >
+              <option value="user">Member</option>
+              <option value="admin">Admin</option>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="ghost" type="button" onClick={() => setInviteOrg(null)} className="mr-auto">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={inviting || !inviteEmail.trim()}>
+              {inviting ? 'Sending…' : 'Send invitation'}
+            </Button>
+          </div>
+          <Note status={inviteStatus} />
+        </form>
+      </Modal>
+
+      {/* Create an organization */}
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} icon={Plus} title="Create an organization">
+        <form onSubmit={submitCreate} className="space-y-2 pb-1">
+          <p className="text-xs text-muted">You become its admin and can invite members right away.</p>
+          <Input
+            type="text"
+            value={createName}
+            onChange={(e) => setCreateName(e.target.value)}
+            placeholder="Organization name"
+            autoFocus
+          />
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="ghost" type="button" onClick={() => setShowCreate(false)} className="mr-auto">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={creating || !createName.trim()}>
+              {creating ? 'Creating…' : 'Create'}
+            </Button>
+          </div>
+          <Note status={createStatus} />
+        </form>
+      </Modal>
+
+      {/* Join an organization */}
+      <Modal open={showJoin} onClose={() => setShowJoin(false)} icon={UserPlus} title="Join an organization">
+        <form onSubmit={submitJoin} className="space-y-2 pb-1">
+          <p className="text-xs text-muted">Paste the invitation link you received, or just its token.</p>
+          <Input
+            type="text"
+            value={joinToken}
+            onChange={(e) => setJoinToken(e.target.value)}
+            placeholder="https://app.magic-slash.io/invite/…"
+            autoFocus
+          />
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="ghost" type="button" onClick={() => setShowJoin(false)} className="mr-auto">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={joining || !joinToken.trim()}>
+              {joining ? 'Joining…' : 'Join'}
+            </Button>
+          </div>
+          <Note status={joinStatus} />
+        </form>
+      </Modal>
+
+      {/* Archive organization (danger) */}
+      <Modal
+        open={archiveTarget !== null}
+        onClose={() => setArchiveTarget(null)}
+        icon={Archive}
+        title="Archive organization"
+        tone="danger"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setArchiveTarget(null)} className="mr-auto">
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={submitArchive} disabled={archiving}>
+              {archiving ? 'Archiving…' : 'Archive organization'}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red/10">
+            <AlertTriangle className="h-4 w-4 text-red" />
+          </span>
+          <div>
+            <p className="text-sm text-ink">Archive {archiveTarget?.name ?? 'this organization'}?</p>
+            <p className="mt-1 text-xs text-muted">
+              The organization and its members lose access — it disappears for everyone. Its data is retained,
+              not deleted, but this cannot be undone from the app.
+            </p>
+          </div>
+        </div>
+        <Note status={archiveStatus} />
+      </Modal>
     </AppShell>
   )
 }

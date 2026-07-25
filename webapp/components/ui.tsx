@@ -80,6 +80,28 @@ export function Section({
   )
 }
 
+/**
+ * Icon + title above a Card, optionally with a control on the right. Mirrors the
+ * desktop app's SectionHeader, which is how its settings pages are structured.
+ */
+export function SectionHeader({
+  icon: Icon,
+  title,
+  action,
+}: {
+  icon: LucideIcon
+  title: string
+  action?: React.ReactNode
+}) {
+  return (
+    <div className="mb-3 flex items-center gap-2.5">
+      <Icon className="h-4 w-4 shrink-0 text-muted" />
+      <h2 className="font-display text-sm font-bold text-ink">{title}</h2>
+      {action && <div className="ml-auto">{action}</div>}
+    </div>
+  )
+}
+
 // ── Badge ────────────────────────────────────────────────────────────────────
 
 const BADGE_TONES = {
@@ -125,12 +147,22 @@ export function StatTile({ icon: Icon, label, value }: { icon: LucideIcon; label
 
 // ── Misc ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Whole-viewport placeholder shown while a page decides whether you belong on it.
+ * `tone` matches the background of the page it stands in for, so resolving the
+ * session doesn't flash a different colour.
+ */
+export function FullPageLoader({ tone = 'app' }: { tone?: 'app' | 'login' }) {
+  return (
+    <div
+      className={`flex min-h-screen items-center justify-center text-muted ${tone === 'login' ? 'bg-softblue' : 'bg-canvas'}`}
+    >
+      Loading…
+    </div>
+  )
+}
+
 /** Monospace slash-command eyebrow — the through-line signature across pages. */
 export function Eyebrow({ children }: { children: React.ReactNode }) {
   return <div className="mb-3 font-mono text-xs font-medium tracking-tight text-brand">{children}</div>
-}
-
-/** Small section heading used above lists (`/organizations`, `/members`…). */
-export function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <h2 className="font-mono text-xs font-medium tracking-tight text-muted">{children}</h2>
 }

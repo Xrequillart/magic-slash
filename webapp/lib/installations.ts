@@ -3,6 +3,9 @@ import { getSupabase } from './supabase'
 /** Where the desktop app is downloaded from. */
 export const DOWNLOAD_URL = 'https://github.com/xrequillart/magic-slash/releases/latest'
 
+/** One-liner that installs the app — same command as the landing page. */
+export const INSTALL_COMMAND = 'curl -fsSL https://magic-slash.io/install.sh | bash'
+
 export interface Installation {
   deviceId: string
   deviceName: string | null
@@ -47,11 +50,6 @@ export async function fetchInstallations(): Promise<Installation[]> {
     firstSeenAt: r.first_seen_at,
     lastSeenAt: r.last_seen_at,
   }))
-}
-
-/** Version of the most recently active machine — what the user actually runs. */
-export function latestVersion(rows: Installation[]): string | null {
-  return rows[0]?.appVersion ?? null
 }
 
 const MINUTE = 60_000
