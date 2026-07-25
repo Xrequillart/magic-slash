@@ -62,7 +62,7 @@ export function LimitGauge({ label, percent, resetsAt, now }: {
         </svg>
         {/* Percentage in the belly */}
         <span
-          className={`absolute inset-x-0 bottom-0 text-center font-mono font-semibold text-sm ${colors.text}`}
+          className={`absolute inset-x-0 bottom-0 text-center font-semibold text-sm ${colors.text}`}
         >
           {Math.round(pct)}%
         </span>

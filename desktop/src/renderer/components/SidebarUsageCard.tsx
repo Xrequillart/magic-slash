@@ -19,7 +19,7 @@ function UsageMiniBar({ label, percent }: { label: string; percent: number }) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className={`shrink-0 text-[10px] font-mono font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
+      <span className={`shrink-0 text-[10px] font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
     </div>
   )
 }
@@ -41,7 +41,7 @@ function UsageBar({ label, percent, resetsAt, now }: {
           {typeof resetsAt === 'number' && (
             <span className="text-text-secondary/35">{formatReset(resetsAt, now)}</span>
           )}
-          <span className={`font-mono font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
+          <span className={`font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
         </span>
       </div>
       <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">

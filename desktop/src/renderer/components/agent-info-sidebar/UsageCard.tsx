@@ -68,7 +68,7 @@ export function UsageCard({ usage }: UsageCardProps) {
             style={{ width: `${pct}%` }}
           />
         </div>
-        <span className={`font-mono font-medium text-xs shrink-0 ${colors.text}`}>{Math.round(pct)}%</span>
+        <span className={`font-medium text-xs shrink-0 ${colors.text}`}>{Math.round(pct)}%</span>
         <button
           onClick={() => setMinimized(false)}
           title="Expand"
@@ -120,7 +120,7 @@ export function UsageCard({ usage }: UsageCardProps) {
               <Gauge className="w-3.5 h-3.5" />
               Context
             </span>
-            <span className={`font-mono font-medium ${colors.text}`}>{Math.round(pct)}%</span>
+            <span className={`font-medium ${colors.text}`}>{Math.round(pct)}%</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-white/[0.08] overflow-hidden">
             <div
