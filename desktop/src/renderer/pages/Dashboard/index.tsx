@@ -1,14 +1,10 @@
-import { useMemo, useState } from 'react'
-import { Users, Bot, Coins, Plus, Minus, Clock, Activity, BarChart3, GitPullRequest, AlertOctagon, ExternalLink, ArrowRightCircle } from 'lucide-react'
+import { useMemo } from 'react'
+import { Users, Coins, Plus, Minus, Clock, Activity, BarChart3, GitPullRequest, AlertOctagon, ExternalLink } from 'lucide-react'
 import type { OrgAgent, OrgAgentPRReview } from '../../../types'
 import { useOrgAgents } from '../../hooks/useOrgAgents'
 import { useOrgUsageStats } from '../../hooks/useOrgUsageStats'
 import { useOrg } from '../../hooks/useOrg'
-import { useAuth } from '../../hooks/useAuth'
-import { useTerminals } from '../../hooks/useTerminals'
-import { useStore } from '../../store'
 import { LiveIndicator } from '../../components/LiveIndicator'
-import { showToast } from '../../components/Toast'
 import { ActivityHeatmap } from '../History/ActivityHeatmap'
 import { aggregateUsageTotals, aggregateUsageByMember, computeUsageHeatmap, formatUsd } from '../../utils/usageStats'
 
@@ -190,50 +186,6 @@ function TicketBadge({ ticketId }: { ticketId?: string }) {
   )
 }
 
-function AgentRow({
-  agent,
-  currentUserId,
-  onPickUp,
-  pickingUp,
-}: {
-  agent: OrgAgent
-  currentUserId?: string
-  onPickUp?: (agent: OrgAgent) => void
-  pickingUp?: boolean
-}) {
-  // "Pick up" only makes sense for a teammate's ticketed agent (never your own).
-  const canPickUp =
-    !!onPickUp && !!agent.ticketId && !!agent.ownerId && agent.ownerId !== currentUserId
-
-  return (
-    <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] min-w-0">
-      <Bot className="w-4 h-4 text-text-secondary/60 flex-shrink-0" />
-      <span className="text-sm font-medium text-white truncate min-w-0 flex-1">
-        {agent.name}
-      </span>
-      <TicketBadge ticketId={agent.ticketId} />
-      {agent.repositories.slice(0, 2).map((repo) => (
-        <RepoTag key={repo} repo={repo} />
-      ))}
-      {agent.repositories.length > 2 && (
-        <span className="text-xs text-text-secondary/40 flex-shrink-0">+{agent.repositories.length - 2}</span>
-      )}
-      <StatusPill status={agent.status} />
-      {canPickUp && (
-        <button
-          onClick={() => onPickUp!(agent)}
-          disabled={pickingUp}
-          title={`Launch a local agent on ${agent.ticketId} with /magic:continue`}
-          className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-accent bg-accent/10 border border-accent/20 rounded-lg hover:bg-accent/20 transition-colors flex-shrink-0 disabled:opacity-50"
-        >
-          <ArrowRightCircle className="w-3.5 h-3.5" />
-          <span>{pickingUp ? 'Picking up…' : 'Pick up'}</span>
-        </button>
-      )}
-    </div>
-  )
-}
-
 function OwnerLabel({ agent, emailByOwner }: { agent: OrgAgent; emailByOwner: Map<string, string> }) {
   const label = agent.ownerId ? emailByOwner.get(agent.ownerId) ?? agent.ownerId : 'Unassigned'
   return <span className="text-xs text-text-secondary/60 truncate">{label}</span>
@@ -318,22 +270,11 @@ function BlockedSection({ agents, emailByOwner }: { agents: OrgAgent[]; emailByO
   )
 }
 
-interface MemberGroup {
-  key: string
-  label: string
-  agents: OrgAgent[]
-}
-
 export function DashboardPage() {
-  const { agents, loading } = useOrgAgents()
+  const { agents } = useOrgAgents()
   const { members } = useOrg()
-  const { status: authStatus } = useAuth()
-  const { launchClaudeTerminal, terminals } = useTerminals()
-  const setCurrentPage = useStore((s) => s.setCurrentPage)
-  const [pickingUpId, setPickingUpId] = useState<string | null>(null)
-  const currentUserId = authStatus.user?.id
 
-  // owner_id → email, so agents can be grouped under a readable member label.
+  // owner_id → email, so agents show a readable member label.
   const emailByOwner = useMemo(() => {
     const map = new Map<string, string>()
     for (const m of members) {
@@ -344,51 +285,6 @@ export function DashboardPage() {
 
   const awaitingReview = useMemo(() => collectAwaitingReview(agents), [agents])
   const blocked = useMemo(() => collectBlocked(agents), [agents])
-
-  // Pick up a colleague's task: resolve their repo(s) to a local cwd (main), then
-  // launch a fresh local agent with /magic:continue to resume the ticket.
-  const handlePickUp = async (agent: OrgAgent) => {
-    if (!agent.ticketId) return
-    setPickingUpId(agent.id)
-    try {
-      const { cwd, initialPrompt } = await window.electronAPI.org.pickUpTask(agent.ticketId, agent.repositories)
-      const name = `Claude ${terminals.length + 1}`
-      await launchClaudeTerminal(name, cwd, initialPrompt)
-      setCurrentPage('terminals')
-      showToast(`Picked up ${agent.ticketId}`, 'success')
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to pick up task', 'error')
-    } finally {
-      setPickingUpId(null)
-    }
-  }
-
-  // Group agents by owner (unassigned/unknown owners fall into a trailing group).
-  const groups: MemberGroup[] = useMemo(() => {
-    const byOwner = new Map<string, OrgAgent[]>()
-    for (const agent of agents) {
-      const key = agent.ownerId ?? '__unassigned__'
-      if (!byOwner.has(key)) byOwner.set(key, [])
-      byOwner.get(key)!.push(agent)
-    }
-
-    const result: MemberGroup[] = []
-    for (const [key, list] of byOwner.entries()) {
-      if (key === '__unassigned__') continue
-      result.push({
-        key,
-        label: emailByOwner.get(key) ?? key,
-        agents: list.sort((a, b) => a.name.localeCompare(b.name)),
-      })
-    }
-    result.sort((a, b) => a.label.localeCompare(b.label))
-
-    const unassigned = byOwner.get('__unassigned__')
-    if (unassigned && unassigned.length > 0) {
-      result.push({ key: '__unassigned__', label: 'Unassigned', agents: unassigned })
-    }
-    return result
-  }, [agents, emailByOwner])
 
   return (
     <div className="h-full flex flex-col">
@@ -406,7 +302,7 @@ export function DashboardPage() {
         <LiveIndicator />
       </div>
 
-      {/* Body — attention widgets + usage stats + active agents share one scroll container */}
+      {/* Body — attention widgets + usage stats share one scroll container */}
       <div className="flex-1 overflow-auto flex flex-col gap-8">
         {/* Attention hooks: PRs awaiting review + blocked work (hidden when empty) */}
         <AwaitingReviewSection items={awaitingReview} emailByOwner={emailByOwner} />
@@ -414,46 +310,6 @@ export function DashboardPage() {
 
         {/* Org usage stats (read is open to any member) */}
         <UsageStatsSection />
-
-        {/* Active agents */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <Bot className="w-4 h-4" />
-            <span>Active agents</span>
-          </div>
-          {loading && agents.length === 0 ? (
-            <div className="py-10 flex items-center justify-center text-text-secondary text-sm">
-              Loading…
-            </div>
-          ) : agents.length === 0 ? (
-            <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-white/[0.03] border border-white/[0.06] rounded-xl">
-              <Users className="w-8 h-8 opacity-30" />
-              <p>No active agents in the organization yet.</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-6">
-              {groups.map((group) => (
-                <div key={group.key} className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2 px-1">
-                    <span className="text-sm font-medium text-white truncate">{group.label}</span>
-                    <span className="text-xs text-text-secondary/50">{group.agents.length}</span>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {group.agents.map((agent) => (
-                      <AgentRow
-                        key={agent.id}
-                        agent={agent}
-                        currentUserId={currentUserId}
-                        onPickUp={handlePickUp}
-                        pickingUp={pickingUpId === agent.id}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   )
