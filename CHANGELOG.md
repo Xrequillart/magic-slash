@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.52.0] - 2026-07-25
+
+### Added
+
+- **Supabase**: Add multi-tenant schema and rls foundations
+- **Auth**: Add account lifecycle (reset, settings, deletion, session)
+- **Desktop**: Add optional cloud auth and organization management
+- **Desktop**: Make supabase the single source of truth for config/agents/history
+- **Org**: Add member management and multi-org switching
+- **Desktop**: Add sidebar account button with login entry point
+- **Desktop**: Add sidebar account icon and team shortcut
+- **Desktop**: Rework settings with account tab and org cards
+- **Desktop**: Support per-organization rosters and org creation
+- **Desktop**: Settings modal and team/personal repositories
+- **Desktop**: Add team/personal repositories schema with RLS and realtime
+- **Desktop**: Add realtime team agents dashboard
+- **Desktop**: Team dashboard, re-engagement notifs and daily digest
+- **Desktop**: Add opt-in usage logs and org stats dashboard
+- **Desktop**: Add profiles table with own-only RLS
+- **Desktop**: Sync user profile with the cloud, mirrored to profile.md
+- **Desktop**: Add get_invitation_preview rpc for the web invite funnel
+- **Desktop**: Add delete invitation action in org settings
+- **Desktop**: Share web invite link instead of the raw token
+- **Desktop**: Serve config and agent metadata over the status server
+- Read live config and metadata from the desktop app in skills
+- **Desktop**: Show usage gauges in minimized sidebar card
+- **Desktop**: Add minimize toggle to context usage card
+- **Desktop**: Streamline repository controls in agent info sidebar
+- **Webapp**: Add invitation funnel and download web app
+- **Webapp**: Light theme and split-screen invitation funnel
+- **Webapp**: Connected dashboard with account, organization and profile
+
+### Changed
+
+- **Desktop**: Refine minimized agent usage card layout
+- **Desktop**: Drop active agents list from team dashboard
+- **Desktop**: Load supabase credentials from .env files
+- **Desktop**: Inject supabase credentials into the release build
+- **Desktop**: Mock heavy sibling modules in org test for root run
+- **Webapp**: Pin vercel framework to nextjs
+
+### Fixed
+
+- **Desktop**: Surface capped flag on org usage stats
+- **Desktop**: Resolve review feedback on settings tab deep-link
+
 ## [0.51.0] - 2026-07-23
 
 ### Added
@@ -1482,6 +1528,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.52.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.52.0
 [0.51.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.51.0
 [0.50.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.50.1
 [0.50.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.50.0
