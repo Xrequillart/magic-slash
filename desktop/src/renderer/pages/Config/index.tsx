@@ -805,13 +805,14 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">Enable history</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">Show activity history in the sidebar</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">Record your agent activity (tickets, commits, PRs, reviews) and which skills you run, and show the History entry in the sidebar. When off, nothing is recorded.</div>
             </div>
             <button
-              onClick={() => {
+              onClick={async () => {
                 const newValue = !historyEnabled
                 setHistoryEnabled(newValue)
-                window.electronAPI.config.setHistoryEnabled(newValue)
+                const result = await window.electronAPI.config.setHistoryEnabled(newValue)
+                setConfig(result.config)
               }}
               className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
                 historyEnabled ? 'bg-accent' : 'bg-white/20'
