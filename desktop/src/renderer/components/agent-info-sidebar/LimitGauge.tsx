@@ -1,3 +1,7 @@
+// Gauge primitives for the Claude plan rate limits (Session 5h / Weekly 7d),
+// shared by every surface that renders them: the agent info sidebar, the sidebar
+// usage card and the Claude Code settings tab.
+
 // Traffic-light color for a fill gauge: green → yellow → red as it fills up.
 export function gaugeColors(pct: number): { bar: string; text: string } {
   if (pct >= 85) return { bar: 'bg-red', text: 'text-red' }
@@ -17,10 +21,10 @@ export function formatReset(resetsAtSec: number, nowMs: number): string {
   return `${Math.max(1, minutes)}m`
 }
 
-// Semicircle "speedometer" gauge for a plan rate limit (5h / 7d).
-// The arc fills left→right over the top; the percentage sits in the belly and the
-// reset countdown sits underneath.
-export function LimitGauge({ label, percent, resetsAt, now }: {
+// Full-width progress bar for one plan rate limit, sized for a settings card:
+// name on the left, reset countdown + percentage on the right, bar underneath.
+// The sidebar has its own narrower variant — this one is for wide containers.
+export function RateLimitBar({ label, percent, resetsAt, now }: {
   label: string
   percent: number
   resetsAt?: number
@@ -29,48 +33,23 @@ export function LimitGauge({ label, percent, resetsAt, now }: {
   const pct = Math.min(100, Math.max(0, percent))
   const colors = gaugeColors(pct)
 
-  // Geometry: centre bottom, radius r, semicircle from (cx-r, cy) to (cx+r, cy).
-  const r = 26
-  const cx = 34
-  const cy = 32
-  const arc = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`
-
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <div className="relative" style={{ width: 68, height: 40 }}>
-        <svg viewBox="0 0 68 40" className="w-full h-full overflow-visible">
-          {/* Track */}
-          <path
-            d={arc}
-            fill="none"
-            className="stroke-white/[0.08]"
-            strokeWidth={6}
-            strokeLinecap="round"
-            pathLength={100}
-          />
-          {/* Value */}
-          <path
-            d={arc}
-            fill="none"
-            className={`${colors.text} transition-all duration-500`}
-            stroke="currentColor"
-            strokeWidth={6}
-            strokeLinecap="round"
-            pathLength={100}
-            strokeDasharray={`${pct} 100`}
-          />
-        </svg>
-        {/* Percentage in the belly */}
-        <span
-          className={`absolute inset-x-0 bottom-0 text-center font-semibold text-sm ${colors.text}`}
-        >
-          {Math.round(pct)}%
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-sm">{label}</span>
+        <span className="flex items-baseline gap-2">
+          {typeof resetsAt === 'number' && (
+            <span className="text-[11px] text-text-secondary/40">resets in {formatReset(resetsAt, now)}</span>
+          )}
+          <span className={`text-sm font-semibold tabular-nums ${colors.text}`}>{Math.round(pct)}%</span>
         </span>
       </div>
-      <span className="text-[11px] text-text-secondary/70">{label}</span>
-      {typeof resetsAt === 'number' && (
-        <span className="text-[10px] text-text-secondary/50">resets in {formatReset(resetsAt, now)}</span>
-      )}
+      <div className="h-2 w-full rounded-full bg-white/[0.06] overflow-hidden">
+        <div
+          className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   )
 }

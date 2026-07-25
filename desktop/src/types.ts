@@ -230,16 +230,17 @@ export type MembershipRole = 'user' | 'admin'
 
 export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
 
-/** Tabs of the Settings/Config page. Shared so other views (e.g. the sidebar
- *  account menu) can deep-link a specific tab in a type-safe way. */
+/** Tabs of the Settings/Config page, in rail order. Shared so other views (e.g.
+ *  the sidebar account menu) can deep-link a specific tab in a type-safe way.
+ *  'claude-code' gathers everything about the Claude Code CLI itself — the
+ *  account it runs as, its launch mode, and its rate/spend usage. */
 export type SettingsTab =
   | 'account'
-  | 'repositories'
   | 'organization'
-  | 'launch-mode'
+  | 'repositories'
+  | 'claude-code'
   | 'features'
   | 'shortcuts'
-  | 'usage'
   | 'about'
 
 /** Signed-in cloud user identity (subset of the Supabase session). */

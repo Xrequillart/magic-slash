@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, Fragment } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Check, Loader2, Lock, CircleUserRound, type LucideIcon } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Check, Loader2, Lock, CircleUserRound, SquareTerminal, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage } from './OrgPage'
 import { SectionHeader } from './SectionHeader'
-import { LimitGauge } from '../../components/agent-info-sidebar/LimitGauge'
+import { RateLimitBar } from '../../components/agent-info-sidebar/LimitGauge'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
 import { useAuth } from '../../hooks/useAuth'
@@ -34,14 +34,15 @@ const LAUNCH_MODE_OPTIONS: { value: LaunchMode; label: string; description: stri
 ]
 
 // Icons mirror each tab's own section header, so the rail and the content agree.
+// Claude Code is the exception: it holds four sections (account, launch mode,
+// rate usage, spend) and gets the CLI's own icon rather than any one of theirs.
 const SETTINGS_TABS: { id: SettingsTab; label: string; icon: LucideIcon }[] = [
   { id: 'account', label: 'Account', icon: CircleUserRound },
-  { id: 'repositories', label: 'Repositories', icon: FolderGit },
   { id: 'organization', label: 'Organization', icon: Building2 },
-  { id: 'launch-mode', label: 'Launch Mode', icon: Shield },
+  { id: 'repositories', label: 'Repositories', icon: FolderGit },
+  { id: 'claude-code', label: 'Claude Code', icon: SquareTerminal },
   { id: 'features', label: 'Features', icon: Sparkles },
   { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
-  { id: 'usage', label: 'Usage', icon: BarChart3 },
   { id: 'about', label: 'About', icon: Info },
 ]
 
@@ -417,6 +418,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
     return latest
   }, [terminals])
 
+  // accountUsage can exist while carrying neither percentage, so gate the bars on
+  // the values actually rendered rather than on the object itself.
+  const hasRateLimits =
+    typeof accountUsage?.fiveHourPercent === 'number' ||
+    typeof accountUsage?.sevenDayPercent === 'number'
+
   // Re-render every 30s so the "resets in …" countdowns stay fresh.
   const [usageNow, setUsageNow] = useState(() => Date.now())
   useEffect(() => {
@@ -428,7 +435,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   const [claudeAccount, setClaudeAccount] = useState<ClaudeAccount | null>(null)
   const [spend, setSpend] = useState<SpendSummary | null>(null)
   useEffect(() => {
-    if (activeTab !== 'usage') return
+    if (activeTab !== 'claude-code') return
     let cancelled = false
     window.electronAPI.usage.getAccount().then((a) => { if (!cancelled) setClaudeAccount(a) })
     window.electronAPI.usage.getSpend().then((s) => { if (!cancelled) setSpend(s) })
@@ -626,9 +633,54 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         )}
       </div>}
 
-      {/* Launch Mode tab */}
-      {contentTab === 'launch-mode' && <div>
-        <SectionHeader icon={Shield} title="Launch Mode" />
+      {/* Claude Code tab — everything about the CLI itself: the account it runs
+          as, how it launches, and how much of the plan it is consuming. */}
+      {contentTab === 'claude-code' && <div className="flex flex-col gap-8">
+
+      {/* Account — the Claude identity read from ~/.claude, not the cloud account */}
+      <div>
+        <SectionHeader icon={User} title="Account" />
+        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+          {claudeAccount ? (
+            <div className="space-y-2 text-sm">
+              {claudeAccount.displayName && (
+                <div className="flex items-center justify-between">
+                  <span className="text-text-secondary/60">Name</span>
+                  <span className="font-medium">{claudeAccount.displayName}</span>
+                </div>
+              )}
+              {claudeAccount.emailAddress && (
+                <div className="flex items-center justify-between">
+                  <span className="text-text-secondary/60">Email</span>
+                  <span className="font-mono text-xs">{claudeAccount.emailAddress}</span>
+                </div>
+              )}
+              {claudeAccount.organizationName && (
+                <div className="flex items-center justify-between">
+                  <span className="text-text-secondary/60">Organization</span>
+                  <span className="font-medium">{claudeAccount.organizationName}</span>
+                </div>
+              )}
+              {claudeAccount.seatTier && (
+                <div className="flex items-center justify-between">
+                  <span className="text-text-secondary/60">Plan</span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-medium">
+                    {SEAT_TIER_LABELS[claudeAccount.seatTier] ?? claudeAccount.seatTier}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-sm text-text-secondary/50 text-center py-2">
+              No Claude account detected.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Launch mode */}
+      <div>
+        <SectionHeader icon={Shield} title="Launch mode" />
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -674,6 +726,73 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Rate usage — plan limits reported by the running agents */}
+      <div>
+        <SectionHeader icon={Gauge} title="Rate usage" />
+        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+          {hasRateLimits ? (
+            <div className="space-y-4">
+              {typeof accountUsage?.fiveHourPercent === 'number' && (
+                <RateLimitBar
+                  label="Session (5h)"
+                  percent={accountUsage.fiveHourPercent}
+                  resetsAt={accountUsage.fiveHourResetsAt}
+                  now={usageNow}
+                />
+              )}
+              {typeof accountUsage?.sevenDayPercent === 'number' && (
+                <RateLimitBar
+                  label="Weekly (7d)"
+                  percent={accountUsage.sevenDayPercent}
+                  resetsAt={accountUsage.sevenDayResetsAt}
+                  now={usageNow}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="text-sm text-text-secondary/50 text-center py-2">
+              No live rate-limit data yet — available for Claude.ai Pro/Max after the first agent activity.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Spend & tokens */}
+      <div>
+        <SectionHeader icon={Coins} title="Spend & tokens" />
+        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+          {spend?.hasData ? (
+            <>
+              <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2 text-sm items-baseline">
+                <span className="text-text-secondary/50 text-xs uppercase tracking-wider"></span>
+                <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">Tokens</span>
+                <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">Est. cost</span>
+
+                {([
+                  { label: 'Today', b: spend.today },
+                  { label: 'This week', b: spend.week },
+                  { label: 'All time', b: spend.allTime },
+                ]).map(({ label, b }) => (
+                  <Fragment key={label}>
+                    <span className="text-text-secondary">{label}</span>
+                    <span className="font-mono text-right">{formatTokensCompact(b.tokens)}</span>
+                    <span className="font-mono text-right text-white">~{formatUsd(b.costUsd)}</span>
+                  </Fragment>
+                ))}
+              </div>
+              <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
+                Cost is an estimate (tokens × public API pricing), not billed spend — your plan is a subscription.
+              </div>
+            </>
+          ) : (
+            <div className="text-sm text-text-secondary/50 text-center py-2">
+              No usage history found in ~/.claude yet.
+            </div>
+          )}
+        </div>
+      </div>
       </div>}
 
       {/* Features tab */}
@@ -1042,120 +1161,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 <span className="px-2 py-0.5 text-xs text-text-secondary/40">Disabled</span>
               )}
             </div>
-          </div>
-        </div>
-      </div>}
-
-      {/* Usage tab */}
-      {contentTab === 'usage' && <div className="flex flex-col lg:flex-row gap-6">
-
-        {/* Left column: account + estimated spend */}
-        <div className="flex-1 min-w-0 flex flex-col gap-6">
-          {/* Current account */}
-          <div>
-            <SectionHeader icon={User} title="Current account" />
-            <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
-              {claudeAccount ? (
-                <div className="space-y-2 text-sm">
-                  {claudeAccount.displayName && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-text-secondary/60">Name</span>
-                      <span className="font-medium">{claudeAccount.displayName}</span>
-                    </div>
-                  )}
-                  {claudeAccount.emailAddress && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-text-secondary/60">Email</span>
-                      <span className="font-mono text-xs">{claudeAccount.emailAddress}</span>
-                    </div>
-                  )}
-                  {claudeAccount.organizationName && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-text-secondary/60">Organization</span>
-                      <span className="font-medium">{claudeAccount.organizationName}</span>
-                    </div>
-                  )}
-                  {claudeAccount.seatTier && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-text-secondary/60">Plan</span>
-                      <span className="px-1.5 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-medium">
-                        {SEAT_TIER_LABELS[claudeAccount.seatTier] ?? claudeAccount.seatTier}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-sm text-text-secondary/50 text-center py-2">
-                  No Claude account detected.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Estimated spend & tokens */}
-          <div>
-            <SectionHeader icon={Coins} title="Spend & tokens" />
-            <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
-              {spend?.hasData ? (
-                <>
-                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2 text-sm items-baseline">
-                    <span className="text-text-secondary/50 text-xs uppercase tracking-wider"></span>
-                    <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">Tokens</span>
-                    <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">Est. cost</span>
-
-                    {([
-                      { label: 'Today', b: spend.today },
-                      { label: 'This week', b: spend.week },
-                      { label: 'All time', b: spend.allTime },
-                    ]).map(({ label, b }) => (
-                      <Fragment key={label}>
-                        <span className="text-text-secondary">{label}</span>
-                        <span className="font-mono text-right">{formatTokensCompact(b.tokens)}</span>
-                        <span className="font-mono text-right text-white">~{formatUsd(b.costUsd)}</span>
-                      </Fragment>
-                    ))}
-                  </div>
-                  <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-                    Cost is an estimate (tokens × public API pricing), not billed spend — your plan is a subscription.
-                  </div>
-                </>
-              ) : (
-                <div className="text-sm text-text-secondary/50 text-center py-2">
-                  No usage history found in ~/.claude yet.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right column: account rate-limit gauges */}
-        <div className="lg:w-[280px] shrink-0">
-          <SectionHeader icon={Gauge} title="Rate limits" />
-          <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
-            {accountUsage ? (
-              <div className="flex items-start justify-center gap-8 py-2">
-                {typeof accountUsage.fiveHourPercent === 'number' && (
-                  <LimitGauge
-                    label="Session (5h)"
-                    percent={accountUsage.fiveHourPercent}
-                    resetsAt={accountUsage.fiveHourResetsAt}
-                    now={usageNow}
-                  />
-                )}
-                {typeof accountUsage.sevenDayPercent === 'number' && (
-                  <LimitGauge
-                    label="Weekly (7d)"
-                    percent={accountUsage.sevenDayPercent}
-                    resetsAt={accountUsage.sevenDayResetsAt}
-                    now={usageNow}
-                  />
-                )}
-              </div>
-            ) : (
-              <div className="text-sm text-text-secondary/50 text-center py-4">
-                No live rate-limit data yet — available for Claude.ai Pro/Max after the first agent activity.
-              </div>
-            )}
           </div>
         </div>
       </div>}
