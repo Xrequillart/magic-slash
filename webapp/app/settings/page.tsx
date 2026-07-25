@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase'
 import { useSession } from '@/lib/session'
-import { AppShell, Eyebrow } from '@/components/AppShell'
+import { AppShell } from '@/components/AppShell'
+import { Button, Eyebrow, Input, Label, Section, Select, Textarea } from '@/components/ui'
+import { DevicesSection } from '@/components/DevicesSection'
 import {
   fetchProfile,
   saveProfile,
@@ -29,23 +31,7 @@ function Note({ status }: { status: Status }) {
   )
 }
 
-const inputCls =
-  'w-full rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-accent'
-const selectCls = inputCls
-const btnCls =
-  'rounded-full bg-ink px-5 py-2.5 font-display text-sm font-medium text-white transition-colors hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-40'
-
-function Section({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-2xl border border-black/5 bg-white p-6">
-      <h2 className="font-display text-lg font-bold text-ink">{title}</h2>
-      <p className="mt-1 text-sm text-muted">{description}</p>
-      <div className="mt-5">{children}</div>
-    </section>
-  )
-}
-
-export default function Account() {
+export default function Settings() {
   const router = useRouter()
   const { session, loading } = useSession()
 
@@ -164,9 +150,9 @@ export default function Account() {
 
   return (
     <AppShell email={currentEmail}>
-      <Eyebrow>/account</Eyebrow>
-      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">Account</h1>
-      <p className="mt-4 text-muted">Manage your sign-in details and your account.</p>
+      <Eyebrow>/settings</Eyebrow>
+      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">Settings</h1>
+      <p className="mt-4 text-muted">Manage your profile, your devices and your account.</p>
 
       <div className="mt-10 space-y-5">
         <Section title="Profile" description="Helps Magic Slash tailor its tone and depth to you, across the app and the /magic:* skills.">
@@ -175,61 +161,57 @@ export default function Account() {
           ) : (
             <form onSubmit={saveProfileForm} className="space-y-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Name</label>
-                <input
+                <Label>Name</Label>
+                <Input
                   type="text"
                   value={profile.name}
                   onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                   placeholder="How should we call you?"
-                  className={inputCls}
                 />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Role</label>
-                  <select
+                  <Label>Role</Label>
+                  <Select
                     value={profile.role}
                     onChange={(e) => setProfile({ ...profile, role: e.target.value as ProfileRole })}
-                    className={selectCls}
                   >
                     {(Object.keys(ROLE_LABELS) as ProfileRole[]).map((r) => (
                       <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Technical level</label>
-                  <select
+                  <Label>Technical level</Label>
+                  <Select
                     value={profile.technicalLevel}
                     onChange={(e) => setProfile({ ...profile, technicalLevel: e.target.value as ProfileLevel })}
-                    className={selectCls}
                   >
                     {(Object.keys(LEVEL_LABELS) as ProfileLevel[]).map((l) => (
                       <option key={l} value={l}>{LEVEL_LABELS[l]}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Communication style</label>
-                <select
+                <Label>Communication style</Label>
+                <Select
                   value={profile.communicationStyle ?? ''}
                   onChange={(e) =>
                     setProfile({ ...profile, communicationStyle: (e.target.value || null) as ProfileStyle | null })
                   }
-                  className={selectCls}
                 >
                   <option value="">No preference</option>
                   {(Object.keys(STYLE_LABELS) as ProfileStyle[]).map((s) => (
                     <option key={s} value={s}>{STYLE_LABELS[s]}</option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-medium text-muted">Languages</label>
+                <Label>Languages</Label>
                 <div className="flex flex-wrap gap-2">
                   {LANGUAGE_OPTIONS.map((lang) => {
                     const on = profile.languages.includes(lang)
@@ -250,55 +232,55 @@ export default function Account() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Anything else</label>
-                <textarea
+                <Label>Anything else</Label>
+                <Textarea
                   value={profile.freeText}
                   onChange={(e) => setProfile({ ...profile, freeText: e.target.value })}
                   rows={3}
                   placeholder="Preferences, context, how you like to work…"
-                  className={`${inputCls} resize-y`}
+                  className="resize-y"
                 />
               </div>
 
-              <button type="submit" className={btnCls} disabled={profileBusy}>
+              <Button type="submit" disabled={profileBusy}>
                 {profileBusy ? 'Saving…' : 'Save profile'}
-              </button>
+              </Button>
               <Note status={profileStatus} />
             </form>
           )}
         </Section>
 
+        <DevicesSection />
+
         <Section title="Email" description="The address you sign in with.">
           <form onSubmit={saveEmail} className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1">
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
-            <button type="submit" className={btnCls} disabled={emailBusy || email.trim() === currentEmail}>
+            <Button type="submit" disabled={emailBusy || email.trim() === currentEmail}>
               {emailBusy ? 'Saving…' : 'Update email'}
-            </button>
+            </Button>
           </form>
           <Note status={emailStatus} />
         </Section>
 
         <Section title="Password" description="Choose a new password for your account.">
           <form onSubmit={savePassword} className="space-y-3">
-            <input
+            <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="New password"
-              className={inputCls}
             />
-            <input
+            <Input
               type="password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder="Confirm new password"
-              className={inputCls}
             />
-            <button type="submit" className={btnCls} disabled={pwBusy || !password || !confirm}>
+            <Button type="submit" disabled={pwBusy || !password || !confirm}>
               {pwBusy ? 'Saving…' : 'Update password'}
-            </button>
+            </Button>
           </form>
           <Note status={pwStatus} />
         </Section>
@@ -319,13 +301,9 @@ export default function Account() {
             ) : (
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-sm font-medium text-ink">Are you sure? This is permanent.</span>
-                <button
-                  onClick={deleteAccount}
-                  disabled={deleteBusy}
-                  className="rounded-full bg-red px-5 py-2.5 font-display text-sm font-medium text-white transition-colors hover:bg-red/90 disabled:opacity-40"
-                >
+                <Button variant="danger" onClick={deleteAccount} disabled={deleteBusy}>
                   {deleteBusy ? 'Deleting…' : 'Yes, delete everything'}
-                </button>
+                </Button>
                 <button
                   onClick={() => setConfirmingDelete(false)}
                   disabled={deleteBusy}

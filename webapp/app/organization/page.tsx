@@ -12,7 +12,8 @@ import {
   inviteLink,
   type Invitation,
 } from '@/lib/invitations'
-import { AppShell, Eyebrow } from '@/components/AppShell'
+import { AppShell } from '@/components/AppShell'
+import { Badge, Button, Card, Eyebrow, Input, Select, type BadgeTone } from '@/components/ui'
 
 function initial(email: string | null): string {
   return (email?.trim()?.charAt(0) ?? '?').toUpperCase()
@@ -20,21 +21,15 @@ function initial(email: string | null): string {
 
 function RoleBadge({ role }: { role: Role }) {
   return (
-    <span
-      className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-        role === 'admin' ? 'bg-accent/10 text-accent' : 'bg-black/[0.05] text-muted'
-      }`}
-    >
-      {role === 'admin' ? 'Admin' : 'Member'}
-    </span>
+    <Badge tone={role === 'admin' ? 'accent' : 'neutral'}>{role === 'admin' ? 'Admin' : 'Member'}</Badge>
   )
 }
 
-const STATUS_STYLE: Record<Invitation['status'], string> = {
-  pending: 'bg-yellow/10 text-yellow',
-  accepted: 'bg-green/10 text-green',
-  expired: 'bg-black/[0.05] text-muted',
-  revoked: 'bg-black/[0.05] text-muted',
+const STATUS_TONE: Record<Invitation['status'], BadgeTone> = {
+  pending: 'yellow',
+  accepted: 'green',
+  expired: 'neutral',
+  revoked: 'neutral',
 }
 
 export default function OrganizationPage() {
@@ -140,15 +135,15 @@ export default function OrganizationPage() {
               {selected?.name ?? '…'}
             </h1>
             {orgs && orgs.length > 1 && (
-              <select
+              <Select
                 value={selectedId ?? ''}
                 onChange={(e) => setSelectedId(e.target.value)}
-                className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+                className="w-auto"
               >
                 {orgs.map((o) => (
                   <option key={o.id} value={o.id}>{o.name}</option>
                 ))}
-              </select>
+              </Select>
             )}
           </div>
           {selected && (
@@ -160,7 +155,7 @@ export default function OrganizationPage() {
             /members
             {members && <span className="rounded-full bg-black/[0.05] px-2 py-0.5 text-muted">{members.length}</span>}
           </h2>
-          <div className="overflow-hidden rounded-2xl border border-black/5 bg-white">
+          <Card className="overflow-hidden">
             {members === null ? (
               <p className="p-6 text-sm text-muted">Loading…</p>
             ) : (
@@ -179,7 +174,7 @@ export default function OrganizationPage() {
                 ))}
               </ul>
             )}
-          </div>
+          </Card>
 
           {/* Invitations — admins only */}
           {isAdmin && (
@@ -190,41 +185,35 @@ export default function OrganizationPage() {
                 onSubmit={submitInvite}
                 className="flex flex-col gap-3 rounded-2xl border border-black/5 bg-white p-5 sm:flex-row sm:items-center"
               >
-                <input
+                <Input
                   type="email"
                   required
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder="teammate@company.com"
-                  className="flex-1 rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-sm text-ink outline-none focus:border-accent"
+                  className="flex-1"
                 />
-                <select
+                <Select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as Role)}
-                  className="rounded-xl border border-black/10 bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
+                  className="sm:w-32"
                 >
                   <option value="user">Member</option>
                   <option value="admin">Admin</option>
-                </select>
-                <button
-                  type="submit"
-                  disabled={inviting || !inviteEmail}
-                  className="rounded-full bg-ink px-5 py-2.5 font-display text-sm font-medium text-white transition-colors hover:bg-black/80 disabled:opacity-40"
-                >
+                </Select>
+                <Button type="submit" disabled={inviting || !inviteEmail} className="shrink-0">
                   {inviting ? 'Sending…' : 'Send invite'}
-                </button>
+                </Button>
               </form>
               {inviteError && <p className="mt-2 text-xs text-red">{inviteError}</p>}
 
               {invites && invites.length > 0 && (
-                <div className="mt-4 overflow-hidden rounded-2xl border border-black/5 bg-white">
+                <Card className="mt-4 overflow-hidden">
                   <ul className="divide-y divide-black/5">
                     {invites.map((inv) => (
                       <li key={inv.id} className="flex items-center gap-3 px-5 py-3.5">
                         <span className="min-w-0 flex-1 truncate text-sm text-ink">{inv.email}</span>
-                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${STATUS_STYLE[inv.status]}`}>
-                          {inv.status}
-                        </span>
+                        <Badge tone={STATUS_TONE[inv.status]}>{inv.status}</Badge>
                         {inv.status === 'pending' && (
                           <button
                             onClick={() => copyLink(inv.token)}
@@ -246,7 +235,7 @@ export default function OrganizationPage() {
                       </li>
                     ))}
                   </ul>
-                </div>
+                </Card>
               )}
             </>
           )}

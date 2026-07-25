@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase'
+import { DOWNLOAD_URL } from '@/lib/installations'
 
 interface InvitationPreview {
   org_name: string
@@ -11,7 +13,9 @@ interface InvitationPreview {
   expires_at: string | null
 }
 
-type Phase = 'loading' | 'invalid' | 'unavailable' | 'ready' | 'done'
+// No 'done' phase: a successful acceptance redirects straight to the dashboard,
+// where the install banner picks up the "download the app" nudge.
+type Phase = 'loading' | 'invalid' | 'unavailable' | 'ready'
 
 // Supabase surfaces "already registered" with varying copy across versions;
 // match loosely so an existing invitee falls through to sign-in.
@@ -19,8 +23,6 @@ function isAlreadyRegistered(message: string): boolean {
   const m = message.toLowerCase()
   return m.includes('already registered') || m.includes('already been registered') || m.includes('user already exists')
 }
-
-const DOWNLOAD_URL = 'https://github.com/xrequillart/magic-slash/releases/latest'
 
 const UNAVAILABLE_COPY: Record<string, string> = {
   accepted: 'This invitation has already been accepted. Just download the app and sign in.',
@@ -30,6 +32,7 @@ const UNAVAILABLE_COPY: Record<string, string> = {
 
 export default function InvitePage({ params }: { params: { token: string } }) {
   const token = params.token
+  const router = useRouter()
   const [phase, setPhase] = useState<Phase>('loading')
   const [preview, setPreview] = useState<InvitationPreview | null>(null)
   const [password, setPassword] = useState('')
@@ -98,7 +101,9 @@ export default function InvitePage({ params }: { params: { token: string } }) {
         return
       }
 
-      setPhase('done')
+      // Signed in and a member: hand over to the dashboard. Keep `submitting`
+      // true so the button stays disabled while the route transition happens.
+      router.replace('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
       setSubmitting(false)
@@ -213,26 +218,6 @@ export default function InvitePage({ params }: { params: { token: string } }) {
             </>
           )}
 
-          {phase === 'done' && preview && (
-            <div className="text-center">
-              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-green/10 text-3xl text-green">
-                ✓
-              </div>
-              <h1 className="font-display text-3xl font-black text-ink">You&apos;re in!</h1>
-              <p className="mt-2 text-sm text-muted">
-                You&apos;ve joined <span className="font-medium text-ink">{preview.org_name}</span>.
-                Download the app and sign in with your new account to get started.
-              </p>
-              <a
-                href={DOWNLOAD_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 inline-block rounded-full bg-ink px-6 py-3 font-display text-sm font-medium text-white transition-colors hover:bg-black/80"
-              >
-                Download the app
-              </a>
-            </div>
-          )}
         </div>
       </section>
     </main>

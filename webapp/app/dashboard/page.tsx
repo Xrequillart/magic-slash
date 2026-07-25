@@ -3,10 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Bot, GitPullRequest, Coins } from 'lucide-react'
 import { useSession } from '@/lib/session'
 import { fetchOrgs, type Org } from '@/lib/orgs'
-import { AppShell, Eyebrow } from '@/components/AppShell'
+import { fetchInstallations, type Installation } from '@/lib/installations'
+import { fetchUserStats, formatUsd, type UserStats } from '@/lib/stats'
+import { AppShell } from '@/components/AppShell'
+import { InstallBanner } from '@/components/InstallBanner'
+import { Card, Eyebrow, SectionLabel, StatTile } from '@/components/ui'
 
 function firstName(email?: string): string {
   if (!email) return 'there'
@@ -18,13 +22,18 @@ export default function Dashboard() {
   const router = useRouter()
   const { session, loading } = useSession()
   const [orgs, setOrgs] = useState<Org[] | null>(null)
+  const [installs, setInstalls] = useState<Installation[] | null>(null)
+  const [stats, setStats] = useState<UserStats | null>(null)
 
   useEffect(() => {
     if (!loading && !session) router.replace('/')
   }, [loading, session, router])
 
   useEffect(() => {
-    if (session) fetchOrgs().then(setOrgs)
+    if (!session) return
+    fetchOrgs().then(setOrgs)
+    fetchInstallations().then(setInstalls)
+    fetchUserStats().then(setStats)
   }, [session])
 
   if (loading || !session) {
@@ -37,14 +46,24 @@ export default function Dashboard() {
       <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">
         Hey {firstName(session.user.email ?? undefined)}.
       </h1>
-      <p className="mt-4 text-muted">Your organizations and account, all in one place.</p>
+      <p className="mt-4 text-muted">Your agents, organizations and account, all in one place.</p>
+
+      <div className="mt-10">
+        <InstallBanner installs={installs} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatTile icon={Bot} label="Agents" value={stats ? String(stats.agents) : '—'} />
+        <StatTile icon={GitPullRequest} label="In review" value={stats ? String(stats.inReview) : '—'} />
+        <StatTile icon={Coins} label="This month" value={stats ? formatUsd(stats.monthCostUsd) : '—'} />
+      </div>
 
       <div className="mt-12 flex items-baseline justify-between">
-        <h2 className="font-mono text-xs font-medium tracking-tight text-muted">/organizations</h2>
+        <SectionLabel>/organizations</SectionLabel>
         {orgs && <span className="text-xs text-muted">{orgs.length} total</span>}
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-black/5 bg-white">
+      <Card className="mt-4 overflow-hidden">
         {orgs === null ? (
           <p className="p-6 text-sm text-muted">Loading…</p>
         ) : orgs.length === 0 ? (
@@ -70,7 +89,7 @@ export default function Dashboard() {
             ))}
           </ul>
         )}
-      </div>
+      </Card>
     </AppShell>
   )
 }
