@@ -71,6 +71,8 @@ one org can never read or write another org's data.
 
 ## Tables
 
+Org-scoped tables (isolation keyed on `org_id`):
+
 | Table             | Purpose                                                              |
 | ----------------- | ------------------------------------------------------------------- |
 | `organizations`   | Tenant boundary; every other table is scoped to an org.             |
@@ -81,11 +83,35 @@ one org can never read or write another org's data.
 | `configs`         | Per-user configuration blob, scoped to a single org.                |
 | `usage_events`    | Append-only usage/billing telemetry (cost, tokens, lines, timing).  |
 | `activity_events` | Append-only audit/activity feed of actions taken in the org.        |
+| `repositories`    | Shared repo identity; `org_id` NULL = personal, set = team repo.    |
+
+User-scoped tables (own-rows-only RLS, independent of any org):
+
+| Table               | Purpose                                                            |
+| ------------------- | ------------------------------------------------------------------ |
+| `repository_paths`  | The caller's own local path binding for a repo — never shared.     |
+| `profiles`          | Who the human is (name, role, level, style) for the skills.        |
+| `user_settings`     | App preferences: Settings → Features, launch mode, Atlassian flag. |
+| `app_installations` | One row per (user, device): the app version that device runs.      |
+
+`user_settings` deliberately holds one **nullable** column per option. NULL means
+"the user never chose", which the desktop app distinguishes from `false` — e.g.
+history is ON when unset, and `auto_start_at_login` only touches the macOS login
+item once explicitly set. Defaults live in the app, not the schema.
+
+`app_installations` is upserted by the desktop app on every launch (from the
+connectivity gate, once authed), so the version is refreshed at each start and
+after every auto-update. `app_version_updated_at` is trigger-maintained and moves
+only on a genuine version change. Fleet-wide "who runs which version" reporting
+goes through the service role, since RLS keeps each row private to its user.
 
 ## Security model
 
-- **RLS is enabled on all 8 tables** and enforces strict per-org isolation keyed
-  on `org_id`. A user only ever sees rows for orgs they are a member of.
+- **RLS is enabled on every table.** Org-scoped tables enforce strict per-org
+  isolation keyed on `org_id`: a user only ever sees rows for orgs they are a
+  member of. User-scoped tables (`repository_paths`, `profiles`, `user_settings`,
+  `app_installations`) are own-rows-only on every verb — not even org admins get
+  a read path.
 - Membership checks go through `is_org_member(uuid)` / `is_org_admin(uuid)`,
   `SECURITY DEFINER` functions with a locked `search_path`. This avoids RLS
   recursion on `memberships` and is the single source of truth for access.
@@ -95,6 +121,9 @@ one org can never read or write another org's data.
   require the `admin` role. `agents` are writable by any org member. `configs`
   are private to their owning user. `usage_events` and `activity_events` are
   append-only (select + insert, no update/delete).
+- Both user-scoped tables added for settings reference `auth.users` with
+  `ON DELETE CASCADE`, so `delete_account()` removes them with the user row — no
+  change to that RPC was needed.
 - Organizations are created **only** through the `create_organization(text)`
   RPC, which atomically inserts the org and the creator's admin membership.
   There is intentionally no direct `INSERT` policy on `organizations`.

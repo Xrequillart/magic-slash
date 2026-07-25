@@ -207,6 +207,21 @@ export interface Config {
   currentOrgId?: string
 }
 
+/**
+ * Identity of one machine running the app, recorded in `app_installations` on
+ * every launch so the DB always holds the version each user actually runs.
+ * `deviceId` is DERIVED (hashed hostname|platform|arch) rather than stored
+ * locally — the database is the single source of truth and the app persists
+ * nothing on disk to key this row by.
+ */
+export interface AppInstallationInfo {
+  deviceId: string
+  deviceName?: string
+  appVersion: string
+  platform?: string
+  arch?: string
+}
+
 // ---------------------------------------------------------------------------
 // Cloud: auth & organization (optional — the app works fully without any of it)
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, Config, HistoryEntry, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import type { Agent, AppInstallationInfo, Config, HistoryEntry, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SpotlightConfig, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import { isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
@@ -68,6 +69,126 @@ interface ProfileRow {
   communication_style: string | null
   languages: string[] | null
   free_text: string | null
+}
+
+/**
+ * public.user_settings — one row per user, one column per application-level
+ * preference (Settings → Features, Launch Mode, Atlassian flag). Every column is
+ * nullable and NULL means "the user never chose": the app's withDefaults() owns
+ * the defaults, and several settings genuinely treat absent as a third state
+ * distinct from false (history is ON when unset; autoStartAtLogin only touches
+ * the macOS login item once explicitly set).
+ */
+interface UserSettingsRow {
+  history_enabled: boolean | null
+  usage_card_enabled: boolean | null
+  usage_card_minimized: boolean | null
+  usage_logs_enabled: boolean | null
+  daily_digest_enabled: boolean | null
+  split_enabled: boolean | null
+  split_active: boolean | null
+  pr_reviews_enabled: boolean | null
+  pr_reviews_poll_interval_ms: number | null
+  pr_reviews_auto_launch_skills: boolean | null
+  spotlight_enabled: boolean | null
+  spotlight_shortcut: string | null
+  auto_start_at_login: boolean | null
+  launch_mode: string | null
+  atlassian_integration_enabled: boolean | null
+}
+
+const USER_SETTINGS_COLUMNS =
+  'history_enabled, usage_card_enabled, usage_card_minimized, usage_logs_enabled, ' +
+  'daily_digest_enabled, split_enabled, split_active, pr_reviews_enabled, ' +
+  'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
+  'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled'
+
+/**
+ * Config keys that now live in `user_settings`. Stripped from the org-scoped
+ * `configs` blob on every write so there is exactly one source of truth — the
+ * blob keeps only what is genuinely org-scoped (the shared-config projection,
+ * `currentOrgId`, `version`).
+ */
+const SETTINGS_KEYS = [
+  'historyEnabled',
+  'usageCardEnabled',
+  'usageCardMinimized',
+  'usageLogsEnabled',
+  'dailyDigest',
+  'splitEnabled',
+  'splitActive',
+  'prReviews',
+  'spotlight',
+  'autoStartAtLogin',
+  'launchMode',
+  'integrations',
+] as const
+
+/** `undefined` (key absent from Config) → `null` (column unset). */
+function orNull<T>(value: T | undefined): T | null {
+  return value === undefined ? null : value
+}
+
+/** A column that actually carries a value (neither NULL nor missing from the projection). */
+function isSet<T>(value: T | null | undefined): value is T {
+  return value !== null && value !== undefined
+}
+
+/** Project a Config onto its user_settings row. Absent keys become NULL. */
+function configToSettingsRow(config: Config): UserSettingsRow {
+  return {
+    history_enabled: orNull(config.historyEnabled),
+    usage_card_enabled: orNull(config.usageCardEnabled),
+    usage_card_minimized: orNull(config.usageCardMinimized),
+    usage_logs_enabled: orNull(config.usageLogsEnabled),
+    daily_digest_enabled: orNull(config.dailyDigest?.enabled),
+    split_enabled: orNull(config.splitEnabled),
+    split_active: orNull(config.splitActive),
+    pr_reviews_enabled: orNull(config.prReviews?.enabled),
+    pr_reviews_poll_interval_ms: orNull(config.prReviews?.pollIntervalMs),
+    pr_reviews_auto_launch_skills: orNull(config.prReviews?.autoLaunchSkills),
+    spotlight_enabled: orNull(config.spotlight?.enabled),
+    spotlight_shortcut: orNull(config.spotlight?.shortcut),
+    auto_start_at_login: orNull(config.autoStartAtLogin),
+    launch_mode: orNull(config.launchMode),
+    atlassian_integration_enabled: orNull(config.integrations?.atlassian),
+  }
+}
+
+/**
+ * Apply a user_settings row onto a Config, in place. NULL columns are skipped so
+ * the key stays absent and withDefaults() (not this mapper) decides the default.
+ * Enum-like columns are re-validated on read: the DB has matching CHECKs, but a
+ * value written by a newer app version must not leak through as an invalid enum.
+ */
+function applySettingsRow(config: Config, row: UserSettingsRow): void {
+  if (isSet(row.history_enabled)) config.historyEnabled = row.history_enabled
+  if (isSet(row.usage_card_enabled)) config.usageCardEnabled = row.usage_card_enabled
+  if (isSet(row.usage_card_minimized)) config.usageCardMinimized = row.usage_card_minimized
+  if (isSet(row.usage_logs_enabled)) config.usageLogsEnabled = row.usage_logs_enabled
+  if (isSet(row.daily_digest_enabled)) config.dailyDigest = { enabled: row.daily_digest_enabled }
+  if (isSet(row.split_enabled)) config.splitEnabled = row.split_enabled
+  if (isSet(row.split_active)) config.splitActive = row.split_active
+  if (isSet(row.auto_start_at_login)) config.autoStartAtLogin = row.auto_start_at_login
+  if (isValidLaunchMode(row.launch_mode)) config.launchMode = row.launch_mode
+
+  const prReviews: NonNullable<Config['prReviews']> = {}
+  if (isSet(row.pr_reviews_enabled)) prReviews.enabled = row.pr_reviews_enabled
+  if (isSet(row.pr_reviews_poll_interval_ms)) prReviews.pollIntervalMs = row.pr_reviews_poll_interval_ms
+  if (isSet(row.pr_reviews_auto_launch_skills)) prReviews.autoLaunchSkills = row.pr_reviews_auto_launch_skills
+  if (Object.keys(prReviews).length > 0) config.prReviews = prReviews
+
+  // Spotlight is a two-field object; a partial one is fine because withDefaults()
+  // merges DEFAULT_SPOTLIGHT under whatever is present.
+  const spotlight: Partial<SpotlightConfig> = {}
+  if (isSet(row.spotlight_enabled)) spotlight.enabled = row.spotlight_enabled
+  if (isValidSpotlightShortcut(row.spotlight_shortcut)) spotlight.shortcut = row.spotlight_shortcut
+  if (Object.keys(spotlight).length > 0) config.spotlight = spotlight as SpotlightConfig
+
+  // github is a const true in the schema; only atlassian is user-settable.
+  if (isSet(row.atlassian_integration_enabled)) {
+    config.integrations = { github: true, atlassian: row.atlassian_integration_enabled }
+  }
 }
 
 // numeric/bigint columns come back from PostgREST as strings — coerced on read.
@@ -172,9 +293,51 @@ export class CloudStore implements Store {
   // Config
   // -------------------------------------------------------------------------
 
+  /** Read the caller's user_settings row, or null when they have none yet. */
+  private async fetchUserSettings(ctx: { client: SupabaseClient; uid: string }): Promise<UserSettingsRow | null> {
+    const { data, error } = await ctx.client
+      .from('user_settings')
+      .select(USER_SETTINGS_COLUMNS)
+      .eq('user_id', ctx.uid)
+      .maybeSingle()
+    // maybeSingle yields an object or null; guard the shape anyway so a
+    // malformed/empty response can never be applied as a row of undefineds.
+    if (error || !data || typeof data !== 'object' || Array.isArray(data)) return null
+    return data as unknown as UserSettingsRow
+  }
+
+  /**
+   * Upsert the caller's settings row. Uses userContext() (not context()) on
+   * purpose: preferences belong to the USER, so they must persist even when no
+   * org is active — which is exactly the case the old org-scoped blob dropped.
+   */
+  private async saveUserSettings(config: Config): Promise<void> {
+    const ctx = await this.userContext()
+    if (!ctx) return
+    const { error } = await ctx.client
+      .from('user_settings')
+      .upsert({ user_id: ctx.uid, ...configToSettingsRow(config) }, { onConflict: 'user_id' })
+    if (error) throw new Error(`saveUserSettings failed: ${error.message}`)
+  }
+
   async loadConfig(): Promise<Config | null> {
+    const user = await this.userContext()
+    if (!user) return null
+
+    // Settings are user-scoped and load without any org. Fetch them first so a
+    // user with no membership still gets their preferences back.
+    const settings = await this.fetchUserSettings(user)
+
     const ctx = await this.context()
-    if (!ctx) return null
+    if (!ctx) {
+      // No active org: there is no config blob and no team repos to read, but the
+      // user's own settings and personal repos are still theirs. `version` is
+      // rewritten by migrateConfig() from app.getVersion() on the next pass.
+      const config: Config = { version: 'unknown', repositories: {} }
+      if (settings) applySettingsRow(config, settings)
+      config.repositories = this.toRepositoryRecord(await this.fetchRepositories({ ...user, orgId: null }))
+      return config
+    }
 
     const { data, error } = await ctx.client
       .from('configs')
@@ -213,20 +376,30 @@ export class CloudStore implements Store {
     if (typeof config.currentOrgId === 'string') {
       this.activeOrgId = config.currentOrgId
     }
+    // user_settings is the source of truth for preferences; it is applied OVER
+    // any legacy copy left in the blob (pre-migration installs), so the two can
+    // never disagree in favour of the stale one.
+    if (settings) applySettingsRow(config, settings)
     // Repositories are assembled from their own tables, not the blob.
     config.repositories = this.toRepositoryRecord(await this.fetchRepositories(ctx))
     return config
   }
 
   async saveConfig(config: Config): Promise<void> {
+    // Preferences go to the user-scoped table first — they must be saved even
+    // when there is no active org to write the blob against.
+    await this.saveUserSettings(config)
+
     const ctx = await this.context()
     if (!ctx) return
 
     // Mirror the shareable keys at top level so get_org_shared_config keeps
-    // working for org admins, but NEVER store `repositories` in the blob — they
-    // are persisted in the repositories/repository_paths tables instead.
+    // working for org admins. Two families of keys are stripped: `repositories`
+    // (persisted in repositories/repository_paths) and every settings key (now
+    // owned by user_settings), so the blob holds only org-scoped state.
     const data: Record<string, unknown> = { ...config, ...projectSharedFields(config) }
     delete data.repositories
+    for (const key of SETTINGS_KEYS) delete data[key]
 
     const { error } = await ctx.client
       .from('configs')
@@ -298,8 +471,12 @@ export class CloudStore implements Store {
     return record
   }
 
-  /** Fetch repos visible to the caller (own personal + active-org team) with the caller's own path. */
-  private async fetchRepositories(ctx: { client: SupabaseClient; uid: string; orgId: string }): Promise<StoredRepository[]> {
+  /**
+   * Fetch repos visible to the caller (own personal + active-org team) with the
+   * caller's own path. `orgId: null` means no active org, which narrows the set to
+   * personal repos only.
+   */
+  private async fetchRepositories(ctx: { client: SupabaseClient; uid: string; orgId: string | null }): Promise<StoredRepository[]> {
     const [reposRes, pathsRes] = await Promise.all([
       ctx.client
         .from('repositories')
@@ -701,6 +878,39 @@ export class CloudStore implements Store {
       { onConflict: 'user_id' },
     )
     if (error) throw new Error(`saveProfile failed: ${error.message}`)
+  }
+
+  // -------------------------------------------------------------------------
+  // App installations (per-user, per-device version telemetry)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Upsert this machine's row in `app_installations`, refreshing `last_seen_at`
+   * and `app_version`. Called once per launch, so the DB always reflects the
+   * version each user actually runs (an auto-update restarts the app, which
+   * re-records the new version on the way back up).
+   *
+   * Only the columns in the payload are written, so `first_seen_at` keeps its
+   * original value across upserts and `app_version_updated_at` is left to the
+   * table's trigger (stamped only when the version genuinely changes).
+   */
+  async recordAppInstallation(info: AppInstallationInfo): Promise<void> {
+    const ctx = await this.userContext()
+    if (!ctx) return
+
+    const { error } = await ctx.client.from('app_installations').upsert(
+      {
+        user_id: ctx.uid,
+        device_id: info.deviceId,
+        device_name: info.deviceName ?? null,
+        app_version: info.appVersion,
+        platform: info.platform ?? null,
+        arch: info.arch ?? null,
+        last_seen_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,device_id' },
+    )
+    if (error) throw new Error(`recordAppInstallation failed: ${error.message}`)
   }
 
   // -------------------------------------------------------------------------

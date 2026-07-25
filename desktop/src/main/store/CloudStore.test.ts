@@ -525,6 +525,263 @@ describe('loadConfig', () => {
   })
 })
 
+// ── user settings (per-user, org-independent) ───────────────────────────────
+
+/** A fully-NULL settings row: the user has a row but never chose anything. */
+const emptySettingsRow = {
+  history_enabled: null,
+  usage_card_enabled: null,
+  usage_card_minimized: null,
+  usage_logs_enabled: null,
+  daily_digest_enabled: null,
+  split_enabled: null,
+  split_active: null,
+  pr_reviews_enabled: null,
+  pr_reviews_poll_interval_ms: null,
+  pr_reviews_auto_launch_skills: null,
+  spotlight_enabled: null,
+  spotlight_shortcut: null,
+  auto_start_at_login: null,
+  launch_mode: null,
+  atlassian_integration_enabled: null,
+}
+
+describe('user settings', () => {
+  it('maps every settings column onto the config, scoped to the current user', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: null, error: null },
+      repositories: { data: [], error: null },
+      repository_paths: { data: [], error: null },
+      user_settings: {
+        data: {
+          ...emptySettingsRow,
+          history_enabled: false,
+          usage_card_enabled: true,
+          usage_card_minimized: true,
+          usage_logs_enabled: true,
+          daily_digest_enabled: true,
+          split_enabled: true,
+          split_active: false,
+          pr_reviews_enabled: false,
+          pr_reviews_poll_interval_ms: 120_000,
+          pr_reviews_auto_launch_skills: true,
+          spotlight_enabled: false,
+          spotlight_shortcut: 'Alt+Shift+M',
+          auto_start_at_login: true,
+          launch_mode: 'acceptEdits',
+          atlassian_integration_enabled: false,
+        },
+        error: null,
+      },
+    })
+    h.state.client = client
+
+    const config = await new CloudStore().loadConfig()
+
+    expect(config).toMatchObject({
+      historyEnabled: false,
+      usageCardEnabled: true,
+      usageCardMinimized: true,
+      usageLogsEnabled: true,
+      dailyDigest: { enabled: true },
+      splitEnabled: true,
+      splitActive: false,
+      prReviews: { enabled: false, pollIntervalMs: 120_000, autoLaunchSkills: true },
+      spotlight: { enabled: false, shortcut: 'Alt+Shift+M' },
+      autoStartAtLogin: true,
+      launchMode: 'acceptEdits',
+      integrations: { github: true, atlassian: false },
+    })
+    expect(calls.some((c) => c.table === 'user_settings' && c.method === 'eq' && c.args[0] === 'user_id' && c.args[1] === UID)).toBe(true)
+  })
+
+  it('leaves keys ABSENT for NULL columns so the app defaults still apply', async () => {
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: null, error: null },
+      repositories: { data: [], error: null },
+      repository_paths: { data: [], error: null },
+      user_settings: { data: { ...emptySettingsRow }, error: null },
+    })
+    h.state.client = client
+
+    const config = await new CloudStore().loadConfig()
+
+    // NULL must not collapse to false: several settings treat absent as a third
+    // state (history is ON when unset; autoStartAtLogin gates touching the
+    // macOS login item at all).
+    expect(config).not.toHaveProperty('historyEnabled')
+    expect(config).not.toHaveProperty('autoStartAtLogin')
+    expect(config).not.toHaveProperty('launchMode')
+    expect(config).not.toHaveProperty('prReviews')
+    expect(config).not.toHaveProperty('spotlight')
+    expect(config).not.toHaveProperty('dailyDigest')
+  })
+
+  it('lets user_settings win over a legacy copy left in the config blob', async () => {
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: { data: { launchMode: 'default', historyEnabled: true } }, error: null },
+      repositories: { data: [], error: null },
+      repository_paths: { data: [], error: null },
+      user_settings: { data: { ...emptySettingsRow, launch_mode: 'plan' }, error: null },
+    })
+    h.state.client = client
+
+    const config = await new CloudStore().loadConfig()
+    expect(config?.launchMode).toBe('plan')
+    // A column the user never set falls back to whatever the legacy blob held,
+    // so nothing is lost in the transition.
+    expect(config?.historyEnabled).toBe(true)
+  })
+
+  it('ignores an invalid enum written by a newer app version', async () => {
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: null, error: null },
+      repositories: { data: [], error: null },
+      repository_paths: { data: [], error: null },
+      user_settings: { data: { ...emptySettingsRow, launch_mode: 'someFutureMode', spotlight_shortcut: 'Control+Q' }, error: null },
+    })
+    h.state.client = client
+
+    const config = await new CloudStore().loadConfig()
+    expect(config).not.toHaveProperty('launchMode')
+    expect(config).not.toHaveProperty('spotlight')
+  })
+
+  it('upserts settings keyed by user_id, mapping absent keys to NULL', async () => {
+    const { client, upserts } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: null, error: null },
+      user_settings: { data: null, error: null },
+    })
+    h.state.client = client
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const config: any = {
+      version: '1',
+      repositories: {},
+      historyEnabled: false,
+      dailyDigest: { enabled: true },
+      prReviews: { enabled: true, pollIntervalMs: 60_000 },
+      spotlight: { enabled: true, shortcut: 'Control+Space' },
+    }
+    await new CloudStore().saveConfig(config)
+
+    expect(upserts.user_settings[0]).toEqual({
+      user_id: UID,
+      history_enabled: false,
+      usage_card_enabled: null,
+      usage_card_minimized: null,
+      usage_logs_enabled: null,
+      daily_digest_enabled: true,
+      split_enabled: null,
+      split_active: null,
+      pr_reviews_enabled: true,
+      pr_reviews_poll_interval_ms: 60_000,
+      // Absent within a present nested object still maps to NULL.
+      pr_reviews_auto_launch_skills: null,
+      spotlight_enabled: true,
+      spotlight_shortcut: 'Control+Space',
+      auto_start_at_login: null,
+      launch_mode: null,
+      atlassian_integration_enabled: null,
+    })
+  })
+
+  it('persists settings even when the user has no organization', async () => {
+    // memberships empty → no org → the config blob cannot be written, but the
+    // user-scoped settings must still land. This is the case the old org-scoped
+    // blob silently dropped.
+    const { client, upserts } = makeClient({
+      memberships: { data: [], error: null },
+      user_settings: { data: null, error: null },
+    })
+    h.state.client = client
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await new CloudStore().saveConfig({ version: '1', repositories: {}, launchMode: 'plan' } as any)
+
+    expect(upserts.user_settings?.[0]).toMatchObject({ user_id: UID, launch_mode: 'plan' })
+    expect(upserts.configs).toBeUndefined()
+  })
+
+  it('loads settings and personal repos when the user has no organization', async () => {
+    const { client } = makeClient({
+      memberships: { data: [], error: null },
+      user_settings: { data: { ...emptySettingsRow, launch_mode: 'plan' }, error: null },
+      repositories: {
+        data: [{ id: 'r1', owner_id: UID, org_id: null, name: 'perso', keywords: ['perso'], color: null, languages: null, commit: null, pull_request: null, resolve: null, issues: null, branches: null, worktree_files: null }],
+        error: null,
+      },
+      repository_paths: { data: [{ repo_id: 'r1', path: '/p' }], error: null },
+    })
+    h.state.client = client
+
+    const config = await new CloudStore().loadConfig()
+    expect(config?.launchMode).toBe('plan')
+    expect(Object.keys(config!.repositories)).toEqual(['perso'])
+  })
+})
+
+// ── app installations (per-user, per-device version telemetry) ──────────────
+
+describe('recordAppInstallation', () => {
+  it('upserts the device row with the running version, on (user_id, device_id)', async () => {
+    const { client, upserts, calls } = makeClient({
+      memberships: membershipsOk,
+      app_installations: { error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().recordAppInstallation({
+      deviceId: 'abc123',
+      deviceName: 'macbook',
+      appVersion: '0.52.1',
+      platform: 'darwin',
+      arch: 'arm64',
+    })
+
+    const row = upserts.app_installations[0] as Record<string, unknown>
+    expect(row).toMatchObject({
+      user_id: UID,
+      device_id: 'abc123',
+      device_name: 'macbook',
+      app_version: '0.52.1',
+      platform: 'darwin',
+      arch: 'arm64',
+    })
+    expect(typeof row.last_seen_at).toBe('string')
+    // first_seen_at / app_version_updated_at are left to the table's defaults and
+    // trigger, so a re-launch never resets them.
+    expect(row).not.toHaveProperty('first_seen_at')
+    expect(row).not.toHaveProperty('app_version_updated_at')
+    const upsert = calls.find((c) => c.table === 'app_installations' && c.method === 'upsert')
+    expect(upsert?.args[1]).toEqual({ onConflict: 'user_id,device_id' })
+  })
+
+  it('records without requiring an organization', async () => {
+    const { client, upserts } = makeClient({
+      memberships: { data: [], error: null },
+      app_installations: { error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().recordAppInstallation({ deviceId: 'abc123', appVersion: '0.52.1' })
+
+    expect(upserts.app_installations?.[0]).toMatchObject({
+      user_id: UID,
+      device_id: 'abc123',
+      app_version: '0.52.1',
+      device_name: null,
+      platform: null,
+      arch: null,
+    })
+  })
+})
+
 describe('profile', () => {
   it('loads and maps the current user profile from the profiles table', async () => {
     const { client, calls } = makeClient({
@@ -577,21 +834,31 @@ describe('profile', () => {
 })
 
 describe('saveConfig', () => {
-  it('never stores repositories in the blob but keeps the shared projection', async () => {
-    const { client, upserts } = makeClient({ memberships: membershipsOk, configs: { data: null, error: null } })
+  it('never stores repositories or settings in the blob but keeps the shared projection', async () => {
+    const { client, upserts } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: null, error: null },
+      user_settings: { data: null, error: null },
+    })
     h.state.client = client
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const config: any = {
       version: '1',
       launchMode: 'default',
+      historyEnabled: false,
+      spotlight: { enabled: true, shortcut: 'Alt+M' },
       repositories: { demo: { id: 'r1', path: '/p', keywords: ['kw'], commit: { format: 'angular' } } },
     }
     await new CloudStore().saveConfig(config)
 
     const savedBlob = (upserts.configs[0] as { data: Record<string, unknown> }).data
     expect(savedBlob).not.toHaveProperty('repositories')
-    expect(savedBlob.launchMode).toBe('default')
+    // Settings now live in user_settings — the blob must not keep a second copy.
+    expect(savedBlob).not.toHaveProperty('launchMode')
+    expect(savedBlob).not.toHaveProperty('historyEnabled')
+    expect(savedBlob).not.toHaveProperty('spotlight')
+    expect(savedBlob.version).toBe('1')
     // Shared projection derived from the in-memory repos is still mirrored top-level.
     expect(savedBlob.repoKeywords).toEqual({ demo: ['kw'] })
     expect(savedBlob.commit).toEqual({ format: 'angular' })

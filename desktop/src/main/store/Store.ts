@@ -1,4 +1,4 @@
-import type { Config, Agent, HistoryEntry, OrgSharedConfig, OrgAgent, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
+import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgSharedConfig, OrgAgent, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -62,6 +62,13 @@ export interface Store {
   loadProfile(): Promise<UserProfile | null>
   saveProfile(profile: UserProfile): Promise<void>
 
+  /**
+   * Record which app version this machine runs, in `app_installations` (upsert on
+   * (user_id, device_id)). Called once per launch after auth is established, so
+   * the DB is refreshed at every start and after every auto-update.
+   */
+  recordAppInstallation(info: AppInstallationInfo): Promise<void>
+
   /** Lightweight authed reachability probe used by the connectivity gate. */
   ping(): Promise<ConnectivityStatus>
 
@@ -96,6 +103,7 @@ export const NOOP_STORE: Store = {
   async setOrgSharedConfig() { /* no-op */ },
   async loadProfile() { return null },
   async saveProfile() { /* no-op */ },
+  async recordAppInstallation() { /* no-op */ },
   async ping() { return 'unauthorized' },
   setActiveOrgId() { /* no-op */ },
 }

@@ -3,6 +3,7 @@ import type { ConnectivityStatus, StoreWriteKind } from '../store/Store'
 import { getStore, setWriteErrorHandler } from '../store/Store'
 import { ensureHydrated, rehydrate, resetHydration } from '../store/hydrate'
 import { migrateConfig } from '../config/migrate'
+import { recordAppInstallation } from '../app-installation'
 import { validateAllRepoPaths } from '../config/repo-validation'
 import { restoreAgents } from './terminal-handlers'
 import { getCurrentOrg } from '../cloud/org'
@@ -51,6 +52,9 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
           restoredOnce = true
           migrateConfig(app.getVersion())
           restoreAgents()
+          // Record this launch's app version for this machine. Fire-and-forget:
+          // it is telemetry and must never delay or break the gate.
+          void recordAppInstallation(app.getVersion())
         }
         emitInvalidRepos()
         // Start the org-agents realtime subscription once the backend is
