@@ -215,7 +215,7 @@ const ScriptItem = memo(function ScriptItem({ script, isActive, onSelect, onStop
 })
 
 export function Sidebar() {
-  const { currentPage, setCurrentPage, terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds, openSettingsModal } = useStore()
+  const { terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds, openModal, closeModal, openSettingsModal } = useStore()
   const { setActiveTerminal } = useTerminals()
   const { scriptTerminals, stopScript } = useScriptRunner()
 
@@ -287,7 +287,7 @@ export function Sidebar() {
 
 
   const handleSelectTerminal = useCallback((id: string, e?: React.MouseEvent) => {
-    setCurrentPage('terminals')
+    closeModal()
     if (isSplitMode && splitTerminalId) {
       const targetSecondary = (e && (e.metaKey || e.ctrlKey))
         ? focusedPane !== 'secondary'
@@ -313,20 +313,20 @@ export function Sidebar() {
     } else {
       setActiveTerminal(id)
     }
-  }, [setCurrentPage, setActiveTerminal, isSplitMode, activeTerminalId, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane])
+  }, [closeModal, setActiveTerminal, isSplitMode, activeTerminalId, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane])
 
   // Zone-specific select handlers for split mode
   const handleSelectLeftTerminal = useCallback((id: string) => {
-    setCurrentPage('terminals')
+    closeModal()
     setActiveTerminal(id)
     setFocusedPane('primary')
-  }, [setCurrentPage, setActiveTerminal, setFocusedPane])
+  }, [closeModal, setActiveTerminal, setFocusedPane])
 
   const handleSelectRightTerminal = useCallback((id: string) => {
-    setCurrentPage('terminals')
+    closeModal()
     setSplitTerminalId(id)
     setFocusedPane('secondary')
-  }, [setCurrentPage, setSplitTerminalId, setFocusedPane])
+  }, [closeModal, setSplitTerminalId, setFocusedPane])
 
   // Drop handlers for split zones
   const handleDropOnZone = useCallback((pane: 'left' | 'right', e: React.DragEvent) => {
@@ -352,47 +352,48 @@ export function Sidebar() {
   const teamShortcutKey = isMac ? '⌘T' : 'Ctrl+T'
   const settingsShortcutKey = isMac ? '⌘,' : 'Ctrl+,'
 
+  // History is opt-out (Settings → Features), and gates both its button and ⌘H.
+  const historyEnabled = config?.historyEnabled !== false
+
   // Listen for Command+; keyboard shortcut to open skills
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === ';') {
         e.preventDefault()
-        setCurrentPage('skills')
-        setActiveTerminal(null)
+        openModal('skills')
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setCurrentPage, setActiveTerminal])
+  }, [openModal])
 
   // Listen for Command+H keyboard shortcut to open history
   useEffect(() => {
+    if (!historyEnabled) return
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
         e.preventDefault()
-        setCurrentPage('history')
-        setActiveTerminal(null)
+        openModal('history')
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setCurrentPage, setActiveTerminal])
+  }, [openModal, historyEnabled])
 
   // Listen for Command+T keyboard shortcut to open the team dashboard
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 't') {
         e.preventDefault()
-        setCurrentPage('dashboard')
-        setActiveTerminal(null)
+        openModal('team')
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setCurrentPage, setActiveTerminal])
+  }, [openModal])
 
   // Listen for Command+, keyboard shortcut to open settings
   useEffect(() => {
@@ -428,24 +429,17 @@ export function Sidebar() {
             const event = new CustomEvent('new-terminal')
             window.dispatchEvent(event)
           }}
-          className="w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium text-text-secondary rounded-lg hover:bg-text-secondary/10 hover:text-white transition-all"
+          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium text-text-secondary rounded-lg hover:bg-text-secondary/10 hover:text-white transition-all"
         >
           <Bot className="w-3.5 h-3.5" />
           <span>New agent</span>
           <span className="ml-auto text-xs opacity-50">{shortcutKey}</span>
         </button>
 
-        {/* Skills button */}
+        {/* Skills button — opens an overlay, so no active state */}
         <button
-          onClick={() => {
-            setCurrentPage('skills')
-            setActiveTerminal(null)
-          }}
-          className={`w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
-            currentPage === 'skills'
-              ? 'bg-white/10 text-white'
-              : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
-          }`}
+          onClick={() => openModal('skills')}
+          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-white"
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span>Skills</span>
@@ -453,33 +447,21 @@ export function Sidebar() {
         </button>
 
         {/* History button */}
-        <button
-          onClick={() => {
-            setCurrentPage('history')
-            setActiveTerminal(null)
-          }}
-          className={`w-full flex items-center justify-center gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
-            currentPage === 'history'
-              ? 'bg-white/10 text-white'
-              : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
-          }`}
-        >
-          <Clock className="w-3.5 h-3.5" />
-          <span>History</span>
-          <span className="ml-auto text-xs opacity-50">{historyShortcutKey}</span>
-        </button>
+        {historyEnabled && (
+          <button
+            onClick={() => openModal('history')}
+            className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-white"
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>History</span>
+            <span className="ml-auto text-xs opacity-50">{historyShortcutKey}</span>
+          </button>
+        )}
 
         {/* Team dashboard button */}
         <button
-          onClick={() => {
-            setCurrentPage('dashboard')
-            setActiveTerminal(null)
-          }}
-          className={`w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
-            currentPage === 'dashboard'
-              ? 'bg-white/10 text-white'
-              : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
-          }`}
+          onClick={() => openModal('team')}
+          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-white"
         >
           <Users className="w-3.5 h-3.5" />
           <span>Team</span>

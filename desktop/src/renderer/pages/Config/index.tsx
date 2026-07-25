@@ -163,7 +163,7 @@ interface SettingsRoute {
 }
 
 function WelcomePage({ route }: { route: SettingsRoute }) {
-  const { config, terminals, splitEnabled, toggleSplitEnabled, currentPage, setCurrentPage, setConfig, settingsInitialTab, setSettingsInitialTab } = useStore()
+  const { config, terminals, splitEnabled, toggleSplitEnabled, setConfig, settingsInitialTab, setSettingsInitialTab } = useStore()
   const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode } = useConfig()
   const orgs = useStore((s) => s.orgs)
   const activeOrg = useStore((s) => s.activeOrg)
@@ -812,9 +812,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 const newValue = !historyEnabled
                 setHistoryEnabled(newValue)
                 window.electronAPI.config.setHistoryEnabled(newValue)
-                if (!newValue && currentPage === 'history') {
-                  setCurrentPage('terminals')
-                }
               }}
               className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
                 historyEnabled ? 'bg-accent' : 'bg-white/20'

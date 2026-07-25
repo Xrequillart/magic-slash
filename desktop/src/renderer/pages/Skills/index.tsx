@@ -553,7 +553,7 @@ function SkillEditor({
 export function SkillsPage() {
   const { skills, loading, loadSkills, getSkill, createSkill, updateSkill, deleteSkill, downloadSkill, importSkill, getImage, repoSkills, repoSkillsLoading, loadRepoSkills, getRepoSkill } = useSkills()
   const { launchClaudeTerminal } = useTerminals()
-  const { setCurrentPage } = useStore()
+  const { closeModal } = useStore()
   const [imageCache, setImageCache] = useState<Record<string, string | null>>({})
 
   // Hash routing state
@@ -713,11 +713,12 @@ export function SkillsPage() {
     const details = longDescriptions.map((e) => `- ${e.name} (${e.wordCount} words, located in ${e.filePath})`).join('\n')
     const prompt = `Optimize the descriptions of the following skills to be under 110 words each while keeping their meaning and trigger conditions:\n${details}\nRead each skill file, rewrite only the description field in the frontmatter, and save.`
     const terminal = await launchClaudeTerminal('Fix skill descriptions', '~/Documents')
-    setCurrentPage('terminals')
+    // Dismiss the Skills overlay so the freshly launched agent is visible.
+    closeModal()
     setTimeout(() => {
       window.electronAPI.terminal.write(terminal.id, `${prompt}\r`)
     }, 500)
-  }, [longDescriptions, launchClaudeTerminal, setCurrentPage])
+  }, [longDescriptions, launchClaudeTerminal, closeModal])
 
   const content = (() => {
     // Skill detail / editor view
@@ -759,12 +760,6 @@ export function SkillsPage() {
     // List view
     return (
       <div className="flex flex-col gap-10 animate-fade-in max-w-[62rem] mx-auto w-full">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold">Skills</h1>
-          <p className="text-sm text-text-secondary mt-1">Manage the skills available to your agents.</p>
-        </div>
-
         {/* Warnings */}
         {!loading && (
           <SkillsWarnings duplicates={duplicateSkills} longDescriptions={longDescriptions} onFixLongDescriptions={handleFixLongDescriptions} />

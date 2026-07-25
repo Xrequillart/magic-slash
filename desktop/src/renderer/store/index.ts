@@ -7,6 +7,9 @@ interface CloseAgentModalData {
   terminalName: string
 }
 
+/** Agents is the only page; everything else opens as a centered overlay. */
+export type ModalId = 'settings' | 'skills' | 'history' | 'team'
+
 interface AppState {
   // Config
   config: Config | null
@@ -33,15 +36,13 @@ interface AppState {
   rightPaneTerminalIds: string[]
 
   // UI
-  currentPage: 'config' | 'terminals' | 'skills' | 'history' | 'dashboard'
   // When set, the Config page selects this settings tab on mount, then resets it
   // to null. Lets other views (e.g. the sidebar account menu) deep-link a tab.
   settingsInitialTab: SettingsTab | null
-  // Settings now open as a centered modal overlay (not a full page). This gates it.
-  settingsModalOpen: boolean
+  // The overlay currently on screen, if any. Only one can be open at a time.
+  activeModal: ModalId | null
   rightSidebar: 'info' | null
   leftSidebarVisible: boolean
-  iconSidebarVisible: boolean
 
   // Script terminals
   scriptTerminals: ScriptTerminalInfo[]
@@ -78,14 +79,13 @@ interface AppState {
   toggleSplitActive: () => void
   moveTerminalToPane: (id: string, pane: 'left' | 'right') => void
 
-  setCurrentPage: (page: 'config' | 'terminals' | 'skills' | 'history' | 'dashboard') => void
   setSettingsInitialTab: (tab: SettingsTab | null) => void
+  openModal: (modal: ModalId) => void
+  closeModal: () => void
   openSettingsModal: (tab?: SettingsTab) => void
-  closeSettingsModal: () => void
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void
   toggleLeftSidebar: () => void
-  toggleIconSidebar: () => void
 
   // Close agent modal actions
   openCloseAgentModal: (data: CloseAgentModalData) => void
@@ -106,7 +106,7 @@ interface AppState {
 export const useStore = create<AppState>()(
   persist(
     persist(
-      (set) => ({
+      (set, get) => ({
         // Initial state
         config: null,
         configLoading: true,
@@ -126,12 +126,10 @@ export const useStore = create<AppState>()(
         splitActive: false,
         rightPaneTerminalIds: [],
 
-        currentPage: 'terminals',
         settingsInitialTab: null,
-        settingsModalOpen: false,
+        activeModal: null,
         rightSidebar: null,
         leftSidebarVisible: true,
-        iconSidebarVisible: true,
 
         scriptTerminals: [],
 
@@ -290,27 +288,30 @@ export const useStore = create<AppState>()(
           })
         },
 
-        setCurrentPage: (currentPage) => set({ currentPage, selectedFile: null }),
         setSettingsInitialTab: (settingsInitialTab) => set({ settingsInitialTab }),
-        // Settings is an overlay, never a destination: it leaves currentPage and
-        // the active terminal untouched so the app stays visible behind it. The
-        // one exception is a blank agents page (nothing selected but agents
-        // exist) — select the first one so the overlay never sits on an empty app.
-        openSettingsModal: (tab) => set((state) => {
-          const updates: Partial<AppState> = { settingsModalOpen: true }
-          if (tab) updates.settingsInitialTab = tab
-          if (state.currentPage === 'terminals' && !state.activeTerminalId && state.terminals.length > 0) {
+        // Modals are overlays, never destinations: the agents page stays mounted
+        // and visible behind them. Two things are normalised on open — the file
+        // preview panel is dismissed (it sits above the overlay in the z-order),
+        // and a blank agents page gets its first agent selected so the overlay
+        // never floats over an empty app.
+        openModal: (modal) => set((state) => {
+          const updates: Partial<AppState> = { activeModal: modal, selectedFile: null }
+          if (!state.activeTerminalId && state.terminals.length > 0) {
             updates.activeTerminalId = state.terminals[0].id
           }
           return updates
         }),
-        closeSettingsModal: () => set({ settingsModalOpen: false }),
+        closeModal: () => set({ activeModal: null }),
+        // Convenience wrapper: opens Settings straight on a given tab.
+        openSettingsModal: (tab) => {
+          if (tab) set({ settingsInitialTab: tab })
+          get().openModal('settings')
+        },
         setRightSidebar: (rightSidebar) => set({ rightSidebar }),
         toggleRightSidebar: (sidebar) => set((state) => ({
           rightSidebar: state.rightSidebar === sidebar ? null : sidebar
         })),
         toggleLeftSidebar: () => set((state) => ({ leftSidebarVisible: !state.leftSidebarVisible })),
-        toggleIconSidebar: () => set((state) => ({ iconSidebarVisible: !state.iconSidebarVisible })),
 
         // Close agent modal actions
         openCloseAgentModal: (data) => set({ closeAgentModal: data }),
@@ -359,7 +360,6 @@ export const useStore = create<AppState>()(
       name: 'magic-slash-storage',
       partialize: (state) => ({
         leftSidebarVisible: state.leftSidebarVisible,
-        iconSidebarVisible: state.iconSidebarVisible,
       }),
     }
   )

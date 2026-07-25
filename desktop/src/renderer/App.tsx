@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
-import { AlertTriangle, RotateCcw, FolderOpen, X } from 'lucide-react'
+import { AlertTriangle, RotateCcw, FolderOpen } from 'lucide-react'
 import type { InvalidRepo } from '../preload'
 import { useStore } from './store'
 import { useConfig } from './hooks/useConfig'
@@ -17,6 +17,8 @@ import { TerminalsPage } from './pages/Terminals'
 import { SkillsPage } from './pages/Skills'
 import { HistoryPage } from './pages/History'
 import { DashboardPage } from './pages/Dashboard'
+import { PageModal } from './components/PageModal'
+import { LiveIndicator } from './components/LiveIndicator'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProfileOnboardingWizard } from './components/ProfileOnboardingWizard'
 import { useWindowSplitMode } from './hooks/useWindowSplitMode'
@@ -50,7 +52,7 @@ function ErrorScreen({ error }: { error: string }) {
 }
 
 export function App() {
-  const { currentPage, closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, setActiveTerminal, rightPaneTerminalIds, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, noReposWarningShown, setNoReposWarningShown, settingsModalOpen, openSettingsModal, closeSettingsModal } = useStore()
+  const { closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, setActiveTerminal, rightPaneTerminalIds, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, noReposWarningShown, setNoReposWarningShown, activeModal, openSettingsModal, closeModal } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal, launchClaudeTerminal } = useTerminals()
   const { flatVisualOrder } = useGroupedTerminals()
@@ -142,8 +144,8 @@ export function App() {
   // Listen for tray:focusAgent IPC events
   useEffect(() => {
     const unsubscribe = window.electronAPI.tray.onFocusAgent((data) => {
-      const { setActiveTerminal, setCurrentPage } = useStore.getState()
-      setCurrentPage('terminals')
+      const { setActiveTerminal, closeModal } = useStore.getState()
+      closeModal()
       setActiveTerminal(data.id)
     })
     return () => { unsubscribe() }
@@ -157,30 +159,22 @@ export function App() {
     return () => { unsubscribe() }
   }, [])
 
-  // Close the settings modal on Escape, and reset its internal hash route so the
-  // next open lands on the settings home rather than a stale repo sub-page.
-  const handleCloseSettings = useCallback(() => {
-    closeSettingsModal()
+  // Reset the shared hash route on close so the next open lands on the modal's
+  // home rather than a stale sub-page. Both Settings (#/repo/<name>) and Skills
+  // (#/skill/<name>, #/new, #/repo-skill/<path>) route off window.location.hash.
+  const handleCloseModal = useCallback(() => {
+    closeModal()
     if (window.location.hash && window.location.hash !== '#/') {
       window.location.hash = '#/'
     }
-  }, [closeSettingsModal])
-
-  useEffect(() => {
-    if (!settingsModalOpen) return
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); handleCloseSettings() }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [settingsModalOpen, handleCloseSettings])
+  }, [closeModal])
 
   // Listen for quicklaunch:dispatch IPC events
   useEffect(() => {
     const unsubscribe = window.electronAPI.quickLaunch.onDispatch(async (data) => {
       const prompt = data.ticketId // contains the raw input text
       const store = useStore.getState()
-      store.setCurrentPage('terminals')
+      store.closeModal()
 
       // Find first repo to use as cwd
       const repos = store.config?.repositories || {}
@@ -319,7 +313,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentPage, toggleLeftSidebar])
+  }, [toggleLeftSidebar])
 
   // Keyboard shortcut: Cmd+/ to toggle split view
   useEffect(() => {
@@ -354,39 +348,17 @@ export function App() {
         {/* Sidebar */}
         <Sidebar />
 
-        {/* Main Content */}
+        {/* Main Content — Agents is the only page; everything else is an overlay */}
         <main className="flex-1 overflow-hidden relative">
-          {/* Skills Page */}
-          <div className={`absolute inset-0 overflow-auto ${currentPage === 'skills' ? 'block' : 'hidden'}`}>
-            <div className="max-w-5xl mx-auto p-6 h-full">
-              <SkillsPage />
-            </div>
-          </div>
-
-          {/* History Page */}
-          <div className={`absolute inset-0 overflow-auto ${currentPage === 'history' ? 'block' : 'hidden'}`}>
-            <div className="max-w-5xl mx-auto p-6 h-full">
-              <HistoryPage />
-            </div>
-          </div>
-
-          {/* Team Dashboard Page */}
-          <div className={`absolute inset-0 overflow-auto ${currentPage === 'dashboard' ? 'block' : 'hidden'}`}>
-            <div className="max-w-5xl mx-auto p-6 h-full">
-              <DashboardPage />
-            </div>
-          </div>
-
-          {/* Terminals Page - Always mounted to preserve terminal state */}
-          <div className={`absolute inset-0 ${currentPage === 'terminals' ? 'block' : 'hidden'}`}>
+          <div className="absolute inset-0">
             <ErrorBoundary fallbackLabel="Terminal error">
               <TerminalsPage />
             </ErrorBoundary>
           </div>
         </main>
 
-        {/* Right Sidebar - Only on Agents page, hidden when viewing a script terminal */}
-        {currentPage === 'terminals' && !activeTerminalId?.startsWith('script-') && (
+        {/* Right Sidebar - Hidden when viewing a script terminal */}
+        {!activeTerminalId?.startsWith('script-') && (
           <ErrorBoundary fallbackLabel="Sidebar error">
             <AgentInfoSidebar />
           </ErrorBoundary>
@@ -395,33 +367,29 @@ export function App() {
 
       <FilePreviewPanel />
 
-      {/* Settings Modal — centered overlay instead of a full page */}
-      {settingsModalOpen && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop p-6"
-          onClick={handleCloseSettings}
-        >
-          <div
-            className="relative bg-bg-secondary border border-white/10 rounded-2xl w-full max-w-6xl h-[85vh] overflow-hidden animate-modal-content shadow-2xl flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 h-12 border-b border-white/10 shrink-0">
-              <span className="text-sm font-semibold">Settings</span>
-              <button
-                onClick={handleCloseSettings}
-                className="p-1.5 text-text-secondary hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                title="Close (Esc)"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            {/* Body */}
-            <div className="flex-1 overflow-hidden">
-              <ConfigPage />
-            </div>
-          </div>
-        </div>
+      {/* Page overlays — Settings, Skills, History and Team */}
+      {activeModal === 'settings' && (
+        <PageModal title="Settings" onClose={handleCloseModal}>
+          <ConfigPage />
+        </PageModal>
+      )}
+
+      {activeModal === 'skills' && (
+        <PageModal title="Skills" onClose={handleCloseModal}>
+          <SkillsPage />
+        </PageModal>
+      )}
+
+      {activeModal === 'history' && (
+        <PageModal title="History" onClose={handleCloseModal}>
+          <HistoryPage />
+        </PageModal>
+      )}
+
+      {activeModal === 'team' && (
+        <PageModal title="Team" onClose={handleCloseModal} headerRight={<LiveIndicator />}>
+          <DashboardPage />
+        </PageModal>
       )}
 
       {/* Toast Notifications */}

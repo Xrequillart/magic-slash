@@ -14,7 +14,7 @@ export function TerminalsPage() {
   const { terminals, activeTerminalId, launchClaudeTerminal, setActiveTerminal, duplicateAgent } = useTerminals()
   const { scriptTerminals } = useScriptRunner()
   const { flatVisualOrder } = useGroupedTerminals()
-  const { toggleRightSidebar, setCurrentPage, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane, openSettingsModal } = useStore()
+  const { toggleRightSidebar, closeModal, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane, openSettingsModal } = useStore()
   const [isCreating, setIsCreating] = useState(false)
 
   // Generate terminal name based on count
@@ -62,7 +62,7 @@ export function TerminalsPage() {
     try {
       const name = getNextTerminalName()
       await launchClaudeTerminal(name, DEFAULT_PATH)
-      setCurrentPage('terminals')
+      closeModal()
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to create terminal', 'error')
     } finally {
@@ -151,7 +151,7 @@ export function TerminalsPage() {
           newIndex = currentIndex >= zoneTerminals.length - 1 ? 0 : currentIndex + 1
         }
 
-        setCurrentPage('terminals')
+        closeModal()
         if (isSecondary) {
           setSplitTerminalId(zoneTerminals[newIndex].id)
         } else {
@@ -162,7 +162,7 @@ export function TerminalsPage() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [flatVisualOrder, activeTerminalId, splitTerminalId, isSplitMode, focusedPane, rightPaneTerminalIds, setActiveTerminal, setSplitTerminalId, setCurrentPage])
+  }, [flatVisualOrder, activeTerminalId, splitTerminalId, isSplitMode, focusedPane, rightPaneTerminalIds, setActiveTerminal, setSplitTerminalId, closeModal])
 
   // Listen for Command+I to toggle Info sidebar (only with agents)
   useEffect(() => {

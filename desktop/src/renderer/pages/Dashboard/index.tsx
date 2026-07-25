@@ -1,10 +1,9 @@
 import { useMemo } from 'react'
-import { Users, Coins, Plus, Minus, Clock, Activity, BarChart3, GitPullRequest, AlertOctagon, ExternalLink } from 'lucide-react'
+import { Coins, Plus, Minus, Clock, Activity, BarChart3, GitPullRequest, AlertOctagon, ExternalLink } from 'lucide-react'
 import type { OrgAgent, OrgAgentPRReview } from '../../../types'
 import { useOrgAgents } from '../../hooks/useOrgAgents'
 import { useOrgUsageStats } from '../../hooks/useOrgUsageStats'
 import { useOrg } from '../../hooks/useOrg'
-import { LiveIndicator } from '../../components/LiveIndicator'
 import { ActivityHeatmap } from '../History/ActivityHeatmap'
 import { aggregateUsageTotals, aggregateUsageByMember, computeUsageHeatmap, formatUsd } from '../../utils/usageStats'
 
@@ -288,22 +287,9 @@ export function DashboardPage() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple/10 rounded-lg">
-            <Users className="w-5 h-5 text-purple" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold text-white">Team</h1>
-            <p className="text-xs text-text-secondary">Who is working on what, in real time</p>
-          </div>
-        </div>
-        <LiveIndicator />
-      </div>
-
-      {/* Body — attention widgets + usage stats share one scroll container */}
-      <div className="flex-1 overflow-auto flex flex-col gap-8">
+      {/* Body — attention widgets + usage stats share one scroll container.
+          The title and the live indicator are rendered by the hosting modal. */}
+      <div className="flex-1 overflow-auto p-6 flex flex-col gap-8">
         {/* Attention hooks: PRs awaiting review + blocked work (hidden when empty) */}
         <AwaitingReviewSection items={awaitingReview} emailByOwner={emailByOwner} />
         <BlockedSection agents={blocked} emailByOwner={emailByOwner} />

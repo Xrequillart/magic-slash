@@ -36,7 +36,7 @@ const RightSidebarCloseIcon = () => (
 )
 
 export function TitleBar() {
-  const { currentPage, terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar, isSplitMode, splitTerminalId, focusedPane, isWideScreen, splitEnabled, splitActive, toggleSplitActive } = useStore()
+  const { terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar, isSplitMode, splitTerminalId, focusedPane, isWideScreen, splitEnabled, splitActive, toggleSplitActive } = useStore()
   const activeTerminal = terminals.find((t) => t.id === activeTerminalId)
   const splitTerminal = terminals.find((t) => t.id === splitTerminalId)
 
@@ -64,11 +64,10 @@ export function TitleBar() {
         <div className="w-16 flex-shrink-0" />
 
         {/* Left sidebar toggle + Split view toggle */}
-        {(currentPage === 'terminals' || currentPage === 'config' || currentPage === 'skills') && (
-          <div
-            className="flex items-center gap-1"
-            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-          >
+        <div
+          className="flex items-center gap-1"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
             <button
               onClick={() => toggleLeftSidebar()}
               className={`p-[5px] rounded-full bg-white/[0.06] transition-colors ${
@@ -115,13 +114,12 @@ export function TitleBar() {
                 </button>
               </div>
             )}
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Center - Active agent name(s) */}
       <div className="absolute left-1/2 -translate-x-1/2 text-sm truncate max-w-[40%]">
-        {currentPage === 'terminals' && isSplitMode && splitTerminal ? (
+        {isSplitMode && splitTerminal ? (
           <div className="flex items-center gap-2">
             <span className={focusedPane === 'primary' ? 'text-white' : 'text-text-secondary/50'}>
               {activeTerminal?.metadata?.title || activeTerminal?.name}
@@ -133,13 +131,13 @@ export function TitleBar() {
           </div>
         ) : (
           <span className="text-text-secondary">
-            {currentPage === 'terminals' && (activeTerminal?.metadata?.title || activeTerminal?.name)}
+            {activeTerminal?.metadata?.title || activeTerminal?.name}
           </span>
         )}
       </div>
 
-      {/* Right side - Sidebar toggle (only on agents page with at least one agent) */}
-      {currentPage === 'terminals' && terminals.length > 0 && (
+      {/* Right side - Sidebar toggle (only with at least one agent) */}
+      {terminals.length > 0 && (
         <div
           className="flex items-center gap-1"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
