@@ -1,6 +1,37 @@
 import * as http from 'http'
+import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
 import { URL } from 'url'
 import type { TerminalUsage } from '../../types'
+
+/**
+ * Where the running server publishes its port.
+ *
+ * The port is ephemeral (listen(0)), and the MAGIC_SLASH_PORT env var only
+ * reaches PTYs the app spawned itself — a Claude Code started from an external
+ * terminal never inherits it. Publishing the port to a well-known file lets any
+ * local process find the server, so hooks keep working outside the app.
+ */
+const PORT_FILE = path.join(os.homedir(), '.config', 'magic-slash', 'port')
+
+function publishPort(port: number): void {
+  try {
+    fs.mkdirSync(path.dirname(PORT_FILE), { recursive: true })
+    fs.writeFileSync(PORT_FILE, String(port), { encoding: 'utf-8', mode: 0o600 })
+  } catch (error) {
+    // Non-fatal: in-app terminals still get the port through the environment.
+    console.error('[StatusServer] Failed to publish port file:', error)
+  }
+}
+
+function unpublishPort(): void {
+  try {
+    fs.rmSync(PORT_FILE, { force: true })
+  } catch {
+    // A stale file is harmless: callers just get a connection refused.
+  }
+}
 
 type StateCallback = (terminalId: string, state: string) => void
 type MetadataCallback = (terminalId: string, metadata: Record<string, string | string[] | Record<string, { prUrl?: string }>>) => void
@@ -8,6 +39,8 @@ type CommandStartCallback = (terminalId: string, command: string) => void
 type CommandEndCallback = (terminalId: string, exitCode: number) => void
 type RepositoriesCallback = (terminalId: string, repositories: string[]) => void
 type UsageCallback = (terminalId: string, usage: TerminalUsage) => void
+/** terminalId is undefined for sessions started outside the app (no agent). */
+type SkillCallback = (terminalId: string | undefined, skill: string) => void
 // Read-back providers: unlike the callbacks above (terminal → app writes), these let a
 // terminal-run skill READ from the app's in-memory caches (hydrated from the cloud store).
 // Loosely typed on purpose — the values are just JSON-serialized to the response.
@@ -23,6 +56,7 @@ let commandStartCallback: CommandStartCallback | null = null
 let commandEndCallback: CommandEndCallback | null = null
 let repositoriesCallback: RepositoriesCallback | null = null
 let usageCallback: UsageCallback | null = null
+let skillCallback: SkillCallback | null = null
 let configProvider: ConfigProvider | null = null
 let agentProvider: AgentProvider | null = null
 let worktreeFilesWriter: WorktreeFilesWriter | null = null
@@ -53,6 +87,10 @@ export function setRepositoriesCallback(callback: RepositoriesCallback) {
 
 export function setUsageCallback(callback: UsageCallback) {
   usageCallback = callback
+}
+
+export function setSkillCallback(callback: SkillCallback) {
+  skillCallback = callback
 }
 
 export function setConfigProvider(provider: ConfigProvider) {
@@ -273,6 +311,30 @@ export function startStatusServer(): Promise<number> {
 
           res.writeHead(200)
           res.end('OK')
+        } else if (url.pathname === '/skill') {
+          // A skill was invoked in a Claude Code session. Fired by the PreToolUse
+          // hook (matcher: "Skill"), so it counts every invocation — slash command
+          // or natural-language trigger alike.
+          //
+          // `id` is OPTIONAL here, unlike every other route: the hook is installed
+          // user-globally and also fires in terminals the app did not spawn, where
+          // no agent exists. Those runs are still worth counting, unattributed.
+          const terminalId = url.searchParams.get('id')
+          const skill = url.searchParams.get('name')
+
+          // Ignore sidebar terminals (VS Code extension)
+          if (terminalId?.startsWith('sidebar-')) {
+            res.writeHead(200)
+            res.end('OK')
+            return
+          }
+
+          if (skill && skillCallback) {
+            skillCallback(terminalId || undefined, skill)
+          }
+
+          res.writeHead(200)
+          res.end('OK')
         } else if (url.pathname === '/repositories') {
           const terminalId = url.searchParams.get('id')
 
@@ -358,6 +420,7 @@ export function startStatusServer(): Promise<number> {
       const address = server?.address()
       if (address && typeof address === 'object') {
         serverPort = address.port
+        publishPort(serverPort)
         console.log(`Magic Slash status server listening on port ${serverPort}`)
         resolve(serverPort)
       } else {
@@ -373,6 +436,7 @@ export function startStatusServer(): Promise<number> {
 
 export function stopStatusServer(): Promise<void> {
   return new Promise((resolve) => {
+    unpublishPort()
     if (server) {
       server.close(() => {
         server = null

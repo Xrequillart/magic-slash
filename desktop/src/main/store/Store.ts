@@ -1,4 +1,4 @@
-import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgSharedConfig, OrgAgent, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
+import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgSharedConfig, OrgAgent, SkillInvocationInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -50,6 +50,13 @@ export interface Store {
   /** Append ONE aggregated usage snapshot at session end (append-only, fire-and-forget). */
   appendUsage(event: UsageEventInput): Promise<void>
 
+  /**
+   * Append ONE skill invocation (append-only, fire-and-forget). Driven by the
+   * PreToolUse hook, so it fires on every run — including repeats that leave the
+   * agent's status unchanged and therefore write nothing to the activity feed.
+   */
+  recordSkillInvocation(input: SkillInvocationInput): Promise<void>
+
   /** Org-wide usage rows (all members) for the dashboard, aggregated client-side. Read-only. */
   loadOrgUsageStats(): Promise<UsageStats>
 
@@ -99,6 +106,7 @@ export const NOOP_STORE: Store = {
   async loadHistory() { return [] },
   async appendHistory() { /* no-op */ },
   async appendUsage() { /* no-op */ },
+  async recordSkillInvocation() { /* no-op */ },
   async loadOrgUsageStats() { return { rows: [], capped: false } },
   async setOrgSharedConfig() { /* no-op */ },
   async loadProfile() { return null },

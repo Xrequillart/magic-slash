@@ -2,7 +2,8 @@ import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell, globalS
 import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setConfigProvider, setAgentProvider, setWorktreeFilesWriter } from './hooks/status-server'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setConfigProvider, setAgentProvider, setWorktreeFilesWriter } from './hooks/status-server'
+import { recordSkillInvocation } from './usage/skill-invocations'
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
 import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook } from './pty/terminal-manager'
@@ -496,6 +497,13 @@ async function initializeHooksAndSessions() {
           metadata: { usage }
         })
       }
+    })
+
+    // Skill invocations from the PreToolUse hook. Telemetry only — nothing in the
+    // UI reacts to it, so there is no IPC broadcast here. terminalId is undefined
+    // for runs outside the app, which are logged without an agent.
+    setSkillCallback((terminalId: string | undefined, skill: string) => {
+      void recordSkillInvocation({ agentId: terminalId, skill })
     })
 
     // Set up callbacks for command start/end (shell hooks)

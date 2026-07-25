@@ -821,6 +821,104 @@ describe('user settings', () => {
   })
 })
 
+// ── skill invocations (one row per run) ─────────────────────────────────────
+
+describe('recordSkillInvocation', () => {
+  it('inserts a skill_invocations row scoped to org/user', async () => {
+    const { client, inserts, from } = makeClient({
+      memberships: membershipsOk,
+      skill_invocations: { error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().recordSkillInvocation({
+      agentId: 'claude-1',
+      skill: 'magic-commit',
+      occurredAt: 1000,
+    })
+
+    expect(from).toHaveBeenCalledWith('skill_invocations')
+    expect(inserts.skill_invocations).toHaveLength(1)
+    expect(inserts.skill_invocations[0]).toMatchObject({
+      org_id: ORG,
+      user_id: UID,
+      agent_id: null, // no agents loaded → unmapped app id resolves to null
+      skill: 'magic-commit',
+      occurred_at: new Date(1000).toISOString(),
+    })
+  })
+
+  it('logs a run with no agent (session started outside the app)', async () => {
+    const { client, inserts } = makeClient({
+      memberships: membershipsOk,
+      skill_invocations: { error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().recordSkillInvocation({ skill: 'magic-commit' })
+
+    expect(inserts.skill_invocations).toHaveLength(1)
+    expect(inserts.skill_invocations[0]).toMatchObject({
+      org_id: ORG,
+      user_id: UID,
+      agent_id: null,
+      skill: 'magic-commit',
+    })
+  })
+
+  it('never stores the skill args', async () => {
+    const { client, inserts } = makeClient({
+      memberships: membershipsOk,
+      skill_invocations: { error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-plan' })
+
+    expect(inserts.skill_invocations[0]).not.toHaveProperty('args')
+  })
+
+  it('resolves agent_id via agentIdMap once agents are loaded', async () => {
+    const agentRow = {
+      id: 'uuid-agent-1',
+      org_id: ORG,
+      owner_id: UID,
+      name: 'Agent A',
+      ticket_id: null,
+      description: null,
+      branch_name: null,
+      base_branch: null,
+      status: null,
+      repositories: [],
+      metadata: { __app: { id: 'claude-1' } },
+    }
+    const { client, inserts } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [agentRow], error: null },
+      skill_invocations: { error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents()
+    await store.recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-pr' })
+
+    expect((inserts.skill_invocations[0] as Record<string, unknown>).agent_id).toBe('uuid-agent-1')
+  })
+
+  it('does nothing without an organization', async () => {
+    const { client, inserts } = makeClient({
+      memberships: { data: [], error: null },
+      skill_invocations: { error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-commit' })
+
+    expect(inserts.skill_invocations ?? []).toHaveLength(0)
+  })
+})
+
 // ── app installations (per-user, per-device version telemetry) ──────────────
 
 describe('recordAppInstallation', () => {

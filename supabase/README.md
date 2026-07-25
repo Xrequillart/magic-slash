@@ -83,6 +83,7 @@ Org-scoped tables (isolation keyed on `org_id`):
 | `configs`         | Per-user configuration blob, scoped to a single org.                |
 | `usage_events`    | Append-only usage/billing telemetry (cost, tokens, lines, timing).  |
 | `activity_events` | Append-only audit/activity feed of actions taken in the org.        |
+| `skill_invocations` | Append-only log of skill runs — one row per invocation.           |
 | `repositories`    | Shared repo identity; `org_id` NULL = personal, set = team repo.    |
 
 User-scoped tables (own-rows-only RLS, independent of any org):
@@ -98,6 +99,22 @@ User-scoped tables (own-rows-only RLS, independent of any org):
 "the user never chose", which the desktop app distinguishes from `false` — e.g.
 history is ON when unset, and `auto_start_at_login` only touches the macOS login
 item once explicitly set. Defaults live in the app, not the schema.
+
+`skill_invocations` and `activity_events` answer different questions and are both
+needed. `activity_events` records status **transitions** (the app only writes when
+an agent's status actually changes), so re-running the same skill logs nothing the
+second time, and several skills share one action — `start`/`continue` both emit
+`started`. `skill_invocations` records **runs**: one row every time a skill fires,
+fed by the desktop's `PreToolUse` hook rather than by the skills themselves, so it
+also captures natural-language triggers and third-party skills. The skill's `args`
+are deliberately not collected — free text, and this table is org-readable.
+
+That hook lives in the user-global `~/.claude/settings.json`, so it also fires in
+Claude Code sessions the app did not spawn. Those sessions have no
+`MAGIC_SLASH_PORT` in their environment, so the hook falls back to the port the
+running app publishes at `~/.config/magic-slash/port`. They also have no agent, so
+`agent_id` is NULL for them — hence the nullable column. Nothing is captured while
+the app is not running at all: there is no local listener to receive the call.
 
 `app_installations` is upserted by the desktop app on every launch (from the
 connectivity gate, once authed), so the version is refreshed at each start and
@@ -119,8 +136,8 @@ goes through the service role, since RLS keeps each row private to its user.
   row tagged with another org's `id`.
 - **Admin-gated** writes: `memberships`, `invitations`, and `skills` mutations
   require the `admin` role. `configs` are private to their owning user.
-  `usage_events` and `activity_events` are append-only (select + insert, no
-  update/delete).
+  `usage_events`, `activity_events` and `skill_invocations` are append-only
+  (select + insert, no update/delete).
 - `agents` are **org-readable but owner-writable**: any member may `SELECT` every
   agent of the org (the team dashboard's "who is working on what" and the
   Realtime feed depend on it), while `INSERT`/`UPDATE`/`DELETE` are gated to

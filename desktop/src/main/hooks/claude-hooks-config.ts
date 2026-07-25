@@ -13,6 +13,11 @@ const STATUSLINE_SCRIPT_PATH = path.join(MAGIC_SLASH_CONFIG_DIR, 'statusline.sh'
 const STATUSLINE_BACKUP_PATH = path.join(MAGIC_SLASH_CONFIG_DIR, 'statusline-original.json')
 const STATUSLINE_MARKER = 'magic-slash/statusline.sh'
 
+// Where the status server publishes its port (see hooks/status-server.ts). Kept
+// relative so the generated hook expands $HOME at run time rather than baking in
+// the path of whoever installed the app.
+const PORT_FILE_RELATIVE = '.config/magic-slash/port'
+
 // Wrap a string as a safe single-quoted POSIX shell literal.
 function shSingleQuote(s: string): string {
   return `'${s.replace(/'/g, `'\\''`)}'`
@@ -97,7 +102,8 @@ function isMagicSlashPermission(perm: string): boolean {
 }
 
 interface HookConfig {
-  matcher?: Record<string, unknown>
+  /** Tool-name pattern. Absent means "every tool" (Claude Code's match-all). */
+  matcher?: string
   hooks: Array<{
     type: string
     command: string
@@ -160,6 +166,35 @@ function getHookConfig(event: string): HookConfig {
   }
 }
 
+/**
+ * Records which skill was invoked, for usage telemetry.
+ *
+ * Scoped with `matcher: 'Skill'` so it only runs on skill invocations — PreToolUse
+ * fires on every single tool call, and spawning jq that often would be wasteful.
+ * Claude Code delivers the hook payload on stdin as
+ * `{ hook_event_name, tool_name, tool_input, tool_use_id }`; the skill name lives
+ * in `tool_input.skill`.
+ *
+ * Kept separate from the state hook above so the activity indicator never depends
+ * on jq being present or on this parsing succeeding.
+ */
+function getSkillHookConfig(): HookConfig {
+  // Falls back to the port file so this also fires in terminals the app did not
+  // spawn (where MAGIC_SLASH_PORT is unset). MAGIC_SLASH_TERMINAL_ID is likewise
+  // absent there, so `id` goes over empty and the run is logged without an agent.
+  const port = `\${MAGIC_SLASH_PORT:-$(cat "$HOME/${PORT_FILE_RELATIVE}" 2>/dev/null)}`
+  const url = 'http://127.0.0.1:$port/skill?id=$MAGIC_SLASH_TERMINAL_ID&name=$skill'
+  const command = `port=${port}; [ -n "$port" ] && skill=$(jq -rR --slurp 'fromjson? | .tool_input.skill // empty | @uri' 2>/dev/null) && [ -n "$skill" ] && curl -s "${url}" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
+
+  return {
+    matcher: 'Skill',
+    hooks: [{
+      type: 'command',
+      command
+    }]
+  }
+}
+
 function isMagicSlashHook(hookConfig: HookConfig): boolean {
   return hookConfig.hooks?.some(h => h.command?.includes(MAGIC_SLASH_HOOK_MARKER)) ?? false
 }
@@ -213,6 +248,10 @@ export function configureClaudeHooks(): void {
       // Add our hook
       settings.hooks[event]!.push(getHookConfig(event))
     }
+
+    // Skill-invocation telemetry: a second, tool-scoped PreToolUse entry. The
+    // filter above already stripped it (same marker), so this stays idempotent.
+    settings.hooks.PreToolUse!.push(getSkillHookConfig())
 
     // Configure permissions for magic-slash skills (MCP tools + common commands)
     if (!settings.permissions) {

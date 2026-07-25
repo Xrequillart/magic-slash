@@ -344,6 +344,27 @@ export interface UsageEventInput {
   occurredAt?: number
 }
 
+/**
+ * One skill invocation, appended to the skill_invocations table.
+ *
+ * Unlike the activity feed (which records status transitions, so re-running the
+ * same skill logs nothing the second time), this counts every single run.
+ * The skill's `args` are deliberately NOT collected: they are free text that can
+ * carry product context, and RLS makes these rows readable org-wide.
+ */
+export interface SkillInvocationInput {
+  /**
+   * app agent id ("claude-…"), mapped to the agents.id uuid by the store.
+   * Undefined when the skill ran in a Claude Code the app did not spawn — the
+   * run still counts, it just has no agent to attribute it to.
+   */
+  agentId?: string
+  /** Skill name as Claude Code reports it, e.g. "magic-commit" or "plugin:skill". */
+  skill: string
+  /** epoch ms; defaults to now when omitted. */
+  occurredAt?: number
+}
+
 /** A single usage_events row, normalized for client-side aggregation. */
 export interface UsageStatRow {
   userId: string | null

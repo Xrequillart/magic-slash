@@ -1,5 +1,5 @@
 import * as http from 'http'
-import { afterAll, beforeAll, describe, it, expect } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, it, expect } from 'vitest'
 import {
   parseStatusLinePayload,
   startStatusServer,
@@ -8,6 +8,7 @@ import {
   setConfigProvider,
   setAgentProvider,
   setWorktreeFilesWriter,
+  setSkillCallback,
 } from './status-server'
 
 describe('parseStatusLinePayload', () => {
@@ -151,5 +152,57 @@ describe('read-back endpoints', () => {
     expect(status).toBe(200)
     // Non-string entries (42) are filtered out before reaching the writer.
     expect(received).toEqual({ repo: 'api', files: ['.env', '.npmrc'] })
+  })
+
+  describe('GET /skill', () => {
+    let calls: Array<{ id: string | undefined; skill: string }> = []
+
+    beforeEach(() => {
+      calls = []
+      setSkillCallback((id, skill) => calls.push({ id, skill }))
+    })
+
+    it('forwards the terminal id and skill name to the callback', async () => {
+      const { status } = await httpGet('/skill?id=term-1&name=magic-commit')
+      expect(status).toBe(200)
+      expect(calls).toEqual([{ id: 'term-1', skill: 'magic-commit' }])
+    })
+
+    it('records each invocation separately', async () => {
+      await httpGet('/skill?id=term-1&name=magic-commit')
+      await httpGet('/skill?id=term-1&name=magic-commit')
+      expect(calls).toHaveLength(2)
+    })
+
+    it('decodes plugin-scoped skill names', async () => {
+      await httpGet(`/skill?id=term-1&name=${encodeURIComponent('code-review:code-review')}`)
+      expect(calls).toEqual([{ id: 'term-1', skill: 'code-review:code-review' }])
+    })
+
+    it('ignores sidebar terminals', async () => {
+      const { status } = await httpGet('/skill?id=sidebar-1&name=magic-commit')
+      expect(status).toBe(200)
+      expect(calls).toHaveLength(0)
+    })
+
+    // Unlike every other route, /skill accepts a missing id: the PreToolUse hook
+    // is installed user-globally and also fires in terminals the app did not
+    // spawn, where MAGIC_SLASH_TERMINAL_ID is unset and no agent exists.
+    it('accepts an invocation with no terminal id (session outside the app)', async () => {
+      const { status } = await httpGet('/skill?name=magic-commit')
+      expect(status).toBe(200)
+      expect(calls).toEqual([{ id: undefined, skill: 'magic-commit' }])
+    })
+
+    it('treats an empty id as no agent rather than an agent named ""', async () => {
+      await httpGet('/skill?id=&name=magic-commit')
+      expect(calls).toEqual([{ id: undefined, skill: 'magic-commit' }])
+    })
+
+    it('answers 200 without invoking the callback when name is missing', async () => {
+      const { status } = await httpGet('/skill?id=term-1')
+      expect(status).toBe(200)
+      expect(calls).toHaveLength(0)
+    })
   })
 })

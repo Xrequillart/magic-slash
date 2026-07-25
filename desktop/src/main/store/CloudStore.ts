@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, AppInstallationInfo, Config, HistoryEntry, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SpotlightConfig, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import type { Agent, AppInstallationInfo, Config, HistoryEntry, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SkillInvocationInput, SpotlightConfig, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
 import { isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
@@ -807,6 +807,27 @@ export class CloudStore implements Store {
       occurred_at: new Date(event.occurredAt ?? Date.now()).toISOString(),
     })
     if (error) throw new Error(`appendUsage failed: ${error.message}`)
+  }
+
+  /**
+   * Append ONE skill invocation. Same agent-id mapping as appendUsage; an absent
+   * or unknown agent yields a null agent_id rather than dropping the row — runs
+   * from a terminal the app did not spawn have no agent, and still count.
+   */
+  async recordSkillInvocation(input: SkillInvocationInput): Promise<void> {
+    const ctx = await this.context()
+    if (!ctx) return
+
+    const agentUuid = (input.agentId && this.agentIdMap.get(input.agentId)) ?? null
+
+    const { error } = await ctx.client.from('skill_invocations').insert({
+      org_id: ctx.orgId,
+      user_id: ctx.uid,
+      agent_id: agentUuid,
+      skill: input.skill,
+      occurred_at: new Date(input.occurredAt ?? Date.now()).toISOString(),
+    })
+    if (error) throw new Error(`recordSkillInvocation failed: ${error.message}`)
   }
 
   /**
