@@ -119,11 +119,11 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-modal-backdrop"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop"
       onClick={onClose}
     >
       <div
-        className="bg-bg-secondary border border-white/10 rounded-xl w-full max-w-md mx-4 backdrop-blur-2xl animate-modal-content"
+        className="bg-bg-secondary border border-white/10 rounded-xl w-full max-w-md mx-4 animate-modal-content"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -168,7 +168,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 onChange={(e) => setToken(e.target.value)}
                 placeholder="Invitation token"
                 autoFocus
-                className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 font-mono"
+                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 font-mono"
               />
               <div className="flex gap-2">
                 <button
@@ -189,7 +189,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email (must match the invitation)"
-                className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
               />
               <input
                 type="password"
@@ -197,7 +197,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAcceptInvitation() }}
-                className="w-full px-3 py-2 bg-white/[0.06] backdrop-blur-md border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
               />
             </div>
           )}

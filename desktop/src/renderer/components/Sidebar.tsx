@@ -409,7 +409,7 @@ export function Sidebar() {
 
   return (
     <div
-      className={`bg-black/30 backdrop-blur-md flex flex-col h-full relative z-10 ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
+      className={`bg-black/30 flex flex-col h-full relative z-10 ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
       style={{ width: `${width}px`, marginLeft: leftSidebarVisible ? 0 : -width }}
     >
       {/* Resize Handle */}

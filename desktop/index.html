@@ -8,12 +8,15 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%A8%3C/text%3E%3C/svg%3E">
   <style>
     /* Critical CSS for initial load */
+    /* No backdrop-filter anywhere in this app — a CSS blur here covered the whole
+       window and had to be recomputed on every repaint, which is what made fast
+       scrolling stutter. The frosted look comes from the native macOS vibrancy
+       on the BrowserWindow instead: the OS blurs the desktop behind the window,
+       and this scrim just darkens it. */
     body {
       margin: 0;
       padding: 0;
       background: rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
       color: #ffffff;
       font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
     }
@@ -28,8 +31,6 @@
       flex-direction: column;
       gap: 16px;
       background: rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
     }
     .initial-loader .spinner {
       width: 32px;

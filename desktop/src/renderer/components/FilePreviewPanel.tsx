@@ -80,7 +80,7 @@ export default function FilePreviewPanel() {
         className="fixed inset-0 z-[59]"
         onClick={handleClose}
       />
-      <div className={`fixed right-0 top-0 h-full w-[70%] z-[60] flex flex-col bg-bg-secondary border-l-4 ${statusCfg.border} backdrop-blur-md ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}>
+      <div className={`fixed right-0 top-0 h-full w-[70%] z-[60] flex flex-col bg-bg-secondary border-l-4 ${statusCfg.border} ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold border ${statusCfg.color}`}>

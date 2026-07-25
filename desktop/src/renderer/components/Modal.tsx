@@ -29,12 +29,12 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className={`bg-bg-secondary border border-white/10 rounded-xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto backdrop-blur-2xl`}>
+      <div className={`bg-bg-secondary border border-white/10 rounded-xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto`}>
         {/* Hero */}
         {hero && (
           <div className="relative">

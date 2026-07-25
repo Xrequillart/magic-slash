@@ -20,11 +20,11 @@ export function RepositorySelector({
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="bg-bg-secondary border border-white/10 rounded-xl w-full max-w-md mx-4 backdrop-blur-2xl"
+        className="bg-bg-secondary border border-white/10 rounded-xl w-full max-w-md mx-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

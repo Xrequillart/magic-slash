@@ -322,7 +322,7 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
     >
       <div
         ref={containerRef}
-        className="w-full h-full bg-black/30 backdrop-blur-md p-2"
+        className="w-full h-full bg-black/30 p-2"
       />
       {showScrollButton && (
         <button
@@ -331,14 +331,14 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
             userScrolledUpRef.current = false
             setShowScrollButton(false)
           }}
-          className="absolute bottom-4 right-4 z-20 bg-white/10 hover:bg-white/20 text-white/70 px-3 py-1.5 rounded-full text-xs backdrop-blur-sm transition-all duration-200"
+          className="absolute bottom-4 right-4 z-20 bg-white/15 hover:bg-white/25 text-white/70 px-3 py-1.5 rounded-full text-xs transition-all duration-200"
         >
           Scroll to bottom
         </button>
       )}
       {isDragOver && (
         <div className="absolute inset-0 drop-overlay border-2 border-dashed rounded-lg flex items-center justify-center pointer-events-none z-10">
-          <span className="text-white/80 text-sm font-medium bg-black/50 px-4 py-2 rounded-lg backdrop-blur-sm">
+          <span className="text-white/80 text-sm font-medium bg-black/70 px-4 py-2 rounded-lg">
             Drop files here
           </span>
         </div>

@@ -361,7 +361,7 @@ export function AgentInfoSidebar() {
   return (
     <div
       ref={sidebarRef}
-      className={`bg-black/30 backdrop-blur-md flex flex-col h-full relative overflow-hidden ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
+      className={`bg-black/30 flex flex-col h-full relative overflow-hidden ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
       style={{ width: isOpen ? `${width}px` : 0 }}
     >
       <div className="flex flex-col h-full" style={{ width: `${width}px` }}>

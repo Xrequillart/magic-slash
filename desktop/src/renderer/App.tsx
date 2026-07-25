@@ -398,11 +398,11 @@ export function App() {
       {/* Settings Modal — centered overlay instead of a full page */}
       {settingsModalOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-modal-backdrop p-6"
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop p-6"
           onClick={handleCloseSettings}
         >
           <div
-            className="relative bg-bg-secondary border border-white/10 rounded-2xl w-full max-w-6xl h-[85vh] overflow-hidden backdrop-blur-2xl animate-modal-content shadow-2xl flex flex-col"
+            className="relative bg-bg-secondary border border-white/10 rounded-2xl w-full max-w-6xl h-[85vh] overflow-hidden animate-modal-content shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -430,11 +430,11 @@ export function App() {
       {/* Global Close Agent Confirmation Modal */}
       {closeAgentModal && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-modal-backdrop"
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop"
           onClick={closeCloseAgentModal}
         >
           <div
-            className="bg-bg-secondary border border-white/10 rounded-xl mx-4 max-w-sm backdrop-blur-2xl animate-modal-content"
+            className="bg-bg-secondary border border-white/10 rounded-xl mx-4 max-w-sm animate-modal-content"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -479,8 +479,8 @@ export function App() {
 
       {/* No Repos Warning Modal */}
       {showNoReposModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-modal-backdrop">
-          <div className="bg-bg-secondary border border-white/10 rounded-xl mx-4 max-w-md backdrop-blur-2xl animate-modal-content">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop">
+          <div className="bg-bg-secondary border border-white/10 rounded-xl mx-4 max-w-md animate-modal-content">
             {/* Header */}
             <div className="flex items-center gap-3 px-5 pt-5 pb-4">
               <div className="p-2 bg-yellow/10 rounded-lg">

@@ -55,7 +55,7 @@ export function TitleBar() {
 
   return (
     <div
-      className="h-10 bg-black/30 backdrop-blur-md select-none flex items-center justify-between px-3 relative"
+      className="h-10 bg-black/30 select-none flex items-center justify-between px-3 relative"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* Left side - Traffic lights space + Left sidebar toggle */}

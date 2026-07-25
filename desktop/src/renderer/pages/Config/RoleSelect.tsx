@@ -119,7 +119,7 @@ export function RoleSelect({
             // Hidden until measured, so the first paint never flashes at 0,0.
             visibility: position ? 'visible' : 'hidden',
           }}
-          className="bg-bg-secondary border border-white/10 rounded-xl shadow-2xl backdrop-blur-2xl overflow-hidden z-[60]"
+          className="bg-bg-secondary border border-white/10 rounded-xl shadow-2xl overflow-hidden z-[60]"
         >
           {ROLE_OPTIONS.map((opt) => {
             const Icon = opt.icon

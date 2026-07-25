@@ -4,6 +4,15 @@ module.exports = {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  // Deliberately off: `backdrop-filter` has to re-read and re-blur whatever sits
+  // behind an element on every frame, which killed scroll performance (~53ms per
+  // frame on the settings page vs ~10ms without). The frosted look is provided by
+  // the native macOS window vibrancy instead. Writing `backdrop-blur-*` in a
+  // className is a no-op — use an opaque or tinted background.
+  corePlugins: {
+    backdropBlur: false,
+    backdropFilter: false,
+  },
   theme: {
     extend: {
       colors: {
