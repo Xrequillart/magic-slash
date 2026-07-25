@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { User, Pencil, Plus } from 'lucide-react'
+import { User, Pencil } from 'lucide-react'
 import { ProfileOnboardingWizard } from '../../components/ProfileOnboardingWizard'
+import { ProfileForm } from './ProfileForm'
+import { SectionHeader } from './SectionHeader'
 import { ROLE_LABELS, LEVEL_LABELS, STYLE_LABELS, type UserProfile } from '../../../types'
 
 export function ProfileSection() {
@@ -33,12 +35,10 @@ export function ProfileSection() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <User className="w-4 h-4" />
-            <span>Profile</span>
-          </div>
-          {profile && (
+        <SectionHeader
+          icon={User}
+          title="Profile"
+          action={profile && (
             <button
               onClick={() => setShowWizard(true)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
@@ -47,7 +47,7 @@ export function ProfileSection() {
               <span>Edit profile</span>
             </button>
           )}
-        </div>
+        />
 
         {profile ? (
           <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
@@ -82,17 +82,8 @@ export function ProfileSection() {
             </div>
           </div>
         ) : (
-          <button
-            onClick={() => setShowWizard(true)}
-            className="w-full py-6 text-center border border-dashed border-border/50 rounded-xl hover:border-text-secondary/50 hover:bg-white/5 transition-colors"
-          >
-            <User className="w-6 h-6 text-text-secondary/30 mx-auto mb-2" />
-            <div className="text-sm text-text-secondary/50 mb-1">No profile configured</div>
-            <div className="flex items-center gap-1 justify-center text-xs text-accent/70">
-              <Plus className="w-3 h-3" />
-              Create profile
-            </div>
-          </button>
+          /* No profile → fill it in right here rather than behind a wizard. */
+          <ProfileForm onSaved={loadProfile} />
         )}
       </div>
 

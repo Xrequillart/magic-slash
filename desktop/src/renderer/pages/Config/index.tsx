@@ -1,14 +1,15 @@
 import { useState, useEffect, useMemo, Fragment } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Check, Loader2, Lock } from 'lucide-react'
-import { ProfileSection } from './ProfileSection'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Check, Loader2, Lock, CircleUserRound, type LucideIcon } from 'lucide-react'
+import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage } from './OrgPage'
+import { SectionHeader } from './SectionHeader'
 import { LimitGauge } from '../../components/agent-info-sidebar/LimitGauge'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
 import { useAuth } from '../../hooks/useAuth'
 import { useOrg } from '../../hooks/useOrg'
-import type { SpotlightShortcut, LaunchMode, ClaudeAccount, SpendSummary, SettingsTab } from '../../../types'
+import type { SpotlightShortcut, LaunchMode, ClaudeAccount, SpendSummary, SettingsTab, RepositoryConfig } from '../../../types'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 import { formatUsd } from '../../utils/usageStats'
@@ -32,15 +33,16 @@ const LAUNCH_MODE_OPTIONS: { value: LaunchMode; label: string; description: stri
   { value: 'bypassPermissions', label: 'Bypass', description: 'No permission checks — for sandboxed environments only' },
 ]
 
-const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
-  { id: 'profile', label: 'Profile' },
-  { id: 'repositories', label: 'Repositories' },
-  { id: 'organization', label: 'Organization' },
-  { id: 'launch-mode', label: 'Launch Mode' },
-  { id: 'features', label: 'Features' },
-  { id: 'shortcuts', label: 'Shortcuts' },
-  { id: 'usage', label: 'Usage' },
-  { id: 'about', label: 'About' },
+// Icons mirror each tab's own section header, so the rail and the content agree.
+const SETTINGS_TABS: { id: SettingsTab; label: string; icon: LucideIcon }[] = [
+  { id: 'account', label: 'Account', icon: CircleUserRound },
+  { id: 'repositories', label: 'Repositories', icon: FolderGit },
+  { id: 'organization', label: 'Organization', icon: Building2 },
+  { id: 'launch-mode', label: 'Launch Mode', icon: Shield },
+  { id: 'features', label: 'Features', icon: Sparkles },
+  { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
+  { id: 'usage', label: 'Usage', icon: BarChart3 },
+  { id: 'about', label: 'About', icon: Info },
 ]
 
 function formatTokensCompact(n: number): string {
@@ -153,21 +155,43 @@ function SettingsAccountFooter() {
   )
 }
 
-function WelcomePage() {
+/** Hash route within Settings. `repo` is a sub-page of the Repositories tab. */
+interface SettingsRoute {
+  page: string
+  params: { name?: string }
+}
+
+function WelcomePage({ route }: { route: SettingsRoute }) {
   const { config, terminals, splitEnabled, toggleSplitEnabled, currentPage, setCurrentPage, setConfig, settingsInitialTab, setSettingsInitialTab } = useStore()
   const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode } = useConfig()
   const orgs = useStore((s) => s.orgs)
+  const activeOrg = useStore((s) => s.activeOrg)
   // Deep-link support: another view can request a specific settings tab via the
   // store (e.g. the sidebar account menu → Organization). Initialise straight
   // from it so the requested tab paints on first render (no Profile → target
   // flash), then clear the store value once so later visits start on the default.
-  const [activeTab, setActiveTab] = useState<SettingsTab>(settingsInitialTab ?? 'profile')
+  const [activeTab, setActiveTab] = useState<SettingsTab>(settingsInitialTab ?? 'account')
 
   useEffect(() => {
     if (!settingsInitialTab) return
     setActiveTab(settingsInitialTab)
     setSettingsInitialTab(null)
   }, [settingsInitialTab, setSettingsInitialTab])
+
+  // A repository detail page replaces the tab content but keeps the rail, so the
+  // menu never disappears. Repositories stays lit — the detail is its sub-page.
+  const isRepoRoute = route.page === 'repo'
+  const railActiveTab = isRepoRoute ? 'repositories' : activeTab
+  const contentTab = isRepoRoute ? null : activeTab
+
+  const handleSelectTab = (tab: SettingsTab) => {
+    setActiveTab(tab)
+    // Picking a tab from a repo detail page must also leave that hash route,
+    // otherwise the detail would keep covering the content pane.
+    if (window.location.hash && window.location.hash !== '#/') {
+      window.location.hash = '#/'
+    }
+  }
   const [githubStatus, setGithubStatus] = useState<Record<string, boolean>>({})
   const [isAdding, setIsAdding] = useState(false)
   const [appVersion, setAppVersion] = useState('')
@@ -278,6 +302,12 @@ function WelcomePage() {
   const repos = Object.entries(config?.repositories || {})
   const projectNames = repos.map(([name]) => name)
 
+  // Repos split by scope. Team repos include those the org owns but this user
+  // hasn't bound to a local folder yet (needsLocalPath) — they must stay visible,
+  // that's how you discover a colleague's repo and point it at your own clone.
+  const personalRepos = useMemo(() => repos.filter(([, r]) => !r.orgId), [repos])
+  const teamRepos = useMemo(() => repos.filter(([, r]) => !!r.orgId), [repos])
+
   // Generate color map for projects
   const colorMap = useMemo(
     () => getProjectColorMap(projectNames, config?.repositories),
@@ -290,7 +320,9 @@ function WelcomePage() {
     for (const terminal of terminals) {
       for (const repoPath of terminal.repositories || []) {
         for (const [name, repo] of repos) {
-          if (repoPath.startsWith(repo.path)) {
+          // Guard the empty path: ''.startsWith() matches everything, which would
+          // credit every agent to every repo with no local folder bound.
+          if (repo.path && repoPath.startsWith(repo.path)) {
             counts[name] = (counts[name] || 0) + 1
           }
         }
@@ -298,6 +330,76 @@ function WelcomePage() {
     }
     return counts
   }, [terminals, repos])
+
+  // One row of the repositories list. Shared by the Personal and Team sections —
+  // a plain render function, not a component, so React keeps the same elements
+  // across renders instead of remounting a freshly-declared type.
+  const renderRepoRow = ([name, repo]: [string, RepositoryConfig]) => {
+    const hasGithub = githubStatus[name]
+    const color = colorMap[name]
+    const agentCount = agentCountByRepo[name] || 0
+    const scopeOrg = repo.orgId ? orgs.find((o) => o.id === repo.orgId) : null
+
+    return (
+      <a
+        key={name}
+        href={`#/repo/${encodeURIComponent(name)}`}
+        className="group flex items-center gap-3 px-4 py-3 bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.15] hover:border-white/[0.15] rounded-xl transition-all"
+      >
+        {/* Color dot */}
+        <span
+          className="w-3 h-3 rounded-full flex-shrink-0"
+          style={{ backgroundColor: color }}
+        />
+
+        {/* Repo info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium truncate">{name}</span>
+            {/* Org name on a team repo — the section header already says "Team",
+                but a repo can belong to another org than the active one. */}
+            {repo.orgId && scopeOrg && scopeOrg.id !== activeOrg?.id && (
+              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent/15 text-accent">
+                <Building2 className="w-2.5 h-2.5" />
+                {scopeOrg.name}
+              </span>
+            )}
+            {/* GitHub status badge — only meaningful once a local folder is bound */}
+            {!repo.needsLocalPath && (
+              <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                hasGithub
+                  ? 'bg-green/10 text-green'
+                  : 'bg-red/10 text-red'
+              }`}>
+                <Github className="w-2.5 h-2.5" />
+                {hasGithub ? 'Connected' : 'No remote'}
+              </span>
+            )}
+          </div>
+          {repo.needsLocalPath ? (
+            <div className="flex items-center gap-1 text-xs text-yellow mt-0.5">
+              <AlertTriangle className="w-3 h-3" />
+              No local folder — click to set it
+            </div>
+          ) : (
+            <div className="text-xs text-text-secondary/50 truncate mt-0.5">
+              {repo.path}
+            </div>
+          )}
+        </div>
+
+        {/* Agent count */}
+        {agentCount > 0 && (
+          <span className="px-2 py-0.5 bg-accent/10 text-accent text-xs font-medium rounded">
+            {agentCount} agent{agentCount > 1 ? 's' : ''}
+          </span>
+        )}
+
+        {/* Arrow */}
+        <ChevronRight className="w-4 h-4 text-text-secondary/30 group-hover:text-text-secondary transition-colors" />
+      </a>
+    )
+  }
 
   // Latest known Claude account usage (plan rate limits). These are account-global,
   // so they're identical across agents — pick the most recently reported one that
@@ -420,19 +522,23 @@ function WelcomePage() {
       {/* Left rail: vertical tabs, account footer */}
       <div className="w-56 shrink-0 flex flex-col border-r border-white/[0.08] bg-black/20">
         <nav className="flex-1 overflow-y-auto px-2 pt-3 space-y-0.5">
-          {SETTINGS_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`w-full text-left px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                activeTab === tab.id
-                  ? 'bg-accent/15 text-white'
-                  : 'text-text-secondary hover:text-white hover:bg-white/[0.06]'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {SETTINGS_TABS.map((tab) => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleSelectTab(tab.id)}
+                className={`w-full flex items-center gap-2.5 text-left px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                  railActiveTab === tab.id
+                    ? 'bg-accent/15 text-white'
+                    : 'text-text-secondary hover:text-white hover:bg-white/[0.06]'
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="truncate">{tab.label}</span>
+              </button>
+            )
+          })}
         </nav>
         <SettingsAccountFooter />
       </div>
@@ -441,32 +547,35 @@ function WelcomePage() {
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-4xl flex flex-col gap-6">
 
-      {/* Profile tab */}
-      {activeTab === 'profile' && (
-        <ProfileSection />
+      {/* Repository detail — sub-page of the Repositories tab */}
+      {isRepoRoute && <RepoPage repoName={route.params.name || ''} />}
+
+      {/* Account tab — cloud identity + Claude profile */}
+      {contentTab === 'account' && (
+        <AccountPage />
       )}
 
       {/* Organization tab */}
-      {activeTab === 'organization' && (
+      {contentTab === 'organization' && (
         <OrgPage />
       )}
 
       {/* Repositories tab */}
-      {activeTab === 'repositories' && <div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <FolderGit className="w-4 h-4" />
-            <span>Repositories</span>
-          </div>
-          <button
-            onClick={handleOpenProject}
-            disabled={isAdding}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all disabled:opacity-50"
-          >
-            <Plus className="w-3 h-3" />
-            <span>{isAdding ? 'Adding...' : 'Add repository'}</span>
-          </button>
-        </div>
+      {contentTab === 'repositories' && <div>
+        <SectionHeader
+          icon={FolderGit}
+          title="Repositories"
+          action={
+            <button
+              onClick={handleOpenProject}
+              disabled={isAdding}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all disabled:opacity-50"
+            >
+              <Plus className="w-3 h-3" />
+              <span>{isAdding ? 'Adding...' : 'Add repository'}</span>
+            </button>
+          }
+        />
 
         {repos.length === 0 ? (
           <button
@@ -479,87 +588,47 @@ function WelcomePage() {
             <div className="text-xs text-text-secondary/30">Click to add your first project</div>
           </button>
         ) : (
-          <div className="space-y-2">
-            {repos.map(([name, repo]) => {
-              const hasGithub = githubStatus[name]
-              const color = colorMap[name]
-              const agentCount = agentCountByRepo[name] || 0
-              const scopeOrg = repo.orgId ? orgs.find((o) => o.id === repo.orgId) : null
+          <div className="flex flex-col gap-6">
+            {/* Personal */}
+            <div>
+              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-text-secondary/50 mb-2">
+                <Lock className="w-3 h-3" />
+                <span>Personal</span>
+                <span className="text-text-secondary/30">{personalRepos.length}</span>
+              </div>
+              {personalRepos.length === 0 ? (
+                <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-white/[0.08] rounded-xl">
+                  No personal repository — use “Add repository” above.
+                </div>
+              ) : (
+                <div className="space-y-2">{personalRepos.map(renderRepoRow)}</div>
+              )}
+            </div>
 
-              return (
-                <a
-                  key={name}
-                  href={`#/repo/${encodeURIComponent(name)}`}
-                  className="group flex items-center gap-3 px-4 py-3 bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.15] hover:border-white/[0.15] rounded-xl transition-all"
-                >
-                  {/* Color dot */}
-                  <span
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: color }}
-                  />
-
-                  {/* Repo info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium truncate">{name}</span>
-                      {/* Scope badge */}
-                      {repo.orgId ? (
-                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent/15 text-accent">
-                          <Building2 className="w-2.5 h-2.5" />
-                          {scopeOrg?.name ?? 'Team'}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/10 text-text-secondary">
-                          <Lock className="w-2.5 h-2.5" />
-                          Personal
-                        </span>
-                      )}
-                      {/* GitHub status badge — only meaningful once a local folder is bound */}
-                      {!repo.needsLocalPath && (
-                        <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                          hasGithub
-                            ? 'bg-green/10 text-green'
-                            : 'bg-red/10 text-red'
-                        }`}>
-                          <Github className="w-2.5 h-2.5" />
-                          {hasGithub ? 'Connected' : 'No remote'}
-                        </span>
-                      )}
-                    </div>
-                    {repo.needsLocalPath ? (
-                      <div className="flex items-center gap-1 text-xs text-yellow mt-0.5">
-                        <AlertTriangle className="w-3 h-3" />
-                        No local folder — click to set it
-                      </div>
-                    ) : (
-                      <div className="text-xs text-text-secondary/50 truncate mt-0.5">
-                        {repo.path}
-                      </div>
-                    )}
+            {/* Team — every repo of the active org, even those with no local folder yet */}
+            {(teamRepos.length > 0 || activeOrg) && (
+              <div>
+                <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-text-secondary/50 mb-2">
+                  <Building2 className="w-3 h-3" />
+                  <span>{activeOrg?.name ?? 'Team'}</span>
+                  <span className="text-text-secondary/30">{teamRepos.length}</span>
+                </div>
+                {teamRepos.length === 0 ? (
+                  <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-white/[0.08] rounded-xl">
+                    No shared repository in this organization yet.
                   </div>
-
-                  {/* Agent count */}
-                  {agentCount > 0 && (
-                    <span className="px-2 py-0.5 bg-accent/10 text-accent text-xs font-medium rounded">
-                      {agentCount} agent{agentCount > 1 ? 's' : ''}
-                    </span>
-                  )}
-
-                  {/* Arrow */}
-                  <ChevronRight className="w-4 h-4 text-text-secondary/30 group-hover:text-text-secondary transition-colors" />
-                </a>
-              )
-            })}
+                ) : (
+                  <div className="space-y-2">{teamRepos.map(renderRepoRow)}</div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>}
 
       {/* Launch Mode tab */}
-      {activeTab === 'launch-mode' && <div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-          <Shield className="w-4 h-4" />
-          <span>Launch Mode</span>
-        </div>
+      {contentTab === 'launch-mode' && <div>
+        <SectionHeader icon={Shield} title="Launch Mode" />
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -608,14 +677,11 @@ function WelcomePage() {
       </div>}
 
       {/* Features tab */}
-      {activeTab === 'features' && <div className="flex flex-col gap-8">
+      {contentTab === 'features' && <div className="flex flex-col gap-8">
 
       {/* History Section */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-          <History className="w-4 h-4" />
-          <span>History</span>
-        </div>
+        <SectionHeader icon={History} title="History" />
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -645,10 +711,7 @@ function WelcomePage() {
 
       {/* Usage Card Section */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-          <Gauge className="w-4 h-4" />
-          <span>Usage card</span>
-        </div>
+        <SectionHeader icon={Gauge} title="Usage card" />
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -676,10 +739,7 @@ function WelcomePage() {
 
       {/* Usage Logs Section (GDPR opt-in — off by default) */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-          <BarChart3 className="w-4 h-4" />
-          <span>Usage logs</span>
-        </div>
+        <SectionHeader icon={BarChart3} title="Usage logs" />
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -709,10 +769,7 @@ function WelcomePage() {
 
       {/* Daily Digest Section (opt-in — off by default) */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-          <Bell className="w-4 h-4" />
-          <span>Daily digest</span>
-        </div>
+        <SectionHeader icon={Bell} title="Daily digest" />
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -742,10 +799,7 @@ function WelcomePage() {
 
       {/* Split View Section */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-          <Columns className="w-4 h-4" />
-          <span>Split View</span>
-        </div>
+        <SectionHeader icon={Columns} title="Split View" />
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -768,10 +822,7 @@ function WelcomePage() {
 
       {/* PR Review Watcher Section */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-          <GitPullRequest className="w-4 h-4" />
-          <span>PR Review Watcher</span>
-        </div>
+        <SectionHeader icon={GitPullRequest} title="PR Review Watcher" />
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -849,10 +900,7 @@ function WelcomePage() {
 
       {/* Spotlight Section */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-          <Search className="w-4 h-4" />
-          <span>Spotlight</span>
-        </div>
+        <SectionHeader icon={Search} title="Spotlight" />
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -902,10 +950,7 @@ function WelcomePage() {
 
       {/* Background App Section */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-          <MonitorSmartphone className="w-4 h-4" />
-          <span>Background App</span>
-        </div>
+        <SectionHeader icon={MonitorSmartphone} title="Background App" />
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -939,11 +984,8 @@ function WelcomePage() {
       </div>}
 
       {/* Shortcuts tab */}
-      {activeTab === 'shortcuts' && <div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-          <Keyboard className="w-4 h-4" />
-          <span>Keyboard Shortcuts</span>
-        </div>
+      {contentTab === 'shortcuts' && <div>
+        <SectionHeader icon={Keyboard} title="Keyboard Shortcuts" />
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center justify-between">
@@ -1005,16 +1047,13 @@ function WelcomePage() {
       </div>}
 
       {/* Usage tab */}
-      {activeTab === 'usage' && <div className="flex flex-col lg:flex-row gap-6">
+      {contentTab === 'usage' && <div className="flex flex-col lg:flex-row gap-6">
 
         {/* Left column: account + estimated spend */}
         <div className="flex-1 min-w-0 flex flex-col gap-6">
           {/* Current account */}
           <div>
-            <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-              <User className="w-4 h-4" />
-              <span>Current account</span>
-            </div>
+            <SectionHeader icon={User} title="Current account" />
             <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
               {claudeAccount ? (
                 <div className="space-y-2 text-sm">
@@ -1055,10 +1094,7 @@ function WelcomePage() {
 
           {/* Estimated spend & tokens */}
           <div>
-            <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-              <Coins className="w-4 h-4" />
-              <span>Spend &amp; tokens</span>
-            </div>
+            <SectionHeader icon={Coins} title="Spend & tokens" />
             <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
               {spend?.hasData ? (
                 <>
@@ -1094,10 +1130,7 @@ function WelcomePage() {
 
         {/* Right column: account rate-limit gauges */}
         <div className="lg:w-[280px] shrink-0">
-          <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-            <Gauge className="w-4 h-4" />
-            <span>Rate limits</span>
-          </div>
+          <SectionHeader icon={Gauge} title="Rate limits" />
           <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
             {accountUsage ? (
               <div className="flex items-start justify-center gap-8 py-2">
@@ -1128,11 +1161,8 @@ function WelcomePage() {
       </div>}
 
       {/* About tab */}
-      {activeTab === 'about' && <div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-4">
-          <Info className="w-4 h-4" />
-          <span>About</span>
-        </div>
+      {contentTab === 'about' && <div>
+        <SectionHeader icon={Info} title="About" />
         <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 flex items-center justify-between">
           <div>
             <div className="font-medium">Magic Slash</div>
@@ -1198,13 +1228,7 @@ export function ConfigPage() {
 
   return (
     <div className="h-full">
-      {route.page === 'repo' ? (
-        <div className="h-full overflow-auto p-6">
-          <RepoPage repoName={route.params.name || ''} />
-        </div>
-      ) : (
-        <WelcomePage />
-      )}
+      <WelcomePage route={route} />
     </div>
   )
 }

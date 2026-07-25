@@ -59,8 +59,10 @@ export function UsageCard({ usage }: UsageCardProps) {
   if (minimized) {
     return (
       <div className="bg-white/[0.06] rounded-xl px-3 py-2 flex items-center gap-2">
-        <span className="text-xs text-text-secondary/50 uppercase tracking-wider shrink-0">Session</span>
-        <div className="h-1.5 flex-1 min-w-0 rounded-full bg-white/[0.08] overflow-hidden">
+        <span className="text-xs text-text-secondary/50 uppercase tracking-wider shrink-0">Session context</span>
+        {/* Capped at a third of the row so the bar doesn't span the whole card;
+            ml-auto pushes it right, grouping it with the percent + expand button. */}
+        <div className="h-1.5 flex-1 min-w-0 max-w-[33%] ml-auto rounded-full bg-white/[0.08] overflow-hidden">
           <div
             className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
             style={{ width: `${pct}%` }}
@@ -97,10 +99,13 @@ export function UsageCard({ usage }: UsageCardProps) {
               {model}
             </span>
           )}
+          {/* self-stretch makes the button exactly as tall as the model pill next
+              to it, whatever that pill's line-height works out to. With no model
+              it keeps its natural height. */}
           <button
             onClick={() => setMinimized(true)}
             title="Minimize"
-            className="p-0.5 rounded text-text-secondary/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+            className="self-stretch px-1 flex items-center justify-center rounded-md text-text-secondary/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
           >
             <Minus className="w-3 h-3" />
           </button>

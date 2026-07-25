@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { LogIn, Settings, AlertTriangle } from 'lucide-react'
+import { LogIn, Settings, AlertTriangle, CircleUserRound } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useStore } from '../store'
 import { LoginScreen } from './LoginScreen'
@@ -25,12 +25,14 @@ function displayNameFromEmail(email?: string): string {
  * falls back to a plain Settings entry so settings stay reachable. A warning
  * badge surfaces when no repositories are configured. Organization switching and
  * sign-out now live inside the Settings modal.
+ *
+ * `shortcutKey` is the pre-formatted accelerator label (⌘, / Ctrl+,) shown on the
+ * right, matching the other sidebar entries. The keybinding itself lives in Sidebar.
  */
-export function SidebarAccount() {
+export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
   const { status } = useAuth()
   const config = useStore((s) => s.config)
   const openSettingsModal = useStore((s) => s.openSettingsModal)
-  const setActiveTerminal = useStore((s) => s.setActiveTerminal)
 
   const [showLogin, setShowLogin] = useState(false)
 
@@ -39,8 +41,9 @@ export function SidebarAccount() {
     return Object.keys(config.repositories).length === 0
   }, [config])
 
+  // Settings is a modal, not a page: it must never clear the active terminal,
+  // otherwise the app behind the overlay renders blank.
   const openSettings = () => {
-    setActiveTerminal(null)
     openSettingsModal()
   }
 
@@ -75,7 +78,6 @@ export function SidebarAccount() {
   // Signed in → account button opening Settings.
   if (status.enabled && status.loggedIn) {
     const name = displayNameFromEmail(status.user?.email)
-    const initial = name.charAt(0).toUpperCase()
     return (
       <button
         onClick={openSettings}
@@ -85,10 +87,9 @@ export function SidebarAccount() {
             : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
         }`}
       >
-        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-[10px] font-semibold shrink-0">
-          {initial}
-        </span>
+        <CircleUserRound className="w-3.5 h-3.5 shrink-0" />
         <span className="truncate">{name}</span>
+        {shortcutKey && <span className="ml-auto text-xs opacity-50 shrink-0">{shortcutKey}</span>}
         <WarningBadge />
       </button>
     )
@@ -106,6 +107,7 @@ export function SidebarAccount() {
     >
       <Settings className="w-3.5 h-3.5" />
       <span>Settings</span>
+      {shortcutKey && <span className="ml-auto text-xs opacity-50 shrink-0">{shortcutKey}</span>}
       <WarningBadge />
     </button>
   )

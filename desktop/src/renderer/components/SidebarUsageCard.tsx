@@ -4,15 +4,23 @@ import { useStore } from '../store'
 import { gaugeColors, formatReset } from './agent-info-sidebar/LimitGauge'
 import type { ClaudeAccount } from '../../types'
 
-// Small colored "session 5h 89%" pill used in the collapsed card.
-function UsagePill({ label, percent }: { label: string; percent: number }) {
+// "session ▬▬ 89%" gauge for the collapsed card. Both gauges share one row, so
+// each takes half of it: label and percent are shrink-0 and the bar absorbs
+// whatever is left — it goes very small on a narrow sidebar, by design.
+function UsageMiniBar({ label, percent }: { label: string; percent: number }) {
   const pct = Math.min(100, Math.max(0, percent))
   const colors = gaugeColors(pct)
   return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/[0.04] text-[10px] whitespace-nowrap">
-      <span className="text-text-secondary/60">{label}</span>
-      <span className={`font-mono font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
-    </span>
+    <div className="flex items-center gap-1 flex-1 min-w-0">
+      <span className="shrink-0 text-[10px] text-text-secondary/60">{label}</span>
+      <div className="h-1 flex-1 min-w-[8px] rounded-full bg-white/[0.06] overflow-hidden">
+        <div
+          className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className={`shrink-0 text-[10px] font-mono font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
+    </div>
   )
 }
 
@@ -95,9 +103,9 @@ export function SidebarUsageCard() {
       {minimized ? (
         <div className="flex items-center justify-between gap-1.5">
           {hasGauges ? (
-            <div className="flex items-center gap-1 min-w-0 flex-wrap">
-              {hasFive && <UsagePill label="session 5h" percent={accountUsage!.fiveHourPercent!} />}
-              {hasSeven && <UsagePill label="hebdo 7d" percent={accountUsage!.sevenDayPercent!} />}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {hasFive && <UsageMiniBar label="session" percent={accountUsage!.fiveHourPercent!} />}
+              {hasSeven && <UsageMiniBar label="weekly" percent={accountUsage!.sevenDayPercent!} />}
             </div>
           ) : (
             <span className="text-[10px] text-text-secondary/40">No usage data</span>

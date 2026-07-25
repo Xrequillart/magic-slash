@@ -459,7 +459,8 @@ const authApi = {
 // Org API (organization membership + invitations + multi-org management)
 const orgApi = {
   current: (): Promise<Org | null> => ipcRenderer.invoke('org:current'),
-  members: (): Promise<Member[]> => ipcRenderer.invoke('org:members'),
+  // orgId omitted → the active org.
+  members: (orgId?: string): Promise<Member[]> => ipcRenderer.invoke('org:members', { orgId }),
   list: (): Promise<Org[]> => ipcRenderer.invoke('org:list'),
   // Team dashboard: org-wide agents roster + live realtime propagation.
   listAgents: (): Promise<OrgAgent[]> => ipcRenderer.invoke('org:listAgents'),
@@ -480,9 +481,11 @@ const orgApi = {
     ipcRenderer.on('org:realtimeStatusChanged', listener)
     return () => ipcRenderer.removeListener('org:realtimeStatusChanged', listener)
   },
-  invitations: (): Promise<Invitation[]> => ipcRenderer.invoke('org:invitations'),
-  invite: (email: string, role?: MembershipRole): Promise<Invitation> =>
-    ipcRenderer.invoke('org:invite', { email, role }),
+  invitations: (orgId?: string): Promise<Invitation[]> => ipcRenderer.invoke('org:invitations', { orgId }),
+  invite: (email: string, role?: MembershipRole, orgId?: string): Promise<Invitation> =>
+    ipcRenderer.invoke('org:invite', { email, role, orgId }),
+  /** Create an organization (caller becomes admin). Returns the new org id. */
+  create: (name: string): Promise<string> => ipcRenderer.invoke('org:create', { name }),
   deleteInvitation: (id: string): Promise<void> =>
     ipcRenderer.invoke('org:deleteInvitation', { id }),
   accept: (token: string): Promise<{ orgId: string; config: Config }> =>

@@ -275,7 +275,18 @@ export const useStore = create<AppState>()(
 
         setCurrentPage: (currentPage) => set({ currentPage, selectedFile: null }),
         setSettingsInitialTab: (settingsInitialTab) => set({ settingsInitialTab }),
-        openSettingsModal: (tab) => set(tab ? { settingsModalOpen: true, settingsInitialTab: tab } : { settingsModalOpen: true }),
+        // Settings is an overlay, never a destination: it leaves currentPage and
+        // the active terminal untouched so the app stays visible behind it. The
+        // one exception is a blank agents page (nothing selected but agents
+        // exist) — select the first one so the overlay never sits on an empty app.
+        openSettingsModal: (tab) => set((state) => {
+          const updates: Partial<AppState> = { settingsModalOpen: true }
+          if (tab) updates.settingsInitialTab = tab
+          if (state.currentPage === 'terminals' && !state.activeTerminalId && state.terminals.length > 0) {
+            updates.activeTerminalId = state.terminals[0].id
+          }
+          return updates
+        }),
         closeSettingsModal: () => set({ settingsModalOpen: false }),
         setRightSidebar: (rightSidebar) => set({ rightSidebar }),
         toggleRightSidebar: (sidebar) => set((state) => ({
