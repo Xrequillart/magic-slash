@@ -46,6 +46,16 @@ export default function RepositoryPage() {
    */
   const latest = useRef<Repository | null>(null)
 
+  /**
+   * Writes run one at a time, chained onto this promise. Concurrent writes would
+   * make the rollback below unsound: a re-read issued by a failing write could
+   * observe the row before a later write committed, and then present — and merge
+   * onto — a row missing a change that did persist.
+   */
+  const queue = useRef<Promise<unknown>>(Promise.resolve())
+  const inFlight = useRef(0)
+  const resyncNeeded = useRef(false)
+
   /** Sets state and the ref together, so they never disagree. */
   const store = useCallback((next: Repository | null) => {
     latest.current = next
@@ -59,24 +69,42 @@ export default function RepositoryPage() {
   }, [session, id, store])
 
   /**
-   * Optimistic save of a single changed setting: the form reflects it at once,
-   * and a failure both surfaces the error and re-reads the row so the UI can't
-   * drift from what is actually stored.
+   * Optimistic save of a single changed setting: the form reflects it immediately,
+   * while the write itself is queued behind any earlier one.
+   *
+   * On failure the row is re-read so the form can't keep showing something that
+   * wasn't stored — but only once every queued write has settled. Re-reading
+   * straight away could race a write still in flight and roll back a change that
+   * actually succeeded.
    */
   const patch = useCallback(
-    async (p: RepositoryPatch) => {
+    (p: RepositoryPatch) => {
       const base = latest.current
       if (!id || !base) return
 
-      const full = expandPatch(base, p)
-      store({ ...base, ...full })
+      store({ ...base, ...expandPatch(base, p) })
       setSaveError(null)
-      try {
-        await updateRepository(id, full)
-      } catch (err) {
-        setSaveError(err instanceof Error ? err.message : 'Failed to save.')
-        store(await fetchRepository(id))
-      }
+      inFlight.current += 1
+
+      queue.current = queue.current.then(async () => {
+        try {
+          // Re-expand against the freshest row: an earlier queued write may have
+          // landed, or a rollback may have moved the base, since this was called.
+          await updateRepository(id, expandPatch(latest.current ?? base, p))
+        } catch (err) {
+          setSaveError(err instanceof Error ? err.message : 'Failed to save.')
+          resyncNeeded.current = true
+        } finally {
+          inFlight.current -= 1
+        }
+
+        if (inFlight.current === 0 && resyncNeeded.current) {
+          resyncNeeded.current = false
+          store(await fetchRepository(id))
+        }
+        // Never leave a rejected promise in the queue: every later write chains
+        // onto it, so one unexpected rejection would silently stop all of them.
+      }).catch(() => {})
     },
     [id, store],
   )

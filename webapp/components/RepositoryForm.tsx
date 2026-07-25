@@ -63,6 +63,60 @@ const FORMAT_SOURCE_OPTIONS: DropdownOption<string>[] = [
   { value: 'custom', label: 'Custom' },
 ]
 
+/**
+ * Text setting that holds a draft until you save it, with Enter as a shortcut.
+ * Text fields cannot write on every keystroke the way a toggle or a dropdown
+ * does: each character would be its own database write.
+ *
+ * The draft follows `persisted` whenever *that* changes — after a failed save the
+ * page re-reads the row, and the field has to drop the rejected text instead of
+ * presenting it as current. Keying the effect on the persisted value rather than
+ * on the repo object is what keeps typing safe: typing doesn't change it, so the
+ * effect never fires mid-edit.
+ */
+function DraftField({
+  persisted,
+  onSave,
+  placeholder,
+  className = 'w-64',
+  required = false,
+}: {
+  persisted: string
+  onSave: (value: string) => void
+  placeholder?: string
+  className?: string
+  /** Refuses to save an empty value — for settings that must have one. */
+  required?: boolean
+}) {
+  const [draft, setDraft] = useState(persisted)
+  useEffect(() => setDraft(persisted), [persisted])
+
+  const savable = draft !== persisted && (!required || draft.trim().length > 0)
+
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && savable) {
+            e.preventDefault()
+            onSave(draft)
+          }
+        }}
+        placeholder={placeholder}
+        className={className}
+      />
+      {savable && (
+        <Button onClick={() => onSave(draft)} className="shrink-0">
+          Save
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export function RepositoryForm({
   repo,
   orgs,
@@ -77,22 +131,6 @@ export function RepositoryForm({
   onDelete: () => void
   saveError: string | null
 }) {
-  // Text fields are drafts: they hold what you typed until you press Save. They
-  // still have to follow the persisted value when *that* changes — after a failed
-  // save the page re-reads the row, and the field must drop the rejected text
-  // rather than keep presenting it as current. Depending on the persisted value
-  // (not the repo object) is what makes this safe: typing doesn't change it, so
-  // the effect never fires mid-edit and can't clobber the draft.
-  const persistedKeywords = repo.keywords.join(', ')
-  const [name, setName] = useState(repo.name)
-  const [keywords, setKeywords] = useState(persistedKeywords)
-
-  useEffect(() => setName(repo.name), [repo.name])
-  useEffect(() => setKeywords(persistedKeywords), [persistedKeywords])
-
-  const nameChanged = name.trim() !== repo.name && name.trim().length > 0
-  const keywordsChanged = keywords !== persistedKeywords
-
   // Resolved values: absent means "use the default", same as the desktop.
   const lang = (key: keyof Repository['languages']) => repo.languages[key] ?? DEFAULTS.language
   const commitStyle = repo.commit.style ?? DEFAULTS.commitStyle
@@ -167,45 +205,25 @@ export function RepositoryForm({
       {/* ── General ───────────────────────────────────────────────────────── */}
       <SettingsCard icon={Settings2} title="General">
         <SettingRow label="Name" description="Repository display name">
-          <div className="flex items-center gap-2">
-            <Input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-64"
-            />
-            {nameChanged && (
-              <Button onClick={() => onPatch({ name })} className="shrink-0">
-                Save
-              </Button>
-            )}
-          </div>
+          <DraftField
+            persisted={repo.name}
+            onSave={(name) => onPatch({ name })}
+            required
+          />
         </SettingRow>
 
         <SettingRow label="Keywords" description="Auto-detection keywords (comma-separated)">
-          <div className="flex items-center gap-2">
-            <Input
-              type="text"
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              className="w-64"
-            />
-            {keywordsChanged && (
-              <Button
-                onClick={() =>
-                  onPatch({
-                    keywords: keywords
-                      .split(',')
-                      .map((k) => k.trim())
-                      .filter(Boolean),
-                  })
-                }
-                className="shrink-0"
-              >
-                Save
-              </Button>
-            )}
-          </div>
+          <DraftField
+            persisted={repo.keywords.join(', ')}
+            onSave={(value) =>
+              onPatch({
+                keywords: value
+                  .split(',')
+                  .map((k) => k.trim())
+                  .filter(Boolean),
+              })
+            }
+          />
         </SettingRow>
 
         <SettingRow label="Discussion language" description="Language Claude uses when talking with you">
@@ -245,10 +263,9 @@ export function RepositoryForm({
           label="Development branch"
           description="Base branch for comparing commits. Typed by hand here — the web app can't list the repo's branches."
         >
-          <Input
-            type="text"
-            value={repo.branches.development ?? ''}
-            onChange={(e) => onPatch({ branches: { development: e.target.value } })}
+          <DraftField
+            persisted={repo.branches.development ?? ''}
+            onSave={(development) => onPatch({ branches: { development } })}
             placeholder="develop"
             className="w-52"
           />
@@ -457,20 +474,18 @@ export function RepositoryForm({
         </SettingRow>
 
         <SettingRow label="Jira URL" description="Base URL for Jira tickets (e.g. PROJ-123)">
-          <Input
-            type="text"
-            value={repo.issues.jiraUrl ?? ''}
-            onChange={(e) => setIssues({ jiraUrl: e.target.value })}
+          <DraftField
+            persisted={repo.issues.jiraUrl ?? ''}
+            onSave={(jiraUrl) => setIssues({ jiraUrl })}
             placeholder="https://company.atlassian.net/browse/"
             className="w-72"
           />
         </SettingRow>
 
         <SettingRow label="GitHub issues URL" description="Base URL for GitHub issues (e.g. #456)">
-          <Input
-            type="text"
-            value={repo.issues.githubIssuesUrl ?? ''}
-            onChange={(e) => setIssues({ githubIssuesUrl: e.target.value })}
+          <DraftField
+            persisted={repo.issues.githubIssuesUrl ?? ''}
+            onSave={(githubIssuesUrl) => setIssues({ githubIssuesUrl })}
             placeholder="https://github.com/org/repo/issues/"
             className="w-72"
           />
