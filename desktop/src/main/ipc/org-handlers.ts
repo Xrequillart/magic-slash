@@ -12,6 +12,7 @@ import {
   applySharedConfig,
   setOrgSharedConfig,
   listOrgs,
+  createOrganization,
   listOrgAgents,
   listOrgUsageStats,
   pickUpTask,
@@ -22,7 +23,9 @@ import {
   switchOrg,
 } from '../cloud/org'
 
-interface InviteArgs { email: string; role?: MembershipRole }
+interface InviteArgs { email: string; role?: MembershipRole; orgId?: string }
+interface OptionalOrgIdArgs { orgId?: string }
+interface CreateOrgArgs { name: string }
 interface AcceptArgs { token: string }
 interface OrgIdArgs { orgId: string }
 interface MemberArgs { orgId: string; userId: string }
@@ -33,7 +36,11 @@ interface PickUpArgs { ticketId: string; repositories: string[] }
 export function setupOrgHandlers(): void {
   ipcMain.handle('org:current', async (): Promise<Org | null> => getCurrentOrg())
 
-  ipcMain.handle('org:members', async (): Promise<Member[]> => listMembers())
+  // orgId is optional: omitted → the active org. The settings page passes it so
+  // it can render every org the user belongs to, not just the active one.
+  ipcMain.handle('org:members', async (_event, args?: OptionalOrgIdArgs): Promise<Member[]> =>
+    listMembers(args?.orgId),
+  )
 
   ipcMain.handle('org:list', async (): Promise<Org[]> => listOrgs())
 
@@ -53,10 +60,12 @@ export function setupOrgHandlers(): void {
 
   ipcMain.handle('org:realtimeStatus', async (): Promise<RealtimeStatus> => getRealtimeStatus())
 
-  ipcMain.handle('org:invitations', async (): Promise<Invitation[]> => listInvitations())
+  ipcMain.handle('org:invitations', async (_event, args?: OptionalOrgIdArgs): Promise<Invitation[]> =>
+    listInvitations(args?.orgId),
+  )
 
-  ipcMain.handle('org:invite', async (_event, { email, role }: InviteArgs): Promise<Invitation> =>
-    createInvitation(email, role ?? 'user'),
+  ipcMain.handle('org:invite', async (_event, { email, role, orgId }: InviteArgs): Promise<Invitation> =>
+    createInvitation(email, role ?? 'user', orgId),
   )
 
   ipcMain.handle('org:deleteInvitation', async (_event, { id }: { id: string }): Promise<void> =>
@@ -87,6 +96,13 @@ export function setupOrgHandlers(): void {
   )
 
   ipcMain.handle('org:archive', async (_event, { orgId }: OrgIdArgs): Promise<void> => archiveOrg(orgId))
+
+  ipcMain.handle('org:create', async (_event, { name }: CreateOrgArgs): Promise<string> => {
+    if (typeof name !== 'string' || !name.trim()) {
+      throw new Error('org:create requires a non-empty name')
+    }
+    return createOrganization(name)
+  })
 
   ipcMain.handle('org:switch', async (_event, { orgId }: OrgIdArgs): Promise<Config> => switchOrg(orgId))
 }

@@ -210,6 +210,25 @@ export async function archiveOrg(orgId: string): Promise<void> {
   if (readConfig().currentOrgId === orgId) setCurrentOrgId(undefined)
 }
 
+/**
+ * Create an organization; the caller becomes its admin. There is deliberately no
+ * INSERT policy on `organizations` — the org row and the creator's admin
+ * membership must land atomically, so this goes through the SECURITY DEFINER
+ * `create_organization` RPC (the same one sign-up uses for the personal org).
+ * Returns the new org id. Does NOT switch to it — that stays an explicit choice.
+ */
+export async function createOrganization(name: string): Promise<string> {
+  const client = await getAuthedClient()
+  if (!client) throw new Error('Cloud features are not available')
+
+  const orgName = name.trim()
+  if (!orgName) throw new Error('createOrganization requires a name')
+
+  const { data, error } = await client.rpc('create_organization', { org_name: orgName })
+  if (error) throw new Error(error.message)
+  return data as string
+}
+
 /** Create an invitation (admin only — RLS enforces the admin gate). */
 export async function createInvitation(email: string, role: MembershipRole = 'user', orgId?: string): Promise<Invitation> {
   const client = await getAuthedClient()

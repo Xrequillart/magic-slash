@@ -18,6 +18,13 @@ export function useOrg() {
 
   const [members, setMembers] = useState<Member[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
+  // Per-org rosters, keyed by org id. A user can belong to several orgs
+  // (memberships is unique on (org_id, user_id), not on user_id), and the
+  // settings page renders one card per org — so it needs all of them, not just
+  // the active one. `members`/`invitations` above stay scoped to the active org
+  // for the callers that only care about it.
+  const [membersByOrg, setMembersByOrg] = useState<Record<string, Member[]>>({})
+  const [invitationsByOrg, setInvitationsByOrg] = useState<Record<string, Invitation[]>>({})
   const [loading, setLoading] = useState(false)
 
   const refresh = useCallback(async () => {
@@ -25,20 +32,36 @@ export function useOrg() {
     try {
       const current = await window.electronAPI.org.current()
       setActiveOrg(current)
-      setOrgs(await window.electronAPI.org.list().catch(() => []))
-      if (current) {
-        setMembers(await window.electronAPI.org.members().catch(() => []))
-        // Invitations are admin-only; a non-admin read simply yields [].
-        setInvitations(await window.electronAPI.org.invitations().catch(() => []))
-      } else {
-        setMembers([])
-        setInvitations([])
+      const list = await window.electronAPI.org.list().catch(() => [])
+      setOrgs(list)
+
+      // One round-trip pair per org, all in flight together.
+      const rosters = await Promise.all(
+        list.map(async (o) => ({
+          orgId: o.id,
+          members: await window.electronAPI.org.members(o.id).catch(() => []),
+          // Invitations are admin-only; a non-admin read simply yields [].
+          invitations: await window.electronAPI.org.invitations(o.id).catch(() => []),
+        })),
+      )
+
+      const byOrgMembers: Record<string, Member[]> = {}
+      const byOrgInvitations: Record<string, Invitation[]> = {}
+      for (const r of rosters) {
+        byOrgMembers[r.orgId] = r.members
+        byOrgInvitations[r.orgId] = r.invitations
       }
+      setMembersByOrg(byOrgMembers)
+      setInvitationsByOrg(byOrgInvitations)
+      setMembers(current ? byOrgMembers[current.id] ?? [] : [])
+      setInvitations(current ? byOrgInvitations[current.id] ?? [] : [])
     } catch {
       setActiveOrg(null)
       setOrgs([])
       setMembers([])
       setInvitations([])
+      setMembersByOrg({})
+      setInvitationsByOrg({})
     } finally {
       setLoading(false)
     }
@@ -49,10 +72,19 @@ export function useOrg() {
   }, [refresh])
 
   const invite = useCallback(
-    async (email: string, role: MembershipRole = 'user') => {
-      const invitation = await window.electronAPI.org.invite(email, role)
+    async (email: string, role: MembershipRole = 'user', orgId?: string) => {
+      const invitation = await window.electronAPI.org.invite(email, role, orgId)
       await refresh()
       return invitation
+    },
+    [refresh],
+  )
+
+  const createOrg = useCallback(
+    async (name: string) => {
+      const orgId = await window.electronAPI.org.create(name)
+      await refresh()
+      return orgId
     },
     [refresh],
   )
@@ -122,9 +154,12 @@ export function useOrg() {
     orgs,
     members,
     invitations,
+    membersByOrg,
+    invitationsByOrg,
     loading,
     refresh,
     invite,
+    createOrg,
     deleteInvitation,
     accept,
     removeMember,
