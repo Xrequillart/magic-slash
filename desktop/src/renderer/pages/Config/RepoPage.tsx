@@ -406,7 +406,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
     const currentVal = (repoLangs as any)[langKey] || 'en'
 
     return (
-      <div className="flex items-start justify-between gap-6 py-4 border-b border-white/5 last:border-b-0">
+      <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
         <div className="flex-1">
           <label className="block text-sm font-semibold mb-1">{label}</label>
           {description && <p className="text-xs text-text-secondary/50">{description}</p>}
@@ -416,7 +416,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             value={currentVal}
             disabled={readOnly}
             onChange={(e) => handleLanguageChange(langKey, e.target.value)}
-            className="w-52 px-3 py-2.5 pr-10 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-52 px-3 py-2.5 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="en">English</option>
             <option value="fr">Francais</option>
@@ -455,7 +455,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
         <div className="flex items-center gap-3 mb-2">
           <button
             onClick={() => { window.location.hash = '#/' }}
-            className="p-1.5 text-text-secondary hover:text-white hover:bg-bg-tertiary rounded-lg transition-colors"
+            className="p-1.5 text-text-secondary hover:text-ink hover:bg-bg-tertiary rounded-lg transition-colors"
             title="Back to repositories"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -469,7 +469,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Read-only notice (team repo, and you are neither admin nor its creator) */}
       {readOnly && (
-        <div className="flex items-start gap-4 p-4 mb-6 bg-white/[0.04] border border-white/[0.08] rounded-xl">
+        <div className="flex items-start gap-4 p-4 mb-6 bg-surface-subtle border border-line-field rounded-xl">
           <Lock className="w-5 h-5 text-text-secondary flex-shrink-0 mt-0.5" />
           <div>
             <h3 className="font-semibold text-sm mb-1">Read-only</h3>
@@ -523,7 +523,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Scope / Sharing Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Scope</h2>
-        <div className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 flex items-start justify-between gap-6">
+        <div className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 flex items-start justify-between gap-6">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               {repo?.orgId ? (
@@ -532,7 +532,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   Team{scopeOrg ? ` — ${scopeOrg.name}` : ''}
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/10 text-text-secondary text-xs font-medium">
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-strong text-text-secondary text-xs font-medium">
                   <Lock className="w-3.5 h-3.5" />
                   Personal
                 </span>
@@ -548,7 +548,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             {repo?.orgId ? (
               <button
                 onClick={handleMakePersonal}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-white/5 border border-white/10 text-xs rounded-lg hover:text-white transition-colors"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors"
               >
                 <Lock className="w-3.5 h-3.5" />
                 Make personal
@@ -558,7 +558,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <select
                   value=""
                   onChange={(e) => handleShare(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+                  className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
                 >
                   <option value="" disabled>Share with organization…</option>
                   {orgs.map((o) => (
@@ -577,9 +577,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* General Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">General</h2>
-        <div className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4">
+        <div className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4">
           {/* Name */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Name</label>
               <p className="text-xs text-text-secondary/50">Repository display name</p>
@@ -589,10 +589,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 type="text"
                 value={editedName}
                 onChange={(e) => setEditedName(e.target.value)}
-                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
               />
               {editedName !== repoName && editedName.trim() && (
-                <button onClick={handleRename} className="self-end px-3 py-1.5 bg-white/5 border border-white/10 text-xs rounded-lg hover:text-white transition-colors">
+                <button onClick={handleRename} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
                   Save
                 </button>
               )}
@@ -601,7 +601,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
           {/* Path — always editable: the folder is this machine's, private to
               you, and a read-only member still needs to point the repo at it. */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Path</label>
               <p className="text-xs text-text-secondary/50">
@@ -614,12 +614,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   type="text"
                   value={path}
                   onChange={(e) => handlePathChange(e.target.value)}
-                  className="flex-1 min-w-0 px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                  className="flex-1 min-w-0 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
                 />
                 <button
                   onClick={handlePickFolder}
                   title="Choose folder"
-                  className="p-2 bg-white/5 border border-white/10 rounded-lg text-text-secondary hover:text-white transition-colors shrink-0"
+                  className="p-2 bg-surface border border-line rounded-lg text-text-secondary hover:text-ink transition-colors shrink-0"
                 >
                   <FolderOpen className="w-4 h-4" />
                 </button>
@@ -638,7 +638,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 </div>
               )}
               {pathChanged && (
-                <button onClick={savePath} className="self-end px-3 py-1.5 bg-white/5 border border-white/10 text-xs rounded-lg hover:text-white transition-colors">
+                <button onClick={savePath} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
                   Save
                 </button>
               )}
@@ -646,7 +646,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
           </div>
 
           {/* Keywords */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Keywords</label>
               <p className="text-xs text-text-secondary/50">Auto-detection keywords (comma-separated)</p>
@@ -656,10 +656,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 type="text"
                 value={keywords}
                 onChange={(e) => handleKeywordsChange(e.target.value)}
-                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
               />
               {keywordsChanged && (
-                <button onClick={saveKeywords} className="self-end px-3 py-1.5 bg-white/5 border border-white/10 text-xs rounded-lg hover:text-white transition-colors">
+                <button onClick={saveKeywords} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
                   Save
                 </button>
               )}
@@ -682,7 +682,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   onClick={() => handleColorChange(color)}
                   className={`w-6 h-6 rounded-full transition-all ${
                     repo?.color === color
-                      ? 'ring-2 ring-offset-2 ring-offset-bg-secondary ring-white'
+                      ? 'ring-2 ring-offset-2 ring-offset-bg-secondary ring-ink'
                       : 'hover:scale-110'
                   }`}
                   style={{ backgroundColor: color }}
@@ -697,7 +697,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Branches Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Branches</h2>
-        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 w-full min-w-0">
+        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 w-full min-w-0">
           <div className="flex items-start justify-between gap-6 py-3">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Development Branch</label>
@@ -708,7 +708,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 value={branchSettings.development || ''}
                 onChange={(e) => handleBranchSettingChange('development', e.target.value)}
                 disabled={branchesLoading}
-                className="w-52 px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
+                className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
               >
                 <option value="">
                   {branchesLoading ? 'Loading...' : 'Select branch'}
@@ -726,7 +726,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Worktree Files Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Worktree</h2>
-        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 w-full min-w-0">
+        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 w-full min-w-0">
           <div className="py-3">
             <div className="flex-1 mb-3">
               <label className="block text-sm font-medium mb-0.5">Files to copy</label>
@@ -736,7 +736,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               {(repo.worktreeFiles || []).map((file, index) => (
                 <span
                   key={index}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.06] border border-white/[0.15] rounded-lg text-sm"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-line-strong rounded-lg text-sm"
                 >
                   {file}
                   <button
@@ -756,7 +756,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 type="text"
                 id="worktree-file-input"
                 placeholder=".env"
-                className="flex-1 px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                className="flex-1 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const input = e.currentTarget
@@ -777,7 +777,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                     input.value = ''
                   }
                 }}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <Plus className="w-3 h-3" />
                 Add
@@ -790,11 +790,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Commit Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Commit</h2>
-        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 w-full min-w-0">
+        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 w-full min-w-0">
           <LangSelect langKey="commit" label="Language" description="Language used for commit messages" />
 
           {/* Style */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Style</label>
               <p className="text-xs text-text-secondary/50">Single line or multi-line with body</p>
@@ -803,7 +803,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <select
                 value={styleVal}
                 onChange={(e) => handleCommitSettingChange('style', e.target.value)}
-                className="w-52 px-3 py-2 pr-10 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
               >
                 <option value="single-line">Single line</option>
                 <option value="multi-line">Multi-line (with body)</option>
@@ -813,7 +813,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
           </div>
 
           {/* Format */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Format</label>
               <p className="text-xs text-text-secondary/50">Commit message format/convention</p>
@@ -822,7 +822,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <select
                 value={formatVal}
                 onChange={(e) => handleCommitSettingChange('format', e.target.value)}
-                className="w-52 px-3 py-2 pr-10 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
               >
                 <option value="conventional">Conventional (type: description)</option>
                 <option value="angular">Angular (type(scope): description)</option>
@@ -834,7 +834,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
           </div>
 
           {/* Co-Author Toggle */}
-          <div className="flex items-center justify-between gap-6 py-3 border-b border-white/5">
+          <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Co-Author</label>
               <p className="text-xs text-text-secondary/50">Add Claude as co-author in commits</p>
@@ -847,7 +847,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-white transition-all" />
+              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
             </label>
           </div>
 
@@ -865,12 +865,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-white transition-all" />
+              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
             </label>
           </div>
 
           {/* Commit Preview */}
-          <div className="mt-4 p-3 bg-white/5 border border-white/5 rounded-lg">
+          <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
             <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">Example</div>
             <pre className="text-sm whitespace-pre-wrap text-text-secondary">{commitPreview}</pre>
           </div>
@@ -880,9 +880,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Resolve Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Resolve</h2>
-        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 w-full min-w-0">
+        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 w-full min-w-0">
           {/* Commit Mode */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Commit Mode</label>
               <p className="text-xs text-text-secondary/50">How to commit resolve changes</p>
@@ -891,7 +891,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <select
                 value={resolveCommitModeVal}
                 onChange={(e) => handleResolveSettingChange('commitMode', e.target.value)}
-                className="w-52 px-3 py-2 pr-10 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
               >
                 <option value="new">New commit</option>
                 <option value="amend">Amend last commit</option>
@@ -903,7 +903,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
           {/* Commit Format Source - shown when a new commit is possible (new or ask) */}
           {resolveCommitModeVal !== 'amend' && (
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">Commit Format</label>
                 <p className="text-xs text-text-secondary/50">Format source for resolve commit messages</p>
@@ -912,7 +912,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <select
                   value={resolveUseCommitConfigVal ? 'commit' : 'custom'}
                   onChange={(e) => handleResolveSettingChange('useCommitConfig', e.target.value === 'commit')}
-                  className="w-52 px-3 py-2 pr-10 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                  className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
                 >
                   <option value="commit">Use commit settings</option>
                   <option value="custom">Custom</option>
@@ -925,7 +925,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
           {/* Custom Style & Format - when a new commit is possible (new or ask) and useCommitConfig is false */}
           {resolveCommitModeVal !== 'amend' && !resolveUseCommitConfigVal && (
             <>
-              <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+              <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
                 <div className="flex-1">
                   <label className="block text-sm font-medium mb-0.5">Style</label>
                   <p className="text-xs text-text-secondary/50">Single line or multi-line with body</p>
@@ -934,7 +934,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   <select
                     value={resolveStyleVal}
                     onChange={(e) => handleResolveSettingChange('style', e.target.value)}
-                    className="w-52 px-3 py-2 pr-10 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                    className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
                   >
                     <option value="single-line">Single line</option>
                     <option value="multi-line">Multi-line (with body)</option>
@@ -943,7 +943,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 </div>
               </div>
 
-              <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+              <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
                 <div className="flex-1">
                   <label className="block text-sm font-medium mb-0.5">Format</label>
                   <p className="text-xs text-text-secondary/50">Commit message format/convention</p>
@@ -952,7 +952,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   <select
                     value={resolveFormatVal}
                     onChange={(e) => handleResolveSettingChange('format', e.target.value)}
-                    className="w-52 px-3 py-2 pr-10 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                    className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
                   >
                     <option value="conventional">Conventional (type: description)</option>
                     <option value="angular">Angular (type(scope): description)</option>
@@ -966,7 +966,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
           )}
 
           {/* Reply to Comments Toggle */}
-          <div className="flex items-center justify-between gap-6 py-3 border-b border-white/5">
+          <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Reply to Comments</label>
               <p className="text-xs text-text-secondary/50">Reply in-thread on resolved GitHub comments</p>
@@ -979,7 +979,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-white transition-all" />
+              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
             </label>
           </div>
 
@@ -994,7 +994,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <select
                   value={resolveReplyLangVal}
                   onChange={(e) => handleResolveSettingChange('replyLanguage', e.target.value)}
-                  className="w-52 px-3 py-2.5 pr-10 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                  className="w-52 px-3 py-2.5 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
                 >
                   <option value="en">English</option>
                   <option value="fr">Francais</option>
@@ -1006,7 +1006,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
           {/* Preview / Info */}
           {resolveCommitModeVal === 'new' && (
-            <div className="mt-4 p-3 bg-white/5 border border-white/5 rounded-lg">
+            <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
               <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">Example</div>
               <pre className="text-sm whitespace-pre-wrap text-text-secondary">{resolvePreview}</pre>
             </div>
@@ -1014,13 +1014,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
           {resolveCommitModeVal === 'amend' && (
             <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0" />
-              <span className="text-sm text-text-secondary">Push will use <code className="text-xs bg-white/10 px-1.5 py-0.5 rounded">--force-with-lease</code></span>
+              <span className="text-sm text-text-secondary">Push will use <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code></span>
             </div>
           )}
           {resolveCommitModeVal === 'ask' && (
             <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0 mt-0.5" />
-              <span className="text-sm text-text-secondary">You'll be asked to choose <strong>new commit</strong> or <strong>amend</strong> on each resolve. Choosing amend will push with <code className="text-xs bg-white/10 px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
+              <span className="text-sm text-text-secondary">You'll be asked to choose <strong>new commit</strong> or <strong>amend</strong> on each resolve. Choosing amend will push with <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
             </div>
           )}
         </fieldset>
@@ -1029,11 +1029,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Pull Request Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Pull Request</h2>
-        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 w-full min-w-0">
+        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 w-full min-w-0">
           <LangSelect langKey="pullRequest" label="Language" description="Language used for pull request titles and descriptions" />
 
           {/* Auto-link Tickets */}
-          <div className="flex items-center justify-between gap-6 py-3 border-b border-white/5">
+          <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Auto-link Tickets</label>
               <p className="text-xs text-text-secondary/50">Add Jira/GitHub ticket links in PR description</p>
@@ -1046,7 +1046,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-white transition-all" />
+              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
             </label>
           </div>
 
@@ -1065,7 +1065,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 ) : (
                   <button
                     onClick={handleGenerateTemplate}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                   >
                     <Plus className="w-3 h-3" />
                     Generate template
@@ -1077,13 +1077,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
             {template?.exists && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-text-secondary/50 bg-white/5 px-2 py-1 rounded">
+                  <span className="text-[10px] text-text-secondary/50 bg-surface px-2 py-1 rounded">
                     {template.path}
                   </span>
                   {templateChanged && (
                     <button
                       onClick={handleSaveTemplate}
-                      className="px-3 py-1.5 bg-white/5 border border-white/10 text-xs rounded-lg hover:text-white transition-colors"
+                      className="px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors"
                     >
                       Save
                     </button>
@@ -1095,7 +1095,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                     setTemplateContent(e.target.value)
                     setTemplateChanged(e.target.value !== template.content)
                   }}
-                  className="w-full h-64 p-4 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm resize-y focus:outline-none focus:border-accent transition-colors"
+                  className="w-full h-64 p-4 bg-surface border border-line-field rounded-lg text-sm resize-y focus:outline-none focus:border-accent transition-colors"
                   placeholder="PR template content..."
                 />
               </div>
@@ -1107,11 +1107,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Jira / GitHub Issues Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Jira / GitHub Issues</h2>
-        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 w-full min-w-0">
+        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 w-full min-w-0">
           <LangSelect langKey="jiraComment" label="Comment Language" description="Language used for Jira and GitHub issue comments" />
 
           {/* Comment on PR */}
-          <div className="flex items-center justify-between gap-6 py-3 border-b border-white/5">
+          <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Comment on PR Creation</label>
               <p className="text-xs text-text-secondary/50">Add a comment with PR link when creating a pull request</p>
@@ -1124,12 +1124,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-white transition-all" />
+              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
             </label>
           </div>
 
           {/* Jira URL */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
+          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Jira URL</label>
               <p className="text-xs text-text-secondary/50">
@@ -1141,7 +1141,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               value={issuesSettings.jiraUrl || ''}
               onChange={(e) => handleIssuesSettingChange('jiraUrl', e.target.value)}
               placeholder="https://company.atlassian.net/browse/"
-              className="w-72 px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              className="w-72 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
             />
           </div>
 
@@ -1158,7 +1158,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               value={issuesSettings.githubIssuesUrl || ''}
               onChange={(e) => handleIssuesSettingChange('githubIssuesUrl', e.target.value)}
               placeholder="https://github.com/org/repo/issues/"
-              className="w-72 px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              className="w-72 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
             />
           </div>
         </fieldset>
@@ -1193,7 +1193,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
           <>
             <button
               onClick={() => setIsDeleteModalOpen(false)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
               Cancel
             </button>
@@ -1207,7 +1207,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
           </>
         }
       >
-        <p>Are you sure you want to delete <strong className="text-white">{repoName}</strong>?</p>
+        <p>Are you sure you want to delete <strong className="text-ink">{repoName}</strong>?</p>
         <p className="mt-2 text-text-secondary/50">This action cannot be undone.</p>
       </Modal>
     </div>

@@ -44,7 +44,7 @@ export function RateLimitBar({ label, percent, resetsAt, now }: {
           <span className={`text-sm font-semibold tabular-nums ${colors.text}`}>{Math.round(pct)}%</span>
         </span>
       </div>
-      <div className="h-2 w-full rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="h-2 w-full rounded-full bg-surface overflow-hidden">
         <div
           className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
           style={{ width: `${pct}%` }}

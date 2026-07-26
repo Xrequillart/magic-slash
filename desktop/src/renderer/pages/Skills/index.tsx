@@ -13,14 +13,14 @@ function BudgetBar({ label, value, max, unit, barColor }: { label: string; value
   const percentage = Math.min(Math.round((value / max) * 100), 100)
 
   return (
-    <div className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+    <div className="flex-1 px-4 py-3 rounded-xl bg-surface-subtle border border-line-field">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-text-secondary/60">{label}</span>
         <span className="text-xs font-medium text-text-secondary">
           {value.toLocaleString()} / {max.toLocaleString()} {unit}
         </span>
       </div>
-      <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="w-full h-2 rounded-full bg-surface overflow-hidden">
         <div
           className={`relative h-full rounded-full transition-all duration-300 overflow-hidden ${barColor}`}
           style={{ width: `${percentage}%` }}
@@ -97,7 +97,7 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
         <BudgetBar label="Tokens (2% context)" value={totalTokens} max={TOKEN_BUDGET} unit="tokens" barColor="bg-accent" />
         <BudgetBar label="Characters (fallback)" value={totalChars} max={CHAR_BUDGET} unit="chars" barColor="bg-orange" />
       </div>
-      <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05]">
+      <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-surface-subtle border border-line-subtle">
         <Info className="w-3.5 h-3.5 text-text-secondary/40 flex-shrink-0 mt-0.5" />
         <p className="text-[11px] text-text-secondary/40 leading-relaxed">
           Skill descriptions are injected into the system prompt on every message. The <strong className="text-text-secondary/60">2% context</strong> gauge tracks token usage against ~2% of the model's context window — the recommended ceiling to keep skills from crowding out actual conversation. The <strong className="text-text-secondary/60">characters (fallback)</strong> gauge is a simpler byte-level check used when a tokenizer is unavailable.
@@ -115,7 +115,7 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
             <span>Details by skill</span>
           </button>
           {showBreakdown && (
-            <div className="mt-2 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+            <div className="mt-2 px-4 py-3 rounded-xl bg-surface-subtle border border-line-field">
               <div className="flex flex-col gap-1.5">
                 {breakdown.map((entry) => {
                   const sourceColor = entry.source === 'built-in' ? 'bg-accent/10 text-accent' : entry.source === 'repo' ? 'bg-blue/10 text-blue' : 'bg-green/10 text-green'
@@ -123,7 +123,7 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
                   return (
                     <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
                       <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 ${sourceColor}`}>{entry.source}</span>
-                      <span className="text-xs text-white truncate min-w-0 flex-1 capitalize">{entry.name}</span>
+                      <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{entry.name}</span>
                       <span className="text-[10px] text-text-secondary/50 w-14 text-right flex-shrink-0">{entry.tokens} tok</span>
                       <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 w-14 text-center ${ws.className}`}>{ws.label}</span>
                     </div>
@@ -152,7 +152,7 @@ function DuplicateSkillsAlert({ duplicates }: { duplicates: DuplicateSkillEntry[
       <div className="flex flex-col gap-1.5 ml-6">
         {duplicates.map((dup) => (
           <div key={dup.name} className="flex items-center gap-2">
-            <span className="text-xs text-white truncate min-w-0 flex-1 capitalize">{dup.name}</span>
+            <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{dup.name}</span>
             <span className="text-[10px] text-orange/70 flex-shrink-0">{dup.sources.length}x</span>
             <div className="flex items-center gap-1 flex-shrink-0">
               {dup.sources.map((s, i) => {
@@ -195,7 +195,7 @@ function LongDescriptionsAlert({ longDescriptions, onFix }: { longDescriptions: 
       <div className="flex flex-col gap-1.5 ml-6">
         {longDescriptions.map((entry) => (
           <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
-            <span className="text-xs text-white truncate min-w-0 flex-1 capitalize">{entry.name}</span>
+            <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{entry.name}</span>
             <span className="text-[10px] text-orange/70 flex-shrink-0">{entry.wordCount} words</span>
           </div>
         ))}
@@ -249,10 +249,10 @@ function SkillCard({
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-2 py-2 rounded-xl bg-white/[0.06] border border-white/[0.15] hover:bg-white/[0.12] hover:border-white/[0.15] transition-all group"
+      className="w-full flex items-center gap-3 px-2 py-2 rounded-xl bg-surface border border-line-strong hover:bg-surface-strong hover:border-line-strong transition-all group"
     >
       {/* Avatar */}
-      <div className="w-12 h-12 rounded-lg bg-white/[0.06] flex items-center justify-center overflow-hidden flex-shrink-0">
+      <div className="w-12 h-12 rounded-lg bg-surface flex items-center justify-center overflow-hidden flex-shrink-0">
         {imageUrl ? (
           <img src={imageUrl} alt={skill.name} className="w-full h-full object-cover" />
         ) : (
@@ -263,7 +263,7 @@ function SkillCard({
       {/* Info */}
       <div className="flex-1 min-w-0 text-left">
         <div className="flex items-center gap-2">
-          <span className="text-base font-semibold text-white truncate capitalize">{skill.name}</span>
+          <span className="text-base font-semibold text-ink truncate capitalize">{skill.name}</span>
           {badge && (
             <span className={`px-1.5 py-0.5 text-xs font-medium rounded flex-shrink-0 ${badge.className}`}>{badge.label}</span>
           )}
@@ -401,7 +401,7 @@ function SkillEditor({
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
-          className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-text-secondary hover:text-white"
+          className="p-1.5 rounded-lg hover:bg-surface-strong transition-colors text-text-secondary hover:text-ink"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -412,7 +412,7 @@ function SkillEditor({
           <button
             onClick={handleShare}
             disabled={sharing}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/5 hover:text-white transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-all disabled:opacity-50"
           >
             <Share2 className="w-4 h-4" />
             {sharing ? 'Sharing...' : 'Share'}
@@ -437,7 +437,7 @@ function SkillEditor({
             onChange={(e) => setName(e.target.value)}
             disabled={isReadOnly || !isNew}
             placeholder="my-skill"
-            className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-base text-white placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50"
+            className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50"
           />
           {isNew && (
             <p className="mt-1 text-xs text-text-secondary/60">Lowercase letters, numbers, and hyphens only</p>
@@ -453,7 +453,7 @@ function SkillEditor({
             disabled={isReadOnly}
             placeholder="Describe when this skill should be triggered..."
             rows={3}
-            className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-base text-white placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50 resize-none"
+            className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50 resize-none"
           />
         </div>
 
@@ -466,7 +466,7 @@ function SkillEditor({
             onChange={(e) => setAllowedTools(e.target.value)}
             disabled={isReadOnly}
             placeholder="Bash(*), Read, Edit, Write, Glob, Grep"
-            className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-base text-white placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50"
+            className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50"
           />
         </div>
 
@@ -476,17 +476,17 @@ function SkillEditor({
             <label className="block text-base font-medium text-text-secondary mb-1.5">Image (optional)</label>
             <div className="flex items-center gap-3">
               {imagePreview ? (
-                <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10">
+                <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-line">
                   <img src={imagePreview} alt="Skill" className="w-full h-full object-cover" />
                   <button
                     onClick={handleRemoveImage}
                     className="absolute -top-1 -right-1 w-5 h-5 bg-red rounded-full flex items-center justify-center"
                   >
-                    <X className="w-3 h-3 text-white" />
+                    <X className="w-3 h-3 text-ink" />
                   </button>
                 </div>
               ) : imagePath ? (
-                <div className="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg">
+                <div className="flex items-center gap-2 px-3 py-2 bg-surface border border-line rounded-lg">
                   <ImagePlus className="w-4 h-4 text-accent" />
                   <span className="text-xs text-text-secondary truncate max-w-[200px]">{imagePath.split('/').pop()}</span>
                   <button onClick={handleRemoveImage} className="text-text-secondary hover:text-red">
@@ -496,7 +496,7 @@ function SkillEditor({
               ) : null}
               <button
                 onClick={handlePickImage}
-                className="px-3 py-2 text-sm font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/5 hover:text-white transition-all flex items-center gap-2"
+                className="px-3 py-2 text-sm font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-all flex items-center gap-2"
               >
                 <ImagePlus className="w-4 h-4" />
                 {imagePreview || imagePath ? 'Change' : 'Upload'}
@@ -516,7 +516,7 @@ function SkillEditor({
             disabled={isReadOnly}
             placeholder="Write the skill instructions in markdown..."
             rows={16}
-            className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-base text-white font-mono placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50 resize-y"
+            className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink font-mono placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50 resize-y"
           />
         </div>
       </div>
@@ -527,7 +527,7 @@ function SkillEditor({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent hover:bg-accent-hover text-on-brand rounded-lg transition-colors disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save'}
@@ -772,7 +772,7 @@ export function SkillsPage() {
 
         {loading && (
           <div className="flex items-center justify-center py-12">
-            <div className="w-6 h-6 border-2 border-white/20 border-t-accent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
           </div>
         )}
 
@@ -814,14 +814,14 @@ export function SkillsPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleImport}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                     >
                       <FolderInput className="w-3 h-3" />
                       <span>Import</span>
                     </button>
                     <button
                       onClick={() => { window.location.hash = '#/new' }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                     >
                       <Plus className="w-3 h-3" />
                       <span>New skill</span>
@@ -835,14 +835,14 @@ export function SkillsPage() {
                   <div className="flex items-center justify-center gap-3">
                     <button
                       onClick={() => { window.location.hash = '#/new' }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                     >
                       <Plus className="w-3 h-3" />
                       <span>Create skill</span>
                     </button>
                     <button
                       onClick={handleImport}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                     >
                       <FolderInput className="w-3 h-3" />
                       <span>Import folder</span>
@@ -872,7 +872,7 @@ export function SkillsPage() {
               <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">Skills defined in your registered repositories (.claude/skills/ and .claude/commands/)</p>
               {repoSkillsLoading && (
                 <div className="flex items-center justify-center py-6">
-                  <div className="w-5 h-5 border-2 border-white/20 border-t-accent rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
                 </div>
               )}
               {!repoSkillsLoading && Object.keys(repoSkillsByRepo).length === 0 && (

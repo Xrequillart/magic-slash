@@ -268,7 +268,7 @@ export function TerminalsPage() {
           <button
             onClick={handleCreateTerminal}
             disabled={isCreating}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple hover:bg-purple/80 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple hover:bg-purple/80 text-on-brand rounded-lg font-semibold transition-colors disabled:opacity-50"
           >
             <Bot className="w-4 h-4" />
             {isCreating ? 'Launching...' : 'Launch new agent'}
@@ -314,7 +314,7 @@ export function TerminalsPage() {
               ))}
             </div>
             {/* Divider */}
-            <div className="w-px bg-white/10 flex-shrink-0" />
+            <div className="w-px bg-surface-strong flex-shrink-0" />
             {/* Secondary pane */}
             <div
               className="w-1/2 h-full relative"
@@ -338,7 +338,7 @@ export function TerminalsPage() {
                     <button
                       onClick={handleCreateTerminalInRightPane}
                       disabled={isCreating}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-purple hover:bg-purple/80 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-purple hover:bg-purple/80 text-on-brand rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                     >
                       <Bot className="w-3.5 h-3.5" />
                       {isCreating ? 'Launching...' : 'New agent'}

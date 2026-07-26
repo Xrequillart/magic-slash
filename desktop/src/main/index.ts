@@ -23,6 +23,7 @@ import { AgentStateAggregator } from './tray/agent-state-aggregator'
 import { destroyPopover } from './windows/popover-window'
 import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
 import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
+import { initAppearance, appearanceArguments } from './appearance'
 import { setupProfileHandlers } from './ipc/profile-handlers'
 import { setupUsageHandlers } from './ipc/usage-handlers'
 import { setupAuthHandlers } from './ipc/auth-handlers'
@@ -132,6 +133,9 @@ function createWindow() {
     visualEffectState: 'active',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
+      // Hands the preload the current theme, so the renderer paints in it from
+      // its very first frame instead of flashing the default and correcting.
+      additionalArguments: appearanceArguments(),
       nodeIntegration: false,
       contextIsolation: true,
       backgroundThrottling: false,
@@ -374,6 +378,10 @@ app.whenReady().then(async () => {
   // hydrated from the DB after auth + connectivity are established (via the
   // connectivity gate). Nothing is persisted locally.
   setStore(new CloudStore())
+
+  // Before any window: the stored theme drives the traffic lights and the macOS
+  // vibrancy material, which are decided at creation time.
+  initAppearance()
 
   // Create custom menu (removes Cmd+W close window behavior)
   createMenu()

@@ -15,24 +15,50 @@ module.exports = {
   },
   theme: {
     extend: {
+      // Every colour resolves against a CSS variable written by the renderer's
+      // theme registry (src/renderer/theme/themes.ts) — that file is the only
+      // place a value lives. Adding a theme touches nothing here.
+      //
+      // Two forms on purpose. Bare `R G B` channels wrapped in `<alpha-value>`
+      // keep the opacity modifiers the app relies on (`text-ink/80`,
+      // `bg-accent/15`). Surfaces and lines are complete colours instead: their
+      // translucency is part of the design and has to differ per theme, since
+      // black over a light window needs more of it than white over a dark one.
       colors: {
         bg: {
-          DEFAULT: '#0a0a0b',
-          secondary: '#141416',
-          tertiary: '#1c1c1f',
+          DEFAULT: 'rgb(var(--c-bg) / <alpha-value>)',
+          secondary: 'rgb(var(--c-bg-secondary) / <alpha-value>)',
+          tertiary: 'rgb(var(--c-bg-tertiary) / <alpha-value>)',
         },
         accent: {
-          DEFAULT: '#6366f1',
-          hover: '#818cf8',
+          DEFAULT: 'rgb(var(--c-accent) / <alpha-value>)',
+          hover: 'rgb(var(--c-accent-hover) / <alpha-value>)',
         },
-        purple: '#a855f7',
-        green: '#22c55e',
-        red: '#ef4444',
-        yellow: '#eab308',
-        blue: '#3b82f6',
-        orange: '#f97316',
-        border: '#27272a',
-        'text-secondary': '#a1a1aa',
+        purple: 'rgb(var(--c-purple) / <alpha-value>)',
+        green: 'rgb(var(--c-green) / <alpha-value>)',
+        red: 'rgb(var(--c-red) / <alpha-value>)',
+        yellow: 'rgb(var(--c-yellow) / <alpha-value>)',
+        blue: 'rgb(var(--c-blue) / <alpha-value>)',
+        orange: 'rgb(var(--c-orange) / <alpha-value>)',
+        border: 'rgb(var(--c-border) / <alpha-value>)',
+        'text-secondary': 'rgb(var(--c-text-secondary) / <alpha-value>)',
+        /** Primary text. What `text-white` meant before the app had themes. */
+        ink: 'rgb(var(--c-ink) / <alpha-value>)',
+        /** Text on a solid brand fill — stays legible whatever the theme. */
+        'on-brand': 'rgb(var(--c-on-brand) / <alpha-value>)',
+        surface: {
+          subtle: 'var(--c-surface-subtle)',
+          DEFAULT: 'var(--c-surface)',
+          strong: 'var(--c-surface-strong)',
+          sunken: 'var(--c-surface-sunken)',
+          'sunken-soft': 'var(--c-surface-sunken-soft)',
+        },
+        line: {
+          subtle: 'var(--c-line-subtle)',
+          field: 'var(--c-line-field)',
+          DEFAULT: 'var(--c-line)',
+          strong: 'var(--c-line-strong)',
+        },
       },
       fontFamily: {
         sans: ['Cera Pro', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],

@@ -228,14 +228,14 @@ export function UpdateOverlay() {
                 <button
                   onClick={startDebugSequence}
                   disabled={debugRunning}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-white hover:bg-bg-tertiary transition-colors disabled:opacity-40"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors disabled:opacity-40"
                 >
                   <Play className="w-3.5 h-3.5" />
                   Auto update steps
                 </button>
                 <button
                   onClick={showWhatsNew}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-white hover:bg-bg-tertiary transition-colors"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   What&apos;s New modal
@@ -243,7 +243,7 @@ export function UpdateOverlay() {
                 <button
                   onClick={floodTerminal}
                   disabled={!activeTerminalId}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-white hover:bg-bg-tertiary transition-colors disabled:opacity-40"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors disabled:opacity-40"
                 >
                   <ScrollText className="w-3.5 h-3.5" />
                   Flood terminal
@@ -271,7 +271,7 @@ export function UpdateOverlay() {
                       }
                     )
                   }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-white hover:bg-bg-tertiary transition-colors"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
                 >
                   <ShieldAlert className="w-3.5 h-3.5" />
                   Config validation toast
@@ -282,8 +282,8 @@ export function UpdateOverlay() {
               onClick={() => setDebugMenuOpen((o) => !o)}
               className={`p-2 rounded-lg border transition-colors ${
                 debugMenuOpen
-                  ? 'bg-red border-red text-white'
-                  : 'bg-red/80 border-red/60 text-white hover:bg-red'
+                  ? 'bg-red border-red text-on-brand'
+                  : 'bg-red/80 border-red/60 text-on-brand hover:bg-red'
               }`}
               title="Debug menu"
             >
@@ -321,13 +321,13 @@ export function UpdateOverlay() {
               <p className="text-text-secondary text-lg">Checking for updates...</p>
             )}
             {status.type === 'available' && (
-              <p className="text-white text-lg">
+              <p className="text-ink text-lg">
                 Update available: <span className="text-[#393BFF] font-semibold">v{status.version}</span>
               </p>
             )}
             {status.type === 'downloading' && (
               <>
-                <p className="text-white text-lg mb-4">Downloading update...</p>
+                <p className="text-ink text-lg mb-4">Downloading update...</p>
                 {/* Progress bar */}
                 <div className="w-64 h-2 bg-bg-tertiary rounded-full overflow-hidden">
                   <div
@@ -347,13 +347,13 @@ export function UpdateOverlay() {
                       setVisible(false)
                       setShowConfetti(false)
                     }}
-                    className="px-4 py-1.5 rounded-lg text-sm text-text-secondary hover:text-white border border-border/50 hover:border-border transition-colors"
+                    className="px-4 py-1.5 rounded-lg text-sm text-text-secondary hover:text-ink border border-border/50 hover:border-border transition-colors"
                   >
                     Later
                   </button>
                   <button
                     onClick={() => window.electronAPI.updater.install()}
-                    className="px-4 py-1.5 rounded-lg text-sm text-white bg-[#393BFF] hover:bg-[#393BFF]/80 transition-colors"
+                    className="px-4 py-1.5 rounded-lg text-sm text-ink bg-[#393BFF] hover:bg-[#393BFF]/80 transition-colors"
                   >
                     Restart now
                   </button>

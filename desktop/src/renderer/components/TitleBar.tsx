@@ -55,7 +55,7 @@ export function TitleBar() {
 
   return (
     <div
-      className="h-10 bg-black/30 select-none flex items-center justify-between px-3 relative"
+      className="h-10 bg-surface-sunken select-none flex items-center justify-between px-3 relative"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* Left side - Traffic lights space + Left sidebar toggle */}
@@ -70,10 +70,10 @@ export function TitleBar() {
         >
             <button
               onClick={() => toggleLeftSidebar()}
-              className={`p-[5px] rounded-full bg-white/[0.06] transition-colors ${
+              className={`p-[5px] rounded-full bg-surface transition-colors ${
                 leftSidebarVisible
-                  ? 'text-white'
-                  : 'text-text-secondary hover:text-white'
+                  ? 'text-ink'
+                  : 'text-text-secondary hover:text-ink'
               }`}
               title="Toggle agents list (⌘B)"
             >
@@ -83,7 +83,7 @@ export function TitleBar() {
             {/* Split view segmented toggle */}
             {showSplitToggle && (
               <div
-                className={`relative grid grid-cols-2 bg-white/[0.06] rounded-full p-px ${splitToggleExiting ? 'animate-slide-out' : 'animate-slide-in'}`}
+                className={`relative grid grid-cols-2 bg-surface rounded-full p-px ${splitToggleExiting ? 'animate-slide-out' : 'animate-slide-in'}`}
                 onAnimationEnd={() => {
                   if (splitToggleExiting) {
                     setShowSplitToggle(false)
@@ -91,13 +91,13 @@ export function TitleBar() {
                   }
                 }}
               >
-                <div className={`absolute top-px bottom-px left-px right-1/2 bg-white/[0.12] rounded-full transition-transform duration-200 ${
+                <div className={`absolute top-px bottom-px left-px right-1/2 bg-surface-strong rounded-full transition-transform duration-200 ${
                   splitActive ? 'translate-x-full' : 'translate-x-0'
                 }`} />
                 <button
                   onClick={() => { if (splitActive) toggleSplitActive() }}
                   className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center ${
-                    !splitActive ? 'text-white' : 'text-text-secondary/50 hover:text-text-secondary'
+                    !splitActive ? 'text-ink' : 'text-text-secondary/50 hover:text-text-secondary'
                   }`}
                   title="Normal view (⌘/)"
                 >
@@ -106,7 +106,7 @@ export function TitleBar() {
                 <button
                   onClick={() => { if (!splitActive) toggleSplitActive() }}
                   className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center ${
-                    splitActive ? 'text-white' : 'text-text-secondary/50 hover:text-text-secondary'
+                    splitActive ? 'text-ink' : 'text-text-secondary/50 hover:text-text-secondary'
                   }`}
                   title="Split view (⌘/)"
                 >
@@ -121,11 +121,11 @@ export function TitleBar() {
       <div className="absolute left-1/2 -translate-x-1/2 text-sm truncate max-w-[40%]">
         {isSplitMode && splitTerminal ? (
           <div className="flex items-center gap-2">
-            <span className={focusedPane === 'primary' ? 'text-white' : 'text-text-secondary/50'}>
+            <span className={focusedPane === 'primary' ? 'text-ink' : 'text-text-secondary/50'}>
               {activeTerminal?.metadata?.title || activeTerminal?.name}
             </span>
             <span className="text-text-secondary/30">|</span>
-            <span className={focusedPane === 'secondary' ? 'text-white' : 'text-text-secondary/50'}>
+            <span className={focusedPane === 'secondary' ? 'text-ink' : 'text-text-secondary/50'}>
               {splitTerminal?.metadata?.title || splitTerminal?.name}
             </span>
           </div>
@@ -144,10 +144,10 @@ export function TitleBar() {
         >
           <button
             onClick={() => toggleRightSidebar('info')}
-            className={`p-[5px] rounded-full bg-white/[0.06] transition-colors ${
+            className={`p-[5px] rounded-full bg-surface transition-colors ${
               rightSidebar === 'info'
-                ? 'text-white'
-                : 'text-text-secondary hover:text-white'
+                ? 'text-ink'
+                : 'text-text-secondary hover:text-ink'
             }`}
             title="Info"
           >

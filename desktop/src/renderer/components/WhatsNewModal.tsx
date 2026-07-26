@@ -96,7 +96,7 @@ export function WhatsNewModal() {
       footer={
         <button
           onClick={handleClose}
-          className="px-4 py-1.5 text-sm font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-colors"
+          className="px-4 py-1.5 text-sm font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-colors"
         >
           Got it
         </button>

@@ -109,11 +109,11 @@ export function ScriptsDropdown({ repoPath, agentId, agentName }: ScriptsDropdow
                         className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors ${
                           running
                             ? 'opacity-40 cursor-not-allowed'
-                            : 'hover:bg-white/5 cursor-pointer'
+                            : 'hover:bg-surface cursor-pointer'
                         }`}
                       >
                         <Play className="w-3 h-3 text-accent flex-shrink-0" />
-                        <span className="text-xs text-white/90 font-medium">{script.name}</span>
+                        <span className="text-xs text-ink/90 font-medium">{script.name}</span>
                         <span className="text-[10px] text-text-secondary/40 truncate ml-auto">
                           {projectScripts!.packageManager} {script.name}
                         </span>

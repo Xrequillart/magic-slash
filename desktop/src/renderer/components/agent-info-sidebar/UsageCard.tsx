@@ -58,11 +58,11 @@ export function UsageCard({ usage }: UsageCardProps) {
   // Minimized: single-line — "Session" label, small progress bar, percent, expand button.
   if (minimized) {
     return (
-      <div className="bg-white/[0.06] rounded-xl px-3 py-2 flex items-center gap-2">
+      <div className="bg-surface rounded-xl px-3 py-2 flex items-center gap-2">
         <span className="text-xs text-text-secondary/50 uppercase tracking-wider shrink-0">Session context</span>
         {/* Capped at a third of the row so the bar doesn't span the whole card;
             ml-auto pushes it right, grouping it with the percent + expand button. */}
-        <div className="h-1.5 flex-1 min-w-0 max-w-[33%] ml-auto rounded-full bg-white/[0.08] overflow-hidden">
+        <div className="h-1.5 flex-1 min-w-0 max-w-[33%] ml-auto rounded-full bg-surface overflow-hidden">
           <div
             className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
             style={{ width: `${pct}%` }}
@@ -72,7 +72,7 @@ export function UsageCard({ usage }: UsageCardProps) {
         <button
           onClick={() => setMinimized(false)}
           title="Expand"
-          className="p-0.5 rounded text-text-secondary/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+          className="p-0.5 rounded text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
         >
           <Plus className="w-3 h-3" />
         </button>
@@ -81,7 +81,7 @@ export function UsageCard({ usage }: UsageCardProps) {
   }
 
   return (
-    <div className="bg-white/[0.06] rounded-xl p-4 space-y-3">
+    <div className="bg-surface rounded-xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-2">
           <span className="text-xs text-text-secondary/50 uppercase tracking-wider">Session</span>
@@ -105,7 +105,7 @@ export function UsageCard({ usage }: UsageCardProps) {
           <button
             onClick={() => setMinimized(true)}
             title="Minimize"
-            className="self-stretch px-1 flex items-center justify-center rounded-md text-text-secondary/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+            className="self-stretch px-1 flex items-center justify-center rounded-md text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
           >
             <Minus className="w-3 h-3" />
           </button>
@@ -122,7 +122,7 @@ export function UsageCard({ usage }: UsageCardProps) {
             </span>
             <span className={`font-medium ${colors.text}`}>{Math.round(pct)}%</span>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-white/[0.08] overflow-hidden">
+          <div className="h-1.5 w-full rounded-full bg-surface overflow-hidden">
             <div
               className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
               style={{ width: `${pct}%` }}
@@ -141,7 +141,7 @@ export function UsageCard({ usage }: UsageCardProps) {
         {typeof costUsd === 'number' && (
           <span className="flex items-center gap-1.5 text-text-secondary">
             <DollarSign className="w-3.5 h-3.5" />
-            <span className="font-mono font-medium text-white">{formatCost(costUsd)}</span>
+            <span className="font-mono font-medium text-ink">{formatCost(costUsd)}</span>
           </span>
         )}
         {typeof durationMs === 'number' && (

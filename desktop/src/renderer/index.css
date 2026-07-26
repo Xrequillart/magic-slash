@@ -46,6 +46,44 @@
   font-display: swap;
 }
 
+/* Theme tokens. These are the DEFAULT theme's values, and they exist only so a
+   document paints correctly before any script has run. The real values are
+   written on <html> by applyTheme() from the registry in theme/themes.ts, which
+   is the single source — keep these in step with its `dark` entry. */
+:root {
+  --c-bg: 10 10 11;
+  --c-bg-secondary: 20 20 22;
+  --c-bg-tertiary: 28 28 31;
+  --c-window-wash: rgba(0, 0, 0, 0.3);
+
+  --c-ink: 255 255 255;
+  --c-text-secondary: 161 161 170;
+  --c-on-brand: 255 255 255;
+
+  --c-surface-subtle: rgba(255, 255, 255, 0.04);
+  --c-surface: rgba(255, 255, 255, 0.06);
+  --c-surface-strong: rgba(255, 255, 255, 0.1);
+  --c-surface-sunken: rgba(0, 0, 0, 0.3);
+  --c-surface-sunken-soft: rgba(0, 0, 0, 0.2);
+
+  --c-line-subtle: rgba(255, 255, 255, 0.05);
+  --c-line-field: rgba(255, 255, 255, 0.08);
+  --c-line: rgba(255, 255, 255, 0.1);
+  --c-line-strong: rgba(255, 255, 255, 0.15);
+  --c-border: 39 39 42;
+
+  --c-accent: 99 102 241;
+  --c-accent-hover: 129 140 248;
+  --c-purple: 168 85 247;
+  --c-green: 34 197 94;
+  --c-red: 239 68 68;
+  --c-yellow: 234 179 8;
+  --c-blue: 59 130 246;
+  --c-orange: 249 115 22;
+
+  color-scheme: dark;
+}
+
 /* Base styles */
 * {
   margin: 0;
@@ -55,8 +93,9 @@
 
 body {
   font-family: "Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif;
-  background: rgba(0, 0, 0, 0.3);
-  color: #ffffff;
+  /* Painted over the native window vibrancy, so it is a wash, not a fill. */
+  background: var(--c-window-wash);
+  color: rgb(var(--c-ink));
   line-height: 1.6;
   overflow: hidden;
 }
@@ -75,7 +114,7 @@ body {
 
 /* Selection */
 ::selection {
-  background: rgba(99, 102, 241, 0.3);
+  background: rgb(var(--c-accent) / 0.3);
 }
 
 /* Custom checkbox/toggle styles */
@@ -103,7 +142,7 @@ fieldset:disabled label:has(> input[type="checkbox"]) {
 
 /* Focus styles */
 :focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid rgb(var(--c-accent));
   outline-offset: 2px;
 }
 
@@ -122,7 +161,7 @@ fieldset:disabled label:has(> input[type="checkbox"]) {
 
 .xterm .xterm-viewport {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: rgb(var(--c-ink) / 0.15) transparent;
 }
 .xterm .xterm-viewport::-webkit-scrollbar {
   width: 6px;
@@ -132,11 +171,11 @@ fieldset:disabled label:has(> input[type="checkbox"]) {
   background: transparent;
 }
 .xterm .xterm-viewport::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgb(var(--c-ink) / 0.15);
   border-radius: 3px;
 }
 .xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgb(var(--c-ink) / 0.3);
 }
 
 /* Electron specific - hide scrollbar in drag regions */
@@ -160,8 +199,8 @@ fieldset:disabled label:has(> input[type="checkbox"]) {
   display: inline-block;
   width: 8px;
   height: 8px;
-  border: 1.5px solid #27272a;
-  border-top-color: #6366f1;
+  border: 1.5px solid rgb(var(--c-border));
+  border-top-color: rgb(var(--c-accent));
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -170,8 +209,8 @@ fieldset:disabled label:has(> input[type="checkbox"]) {
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid #27272a;
-  border-top-color: #6366f1;
+  border: 2px solid rgb(var(--c-border));
+  border-top-color: rgb(var(--c-accent));
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -238,8 +277,8 @@ fieldset:disabled label:has(> input[type="checkbox"]) {
 
 /* Drop overlay animation */
 @keyframes dropzone-pulse {
-  0%, 100% { border-color: rgba(99, 102, 241, 0.5); background-color: rgba(99, 102, 241, 0.05); }
-  50% { border-color: rgba(99, 102, 241, 0.8); background-color: rgba(99, 102, 241, 0.1); }
+  0%, 100% { border-color: rgb(var(--c-accent) / 0.5); background-color: rgb(var(--c-accent) / 0.05); }
+  50% { border-color: rgb(var(--c-accent) / 0.8); background-color: rgb(var(--c-accent) / 0.1); }
 }
 .drop-overlay {
   animation: dropzone-pulse 1.5s ease-in-out infinite;

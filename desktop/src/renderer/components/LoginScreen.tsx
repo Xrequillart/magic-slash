@@ -126,7 +126,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
       onClick={onClose}
     >
       <div
-        className="bg-bg-secondary border border-white/10 rounded-xl w-full max-w-md mx-4 animate-modal-content"
+        className="bg-bg-secondary border border-line rounded-xl w-full max-w-md mx-4 animate-modal-content"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -139,7 +139,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-text-secondary hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            className="p-1 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -164,7 +164,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
                 placeholder="Email"
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
               />
             )}
 
@@ -177,7 +177,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
                 placeholder="6-digit code"
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
               />
             )}
 
@@ -189,7 +189,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={mode === 'reset' ? 'New password' : 'Password'}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
               />
             )}
 
@@ -200,7 +200,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
                 onChange={(e) => setOrgName(e.target.value)}
                 placeholder="Organization name (optional)"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
               />
             )}
           </div>
@@ -219,7 +219,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
           <button
             onClick={handleSubmit}
             disabled={busy}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="w-4 h-4 animate-spin" />

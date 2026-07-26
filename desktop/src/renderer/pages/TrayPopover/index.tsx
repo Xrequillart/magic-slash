@@ -84,11 +84,11 @@ export function TrayPopover() {
   }
 
   return (
-    <div className="w-[320px] bg-zinc-900/95 border border-white/10 rounded-xl overflow-hidden shadow-2xl">
+    <div className="w-[320px] bg-zinc-900/95 border border-line rounded-xl overflow-hidden shadow-2xl">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-line">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-white">Magic Slash</span>
+          <span className="text-sm font-semibold text-ink">Magic Slash</span>
           {agents.length > 0 && (
             <span className="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-400 text-[10px] font-medium rounded">
               {agents.length}
@@ -98,7 +98,7 @@ export function TrayPopover() {
         <div className="flex items-center gap-1">
           <button
             onClick={handleOpenSettings}
-            className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+            className="p-1.5 text-zinc-400 hover:text-ink hover:bg-surface-strong rounded-md transition-colors"
           >
             <Settings className="w-3.5 h-3.5" />
           </button>
@@ -123,11 +123,11 @@ export function TrayPopover() {
               <button
                 key={agent.id}
                 onClick={() => handleFocusAgent(agent.id)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface transition-colors text-left"
               >
                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${stateDot(agent.state)}`} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white truncate">
+                  <div className="text-sm text-ink truncate">
                     {agent.ticketId ? (
                       <><span className="text-zinc-400">{agent.ticketId}</span> {agent.title}</>
                     ) : (

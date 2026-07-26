@@ -11,7 +11,7 @@ export const stateColors: Record<TerminalState, string> = {
 
 // Text colors for icon sidebar — idle is white for contrast on dark bg
 export const stateColorsIcon: Record<TerminalState, string> = {
-  idle: 'text-white',
+  idle: 'text-ink',
   working: 'text-accent',
   waiting: 'text-yellow',
   completed: 'text-green',
@@ -28,7 +28,7 @@ export const stateBgColors: Record<TerminalState, string> = {
 
 // Background colors for icon sidebar — idle uses white for contrast
 export const stateBgColorsIcon: Record<TerminalState, string> = {
-  idle: 'bg-white/20',
+  idle: 'bg-ink/20',
   working: 'bg-accent/20',
   waiting: 'bg-yellow/20',
   completed: 'bg-green/20',

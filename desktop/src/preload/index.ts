@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgAgent, OrgAgentChange, RealtimeStatus, UsageStats } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgAgent, OrgAgentChange, RealtimeStatus, UsageStats, ThemeId } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -73,6 +73,9 @@ const configApi = {
 
   updateLaunchMode: (mode: string) =>
     ipcRenderer.invoke('config:updateLaunchMode', { mode }),
+
+  updateTheme: (theme: ThemeId) =>
+    ipcRenderer.invoke('config:updateTheme', { theme }),
 
   repair: (): Promise<{ repaired: boolean; fixes: string[] }> =>
     ipcRenderer.invoke('config:repair'),
@@ -503,6 +506,24 @@ const orgApi = {
 }
 
 // Expose APIs to renderer
+/**
+ * Appearance. `initial` is handed over as a launch argument by the main process
+ * (see main/theme.ts) rather than fetched, so the renderer can paint the right
+ * theme on its first frame instead of flashing the default and correcting.
+ */
+const themeApi = {
+  initial: (): string | null => {
+    const arg = process.argv.find((a) => a.startsWith('--magic-theme='))
+    return arg ? arg.slice('--magic-theme='.length) : null
+  },
+
+  onChanged: (callback: (theme: ThemeId) => void) => {
+    const listener = (_event: IpcRendererEvent, theme: ThemeId) => callback(theme)
+    ipcRenderer.on('theme:changed', listener)
+    return () => ipcRenderer.removeListener('theme:changed', listener)
+  },
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   config: configApi,
   terminal: terminalApi,
@@ -522,6 +543,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   auth: authApi,
   org: orgApi,
   connectivity: connectivityApi,
+  theme: themeApi,
 })
 
 // Type definitions for the renderer
@@ -546,6 +568,7 @@ declare global {
       auth: typeof authApi
       org: typeof orgApi
       connectivity: typeof connectivityApi
+      theme: typeof themeApi
     }
   }
 

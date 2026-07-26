@@ -78,9 +78,9 @@ function OrganizationCard({
   const isSoleAdmin = isAdmin && adminCount <= 1
 
   return (
-    <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl overflow-hidden">
+    <div className="bg-surface border border-line-strong rounded-xl overflow-hidden">
       {/* Identity */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/5">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-line-subtle">
         <div className="p-1.5 bg-accent/10 rounded-lg shrink-0">
           <Building2 className="w-4 h-4 text-accent" />
         </div>
@@ -95,7 +95,7 @@ function OrganizationCard({
           <button
             onClick={() => onSwitch(org.id)}
             disabled={switching}
-            className="flex items-center gap-1.5 h-7 px-2 text-[11px] font-medium text-text-secondary bg-white/[0.06] border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all disabled:opacity-40 shrink-0"
+            className="flex items-center gap-1.5 h-7 px-2 text-[11px] font-medium text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-40 shrink-0"
             title="Make this the active organization"
           >
             {switching ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowRightLeft className="w-3 h-3" />}
@@ -105,7 +105,7 @@ function OrganizationCard({
       </div>
 
       {/* Members */}
-      <div className="px-4 py-3 border-b border-white/5">
+      <div className="px-4 py-3 border-b border-line-subtle">
         <CardSection label="Members" count={members.length} />
         {members.length === 0 ? (
           <div className="text-xs text-text-secondary/40 py-1">No members yet.</div>
@@ -121,7 +121,7 @@ function OrganizationCard({
                   {isAdmin && <th scope="col">Actions</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-line-subtle">
                 {members.map((m) => {
                   const isSelf = m.userId === currentUserId
                   const rowBusy = busyMember === m.userId
@@ -142,7 +142,7 @@ function OrganizationCard({
                           <RoleSelect value={m.role} onChange={(role) => onChangeRole(org.id, m.userId, role)} />
                         ) : (
                           <span className={`inline-flex items-center h-7 px-2 rounded-lg text-[11px] font-medium ${
-                            m.role === 'admin' ? 'bg-accent/15 text-accent' : 'bg-white/10 text-text-secondary'
+                            m.role === 'admin' ? 'bg-accent/15 text-accent' : 'bg-surface-strong text-text-secondary'
                           }`}>
                             {m.role}
                           </span>
@@ -154,7 +154,7 @@ function OrganizationCard({
                           {!isSelf && !rowBusy && (
                             <button
                               onClick={() => onRemoveMember(org.id, m.userId)}
-                              className="flex items-center justify-center h-7 w-7 shrink-0 text-text-secondary/60 bg-white/[0.06] border border-white/10 rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all"
+                              className="flex items-center justify-center h-7 w-7 shrink-0 text-text-secondary/60 bg-surface border border-line rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all"
                               title="Remove member"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -173,14 +173,14 @@ function OrganizationCard({
 
       {/* Invitations (admin only — a non-admin read yields [] anyway) */}
       {isAdmin && (
-        <div className="px-4 py-3 border-b border-white/5">
+        <div className="px-4 py-3 border-b border-line-subtle">
           <CardSection
             label="Invitations"
             count={openInvitations.length}
             action={
               <button
                 onClick={() => onInvite(org)}
-                className="flex items-center gap-1.5 h-7 px-2 text-[11px] font-medium text-text-secondary bg-white/[0.06] border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+                className="flex items-center gap-1.5 h-7 px-2 text-[11px] font-medium text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <UserPlus className="w-3 h-3" />
                 Invite
@@ -195,14 +195,14 @@ function OrganizationCard({
                 <div key={inv.id} className="flex items-center gap-2 text-sm py-0.5">
                   <span className="flex-1 truncate min-w-0">{inv.email}</span>
                   <span className={`flex items-center h-7 px-2 rounded-lg text-[11px] font-medium ${
-                    inv.status === 'pending' ? 'bg-yellow/10 text-yellow' : 'bg-white/10 text-text-secondary'
+                    inv.status === 'pending' ? 'bg-yellow/10 text-yellow' : 'bg-surface-strong text-text-secondary'
                   }`}>
                     {inv.status}
                   </span>
                   {inv.status === 'pending' && (
                     <button
                       onClick={() => onCopyToken(inv.token)}
-                      className="flex items-center gap-1 h-7 px-2 text-[11px] font-medium text-text-secondary bg-white/[0.06] border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+                      className="flex items-center gap-1 h-7 px-2 text-[11px] font-medium text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                       title="Copy invitation link"
                     >
                       {copiedToken === inv.token ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
@@ -212,7 +212,7 @@ function OrganizationCard({
                   <button
                     onClick={() => onDeleteInvitation(inv.id)}
                     disabled={deletingInvite === inv.id}
-                    className="flex items-center justify-center h-7 w-7 shrink-0 text-text-secondary/60 bg-white/[0.06] border border-white/10 rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all disabled:opacity-50"
+                    className="flex items-center justify-center h-7 w-7 shrink-0 text-text-secondary/60 bg-surface border border-line rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all disabled:opacity-50"
                     title="Delete invitation"
                   >
                     {deletingInvite === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
@@ -234,7 +234,7 @@ function OrganizationCard({
           <button
             onClick={() => onLeave(org.id)}
             disabled={leaving}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all disabled:opacity-40"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-40"
           >
             {leaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
             Leave organization
@@ -442,7 +442,7 @@ export function OrgPage() {
     return (
       <div className="flex flex-col gap-6">
         <SectionHeader icon={Cloud} title="Organization" spacing="none" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6 text-center">
+        <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
           <Cloud className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
           <div className="text-sm text-text-secondary/60">Cloud features are not configured in this build.</div>
           <div className="text-xs text-text-secondary/40 mt-1">Magic Slash works fully offline — no account required.</div>
@@ -453,7 +453,7 @@ export function OrgPage() {
 
   if (!status.loggedIn) {
     return (
-      <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6 text-center">
+      <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
         <Building2 className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
         <div className="text-sm text-text-secondary/60">Sign in to manage your organization.</div>
         <div className="text-xs text-text-secondary/40 mt-1">Settings → Account → Cloud account.</div>
@@ -470,7 +470,7 @@ export function OrgPage() {
           <Loader2 className="w-4 h-4 animate-spin" />
         </div>
       ) : orgs.length === 0 ? (
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6 text-center">
+        <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
           <Users className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
           <div className="text-sm text-text-secondary/60">You do not belong to any organization.</div>
           <div className="text-xs text-text-secondary/40 mt-1">Create one, or join with an invitation.</div>
@@ -505,14 +505,14 @@ export function OrgPage() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => { setCreateName(''); setShowCreate(true) }}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
         >
           <Plus className="w-3.5 h-3.5" />
           Create an organization
         </button>
         <button
           onClick={() => { setJoinToken(''); setShowJoin(true) }}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
         >
           <UserPlus className="w-3.5 h-3.5" />
           Join an organization
@@ -528,14 +528,14 @@ export function OrgPage() {
           <>
             <button
               onClick={() => setInviteOrg(null)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleInvite}
               disabled={inviting || !inviteEmail.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
             >
               {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
               Send invitation
@@ -554,7 +554,7 @@ export function OrgPage() {
             placeholder="colleague@example.com"
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleInvite() }}
-            className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+            className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
           />
           <div className="flex items-center justify-between">
             <span className="text-xs text-text-secondary/60">Role</span>
@@ -572,14 +572,14 @@ export function OrgPage() {
           <>
             <button
               onClick={() => setShowCreate(false)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleCreate}
               disabled={creating || !createName.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
             >
               {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
               Create
@@ -598,7 +598,7 @@ export function OrgPage() {
             placeholder="Organization name"
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleCreate() }}
-            className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+            className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
           />
         </div>
       </Modal>
@@ -612,14 +612,14 @@ export function OrgPage() {
           <>
             <button
               onClick={() => setShowJoin(false)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleJoin}
               disabled={joining || !joinToken.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
             >
               {joining ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
               Join
@@ -638,7 +638,7 @@ export function OrgPage() {
             placeholder="https://app.magic-slash.io/invite/…"
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleJoin() }}
-            className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+            className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
           />
         </div>
       </Modal>
@@ -652,14 +652,14 @@ export function OrgPage() {
           <>
             <button
               onClick={() => setArchiveOrgTarget(null)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleArchive}
               disabled={archiving}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red hover:bg-red/80 rounded-lg transition-all disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-red hover:bg-red/80 rounded-lg transition-all disabled:opacity-40"
             >
               {archiving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
               Archive organization
@@ -672,7 +672,7 @@ export function OrgPage() {
             <AlertTriangle className="w-4 h-4 text-red" />
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-white">Archive {archiveOrgTarget?.name ?? 'this organization'}?</p>
+            <p className="text-sm text-ink">Archive {archiveOrgTarget?.name ?? 'this organization'}?</p>
             <p className="text-xs text-text-secondary/60">
               The organization and its members lose access — it disappears for everyone. Its data is retained, not deleted, but this cannot be undone from the app.
             </p>

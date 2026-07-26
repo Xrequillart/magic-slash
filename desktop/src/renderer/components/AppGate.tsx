@@ -7,7 +7,7 @@ import { LoginScreen } from './LoginScreen'
 
 function FullScreen({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center justify-center h-screen bg-transparent text-white">
+    <div className="flex items-center justify-center h-screen bg-transparent text-ink">
       <div className="flex flex-col items-center gap-4 text-center max-w-sm px-6">{children}</div>
     </div>
   )
@@ -17,7 +17,7 @@ function Checking() {
   return (
     <FullScreen>
       <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      <p className="text-white/60">Connecting…</p>
+      <p className="text-ink/60">Connecting…</p>
     </FullScreen>
   )
 }
@@ -50,7 +50,7 @@ function ConnectionLost({ onRetry }: { onRetry: () => void }) {
       </p>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-on-brand rounded-lg text-sm font-medium transition-colors"
       >
         <RotateCcw className="w-4 h-4" />
         Retry

@@ -41,7 +41,7 @@ export function ProfileSection() {
           action={profile && (
             <button
               onClick={() => setShowWizard(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
               <Pencil className="w-3 h-3" />
               <span>Edit profile</span>
@@ -50,7 +50,7 @@ export function ProfileSection() {
         />
 
         {profile ? (
-          <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+          <div className="bg-surface border border-line-strong rounded-xl p-4">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center">
                 <span className="text-sm font-semibold text-accent">
@@ -70,12 +70,12 @@ export function ProfileSection() {
                 {ROLE_LABELS[profile.role] || profile.role}
               </span>
               {profile.communication_style && (
-                <span className="px-2 py-0.5 bg-white/5 text-text-secondary text-xs font-medium rounded">
+                <span className="px-2 py-0.5 bg-surface text-text-secondary text-xs font-medium rounded">
                   {STYLE_LABELS[profile.communication_style] || profile.communication_style}
                 </span>
               )}
               {profile.languages?.map((lang) => (
-                <span key={lang} className="px-2 py-0.5 bg-white/5 text-text-secondary text-xs font-medium rounded">
+                <span key={lang} className="px-2 py-0.5 bg-surface text-text-secondary text-xs font-medium rounded">
                   {lang}
                 </span>
               ))}

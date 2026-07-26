@@ -22,6 +22,7 @@ import {
   updateSplitEnabled,
   updateSplitActive,
   updateLaunchMode,
+  updateTheme,
   updateUsageLogsEnabled,
   updateDailyDigestEnabled,
   setIntegration,
@@ -30,6 +31,8 @@ import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { repairConfig } from '../config/migrate'
 import { isValidSpotlightShortcut, isValidLaunchMode } from '../config/defaults'
+import { isValidTheme } from '../../types'
+import { applyTheme } from '../appearance'
 import { validateConfig } from '../config/schema-validator'
 import {
   validateRepoName,
@@ -308,6 +311,18 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
     writeConfig(config)
     const result = reRegisterSpotlightShortcut()
     return { config, registered: result.registered }
+  })
+
+  ipcMain.handle('config:updateTheme', async (_event, { theme }: { theme: string }) => {
+    if (!isValidTheme(theme)) {
+      throw new Error(`Invalid theme: '${theme}'.`)
+    }
+    // Two destinations, on purpose: the cloud so the choice follows the user,
+    // and the main process so the native chrome, the local cache and every
+    // open window (tray popover, quick launch) follow immediately.
+    const config = updateTheme(theme)
+    applyTheme(theme)
+    return { config }
   })
 
   ipcMain.handle('config:updateLaunchMode', async (_event, { mode }: { mode: string }) => {

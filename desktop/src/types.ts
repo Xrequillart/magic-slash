@@ -173,9 +173,57 @@ export interface SpotlightConfig {
 
 export type LaunchMode = 'plan' | 'default' | 'acceptEdits' | 'auto' | 'bypassPermissions'
 
+/**
+ * Available appearances, in the order the picker shows them. Adding one is a
+ * single entry here plus its colours in the renderer's theme registry — the
+ * registry is typed against this list, so TypeScript refuses a theme whose
+ * palette is missing. Nothing else knows the list: components name roles
+ * (`bg-surface`, `text-ink`), never colours.
+ */
+// Ordered darkest family first, then the light one — the picker lays them out
+// four to a row, so the grouping falls out of the order.
+export const THEME_IDS = [
+  'dark',
+  'midnight',
+  'espresso',
+  'high-contrast',
+  'light',
+  'mist',
+  'sepia',
+  'daylight',
+] as const
+
+export type ThemeId = (typeof THEME_IDS)[number]
+
+export const DEFAULT_THEME: ThemeId = 'dark'
+
+/**
+ * Which macOS appearance each theme belongs to. It lives here, not in the
+ * renderer's registry, because the main process needs it before any window —
+ * and any renderer bundle — exists: it drives `nativeTheme.themeSource`, which
+ * colours the traffic lights and picks the vibrancy material. Typed as a total
+ * record, so a new theme cannot be added without classifying it.
+ */
+export const THEME_APPEARANCE: Record<ThemeId, 'light' | 'dark'> = {
+  dark: 'dark',
+  midnight: 'dark',
+  espresso: 'dark',
+  'high-contrast': 'dark',
+  light: 'light',
+  mist: 'light',
+  sepia: 'light',
+  daylight: 'light',
+}
+
+export function isValidTheme(value: unknown): value is ThemeId {
+  return typeof value === 'string' && (THEME_IDS as readonly string[]).includes(value)
+}
+
 export interface Config {
   version: string
   repositories: Record<string, RepositoryConfig>
+  /** Absent = never chosen; the app applies DEFAULT_THEME. */
+  theme?: ThemeId
   splitEnabled?: boolean
   splitActive?: boolean
   autoStartAtLogin?: boolean
@@ -239,6 +287,7 @@ export type SettingsTab =
   | 'organization'
   | 'repositories'
   | 'claude-code'
+  | 'appearance'
   | 'features'
   | 'shortcuts'
   | 'about'

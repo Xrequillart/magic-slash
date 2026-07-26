@@ -1,7 +1,7 @@
 import * as path from 'path'
 import * as os from 'os'
 import { randomUUID } from 'crypto'
-import type { Config, RepositoryConfig, LaunchMode, OrgSharedConfig } from '../../types'
+import type { Config, RepositoryConfig, LaunchMode, OrgSharedConfig, ThemeId } from '../../types'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
 import { expandPath } from './validation'
 import { getStore, reportWriteError } from '../store/Store'
@@ -479,6 +479,18 @@ export function updateSplitEnabled(enabled: boolean): Config {
 export function updateSplitActive(active: boolean): Config {
   const config = readConfig()
   config.splitActive = active
+  writeConfig(config)
+  return config
+}
+
+/**
+ * Store the chosen appearance. The cloud is the reference (the theme follows the
+ * user from machine to machine); the main process separately mirrors it locally
+ * so the next launch can paint before the config has hydrated — see main/theme.ts.
+ */
+export function updateTheme(theme: ThemeId): Config {
+  const config = readConfig()
+  config.theme = theme
   writeConfig(config)
   return config
 }

@@ -123,7 +123,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
       onClick={onClose}
     >
       <div
-        className="bg-bg-secondary border border-white/10 rounded-xl w-full max-w-md mx-4 animate-modal-content"
+        className="bg-bg-secondary border border-line rounded-xl w-full max-w-md mx-4 animate-modal-content"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -136,7 +136,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-text-secondary hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            className="p-1 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -147,7 +147,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
           {Array.from({ length: TOTAL_STEPS }, (_, i) => (
             <div
               key={i}
-              className={`h-1 flex-1 rounded-full transition-colors ${i + 1 <= step ? 'bg-accent' : 'bg-white/10'}`}
+              className={`h-1 flex-1 rounded-full transition-colors ${i + 1 <= step ? 'bg-accent' : 'bg-surface-strong'}`}
             />
           ))}
         </div>
@@ -168,18 +168,18 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 onChange={(e) => setToken(e.target.value)}
                 placeholder="Invitation token"
                 autoFocus
-                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 font-mono"
+                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 font-mono"
               />
               <div className="flex gap-2">
                 <button
                   onClick={() => setIsNewAccount(true)}
-                  className={`flex-1 px-3 py-1.5 text-xs rounded-lg border transition-all ${isNewAccount ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-white/[0.06] border-white/[0.08] text-text-secondary hover:text-white'}`}
+                  className={`flex-1 px-3 py-1.5 text-xs rounded-lg border transition-all ${isNewAccount ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-surface border-line-field text-text-secondary hover:text-ink'}`}
                 >
                   New account
                 </button>
                 <button
                   onClick={() => setIsNewAccount(false)}
-                  className={`flex-1 px-3 py-1.5 text-xs rounded-lg border transition-all ${!isNewAccount ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-white/[0.06] border-white/[0.08] text-text-secondary hover:text-white'}`}
+                  className={`flex-1 px-3 py-1.5 text-xs rounded-lg border transition-all ${!isNewAccount ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-surface border-line-field text-text-secondary hover:text-ink'}`}
                 >
                   Existing account
                 </button>
@@ -189,7 +189,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email (must match the invitation)"
-                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
               />
               <input
                 type="password"
@@ -197,7 +197,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAcceptInvitation() }}
-                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
               />
             </div>
           )}
@@ -212,7 +212,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
               </div>
               <button
                 onClick={handleAddRepo}
-                className="w-full flex items-center justify-center gap-2 py-3 text-sm border border-dashed border-white/15 rounded-lg text-text-secondary hover:border-accent/40 hover:text-white transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-3 text-sm border border-dashed border-line-strong rounded-lg text-text-secondary hover:border-accent/40 hover:text-ink transition-colors"
               >
                 <Folder className="w-4 h-4" />
                 Add a repository folder
@@ -220,7 +220,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
               {repos.length > 0 && (
                 <div className="space-y-1.5">
                   {repos.map((repo) => (
-                    <div key={repo.name} className="flex items-center gap-2 px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg">
+                    <div key={repo.name} className="flex items-center gap-2 px-3 py-2 bg-surface border border-line-field rounded-lg">
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">{repo.name}</div>
                         <div className="text-xs text-text-secondary/50 truncate">{repo.path}</div>
@@ -245,7 +245,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
               </div>
               <div className="text-sm font-medium">You&apos;re all set!</div>
               <div className="text-xs text-text-secondary/60">
-                {orgName ? <>You&apos;ve joined <span className="text-white font-medium">{orgName}</span> and inherited its configuration.</> : 'You\'ve joined your team and inherited its configuration.'}
+                {orgName ? <>You&apos;ve joined <span className="text-ink font-medium">{orgName}</span> and inherited its configuration.</> : 'You\'ve joined your team and inherited its configuration.'}
               </div>
             </div>
           )}
@@ -263,7 +263,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
             {step === 2 && (
               <button
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 Back
@@ -292,7 +292,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
               <button
                 onClick={handleFinishRepos}
                 disabled={busy}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
               >
                 {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><ChevronRight className="w-3.5 h-3.5" />Continue</>}
               </button>
@@ -300,7 +300,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
             {step === 3 && (
               <button
                 onClick={onClose}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all"
               >
                 <Check className="w-3.5 h-3.5" />
                 Done

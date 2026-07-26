@@ -63,7 +63,7 @@ export default function CodeView({ content, highlightedHtml }: Props) {
   }
 
   return (
-    <pre className="p-4 text-sm text-white/80 font-mono whitespace-pre-wrap break-all">
+    <pre className="p-4 text-sm text-ink/80 font-mono whitespace-pre-wrap break-all">
       {content}
     </pre>
   )

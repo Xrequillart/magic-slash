@@ -17,7 +17,7 @@ const LANGUAGE_OPTIONS = ['English', 'Français']
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-xs font-medium text-white mb-1.5">
+      <div className="text-xs font-medium text-ink mb-1.5">
         {label}
         {hint && <span className="ml-1.5 font-normal text-text-secondary/50">{hint}</span>}
       </div>
@@ -34,7 +34,7 @@ function Pill({ selected, onClick, children }: { selected: boolean; onClick: () 
       className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
         selected
           ? 'bg-accent/10 border-accent/30 text-accent'
-          : 'bg-white/[0.06] border-white/[0.08] text-text-secondary hover:bg-white/10 hover:text-white'
+          : 'bg-surface border-line-field text-text-secondary hover:bg-surface-strong hover:text-ink'
       }`}
     >
       {children}
@@ -87,7 +87,7 @@ export function ProfileForm({ onSaved }: { onSaved: () => void }) {
   }, [canSave, saving, name, role, technicalLevel, communicationStyle, languages, freeText, onSaved])
 
   return (
-    <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 flex flex-col gap-4">
+    <div className="bg-surface border border-line-strong rounded-xl p-4 flex flex-col gap-4">
       <p className="text-xs text-text-secondary/60">
         No profile yet. Claude uses it to adapt its vocabulary, level of detail and language to you.
       </p>
@@ -98,7 +98,7 @@ export function ProfileForm({ onSaved }: { onSaved: () => void }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Your first name"
-          className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+          className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
         />
       </Field>
 
@@ -156,7 +156,7 @@ export function ProfileForm({ onSaved }: { onSaved: () => void }) {
           onChange={(e) => setFreeText(e.target.value)}
           placeholder="e.g., I prefer short answers, I work on mobile apps..."
           rows={3}
-          className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 resize-none"
+          className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 resize-none"
         />
       </Field>
 
@@ -164,7 +164,7 @@ export function ProfileForm({ onSaved }: { onSaved: () => void }) {
         <button
           onClick={handleSave}
           disabled={!canSave || saving}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
           Save profile

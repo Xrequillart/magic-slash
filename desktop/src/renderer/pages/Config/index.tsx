@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Check, Loader2, Lock, CircleUserRound, SquareTerminal, type LucideIcon } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Check, Loader2, Lock, CircleUserRound, SquareTerminal, Palette, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage } from './OrgPage'
+import { AppearancePage } from './AppearancePage'
 import { SectionHeader } from './SectionHeader'
 import { RateLimitBar } from '../../components/agent-info-sidebar/LimitGauge'
 import { useStore } from '../../store'
@@ -41,6 +42,7 @@ const SETTINGS_TABS: { id: SettingsTab; label: string; icon: LucideIcon }[] = [
   { id: 'organization', label: 'Organization', icon: Building2 },
   { id: 'repositories', label: 'Repositories', icon: FolderGit },
   { id: 'claude-code', label: 'Claude Code', icon: SquareTerminal },
+  { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'features', label: 'Features', icon: Sparkles },
   { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
   { id: 'about', label: 'About', icon: Info },
@@ -107,7 +109,7 @@ function SettingsAccountFooter() {
   }
 
   return (
-    <div className="mt-auto border-t border-white/[0.08] p-2 space-y-1">
+    <div className="mt-auto border-t border-line-field p-2 space-y-1">
       {/* Organization switcher — only when the user belongs to more than one. */}
       {orgs.length > 1 && (
         <div className="pb-1">
@@ -121,7 +123,7 @@ function SettingsAccountFooter() {
                 key={o.id}
                 onClick={() => handleSwitchOrg(o.id)}
                 disabled={switching !== null}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-text-secondary rounded-lg hover:bg-white/10 hover:text-white transition-colors disabled:opacity-50"
+                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-text-secondary rounded-lg hover:bg-surface-strong hover:text-ink transition-colors disabled:opacity-50"
               >
                 <Building2 className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate">{o.name}</span>
@@ -147,7 +149,7 @@ function SettingsAccountFooter() {
       {/* Sign out */}
       <button
         onClick={handleLogout}
-        className="w-full flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-text-secondary rounded-lg hover:bg-white/10 hover:text-white transition-colors"
+        className="w-full flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-text-secondary rounded-lg hover:bg-surface-strong hover:text-ink transition-colors"
       >
         <LogOut className="w-3.5 h-3.5" />
         <span>Sign out</span>
@@ -361,7 +363,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       <a
         key={name}
         href={`#/repo/${encodeURIComponent(name)}`}
-        className="group flex items-center gap-3 px-4 py-3 bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.15] hover:border-white/[0.15] rounded-xl transition-all"
+        className="group flex items-center gap-3 px-4 py-3 bg-surface hover:bg-surface-strong border border-line-strong hover:border-line-strong rounded-xl transition-all"
       >
         {/* Color dot */}
         <span
@@ -543,7 +545,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   return (
     <div className="flex h-full animate-fade-in">
       {/* Left rail: vertical tabs, account footer */}
-      <div className="w-56 shrink-0 flex flex-col border-r border-white/[0.08] bg-black/20">
+      <div className="w-56 shrink-0 flex flex-col border-r border-line-field bg-surface-sunken-soft">
         <nav className="flex-1 overflow-y-auto px-2 pt-3 space-y-0.5">
           {SETTINGS_TABS.map((tab) => {
             const Icon = tab.icon
@@ -553,8 +555,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 onClick={() => handleSelectTab(tab.id)}
                 className={`w-full flex items-center gap-2.5 text-left px-3 py-2 text-sm font-medium rounded-lg transition-all ${
                   railActiveTab === tab.id
-                    ? 'bg-accent/15 text-white'
-                    : 'text-text-secondary hover:text-white hover:bg-white/[0.06]'
+                    ? 'bg-accent/15 text-ink'
+                    : 'text-text-secondary hover:text-ink hover:bg-surface'
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
@@ -592,7 +594,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             <button
               onClick={handleOpenProject}
               disabled={isAdding}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-50"
             >
               <Plus className="w-3 h-3" />
               <span>{isAdding ? 'Adding...' : 'Add repository'}</span>
@@ -604,7 +606,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           <button
             onClick={handleOpenProject}
             disabled={isAdding}
-            className="w-full py-8 text-center border border-dashed border-border/50 rounded-xl hover:border-text-secondary/50 hover:bg-white/5 transition-colors"
+            className="w-full py-8 text-center border border-dashed border-border/50 rounded-xl hover:border-text-secondary/50 hover:bg-surface transition-colors"
           >
             <Folder className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
             <div className="text-sm text-text-secondary/50 mb-1">No repositories configured</div>
@@ -620,7 +622,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 <span className="text-text-secondary/30">{personalRepos.length}</span>
               </div>
               {personalRepos.length === 0 ? (
-                <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-white/[0.08] rounded-xl">
+                <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
                   No personal repository — use “Add repository” above.
                 </div>
               ) : (
@@ -637,7 +639,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                   <span className="text-text-secondary/30">{teamRepos.length}</span>
                 </div>
                 {teamRepos.length === 0 ? (
-                  <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-white/[0.08] rounded-xl">
+                  <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
                     No shared repository in this organization yet.
                   </div>
                 ) : (
@@ -656,7 +658,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* Account — the Claude identity read from ~/.claude, not the cloud account */}
       <div>
         <SectionHeader icon={User} title="Account" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
           {claudeAccount ? (
             <div className="space-y-2 text-sm">
               {claudeAccount.displayName && (
@@ -697,7 +699,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* Launch mode */}
       <div>
         <SectionHeader icon={Shield} title="Launch mode" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">Permission mode</div>
@@ -707,7 +709,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               <select
                 value={launchMode}
                 onChange={(e) => handleLaunchModeChange(e.target.value as LaunchMode)}
-                className="w-52 px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+                className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
               >
                 {LAUNCH_MODE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -734,7 +736,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 </button>
                 <button
                   onClick={() => setShowBypassWarning(false)}
-                  className="px-3 py-1.5 bg-white/10 hover:bg-white/15 text-text-secondary text-xs rounded-lg transition-colors"
+                  className="px-3 py-1.5 bg-surface-strong hover:bg-ink/15 text-text-secondary text-xs rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
@@ -747,7 +749,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* Rate usage — plan limits reported by the running agents */}
       <div>
         <SectionHeader icon={Gauge} title="Rate usage" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
           {hasRateLimits ? (
             <div className="space-y-4">
               {typeof accountUsage?.fiveHourPercent === 'number' && (
@@ -778,7 +780,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* Spend & tokens */}
       <div>
         <SectionHeader icon={Coins} title="Spend & tokens" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
           {spend?.hasData ? (
             <>
               <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2 text-sm items-baseline">
@@ -794,7 +796,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                   <Fragment key={label}>
                     <span className="text-text-secondary">{label}</span>
                     <span className="font-mono text-right">{formatTokensCompact(b.tokens)}</span>
-                    <span className="font-mono text-right text-white">~{formatUsd(b.costUsd)}</span>
+                    <span className="font-mono text-right text-ink">~{formatUsd(b.costUsd)}</span>
                   </Fragment>
                 ))}
               </div>
@@ -817,7 +819,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* History Section */}
       <div>
         <SectionHeader icon={History} title="History" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">Enable history</div>
@@ -831,10 +833,10 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 setConfig(result.config)
               }}
               className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                historyEnabled ? 'bg-accent' : 'bg-white/20'
+                historyEnabled ? 'bg-accent' : 'bg-ink/20'
               }`}
             >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
                 historyEnabled ? 'translate-x-[18px]' : 'translate-x-0'
               }`} />
             </button>
@@ -845,7 +847,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* Usage Card Section */}
       <div>
         <SectionHeader icon={Gauge} title="Usage card" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">Show usage card in sidebar</div>
@@ -859,10 +861,10 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 setConfig(result.config)
               }}
               className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                usageCardEnabled ? 'bg-accent' : 'bg-white/20'
+                usageCardEnabled ? 'bg-accent' : 'bg-ink/20'
               }`}
             >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
                 usageCardEnabled ? 'translate-x-[18px]' : 'translate-x-0'
               }`} />
             </button>
@@ -873,7 +875,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* Usage Logs Section (GDPR opt-in — off by default) */}
       <div>
         <SectionHeader icon={BarChart3} title="Usage logs" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-sm font-medium">Share my usage with my organization</div>
@@ -889,10 +891,10 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 setConfig(result.config)
               }}
               className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                usageLogsEnabled ? 'bg-accent' : 'bg-white/20'
+                usageLogsEnabled ? 'bg-accent' : 'bg-ink/20'
               }`}
             >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
                 usageLogsEnabled ? 'translate-x-[18px]' : 'translate-x-0'
               }`} />
             </button>
@@ -903,7 +905,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* Daily Digest Section (opt-in — off by default) */}
       <div>
         <SectionHeader icon={Bell} title="Daily digest" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-sm font-medium">Daily team digest</div>
@@ -919,10 +921,10 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 setConfig(result.config)
               }}
               className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                dailyDigestEnabled ? 'bg-accent' : 'bg-white/20'
+                dailyDigestEnabled ? 'bg-accent' : 'bg-ink/20'
               }`}
             >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
                 dailyDigestEnabled ? 'translate-x-[18px]' : 'translate-x-0'
               }`} />
             </button>
@@ -933,7 +935,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* Split View Section */}
       <div>
         <SectionHeader icon={Columns} title="Split View" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">Enable split view</div>
@@ -942,10 +944,10 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             <button
               onClick={() => { toggleSplitEnabled(); updateSplitEnabled(!splitEnabled) }}
               className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                splitEnabled ? 'bg-accent' : 'bg-white/20'
+                splitEnabled ? 'bg-accent' : 'bg-ink/20'
               }`}
             >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
                 splitEnabled ? 'translate-x-[18px]' : 'translate-x-0'
               }`} />
             </button>
@@ -956,7 +958,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* PR Review Watcher Section */}
       <div>
         <SectionHeader icon={GitPullRequest} title="PR Review Watcher" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">Watch PR reviews</div>
@@ -969,17 +971,17 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 window.electronAPI.prWatcher.setEnabled(newValue)
               }}
               className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                prWatcherEnabled ? 'bg-accent' : 'bg-white/20'
+                prWatcherEnabled ? 'bg-accent' : 'bg-ink/20'
               }`}
             >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
                 prWatcherEnabled ? 'translate-x-[18px]' : 'translate-x-0'
               }`} />
             </button>
           </div>
           {prWatcherEnabled && (
             <>
-              <div className="border-t border-white/5 pt-4">
+              <div className="border-t border-line-subtle pt-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-sm font-medium">Polling interval</div>
@@ -993,7 +995,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                         setPrWatcherInterval(newInterval)
                         window.electronAPI.prWatcher.setInterval(newInterval)
                       }}
-                      className="w-52 px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+                      className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
                     >
                       <option value={30_000}>30 seconds</option>
                       <option value={60_000}>1 minute</option>
@@ -1004,7 +1006,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                   </div>
                 </div>
               </div>
-              <div className="border-t border-white/5 pt-4">
+              <div className="border-t border-line-subtle pt-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-sm font-medium">Auto-launch skills</div>
@@ -1017,10 +1019,10 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                       window.electronAPI.prWatcher.setAutoLaunchSkills(newValue)
                     }}
                     className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                      prWatcherAutoLaunch ? 'bg-accent' : 'bg-white/20'
+                      prWatcherAutoLaunch ? 'bg-accent' : 'bg-ink/20'
                     }`}
                   >
-                    <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+                    <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
                       prWatcherAutoLaunch ? 'translate-x-[18px]' : 'translate-x-0'
                     }`} />
                   </button>
@@ -1034,7 +1036,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* Spotlight Section */}
       <div>
         <SectionHeader icon={Search} title="Spotlight" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">Enable global shortcut</div>
@@ -1043,15 +1045,15 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             <button
               onClick={handleSpotlightToggle}
               className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                spotlightEnabled ? 'bg-accent' : 'bg-white/20'
+                spotlightEnabled ? 'bg-accent' : 'bg-ink/20'
               }`}
             >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
                 spotlightEnabled ? 'translate-x-[18px]' : 'translate-x-0'
               }`} />
             </button>
           </div>
-          <div className="border-t border-white/5 pt-4">
+          <div className="border-t border-line-subtle pt-4">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium">Shortcut</div>
@@ -1062,7 +1064,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                   value={spotlightShortcut}
                   onChange={(e) => handleSpotlightShortcutChange(e.target.value as SpotlightShortcut)}
                   disabled={!spotlightEnabled}
-                  className="w-52 px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
+                  className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
                 >
                   {SPOTLIGHT_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1084,7 +1086,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* Background App Section */}
       <div>
         <SectionHeader icon={MonitorSmartphone} title="Background App" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 space-y-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">Launch at login</div>
@@ -1097,15 +1099,15 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 window.electronAPI.config.setAutoStart(newValue)
               }}
               className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                autoStart ? 'bg-accent' : 'bg-white/20'
+                autoStart ? 'bg-accent' : 'bg-ink/20'
               }`}
             >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
                 autoStart ? 'translate-x-[18px]' : 'translate-x-0'
               }`} />
             </button>
           </div>
-          <div className="border-t border-white/5 pt-4">
+          <div className="border-t border-line-subtle pt-4">
             <div className="text-sm font-medium mb-1">Menu bar</div>
             <div className="text-xs text-text-secondary/50">
               Magic Slash runs in the menu bar. Click the tray icon to see agent status, or right-click for quick actions. Closing the window hides it to the tray.
@@ -1116,59 +1118,62 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       </div>}
 
+      {/* Appearance tab */}
+      {contentTab === 'appearance' && <AppearancePage />}
+
       {/* Shortcuts tab */}
       {contentTab === 'shortcuts' && <div>
         <SectionHeader icon={Keyboard} title="Keyboard Shortcuts" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">New agent</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> N</kbd>
+              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> N</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Duplicate agent</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> D</kbd>
+              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> D</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Close agent</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> W</kbd>
+              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> W</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Previous agent</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ↑</kbd>
+              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ↑</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Next agent</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ↓</kbd>
+              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ↓</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Toggle agent info</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> I</kbd>
+              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> I</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Toggle agents list</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> B</kbd>
+              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> B</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Skills</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ;</kbd>
+              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ;</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Repositories</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> P</kbd>
+              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> P</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Settings</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ,</kbd>
+              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ,</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Toggle Split View</span>
-              <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> /</kbd>
+              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> /</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Quick Launch</span>
               {spotlightEnabled ? (
-                <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-text-secondary">
+                <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary">
                   {SPOTLIGHT_OPTIONS.find(o => o.value === spotlightShortcut)?.label ?? spotlightShortcut}
                 </kbd>
               ) : (
@@ -1182,7 +1187,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* About tab */}
       {contentTab === 'about' && <div>
         <SectionHeader icon={Info} title="About" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-surface border border-line-strong rounded-xl p-4 flex items-center justify-between">
           <div>
             <div className="font-medium">Magic Slash</div>
             <div className="text-xs text-text-secondary/50 mt-0.5">v{appVersion}</div>
@@ -1192,7 +1197,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               href="https://xrequillart.github.io/magic-slash/documentation.html#changelog"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-colors"
             >
               <Clock className="w-3.5 h-3.5" />
               Changelog

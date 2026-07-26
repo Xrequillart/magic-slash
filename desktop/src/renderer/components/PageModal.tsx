@@ -49,19 +49,19 @@ export function PageModal({ title, onClose, headerRight, children }: PageModalPr
     >
       <div
         onAnimationEnd={onExitAnimationEnd}
-        className={`relative bg-bg-secondary border border-white/10 rounded-2xl w-full max-w-6xl h-[85vh] overflow-hidden shadow-2xl flex flex-col ${
+        className={`relative bg-bg-secondary border border-line rounded-2xl w-full max-w-6xl h-[85vh] overflow-hidden shadow-2xl flex flex-col ${
           closing ? 'animate-modal-content-out' : 'animate-modal-content'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 h-12 border-b border-white/10 shrink-0">
+        <div className="flex items-center justify-between px-4 h-12 border-b border-line shrink-0">
           <span className="text-sm font-semibold">{title}</span>
           <div className="flex items-center gap-3">
             {headerRight}
             <button
               onClick={requestClose}
-              className="p-1.5 text-text-secondary hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              className="p-1.5 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-colors"
               title="Close (Esc)"
             >
               <X className="w-4 h-4" />

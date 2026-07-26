@@ -77,10 +77,10 @@ export function RepositoryCard({
   const resolvedBaseBranch = baseBranch || gitData?.commits?.baseBranch
 
   return (
-    <div className="bg-white/[0.06] rounded-xl p-3">
+    <div className="bg-surface rounded-xl p-3">
       {/* Repo header */}
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-white/90 font-medium text-sm truncate" title={repoPath}>
+        <span className="text-ink/90 font-medium text-sm truncate" title={repoPath}>
           {repoName}
         </span>
         <div className="flex items-center gap-1.5 ml-auto">
@@ -110,7 +110,7 @@ export function RepositoryCard({
           {/* Base branch (left) */}
           {resolvedBaseBranch && (
             <>
-              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-white/[0.06] rounded-md min-w-0">
+              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-surface rounded-md min-w-0">
                 <GitBranch className="w-3 h-3 text-text-secondary/50 flex-shrink-0" />
                 <span
                   className="text-text-secondary/70 text-[10px] font-medium truncate"
@@ -123,7 +123,7 @@ export function RepositoryCard({
             </>
           )}
           {/* Current branch (right) */}
-          <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1.5 bg-white/[0.06] rounded-md">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1.5 bg-surface rounded-md">
             <GitBranch className="w-3.5 h-3.5 text-green/70 flex-shrink-0" />
             <span
               className="text-green text-xs font-medium truncate"
@@ -133,13 +133,13 @@ export function RepositoryCard({
             </span>
             <button
               onClick={() => onCopyBranchName(gitData.branch!)}
-              className="p-1 ml-auto rounded hover:bg-white/10 transition-colors group flex-shrink-0"
+              className="p-1 ml-auto rounded hover:bg-surface-strong transition-colors group flex-shrink-0"
               title="Copy branch name"
             >
               {copiedBranch === gitData.branch ? (
                 <Check className="w-3 h-3 text-green" />
               ) : (
-                <Copy className="w-3 h-3 text-text-secondary/50 group-hover:text-white transition-colors" />
+                <Copy className="w-3 h-3 text-text-secondary/50 group-hover:text-ink transition-colors" />
               )}
             </button>
           </div>
@@ -148,7 +148,7 @@ export function RepositoryCard({
 
       {/* Uncommitted changes block */}
       {hasChanges && gitData.stats && (
-        <div className="bg-white/[0.06] rounded-md p-2 mb-2">
+        <div className="bg-surface rounded-md p-2 mb-2">
           {/* Header with title, stats and gauge */}
           <div className="flex items-center gap-2 text-xs mb-2">
             <span className="text-text-secondary/70 font-medium">Uncommitted changes</span>
@@ -187,7 +187,7 @@ export function RepositoryCard({
               {gitData.stats.files.map((file, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-1.5 text-xs py-0.5 cursor-pointer hover:bg-white/10 rounded transition-colors px-1 -mx-1"
+                  className="flex items-center gap-1.5 text-xs py-0.5 cursor-pointer hover:bg-surface-strong rounded transition-colors px-1 -mx-1"
                   onClick={() => setSelectedFile({ repoPath, path: file.path, status: file.status })}
                 >
                   <span className="flex-1 text-text-secondary/60 font-mono truncate" title={file.path}>
@@ -209,7 +209,7 @@ export function RepositoryCard({
 
       {/* Commits block */}
       {hasCommits && gitData.commits && (
-        <div className="bg-white/[0.06] rounded-md p-2 mb-2">
+        <div className="bg-surface rounded-md p-2 mb-2">
           <div className="flex items-center text-xs mb-1.5">
             <span className="text-text-secondary/70 font-medium">Commits</span>
             <span className="text-text-secondary/50 ml-auto">
@@ -230,7 +230,7 @@ export function RepositoryCard({
                 </span>
                 <button
                   onClick={() => onCopyCommitHash(commit.hash)}
-                  className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-white/5 border border-border/30 rounded text-text-secondary/70 font-mono text-xs hover:bg-white/10 hover:text-white transition-colors"
+                  className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-surface border border-border/30 rounded text-text-secondary/70 font-mono text-xs hover:bg-surface-strong hover:text-ink transition-colors"
                   title={`Copy full hash: ${commit.hash}`}
                 >
                   {commit.shortHash}
@@ -243,7 +243,7 @@ export function RepositoryCard({
                 {commit.isPushed && gitData.gitHubUrl && (
                   <button
                     onClick={() => window.electronAPI.shell.openExternal(`${gitData.gitHubUrl}/commit/${commit.hash}`)}
-                    className="flex-shrink-0 p-1 bg-white/5 border border-border/30 rounded text-text-secondary/50 hover:bg-white/10 hover:text-white transition-colors"
+                    className="flex-shrink-0 p-1 bg-surface border border-border/30 rounded text-text-secondary/50 hover:bg-surface-strong hover:text-ink transition-colors"
                     title="View on GitHub"
                   >
                     <GitHubIcon className="w-3 h-3" />
@@ -262,7 +262,7 @@ export function RepositoryCard({
 
       {/* No changes state */}
       {gitData && !gitData.error && !hasChanges && !hasCommits && gitData.branch && (
-        <div className="bg-white/[0.06] rounded-md p-2 mb-2">
+        <div className="bg-surface rounded-md p-2 mb-2">
           <span className="text-xs text-text-secondary/40 italic">No uncommitted changes</span>
         </div>
       )}
@@ -283,10 +283,10 @@ export function RepositoryCard({
 
       {/* PR review status block */}
       {prUrl && repoMetadata?.prReviewStatus && (
-        <div className="mt-2 bg-white/[0.06] rounded-md p-2 space-y-1.5">
+        <div className="mt-2 bg-surface rounded-md p-2 space-y-1.5">
           <div className="flex items-center gap-1.5 text-xs">
             <ReviewStatusIcon status={repoMetadata.prReviewStatus} />
-            <span className="text-white/80 font-medium">
+            <span className="text-ink/80 font-medium">
               {REVIEW_STATUS_LABELS[repoMetadata.prReviewStatus]}
             </span>
             {repoMetadata.prMerged && (

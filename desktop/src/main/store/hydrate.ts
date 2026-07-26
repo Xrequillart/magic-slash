@@ -2,6 +2,7 @@ import { hydrateConfig, resetConfigCache } from '../config/config'
 import { hydrateAgents, resetAgentsCache } from '../config/agents'
 import { hydrateHistory, resetHistoryCache } from '../config/activity-history'
 import { hydrateProfile } from '../config/profile'
+import { applyTheme } from '../appearance'
 
 // Coordinates a one-time hydration of the in-memory caches (config, agents,
 // history) from the store once auth + connectivity are established. Every mutating
@@ -17,7 +18,11 @@ let hydrationPromise: Promise<void> | null = null
 export function ensureHydrated(): Promise<void> {
   if (!hydrationPromise) {
     hydrationPromise = (async () => {
-      await hydrateConfig()
+      const config = await hydrateConfig()
+      // The cloud is the reference for the theme: adopt it now, which corrects
+      // the local cache and the native chrome if it was changed on another
+      // machine, and repaints every open window.
+      applyTheme(config.theme)
       await hydrateAgents()
       await hydrateHistory()
       await hydrateProfile()
@@ -37,7 +42,8 @@ export function ensureHydrated(): Promise<void> {
  */
 export function rehydrate(): Promise<void> {
   hydrationPromise = (async () => {
-    await hydrateConfig()
+    const config = await hydrateConfig()
+    applyTheme(config.theme)
     await hydrateAgents()
     await hydrateHistory()
   })().catch((error) => {

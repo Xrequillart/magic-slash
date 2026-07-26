@@ -108,7 +108,7 @@ export function QuickLaunch() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="PROJ-123 /start"
-          className="flex-1 bg-transparent text-white text-2xl placeholder:text-zinc-600 caret-white"
+          className="flex-1 bg-transparent text-ink text-2xl placeholder:text-zinc-600 caret-ink"
           style={{ outline: 'none', boxShadow: 'none', border: 'none', fontFamily: '"Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif', fontWeight: 500 }}
           autoFocus
           spellCheck={false}
@@ -117,17 +117,17 @@ export function QuickLaunch() {
 
       {/* Autocomplete suggestions */}
       {showSuggestions && suggestions.length > 0 && (
-        <div className="border-t border-white/10">
+        <div className="border-t border-line">
           {suggestions.map((cmd, i) => (
             <div
               key={cmd.name}
               onMouseDown={() => acceptSuggestion(cmd.name)}
               onMouseEnter={() => setSelectedIndex(i)}
               className={`flex items-center justify-between px-5 py-2.5 cursor-pointer transition-colors ${
-                i === selectedIndex ? 'bg-white/10' : ''
+                i === selectedIndex ? 'bg-surface-strong' : ''
               }`}
             >
-              <span className="text-white text-sm font-medium">{cmd.name}</span>
+              <span className="text-ink text-sm font-medium">{cmd.name}</span>
               <span className="text-zinc-500 text-xs">{cmd.description}</span>
             </div>
           ))}

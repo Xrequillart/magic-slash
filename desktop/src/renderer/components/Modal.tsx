@@ -44,7 +44,7 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
     >
       <div
         onAnimationEnd={onExitAnimationEnd}
-        className={`bg-bg-secondary border border-white/10 rounded-xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto ${
+        className={`bg-bg-secondary border border-line rounded-xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto ${
           closing ? 'animate-modal-content-out' : 'animate-modal-content'
         }`}
       >
@@ -54,7 +54,7 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
             {hero}
             <button
               onClick={onClose}
-              className="absolute top-3 right-3 p-1.5 text-white/70 hover:text-white bg-black/30 hover:bg-black/50 rounded-lg transition-all"
+              className="absolute top-3 right-3 p-1.5 text-on-brand/70 hover:text-on-brand bg-black/30 hover:bg-black/50 rounded-lg transition-all"
             >
               <X className="w-4 h-4" />
             </button>
@@ -67,7 +67,7 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
           {!hero && (
             <button
               onClick={onClose}
-              className="p-1.5 text-text-secondary hover:text-white hover:bg-white/10 rounded-lg transition-all"
+              className="p-1.5 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-all"
             >
               <X className="w-4 h-4" />
             </button>

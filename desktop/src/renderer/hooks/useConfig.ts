@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
-import type { RepositoryConfig } from '../../types'
+import type { RepositoryConfig, ThemeId } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -105,6 +105,14 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  // Repainting is the main process's job (it also owns the native chrome and
+  // the other windows), so this only records the choice.
+  const updateTheme = useCallback(async (theme: ThemeId) => {
+    const result = await window.electronAPI.config.updateTheme(theme)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const validatePath = useCallback(async (path: string) => {
     return window.electronAPI.config.validatePath(path)
   }, [])
@@ -141,6 +149,7 @@ export function useConfig() {
     updateSplitEnabled,
     updateSpotlight,
     updateLaunchMode,
+    updateTheme,
     validatePath,
     getPRTemplate,
     createPRTemplate,

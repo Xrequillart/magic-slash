@@ -361,7 +361,7 @@ export function AgentInfoSidebar() {
   return (
     <div
       ref={sidebarRef}
-      className={`bg-black/30 flex flex-col h-full relative overflow-hidden ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
+      className={`bg-surface-sunken flex flex-col h-full relative overflow-hidden ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
       style={{ width: isOpen ? `${width}px` : 0 }}
     >
       <div className="flex flex-col h-full" style={{ width: `${width}px` }}>
@@ -385,7 +385,7 @@ export function AgentInfoSidebar() {
               terminalId: activeTerminal.id,
               terminalName: activeTerminal.name,
             })}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.08] rounded-lg hover:bg-white/[0.12] hover:text-white transition-colors"
+            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary bg-surface border border-line-field rounded-lg hover:bg-surface-strong hover:text-ink transition-colors"
           >
             <X className="w-3 h-3" />
             <span>Close agent</span>
@@ -394,7 +394,7 @@ export function AgentInfoSidebar() {
         ) : (
           <button
             onClick={() => toggleRightSidebar('info')}
-            className="p-1.5 text-text-secondary hover:text-white hover:bg-bg-tertiary rounded transition-colors"
+            className="p-1.5 text-text-secondary hover:text-ink hover:bg-bg-tertiary rounded transition-colors"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -460,7 +460,7 @@ export function AgentInfoSidebar() {
             {/* Add a repository button (always shown) */}
             <button
               onClick={() => setIsRepoModalOpen(true)}
-              className="w-full py-4 text-center border border-dashed border-border/50 rounded-lg hover:border-text-secondary/50 hover:bg-white/5 transition-colors"
+              className="w-full py-4 text-center border border-dashed border-border/50 rounded-lg hover:border-text-secondary/50 hover:bg-surface transition-colors"
             >
               <div className="text-xs text-text-secondary/50">
                 Add a repository
@@ -469,7 +469,7 @@ export function AgentInfoSidebar() {
 
             {/* Full-Stack Task Section */}
             {metadata?.fullStackTaskId && metadata?.relatedWorktrees && metadata.relatedWorktrees.length > 1 && (
-              <div className="bg-white/[0.06] rounded-xl p-3">
+              <div className="bg-surface rounded-xl p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Layers className="w-3.5 h-3.5 text-orange" />
                   <span className="text-[10px] text-text-secondary/50 uppercase tracking-wider">

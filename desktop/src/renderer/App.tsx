@@ -28,8 +28,8 @@ function LoadingScreen() {
   return (
     <div className="flex items-center justify-center h-screen bg-transparent">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-8 h-8 border-3 border-white/20 border-t-accent rounded-full animate-spin" />
-        <p className="text-white/60">Loading...</p>
+        <div className="w-8 h-8 border-3 border-line-strong border-t-accent rounded-full animate-spin" />
+        <p className="text-ink/60">Loading...</p>
       </div>
     </div>
   )
@@ -42,7 +42,7 @@ function ErrorScreen({ error }: { error: string }) {
         <p className="text-red mb-4">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-brand rounded-lg transition-colors"
         >
           Retry
         </button>
@@ -339,7 +339,7 @@ export function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen text-white overflow-hidden">
+    <div className="flex flex-col h-screen text-ink overflow-hidden">
       {/* Title Bar */}
       <TitleBar />
 
@@ -402,7 +402,7 @@ export function App() {
           onClick={closeCloseAgentModal}
         >
           <div
-            className="bg-bg-secondary border border-white/10 rounded-xl mx-4 max-w-sm animate-modal-content"
+            className="bg-bg-secondary border border-line rounded-xl mx-4 max-w-sm animate-modal-content"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -422,7 +422,7 @@ export function App() {
               <div className="flex gap-2">
                 <button
                   onClick={closeCloseAgentModal}
-                  className="flex-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+                  className="flex-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                 >
                   Cancel
                 </button>
@@ -448,7 +448,7 @@ export function App() {
       {/* No Repos Warning Modal */}
       {showNoReposModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop">
-          <div className="bg-bg-secondary border border-white/10 rounded-xl mx-4 max-w-md animate-modal-content">
+          <div className="bg-bg-secondary border border-line rounded-xl mx-4 max-w-md animate-modal-content">
             {/* Header */}
             <div className="flex items-center gap-3 px-5 pt-5 pb-4">
               <div className="p-2 bg-yellow/10 rounded-lg">
@@ -466,7 +466,7 @@ export function App() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowNoReposModal(false)}
-                  className="flex-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+                  className="flex-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                 >
                   Later
                 </button>

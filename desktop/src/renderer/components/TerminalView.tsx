@@ -5,6 +5,21 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import type { TerminalInfo } from '../../types'
 import { formatDroppedPaths } from '../utils/formatDroppedPaths'
+import { useThemeTokens, type ThemeTokens } from '../theme'
+
+/**
+ * xterm wants colour values, not classes, so the terminal reads the theme
+ * registry directly. Background stays transparent in every theme — the window's
+ * own vibrancy shows through — and only the ink and the sixteen ANSI slots move.
+ */
+function xtermTheme(tokens: ThemeTokens) {
+  return {
+    background: 'transparent',
+    cursor: 'transparent', // Hidden — Claude Code draws its own.
+    cursorAccent: 'transparent',
+    ...tokens.terminal,
+  }
+}
 
 interface TerminalViewProps {
   terminal: TerminalInfo
@@ -24,6 +39,17 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
   const [showScrollButton, setShowScrollButton] = useState(false)
   const needsResizeRef = useRef(false)
   const dragCounterRef = useRef(0)
+
+  const tokens = useThemeTokens()
+  // Held in a ref for the creation effect below: depending on the tokens there
+  // would tear the terminal down and lose the session on every theme change.
+  const tokensRef = useRef(tokens)
+  tokensRef.current = tokens
+
+  // A live terminal is repainted in place instead.
+  useEffect(() => {
+    if (xtermRef.current) xtermRef.current.options.theme = xtermTheme(tokens)
+  }, [tokens])
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -65,29 +91,7 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
     if (!containerRef.current) return
 
     const xterm = new Terminal({
-      theme: {
-        background: 'transparent',
-        foreground: '#ffffff',
-        cursor: 'transparent', // Hide cursor - Claude Code manages its own
-        cursorAccent: 'transparent',
-        selectionBackground: '#eab30840',
-        black: '#52525b',
-        red: '#ef4444',
-        green: '#22c55e',
-        yellow: '#eab308',
-        blue: '#6366f1',
-        magenta: '#a855f7',
-        cyan: '#06b6d4',
-        white: '#ffffff',
-        brightBlack: '#a1a1aa',
-        brightRed: '#f87171',
-        brightGreen: '#4ade80',
-        brightYellow: '#facc15',
-        brightBlue: '#818cf8',
-        brightMagenta: '#c084fc',
-        brightCyan: '#22d3ee',
-        brightWhite: '#ffffff',
-      },
+      theme: xtermTheme(tokensRef.current),
       fontFamily: "'Hack', monospace",
       fontSize: 14,
       lineHeight: 1.0,
@@ -322,7 +326,7 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
     >
       <div
         ref={containerRef}
-        className="w-full h-full bg-black/30 p-2"
+        className="w-full h-full bg-surface-sunken p-2"
       />
       {showScrollButton && (
         <button
@@ -331,14 +335,14 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
             userScrolledUpRef.current = false
             setShowScrollButton(false)
           }}
-          className="absolute bottom-4 right-4 z-20 bg-white/15 hover:bg-white/25 text-white/70 px-3 py-1.5 rounded-full text-xs transition-all duration-200"
+          className="absolute bottom-4 right-4 z-20 bg-ink/15 hover:bg-ink/25 text-ink/70 px-3 py-1.5 rounded-full text-xs transition-all duration-200"
         >
           Scroll to bottom
         </button>
       )}
       {isDragOver && (
         <div className="absolute inset-0 drop-overlay border-2 border-dashed rounded-lg flex items-center justify-center pointer-events-none z-10">
-          <span className="text-white/80 text-sm font-medium bg-black/70 px-4 py-2 rounded-lg">
+          <span className="text-on-brand text-sm font-medium bg-black/70 px-4 py-2 rounded-lg">
             Drop files here
           </span>
         </div>

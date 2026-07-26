@@ -119,7 +119,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
       onClick={onClose}
     >
       <div
-        className="bg-bg-secondary border border-white/10 rounded-xl w-full max-w-md mx-4 animate-modal-content"
+        className="bg-bg-secondary border border-line rounded-xl w-full max-w-md mx-4 animate-modal-content"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -134,7 +134,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-text-secondary hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            className="p-1 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -146,7 +146,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
             <div
               key={i}
               className={`h-1 flex-1 rounded-full transition-colors ${
-                i + 1 <= step ? 'bg-accent' : 'bg-white/10'
+                i + 1 <= step ? 'bg-accent' : 'bg-surface-strong'
               }`}
             />
           ))}
@@ -166,7 +166,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your first name"
                 autoFocus
-                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
                 onKeyDown={(e) => { if (e.key === 'Enter' && canAdvance()) handleNext() }}
               />
             </div>
@@ -186,7 +186,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                     className={`px-3 py-2 text-sm rounded-lg border transition-all ${
                       role === opt.value
                         ? 'bg-accent/10 border-accent/30 text-accent'
-                        : 'bg-white/[0.06] border-white/[0.08] text-text-secondary hover:bg-white/5 hover:text-white'
+                        : 'bg-surface border-line-field text-text-secondary hover:bg-surface hover:text-ink'
                     }`}
                   >
                     {opt.label}
@@ -210,10 +210,10 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                     className={`w-full px-3 py-2.5 text-left rounded-lg border transition-all ${
                       technicalLevel === opt.value
                         ? 'bg-accent/10 border-accent/30'
-                        : 'bg-white/[0.06] border-white/[0.08] hover:bg-white/5'
+                        : 'bg-surface border-line-field hover:bg-surface'
                     }`}
                   >
-                    <div className={`text-sm font-medium ${technicalLevel === opt.value ? 'text-accent' : 'text-white'}`}>
+                    <div className={`text-sm font-medium ${technicalLevel === opt.value ? 'text-accent' : 'text-ink'}`}>
                       {opt.label}
                     </div>
                     <div className="text-xs text-text-secondary/50 mt-0.5">{opt.description}</div>
@@ -237,10 +237,10 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                     className={`w-full px-3 py-2.5 text-left rounded-lg border transition-all ${
                       communicationStyle === opt.value
                         ? 'bg-accent/10 border-accent/30'
-                        : 'bg-white/[0.06] border-white/[0.08] hover:bg-white/5'
+                        : 'bg-surface border-line-field hover:bg-surface'
                     }`}
                   >
-                    <div className={`text-sm font-medium ${communicationStyle === opt.value ? 'text-accent' : 'text-white'}`}>
+                    <div className={`text-sm font-medium ${communicationStyle === opt.value ? 'text-accent' : 'text-ink'}`}>
                       {opt.label}
                     </div>
                     <div className="text-xs text-text-secondary/50 mt-0.5">{opt.description}</div>
@@ -264,7 +264,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all ${
                       languages.includes(lang)
                         ? 'bg-accent/10 border-accent/30 text-accent'
-                        : 'bg-white/[0.06] border-white/[0.08] text-text-secondary hover:bg-white/5 hover:text-white'
+                        : 'bg-surface border-line-field text-text-secondary hover:bg-surface hover:text-ink'
                     }`}
                   >
                     {languages.includes(lang) && <Check className="w-3.5 h-3.5" />}
@@ -286,7 +286,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 onChange={(e) => setFreeText(e.target.value)}
                 placeholder="e.g., I prefer short answers, I work on mobile apps..."
                 rows={4}
-                className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 resize-none"
+                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 resize-none"
               />
             </div>
           )}
@@ -298,7 +298,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
             {step > 1 && (
               <button
                 onClick={handleBack}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 Back
@@ -327,7 +327,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
               <button
                 onClick={handleFinish}
                 disabled={!name.trim() || !role || !technicalLevel}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <Check className="w-3.5 h-3.5" />
                 Finish

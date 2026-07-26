@@ -641,6 +641,7 @@ const emptySettingsRow = {
   auto_start_at_login: null,
   launch_mode: null,
   atlassian_integration_enabled: null,
+  theme: null,
 }
 
 describe('user settings', () => {
@@ -739,13 +740,29 @@ describe('user settings', () => {
       configs: { data: null, error: null },
       repositories: { data: [], error: null },
       repository_paths: { data: [], error: null },
-      user_settings: { data: { ...emptySettingsRow, launch_mode: 'someFutureMode', spotlight_shortcut: 'Control+Q' }, error: null },
+      user_settings: { data: { ...emptySettingsRow, launch_mode: 'someFutureMode', spotlight_shortcut: 'Control+Q', theme: 'solarized' }, error: null },
     })
     h.state.client = client
 
     const config = await new CloudStore().loadConfig()
     expect(config).not.toHaveProperty('launchMode')
     expect(config).not.toHaveProperty('spotlight')
+    // The theme column takes any short slug so new themes need no migration,
+    // which makes this the one setting a client is most likely to meet unknown.
+    expect(config).not.toHaveProperty('theme')
+  })
+
+  it('reads back a theme it knows', async () => {
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: null, error: null },
+      repositories: { data: [], error: null },
+      repository_paths: { data: [], error: null },
+      user_settings: { data: { ...emptySettingsRow, theme: 'light' }, error: null },
+    })
+    h.state.client = client
+
+    expect((await new CloudStore().loadConfig())?.theme).toBe('light')
   })
 
   it('upserts settings keyed by user_id, mapping absent keys to NULL', async () => {
@@ -785,6 +802,7 @@ describe('user settings', () => {
       auto_start_at_login: null,
       launch_mode: null,
       atlassian_integration_enabled: null,
+      theme: null,
     })
   })
 

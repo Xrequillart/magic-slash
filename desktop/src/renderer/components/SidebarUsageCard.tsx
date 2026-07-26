@@ -13,7 +13,7 @@ function UsageMiniBar({ label, percent }: { label: string; percent: number }) {
   return (
     <div className="flex items-center gap-1 flex-1 min-w-0">
       <span className="shrink-0 text-[10px] text-text-secondary/60">{label}</span>
-      <div className="h-1 flex-1 min-w-[8px] rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="h-1 flex-1 min-w-[8px] rounded-full bg-surface overflow-hidden">
         <div
           className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
           style={{ width: `${pct}%` }}
@@ -44,7 +44,7 @@ function UsageBar({ label, percent, resetsAt, now }: {
           <span className={`font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
         </span>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="h-1.5 w-full rounded-full bg-surface overflow-hidden">
         <div
           className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
           style={{ width: `${pct}%` }}
@@ -99,7 +99,7 @@ export function SidebarUsageCard() {
   const hasGauges = hasFive || hasSeven
 
   return (
-    <div className="mx-2 mb-2 bg-white/[0.03] border border-white/[0.05] rounded-lg px-2 py-1.5">
+    <div className="mx-2 mb-2 bg-surface-subtle border border-line-subtle rounded-lg px-2 py-1.5">
       {minimized ? (
         <div className="flex items-center justify-between gap-1.5">
           {hasGauges ? (
@@ -113,7 +113,7 @@ export function SidebarUsageCard() {
           <button
             onClick={toggleMinimized}
             title="Expand"
-            className="p-0.5 rounded text-text-secondary/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+            className="p-0.5 rounded text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
           >
             <Plus className="w-3 h-3" />
           </button>
@@ -130,7 +130,7 @@ export function SidebarUsageCard() {
             <button
               onClick={toggleMinimized}
               title="Minimize"
-              className="p-0.5 rounded text-text-secondary/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+              className="p-0.5 rounded text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
             >
               <Minus className="w-3 h-3" />
             </button>

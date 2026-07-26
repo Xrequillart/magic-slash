@@ -115,7 +115,7 @@ export function CloudAccountSection() {
     return (
       <div>
         <SectionHeader icon={Cloud} title="Cloud account" />
-        <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-6 text-center">
+        <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
           <Cloud className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
           <div className="text-sm text-text-secondary/60">Cloud features are not configured in this build.</div>
           <div className="text-xs text-text-secondary/40 mt-1">Magic Slash works fully offline — no account required.</div>
@@ -127,7 +127,7 @@ export function CloudAccountSection() {
   return (
     <div>
       <SectionHeader icon={Cloud} title="Cloud account" />
-      <div className="bg-white/[0.06] border border-white/[0.15] rounded-xl p-4">
+      <div className="bg-surface border border-line-strong rounded-xl p-4">
         {status.loggedIn ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -137,23 +137,23 @@ export function CloudAccountSection() {
               </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 Sign out
               </button>
             </div>
-            <div className="border-t border-white/5 pt-3 flex flex-wrap items-center gap-2">
+            <div className="border-t border-line-subtle pt-3 flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setShowChangePassword(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <KeyRound className="w-3.5 h-3.5" />
                 Change password
               </button>
               <button
                 onClick={() => setShowChangeEmail(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <AtSign className="w-3.5 h-3.5" />
                 Change email
@@ -176,14 +176,14 @@ export function CloudAccountSection() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowInvitationWizard(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 Join with invitation
               </button>
               <button
                 onClick={() => setShowLogin(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 Sign in
@@ -205,14 +205,14 @@ export function CloudAccountSection() {
           <>
             <button
               onClick={resetPasswordModal}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleChangePassword}
               disabled={changingPassword || !newPassword || newPassword !== confirmPassword}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
             >
               {changingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
               Update password
@@ -227,7 +227,7 @@ export function CloudAccountSection() {
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder="New password"
             autoFocus
-            className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+            className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
           />
           <input
             type="password"
@@ -235,7 +235,7 @@ export function CloudAccountSection() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Confirm new password"
             onKeyDown={(e) => { if (e.key === 'Enter') handleChangePassword() }}
-            className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+            className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
           />
         </div>
       </Modal>
@@ -249,14 +249,14 @@ export function CloudAccountSection() {
           <>
             <button
               onClick={resetEmailModal}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleChangeEmail}
               disabled={changingEmail}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
             >
               {changingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AtSign className="w-3.5 h-3.5" />}
               {emailStep === 'request' ? 'Send code' : 'Confirm change'}
@@ -276,13 +276,13 @@ export function CloudAccountSection() {
               placeholder="New email"
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
-              className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+              className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
             />
           </div>
         ) : (
           <div className="space-y-2">
             <p className="text-xs text-text-secondary/60">
-              Check <span className="text-white">{newEmail}</span> for the confirmation code and enter it below.
+              Check <span className="text-ink">{newEmail}</span> for the confirmation code and enter it below.
             </p>
             <input
               type="text"
@@ -292,7 +292,7 @@ export function CloudAccountSection() {
               placeholder="6-digit code"
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
-              className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm text-white focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+              className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
             />
           </div>
         )}
@@ -307,14 +307,14 @@ export function CloudAccountSection() {
           <>
             <button
               onClick={() => setShowDeleteAccount(false)}
-              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+              className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleDeleteAccount}
               disabled={deleting}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red hover:bg-red/80 rounded-lg transition-all disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-red hover:bg-red/80 rounded-lg transition-all disabled:opacity-40"
             >
               {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
               Delete permanently
@@ -327,7 +327,7 @@ export function CloudAccountSection() {
             <AlertTriangle className="w-4 h-4 text-red" />
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-white">This permanently deletes your account and personal data.</p>
+            <p className="text-sm text-ink">This permanently deletes your account and personal data.</p>
             <p className="text-xs text-text-secondary/60">
               Organizations you created will be removed along with their data. This cannot be undone. Magic Slash keeps working locally without an account.
             </p>

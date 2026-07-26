@@ -17,12 +17,12 @@ function formatDuration(ms: number): string {
 
 function StatTile({ icon: Icon, label, value }: { icon: typeof Coins; label: string; value: string }) {
   return (
-    <div className="bg-white/[0.06] border border-white/[0.08] rounded-xl p-4 flex flex-col gap-1.5 min-w-0">
+    <div className="bg-surface border border-line-field rounded-xl p-4 flex flex-col gap-1.5 min-w-0">
       <div className="flex items-center gap-1.5 text-xs text-text-secondary">
         <Icon className="w-3.5 h-3.5 flex-shrink-0" />
         <span className="truncate">{label}</span>
       </div>
-      <div className="text-lg font-semibold text-white truncate">{value}</div>
+      <div className="text-lg font-semibold text-ink truncate">{value}</div>
     </div>
   )
 }
@@ -58,7 +58,7 @@ function UsageStatsSection() {
       {loading && rows.length === 0 ? (
         <div className="py-10 flex items-center justify-center text-text-secondary text-sm">Loading…</div>
       ) : rows.length === 0 ? (
-        <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+        <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
           <BarChart3 className="w-8 h-8 opacity-30" />
           <p>No usage recorded yet.</p>
           <p className="text-xs text-text-secondary/60 max-w-sm text-center">
@@ -87,18 +87,18 @@ function UsageStatsSection() {
           <ActivityHeatmap heatmapData={heatmap} />
 
           {/* Per-member breakdown (always non-empty in this branch — rows.length !== 0) */}
-          <div className="bg-white/[0.06] border border-white/[0.08] rounded-xl p-4 flex flex-col gap-2">
+          <div className="bg-surface border border-line-field rounded-xl p-4 flex flex-col gap-2">
             <div className="text-xs text-text-secondary mb-1">By member</div>
             {byMember.map((m) => (
               <div key={m.userId || '__unassigned__'} className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-white truncate min-w-0">
+                <span className="text-ink truncate min-w-0">
                   {m.userId ? emailByOwner.get(m.userId) ?? m.userId : 'Unassigned'}
                 </span>
                 <div className="flex items-center gap-4 flex-shrink-0">
                   <span className="text-xs text-text-secondary/60">
                     {m.sessions} {m.sessions === 1 ? 'session' : 'sessions'}
                   </span>
-                  <span className="text-white/90 font-medium tabular-nums">{formatUsd(m.costUsd)}</span>
+                  <span className="text-ink/90 font-medium tabular-nums">{formatUsd(m.costUsd)}</span>
                 </div>
               </div>
             ))}
@@ -126,7 +126,7 @@ function StatusPill({ status }: { status?: string }) {
   if (!status) return null
   const config = STATUS_CONFIG[status]
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${config?.className ?? 'bg-white/[0.06] text-text-secondary'}`}>
+    <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${config?.className ?? 'bg-surface text-text-secondary'}`}>
       {config?.label ?? status}
     </span>
   )
@@ -170,7 +170,7 @@ function collectBlocked(agents: OrgAgent[]): OrgAgent[] {
 function RepoTag({ repo }: { repo: string }) {
   const name = repo.split('/').pop() ?? repo
   return (
-    <span className="text-xs text-text-secondary/60 bg-white/[0.04] border border-white/[0.06] px-1.5 py-0.5 rounded font-mono">
+    <span className="text-xs text-text-secondary/60 bg-surface-subtle border border-line-subtle px-1.5 py-0.5 rounded font-mono">
       {name}
     </span>
   )
@@ -206,11 +206,11 @@ function AwaitingReviewSection({ items, emailByOwner }: { items: ReviewItem[]; e
           return (
             <div
               key={`${agent.id}:${review.repo}`}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] min-w-0"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-subtle border border-line-field min-w-0"
             >
               <GitPullRequest className="w-4 h-4 text-purple flex-shrink-0" />
               <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-sm font-medium text-white truncate">{agent.name}</span>
+                <span className="text-sm font-medium text-ink truncate">{agent.name}</span>
                 <OwnerLabel agent={agent} emailByOwner={emailByOwner} />
               </div>
               <TicketBadge ticketId={agent.ticketId} />
@@ -222,7 +222,7 @@ function AwaitingReviewSection({ items, emailByOwner }: { items: ReviewItem[]; e
                 <button
                   onClick={() => review.prUrl && window.electronAPI.shell.openExternal(review.prUrl)}
                   title="Open the pull request"
-                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-text-secondary border border-white/10 rounded-lg hover:bg-white/10 hover:text-white transition-colors flex-shrink-0"
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-colors flex-shrink-0"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>View PR</span>
@@ -254,7 +254,7 @@ function BlockedSection({ agents, emailByOwner }: { agents: OrgAgent[]; emailByO
           >
             <AlertOctagon className="w-4 h-4 text-red flex-shrink-0" />
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-sm font-medium text-white truncate">{agent.name}</span>
+              <span className="text-sm font-medium text-ink truncate">{agent.name}</span>
               <OwnerLabel agent={agent} emailByOwner={emailByOwner} />
             </div>
             <TicketBadge ticketId={agent.ticketId} />

@@ -4,7 +4,7 @@ import { useClickOutside } from '../../hooks/useClickOutside'
 import type { TerminalMetadata } from '../../../types'
 
 const STATUS_OPTIONS = [
-  { value: '',             label: 'no status',    bg: 'bg-white/10',      text: 'text-text-secondary' },
+  { value: '',             label: 'no status',    bg: 'bg-surface-strong',      text: 'text-text-secondary' },
   { value: 'in progress',  label: 'in progress',  bg: 'bg-yellow/20',     text: 'text-yellow' },
   { value: 'committed',    label: 'committed',     bg: 'bg-cyan-500/20',   text: 'text-cyan-400' },
   { value: 'ready for PR', label: 'ready for PR',  bg: 'bg-orange/20',     text: 'text-orange' },
@@ -18,7 +18,7 @@ const STATUS_OPTIONS = [
 // Neutral badge for a non-empty status that isn't in STATUS_OPTIONS (e.g. a newer
 // skill/desktop version drift). Show the raw value rather than silently falling
 // back to "no status", which would hide that the workflow actually progressed.
-const UNKNOWN_STATUS_STYLE = { bg: 'bg-white/10', text: 'text-text-secondary' } as const
+const UNKNOWN_STATUS_STYLE = { bg: 'bg-surface-strong', text: 'text-text-secondary' } as const
 
 function getStatusOption(status: string) {
   const match = STATUS_OPTIONS.find(s => s.value === status)
@@ -72,19 +72,19 @@ export function TicketHeader({
   useClickOutside(statusRef, isStatusOpen, closeStatus)
 
   return (
-    <div className="bg-white/[0.06] rounded-xl p-4">
+    <div className="bg-surface rounded-xl p-4">
       {/* Ticket ID + Status Badge */}
       <div className="flex items-center justify-between mb-3">
         {metadata?.ticketId ? (
           ticketLink ? (
             <button
               onClick={() => window.electronAPI.shell.openExternal(ticketLink)}
-              className="text-white text-xs font-semibold hover:underline cursor-pointer bg-transparent border-none p-0"
+              className="text-ink text-xs font-semibold hover:underline cursor-pointer bg-transparent border-none p-0"
             >
               {metadata.ticketId}
             </button>
           ) : (
-            <span className="text-white text-xs font-semibold">{metadata.ticketId}</span>
+            <span className="text-ink text-xs font-semibold">{metadata.ticketId}</span>
           )
         ) : (
           <span className="text-text-secondary/40 text-xs">No ticket</span>
@@ -115,16 +115,16 @@ export function TicketHeader({
                         onStatusChange?.(option.value)
                         setIsStatusOpen(false)
                       }}
-                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-white/10 transition-colors border-none cursor-pointer ${
-                        isSelected ? 'bg-white/5' : ''
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-surface-strong transition-colors border-none cursor-pointer ${
+                        isSelected ? 'bg-surface' : ''
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full ${option.text}`} style={{ backgroundColor: 'currentColor' }} />
-                      <span className={isSelected ? 'text-white font-medium' : 'text-text-secondary'}>
+                      <span className={isSelected ? 'text-ink font-medium' : 'text-text-secondary'}>
                         {option.label}
                       </span>
                       {isSelected && (
-                        <Check className="w-3 h-3 text-white ml-auto" />
+                        <Check className="w-3 h-3 text-ink ml-auto" />
                       )}
                     </button>
                   )
@@ -149,16 +149,16 @@ export function TicketHeader({
             }}
             onBlur={saveTitle}
             placeholder="Enter title..."
-            className="flex-1 bg-white/[0.06] border border-accent rounded px-2 py-1 text-white font-semibold text-sm focus:outline-none"
+            className="flex-1 bg-surface border border-accent rounded px-2 py-1 text-ink font-semibold text-sm focus:outline-none"
           />
         </div>
       ) : (
         <div
-          className="flex items-start gap-2 cursor-pointer hover:bg-white/5 -mx-2 px-2 py-1 rounded transition-colors"
+          className="flex items-start gap-2 cursor-pointer hover:bg-surface -mx-2 px-2 py-1 rounded transition-colors"
           onClick={startEditingTitle}
         >
           {metadata?.title ? (
-            <h2 className="flex-1 text-white font-semibold text-sm leading-tight break-words">{metadata.title}</h2>
+            <h2 className="flex-1 text-ink font-semibold text-sm leading-tight break-words">{metadata.title}</h2>
           ) : (
             <h2 className="flex-1 text-text-secondary/40 italic text-sm">Click to add title</h2>
           )}
@@ -180,7 +180,7 @@ export function TicketHeader({
               }}
               placeholder="Enter description..."
               rows={3}
-              className="w-full bg-white/[0.06] border border-accent rounded px-2 py-1.5 text-xs text-white/70 focus:outline-none resize-none leading-relaxed"
+              className="w-full bg-surface border border-accent rounded px-2 py-1.5 text-xs text-ink/70 focus:outline-none resize-none leading-relaxed"
             />
             <div className="flex items-center justify-between">
               <span className="text-xs text-text-secondary/40">⌘Enter to save, Esc to cancel</span>
@@ -195,12 +195,12 @@ export function TicketHeader({
           </div>
         ) : (
           <div
-            className="cursor-pointer hover:bg-white/5 -mx-2 px-2 py-1 rounded transition-colors"
+            className="cursor-pointer hover:bg-surface -mx-2 px-2 py-1 rounded transition-colors"
             onClick={startEditingDescription}
           >
             <div className="flex items-start gap-2">
               {metadata?.description ? (
-                <div className="flex-1 text-xs text-white/60 whitespace-pre-wrap break-words leading-relaxed">
+                <div className="flex-1 text-xs text-ink/60 whitespace-pre-wrap break-words leading-relaxed">
                   {metadata.description}
                 </div>
               ) : (

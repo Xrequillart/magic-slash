@@ -32,7 +32,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <div className="p-3 bg-red/10 rounded-full mb-4">
             <AlertTriangle className="w-6 h-6 text-red" />
           </div>
-          <h3 className="text-white font-semibold mb-2">
+          <h3 className="text-ink font-semibold mb-2">
             {this.props.fallbackLabel || 'Something went wrong'}
           </h3>
           <p className="text-text-secondary text-sm mb-4 max-w-sm">
@@ -40,7 +40,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           </p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
-            className="px-4 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-colors"
           >
             Try again
           </button>

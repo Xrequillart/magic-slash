@@ -50,7 +50,7 @@ export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
   const WarningBadge = () =>
     hasNoRepos ? (
       <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow rounded-full flex items-center justify-center">
-        <AlertTriangle className="w-2.5 h-2.5 text-black" />
+        <AlertTriangle className="w-2.5 h-2.5 text-bg" />
       </span>
     ) : null
 
@@ -61,7 +61,7 @@ export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
       <>
         <button
           onClick={() => setShowLogin(true)}
-          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium text-text-secondary rounded-lg hover:bg-text-secondary/10 hover:text-white transition-all"
+          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium text-text-secondary rounded-lg hover:bg-text-secondary/10 hover:text-ink transition-all"
         >
           <LogIn className="w-3.5 h-3.5" />
           <span>Login / Sign up</span>
@@ -84,7 +84,7 @@ export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
         className={`relative w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
           hasNoRepos
             ? 'text-yellow hover:bg-yellow/10'
-            : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
+            : 'text-text-secondary hover:bg-text-secondary/10 hover:text-ink'
         }`}
       >
         <CircleUserRound className="w-3.5 h-3.5 shrink-0" />
@@ -102,7 +102,7 @@ export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
       className={`relative w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all ${
         hasNoRepos
           ? 'text-yellow hover:bg-yellow/10'
-          : 'text-text-secondary hover:bg-text-secondary/10 hover:text-white'
+          : 'text-text-secondary hover:bg-text-secondary/10 hover:text-ink'
       }`}
     >
       <Settings className="w-3.5 h-3.5" />

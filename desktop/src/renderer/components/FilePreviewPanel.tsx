@@ -81,23 +81,23 @@ export default function FilePreviewPanel() {
         onClick={handleClose}
       />
       <div className={`fixed right-0 top-0 h-full w-[70%] z-[60] flex flex-col bg-bg-secondary border-l-4 ${statusCfg.border} ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-line shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold border ${statusCfg.color}`}>
               {statusCfg.label}
             </span>
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium text-white truncate">{fileName}</span>
+              <span className="text-sm font-medium text-ink truncate">{fileName}</span>
               <span className="text-xs text-text-secondary truncate">{relativePath}</span>
             </div>
           </div>
           <div className="flex items-center gap-2 ml-3 shrink-0">
-            <span className="text-[10px] font-medium text-text-secondary bg-white/[0.06] border border-white/[0.08] rounded px-1.5 py-0.5">
+            <span className="text-[10px] font-medium text-text-secondary bg-surface border border-line-field rounded px-1.5 py-0.5">
               {extLabel}
             </span>
             <button
               onClick={handleClose}
-              className="p-1.5 rounded-md hover:bg-white/10 text-text-secondary hover:text-white transition-colors"
+              className="p-1.5 rounded-md hover:bg-surface-strong text-text-secondary hover:text-ink transition-colors"
             >
               <X size={16} />
             </button>

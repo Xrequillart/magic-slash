@@ -79,7 +79,7 @@ export function ToastContainer() {
                     <button
                       key={action.label}
                       onClick={() => { action.onClick(); removeToast(toast.id) }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-white/[0.06] border border-white/[0.15] rounded-lg hover:bg-white/[0.12] hover:text-white transition-all"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                     >
                       {action.icon}
                       {action.label}
@@ -90,7 +90,7 @@ export function ToastContainer() {
             </div>
             <button
               onClick={() => removeToast(toast.id)}
-              className="text-text-secondary hover:text-white transition-colors flex-shrink-0"
+              className="text-text-secondary hover:text-ink transition-colors flex-shrink-0"
             >
               <X className="w-4 h-4" />
             </button>

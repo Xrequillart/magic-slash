@@ -41,7 +41,7 @@ function formatDuration(fromTs: number, toTs: number): string {
 function RepoTag({ repo }: { repo: string }) {
   const name = repo.split('/').pop() ?? repo
   return (
-    <span className="text-xs text-text-secondary/60 bg-white/[0.04] border border-white/[0.06] px-1.5 py-0.5 rounded font-mono">
+    <span className="text-xs text-text-secondary/60 bg-surface-subtle border border-line-subtle px-1.5 py-0.5 rounded font-mono">
       {name}
     </span>
   )
@@ -50,12 +50,12 @@ function RepoTag({ repo }: { repo: string }) {
 function SingleEntryRow({ entry, isDimmed }: { entry: HistoryEntry; isDimmed: boolean }) {
   const config = ACTION_CONFIG[entry.action]
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] transition-all duration-200 min-w-0 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}>
+    <div className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-subtle border border-line-field transition-all duration-200 min-w-0 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}>
       <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${config.dot}`} />
       <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
         {formatTime(entry.timestamp)}
       </span>
-      <span className="text-sm font-medium text-white truncate min-w-0 flex-1">
+      <span className="text-sm font-medium text-ink truncate min-w-0 flex-1">
         {entry.agentName}
       </span>
       {entry.ticketId && (
@@ -138,7 +138,7 @@ export function HistoryPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-3 border-white/20 border-t-accent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-3 border-line-strong border-t-accent rounded-full animate-spin" />
       </div>
     )
   }
@@ -146,11 +146,11 @@ export function HistoryPage() {
   if (groups.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4">
-        <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+        <div className="p-4 rounded-2xl bg-surface-subtle border border-line-field">
           <Clock className="w-8 h-8 text-text-secondary/50" />
         </div>
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-white mb-1">No history yet</h3>
+          <h3 className="text-lg font-semibold text-ink mb-1">No history yet</h3>
           <p className="text-sm text-text-secondary">
             Actions will appear here as your agents work.
           </p>
@@ -177,14 +177,14 @@ export function HistoryPage() {
               <button
                 onClick={goToPrevDay}
                 disabled={isLastDay}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/[0.08] rounded-lg hover:bg-white/[0.04] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line-field rounded-lg hover:bg-surface-subtle hover:text-ink transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span>Older</span>
               </button>
 
               <div className="flex flex-col items-center gap-0.5">
-                <span className="text-sm font-medium text-white">{currentGroup.label}</span>
+                <span className="text-sm font-medium text-ink">{currentGroup.label}</span>
                 <span className="text-xs text-text-secondary/50">
                   {currentGroup.entries.length} {currentGroup.entries.length === 1 ? 'event' : 'events'}
                   {groups.length > 1 && ` · day ${dayIndex + 1} of ${groups.length}`}
@@ -194,7 +194,7 @@ export function HistoryPage() {
               <button
                 onClick={goToNextDay}
                 disabled={isFirstDay}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-white/[0.08] rounded-lg hover:bg-white/[0.04] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line-field rounded-lg hover:bg-surface-subtle hover:text-ink transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <span>Newer</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -234,16 +234,16 @@ export function HistoryPage() {
                       else expandedRefs.current.delete(groupId)
                     }}
                   >
-                    <div className={`rounded-lg bg-white/[0.04] border border-white/[0.08] transition-all duration-200 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}>
+                    <div className={`rounded-lg bg-surface-subtle border border-line-field transition-all duration-200 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}>
                       <button
                         onClick={() => toggleGroup(groupId)}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.06] transition-colors rounded-lg text-left min-w-0"
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface transition-colors rounded-lg text-left min-w-0"
                       >
                         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${lastConfig.dot}`} />
                         <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
                           {firstTime} → {lastTime}
                         </span>
-                        <span className="text-sm font-medium text-white truncate min-w-0 flex-1">
+                        <span className="text-sm font-medium text-ink truncate min-w-0 flex-1">
                           {tg.agentName}
                         </span>
                         {tg.ticketId && (
@@ -284,7 +284,7 @@ export function HistoryPage() {
                         return (
                           <div
                             key={entry.id}
-                            className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] overflow-hidden min-w-0"
+                            className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-surface-subtle border border-line-subtle overflow-hidden min-w-0"
                             style={{
                               animation: `${isClosing ? 'card-slide-in' : 'card-slide-out'} ${CARD_ANIM_MS}ms ease both`,
                               animationDelay: `${delay}ms`,

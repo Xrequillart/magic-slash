@@ -103,7 +103,7 @@ export function ActivityHeatmap({ heatmapData }: ActivityHeatmapProps) {
   }, [])
 
   return (
-    <div className="bg-white/[0.06] rounded-xl p-4">
+    <div className="bg-surface rounded-xl p-4">
       <div className="heatmap-container relative w-full">
         <svg
           viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -169,7 +169,7 @@ export function ActivityHeatmap({ heatmapData }: ActivityHeatmapProps) {
         {/* Tooltip */}
         {tooltip && (
           <div
-            className="fixed pointer-events-none bg-bg-secondary border border-white/[0.12] rounded-lg px-3 py-1.5 text-xs text-white shadow-lg whitespace-nowrap z-50"
+            className="fixed pointer-events-none bg-bg-secondary border border-line rounded-lg px-3 py-1.5 text-xs text-ink shadow-lg whitespace-nowrap z-50"
             style={{
               left: tooltip.x,
               top: tooltip.y,
