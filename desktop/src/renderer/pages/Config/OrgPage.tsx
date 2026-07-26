@@ -110,41 +110,63 @@ function OrganizationCard({
         {members.length === 0 ? (
           <div className="text-xs text-text-secondary/40 py-1">No members yet.</div>
         ) : (
-          <div className="space-y-1">
-            {members.map((m) => {
-              const isSelf = m.userId === currentUserId
-              const rowBusy = busyMember === m.userId
-              return (
-                <div key={m.userId} className="flex items-center justify-between gap-2 py-0.5">
-                  <span className="text-sm truncate flex-1 min-w-0">
-                    {m.email ?? m.userId}
-                    {isSelf && <span className="text-text-secondary/40"> (you)</span>}
-                  </span>
-                  {rowBusy ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-text-secondary/50" />
-                  ) : isAdmin ? (
-                    <div className="flex items-center gap-2">
-                      <RoleSelect value={m.role} onChange={(role) => onChangeRole(org.id, m.userId, role)} />
-                      {!isSelf && (
-                        <button
-                          onClick={() => onRemoveMember(org.id, m.userId)}
-                          className="flex items-center justify-center h-7 w-7 shrink-0 text-text-secondary/60 bg-white/[0.06] border border-white/10 rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all"
-                          title="Remove member"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+          <div className="-mx-1 overflow-x-auto">
+            <table className="w-full min-w-[22rem] border-collapse text-left">
+              {/* Headers are visually hidden: the rows read fine without them,
+                  but a screen reader still needs the columns named. */}
+              <thead className="sr-only">
+                <tr>
+                  <th scope="col">Member</th>
+                  <th scope="col">Role</th>
+                  {isAdmin && <th scope="col">Actions</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {members.map((m) => {
+                  const isSelf = m.userId === currentUserId
+                  const rowBusy = busyMember === m.userId
+                  return (
+                    <tr key={m.userId}>
+                      {/* max-w-0 lets a long email truncate instead of widening
+                          the column past the card. */}
+                      <td className="max-w-0 px-1 py-2">
+                        <span className="block truncate text-sm">
+                          {m.email ?? m.userId}
+                          {isSelf && <span className="text-text-secondary/40"> (you)</span>}
+                        </span>
+                      </td>
+                      <td className="w-px whitespace-nowrap px-1 py-2">
+                        {rowBusy ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-text-secondary/50" />
+                        ) : isAdmin ? (
+                          <RoleSelect value={m.role} onChange={(role) => onChangeRole(org.id, m.userId, role)} />
+                        ) : (
+                          <span className={`inline-flex items-center h-7 px-2 rounded-lg text-[11px] font-medium ${
+                            m.role === 'admin' ? 'bg-accent/15 text-accent' : 'bg-white/10 text-text-secondary'
+                          }`}>
+                            {m.role}
+                          </span>
+                        )}
+                      </td>
+                      {isAdmin && (
+                        <td className="w-px px-1 py-2">
+                          {/* Removing yourself is what "Leave organization" is for. */}
+                          {!isSelf && !rowBusy && (
+                            <button
+                              onClick={() => onRemoveMember(org.id, m.userId)}
+                              className="flex items-center justify-center h-7 w-7 shrink-0 text-text-secondary/60 bg-white/[0.06] border border-white/10 rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all"
+                              title="Remove member"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
                       )}
-                    </div>
-                  ) : (
-                    <span className={`flex items-center h-7 px-2 rounded-lg text-[11px] font-medium ${
-                      m.role === 'admin' ? 'bg-accent/15 text-accent' : 'bg-white/10 text-text-secondary'
-                    }`}>
-                      {m.role}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
