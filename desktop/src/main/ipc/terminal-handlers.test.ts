@@ -59,7 +59,7 @@ vi.mock('../usage/usage-events', () => ({
   recordUsageSnapshot: (...args: unknown[]) => recordUsageSnapshot(...args),
 }))
 
-vi.mock('../config/config', () => ({ readConfig: vi.fn(() => ({ repositories: {} })), CONFIG_DIR: '/tmp/magic-slash-test' }))
+vi.mock('../config/config', () => ({ readConfig: vi.fn(() => ({ repositories: {} })) }))
 vi.mock('../config/validation', () => ({ expandPath: (p: string) => p }))
 vi.mock('../config/repo-validation', () => ({ checkRepoPath: vi.fn(() => ({ valid: true })) }))
 vi.mock('../store/hydrate', () => ({ ensureHydrated: vi.fn(async () => {}) }))

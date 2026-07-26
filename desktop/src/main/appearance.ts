@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { BrowserWindow, nativeTheme } from 'electron'
 import { CONFIG_DIR } from './config/config'
+import { currentLanguage, setLanguage } from './i18n'
 import { clampZoom, DEFAULT_LANGUAGE, DEFAULT_THEME, DEFAULT_ZOOM, isValidLanguage, isValidTheme, nextZoom, THEME_APPEARANCE, type LanguageId, type ThemeId } from '../types'
 
 /**
@@ -36,7 +37,6 @@ interface StoredAppearance {
 
 let currentTheme_: ThemeId = DEFAULT_THEME
 let currentZoom_: number = DEFAULT_ZOOM
-let currentLanguage_: LanguageId = DEFAULT_LANGUAGE
 
 /**
  * Who to tell when the language changes. A local Set rather than a direct call
@@ -65,7 +65,7 @@ function persist(): void {
     if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true })
     fs.writeFileSync(
       APPEARANCE_FILE,
-      JSON.stringify({ theme: currentTheme_, zoom: currentZoom_, language: currentLanguage_ }, null, 2),
+      JSON.stringify({ theme: currentTheme_, zoom: currentZoom_, language: currentLanguage() }, null, 2),
     )
   } catch {
     // A cache that cannot be written costs a repaint at next launch, nothing more.
@@ -79,7 +79,7 @@ export function initAppearance(): void {
   currentZoom_ = clampZoom(stored.zoom)
   // Re-validated, not trusted: the file may have been written by a build that
   // knows a language this one does not.
-  currentLanguage_ = isValidLanguage(stored.language) ? stored.language : DEFAULT_LANGUAGE
+  setLanguage(isValidLanguage(stored.language) ? stored.language : DEFAULT_LANGUAGE)
   nativeTheme.themeSource = THEME_APPEARANCE[currentTheme_]
 }
 
@@ -91,10 +91,6 @@ export function currentZoom(): number {
   return currentZoom_
 }
 
-export function currentLanguage(): LanguageId {
-  return currentLanguage_
-}
-
 /**
  * Arguments handed to every window's preload, so the renderer knows the
  * appearance synchronously — before its first paint, and without a round trip.
@@ -103,7 +99,7 @@ export function appearanceArguments(): string[] {
   return [
     `--magic-theme=${currentTheme_}`,
     `--magic-zoom=${currentZoom_}`,
-    `--magic-language=${currentLanguage_}`,
+    `--magic-language=${currentLanguage()}`,
   ]
 }
 
@@ -170,8 +166,8 @@ export function onLanguageChanged(callback: () => void): () => void {
  */
 export function applyLanguage(preference: unknown): LanguageId {
   const language = isValidLanguage(preference) ? preference : DEFAULT_LANGUAGE
-  const changed = language !== currentLanguage_
-  currentLanguage_ = language
+  const changed = language !== currentLanguage()
+  setLanguage(language)
   persist()
   if (changed) {
     for (const listener of languageListeners) listener()
