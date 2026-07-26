@@ -43,6 +43,10 @@ module.exports = {
         'float-2': 'float2 12s ease-in-out infinite',
         'float-3': 'float3 11s ease-in-out infinite',
         'fade-in': 'fadeIn 0.2s ease',
+        // Settings page switch: shorter and shallower than fade-in, which is
+        // for something appearing over the app. Moving between pages should
+        // feel immediate, not like a panel opening.
+        'page-in': 'pageIn 0.18s ease-out',
         'slide-in': 'slideIn 0.3s ease',
         'slide-out': 'slideOut 0.3s ease forwards',
         'tada': 'tada 0.8s ease-in-out',
@@ -69,6 +73,10 @@ module.exports = {
         },
         fadeIn: {
           from: { opacity: 0, transform: 'translateY(10px)' },
+          to: { opacity: 1, transform: 'translateY(0)' },
+        },
+        pageIn: {
+          from: { opacity: 0, transform: 'translateY(6px)' },
           to: { opacity: 1, transform: 'translateY(0)' },
         },
         slideIn: {

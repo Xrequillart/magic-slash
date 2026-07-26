@@ -375,7 +375,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
   if (!repo) {
     return (
-      <div className="animate-fade-in text-center py-16">
+      <div className="text-center py-16">
         <p className="text-lg mb-4">Repository not found</p>
         <a href="#/" className="text-accent hover:underline">Back to repositories</a>
       </div>
@@ -446,8 +446,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
     includeTicketIdVal
   )
 
+  // No entrance animation of its own: the settings content pane already animates
+  // every page switch, and two nested slides would compound.
   return (
-    <div className="animate-fade-in">
+    <div>
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">

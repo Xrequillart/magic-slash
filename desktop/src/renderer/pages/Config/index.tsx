@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from 'react'
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
 import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Check, Loader2, Lock, CircleUserRound, SquareTerminal, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
@@ -184,6 +184,22 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   const isRepoRoute = route.page === 'repo'
   const railActiveTab = isRepoRoute ? 'repositories' : activeTab
   const contentTab = isRepoRoute ? null : activeTab
+
+  /**
+   * What the content pane is currently showing. Used as its React key, so
+   * moving between tabs — or between two repository pages — remounts the pane
+   * and replays its entrance animation. Without the key React would reuse the
+   * same element and the new page would simply appear.
+   */
+  const contentKey = isRepoRoute ? `repo:${route.params.name ?? ''}` : activeTab
+
+  // A page opens at its top. The pane is the scroll container and it survives
+  // the switch, so without this the next page inherits the previous page's
+  // offset — a short one can open already scrolled past its own heading.
+  const contentScrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    contentScrollRef.current?.scrollTo({ top: 0 })
+  }, [contentKey])
 
   const handleSelectTab = (tab: SettingsTab) => {
     setActiveTab(tab)
@@ -551,8 +567,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-4xl flex flex-col gap-6">
+      <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-6">
+        <div key={contentKey} className="max-w-4xl flex flex-col gap-6 animate-page-in">
 
       {/* Repository detail — sub-page of the Repositories tab */}
       {isRepoRoute && <RepoPage repoName={route.params.name || ''} />}
