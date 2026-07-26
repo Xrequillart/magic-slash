@@ -2,22 +2,24 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { BrowserWindow, nativeTheme } from 'electron'
 import { CONFIG_DIR } from './config/config'
-import { clampZoom, DEFAULT_THEME, DEFAULT_ZOOM, isValidTheme, nextZoom, THEME_APPEARANCE, type ThemeId } from '../types'
+import { clampZoom, DEFAULT_LANGUAGE, DEFAULT_THEME, DEFAULT_ZOOM, isValidLanguage, isValidTheme, nextZoom, THEME_APPEARANCE, type LanguageId, type ThemeId } from '../types'
 
 /**
- * How the app looks on this machine: the theme, and the interface scale.
+ * How the app looks on this machine: the theme, the interface scale, and the
+ * interface language.
  *
- * Both are mirrored to a file here, for the same reason. The cloud owns the
- * theme like every other setting, but it only arrives once the user is
- * authenticated and the config has hydrated — several seconds after the window
- * exists. Opening in the wrong theme and repainting is worse than a file, so the
- * last known choice is kept next to the session (same directory, same idea as
- * cloud-session.enc) and read before anything is shown.
+ * All three are mirrored to a file here, for the same reason. The cloud owns the
+ * theme and the language like every other setting, but they only arrive once the
+ * user is authenticated and the config has hydrated — several seconds after the
+ * window exists. Opening in the wrong theme (or in English) and repainting is
+ * worse than a file, so the last known choice is kept next to the session (same
+ * directory, same idea as cloud-session.enc) and read before anything is shown.
  *
  * The main process has to know them anyway, not just the renderer:
  * `nativeTheme.themeSource` colours the traffic lights and picks the macOS
- * vibrancy material behind a transparent window, and the zoom factor belongs to
- * a window's webContents.
+ * vibrancy material behind a transparent window, the zoom factor belongs to a
+ * window's webContents, and the menus, the tray and the notifications are
+ * composed here with no renderer involved.
  *
  * The zoom is local ONLY, with no cloud column: it compensates for a particular
  * display, so following the account onto a laptop with a different screen would
@@ -29,10 +31,19 @@ const APPEARANCE_FILE = path.join(CONFIG_DIR, 'appearance.json')
 interface StoredAppearance {
   theme?: unknown
   zoom?: unknown
+  language?: unknown
 }
 
 let currentTheme_: ThemeId = DEFAULT_THEME
 let currentZoom_: number = DEFAULT_ZOOM
+let currentLanguage_: LanguageId = DEFAULT_LANGUAGE
+
+/**
+ * Who to tell when the language changes. A local Set rather than a direct call
+ * into the menu and tray modules: those import this one (for
+ * `appearanceArguments`), and reaching back would close the circle.
+ */
+const languageListeners = new Set<() => void>()
 
 /**
  * The window the zoom applies to. The tray popover and quick launch are sized in
@@ -52,7 +63,10 @@ function read(): StoredAppearance {
 function persist(): void {
   try {
     if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true })
-    fs.writeFileSync(APPEARANCE_FILE, JSON.stringify({ theme: currentTheme_, zoom: currentZoom_ }, null, 2))
+    fs.writeFileSync(
+      APPEARANCE_FILE,
+      JSON.stringify({ theme: currentTheme_, zoom: currentZoom_, language: currentLanguage_ }, null, 2),
+    )
   } catch {
     // A cache that cannot be written costs a repaint at next launch, nothing more.
   }
@@ -63,6 +77,9 @@ export function initAppearance(): void {
   const stored = read()
   currentTheme_ = isValidTheme(stored.theme) ? stored.theme : DEFAULT_THEME
   currentZoom_ = clampZoom(stored.zoom)
+  // Re-validated, not trusted: the file may have been written by a build that
+  // knows a language this one does not.
+  currentLanguage_ = isValidLanguage(stored.language) ? stored.language : DEFAULT_LANGUAGE
   nativeTheme.themeSource = THEME_APPEARANCE[currentTheme_]
 }
 
@@ -74,12 +91,20 @@ export function currentZoom(): number {
   return currentZoom_
 }
 
+export function currentLanguage(): LanguageId {
+  return currentLanguage_
+}
+
 /**
  * Arguments handed to every window's preload, so the renderer knows the
  * appearance synchronously — before its first paint, and without a round trip.
  */
 export function appearanceArguments(): string[] {
-  return [`--magic-theme=${currentTheme_}`, `--magic-zoom=${currentZoom_}`]
+  return [
+    `--magic-theme=${currentTheme_}`,
+    `--magic-zoom=${currentZoom_}`,
+    `--magic-language=${currentLanguage_}`,
+  ]
 }
 
 /** Register the window the interface scale applies to. */
@@ -126,6 +151,33 @@ export function applyZoom(value: unknown): number {
   // value from here, and the menu and its ⌘+ / ⌘− change it from outside React.
   if (changed) broadcast('zoom:changed', zoom)
   return zoom
+}
+
+/**
+ * Subscribe to language changes, for the native chrome the main process owns
+ * (the application menu and the tray menu, both built from strings). Returns an
+ * unsubscribe, matching `onUpdateStatusChange` in main/updater.ts.
+ */
+export function onLanguageChanged(callback: () => void): () => void {
+  languageListeners.add(callback)
+  return () => languageListeners.delete(callback)
+}
+
+/**
+ * Apply a language everywhere: local cache, the native chrome via the listeners,
+ * and every open window (the tray popover and quick launch are long-lived and
+ * would otherwise keep the language they were created with).
+ */
+export function applyLanguage(preference: unknown): LanguageId {
+  const language = isValidLanguage(preference) ? preference : DEFAULT_LANGUAGE
+  const changed = language !== currentLanguage_
+  currentLanguage_ = language
+  persist()
+  if (changed) {
+    for (const listener of languageListeners) listener()
+    broadcast('language:changed', language)
+  }
+  return language
 }
 
 /** One step in or out, for the View menu and its keyboard shortcuts. */

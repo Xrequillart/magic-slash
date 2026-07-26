@@ -6,6 +6,7 @@ import { useOrgUsageStats } from '../../hooks/useOrgUsageStats'
 import { useOrg } from '../../hooks/useOrg'
 import { ActivityHeatmap } from '../History/ActivityHeatmap'
 import { aggregateUsageTotals, aggregateUsageByMember, computeUsageHeatmap, formatUsd } from '../../utils/usageStats'
+import { useLocale } from '../../i18n'
 
 function formatDuration(ms: number): string {
   const totalMin = Math.round(ms / 60000)
@@ -35,6 +36,7 @@ function StatTile({ icon: Icon, label, value }: { icon: typeof Coins; label: str
 function UsageStatsSection() {
   const { rows, capped, loading } = useOrgUsageStats()
   const { members } = useOrg()
+  const locale = useLocale()
 
   const emailByOwner = useMemo(() => {
     const map = new Map<string, string>()
@@ -76,10 +78,10 @@ function UsageStatsSection() {
 
           {/* Summary tiles */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <StatTile icon={Coins} label="Total cost" value={formatUsd(totals.costUsd)} />
-            <StatTile icon={Activity} label="Sessions" value={totals.sessions.toLocaleString('en-US')} />
-            <StatTile icon={Plus} label="Lines added" value={totals.linesAdded.toLocaleString('en-US')} />
-            <StatTile icon={Minus} label="Lines removed" value={totals.linesRemoved.toLocaleString('en-US')} />
+            <StatTile icon={Coins} label="Total cost" value={formatUsd(totals.costUsd, locale)} />
+            <StatTile icon={Activity} label="Sessions" value={totals.sessions.toLocaleString(locale)} />
+            <StatTile icon={Plus} label="Lines added" value={totals.linesAdded.toLocaleString(locale)} />
+            <StatTile icon={Minus} label="Lines removed" value={totals.linesRemoved.toLocaleString(locale)} />
             <StatTile icon={Clock} label="Total duration" value={formatDuration(totals.durationMs)} />
           </div>
 
@@ -98,7 +100,7 @@ function UsageStatsSection() {
                   <span className="text-xs text-text-secondary/60">
                     {m.sessions} {m.sessions === 1 ? 'session' : 'sessions'}
                   </span>
-                  <span className="text-ink/90 font-medium tabular-nums">{formatUsd(m.costUsd)}</span>
+                  <span className="text-ink/90 font-medium tabular-nums">{formatUsd(m.costUsd, locale)}</span>
                 </div>
               </div>
             ))}

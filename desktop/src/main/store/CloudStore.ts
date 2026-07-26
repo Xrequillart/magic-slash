@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Agent, AppInstallationInfo, Config, HistoryEntry, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SkillInvocationInput, SpotlightConfig, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
-import { isValidTheme } from '../../types'
+import { isValidLanguage, isValidTheme } from '../../types'
 import { isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
@@ -97,13 +97,15 @@ interface UserSettingsRow {
   launch_mode: string | null
   atlassian_integration_enabled: boolean | null
   theme: string | null
+  language: string | null
 }
 
 const USER_SETTINGS_COLUMNS =
   'history_enabled, usage_card_enabled, usage_card_minimized, usage_logs_enabled, ' +
   'daily_digest_enabled, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
-  'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme'
+  'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
+  'language'
 
 /**
  * Config keys that now live in `user_settings`. Stripped from the org-scoped
@@ -125,6 +127,7 @@ const SETTINGS_KEYS = [
   'launchMode',
   'integrations',
   'theme',
+  'language',
 ] as const
 
 /** `undefined` (key absent from Config) → `null` (column unset). */
@@ -156,6 +159,7 @@ function configToSettingsRow(config: Config): UserSettingsRow {
     launch_mode: orNull(config.launchMode),
     atlassian_integration_enabled: orNull(config.integrations?.atlassian),
     theme: orNull(config.theme),
+    language: orNull(config.language),
   }
 }
 
@@ -178,6 +182,9 @@ function applySettingsRow(config: Config, row: UserSettingsRow): void {
   // Re-validated rather than trusted: a newer version may have stored a theme
   // this build has never heard of, and it must read as "unset", not as a theme.
   if (isValidTheme(row.theme)) config.theme = row.theme
+  // Same treatment for the interface language: an unknown one reads as "unset",
+  // so this build falls back to English rather than to a locale it cannot show.
+  if (isValidLanguage(row.language)) config.language = row.language
 
   const prReviews: NonNullable<Config['prReviews']> = {}
   if (isSet(row.pr_reviews_enabled)) prReviews.enabled = row.pr_reviews_enabled

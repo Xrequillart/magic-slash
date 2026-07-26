@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { UsageStatRow } from '../../types'
-import { aggregateUsageTotals, aggregateUsageByMember, computeUsageHeatmap } from './usageStats'
+import { aggregateUsageTotals, aggregateUsageByMember, computeUsageHeatmap, formatUsd } from './usageStats'
 
 function row(overrides: Partial<UsageStatRow> = {}): UsageStatRow {
   return {
@@ -69,5 +69,24 @@ describe('computeUsageHeatmap', () => {
   it('skips rows with an unparseable timestamp', () => {
     const map = computeUsageHeatmap([row({ occurredAt: 'not-a-date' })])
     expect(map.size).toBe(0)
+  })
+})
+
+describe('formatUsd', () => {
+  it('collapses sub-cent amounts and shows cents otherwise', () => {
+    expect(formatUsd(0)).toBe('$0.00')
+    expect(formatUsd(0.004)).toBe('<$0.01')
+    expect(formatUsd(12.5)).toBe('$12.50')
+  })
+
+  it('groups thousands the way the active locale does', () => {
+    // Not cosmetic: a French reader reads "$12,500" as twelve dollars fifty.
+    // French uses a narrow no-break space (U+202F) as the group separator.
+    expect(formatUsd(12_500, 'en-US')).toBe('$12,500')
+    expect(formatUsd(12_500, 'fr-FR')).toBe('$12\u202f500')
+  })
+
+  it('defaults to en-US when no locale is passed', () => {
+    expect(formatUsd(12_500)).toBe('$12,500')
   })
 })

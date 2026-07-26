@@ -4,6 +4,7 @@ import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from 
 import { VSCodeIcon } from '../../components/agent-info-sidebar/icons'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useStore } from '../../store'
+import { useLocale } from '../../i18n'
 
 const TOKEN_BUDGET = 4000
 const CHAR_BUDGET = 16000
@@ -11,13 +12,16 @@ const CHARS_PER_TOKEN = 4
 
 function BudgetBar({ label, value, max, unit, barColor }: { label: string; value: number; max: number; unit: string; barColor: string }) {
   const percentage = Math.min(Math.round((value / max) * 100), 100)
+  // A bare toLocaleString() follows the OS locale, which is not the language the
+  // app is showing — a French UI on an English machine would group with commas.
+  const locale = useLocale()
 
   return (
     <div className="flex-1 px-4 py-3 rounded-xl bg-surface-subtle border border-line-field">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-text-secondary/60">{label}</span>
         <span className="text-xs font-medium text-text-secondary">
-          {value.toLocaleString()} / {max.toLocaleString()} {unit}
+          {value.toLocaleString(locale)} / {max.toLocaleString(locale)} {unit}
         </span>
       </div>
       <div className="w-full h-2 rounded-full bg-surface overflow-hidden">

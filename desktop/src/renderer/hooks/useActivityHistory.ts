@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import type { HistoryEntry, TicketEventGroup } from '../../types'
+import { useLocale, useT, type Translate } from '../i18n'
 
 export interface HistoryGroup {
   label: string
@@ -51,7 +52,12 @@ function getDateKey(timestamp: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function getDayLabel(dateKey: string): string {
+/**
+ * "Today — 12 June 2026", or just the date for any older day. The locale and the
+ * translator are passed in rather than read here: this is a plain function, and
+ * both must be the ones current at render time, not at import time.
+ */
+function getDayLabel(dateKey: string, locale: string, t: Translate): string {
   const today = new Date()
   const todayKey = getDateKey(today.getTime())
 
@@ -61,10 +67,10 @@ function getDayLabel(dateKey: string): string {
 
   const [year, month, day] = dateKey.split('-').map(Number)
   const d = new Date(year, month - 1, day)
-  const fullDate = d.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
+  const fullDate = d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
 
-  if (dateKey === todayKey) return `Today — ${fullDate}`
-  if (dateKey === yesterdayKey) return `Yesterday — ${fullDate}`
+  if (dateKey === todayKey) return t('history.today', { date: fullDate })
+  if (dateKey === yesterdayKey) return t('history.yesterday', { date: fullDate })
 
   return fullDate
 }
@@ -73,6 +79,8 @@ export function useActivityHistory() {
   const [entries, setEntries] = useState<HistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const locale = useLocale()
+  const t = useT()
 
   const loadHistory = useCallback(async () => {
     try {
@@ -112,13 +120,13 @@ export function useActivityHistory() {
     return sortedKeys.map(key => {
       const sorted = grouped.get(key)!.sort((a, b) => b.timestamp - a.timestamp)
       return {
-        label: getDayLabel(key),
+        label: getDayLabel(key, locale, t),
         date: key,
         entries: sorted,
         ticketGroups: groupConsecutiveByTicket(sorted),
       }
     })
-  }, [entries])
+  }, [entries, locale, t])
 
   return { entries, groups, loading, error, refresh: loadHistory }
 }

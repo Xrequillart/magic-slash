@@ -3,6 +3,7 @@ import { getIconForState, type AggregateState } from './tray-icons'
 import { AgentStateAggregator } from './agent-state-aggregator'
 import { getUpdateStatus, onUpdateStatusChange, installUpdate, type UpdateStatus } from '../updater'
 import { autoUpdater } from 'electron-updater'
+import { t } from '../i18n'
 
 const GITHUB_URL = 'https://github.com/xrequillart/magic-slash'
 const DOCS_URL = 'https://magic-slash.io'
@@ -63,7 +64,12 @@ export class TrayManager {
     callback?.(win)
   }
 
-  private rebuildMenu(): void {
+  /**
+   * Rebuild the menu from the current agent state and the current strings. Public
+   * because a language switch has to trigger one from outside (see main/index.ts);
+   * everything else that invalidates it is an event this class owns.
+   */
+  rebuildMenu(): void {
     if (!this.tray) return
 
     const summaries = this.aggregator.getAgentSummaries()
@@ -81,7 +87,7 @@ export class TrayManager {
           { type: 'separator' as const },
         ]
       : [
-          { label: 'No active agents', enabled: false },
+          { label: t('tray.noAgents'), enabled: false },
           { type: 'separator' as const },
         ]
 
@@ -89,18 +95,18 @@ export class TrayManager {
 
     const menu = Menu.buildFromTemplate([
       {
-        label: `Magic Slash v${app.getVersion()}`,
+        label: t('tray.version', { version: app.getVersion() }),
         enabled: false,
       },
       updateItem,
       { type: 'separator' },
       ...agentItems,
       {
-        label: 'Show Window',
+        label: t('tray.showWindow'),
         click: () => this.showMainWindow(),
       },
       {
-        label: 'Settings',
+        label: t('tray.settings'),
         click: () => {
           this.showMainWindow(win => {
             win.webContents.send('tray:openSettings')
@@ -109,20 +115,20 @@ export class TrayManager {
       },
       { type: 'separator' },
       {
-        label: 'Changelog',
+        label: t('tray.changelog'),
         click: () => shell.openExternal(`${GITHUB_URL}/releases/tag/v${app.getVersion()}`),
       },
       {
-        label: 'Documentation',
+        label: t('tray.documentation'),
         click: () => shell.openExternal(DOCS_URL),
       },
       {
-        label: 'GitHub',
+        label: t('tray.github'),
         click: () => shell.openExternal(GITHUB_URL),
       },
       { type: 'separator' },
       {
-        label: 'Quit Magic Slash',
+        label: t('tray.quit'),
         click: () => {
           this.onQuit()
         },
@@ -137,27 +143,27 @@ export class TrayManager {
 
     switch (status.type) {
       case 'checking':
-        return { label: 'Checking for updates…', enabled: false }
+        return { label: t('tray.update.checking'), enabled: false }
       case 'available':
-        return { label: `Downloading v${status.version}…`, enabled: false }
+        return { label: t('tray.update.downloadingVersion', { version: status.version }), enabled: false }
       case 'downloading': {
         const pct = Math.round(status.progress)
-        return { label: `Downloading update… ${pct}%`, enabled: false }
+        return { label: t('tray.update.downloadingProgress', { percent: pct }), enabled: false }
       }
       case 'downloaded':
         return {
-          label: `↻ Restart to update (v${status.version})`,
+          label: t('tray.update.restart', { version: status.version }),
           click: () => installUpdate(),
         }
       case 'error':
         return {
-          label: 'Check for Updates (last check failed)',
+          label: t('tray.update.checkFailed'),
           click: () => { autoUpdater.checkForUpdates().catch(() => {}) },
         }
       case 'not-available':
       default:
         return {
-          label: 'Check for Updates',
+          label: t('tray.update.check'),
           click: () => { autoUpdater.checkForUpdates().catch(() => {}) },
         }
     }

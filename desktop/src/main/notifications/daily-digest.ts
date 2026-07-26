@@ -1,4 +1,5 @@
 import { readConfig } from '../config/config'
+import { t } from '../i18n'
 import { getStore } from '../store/Store'
 
 // ---------------------------------------------------------------------------
@@ -74,7 +75,7 @@ export class DailyDigestScheduler {
       if (readConfig().dailyDigest?.enabled !== true) return
       const summary = await this.composeSummary()
       if (summary) {
-        this.showNotification('Your team yesterday', summary)
+        this.showNotification(t('digest.title'), summary)
       }
     } catch (error) {
       console.error('[daily-digest] failed to compose/fire digest:', error)
@@ -127,17 +128,20 @@ export class DailyDigestScheduler {
 
     if (mergedPRs === 0 && ticketsDone === 0 && sessions === 0) return null
 
+    // One catalogue entry per plural form rather than an English "s" suffix:
+    // the break is not the same in every language, and French agreement cannot be
+    // assembled from a suffix at all.
     const parts: string[] = []
-    if (mergedPRs > 0) parts.push(`shipped ${mergedPRs} PR${mergedPRs === 1 ? '' : 's'}`)
-    if (ticketsDone > 0) parts.push(`moved ${ticketsDone} ticket${ticketsDone === 1 ? '' : 's'} to Done`)
-    if (sessions > 0) parts.push(`ran ${sessions} session${sessions === 1 ? '' : 's'}`)
+    if (mergedPRs > 0) parts.push(t(mergedPRs === 1 ? 'digest.prs.one' : 'digest.prs.other', { count: mergedPRs }))
+    if (ticketsDone > 0) parts.push(t(ticketsDone === 1 ? 'digest.tickets.one' : 'digest.tickets.other', { count: ticketsDone }))
+    if (sessions > 0) parts.push(t(sessions === 1 ? 'digest.sessions.one' : 'digest.sessions.other', { count: sessions }))
 
-    return `Yesterday your team ${joinParts(parts)}.`
+    return t('digest.sentence', { parts: joinParts(parts) })
   }
 }
 
-/** "a", "a and b", "a, b and c". */
+/** "a", "a and b", "a, b and c" — with the separators the active language uses. */
 function joinParts(parts: string[]): string {
   if (parts.length <= 1) return parts[0] ?? ''
-  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+  return parts.slice(0, -1).join(t('digest.list.separator')) + t('digest.list.last') + parts[parts.length - 1]
 }

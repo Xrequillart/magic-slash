@@ -642,6 +642,7 @@ const emptySettingsRow = {
   launch_mode: null,
   atlassian_integration_enabled: null,
   theme: null,
+  language: null,
 }
 
 describe('user settings', () => {
@@ -765,6 +766,34 @@ describe('user settings', () => {
     expect((await new CloudStore().loadConfig())?.theme).toBe('light')
   })
 
+  it('ignores an interface language a newer build invented', async () => {
+    // The column takes any two-letter code so a new language needs no migration,
+    // which makes this the second setting a client can meet unknown.
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: null, error: null },
+      repositories: { data: [], error: null },
+      repository_paths: { data: [], error: null },
+      user_settings: { data: { ...emptySettingsRow, language: 'de' }, error: null },
+    })
+    h.state.client = client
+
+    expect(await new CloudStore().loadConfig()).not.toHaveProperty('language')
+  })
+
+  it('reads back an interface language it knows', async () => {
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: null, error: null },
+      repositories: { data: [], error: null },
+      repository_paths: { data: [], error: null },
+      user_settings: { data: { ...emptySettingsRow, language: 'fr' }, error: null },
+    })
+    h.state.client = client
+
+    expect((await new CloudStore().loadConfig())?.language).toBe('fr')
+  })
+
   it('upserts settings keyed by user_id, mapping absent keys to NULL', async () => {
     const { client, upserts } = makeClient({
       memberships: membershipsOk,
@@ -803,6 +832,7 @@ describe('user settings', () => {
       launch_mode: null,
       atlassian_integration_enabled: null,
       theme: null,
+      language: null,
     })
   })
 

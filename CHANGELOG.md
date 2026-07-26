@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Desktop**: Make the interface themeable with eight light and dark themes
 - **Desktop**: Add an interface scale setting
+- **Desktop**: Add an application language setting (English / French)
 - **Desktop**: Animate page changes in the settings
 - **Desktop**: Animate modals when they close
 - Restrict team repository settings to org admins and the repo creator

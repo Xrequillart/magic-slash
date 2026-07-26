@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { useLocale } from '../../i18n'
 
 interface ActivityHeatmapProps {
   heatmapData: Map<string, number>
@@ -12,13 +13,14 @@ const DAYS = 7
 const LABEL_WIDTH = 32
 const HEADER_HEIGHT = 16
 
-const DAY_LABELS: { row: number; label: string }[] = [
-  { row: 1, label: 'Mon' },
-  { row: 3, label: 'Wed' },
-  { row: 5, label: 'Fri' },
-]
+// Which grid rows carry a label — every other weekday, so they don't collide.
+// Row 0 is Monday. The NAMES are not here: they depend on the language, and this
+// is module scope, so anything derived here would freeze at the boot language.
+const DAY_LABEL_ROWS = [1, 3, 5]
 
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+// A week and a year to read names off. Any Monday-starting week and any year with
+// twelve months will do; 1 Jan 2024 happens to be a Monday.
+const REFERENCE_MONDAY = new Date(2024, 0, 1)
 
 const ACCENT = '#6366f1'
 const EMPTY_FILL = '#1c1c1f'
@@ -29,10 +31,6 @@ function getCellColor(count: number): string {
   if (count === 2) return `${ACCENT}4d` // ~0.3 opacity
   if (count <= 4) return `${ACCENT}8c` // ~0.55 opacity
   return `${ACCENT}d9` // ~0.85 opacity
-}
-
-function formatDateLabel(date: Date): string {
-  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
 }
 
 function toDateKey(date: Date): string {
@@ -48,6 +46,32 @@ interface TooltipState {
 
 export function ActivityHeatmap({ heatmapData }: ActivityHeatmapProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const locale = useLocale()
+
+  // Derived in the render path, not at module scope: a language switch must
+  // relabel the axes, and Intl gives the abbreviations the locale actually uses
+  // rather than a hand-written English list.
+  const dayLabels = useMemo(() => {
+    const format = new Intl.DateTimeFormat(locale, { weekday: 'short' })
+    return DAY_LABEL_ROWS.map((row) => {
+      const day = new Date(REFERENCE_MONDAY)
+      day.setDate(day.getDate() + row)
+      return { row, label: format.format(day) }
+    })
+  }, [locale])
+
+  const monthNames = useMemo(() => {
+    const format = new Intl.DateTimeFormat(locale, { month: 'short' })
+    return Array.from({ length: 12 }, (_, m) => format.format(new Date(2024, m, 1)))
+  }, [locale])
+
+  // Held rather than built per call: every one of the 364+ cells has its own
+  // mouseenter, and a `toLocaleDateString` there would resolve the locale and
+  // construct a formatter on each one.
+  const dateFormat = useMemo(
+    () => new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric' }),
+    [locale],
+  )
 
   // Build grid: right-aligned to today, spanning from the earliest entry
   const today = new Date()
@@ -80,7 +104,7 @@ export function ActivityHeatmap({ heatmapData }: ActivityHeatmapProps) {
     cellDate.setDate(cellDate.getDate() + w * 7)
     const month = cellDate.getMonth()
     if (month !== lastMonth) {
-      monthLabels.push({ week: w, label: MONTH_NAMES[month] })
+      monthLabels.push({ week: w, label: monthNames[month] })
       lastMonth = month
     }
   }
@@ -93,10 +117,10 @@ export function ActivityHeatmap({ heatmapData }: ActivityHeatmapProps) {
     setTooltip({
       x: rect.left + CELL_SIZE / 2,
       y: rect.top - 8,
-      date: formatDateLabel(date),
+      date: dateFormat.format(date),
       count,
     })
-  }, [])
+  }, [dateFormat])
 
   const handleMouseLeave = useCallback(() => {
     setTooltip(null)
@@ -124,7 +148,7 @@ export function ActivityHeatmap({ heatmapData }: ActivityHeatmapProps) {
           ))}
 
           {/* Day labels */}
-          {DAY_LABELS.map(({ row, label }) => (
+          {dayLabels.map(({ row, label }) => (
             <text
               key={`day-${row}`}
               x={0}

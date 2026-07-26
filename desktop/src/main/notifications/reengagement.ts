@@ -1,4 +1,5 @@
 import type { OrgAgent, OrgAgentChange } from '../../types'
+import { t } from '../i18n'
 import { addOrgAgentChangeListener } from '../cloud/realtime'
 import { loadSession } from '../cloud/session-store'
 import { getStore } from '../store/Store'
@@ -95,8 +96,8 @@ export function setupReengagementNotifications(
       const isNewPickup = !prev || prev.ownerId !== agent.ownerId || prev.ticketId !== agent.ticketId
       if (isNewPickup && cooldownOk(`pickup:${agent.ticketId}:${agent.ownerId}`)) {
         showNotification(
-          `A colleague picked up ${agent.ticketId}`,
-          `A teammate is now working on ${agent.ticketId} — you also have an agent on it.`,
+          t('notification.pickup.title', { ticket: agent.ticketId }),
+          t('notification.pickup.body', { ticket: agent.ticketId }),
         )
       }
     }
@@ -111,8 +112,8 @@ export function setupReengagementNotifications(
         if (wasAlreadyChanges) continue
         if (cooldownOk(`changes:${review.prUrl ?? review.repo}`)) {
           showNotification(
-            'Changes requested on your PR',
-            `${agent.ticketId ?? agent.name}: a reviewer requested changes.`,
+            t('notification.changesRequested.title'),
+            t('notification.changesRequested.body', { subject: agent.ticketId ?? agent.name }),
           )
         }
       }

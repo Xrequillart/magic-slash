@@ -23,6 +23,7 @@ import {
   updateSplitActive,
   updateLaunchMode,
   updateTheme,
+  updateLanguage,
   updateUsageLogsEnabled,
   updateDailyDigestEnabled,
   setIntegration,
@@ -31,8 +32,8 @@ import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { repairConfig } from '../config/migrate'
 import { isValidSpotlightShortcut, isValidLaunchMode } from '../config/defaults'
-import { isValidTheme } from '../../types'
-import { applyTheme } from '../appearance'
+import { isValidLanguage, isValidTheme } from '../../types'
+import { applyLanguage, applyTheme } from '../appearance'
 import { validateConfig } from '../config/schema-validator'
 import {
   validateRepoName,
@@ -322,6 +323,18 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
     // open window (tray popover, quick launch) follow immediately.
     const config = updateTheme(theme)
     applyTheme(theme)
+    return { config }
+  })
+
+  ipcMain.handle('config:updateLanguage', async (_event, { language }: { language: string }) => {
+    if (!isValidLanguage(language)) {
+      throw new Error(`Invalid language: '${language}'.`)
+    }
+    // Same two destinations as the theme: the cloud so the choice follows the
+    // user, and the main process so the menus, the tray, the local cache and
+    // every open window switch immediately.
+    const config = updateLanguage(language)
+    applyLanguage(language)
     return { config }
   })
 

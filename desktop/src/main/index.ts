@@ -24,7 +24,8 @@ import { AgentStateAggregator } from './tray/agent-state-aggregator'
 import { destroyPopover } from './windows/popover-window'
 import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
 import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
-import { initAppearance, appearanceArguments, applyZoom, setZoomWindow, stepZoom } from './appearance'
+import { initAppearance, appearanceArguments, applyZoom, onLanguageChanged, setZoomWindow, stepZoom } from './appearance'
+import { t } from './i18n'
 import { setupProfileHandlers } from './ipc/profile-handlers'
 import { setupUsageHandlers } from './ipc/usage-handlers'
 import { setupAuthHandlers } from './ipc/auth-handlers'
@@ -68,12 +69,12 @@ function createMenu() {
       : []),
     // File menu - without Cmd+W close window
     {
-      label: 'File',
+      label: t('menu.file'),
       submenu: [isMac ? { role: 'close' as const, accelerator: '' } : { role: 'quit' as const }],
     },
     // Edit menu
     {
-      label: 'Edit',
+      label: t('menu.edit'),
       submenu: [
         { role: 'undo' as const },
         { role: 'redo' as const },
@@ -86,7 +87,7 @@ function createMenu() {
     },
     // View menu
     {
-      label: 'View',
+      label: t('menu.view'),
       submenu: [
         { role: 'reload' as const },
         { role: 'forceReload' as const },
@@ -95,16 +96,16 @@ function createMenu() {
         { type: 'separator' as const },
         // Not the built-in zoom roles: those change the factor behind the app's
         // back, so nothing would be saved and Settings would show a stale value.
-        { label: 'Actual Size', accelerator: 'CmdOrCtrl+0', click: () => applyZoom(1) },
-        { label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', click: () => stepZoom(1) },
-        { label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', click: () => stepZoom(-1) },
+        { label: t('menu.actualSize'), accelerator: 'CmdOrCtrl+0', click: () => applyZoom(1) },
+        { label: t('menu.zoomIn'), accelerator: 'CmdOrCtrl+Plus', click: () => stepZoom(1) },
+        { label: t('menu.zoomOut'), accelerator: 'CmdOrCtrl+-', click: () => stepZoom(-1) },
         { type: 'separator' as const },
         { role: 'togglefullscreen' as const },
       ],
     },
     // Window menu
     {
-      label: 'Window',
+      label: t('menu.window'),
       submenu: [
         { role: 'minimize' as const },
         { role: 'zoom' as const },
@@ -297,7 +298,7 @@ function setupHandlers() {
   ipcMain.handle('dialog:openFolder', async () => {
     const result = await dialog.showOpenDialog(mainWindow!, {
       properties: ['openDirectory'],
-      title: 'Select a repository folder'
+      title: t('dialog.selectRepository')
     })
 
     if (result.canceled || result.filePaths.length === 0) {
@@ -393,6 +394,15 @@ app.whenReady().then(async () => {
 
   // Create custom menu (removes Cmd+W close window behavior)
   createMenu()
+
+  // The native chrome is built from strings, so it has to be rebuilt when the
+  // language changes — whether from Settings or from cloud hydration. Closures,
+  // not direct calls: the tray does not exist yet (it is created below, after the
+  // window), and `trayManager` is still null at this point.
+  onLanguageChanged(() => {
+    createMenu()
+    trayManager?.rebuildMenu()
+  })
 
   // Setup auto-updater handlers
   setupAutoUpdater()

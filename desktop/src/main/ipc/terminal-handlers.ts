@@ -1,5 +1,7 @@
 import os from 'os'
 import { ipcMain, BrowserWindow } from 'electron'
+// Aliased: `t` is already the local name for a terminal throughout this file.
+import { t as translate } from '../i18n'
 import {
   createTerminal,
   launchClaude,
@@ -164,8 +166,8 @@ function createTerminalCallbacks(id: string, name: string) {
         maybeShowNotification(
           id,
           displayName,
-          'Claude Code needs attention',
-          `Agent "${displayName}" is waiting for your input`
+          translate('notification.waiting.title'),
+          translate('notification.waiting.body', { name: displayName })
         )
         addHistoryEntry({
           agentId: id,
@@ -181,8 +183,8 @@ function createTerminalCallbacks(id: string, name: string) {
         maybeShowNotification(
           id,
           displayName,
-          'Task completed',
-          `Agent "${displayName}" has finished`
+          translate('notification.completed.title'),
+          translate('notification.completed.body', { name: displayName })
         )
         addHistoryEntry({
           agentId: id,
