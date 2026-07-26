@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.53.0] - 2026-07-26
+
+### Added
+
+- **Desktop**: Make the interface themeable with eight light and dark themes
+- **Desktop**: Add an interface scale setting
+- **Desktop**: Animate page changes in the settings
+- **Desktop**: Animate modals when they close
+- Restrict team repository settings to org admins and the repo creator
+- **Webapp**: Build out the dashboard, account, organization and repository pages
+
+### Changed
+
+- **Desktop**: Lay out the organization members as a table
+- **Desktop**: Align the repository page padding with the other settings tabs
+
+### Fixed
+
+- **Desktop**: Keep the role picker the same width for both roles
+
 ## [0.52.6] - 2026-07-25
 
 ### Added
@@ -1587,6 +1607,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.53.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.53.0
 [0.52.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.52.6
 [0.52.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.52.5
 [0.52.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.52.4
