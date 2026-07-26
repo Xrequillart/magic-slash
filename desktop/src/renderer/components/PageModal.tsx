@@ -1,5 +1,6 @@
-import { useEffect, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { useModalExit } from '../hooks/useModalExit'
 
 interface PageModalProps {
   title: string
@@ -17,24 +18,40 @@ interface PageModalProps {
  * sized for page-scale content.
  */
 export function PageModal({ title, onClose, headerRight, children }: PageModalProps) {
+  /**
+   * The parent renders this conditionally, so calling onClose straight away
+   * would unmount it mid-animation. Closing is requested here instead: the
+   * overlay plays its exit, and only then does onClose let the parent drop it.
+   */
+  const [open, setOpen] = useState(true)
+  const requestClose = useCallback(() => setOpen(false), [])
+  const { mounted, closing, onExitAnimationEnd } = useModalExit(open, onClose)
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
-        onClose()
+        requestClose()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
+  }, [requestClose])
+
+  if (!mounted) return null
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop p-6"
-      onClick={onClose}
+      className={`fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-6 ${
+        closing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop'
+      }`}
+      onClick={requestClose}
     >
       <div
-        className="relative bg-bg-secondary border border-white/10 rounded-2xl w-full max-w-6xl h-[85vh] overflow-hidden animate-modal-content shadow-2xl flex flex-col"
+        onAnimationEnd={onExitAnimationEnd}
+        className={`relative bg-bg-secondary border border-white/10 rounded-2xl w-full max-w-6xl h-[85vh] overflow-hidden shadow-2xl flex flex-col ${
+          closing ? 'animate-modal-content-out' : 'animate-modal-content'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -43,7 +60,7 @@ export function PageModal({ title, onClose, headerRight, children }: PageModalPr
           <div className="flex items-center gap-3">
             {headerRight}
             <button
-              onClick={onClose}
+              onClick={requestClose}
               className="p-1.5 text-text-secondary hover:text-white hover:bg-white/10 rounded-lg transition-colors"
               title="Close (Esc)"
             >

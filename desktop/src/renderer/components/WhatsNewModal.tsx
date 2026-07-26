@@ -65,14 +65,18 @@ export function WhatsNewModal() {
 
   function handleClose() {
     setIsOpen(false)
-    setData(null)
+    // `data` is deliberately kept: the dialog still needs its content while it
+    // animates out, and dropping it here would make the modal vanish instead.
+    // The next open overwrites it.
     if (!manualOpen.current && !import.meta.env.DEV) {
       window.electronAPI.updater.clearPendingWhatsNew()
     }
     manualOpen.current = false
   }
 
-  if (!isOpen || !data) return null
+  // Only the content is required to render; `isOpen` is the Modal's business,
+  // which keeps itself on screen until its exit animation has played.
+  if (!data) return null
 
   return (
     <Modal

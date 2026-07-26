@@ -197,12 +197,43 @@ fieldset:disabled label:has(> input[type="checkbox"]) {
   }
 }
 
+/* Leaving is the entrance reversed, but quicker and shallower: a dialog you have
+   dismissed should get out of the way, not be watched on its way out. Driven by
+   useModalExit, which keeps the overlay mounted until these have played. */
+@keyframes modal-backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modal-content-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97) translateY(6px);
+  }
+}
+
 .animate-modal-backdrop {
   animation: modal-backdrop-in 0.2s ease-out forwards;
 }
 
 .animate-modal-content {
   animation: modal-content-in 0.2s ease-out forwards;
+}
+
+.animate-modal-backdrop-out {
+  animation: modal-backdrop-out 0.15s ease-in forwards;
+}
+
+.animate-modal-content-out {
+  animation: modal-content-out 0.15s ease-in forwards;
 }
 
 /* Drop overlay animation */

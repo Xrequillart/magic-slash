@@ -1,5 +1,6 @@
 import { useEffect, useCallback, ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { useModalExit } from '../hooks/useModalExit'
 
 interface ModalProps {
   isOpen: boolean
@@ -25,16 +26,28 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
     }
   }, [isOpen, handleKeyDown])
 
-  if (!isOpen) return null
+  // Outlives `isOpen` by the length of the exit animation. Every way a caller
+  // closes this dialog goes through that prop — the buttons here, but also the
+  // parent closing it after a successful save — so all of them animate out.
+  const { mounted, closing, onExitAnimationEnd } = useModalExit(isOpen)
+
+  if (!mounted) return null
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in"
+      className={`fixed inset-0 bg-black/70 flex items-center justify-center z-50 ${
+        closing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop'
+      }`}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className={`bg-bg-secondary border border-white/10 rounded-xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto`}>
+      <div
+        onAnimationEnd={onExitAnimationEnd}
+        className={`bg-bg-secondary border border-white/10 rounded-xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto ${
+          closing ? 'animate-modal-content-out' : 'animate-modal-content'
+        }`}
+      >
         {/* Hero */}
         {hero && (
           <div className="relative">

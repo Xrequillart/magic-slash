@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { X, Folder, Check } from 'lucide-react'
+import { useModalExit } from '../../hooks/useModalExit'
 
 interface RepositorySelectorProps {
   isOpen: boolean
@@ -16,15 +17,23 @@ export function RepositorySelector({
   attachedRepos,
   onToggleRepository,
 }: RepositorySelectorProps) {
-  if (!isOpen) return null
+  // Stays mounted past `isOpen` so it can animate out, like every other dialog.
+  const { mounted, closing, onExitAnimationEnd } = useModalExit(isOpen)
+
+  if (!mounted) return null
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in"
+      className={`fixed inset-0 bg-black/70 flex items-center justify-center z-50 ${
+        closing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop'
+      }`}
       onClick={onClose}
     >
       <div
-        className="bg-bg-secondary border border-white/10 rounded-xl w-full max-w-md mx-4"
+        onAnimationEnd={onExitAnimationEnd}
+        className={`bg-bg-secondary border border-white/10 rounded-xl w-full max-w-md mx-4 ${
+          closing ? 'animate-modal-content-out' : 'animate-modal-content'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
