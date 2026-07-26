@@ -92,20 +92,24 @@ export function RoleSelect({
 
   return (
     <>
+      {/* w-24, not content width: the trigger used to shrink or grow with the
+          selected label, so a members table showed a ragged column of
+          differently-sized pickers. The webapp's pins its width for the same
+          reason. The chevron is pushed right by ml-auto to fill it. */}
       <button
         ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-1.5 h-7 px-2 rounded-lg border text-[11px] font-medium transition-all disabled:opacity-40 ${
+        className={`flex items-center gap-1.5 h-7 w-24 px-2 rounded-lg border text-[11px] font-medium transition-all disabled:opacity-40 ${
           value === 'admin'
             ? 'bg-accent/15 border-accent/25 text-accent hover:bg-accent/20'
             : 'bg-white/[0.06] border-white/10 text-text-secondary hover:bg-white/10 hover:text-white'
         }`}
       >
-        <SelectedIcon className="w-3 h-3" />
-        <span>{selected.label}</span>
-        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <SelectedIcon className="w-3 h-3 shrink-0" />
+        <span className="truncate">{selected.label}</span>
+        <ChevronDown className={`w-3 h-3 shrink-0 ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && createPortal(
