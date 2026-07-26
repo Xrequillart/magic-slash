@@ -14,6 +14,7 @@ import { setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
 import { registerActivityHistoryHandlers } from './ipc/activity-history-handlers'
 import { setupConnectivityHandlers } from './ipc/connectivity-handlers'
+import { setupAppearanceHandlers } from './ipc/appearance-handlers'
 import { setStore } from './store/Store'
 import { CloudStore } from './store/CloudStore'
 import { readConfig, writeConfig, updateRepositoryWorktreeFilesSettings } from './config/config'
@@ -23,7 +24,7 @@ import { AgentStateAggregator } from './tray/agent-state-aggregator'
 import { destroyPopover } from './windows/popover-window'
 import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
 import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
-import { initAppearance, appearanceArguments } from './appearance'
+import { initAppearance, appearanceArguments, applyZoom, setZoomWindow, stepZoom } from './appearance'
 import { setupProfileHandlers } from './ipc/profile-handlers'
 import { setupUsageHandlers } from './ipc/usage-handlers'
 import { setupAuthHandlers } from './ipc/auth-handlers'
@@ -92,9 +93,11 @@ function createMenu() {
         // Include toggleDevTools only in dev mode
         ...(process.env.VITE_DEV_SERVER_URL ? [{ role: 'toggleDevTools' as const }] : []),
         { type: 'separator' as const },
-        { role: 'resetZoom' as const },
-        { role: 'zoomIn' as const },
-        { role: 'zoomOut' as const },
+        // Not the built-in zoom roles: those change the factor behind the app's
+        // back, so nothing would be saved and Settings would show a stale value.
+        { label: 'Actual Size', accelerator: 'CmdOrCtrl+0', click: () => applyZoom(1) },
+        { label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', click: () => stepZoom(1) },
+        { label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', click: () => stepZoom(-1) },
         { type: 'separator' as const },
         { role: 'togglefullscreen' as const },
       ],
@@ -148,6 +151,10 @@ function createWindow() {
     },
   })
 
+  // The interface scale applies to this window only — the popover and quick
+  // launch are sized for their content.
+  setZoomWindow(mainWindow)
+
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show()
   })
@@ -198,6 +205,7 @@ function createWindow() {
 // Setup IPC handlers
 function setupHandlers() {
   setupConfigHandlers(() => mainWindow)
+  setupAppearanceHandlers()
   setupSkillsHandlers()
   setupScriptHandlers(() => mainWindow)
   registerActivityHistoryHandlers()

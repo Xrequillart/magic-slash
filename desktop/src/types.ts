@@ -219,10 +219,38 @@ export function isValidTheme(value: unknown): value is ThemeId {
   return typeof value === 'string' && (THEME_IDS as readonly string[]).includes(value)
 }
 
+/**
+ * Interface scale, as an Electron zoom factor. The steps are what the +/−
+ * buttons and ⌘+ / ⌘− walk through; any value in range is accepted, since the
+ * OS and the menu can land on one of their own.
+ */
+export const ZOOM_STEPS = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const
+
+export const DEFAULT_ZOOM = 1
+export const MIN_ZOOM = ZOOM_STEPS[0]
+export const MAX_ZOOM = ZOOM_STEPS[ZOOM_STEPS.length - 1]
+
+export function clampZoom(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_ZOOM
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value))
+}
+
+/** The step above or below `value`, or `value` itself at either end. */
+export function nextZoom(value: number, direction: 1 | -1): number {
+  const steps = direction === 1 ? ZOOM_STEPS : [...ZOOM_STEPS].reverse()
+  // A small epsilon: zoom factors arrive as floats and 1.1 is never exactly 1.1.
+  return steps.find((step) => direction * (step - value) > 0.001) ?? clampZoom(value)
+}
+
 export interface Config {
   version: string
   repositories: Record<string, RepositoryConfig>
-  /** Absent = never chosen; the app applies DEFAULT_THEME. */
+  /**
+   * Absent = never chosen; the app applies DEFAULT_THEME. The interface scale
+   * is deliberately NOT here: it compensates for a particular display, so it
+   * stays on the machine (see main/appearance.ts) rather than following the
+   * account onto a laptop with a different screen.
+   */
   theme?: ThemeId
   splitEnabled?: boolean
   splitActive?: boolean

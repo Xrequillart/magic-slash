@@ -1,7 +1,17 @@
 import { readFileSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_THEME, isValidTheme, THEME_APPEARANCE, type ThemeId } from '../../types'
+import {
+  clampZoom,
+  DEFAULT_THEME,
+  DEFAULT_ZOOM,
+  isValidTheme,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  nextZoom,
+  THEME_APPEARANCE,
+  type ThemeId,
+} from '../../types'
 import { THEMES, THEME_IDS } from './themes'
 import { cssVarName, resolveTheme } from './applyTheme'
 
@@ -86,6 +96,34 @@ describe('theme preference', () => {
     expect(resolveTheme('solarized')).toBe(DEFAULT_THEME)
     expect(resolveTheme(null)).toBe(DEFAULT_THEME)
     expect(resolveTheme('light')).toBe<ThemeId>('light')
+  })
+})
+
+describe('interface scale', () => {
+  it('keeps any value inside the supported range', () => {
+    // The zoom also arrives from the OS and the menu, which can land anywhere.
+    expect(clampZoom(3)).toBe(MAX_ZOOM)
+    expect(clampZoom(0.1)).toBe(MIN_ZOOM)
+    expect(clampZoom(1.1)).toBe(1.1)
+    expect(clampZoom('big')).toBe(DEFAULT_ZOOM)
+    expect(clampZoom(NaN)).toBe(DEFAULT_ZOOM)
+    expect(clampZoom(undefined)).toBe(DEFAULT_ZOOM)
+  })
+
+  it('steps to the next level and stops at the ends', () => {
+    expect(nextZoom(1, 1)).toBe(1.1)
+    expect(nextZoom(1, -1)).toBe(0.9)
+    expect(nextZoom(MAX_ZOOM, 1)).toBe(MAX_ZOOM)
+    expect(nextZoom(MIN_ZOOM, -1)).toBe(MIN_ZOOM)
+  })
+
+  it('steps from a value that is not itself a level', () => {
+    // ⌘+ and the OS produce factors of their own; stepping must still land on
+    // the level above, not on the nearest one below.
+    expect(nextZoom(1.05, 1)).toBe(1.1)
+    expect(nextZoom(1.05, -1)).toBe(1)
+    // Float noise must not make a level step to itself.
+    expect(nextZoom(1.1000000000000001, 1)).toBe(1.25)
   })
 })
 

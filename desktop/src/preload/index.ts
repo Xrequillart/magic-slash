@@ -511,16 +511,39 @@ const orgApi = {
  * (see main/theme.ts) rather than fetched, so the renderer can paint the right
  * theme on its first frame instead of flashing the default and correcting.
  */
+function launchArgument(name: string): string | null {
+  const prefix = `--magic-${name}=`
+  const arg = process.argv.find((a) => a.startsWith(prefix))
+  return arg ? arg.slice(prefix.length) : null
+}
+
 const themeApi = {
-  initial: (): string | null => {
-    const arg = process.argv.find((a) => a.startsWith('--magic-theme='))
-    return arg ? arg.slice('--magic-theme='.length) : null
-  },
+  initial: (): string | null => launchArgument('theme'),
 
   onChanged: (callback: (theme: ThemeId) => void) => {
     const listener = (_event: IpcRendererEvent, theme: ThemeId) => callback(theme)
     ipcRenderer.on('theme:changed', listener)
     return () => ipcRenderer.removeListener('theme:changed', listener)
+  },
+}
+
+/**
+ * Interface scale. Applied by the main process on the window's webContents, so
+ * the renderer only reads it and asks for changes — it never scales itself.
+ */
+const zoomApi = {
+  initial: (): number | null => {
+    const raw = launchArgument('zoom')
+    const value = raw === null ? NaN : Number(raw)
+    return Number.isFinite(value) ? value : null
+  },
+
+  set: (zoom: number): Promise<number> => ipcRenderer.invoke('appearance:setZoom', { zoom }),
+
+  onChanged: (callback: (zoom: number) => void) => {
+    const listener = (_event: IpcRendererEvent, zoom: number) => callback(zoom)
+    ipcRenderer.on('zoom:changed', listener)
+    return () => ipcRenderer.removeListener('zoom:changed', listener)
   },
 }
 
@@ -544,6 +567,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   org: orgApi,
   connectivity: connectivityApi,
   theme: themeApi,
+  zoom: zoomApi,
 })
 
 // Type definitions for the renderer
@@ -569,6 +593,7 @@ declare global {
       org: typeof orgApi
       connectivity: typeof connectivityApi
       theme: typeof themeApi
+      zoom: typeof zoomApi
     }
   }
 

@@ -1,9 +1,10 @@
-import { Check, Palette } from 'lucide-react'
+import { Check, Minus, Palette, Plus, RotateCcw, Scaling } from 'lucide-react'
 import { useConfig } from '../../hooks/useConfig'
+import { useZoom } from '../../hooks/useZoom'
 import { showToast } from '../../components/Toast'
 import { SectionHeader } from './SectionHeader'
 import { THEMES, THEME_IDS, useTheme } from '../../theme'
-import type { ThemeId } from '../../../types'
+import { DEFAULT_ZOOM, MAX_ZOOM, MIN_ZOOM, type ThemeId } from '../../../types'
 
 /**
  * Miniature of a theme, painted with that theme's own tokens rather than the
@@ -49,6 +50,57 @@ function ThemePreview({ id }: { id: ThemeId }) {
  * Theme picker. The list is the registry, so a theme added in
  * renderer/theme/themes.ts shows up here with no change to this file.
  */
+/**
+ * Interface scale. The buttons walk the same steps as ⌘+ / ⌘−, and the value
+ * shown follows the menu too — both go through the main process.
+ */
+function ZoomControl() {
+  const { zoom, set, step } = useZoom()
+  const percent = Math.round(zoom * 100)
+
+  return (
+    <div className="bg-surface border border-line-strong rounded-xl p-4 flex items-center justify-between gap-6">
+      <div className="flex-1">
+        <div className="text-sm font-medium mb-0.5">Interface scale</div>
+        <p className="text-xs text-text-secondary/50">
+          Scales the whole window, terminal included — like a browser&apos;s zoom.
+          Also on <kbd className="px-1 py-0.5 bg-surface-strong rounded text-[10px]">⌘ +</kbd>{' '}
+          <kbd className="px-1 py-0.5 bg-surface-strong rounded text-[10px]">⌘ −</kbd>. Stays on this
+          machine, since it compensates for this screen.
+        </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={() => step(-1)}
+          disabled={zoom <= MIN_ZOOM}
+          title="Zoom out"
+          className="flex items-center justify-center h-7 w-7 text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-40 disabled:hover:bg-surface"
+        >
+          <Minus className="w-3.5 h-3.5" />
+        </button>
+        {/* Tabular figures so the row does not jitter between 90% and 125%. */}
+        <span className="w-12 text-center text-sm font-medium tabular-nums">{percent}%</span>
+        <button
+          onClick={() => step(1)}
+          disabled={zoom >= MAX_ZOOM}
+          title="Zoom in"
+          className="flex items-center justify-center h-7 w-7 text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-40 disabled:hover:bg-surface"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={() => set(DEFAULT_ZOOM)}
+          disabled={zoom === DEFAULT_ZOOM}
+          title="Reset to 100%"
+          className="flex items-center justify-center h-7 w-7 text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-40 disabled:hover:bg-surface"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function AppearancePage() {
   const { updateTheme } = useConfig()
   const active = useTheme()
@@ -95,6 +147,11 @@ export function AppearancePage() {
       <p className="text-xs text-text-secondary/50 mt-3">
         The theme follows your account — every machine you sign in on uses it.
       </p>
+
+      <div className="mt-8">
+        <SectionHeader icon={Scaling} title="Display" />
+        <ZoomControl />
+      </div>
     </div>
   )
 }
