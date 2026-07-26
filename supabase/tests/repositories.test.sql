@@ -8,7 +8,7 @@
 -- auth.uid() reads "sub". `reset role;` returns to the owner to seed/read.
 
 begin;
-select plan(10);
+select plan(12);
 
 -- ---------------------------------------------------------------------------
 -- Seed as the table owner (RLS bypassed). u1 = admin of Org A, u2 = admin of
@@ -31,11 +31,14 @@ values
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-222222222222', 'admin'),
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', 'user');
 
--- A personal repo owned by u1 (org_id NULL) and a team repo shared to Org A.
+-- A personal repo owned by u1 (org_id NULL) and two team repos in Org A: one
+-- owned by u1 (the admin), one owned by u3 (a plain member) so the creator
+-- exception can be told apart from the admin right.
 insert into public.repositories (id, owner_id, org_id, name)
 values
   ('d0000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', null, 'perso1'),
-  ('d0000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'team-a');
+  ('d0000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'team-a'),
+  ('d0000000-0000-0000-0000-000000000003', '33333333-3333-3333-3333-333333333333', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'team-a-u3');
 
 -- u1's local path binding for the team repo (private to u1).
 insert into public.repository_paths (repo_id, user_id, path)
@@ -48,11 +51,11 @@ values
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
 
--- 1. u1 sees both repos it owns (the personal one + the team one).
+-- 1. u1 sees its own two repos plus the team repo u3 shared to Org A.
 select is(
   (select count(*) from public.repositories),
-  2::bigint,
-  'u1 sees its personal and its team repo'
+  3::bigint,
+  'u1 sees its personal repo and every repo of its org'
 );
 
 -- 2. u1 sees its own path binding.
@@ -83,11 +86,11 @@ reset role;
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333"}';
 
--- 4. u3 sees ONLY the team repo (via org membership), never u1's personal repo.
+-- 4. u3 sees ONLY the team repos (via org membership), never u1's personal repo.
 select results_eq(
   $sql$ select name from public.repositories order by name $sql$,
-  $sql$ values ('team-a'::text) $sql$,
-  'a member sees the team repo but not another user''s personal repo'
+  $sql$ values ('team-a'::text), ('team-a-u3'::text) $sql$,
+  'a member sees the team repos but not another user''s personal repo'
 );
 
 -- 5. Path bindings are private: u3 cannot see u1's path row.
@@ -97,15 +100,42 @@ select is(
   'a member cannot see another user''s local path binding'
 );
 
--- 6. Team repos are collaboratively editable: u3 (member, not owner) can update.
+-- 6. A team repo is admin-writable only: u3 (plain member, not the owner)
+--    cannot edit it. RLS filters the row out, so the UPDATE is a silent no-op.
 update public.repositories
   set color = 'red'
   where id = 'd0000000-0000-0000-0000-000000000002';
-reset role;  -- read back as owner (bypass RLS) to confirm the write landed
+reset role;  -- read back as owner (bypass RLS) to confirm nothing landed
 select is(
   (select color from public.repositories where id = 'd0000000-0000-0000-0000-000000000002'),
-  'red',
-  'any org member can edit a team repo'
+  NULL,
+  'a plain member cannot edit a team repo they do not own'
+);
+
+-- 6b. The creator exception: u3 is a plain member, but it owns 'team-a-u3'.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333"}';
+update public.repositories
+  set color = 'blue'
+  where id = 'd0000000-0000-0000-0000-000000000003';
+reset role;
+select is(
+  (select color from public.repositories where id = 'd0000000-0000-0000-0000-000000000003'),
+  'blue',
+  'the creator of a team repo still edits it as a plain member'
+);
+
+-- 6c. An admin edits a team repo it does not own.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+update public.repositories
+  set color = 'green'
+  where id = 'd0000000-0000-0000-0000-000000000003';
+reset role;
+select is(
+  (select color from public.repositories where id = 'd0000000-0000-0000-0000-000000000003'),
+  'green',
+  'an org admin edits a team repo owned by someone else'
 );
 
 -- 7. Delete is owner/admin only: u3 (plain member) cannot delete the team repo.

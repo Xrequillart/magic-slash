@@ -123,6 +123,7 @@ export function RepositoryForm({
   onPatch,
   onDelete,
   saveError,
+  readOnly = false,
 }: {
   repo: Repository
   /** Orgs the current user belongs to — the share targets. */
@@ -130,6 +131,14 @@ export function RepositoryForm({
   onPatch: (patch: RepositoryPatch) => void
   onDelete: () => void
   saveError: string | null
+  /**
+   * Show the settings without letting them change: a team repo belongs to its
+   * org's admins (and its creator). Every control lives inside one disabled
+   * fieldset, so nothing here can fire — matching the RLS that would refuse the
+   * write anyway. The desktop app keeps one exception this page cannot offer:
+   * the local folder, which has no equivalent in the browser.
+   */
+  readOnly?: boolean
 }) {
   // Resolved values: absent means "use the default", same as the desktop.
   const lang = (key: keyof Repository['languages']) => repo.languages[key] ?? DEFAULTS.language
@@ -166,7 +175,7 @@ export function RepositoryForm({
   const scopeOrg = repo.orgId ? orgs.find((o) => o.id === repo.orgId) : null
 
   return (
-    <div className="space-y-8">
+    <fieldset disabled={readOnly} className="w-full min-w-0 space-y-8">
       {saveError && (
         <p className="rounded-xl border border-red/20 bg-red/[0.04] px-3.5 py-2.5 text-xs text-red">
           {saveError}
@@ -513,12 +522,12 @@ export function RepositoryForm({
       </SettingsCard>
 
       {/* Scope note, so "Team" above is not the only hint about who sees this. */}
-      {repo.orgId && (
+      {repo.orgId && !readOnly && (
         <p className="flex items-center gap-2 text-xs text-muted">
           <Building2 className="h-3.5 w-3.5 shrink-0" />
           Changes here apply for every member of {scopeOrg?.name ?? 'the organization'}.
         </p>
       )}
-    </div>
+    </fieldset>
   )
 }

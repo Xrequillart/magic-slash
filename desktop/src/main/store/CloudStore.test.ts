@@ -510,13 +510,15 @@ describe('createRepository', () => {
     })
     h.state.client = client
 
-    await new CloudStore().createRepository({
+    const ownerId = await new CloudStore().createRepository({
       id: 'new-1', ownerId: null, orgId: null, name: 'demo',
       keywords: ['demo'], color: '#123', languages: { commit: 'fr' },
       commit: { format: 'angular' }, pullRequest: {}, resolve: {}, issues: {}, branches: {}, worktreeFiles: [],
       path: '/Users/me/demo',
     })
 
+    // Returned so the caller can stamp the owner on its cached repo.
+    expect(ownerId).toBe(UID)
     const row = inserts.repositories[0] as Record<string, unknown>
     expect(row.id).toBe('new-1')
     expect(row.owner_id).toBe(UID)      // owner forced to the caller

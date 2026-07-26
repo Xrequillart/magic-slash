@@ -28,8 +28,14 @@ export interface Store {
   // config blob. Identity lives org-wide; the local path is per-user.
   /** Repos visible to the caller (own personal + active-org team), with the caller's own path. */
   listRepositories(): Promise<StoredRepository[]>
-  /** Create a repo row (owner = caller). `id` is client-generated; binds `path` when provided. */
-  createRepository(repo: StoredRepository): Promise<void>
+  /**
+   * Create a repo row (owner = caller). `id` is client-generated; binds `path`
+   * when provided. Returns the owner it stamped — the caller's user id — so the
+   * in-memory config can hold it right away instead of waiting for the next
+   * hydration. Ownership decides who may still edit a repo once it is shared,
+   * so a null there would read as "not mine". Null when there is no session.
+   */
+  createRepository(repo: StoredRepository): Promise<string | null>
   /** Update a repo's shared identity (and org_id when sharing). Never changes owner. */
   updateRepository(id: string, patch: Partial<RepositoryIdentity>): Promise<void>
   /** Delete a repo row (owner or org admin, enforced by RLS). */
@@ -96,7 +102,7 @@ export const NOOP_STORE: Store = {
   async loadConfig() { return null },
   async saveConfig() { /* no-op */ },
   async listRepositories() { return [] },
-  async createRepository() { /* no-op */ },
+  async createRepository() { return null },
   async updateRepository() { /* no-op */ },
   async deleteRepository() { /* no-op */ },
   async setRepositoryPath() { /* no-op */ },

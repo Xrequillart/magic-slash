@@ -67,6 +67,24 @@
   }
 }
 
+/* Read-only sections. A disabled <fieldset> stops the interaction but shows
+   nothing, so the controls it locks are greyed here — the repository page turns
+   read-only for members who may not edit a team repo. */
+fieldset:disabled input,
+fieldset:disabled select,
+fieldset:disabled textarea,
+fieldset:disabled button {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Switches hide their checkbox (sr-only) and paint the track and knob with
+   sibling spans, out of reach of the rule above. */
+fieldset:disabled label:has(> input[type='checkbox']) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .animate-modal-backdrop {
   animation: modal-backdrop-in 0.2s ease-out forwards;
 }

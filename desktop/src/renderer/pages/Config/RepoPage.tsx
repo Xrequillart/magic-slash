@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen
 } from 'lucide-react'
+import { useAuth } from '../../hooks/useAuth'
 import { useConfig } from '../../hooks/useConfig'
 import { useOrg } from '../../hooks/useOrg'
 import { Modal } from '../../components/Modal'
@@ -73,6 +74,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
   } = useConfig()
 
   const { orgs } = useOrg()
+  const { status } = useAuth()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [editedName, setEditedName] = useState(repoName)
@@ -80,6 +82,24 @@ export function RepoPage({ repoName }: RepoPageProps) {
   // Form state
   const repo = config?.repositories?.[repoName]
   const scopeOrg = repo?.orgId ? orgs.find((o) => o.id === repo.orgId) : null
+
+  /**
+   * A team repo's settings drive what every member's agents do — how they
+   * commit, which branch they base on, in which language they write — so only
+   * the org's admins, plus whoever created the repo, may change them. Other
+   * members read.
+   *
+   * The one exception is the local folder: it is per-machine, private to its
+   * user and never shared, so a read-only member still binds their own.
+   * Personal repos (no org) have no such notion — only their owner sees them.
+   *
+   * The same rule is enforced by RLS on `repositories`; this only keeps the page
+   * from offering an edit the database would refuse. Until the memberships have
+   * loaded the role is unknown and the page stays locked, rather than briefly
+   * inviting a change that fails.
+   */
+  const isOwner = !!repo?.ownerId && repo.ownerId === status.user?.id
+  const readOnly = !!repo?.orgId && !isOwner && scopeOrg?.role !== 'admin'
 
   const [path, setPath] = useState(repo?.path || '')
   const [keywords, setKeywords] = useState((repo?.keywords || []).join(', '))
@@ -394,8 +414,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
         <div className="relative">
           <select
             value={currentVal}
+            disabled={readOnly}
             onChange={(e) => handleLanguageChange(langKey, e.target.value)}
-            className="w-52 px-3 py-2.5 pr-10 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+            className="w-52 px-3 py-2.5 pr-10 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="en">English</option>
             <option value="fr">Francais</option>
@@ -439,8 +460,25 @@ export function RepoPage({ repoName }: RepoPageProps) {
           </button>
           <h1 className="text-2xl font-semibold">{repoName}</h1>
         </div>
-        <p className="text-text-secondary text-sm">Configure repository settings</p>
+        <p className="text-text-secondary text-sm">
+          {readOnly ? 'Repository settings, read-only' : 'Configure repository settings'}
+        </p>
       </div>
+
+      {/* Read-only notice (team repo, and you are neither admin nor its creator) */}
+      {readOnly && (
+        <div className="flex items-start gap-4 p-4 mb-6 bg-white/[0.04] border border-white/[0.08] rounded-xl">
+          <Lock className="w-5 h-5 text-text-secondary flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-sm mb-1">Read-only</h3>
+            <p className="text-xs text-text-secondary">
+              These settings are shared by everyone in
+              {scopeOrg ? ` ${scopeOrg.name}` : ' the organization'}, so only its admins change them.
+              You can still set your local folder below — it stays on this machine and is never shared.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Git Warning */}
       {pathStatus && !pathStatus.isGit && (
@@ -504,7 +542,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 : 'Only you can see this repository. Share it with an organization to make it a team repo.'}
             </p>
           </div>
-          <div className="flex flex-col gap-2 w-72 shrink-0">
+          <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 shrink-0 min-w-0">
             {repo?.orgId ? (
               <button
                 onClick={handleMakePersonal}
@@ -530,7 +568,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             ) : (
               <p className="text-xs text-text-secondary/40 text-right">Join an organization to share repos.</p>
             )}
-          </div>
+          </fieldset>
         </div>
       </div>
 
@@ -544,7 +582,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <label className="block text-sm font-medium mb-0.5">Name</label>
               <p className="text-xs text-text-secondary/50">Repository display name</p>
             </div>
-            <div className="flex flex-col gap-2 w-72">
+            <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
               <input
                 type="text"
                 value={editedName}
@@ -556,14 +594,17 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   Save
                 </button>
               )}
-            </div>
+            </fieldset>
           </div>
 
-          {/* Path */}
+          {/* Path — always editable: the folder is this machine's, private to
+              you, and a read-only member still needs to point the repo at it. */}
           <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Path</label>
-              <p className="text-xs text-text-secondary/50">Local path to the repository</p>
+              <p className="text-xs text-text-secondary/50">
+                {readOnly ? 'Local path on this machine — yours only' : 'Local path to the repository'}
+              </p>
             </div>
             <div className="flex flex-col gap-2 w-72">
               <div className="flex items-center gap-2">
@@ -608,7 +649,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <label className="block text-sm font-medium mb-0.5">Keywords</label>
               <p className="text-xs text-text-secondary/50">Auto-detection keywords (comma-separated)</p>
             </div>
-            <div className="flex flex-col gap-2 w-72">
+            <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
               <input
                 type="text"
                 value={keywords}
@@ -620,7 +661,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   Save
                 </button>
               )}
-            </div>
+            </fieldset>
           </div>
 
           {/* Discussion Language */}
@@ -632,7 +673,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <label className="block text-sm font-medium mb-0.5">Color</label>
               <p className="text-xs text-text-secondary/50">Project color in sidebar</p>
             </div>
-            <div className="flex gap-2">
+            <fieldset disabled={readOnly} className="flex gap-2 min-w-0">
               {PROJECT_COLORS.map((color) => (
                 <button
                   key={color}
@@ -646,7 +687,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   title={color}
                 />
               ))}
-            </div>
+            </fieldset>
           </div>
         </div>
       </div>
@@ -654,7 +695,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Branches Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Branches</h2>
-        <div className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4">
+        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 w-full min-w-0">
           <div className="flex items-start justify-between gap-6 py-3">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Development Branch</label>
@@ -677,13 +718,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
             </div>
           </div>
-        </div>
+        </fieldset>
       </div>
 
       {/* Worktree Files Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Worktree</h2>
-        <div className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4">
+        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 w-full min-w-0">
           <div className="py-3">
             <div className="flex-1 mb-3">
               <label className="block text-sm font-medium mb-0.5">Files to copy</label>
@@ -741,13 +782,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
               </button>
             </div>
           </div>
-        </div>
+        </fieldset>
       </div>
 
       {/* Commit Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Commit</h2>
-        <div className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4">
+        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 w-full min-w-0">
           <LangSelect langKey="commit" label="Language" description="Language used for commit messages" />
 
           {/* Style */}
@@ -831,13 +872,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
             <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">Example</div>
             <pre className="text-sm whitespace-pre-wrap text-text-secondary">{commitPreview}</pre>
           </div>
-        </div>
+        </fieldset>
       </div>
 
       {/* Resolve Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Resolve</h2>
-        <div className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4">
+        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 w-full min-w-0">
           {/* Commit Mode */}
           <div className="flex items-start justify-between gap-6 py-3 border-b border-white/5">
             <div className="flex-1">
@@ -980,13 +1021,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <span className="text-sm text-text-secondary">You'll be asked to choose <strong>new commit</strong> or <strong>amend</strong> on each resolve. Choosing amend will push with <code className="text-xs bg-white/10 px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
             </div>
           )}
-        </div>
+        </fieldset>
       </div>
 
       {/* Pull Request Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Pull Request</h2>
-        <div className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4">
+        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 w-full min-w-0">
           <LangSelect langKey="pullRequest" label="Language" description="Language used for pull request titles and descriptions" />
 
           {/* Auto-link Tickets */}
@@ -1058,13 +1099,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
               </div>
             )}
           </div>
-        </div>
+        </fieldset>
       </div>
 
       {/* Jira / GitHub Issues Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Jira / GitHub Issues</h2>
-        <div className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4">
+        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-white/5 rounded-xl p-4 w-full min-w-0">
           <LangSelect langKey="jiraComment" label="Comment Language" description="Language used for Jira and GitHub issue comments" />
 
           {/* Comment on PR */}
@@ -1118,13 +1159,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
               className="w-72 px-3 py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
             />
           </div>
-        </div>
+        </fieldset>
       </div>
 
       {/* Danger Zone */}
       <div className="mb-6">
         <h2 className="text-xs text-red/50 uppercase tracking-wider mb-4">Danger Zone</h2>
-        <div className="bg-red/5 border border-red/10 rounded-xl p-4">
+        <fieldset disabled={readOnly} className="bg-red/5 border border-red/10 rounded-xl p-4 w-full min-w-0">
           <div className="flex items-center justify-between">
             <div>
               <label className="block text-sm font-medium mb-0.5">Delete this repository</label>
@@ -1138,7 +1179,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               Delete repository
             </button>
           </div>
-        </div>
+        </fieldset>
       </div>
 
       {/* Delete Modal */}

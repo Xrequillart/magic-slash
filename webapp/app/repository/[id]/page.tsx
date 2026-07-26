@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AlertTriangle, ArrowLeft, FolderGit2, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, FolderGit2, Lock, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/lib/session'
 import { fetchOrgs, type Org } from '@/lib/orgs'
 import {
@@ -145,6 +145,19 @@ export default function RepositoryPage() {
 
   if (pending || !session) return <FullPageLoader />
 
+  /**
+   * A team repo's settings drive what every member's agents do, so only the
+   * org's admins — and whoever created it — may change them. Everyone else
+   * reads. Personal repos have no such notion: only their owner sees them.
+   *
+   * RLS on `repositories` enforces the same rule; this only keeps the page from
+   * offering an edit the database would refuse. The org list arrives after the
+   * repo, so until it does the role is unknown and the form stays locked rather
+   * than briefly inviting a change that fails.
+   */
+  const scopeOrg = repo?.orgId ? orgs.find((o) => o.id === repo.orgId) : null
+  const readOnly = !!repo?.orgId && repo.ownerId !== session.user.id && scopeOrg?.role !== 'admin'
+
   return (
     <AppShell email={session.user.email ?? undefined}>
       <Link
@@ -183,6 +196,22 @@ export default function RepositoryPage() {
             </h1>
           </div>
 
+          {readOnly && (
+            <Card className="mb-8 flex items-start gap-3 p-5">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/[0.04]">
+                <Lock className="h-4 w-4 text-muted" />
+              </span>
+              <div>
+                <p className="text-sm text-ink">Read-only</p>
+                <p className="mt-1 text-xs text-muted">
+                  These settings are shared by everyone in {scopeOrg?.name ?? 'the organization'}, so only
+                  its admins change them. Your own local folder is set in the desktop app — it stays on your
+                  machine and is never shared.
+                </p>
+              </div>
+            </Card>
+          )}
+
           <RepositoryForm
             repo={repo}
             orgs={orgs}
@@ -192,6 +221,7 @@ export default function RepositoryPage() {
               setConfirmDelete(true)
             }}
             saveError={saveError}
+            readOnly={readOnly}
           />
         </>
       )}

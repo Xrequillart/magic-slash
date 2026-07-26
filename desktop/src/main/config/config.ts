@@ -206,6 +206,16 @@ export function addRepository(name: string, repoPath: string, keywords: string[]
       worktreeFiles: repo.worktreeFiles,
       path: repoPath || null,
     })
+    // The row is created with the caller as owner. Stamp that owner on the
+    // cached repo now: sharing it to an org later makes ownership the thing
+    // that keeps its creator able to edit it, and the config is only
+    // re-hydrated from the cloud at launch — until then a null owner would
+    // read as "someone else's repo" and lock the creator out of its settings.
+    .then((ownerId) => {
+      if (!ownerId) return
+      const current = readConfig().repositories?.[name]
+      if (current?.id === id) current.ownerId = ownerId
+    })
     .catch((error) => reportWriteError('config', error))
   return config
 }

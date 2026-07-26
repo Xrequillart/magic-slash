@@ -505,9 +505,9 @@ export class CloudStore implements Store {
     return this.fetchRepositories(ctx)
   }
 
-  async createRepository(repo: StoredRepository): Promise<void> {
+  async createRepository(repo: StoredRepository): Promise<string | null> {
     const ctx = await this.context()
-    if (!ctx) return
+    if (!ctx) return null
     const { error } = await ctx.client.from('repositories').insert({
       id: repo.id,
       owner_id: ctx.uid,
@@ -525,6 +525,7 @@ export class CloudStore implements Store {
     })
     if (error) throw new Error(`createRepository failed: ${error.message}`)
     if (repo.path) await this.setRepositoryPath(repo.id, repo.path)
+    return ctx.uid
   }
 
   async updateRepository(id: string, patch: Partial<RepositoryIdentity>): Promise<void> {
