@@ -131,7 +131,7 @@ export function UsageCard({ usage }: UsageCardProps) {
             />
           </div>
           {typeof contextTokens === 'number' && typeof contextWindowSize === 'number' && (
-            <div className="text-[11px] text-text-secondary/70 font-mono">
+            <div className="text-[11px] text-text-secondary/70 tabular-nums">
               {t('agentInfo.tokensOf', { used: formatTokens(contextTokens, locale, t), total: formatTokens(contextWindowSize, locale, t) })}
             </div>
           )}
@@ -143,13 +143,15 @@ export function UsageCard({ usage }: UsageCardProps) {
         {typeof costUsd === 'number' && (
           <span className="flex items-center gap-1.5 text-text-secondary">
             <DollarSign className="w-3.5 h-3.5" />
-            <span className="font-mono font-medium text-ink">{formatUsd(costUsd, locale)}</span>
+            {/* tabular-nums keeps the digits from shifting as the cost ticks up,
+                which is what the mono face used to buy us. */}
+            <span className="tabular-nums font-medium text-ink">{formatUsd(costUsd, locale)}</span>
           </span>
         )}
         {typeof durationMs === 'number' && (
           <span className="flex items-center gap-1.5 text-text-secondary">
             <Clock className="w-3.5 h-3.5" />
-            <span className="font-mono">{formatDuration(durationMs, t)}</span>
+            <span className="tabular-nums">{formatDuration(durationMs, t)}</span>
           </span>
         )}
       </div>

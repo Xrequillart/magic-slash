@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.55.0] - 2026-07-27
+
+### Added
+
+- **Desktop**: Add a watchCI pull request setting
+- **Pr**: Watch CI and review feedback after creating the PR
+- Add a webapp application page for app status and settings
+- **Desktop**: Replace team volume stats with flow metrics
+
+### Changed
+
+- **Desktop**: Use Cera Pro for session usage and Claude email
+- **Readme**: Document the watchCI pull request setting
+
+### Fixed
+
+- **Desktop**: Relaunch agents in their attached repository
+- **Desktop**: Scope numeric ticket ids by repo in the flow key
+- **Desktop**: Keep the merge-detection test off the node-pty graph
+- **Desktop**: Record merge and changes-requested activity events
+- Keep the dropdown open while scrolling its own option list
+
 ## [0.54.1] - 2026-07-27
 
 ### Added
@@ -1628,6 +1650,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.55.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.55.0
 [0.54.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.54.1
 [0.54.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.54.0
 [0.53.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.53.0
