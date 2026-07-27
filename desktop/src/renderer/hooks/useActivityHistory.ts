@@ -90,11 +90,11 @@ export function useActivityHistory() {
       setEntries(data)
     } catch (err) {
       console.error('Error loading activity history:', err)
-      setError('Failed to load activity history')
+      setError(t('history.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     loadHistory()

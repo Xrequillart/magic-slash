@@ -6,6 +6,7 @@ import { TicketHeader } from './agent-info-sidebar/TicketHeader'
 import { UsageCard } from './agent-info-sidebar/UsageCard'
 import { RepositoryCard } from './agent-info-sidebar/RepositoryCard'
 import { RepositorySelector } from './agent-info-sidebar/RepositorySelector'
+import { useT } from '../i18n'
 import type { RepoGitData } from './agent-info-sidebar/types'
 import type { TerminalMetadata } from '../../types'
 
@@ -15,6 +16,7 @@ const DEFAULT_WIDTH = 500
 export function AgentInfoSidebar() {
   const { rightSidebar, toggleRightSidebar, terminals, activeTerminalId, config, openCloseAgentModal, isSplitMode, focusedPane, splitTerminalId } = useStore()
   const { updateTerminalMetadata, updateTerminalRepositories } = useTerminals()
+  const t = useT()
   const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
 
@@ -206,10 +208,10 @@ export function AgentInfoSidebar() {
       try {
         stats = await window.electronAPI.config.getGitDiffStats(repoPath)
         if (stats && !stats.isGitRepo) {
-          error = 'Not a git repo'
+          error = t('agentInfo.notGitRepo')
         }
       } catch (e) {
-        error = e instanceof Error ? e.message : 'Unknown error'
+        error = e instanceof Error ? e.message : t('agentInfo.unknownError')
       }
 
       try {
@@ -377,7 +379,7 @@ export function AgentInfoSidebar() {
       <div className="flex items-center justify-between px-4 pt-3">
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 text-purple" />
-          <span className="font-semibold text-xs">{activeTerminal ? `${activeTerminal.name} Info` : 'Agent Info'}</span>
+          <span className="font-semibold text-xs">{activeTerminal ? t('agentInfo.titleNamed', { name: activeTerminal.name }) : t('agentInfo.title')}</span>
         </div>
         {activeTerminal && canClose ? (
           <button
@@ -388,7 +390,7 @@ export function AgentInfoSidebar() {
             className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary bg-surface border border-line-field rounded-lg hover:bg-surface-strong hover:text-ink transition-colors"
           >
             <X className="w-3 h-3" />
-            <span>Close agent</span>
+            <span>{t('agentInfo.closeAgent')}</span>
             <span className="text-[10px] opacity-50">⌘W</span>
           </button>
         ) : (
@@ -405,7 +407,7 @@ export function AgentInfoSidebar() {
       <div className="flex-1 overflow-y-auto" style={{ fontFamily: "'Cera Pro', -apple-system, BlinkMacSystemFont, sans-serif" }}>
         {!activeTerminal ? (
           <div className="px-4 py-8 text-center text-text-secondary text-xs">
-            No active agent
+            {t('agentInfo.noActiveAgent')}
           </div>
         ) : (
           <div className="p-4 space-y-4">
@@ -463,7 +465,7 @@ export function AgentInfoSidebar() {
               className="w-full py-4 text-center border border-dashed border-border/50 rounded-lg hover:border-text-secondary/50 hover:bg-surface transition-colors"
             >
               <div className="text-xs text-text-secondary/50">
-                Add a repository
+                {t('agentInfo.addRepository')}
               </div>
             </button>
 

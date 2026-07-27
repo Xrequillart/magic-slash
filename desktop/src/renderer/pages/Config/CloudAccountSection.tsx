@@ -7,6 +7,7 @@ import { Modal } from '../../components/Modal'
 import { SectionHeader } from './SectionHeader'
 import { InvitationOnboardingWizard } from '../../components/InvitationOnboardingWizard'
 import { showToast } from '../../components/Toast'
+import { useT } from '../../i18n'
 
 /**
  * Cloud identity block of the Account tab: sign in / out, change password,
@@ -18,6 +19,7 @@ import { showToast } from '../../components/Toast'
 export function CloudAccountSection() {
   const { status, loading: authLoading, logout, updatePassword, requestEmailChange, confirmEmailChange, deleteAccount } = useAuth()
   const { refresh } = useOrg()
+  const t = useT()
 
   const [showLogin, setShowLogin] = useState(false)
   const [showInvitationWizard, setShowInvitationWizard] = useState(false)
@@ -50,16 +52,16 @@ export function CloudAccountSection() {
   const handleChangePassword = useCallback(async () => {
     if (changingPassword) return
     if (!newPassword || newPassword !== confirmPassword) {
-      showToast('Passwords do not match', 'error')
+      showToast(t('toast.passwordMismatch'), 'error')
       return
     }
     setChangingPassword(true)
     try {
       await updatePassword(newPassword)
-      showToast('Password updated', 'success')
+      showToast(t('toast.passwordUpdated'), 'success')
       resetPasswordModal()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to update password', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.passwordUpdateFailed'), 'error')
     } finally {
       setChangingPassword(false)
     }
@@ -77,19 +79,19 @@ export function CloudAccountSection() {
     setChangingEmail(true)
     try {
       if (emailStep === 'request') {
-        if (!newEmail.trim()) { showToast('Enter a new email', 'error'); return }
+        if (!newEmail.trim()) { showToast(t('toast.emailRequired'), 'error'); return }
         await requestEmailChange(newEmail.trim())
-        showToast('Check your new email for the confirmation code', 'success')
+        showToast(t('toast.emailCodeSent'), 'success')
         setEmailStep('confirm')
       } else {
-        if (!emailCode.trim()) { showToast('Enter the code', 'error'); return }
+        if (!emailCode.trim()) { showToast(t('toast.emailCodeRequired'), 'error'); return }
         await confirmEmailChange(newEmail.trim(), emailCode.trim())
-        showToast('Email updated', 'success')
+        showToast(t('toast.emailUpdated'), 'success')
         resetEmailModal()
         await refresh()
       }
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to change email', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.emailChangeFailed'), 'error')
     } finally {
       setChangingEmail(false)
     }
@@ -100,11 +102,11 @@ export function CloudAccountSection() {
     setDeleting(true)
     try {
       await deleteAccount()
-      showToast('Your account has been deleted', 'success')
+      showToast(t('toast.accountDeleted'), 'success')
       setShowDeleteAccount(false)
       await refresh()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to delete account', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.accountDeleteFailed'), 'error')
     } finally {
       setDeleting(false)
     }
@@ -114,11 +116,11 @@ export function CloudAccountSection() {
   if (!authLoading && !status.enabled) {
     return (
       <div>
-        <SectionHeader icon={Cloud} title="Cloud account" />
+        <SectionHeader icon={Cloud} title={t('cloud.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
           <Cloud className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
-          <div className="text-sm text-text-secondary/60">Cloud features are not configured in this build.</div>
-          <div className="text-xs text-text-secondary/40 mt-1">Magic Slash works fully offline — no account required.</div>
+          <div className="text-sm text-text-secondary/60">{t('org.cloudDisabled')}</div>
+          <div className="text-xs text-text-secondary/40 mt-1">{t('org.cloudDisabledHint')}</div>
         </div>
       </div>
     )
@@ -126,21 +128,21 @@ export function CloudAccountSection() {
 
   return (
     <div>
-      <SectionHeader icon={Cloud} title="Cloud account" />
+      <SectionHeader icon={Cloud} title={t('cloud.section')} />
       <div className="bg-surface border border-line-strong rounded-xl p-4">
         {status.loggedIn ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm font-medium">{status.user?.email ?? 'Signed in'}</div>
-                <div className="text-xs text-text-secondary/50 mt-0.5">Signed in to Magic Slash cloud</div>
+                <div className="text-sm font-medium">{status.user?.email ?? t('cloud.signedInFallback')}</div>
+                <div className="text-xs text-text-secondary/50 mt-0.5">{t('cloud.signedInHint')}</div>
               </div>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                Sign out
+                {t('cloud.signOut')}
               </button>
             </div>
             <div className="border-t border-line-subtle pt-3 flex flex-wrap items-center gap-2">
@@ -149,29 +151,29 @@ export function CloudAccountSection() {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <KeyRound className="w-3.5 h-3.5" />
-                Change password
+                {t('cloud.changePassword')}
               </button>
               <button
                 onClick={() => setShowChangeEmail(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <AtSign className="w-3.5 h-3.5" />
-                Change email
+                {t('cloud.changeEmail')}
               </button>
               <button
                 onClick={() => setShowDeleteAccount(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all ml-auto"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Delete my account
+                {t('cloud.deleteAccount')}
               </button>
             </div>
           </div>
         ) : (
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">Not signed in</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">Sign in to manage your organization (optional)</div>
+              <div className="text-sm font-medium">{t('cloud.notSignedIn')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('cloud.notSignedInHint')}</div>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -179,14 +181,14 @@ export function CloudAccountSection() {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                Join with invitation
+                {t('cloud.joinWithInvitation')}
               </button>
               <button
                 onClick={() => setShowLogin(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                Sign in
+                {t('cloud.signIn')}
               </button>
             </div>
           </div>
@@ -200,14 +202,14 @@ export function CloudAccountSection() {
       <Modal
         isOpen={showChangePassword}
         onClose={resetPasswordModal}
-        title="Change password"
+        title={t('cloud.changePassword')}
         footer={
           <>
             <button
               onClick={resetPasswordModal}
               className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleChangePassword}
@@ -215,7 +217,7 @@ export function CloudAccountSection() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
             >
               {changingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
-              Update password
+              {t('cloud.password.submit')}
             </button>
           </>
         }
@@ -225,7 +227,7 @@ export function CloudAccountSection() {
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="New password"
+            placeholder={t('cloud.password.newPlaceholder')}
             autoFocus
             className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
           />
@@ -233,7 +235,7 @@ export function CloudAccountSection() {
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirm new password"
+            placeholder={t('cloud.password.confirmPlaceholder')}
             onKeyDown={(e) => { if (e.key === 'Enter') handleChangePassword() }}
             className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
           />
@@ -244,14 +246,14 @@ export function CloudAccountSection() {
       <Modal
         isOpen={showChangeEmail}
         onClose={resetEmailModal}
-        title="Change email"
+        title={t('cloud.changeEmail')}
         footer={
           <>
             <button
               onClick={resetEmailModal}
               className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleChangeEmail}
@@ -259,7 +261,7 @@ export function CloudAccountSection() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
             >
               {changingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AtSign className="w-3.5 h-3.5" />}
-              {emailStep === 'request' ? 'Send code' : 'Confirm change'}
+              {emailStep === 'request' ? t('cloud.email.sendCode') : t('cloud.email.confirmChange')}
             </button>
           </>
         }
@@ -267,13 +269,13 @@ export function CloudAccountSection() {
         {emailStep === 'request' ? (
           <div className="space-y-2">
             <p className="text-xs text-text-secondary/60">
-              We'll email a 6-digit confirmation code to your new address.
+              {t('cloud.email.requestHelp')}
             </p>
             <input
               type="email"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
-              placeholder="New email"
+              placeholder={t('cloud.email.newPlaceholder')}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
               className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
@@ -282,14 +284,14 @@ export function CloudAccountSection() {
         ) : (
           <div className="space-y-2">
             <p className="text-xs text-text-secondary/60">
-              Check <span className="text-ink">{newEmail}</span> for the confirmation code and enter it below.
+              {t('cloud.email.confirmHelp', { email: newEmail })}
             </p>
             <input
               type="text"
               inputMode="numeric"
               value={emailCode}
               onChange={(e) => setEmailCode(e.target.value)}
-              placeholder="6-digit code"
+              placeholder={t('cloud.email.codePlaceholder')}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
               className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
@@ -302,14 +304,14 @@ export function CloudAccountSection() {
       <Modal
         isOpen={showDeleteAccount}
         onClose={() => setShowDeleteAccount(false)}
-        title="Delete my account"
+        title={t('cloud.deleteAccount')}
         footer={
           <>
             <button
               onClick={() => setShowDeleteAccount(false)}
               className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleDeleteAccount}
@@ -317,7 +319,7 @@ export function CloudAccountSection() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-red hover:bg-red/80 rounded-lg transition-all disabled:opacity-40"
             >
               {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-              Delete permanently
+              {t('cloud.delete.submit')}
             </button>
           </>
         }
@@ -327,9 +329,9 @@ export function CloudAccountSection() {
             <AlertTriangle className="w-4 h-4 text-red" />
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-ink">This permanently deletes your account and personal data.</p>
+            <p className="text-sm text-ink">{t('cloud.delete.warning')}</p>
             <p className="text-xs text-text-secondary/60">
-              Organizations you created will be removed along with their data. This cannot be undone. Magic Slash keeps working locally without an account.
+              {t('cloud.delete.body')}
             </p>
           </div>
         </div>

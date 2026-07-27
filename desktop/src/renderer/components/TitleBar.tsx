@@ -77,7 +77,7 @@ export function TitleBar() {
                   ? 'text-ink'
                   : 'text-text-secondary hover:text-ink'
               }`}
-              title="Toggle agents list (⌘B)"
+              title={t('titlebar.toggleAgentsList')}
             >
               {leftSidebarVisible ? <LeftSidebarOpenIcon /> : <LeftSidebarCloseIcon />}
             </button>
@@ -101,7 +101,7 @@ export function TitleBar() {
                   className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center ${
                     !splitActive ? 'text-ink' : 'text-text-secondary/50 hover:text-text-secondary'
                   }`}
-                  title="Normal view (⌘/)"
+                  title={t('titlebar.normalViewTitle')}
                 >
                   {t('titlebar.normalView')}
                 </button>
@@ -110,7 +110,7 @@ export function TitleBar() {
                   className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center ${
                     splitActive ? 'text-ink' : 'text-text-secondary/50 hover:text-text-secondary'
                   }`}
-                  title="Split view (⌘/)"
+                  title={t('titlebar.splitViewTitle')}
                 >
                   {t('titlebar.splitView')}
                 </button>
@@ -153,7 +153,7 @@ export function TitleBar() {
                 ? 'text-ink'
                 : 'text-text-secondary hover:text-ink'
             }`}
-            title="Info"
+            title={t('titlebar.info')}
           >
             {rightSidebar === 'info' ? <RightSidebarOpenIcon /> : <RightSidebarCloseIcon />}
           </button>

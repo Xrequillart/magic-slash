@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { useConnectivity } from '../hooks/useConnectivity'
 import { useStore } from '../store'
 import { LoginScreen } from './LoginScreen'
+import { useT } from '../i18n'
 
 function FullScreen({ children }: { children: ReactNode }) {
   return (
@@ -14,46 +15,47 @@ function FullScreen({ children }: { children: ReactNode }) {
 }
 
 function Checking() {
+  const t = useT()
   return (
     <FullScreen>
       <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      <p className="text-ink/60">Connecting…</p>
+      <p className="text-ink/60">{t('app.connecting')}</p>
     </FullScreen>
   )
 }
 
 function CloudNotConfigured() {
+  const t = useT()
   return (
     <FullScreen>
       <div className="p-3 bg-red/10 rounded-xl">
         <CloudOff className="w-7 h-7 text-red" />
       </div>
-      <h2 className="text-lg font-semibold">Cloud not configured</h2>
+      <h2 className="text-lg font-semibold">{t('gate.cloudNotConfigured.title')}</h2>
       <p className="text-sm text-text-secondary">
-        Magic Slash requires its cloud backend, but it isn’t configured in this build. Please
-        reinstall an official build or set the Supabase environment before launching.
+        {t('gate.cloudNotConfigured.body')}
       </p>
     </FullScreen>
   )
 }
 
 function ConnectionLost({ onRetry }: { onRetry: () => void }) {
+  const t = useT()
   return (
     <FullScreen>
       <div className="p-3 bg-yellow/10 rounded-xl">
         <WifiOff className="w-7 h-7 text-yellow" />
       </div>
-      <h2 className="text-lg font-semibold">Connection lost</h2>
+      <h2 className="text-lg font-semibold">{t('gate.connectionLost.title')}</h2>
       <p className="text-sm text-text-secondary">
-        Magic Slash can’t reach its backend. Check your internet connection — the app stays
-        locked until the connection is restored.
+        {t('gate.connectionLost.body')}
       </p>
       <button
         onClick={onRetry}
         className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-on-brand rounded-lg text-sm font-medium transition-colors"
       >
         <RotateCcw className="w-4 h-4" />
-        Retry
+        {t('common.retry')}
       </button>
     </FullScreen>
   )

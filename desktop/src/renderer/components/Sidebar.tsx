@@ -8,6 +8,7 @@ import { getProjectColorMap } from '../utils/projectColors'
 import { SidebarUsageCard } from './SidebarUsageCard'
 import { SidebarAccount } from './SidebarAccount'
 import { stateColors, stateBgColors, stateHoverBgColors } from '../utils/stateColors'
+import { useT } from '../i18n'
 import type { TerminalState, ScriptTerminalInfo } from '../../types'
 
 const SIDEBAR_MIN_WIDTH = 200
@@ -182,6 +183,7 @@ interface ScriptItemProps {
 }
 
 const ScriptItem = memo(function ScriptItem({ script, isActive, onSelect, onStop }: ScriptItemProps) {
+  const t = useT()
   return (
     <button
       onClick={onSelect}
@@ -206,7 +208,7 @@ const ScriptItem = memo(function ScriptItem({ script, isActive, onSelect, onStop
       <span
         onClick={(e) => { e.stopPropagation(); onStop() }}
         className="p-0.5 rounded hover:bg-surface-strong opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-        title="Stop script"
+        title={t('sidebar.stopScript')}
       >
         <X className="w-3 h-3 text-text-secondary/50 hover:text-red" />
       </span>
@@ -218,6 +220,7 @@ export function Sidebar() {
   const { terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds, openModal, closeModal, openSettingsModal } = useStore()
   const { setActiveTerminal } = useTerminals()
   const { scriptTerminals, stopScript } = useScriptRunner()
+  const t = useT()
 
   const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
@@ -432,7 +435,7 @@ export function Sidebar() {
           className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium text-text-secondary rounded-lg hover:bg-text-secondary/10 hover:text-ink transition-all"
         >
           <Bot className="w-3.5 h-3.5" />
-          <span>New agent</span>
+          <span>{t('sidebar.newAgent')}</span>
           <span className="ml-auto text-xs opacity-50">{shortcutKey}</span>
         </button>
 
@@ -442,7 +445,7 @@ export function Sidebar() {
           className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-ink"
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Skills</span>
+          <span>{t('sidebar.skills')}</span>
           <span className="ml-auto text-xs opacity-50">{skillsShortcutKey}</span>
         </button>
 
@@ -453,7 +456,7 @@ export function Sidebar() {
             className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-ink"
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>History</span>
+            <span>{t('sidebar.history')}</span>
             <span className="ml-auto text-xs opacity-50">{historyShortcutKey}</span>
           </button>
         )}
@@ -464,7 +467,7 @@ export function Sidebar() {
           className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-ink"
         >
           <Users className="w-3.5 h-3.5" />
-          <span>Team</span>
+          <span>{t('sidebar.team')}</span>
           <span className="ml-auto text-xs opacity-50">{teamShortcutKey}</span>
         </button>
 
@@ -477,15 +480,15 @@ export function Sidebar() {
 
         {/* Agents label - always in the same position */}
         <div className="px-2 pt-2 pb-1 flex items-center justify-between">
-          <div className="text-xs text-text-secondary/50 uppercase tracking-wider">Agents</div>
+          <div className="text-xs text-text-secondary/50 uppercase tracking-wider">{t('sidebar.agents')}</div>
           <span className={`text-[10px] bg-surface px-1.5 py-0.5 rounded transition-opacity duration-150 ${
             isSplitMode && terminals.length > 0 ? 'text-text-secondary/40 opacity-100' : 'opacity-0'
-          }`}>Left</span>
+          }`}>{t('sidebar.paneLeft')}</span>
         </div>
 
         {terminals.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-text-secondary text-xs p-4 text-center">
-            No agents yet. Click &quot;New agent&quot; to start.
+            {t('sidebar.empty')}
           </div>
         ) : isSplitMode ? (
           <>
@@ -496,11 +499,11 @@ export function Sidebar() {
               onDragLeave={() => setDragOverZone(null)}
               onDrop={(e) => handleDropOnZone('left', e)}
             >
-              {WORKFLOW_GROUPS.map(({ key, label }) => (
+              {WORKFLOW_GROUPS.map(({ key, labelKey }) => (
                 <WorkflowGroup
                   key={`left-${key}`}
                   groupKey={key}
-                  label={label}
+                  label={t(labelKey)}
                   terminals={leftGroups[key]}
                   activeTerminalId={focusedPane === 'primary' ? activeTerminalId : null}
                   splitTerminalId={null}
@@ -513,7 +516,7 @@ export function Sidebar() {
               ))}
               {terminals.filter(t => !rightPaneTerminalIds.includes(t.id)).length === 0 && (
                 <div className="text-text-secondary/30 text-xs text-center py-3">
-                  Drop agents here
+                  {t('sidebar.dropAgents')}
                 </div>
               )}
             </div>
@@ -529,14 +532,14 @@ export function Sidebar() {
               onDrop={(e) => handleDropOnZone('right', e)}
             >
               <div className="px-2 pt-2 pb-1 flex items-center justify-between">
-                <div className="text-xs text-text-secondary/50 uppercase tracking-wider">Agents</div>
-                <span className="text-[10px] text-text-secondary/40 bg-surface px-1.5 py-0.5 rounded">Right</span>
+                <div className="text-xs text-text-secondary/50 uppercase tracking-wider">{t('sidebar.agents')}</div>
+                <span className="text-[10px] text-text-secondary/40 bg-surface px-1.5 py-0.5 rounded">{t('sidebar.paneRight')}</span>
               </div>
-              {WORKFLOW_GROUPS.map(({ key, label }) => (
+              {WORKFLOW_GROUPS.map(({ key, labelKey }) => (
                 <WorkflowGroup
                   key={`right-${key}`}
                   groupKey={key}
-                  label={label}
+                  label={t(labelKey)}
                   terminals={rightGroups[key]}
                   activeTerminalId={focusedPane === 'secondary' ? splitTerminalId : null}
                   splitTerminalId={null}
@@ -549,18 +552,18 @@ export function Sidebar() {
               ))}
               {rightPaneTerminalIds.length === 0 && (
                 <div className="text-text-secondary/30 text-xs text-center py-3">
-                  Drop agents here
+                  {t('sidebar.dropAgents')}
                 </div>
               )}
             </div>
           </>
         ) : (
           <div className="flex flex-col gap-1">
-            {WORKFLOW_GROUPS.map(({ key, label }) => (
+            {WORKFLOW_GROUPS.map(({ key, labelKey }) => (
               <WorkflowGroup
                 key={key}
                 groupKey={key}
-                label={label}
+                label={t(labelKey)}
                 terminals={groups[key]}
                 activeTerminalId={activeTerminalId}
                 splitTerminalId={splitTerminalId}
@@ -578,7 +581,7 @@ export function Sidebar() {
       {scriptTerminals.length > 0 && (
         <>
           <div className="px-2 pt-2 pb-1">
-            <div className="px-2 text-xs text-text-secondary/50 uppercase tracking-wider">Scripts</div>
+            <div className="px-2 text-xs text-text-secondary/50 uppercase tracking-wider">{t('sidebar.scripts')}</div>
           </div>
           <div className="px-2 pb-2 flex flex-col gap-1">
             {scriptTerminals.map(script => (
@@ -607,7 +610,7 @@ export function Sidebar() {
           rel="noopener noreferrer"
           className="hover:text-ink transition-colors"
         >
-          Docs
+          {t('sidebar.docs')}
         </a>
         <span className="opacity-30">&bull;</span>
         <a
@@ -616,7 +619,7 @@ export function Sidebar() {
           rel="noopener noreferrer"
           className="hover:text-ink transition-colors"
         >
-          Changelog
+          {t('sidebar.changelog')}
         </a>
         <span className="opacity-30">&bull;</span>
         <a
@@ -625,7 +628,7 @@ export function Sidebar() {
           rel="noopener noreferrer"
           className="hover:text-ink transition-colors"
         >
-          GitHub
+          {t('sidebar.github')}
         </a>
       </div>
     </div>

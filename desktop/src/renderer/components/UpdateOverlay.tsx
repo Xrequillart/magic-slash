@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { showToast } from './Toast'
 import { RotateCcw } from 'lucide-react'
 import { VSCodeIcon } from './agent-info-sidebar/icons'
+import { useT } from '../i18n'
 
 type UpdateStatus =
   | { type: 'checking' }
@@ -103,6 +104,7 @@ function launchConfetti(canvas: HTMLCanvasElement) {
 }
 
 export function UpdateOverlay() {
+  const t = useT()
   const activeTerminalId = useStore((s) => s.activeTerminalId)
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [visible, setVisible] = useState(false)
@@ -221,6 +223,10 @@ export function UpdateOverlay() {
   if (!visible || !status) {
     return (
       <>
+        {/* Dev-only debug menu. Its button labels are deliberately NOT in the
+            catalogue: `import.meta.env.DEV` strips the whole block from a
+            production build, so no user ever reads them. The toasts it fires ARE
+            translated — those are the real ones, simulated. */}
         {import.meta.env.DEV && (
           <div ref={debugMenuRef} className="fixed bottom-3 right-3 z-[200]">
             {debugMenuOpen && (
@@ -258,12 +264,12 @@ export function UpdateOverlay() {
                         persistent: true,
                         actions: [
                           {
-                            label: 'Reset to defaults',
+                            label: t('toast.resetToDefaults'),
                             icon: <RotateCcw className="w-3.5 h-3.5" />,
-                            onClick: () => showToast('Configuration repaired successfully', 'success'),
+                            onClick: () => showToast(t('toast.configRepaired'), 'success'),
                           },
                           {
-                            label: 'Open in VS Code',
+                            label: t('toast.openInVSCode'),
                             icon: <VSCodeIcon className="w-3.5 h-3.5" />,
                             onClick: () => {},
                           },
@@ -285,7 +291,7 @@ export function UpdateOverlay() {
                   ? 'bg-red border-red text-on-brand'
                   : 'bg-red/80 border-red/60 text-on-brand hover:bg-red'
               }`}
-              title="Debug menu"
+              title={t('update.debugMenu')}
             >
               <Bug className="w-4 h-4" />
             </button>
@@ -318,7 +324,7 @@ export function UpdateOverlay() {
           {/* Status Text */}
           <div className="text-center">
             {status.type === 'checking' && (
-              <p className="text-text-secondary text-lg">Checking for updates...</p>
+              <p className="text-text-secondary text-lg">{t('update.checking')}</p>
             )}
             {status.type === 'available' && (
               <p className="text-ink text-lg">
@@ -327,7 +333,7 @@ export function UpdateOverlay() {
             )}
             {status.type === 'downloading' && (
               <>
-                <p className="text-ink text-lg mb-4">Downloading update...</p>
+                <p className="text-ink text-lg mb-4">{t('update.downloading')}</p>
                 {/* Progress bar */}
                 <div className="w-64 h-2 bg-bg-tertiary rounded-full overflow-hidden">
                   <div
@@ -340,7 +346,7 @@ export function UpdateOverlay() {
             )}
             {status.type === 'downloaded' && (
               <>
-                <p className="text-[#393BFF] text-lg mb-4">Update ready!</p>
+                <p className="text-[#393BFF] text-lg mb-4">{t('update.ready')}</p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
@@ -349,13 +355,13 @@ export function UpdateOverlay() {
                     }}
                     className="px-4 py-1.5 rounded-lg text-sm text-text-secondary hover:text-ink border border-border/50 hover:border-border transition-colors"
                   >
-                    Later
+                    {t('app.later')}
                   </button>
                   <button
                     onClick={() => window.electronAPI.updater.install()}
                     className="px-4 py-1.5 rounded-lg text-sm text-ink bg-[#393BFF] hover:bg-[#393BFF]/80 transition-colors"
                   >
-                    Restart now
+                    {t('update.restartNow')}
                   </button>
                 </div>
               </>
@@ -364,7 +370,7 @@ export function UpdateOverlay() {
               <p className="text-red text-sm">
                 {status.phase === 'install'
                   ? 'Update downloaded but restart failed. Please quit and reopen the app.'
-                  : 'Update check failed. Continuing...'}
+                  : t('update.checkFailed')}
               </p>
             )}
           </div>

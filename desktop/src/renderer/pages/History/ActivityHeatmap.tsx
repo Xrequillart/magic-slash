@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { useLocale } from '../../i18n'
+import { useLocale, useT } from '../../i18n'
 
 interface ActivityHeatmapProps {
   heatmapData: Map<string, number>
@@ -47,6 +47,7 @@ interface TooltipState {
 export function ActivityHeatmap({ heatmapData }: ActivityHeatmapProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const locale = useLocale()
+  const t = useT()
 
   // Derived in the render path, not at module scope: a language switch must
   // relabel the axes, and Intl gives the abbreviations the locale actually uses
@@ -200,7 +201,7 @@ export function ActivityHeatmap({ heatmapData }: ActivityHeatmapProps) {
               transform: 'translate(-50%, -100%)',
             }}
           >
-            {tooltip.date} — {tooltip.count} {tooltip.count === 1 ? 'action' : 'actions'}
+            {t(tooltip.count === 1 ? 'heatmap.tooltip.one' : 'heatmap.tooltip.other', { date: tooltip.date, count: tooltip.count })}
           </div>
         )}
       </div>

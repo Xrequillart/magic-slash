@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { RealtimeStatus } from '../../types'
 import { useConnectivity } from '../hooks/useConnectivity'
+import { useT } from '../i18n'
 
 /**
  * Small live / reconnecting hint for the team dashboard. Combines the shared
@@ -10,6 +11,7 @@ import { useConnectivity } from '../hooks/useConnectivity'
  * a blocking banner — the connectivity gate already owns hard offline states.
  */
 export function LiveIndicator() {
+  const t = useT()
   const { status: connectivity } = useConnectivity()
   const [realtime, setRealtime] = useState<RealtimeStatus>('reconnecting')
 
@@ -35,7 +37,7 @@ export function LiveIndicator() {
       className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
         isLive ? 'bg-green/10 text-green' : 'bg-yellow/10 text-yellow'
       }`}
-      title={isLive ? 'Real-time updates' : 'Reconnecting to the real-time feed…'}
+      title={isLive ? t('live.liveTitle') : t('live.reconnectingTitle')}
     >
       <span className="relative flex w-2 h-2">
         {isLive && (
@@ -43,7 +45,7 @@ export function LiveIndicator() {
         )}
         <span className={`relative inline-flex w-2 h-2 rounded-full ${isLive ? 'bg-green' : 'bg-yellow'}`} />
       </span>
-      {isLive ? 'Live' : 'Reconnecting…'}
+      {isLive ? t('live.live') : t('live.reconnecting')}
     </span>
   )
 }

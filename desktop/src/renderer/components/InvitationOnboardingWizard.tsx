@@ -3,6 +3,7 @@ import { Mail, ChevronLeft, ChevronRight, X, Check, Folder, Trash2, Loader2 } fr
 import { useAuth } from '../hooks/useAuth'
 import { useOrg } from '../hooks/useOrg'
 import { useConfig } from '../hooks/useConfig'
+import { useT } from '../i18n'
 
 interface InvitationOnboardingWizardProps {
   isOpen: boolean
@@ -26,6 +27,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
   const { login, signup } = useAuth()
   const { accept } = useOrg()
   const { loadConfig } = useConfig()
+  const t = useT()
 
   const [step, setStep] = useState(1)
   const [token, setToken] = useState(initialToken)
@@ -52,8 +54,8 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
   const handleAcceptInvitation = useCallback(async () => {
     if (busy) return
     setError(null)
-    if (!token.trim()) { setError('Invitation token is required'); return }
-    if (!email.trim() || !password) { setError('Email and password are required'); return }
+    if (!token.trim()) { setError(t('invite.error.tokenRequired')); return }
+    if (!email.trim() || !password) { setError(t('invite.error.credentialsRequired')); return }
 
     setBusy(true)
     try {
@@ -62,7 +64,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
         : await login(email.trim(), password)
 
       if (!status.loggedIn) {
-        setError('Please confirm your email, then reopen this wizard to continue.')
+        setError(t('invite.error.confirmEmail'))
         return
       }
 
@@ -73,7 +75,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
       if (result?.config) loadConfig()
       setStep(2)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to accept invitation')
+      setError(e instanceof Error ? e.message : t('invite.error.acceptFailed'))
     } finally {
       setBusy(false)
     }
@@ -84,8 +86,8 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
     if (!folderPath) return
     const folderName = folderPath.split(/[\\/]/).pop() || ''
     const name = folderName.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase()
-    if (!name) { setError('Invalid folder name'); return }
-    if (repos.some(r => r.name === name)) { setError(`'${name}' already added`); return }
+    if (!name) { setError(t('toast.invalidFolderName')); return }
+    if (repos.some(r => r.name === name)) { setError(t('invite.error.repoExists', { name })); return }
     setError(null)
     setRepos(prev => [...prev, { name, path: folderPath }])
   }, [repos])
@@ -109,7 +111,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
       loadConfig()
       setStep(3)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to add repositories')
+      setError(e instanceof Error ? e.message : t('invite.error.addReposFailed'))
     } finally {
       setBusy(false)
     }
@@ -132,7 +134,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
             <div className="p-2 bg-accent/10 rounded-lg">
               <Mail className="w-4 h-4 text-accent" />
             </div>
-            <h3 className="text-base font-semibold">Join your team</h3>
+            <h3 className="text-base font-semibold">{t('invite.wizard.title')}</h3>
           </div>
           <button
             onClick={onClose}
@@ -157,16 +159,16 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
           {step === 1 && (
             <div className="space-y-3">
               <div>
-                <div className="text-sm font-medium mb-1">Accept your invitation</div>
+                <div className="text-sm font-medium mb-1">{t('invite.wizard.acceptTitle')}</div>
                 <div className="text-xs text-text-secondary/50 mb-3">
-                  Paste the invitation token you received, then sign in or create your account. You&apos;ll inherit your team&apos;s configuration automatically.
+                  {t('invite.wizard.acceptHelp')}
                 </div>
               </div>
               <input
                 type="text"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                placeholder="Invitation token"
+                placeholder={t('invite.wizard.tokenPlaceholder')}
                 autoFocus
                 className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 font-mono"
               />
@@ -175,27 +177,27 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                   onClick={() => setIsNewAccount(true)}
                   className={`flex-1 px-3 py-1.5 text-xs rounded-lg border transition-all ${isNewAccount ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-surface border-line-field text-text-secondary hover:text-ink'}`}
                 >
-                  New account
+                  {t('invite.wizard.newAccount')}
                 </button>
                 <button
                   onClick={() => setIsNewAccount(false)}
                   className={`flex-1 px-3 py-1.5 text-xs rounded-lg border transition-all ${!isNewAccount ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-surface border-line-field text-text-secondary hover:text-ink'}`}
                 >
-                  Existing account
+                  {t('invite.wizard.existingAccount')}
                 </button>
               </div>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email (must match the invitation)"
+                placeholder={t('invite.wizard.emailPlaceholder')}
                 className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
               />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
+                placeholder={t('invite.wizard.passwordPlaceholder')}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAcceptInvitation() }}
                 className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
               />
@@ -205,9 +207,9 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
           {step === 2 && (
             <div className="space-y-3">
               <div>
-                <div className="text-sm font-medium mb-1">Add your repositories</div>
+                <div className="text-sm font-medium mb-1">{t('invite.wizard.reposTitle')}</div>
                 <div className="text-xs text-text-secondary/50 mb-3">
-                  This is the only thing you set locally — everything else is inherited from your org.
+                  {t('invite.wizard.reposHelp')}
                 </div>
               </div>
               <button
@@ -215,7 +217,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 className="w-full flex items-center justify-center gap-2 py-3 text-sm border border-dashed border-line-strong rounded-lg text-text-secondary hover:border-accent/40 hover:text-ink transition-colors"
               >
                 <Folder className="w-4 h-4" />
-                Add a repository folder
+                {t('invite.wizard.addRepo')}
               </button>
               {repos.length > 0 && (
                 <div className="space-y-1.5">
@@ -243,9 +245,9 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
               <div className="p-3 bg-green/10 rounded-full">
                 <Check className="w-6 h-6 text-green" />
               </div>
-              <div className="text-sm font-medium">You&apos;re all set!</div>
+              <div className="text-sm font-medium">{t('invite.wizard.doneTitle')}</div>
               <div className="text-xs text-text-secondary/60">
-                {orgName ? <>You&apos;ve joined <span className="text-ink font-medium">{orgName}</span> and inherited its configuration.</> : 'You\'ve joined your team and inherited its configuration.'}
+                {orgName ? t('invite.wizard.doneNamed', { name: orgName }) : t('invite.wizard.doneFallback')}
               </div>
             </div>
           )}
@@ -266,7 +268,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
-                Back
+                {t('common.back')}
               </button>
             )}
           </div>
@@ -276,7 +278,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 onClick={onClose}
                 className="px-3 py-1.5 text-xs font-medium text-text-secondary/50 hover:text-text-secondary transition-colors"
               >
-                Skip
+                {t('common.skip')}
               </button>
             )}
             {step === 1 && (
@@ -285,7 +287,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 disabled={busy}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-accent border border-accent/20 rounded-lg hover:bg-accent/10 transition-all disabled:opacity-40"
               >
-                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>Accept<ChevronRight className="w-3.5 h-3.5" /></>}
+                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <>{t('invite.wizard.accept')}<ChevronRight className="w-3.5 h-3.5" /></>}
               </button>
             )}
             {step === 2 && (
@@ -294,7 +296,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 disabled={busy}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
               >
-                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><ChevronRight className="w-3.5 h-3.5" />Continue</>}
+                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><ChevronRight className="w-3.5 h-3.5" />{t('invite.wizard.continue')}</>}
               </button>
             )}
             {step === 3 && (
@@ -303,7 +305,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all"
               >
                 <Check className="w-3.5 h-3.5" />
-                Done
+                {t('common.done')}
               </button>
             )}
           </div>

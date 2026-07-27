@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { useModalExit } from '../hooks/useModalExit'
+import { useT } from '../i18n'
 
 interface PageModalProps {
   title: string
@@ -18,6 +19,7 @@ interface PageModalProps {
  * sized for page-scale content.
  */
 export function PageModal({ title, onClose, headerRight, children }: PageModalProps) {
+  const t = useT()
   /**
    * The parent renders this conditionally, so calling onClose straight away
    * would unmount it mid-animation. Closing is requested here instead: the
@@ -62,7 +64,7 @@ export function PageModal({ title, onClose, headerRight, children }: PageModalPr
             <button
               onClick={requestClose}
               className="p-1.5 text-text-secondary hover:text-ink hover:bg-surface-strong rounded-lg transition-colors"
-              title="Close (Esc)"
+              title={t('modal.closeEsc')}
             >
               <X className="w-4 h-4" />
             </button>

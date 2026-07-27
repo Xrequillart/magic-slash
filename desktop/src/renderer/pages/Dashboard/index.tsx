@@ -6,14 +6,14 @@ import { useOrgUsageStats } from '../../hooks/useOrgUsageStats'
 import { useOrg } from '../../hooks/useOrg'
 import { ActivityHeatmap } from '../History/ActivityHeatmap'
 import { aggregateUsageTotals, aggregateUsageByMember, computeUsageHeatmap, formatUsd } from '../../utils/usageStats'
-import { useLocale } from '../../i18n'
+import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
 
-function formatDuration(ms: number): string {
+function formatDuration(ms: number, t: Translate): string {
   const totalMin = Math.round(ms / 60000)
-  if (totalMin < 60) return `${totalMin}m`
+  if (totalMin < 60) return t('duration.minutesShort', { count: totalMin })
   const h = Math.floor(totalMin / 60)
   const m = totalMin % 60
-  return m === 0 ? `${h}h` : `${h}h ${m}m`
+  return m === 0 ? t('duration.hours', { count: h }) : t('duration.hoursMinutes', { hours: h, minutes: m })
 }
 
 function StatTile({ icon: Icon, label, value }: { icon: typeof Coins; label: string; value: string }) {
@@ -37,6 +37,7 @@ function UsageStatsSection() {
   const { rows, capped, loading } = useOrgUsageStats()
   const { members } = useOrg()
   const locale = useLocale()
+  const t = useT()
 
   const emailByOwner = useMemo(() => {
     const map = new Map<string, string>()
@@ -54,17 +55,17 @@ function UsageStatsSection() {
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 text-sm text-text-secondary">
         <BarChart3 className="w-4 h-4" />
-        <span>Usage</span>
+        <span>{t('dashboard.usage')}</span>
       </div>
 
       {loading && rows.length === 0 ? (
-        <div className="py-10 flex items-center justify-center text-text-secondary text-sm">Loading…</div>
+        <div className="py-10 flex items-center justify-center text-text-secondary text-sm">{t('common.loading')}</div>
       ) : rows.length === 0 ? (
         <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
           <BarChart3 className="w-8 h-8 opacity-30" />
-          <p>No usage recorded yet.</p>
+          <p>{t('dashboard.usageEmpty')}</p>
           <p className="text-xs text-text-secondary/60 max-w-sm text-center">
-            Usage logging is opt-in. Members who enable it in Settings will have an aggregated snapshot recorded at the end of each session.
+            {t('dashboard.usageEmptyHint')}
           </p>
         </div>
       ) : (
@@ -72,17 +73,17 @@ function UsageStatsSection() {
           {/* Totals are aggregated from at most the newest 5000 sessions; warn when that cap is hit. */}
           {capped && (
             <div className="text-xs text-amber-400/80 bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2">
-              Showing the most recent 5,000 sessions — totals below are partial and under-count older activity.
+              {t('dashboard.capped')}
             </div>
           )}
 
           {/* Summary tiles */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <StatTile icon={Coins} label="Total cost" value={formatUsd(totals.costUsd, locale)} />
-            <StatTile icon={Activity} label="Sessions" value={totals.sessions.toLocaleString(locale)} />
-            <StatTile icon={Plus} label="Lines added" value={totals.linesAdded.toLocaleString(locale)} />
-            <StatTile icon={Minus} label="Lines removed" value={totals.linesRemoved.toLocaleString(locale)} />
-            <StatTile icon={Clock} label="Total duration" value={formatDuration(totals.durationMs)} />
+            <StatTile icon={Coins} label={t('dashboard.totalCost')} value={formatUsd(totals.costUsd, locale)} />
+            <StatTile icon={Activity} label={t('dashboard.sessions')} value={totals.sessions.toLocaleString(locale)} />
+            <StatTile icon={Plus} label={t('dashboard.linesAdded')} value={totals.linesAdded.toLocaleString(locale)} />
+            <StatTile icon={Minus} label={t('dashboard.linesRemoved')} value={totals.linesRemoved.toLocaleString(locale)} />
+            <StatTile icon={Clock} label={t('dashboard.totalDuration')} value={formatDuration(totals.durationMs, t)} />
           </div>
 
           {/* Sessions over time */}
@@ -90,15 +91,15 @@ function UsageStatsSection() {
 
           {/* Per-member breakdown (always non-empty in this branch — rows.length !== 0) */}
           <div className="bg-surface border border-line-field rounded-xl p-4 flex flex-col gap-2">
-            <div className="text-xs text-text-secondary mb-1">By member</div>
+            <div className="text-xs text-text-secondary mb-1">{t('dashboard.byMember')}</div>
             {byMember.map((m) => (
               <div key={m.userId || '__unassigned__'} className="flex items-center justify-between gap-3 text-sm">
                 <span className="text-ink truncate min-w-0">
-                  {m.userId ? emailByOwner.get(m.userId) ?? m.userId : 'Unassigned'}
+                  {m.userId ? emailByOwner.get(m.userId) ?? m.userId : t('dashboard.unassigned')}
                 </span>
                 <div className="flex items-center gap-4 flex-shrink-0">
                   <span className="text-xs text-text-secondary/60">
-                    {m.sessions} {m.sessions === 1 ? 'session' : 'sessions'}
+                    {t(m.sessions === 1 ? 'dashboard.sessionCount.one' : 'dashboard.sessionCount.other', { count: m.sessions })}
                   </span>
                   <span className="text-ink/90 font-medium tabular-nums">{formatUsd(m.costUsd, locale)}</span>
                 </div>
@@ -113,33 +114,34 @@ function UsageStatsSection() {
 
 // Workflow-status → label + badge color. Statuses mirror
 // TerminalMetadata.status; anything unrecognized falls through to a neutral pill.
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  'in progress':        { label: 'In progress',      className: 'bg-accent/15 text-accent' },
-  committed:            { label: 'Committed',         className: 'bg-yellow/15 text-yellow' },
-  'ready for PR':       { label: 'Ready for PR',      className: 'bg-blue/15 text-blue' },
-  'PR created':         { label: 'PR created',        className: 'bg-blue/15 text-blue' },
-  'in review':          { label: 'In review',         className: 'bg-purple/15 text-purple' },
-  'changes requested':  { label: 'Changes requested', className: 'bg-red/15 text-red' },
-  'Review addressed':   { label: 'Review addressed',  className: 'bg-green/15 text-green' },
-  'PR merged':          { label: 'PR merged',         className: 'bg-green/15 text-green' },
+const STATUS_CONFIG: Record<string, { labelKey: MessageKey; className: string }> = {
+  'in progress':        { labelKey: 'status.inProgress',       className: 'bg-accent/15 text-accent' },
+  committed:            { labelKey: 'status.committed',        className: 'bg-yellow/15 text-yellow' },
+  'ready for PR':       { labelKey: 'status.readyForPR',       className: 'bg-blue/15 text-blue' },
+  'PR created':         { labelKey: 'status.prCreated',        className: 'bg-blue/15 text-blue' },
+  'in review':          { labelKey: 'status.inReview',         className: 'bg-purple/15 text-purple' },
+  'changes requested':  { labelKey: 'status.changesRequested', className: 'bg-red/15 text-red' },
+  'Review addressed':   { labelKey: 'status.reviewAddressed',  className: 'bg-green/15 text-green' },
+  'PR merged':          { labelKey: 'status.prMerged',         className: 'bg-green/15 text-green' },
 }
 
 function StatusPill({ status }: { status?: string }) {
+  const t = useT()
   if (!status) return null
   const config = STATUS_CONFIG[status]
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${config?.className ?? 'bg-surface text-text-secondary'}`}>
-      {config?.label ?? status}
+      {config ? t(config.labelKey) : status}
     </span>
   )
 }
 
 // PR review status → label + badge color for the "awaiting review" widget.
-const PR_STATUS_CONFIG: Record<NonNullable<OrgAgentPRReview['status']>, { label: string; className: string }> = {
-  pending:              { label: 'Awaiting review',    className: 'bg-blue/15 text-blue' },
-  commented:            { label: 'Commented',          className: 'bg-purple/15 text-purple' },
-  'changes-requested':  { label: 'Changes requested',  className: 'bg-red/15 text-red' },
-  approved:             { label: 'Approved',           className: 'bg-green/15 text-green' },
+const PR_STATUS_CONFIG: Record<NonNullable<OrgAgentPRReview['status']>, { labelKey: MessageKey; className: string }> = {
+  pending:              { labelKey: 'prReview.pending',          className: 'bg-blue/15 text-blue' },
+  commented:            { labelKey: 'prReview.commented',        className: 'bg-purple/15 text-purple' },
+  'changes-requested':  { labelKey: 'prReview.changesRequested', className: 'bg-red/15 text-red' },
+  approved:             { labelKey: 'prReview.approved',         className: 'bg-green/15 text-green' },
 }
 
 // "Awaiting review" = a live PR (not merged/closed) whose review is still open.
@@ -188,18 +190,20 @@ function TicketBadge({ ticketId }: { ticketId?: string }) {
 }
 
 function OwnerLabel({ agent, emailByOwner }: { agent: OrgAgent; emailByOwner: Map<string, string> }) {
-  const label = agent.ownerId ? emailByOwner.get(agent.ownerId) ?? agent.ownerId : 'Unassigned'
+  const t = useT()
+  const label = agent.ownerId ? emailByOwner.get(agent.ownerId) ?? agent.ownerId : t('dashboard.unassigned')
   return <span className="text-xs text-text-secondary/60 truncate">{label}</span>
 }
 
 /** "PRs awaiting review": teammates' live PRs whose review is still open. */
 function AwaitingReviewSection({ items, emailByOwner }: { items: ReviewItem[]; emailByOwner: Map<string, string> }) {
+  const t = useT()
   if (items.length === 0) return null
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 text-sm text-text-secondary">
         <GitPullRequest className="w-4 h-4" />
-        <span>PRs awaiting review</span>
+        <span>{t('dashboard.awaitingReview')}</span>
         <span className="text-xs text-text-secondary/50">{items.length}</span>
       </div>
       <div className="flex flex-col gap-2">
@@ -218,16 +222,16 @@ function AwaitingReviewSection({ items, emailByOwner }: { items: ReviewItem[]; e
               <TicketBadge ticketId={agent.ticketId} />
               <RepoTag repo={review.repo} />
               {pr && (
-                <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${pr.className}`}>{pr.label}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${pr.className}`}>{t(pr.labelKey)}</span>
               )}
               {review.prUrl && (
                 <button
                   onClick={() => review.prUrl && window.electronAPI.shell.openExternal(review.prUrl)}
-                  title="Open the pull request"
+                  title={t('dashboard.openPR')}
                   className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-colors flex-shrink-0"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>View PR</span>
+                  <span>{t('dashboard.viewPR')}</span>
                 </button>
               )}
             </div>
@@ -240,12 +244,13 @@ function AwaitingReviewSection({ items, emailByOwner }: { items: ReviewItem[]; e
 
 /** "Blocked": agents whose workflow status means the author must act next. */
 function BlockedSection({ agents, emailByOwner }: { agents: OrgAgent[]; emailByOwner: Map<string, string> }) {
+  const t = useT()
   if (agents.length === 0) return null
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 text-sm text-text-secondary">
         <AlertOctagon className="w-4 h-4" />
-        <span>Blocked</span>
+        <span>{t('dashboard.blocked')}</span>
         <span className="text-xs text-text-secondary/50">{agents.length}</span>
       </div>
       <div className="flex flex-col gap-2">

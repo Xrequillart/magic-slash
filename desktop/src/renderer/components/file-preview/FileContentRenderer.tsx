@@ -4,6 +4,7 @@ import MarkdownView from './MarkdownView'
 import ImageView from './ImageView'
 import BinaryPlaceholder from './BinaryPlaceholder'
 import { formatSize } from '../../utils/formatSize'
+import { useT } from '../../i18n'
 
 interface Props {
   repoPath: string
@@ -21,6 +22,7 @@ type FileResult =
 const MARKDOWN_EXTS = new Set(['md', 'markdown'])
 
 export default function FileContentRenderer({ repoPath, filePath, status }: Props) {
+  const t = useT()
   const [result, setResult] = useState<FileResult | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -53,7 +55,7 @@ export default function FileContentRenderer({ repoPath, filePath, status }: Prop
     }
     return (
       <div className="flex items-center justify-center h-32 text-red-400 text-sm">
-        Cannot read file
+        {t('filePreview.unreadable')}
       </div>
     )
   }

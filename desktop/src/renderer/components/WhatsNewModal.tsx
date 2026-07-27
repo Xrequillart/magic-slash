@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Modal } from './Modal'
 import whatsNewHero from '../assets/whats-new-hero.png'
+import { useT } from '../i18n'
 
 function filterReleaseNotes(html: string): string {
   const parser = new DOMParser()
@@ -25,6 +26,7 @@ function filterReleaseNotes(html: string): string {
 }
 
 export function WhatsNewModal() {
+  const t = useT()
   const [data, setData] = useState<{ version: string; releaseNotes: string } | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const manualOpen = useRef(false)
@@ -98,7 +100,7 @@ export function WhatsNewModal() {
           onClick={handleClose}
           className="px-4 py-1.5 text-sm font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-colors"
         >
-          Got it
+          {t('whatsNew.gotIt')}
         </button>
       }
     >

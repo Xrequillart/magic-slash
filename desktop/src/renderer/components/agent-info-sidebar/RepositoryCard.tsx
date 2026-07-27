@@ -2,6 +2,7 @@ import { GitBranch, Copy, Check, ExternalLink, ArrowRight, CheckCircle2, AlertCi
 import { GitHubIcon, VSCodeIcon } from './icons'
 import { ScriptsDropdown } from './ScriptsDropdown'
 import { formatRelativeDate } from './utils'
+import { useT, type MessageKey, type Translate } from '../../i18n'
 import { showToast } from '../Toast'
 import type { RepoGitData } from './types'
 import type { RepositoryMetadata } from '../../../types'
@@ -23,11 +24,11 @@ interface RepositoryCardProps {
   onRemove: () => void
 }
 
-const REVIEW_STATUS_LABELS: Record<NonNullable<RepositoryMetadata['prReviewStatus']>, string> = {
-  approved: 'Approved',
-  'changes-requested': 'Changes requested',
-  commented: 'Commented',
-  pending: 'Pending',
+const REVIEW_STATUS_LABELS: Record<NonNullable<RepositoryMetadata['prReviewStatus']>, MessageKey> = {
+  approved: 'prReview.approved',
+  'changes-requested': 'prReview.changesRequested',
+  commented: 'prReview.commented',
+  pending: 'prReview.pending',
 }
 
 function ReviewStatusIcon({ status }: { status: NonNullable<RepositoryMetadata['prReviewStatus']> }) {
@@ -43,16 +44,16 @@ function ReviewStatusIcon({ status }: { status: NonNullable<RepositoryMetadata['
   }
 }
 
-async function runSlashCommand(terminalId: string, command: string) {
+async function runSlashCommand(terminalId: string, command: string, t: Translate) {
   try {
     const result = await window.electronAPI.prWatcher.sendCommand(terminalId, command)
     if (result.launched) {
-      showToast(`Sent ${command} to the agent`, 'success')
+      showToast(t('toast.commandSent', { command }), 'success')
     } else if (result.copied) {
-      showToast(`Auto-launch disabled — ${command} copied to clipboard`, 'warning')
+      showToast(t('toast.commandCopied', { command }), 'warning')
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : 'Failed to launch command', 'error')
+    showToast(err instanceof Error ? err.message : t('toast.commandFailed'), 'error')
   }
 }
 
@@ -71,6 +72,7 @@ export function RepositoryCard({
   onCopyBranchName,
   onRemove,
 }: RepositoryCardProps) {
+  const t = useT()
   const setSelectedFile = useStore(s => s.setSelectedFile)
   const hasChanges = gitData?.stats?.isGitRepo && gitData.stats.filesChanged > 0
   const hasCommits = gitData?.commits && gitData.commits.commits.length > 0
@@ -91,13 +93,13 @@ export function RepositoryCard({
             className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary/50 border border-dashed border-border/40 rounded hover:border-[#007ACC]/50 hover:text-[#007ACC] hover:bg-[#007ACC]/5 transition-colors"
           >
             <VSCodeIcon className="w-3 h-3" />
-            Open
+            {t('agentInfo.openInEditor')}
           </button>
           {/* Remove repository button */}
           <button
             onClick={onRemove}
             className="flex items-center justify-center p-1 text-text-secondary/50 rounded hover:text-red-500 hover:bg-red-500/10 transition-colors"
-            title="Remove repository"
+            title={t('agentInfo.removeRepository')}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -134,7 +136,7 @@ export function RepositoryCard({
             <button
               onClick={() => onCopyBranchName(gitData.branch!)}
               className="p-1 ml-auto rounded hover:bg-surface-strong transition-colors group flex-shrink-0"
-              title="Copy branch name"
+              title={t('agentInfo.copyBranch')}
             >
               {copiedBranch === gitData.branch ? (
                 <Check className="w-3 h-3 text-green" />
@@ -151,10 +153,10 @@ export function RepositoryCard({
         <div className="bg-surface rounded-md p-2 mb-2">
           {/* Header with title, stats and gauge */}
           <div className="flex items-center gap-2 text-xs mb-2">
-            <span className="text-text-secondary/70 font-medium">Uncommitted changes</span>
+            <span className="text-text-secondary/70 font-medium">{t('agentInfo.uncommittedChanges')}</span>
             <div className="flex items-center gap-2 ml-auto">
               <span className="text-text-secondary/50">
-                {gitData.stats.filesChanged} file{gitData.stats.filesChanged > 1 ? 's' : ''}
+                {t(gitData.stats.filesChanged > 1 ? 'agentInfo.files.other' : 'agentInfo.files.one', { count: gitData.stats.filesChanged })}
               </span>
               {(gitData.stats.additions > 0 || gitData.stats.deletions > 0) && (
                 <>
@@ -211,7 +213,7 @@ export function RepositoryCard({
       {hasCommits && gitData.commits && (
         <div className="bg-surface rounded-md p-2 mb-2">
           <div className="flex items-center text-xs mb-1.5">
-            <span className="text-text-secondary/70 font-medium">Commits</span>
+            <span className="text-text-secondary/70 font-medium">{t('agentInfo.commits')}</span>
             <span className="text-text-secondary/50 ml-auto">
               {gitData.commits.commits.length} ahead of {gitData.commits.baseBranch}
             </span>
@@ -226,7 +228,7 @@ export function RepositoryCard({
                   {commit.subject}
                 </span>
                 <span className="text-text-secondary/40 text-xs flex-shrink-0" title={commit.relativeDate}>
-                  {formatRelativeDate(commit.relativeDate)}
+                  {formatRelativeDate(commit.relativeDate, t)}
                 </span>
                 <button
                   onClick={() => onCopyCommitHash(commit.hash)}
@@ -244,7 +246,7 @@ export function RepositoryCard({
                   <button
                     onClick={() => window.electronAPI.shell.openExternal(`${gitData.gitHubUrl}/commit/${commit.hash}`)}
                     className="flex-shrink-0 p-1 bg-surface border border-border/30 rounded text-text-secondary/50 hover:bg-surface-strong hover:text-ink transition-colors"
-                    title="View on GitHub"
+                    title={t('agentInfo.viewOnGitHub')}
                   >
                     <GitHubIcon className="w-3 h-3" />
                   </button>
@@ -263,7 +265,7 @@ export function RepositoryCard({
       {/* No changes state */}
       {gitData && !gitData.error && !hasChanges && !hasCommits && gitData.branch && (
         <div className="bg-surface rounded-md p-2 mb-2">
-          <span className="text-xs text-text-secondary/40 italic">No uncommitted changes</span>
+          <span className="text-xs text-text-secondary/40 italic">{t('agentInfo.noUncommittedChanges')}</span>
         </div>
       )}
 
@@ -275,7 +277,7 @@ export function RepositoryCard({
         >
           <div className="flex items-center gap-1.5">
             <GitHubIcon className="w-3.5 h-3.5 text-accent/70 group-hover:text-accent transition-colors" />
-            <span className="text-accent text-xs font-medium group-hover:text-accent transition-colors">View Pull Request</span>
+            <span className="text-accent text-xs font-medium group-hover:text-accent transition-colors">{t('agentInfo.viewPullRequest')}</span>
           </div>
           <ExternalLink className="w-3 h-3 text-accent/50 group-hover:text-accent transition-colors" />
         </button>
@@ -287,7 +289,7 @@ export function RepositoryCard({
           <div className="flex items-center gap-1.5 text-xs">
             <ReviewStatusIcon status={repoMetadata.prReviewStatus} />
             <span className="text-ink/80 font-medium">
-              {REVIEW_STATUS_LABELS[repoMetadata.prReviewStatus]}
+              {t(REVIEW_STATUS_LABELS[repoMetadata.prReviewStatus])}
             </span>
             {repoMetadata.prMerged && (
               <span className="ml-1 px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 text-[10px] font-semibold uppercase tracking-wide">
@@ -308,20 +310,20 @@ export function RepositoryCard({
           )}
           {(repoMetadata.prReviewStatus === 'changes-requested' || repoMetadata.prReviewStatus === 'commented') && (
             <button
-              onClick={() => runSlashCommand(agentId, '/magic:resolve')}
+              onClick={() => runSlashCommand(agentId, '/magic:resolve', t)}
               className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-md text-red-500 text-xs font-medium transition-colors"
             >
               <Wrench className="w-3 h-3" />
-              Launch magic-resolve
+              {t('agentInfo.launchResolve')}
             </button>
           )}
           {repoMetadata.prMerged === true && (
             <button
-              onClick={() => runSlashCommand(agentId, '/magic:done')}
+              onClick={() => runSlashCommand(agentId, '/magic:done', t)}
               className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 rounded-md text-green-500 text-xs font-medium transition-colors"
             >
               <CheckCircle className="w-3 h-3" />
-              Launch magic-done
+              {t('agentInfo.launchDone')}
             </button>
           )}
         </div>

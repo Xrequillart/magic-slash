@@ -6,6 +6,7 @@ import { useGroupedTerminals } from '../../hooks/useGroupedTerminals'
 import { useStore } from '../../store'
 import { TerminalView } from '../../components/TerminalView'
 import { showToast } from '../../components/Toast'
+import { useT } from '../../i18n'
 
 const DEFAULT_PATH = '~/Documents'
 const MAX_AGENTS = 12
@@ -15,6 +16,7 @@ export function TerminalsPage() {
   const { scriptTerminals } = useScriptRunner()
   const { flatVisualOrder } = useGroupedTerminals()
   const { toggleRightSidebar, closeModal, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane, openSettingsModal } = useStore()
+  const t = useT()
   const [isCreating, setIsCreating] = useState(false)
 
   // Generate terminal name based on count
@@ -35,9 +37,9 @@ export function TerminalsPage() {
         .filter((r) => r.reason !== 'no-local-path')
       if (invalid.length > 0) {
         showToast(
-          `${invalid.length} repository path${invalid.length > 1 ? 's are' : ' is'} invalid. Re-point ${invalid.length > 1 ? 'them' : 'it'} in Settings before launching an agent.`,
+          t(invalid.length > 1 ? 'terminals.invalidRepos.other' : 'terminals.invalidRepos.one', { count: invalid.length }),
           'error',
-          { actions: [{ label: 'Open settings', onClick: () => openSettingsModal('repositories') }] },
+          { actions: [{ label: t('terminals.openSettings'), onClick: () => openSettingsModal('repositories') }] },
         )
         return true
       }
@@ -52,7 +54,7 @@ export function TerminalsPage() {
 
     // Block creation if max agents reached
     if (terminals.length >= MAX_AGENTS) {
-      showToast(`Maximum of ${MAX_AGENTS} agents reached`, 'error')
+      showToast(t('terminals.maxAgents', { count: MAX_AGENTS }), 'error')
       return
     }
 
@@ -64,7 +66,7 @@ export function TerminalsPage() {
       await launchClaudeTerminal(name, DEFAULT_PATH)
       closeModal()
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to create terminal', 'error')
+      showToast(error instanceof Error ? error.message : t('terminals.createFailed'), 'error')
     } finally {
       setIsCreating(false)
     }
@@ -73,7 +75,7 @@ export function TerminalsPage() {
   const handleCreateTerminalInRightPane = async () => {
     if (isCreating) return
     if (terminals.length >= MAX_AGENTS) {
-      showToast(`Maximum of ${MAX_AGENTS} agents reached`, 'error')
+      showToast(t('terminals.maxAgents', { count: MAX_AGENTS }), 'error')
       return
     }
     if (await blockOnInvalidRepos()) return
@@ -85,7 +87,7 @@ export function TerminalsPage() {
       setSplitTerminalId(terminal.id)
       setFocusedPane('secondary')
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to create terminal', 'error')
+      showToast(error instanceof Error ? error.message : t('terminals.createFailed'), 'error')
     } finally {
       setIsCreating(false)
     }
@@ -188,7 +190,7 @@ export function TerminalsPage() {
 
         // Check max agents limit
         if (terminals.length >= MAX_AGENTS) {
-          showToast(`Maximum of ${MAX_AGENTS} agents reached`, 'error')
+          showToast(t('terminals.maxAgents', { count: MAX_AGENTS }), 'error')
           return
         }
 
@@ -199,7 +201,7 @@ export function TerminalsPage() {
           const newTerminal = await duplicateAgent(activeTerminal)
           setActiveTerminal(newTerminal.id)
         } catch (error) {
-          showToast(error instanceof Error ? error.message : 'Failed to duplicate agent', 'error')
+          showToast(error instanceof Error ? error.message : t('terminals.duplicateFailed'), 'error')
         }
       }
     }
@@ -263,15 +265,15 @@ export function TerminalsPage() {
       <div className="h-full flex items-center justify-center animate-fade-in">
         <div className="text-center">
           <Bot className="w-16 h-16 mx-auto mb-4 text-text-secondary opacity-40" />
-          <p className="text-lg mb-2">No agents running</p>
-          <p className="text-text-secondary text-sm mb-6">Launch a new agent to get started</p>
+          <p className="text-lg mb-2">{t('terminals.emptyTitle')}</p>
+          <p className="text-text-secondary text-sm mb-6">{t('terminals.emptyHint')}</p>
           <button
             onClick={handleCreateTerminal}
             disabled={isCreating}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple hover:bg-purple/80 text-on-brand rounded-lg font-semibold transition-colors disabled:opacity-50"
           >
             <Bot className="w-4 h-4" />
-            {isCreating ? 'Launching...' : 'Launch new agent'}
+            {isCreating ? t('terminals.launching') : t('terminals.launch')}
             <span className="ml-1 text-xs opacity-60">{shortcutKey}</span>
           </button>
         </div>
@@ -334,14 +336,14 @@ export function TerminalsPage() {
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center">
                     <Bot className="w-12 h-12 mx-auto mb-3 text-text-secondary opacity-30" />
-                    <p className="text-sm text-text-secondary/50 mb-4">Drag an agent here or create a new one</p>
+                    <p className="text-sm text-text-secondary/50 mb-4">{t('terminals.paneEmpty')}</p>
                     <button
                       onClick={handleCreateTerminalInRightPane}
                       disabled={isCreating}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-purple hover:bg-purple/80 text-on-brand rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                     >
                       <Bot className="w-3.5 h-3.5" />
-                      {isCreating ? 'Launching...' : 'New agent'}
+                      {isCreating ? t('terminals.launching') : t('sidebar.newAgent')}
                     </button>
                   </div>
                 </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Settings, Power } from 'lucide-react'
+import { useT, type Translate } from '../../i18n'
 
 interface AgentInfo {
   id: string
@@ -10,13 +11,14 @@ interface AgentInfo {
   createdAt: number
 }
 
-function stateLabel(state: string): string {
+function stateLabel(state: string, t: Translate): string {
   switch (state) {
-    case 'working': return 'Working'
-    case 'waiting': return 'Waiting for input'
-    case 'idle': return 'Idle'
-    case 'completed': return 'Completed'
-    case 'error': return 'Error'
+    case 'working': return t('agentState.working')
+    case 'waiting': return t('agentState.waiting')
+    case 'idle': return t('agentState.idle')
+    case 'completed': return t('agentState.completed')
+    case 'error': return t('agentState.error')
+    // A state this window does not know yet (a newer main process) still renders.
     default: return state
   }
 }
@@ -43,17 +45,18 @@ function stateDot(state: string): string {
   }
 }
 
-function elapsedTime(createdAt: number): string {
+function elapsedTime(createdAt: number, t: Translate): string {
   const seconds = Math.floor((Date.now() - createdAt) / 1000)
-  if (seconds < 60) return `${seconds}s`
+  if (seconds < 60) return t('duration.seconds', { count: seconds })
   const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m`
+  if (minutes < 60) return t('duration.minutesShort', { count: minutes })
   const hours = Math.floor(minutes / 60)
   const remainingMinutes = minutes % 60
-  return `${hours}h ${remainingMinutes}m`
+  return t('duration.hoursMinutes', { hours, minutes: remainingMinutes })
 }
 
 export function TrayPopover() {
+  const t = useT()
   const [agents, setAgents] = useState<AgentInfo[]>([])
 
   const loadAgents = useCallback(async () => {
@@ -115,7 +118,7 @@ export function TrayPopover() {
       <div className="max-h-[360px] overflow-y-auto">
         {agents.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            <div className="text-zinc-500 text-sm">No active agents</div>
+            <div className="text-zinc-500 text-sm">{t('tray.popover.empty')}</div>
           </div>
         ) : (
           <div className="py-1">
@@ -136,10 +139,10 @@ export function TrayPopover() {
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className={`text-[11px] ${stateColor(agent.state)}`}>
-                      {stateLabel(agent.state)}
+                      {stateLabel(agent.state, t)}
                     </span>
                     <span className="text-[11px] text-zinc-600">
-                      {elapsedTime(agent.createdAt)}
+                      {elapsedTime(agent.createdAt, t)}
                     </span>
                   </div>
                 </div>

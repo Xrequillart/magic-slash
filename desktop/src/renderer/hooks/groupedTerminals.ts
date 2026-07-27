@@ -1,3 +1,4 @@
+import type { MessageKey } from '../../i18n'
 import type { TerminalInfo, Config, RepositoryConfig } from '../../types'
 
 export type WorkflowGroupKey =
@@ -10,14 +11,17 @@ export interface TerminalWithRepos extends TerminalInfo {
   matchingProjects: string[]
 }
 
+// A catalogue key rather than a literal: this list is module-scope data, so a
+// string here would freeze at the boot language. The Sidebar resolves it through
+// useT() at render time, which is what makes the headers follow a live switch.
 export const WORKFLOW_GROUPS: {
   key: WorkflowGroupKey
-  label: string
+  labelKey: MessageKey
 }[] = [
-  { key: 'needs_attention',  label: 'Needs attention' },
-  { key: 'active',           label: 'Active' },
-  { key: 'in_review',        label: 'In review' },
-  { key: 'done',             label: 'Done' },
+  { key: 'needs_attention',  labelKey: 'workflow.needsAttention' },
+  { key: 'active',           labelKey: 'workflow.active' },
+  { key: 'in_review',        labelKey: 'workflow.inReview' },
+  { key: 'done',             labelKey: 'workflow.done' },
 ]
 
 export function classifyTerminal(terminal: TerminalInfo): WorkflowGroupKey {

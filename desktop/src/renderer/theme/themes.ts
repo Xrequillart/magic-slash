@@ -1,3 +1,4 @@
+import type { MessageKey } from '../../i18n'
 import { THEME_IDS, type ThemeId } from '../../types'
 
 /**
@@ -89,9 +90,14 @@ export interface ThemeTokens {
 }
 
 export interface Theme {
-  label: string
+  /**
+   * Catalogue keys, not labels: this registry is module scope, so a literal here
+   * would be fixed at import time and pin the theme picker to the boot language.
+   * AppearancePage resolves them through useT() in the render path.
+   */
+  labelKey: MessageKey
   /** One line, shown under the label in Settings → Appearance. */
-  description: string
+  descriptionKey: MessageKey
   tokens: ThemeTokens
 }
 
@@ -102,8 +108,8 @@ export interface Theme {
  */
 export const THEMES: Record<ThemeId, Theme> = {
   dark: {
-    label: 'Dark',
-    description: 'The original, near-black.',
+    labelKey: 'theme.dark',
+    descriptionKey: 'theme.dark.help',
     tokens: {
       bgRgb: '10 10 11',
       bgSecondaryRgb: '20 20 22',
@@ -159,8 +165,8 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
 
   midnight: {
-    label: 'Midnight',
-    description: 'Dark, in deep blue.',
+    labelKey: 'theme.midnight',
+    descriptionKey: 'theme.midnight.help',
     tokens: {
       bgRgb: '11 16 32',
       bgSecondaryRgb: '17 23 43',
@@ -218,8 +224,8 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
 
   espresso: {
-    label: 'Espresso',
-    description: 'Warm brown-black.',
+    labelKey: 'theme.espresso',
+    descriptionKey: 'theme.espresso.help',
     tokens: {
       bgRgb: '26 21 18',
       bgSecondaryRgb: '35 28 24',
@@ -277,8 +283,8 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
 
   'high-contrast': {
-    label: 'High contrast',
-    description: 'White on black, hard edges.',
+    labelKey: 'theme.highContrast',
+    descriptionKey: 'theme.highContrast.help',
     tokens: {
       bgRgb: '0 0 0',
       bgSecondaryRgb: '0 0 0',
@@ -339,8 +345,8 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
 
   light: {
-    label: 'Light',
-    description: 'Bright and neutral.',
+    labelKey: 'theme.light',
+    descriptionKey: 'theme.light.help',
     tokens: {
       bgRgb: '255 255 255',
       bgSecondaryRgb: '250 250 249',
@@ -398,8 +404,8 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
 
   mist: {
-    label: 'Mist',
-    description: 'Cool blue-grey daylight.',
+    labelKey: 'theme.mist',
+    descriptionKey: 'theme.mist.help',
     tokens: {
       bgRgb: '244 247 251',
       bgSecondaryRgb: '250 252 254',
@@ -455,8 +461,8 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
 
   sepia: {
-    label: 'Sepia',
-    description: 'A warm ivory page.',
+    labelKey: 'theme.sepia',
+    descriptionKey: 'theme.sepia.help',
     tokens: {
       bgRgb: '250 246 238',
       bgSecondaryRgb: '246 240 229',
@@ -514,8 +520,8 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
 
   daylight: {
-    label: 'Daylight',
-    description: 'Black on white, hard edges.',
+    labelKey: 'theme.daylight',
+    descriptionKey: 'theme.daylight.help',
     tokens: {
       bgRgb: '255 255 255',
       bgSecondaryRgb: '255 255 255',

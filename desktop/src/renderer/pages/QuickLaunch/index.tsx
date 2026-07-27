@@ -1,17 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search } from 'lucide-react'
+import { useT, type MessageKey } from '../../i18n'
 
-const COMMANDS = [
-  { name: '/magic:start', description: 'Start a new task' },
-  { name: '/magic:continue', description: 'Resume work on a task' },
-  { name: '/magic:commit', description: 'Create a commit' },
-  { name: '/magic:pr', description: 'Create a Pull Request' },
-  { name: '/magic:review', description: 'Review a PR' },
-  { name: '/magic:resolve', description: 'Address review feedback' },
-  { name: '/magic:done', description: 'Finalize after merge' },
+// Message keys, not descriptions: this list is module scope, so a literal here
+// would be resolved once at import and pin the palette to the boot language.
+const COMMANDS: { name: string; descriptionKey: MessageKey }[] = [
+  { name: '/magic:start', descriptionKey: 'quickLaunch.cmd.start' },
+  { name: '/magic:continue', descriptionKey: 'quickLaunch.cmd.continue' },
+  { name: '/magic:commit', descriptionKey: 'quickLaunch.cmd.commit' },
+  { name: '/magic:pr', descriptionKey: 'quickLaunch.cmd.pr' },
+  { name: '/magic:review', descriptionKey: 'quickLaunch.cmd.review' },
+  { name: '/magic:resolve', descriptionKey: 'quickLaunch.cmd.resolve' },
+  { name: '/magic:done', descriptionKey: 'quickLaunch.cmd.done' },
 ]
 
 export function QuickLaunch() {
+  const t = useT()
   const [input, setInput] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -107,7 +111,7 @@ export function QuickLaunch() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="PROJ-123 /start"
+          placeholder={t('quickLaunch.placeholder')}
           className="flex-1 bg-transparent text-ink text-2xl placeholder:text-zinc-600 caret-ink"
           style={{ outline: 'none', boxShadow: 'none', border: 'none', fontFamily: '"Cera Pro", -apple-system, BlinkMacSystemFont, sans-serif', fontWeight: 500 }}
           autoFocus
@@ -128,7 +132,7 @@ export function QuickLaunch() {
               }`}
             >
               <span className="text-ink text-sm font-medium">{cmd.name}</span>
-              <span className="text-zinc-500 text-xs">{cmd.description}</span>
+              <span className="text-zinc-500 text-xs">{t(cmd.descriptionKey)}</span>
             </div>
           ))}
         </div>

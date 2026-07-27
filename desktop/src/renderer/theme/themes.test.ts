@@ -32,9 +32,9 @@ describe('theme registry', () => {
     const reference = THEMES[DEFAULT_THEME].tokens
 
     for (const id of THEME_IDS) {
-      const { tokens, label, description } = THEMES[id]
-      expect(label, `${id}.label`).toBeTruthy()
-      expect(description, `${id}.description`).toBeTruthy()
+      const { tokens, labelKey, descriptionKey } = THEMES[id]
+      expect(labelKey, `${id}.labelKey`).toBeTruthy()
+      expect(descriptionKey, `${id}.descriptionKey`).toBeTruthy()
 
       expect(THEME_APPEARANCE[id], `${id} classified light or dark`).toMatch(/^(light|dark)$/)
 

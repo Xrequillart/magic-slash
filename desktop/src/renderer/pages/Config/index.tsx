@@ -15,7 +15,7 @@ import type { SpotlightShortcut, LaunchMode, ClaudeAccount, SpendSummary, Settin
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 import { formatUsd } from '../../utils/usageStats'
-import { useLocale, useT, type MessageKey } from '../../i18n'
+import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
 
 const SPOTLIGHT_OPTIONS: { label: string; value: string }[] = [
   { label: '\u2303 Space', value: 'Control+Space' },
@@ -28,12 +28,15 @@ const SPOTLIGHT_OPTIONS: { label: string; value: string }[] = [
   { label: '\u2325\u21E7 M', value: 'Alt+Shift+M' },
 ]
 
-const LAUNCH_MODE_OPTIONS: { value: LaunchMode; label: string; description: string }[] = [
-  { value: 'plan', label: 'Plan', description: 'Read-only — Claude explores and analyzes but never modifies anything' },
-  { value: 'default', label: 'Standard', description: 'Claude asks permission for every sensitive action' },
-  { value: 'acceptEdits', label: 'Accept Edits', description: 'Auto-accepts file edits, still asks for bash commands' },
-  { value: 'auto', label: 'Auto', description: 'Auto-approves most actions based on configured allowlists' },
-  { value: 'bypassPermissions', label: 'Bypass', description: 'No permission checks — for sandboxed environments only' },
+// Message keys rather than labels, for the same reason as SETTINGS_TABS below:
+// module scope is evaluated once at import, so a literal here would pin the
+// select to the boot language.
+const LAUNCH_MODE_OPTIONS: { value: LaunchMode; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
+  { value: 'plan', labelKey: 'settings.launchMode.plan', descriptionKey: 'settings.launchMode.plan.help' },
+  { value: 'default', labelKey: 'settings.launchMode.default', descriptionKey: 'settings.launchMode.default.help' },
+  { value: 'acceptEdits', labelKey: 'settings.launchMode.acceptEdits', descriptionKey: 'settings.launchMode.acceptEdits.help' },
+  { value: 'auto', labelKey: 'settings.launchMode.auto', descriptionKey: 'settings.launchMode.auto.help' },
+  { value: 'bypassPermissions', labelKey: 'settings.launchMode.bypass', descriptionKey: 'settings.launchMode.bypass.help' },
 ]
 
 // Icons mirror each tab's own section header, so the rail and the content agree.
@@ -56,17 +59,19 @@ const SETTINGS_TABS: { id: SettingsTab; labelKey: MessageKey; icon: LucideIcon }
 ]
 
 // toFixed would pin the decimal separator to a point, so the mantissa goes
-// through toLocaleString: French wants "12,5M", not "12.5M".
-function formatTokensCompact(n: number, locale: string): string {
+// through toLocaleString: French wants "12,5 M", not "12.5M". The unit itself is
+// a catalogue entry — French abbreviates a billion "Md" and spaces it.
+function formatTokensCompact(n: number, locale: string, t: Translate): string {
   const scaled = (value: number, digits: number, unit: string) =>
     `${value.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits })}${unit}`
-  if (n >= 1_000_000_000) return scaled(n / 1_000_000_000, 2, 'B')
-  if (n >= 1_000_000) return scaled(n / 1_000_000, 1, 'M')
-  if (n >= 1_000) return scaled(n / 1_000, 1, 'k')
+  if (n >= 1_000_000_000) return scaled(n / 1_000_000_000, 2, t('usage.unit.billion'))
+  if (n >= 1_000_000) return scaled(n / 1_000_000, 1, t('usage.unit.million'))
+  if (n >= 1_000) return scaled(n / 1_000, 1, t('usage.unit.thousand'))
   return n.toLocaleString(locale)
 }
 
-// Human-readable label for a Claude seat tier / billing type.
+// Human-readable label for a Claude seat tier / billing type. Not translated:
+// these are Anthropic's own plan names, identical in every language.
 const SEAT_TIER_LABELS: Record<string, string> = {
   team_standard: 'Team',
   team_premium: 'Team Premium',
@@ -76,10 +81,10 @@ const SEAT_TIER_LABELS: Record<string, string> = {
 }
 
 /** Local-part of an email → capitalized first name. "xavier@x" → "Xavier". */
-function displayNameFromEmail(email?: string): string {
-  if (!email) return 'Account'
+function displayNameFromEmail(email: string | undefined, fallback: string): string {
+  if (!email) return fallback
   const first = email.split('@')[0].split(/[._+-]/)[0]
-  if (!first) return 'Account'
+  if (!first) return fallback
   return first.charAt(0).toUpperCase() + first.slice(1)
 }
 
@@ -91,11 +96,12 @@ function displayNameFromEmail(email?: string): string {
 function SettingsAccountFooter() {
   const { status, logout } = useAuth()
   const { org, orgs, switchOrg } = useOrg()
+  const t = useT()
   const [switching, setSwitching] = useState<string | null>(null)
 
   if (!status.enabled || !status.loggedIn) return null
 
-  const name = displayNameFromEmail(status.user?.email)
+  const name = displayNameFromEmail(status.user?.email, t('sidebar.accountFallback'))
   const initial = name.charAt(0).toUpperCase()
 
   const handleSwitchOrg = async (orgId: string) => {
@@ -103,9 +109,9 @@ function SettingsAccountFooter() {
     setSwitching(orgId)
     try {
       await switchOrg(orgId)
-      showToast('Switched organization', 'success')
+      showToast(t('toast.orgSwitched'), 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to switch organization', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.orgSwitchFailed'), 'error')
     } finally {
       setSwitching(null)
     }
@@ -125,7 +131,7 @@ function SettingsAccountFooter() {
       {orgs.length > 1 && (
         <div className="pb-1">
           <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-text-secondary/40">
-            Organizations
+            {t('settings.footer.organizations')}
           </div>
           {orgs.map((o) => {
             const isActive = o.id === org?.id
@@ -163,7 +169,7 @@ function SettingsAccountFooter() {
         className="w-full flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-text-secondary rounded-lg hover:bg-surface-strong hover:text-ink transition-colors"
       >
         <LogOut className="w-3.5 h-3.5" />
-        <span>Sign out</span>
+        <span>{t('settings.footer.signOut')}</span>
       </button>
     </div>
   )
@@ -317,7 +323,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
     setShowBypassWarning(false)
     try {
       await updateLaunchMode(mode)
-      showToast('Launch mode updated', 'success')
+      showToast(t('toast.launchModeUpdated'), 'success')
     } catch {
       setLaunchMode(previous)
     }
@@ -404,14 +410,14 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                   : 'bg-red/10 text-red'
               }`}>
                 <Github className="w-2.5 h-2.5" />
-                {hasGithub ? 'Connected' : 'No remote'}
+                {hasGithub ? t('settings.repos.connected') : t('settings.repos.noRemote')}
               </span>
             )}
           </div>
           {repo.needsLocalPath ? (
             <div className="flex items-center gap-1 text-xs text-yellow mt-0.5">
               <AlertTriangle className="w-3 h-3" />
-              No local folder — click to set it
+              {t('settings.repos.noLocalFolder')}
             </div>
           ) : (
             <div className="text-xs text-text-secondary/50 truncate mt-0.5">
@@ -423,7 +429,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         {/* Agent count */}
         {agentCount > 0 && (
           <span className="px-2 py-0.5 bg-accent/10 text-accent text-xs font-medium rounded">
-            {agentCount} agent{agentCount > 1 ? 's' : ''}
+            {t(agentCount > 1 ? 'settings.repos.agents.other' : 'settings.repos.agents.one', { count: agentCount })}
           </span>
         )}
 
@@ -485,14 +491,14 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
     try {
       const html = await window.electronAPI.updater.getReleaseNotes(appVersion)
       if (!html) {
-        showToast('Could not load release notes', 'error')
+        showToast(t('toast.releaseNotesFailed'), 'error')
         return
       }
       window.dispatchEvent(new CustomEvent('show:whats-new', {
         detail: { version: appVersion, releaseNotes: html },
       }))
     } catch {
-      showToast('Could not load release notes', 'error')
+      showToast(t('toast.releaseNotesFailed'), 'error')
     } finally {
       setLoadingWhatsNew(false)
     }
@@ -528,12 +534,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
     const repoName = folderName.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase()
 
     if (!repoName) {
-      showToast('Invalid folder name', 'error')
+      showToast(t('toast.invalidFolderName'), 'error')
       return
     }
 
     if (config?.repositories?.[repoName]) {
-      showToast(`Repository '${repoName}' already exists`, 'error')
+      showToast(t('toast.repoExists', { name: repoName }), 'error')
       return
     }
 
@@ -542,14 +548,14 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       const result = await addRepository(repoName, folderPath, [])
 
       if (result.warning) {
-        showToast(`Repository '${repoName}' added (${result.warning})`, 'warning')
+        showToast(t('toast.repoAddedWarning', { name: repoName, warning: result.warning }), 'warning')
       } else {
-        showToast(`Repository '${repoName}' added`)
+        showToast(t('toast.repoAdded', { name: repoName }))
       }
 
       window.location.hash = `#/repo/${encodeURIComponent(repoName)}`
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to add repository', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.repoAddFailed'), 'error')
     } finally {
       setIsAdding(false)
     }
@@ -602,7 +608,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {contentTab === 'repositories' && <div>
         <SectionHeader
           icon={FolderGit}
-          title="Repositories"
+          title={t('settings.repos.section')}
           action={
             <button
               onClick={handleOpenProject}
@@ -610,7 +616,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-50"
             >
               <Plus className="w-3 h-3" />
-              <span>{isAdding ? 'Adding...' : 'Add repository'}</span>
+              <span>{isAdding ? t('settings.repos.adding') : t('settings.repos.add')}</span>
             </button>
           }
         />
@@ -622,8 +628,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             className="w-full py-8 text-center border border-dashed border-border/50 rounded-xl hover:border-text-secondary/50 hover:bg-surface transition-colors"
           >
             <Folder className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
-            <div className="text-sm text-text-secondary/50 mb-1">No repositories configured</div>
-            <div className="text-xs text-text-secondary/30">Click to add your first project</div>
+            <div className="text-sm text-text-secondary/50 mb-1">{t('settings.repos.emptyTitle')}</div>
+            <div className="text-xs text-text-secondary/30">{t('settings.repos.emptyHint')}</div>
           </button>
         ) : (
           <div className="flex flex-col gap-6">
@@ -631,12 +637,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             <div>
               <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-text-secondary/50 mb-2">
                 <Lock className="w-3 h-3" />
-                <span>Personal</span>
+                <span>{t('settings.repos.personal')}</span>
                 <span className="text-text-secondary/30">{personalRepos.length}</span>
               </div>
               {personalRepos.length === 0 ? (
                 <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
-                  No personal repository — use “Add repository” above.
+                  {t('settings.repos.noPersonal')}
                 </div>
               ) : (
                 <div className="space-y-2">{personalRepos.map(renderRepoRow)}</div>
@@ -648,12 +654,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               <div>
                 <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-text-secondary/50 mb-2">
                   <Building2 className="w-3 h-3" />
-                  <span>{activeOrg?.name ?? 'Team'}</span>
+                  <span>{activeOrg?.name ?? t('settings.repos.team')}</span>
                   <span className="text-text-secondary/30">{teamRepos.length}</span>
                 </div>
                 {teamRepos.length === 0 ? (
                   <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
-                    No shared repository in this organization yet.
+                    {t('settings.repos.noTeam')}
                   </div>
                 ) : (
                   <div className="space-y-2">{teamRepos.map(renderRepoRow)}</div>
@@ -670,31 +676,31 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Account — the Claude identity read from ~/.claude, not the cloud account */}
       <div>
-        <SectionHeader icon={User} title="Account" />
+        <SectionHeader icon={User} title={t('settings.claude.account')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           {claudeAccount ? (
             <div className="space-y-2 text-sm">
               {claudeAccount.displayName && (
                 <div className="flex items-center justify-between">
-                  <span className="text-text-secondary/60">Name</span>
+                  <span className="text-text-secondary/60">{t('settings.claude.name')}</span>
                   <span className="font-medium">{claudeAccount.displayName}</span>
                 </div>
               )}
               {claudeAccount.emailAddress && (
                 <div className="flex items-center justify-between">
-                  <span className="text-text-secondary/60">Email</span>
+                  <span className="text-text-secondary/60">{t('settings.claude.email')}</span>
                   <span className="font-mono text-xs">{claudeAccount.emailAddress}</span>
                 </div>
               )}
               {claudeAccount.organizationName && (
                 <div className="flex items-center justify-between">
-                  <span className="text-text-secondary/60">Organization</span>
+                  <span className="text-text-secondary/60">{t('settings.claude.organization')}</span>
                   <span className="font-medium">{claudeAccount.organizationName}</span>
                 </div>
               )}
               {claudeAccount.seatTier && (
                 <div className="flex items-center justify-between">
-                  <span className="text-text-secondary/60">Plan</span>
+                  <span className="text-text-secondary/60">{t('settings.claude.plan')}</span>
                   <span className="px-1.5 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-medium">
                     {SEAT_TIER_LABELS[claudeAccount.seatTier] ?? claudeAccount.seatTier}
                   </span>
@@ -703,7 +709,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             </div>
           ) : (
             <div className="text-sm text-text-secondary/50 text-center py-2">
-              No Claude account detected.
+              {t('settings.claude.noAccount')}
             </div>
           )}
         </div>
@@ -711,12 +717,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Launch mode */}
       <div>
-        <SectionHeader icon={Shield} title="Launch mode" />
+        <SectionHeader icon={Shield} title={t('settings.launchMode.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">Permission mode</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">Controls the level of autonomy for all Claude Code agents</div>
+              <div className="text-sm font-medium">{t('settings.launchMode.label')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.launchMode.help')}</div>
             </div>
             <div className="relative">
               <select
@@ -725,33 +731,36 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
               >
                 {LAUNCH_MODE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                 ))}
               </select>
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
             </div>
           </div>
           <div className="text-xs text-text-secondary/50">
-            {LAUNCH_MODE_OPTIONS.find(o => o.value === launchMode)?.description}
+            {(() => {
+              const active = LAUNCH_MODE_OPTIONS.find(o => o.value === launchMode)
+              return active ? t(active.descriptionKey) : null
+            })()}
           </div>
           {showBypassWarning && (
             <div className="flex flex-col gap-3 px-3 py-3 bg-red/10 border border-red/20 rounded-lg">
               <div className="flex items-center gap-2 text-xs text-red">
                 <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="font-medium">Security warning: Bypass mode disables all permission checks. Only use in sandboxed environments with no internet access.</span>
+                <span className="font-medium">{t('settings.launchMode.bypassWarning')}</span>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => applyLaunchMode('bypassPermissions')}
                   className="px-3 py-1.5 bg-red/20 hover:bg-red/30 text-red text-xs rounded-lg transition-colors"
                 >
-                  I understand, enable Bypass
+                  {t('settings.launchMode.bypassConfirm')}
                 </button>
                 <button
                   onClick={() => setShowBypassWarning(false)}
                   className="px-3 py-1.5 bg-surface-strong hover:bg-ink/15 text-text-secondary text-xs rounded-lg transition-colors"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>
@@ -761,13 +770,13 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Rate usage — plan limits reported by the running agents */}
       <div>
-        <SectionHeader icon={Gauge} title="Rate usage" />
+        <SectionHeader icon={Gauge} title={t('settings.rate.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           {hasRateLimits ? (
             <div className="space-y-4">
               {typeof accountUsage?.fiveHourPercent === 'number' && (
                 <RateLimitBar
-                  label="Session (5h)"
+                  label={t('usage.session')}
                   percent={accountUsage.fiveHourPercent}
                   resetsAt={accountUsage.fiveHourResetsAt}
                   now={usageNow}
@@ -775,7 +784,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               )}
               {typeof accountUsage?.sevenDayPercent === 'number' && (
                 <RateLimitBar
-                  label="Weekly (7d)"
+                  label={t('usage.weekly')}
                   percent={accountUsage.sevenDayPercent}
                   resetsAt={accountUsage.sevenDayResetsAt}
                   now={usageNow}
@@ -784,7 +793,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             </div>
           ) : (
             <div className="text-sm text-text-secondary/50 text-center py-2">
-              No live rate-limit data yet — available for Claude.ai Pro/Max after the first agent activity.
+              {t('settings.rate.empty')}
             </div>
           )}
         </div>
@@ -792,34 +801,34 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Spend & tokens */}
       <div>
-        <SectionHeader icon={Coins} title="Spend & tokens" />
+        <SectionHeader icon={Coins} title={t('settings.spend.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           {spend?.hasData ? (
             <>
               <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2 text-sm items-baseline">
                 <span className="text-text-secondary/50 text-xs uppercase tracking-wider"></span>
-                <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">Tokens</span>
-                <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">Est. cost</span>
+                <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">{t('settings.spend.tokens')}</span>
+                <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">{t('settings.spend.estCost')}</span>
 
                 {([
-                  { label: 'Today', b: spend.today },
-                  { label: 'This week', b: spend.week },
-                  { label: 'All time', b: spend.allTime },
-                ]).map(({ label, b }) => (
-                  <Fragment key={label}>
-                    <span className="text-text-secondary">{label}</span>
-                    <span className="font-mono text-right">{formatTokensCompact(b.tokens, locale)}</span>
+                  { key: 'settings.spend.today', b: spend.today },
+                  { key: 'settings.spend.week', b: spend.week },
+                  { key: 'settings.spend.allTime', b: spend.allTime },
+                ] as const).map(({ key, b }) => (
+                  <Fragment key={key}>
+                    <span className="text-text-secondary">{t(key)}</span>
+                    <span className="font-mono text-right">{formatTokensCompact(b.tokens, locale, t)}</span>
                     <span className="font-mono text-right text-ink">~{formatUsd(b.costUsd, locale)}</span>
                   </Fragment>
                 ))}
               </div>
               <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-                Cost is an estimate (tokens × public API pricing), not billed spend — your plan is a subscription.
+                {t('settings.spend.disclaimer')}
               </div>
             </>
           ) : (
             <div className="text-sm text-text-secondary/50 text-center py-2">
-              No usage history found in ~/.claude yet.
+              {t('settings.spend.empty')}
             </div>
           )}
         </div>
@@ -831,12 +840,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* History Section */}
       <div>
-        <SectionHeader icon={History} title="History" />
+        <SectionHeader icon={History} title={t('settings.features.history.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">Enable history</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">Record your agent activity (tickets, commits, PRs, reviews) and which skills you run, and show the History entry in the sidebar. When off, nothing is recorded.</div>
+              <div className="text-sm font-medium">{t('settings.features.history.label')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.history.help')}</div>
             </div>
             <button
               onClick={async () => {
@@ -859,12 +868,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Usage Card Section */}
       <div>
-        <SectionHeader icon={Gauge} title="Usage card" />
+        <SectionHeader icon={Gauge} title={t('settings.features.usageCard.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">Show usage card in sidebar</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">Display the connected account and the Session (5h) / Weekly (7d) gauges at the bottom of the sidebar</div>
+              <div className="text-sm font-medium">{t('settings.features.usageCard.label')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.usageCard.help')}</div>
             </div>
             <button
               onClick={async () => {
@@ -887,13 +896,13 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Usage Logs Section (GDPR opt-in — off by default) */}
       <div>
-        <SectionHeader icon={BarChart3} title="Usage logs" />
+        <SectionHeader icon={BarChart3} title={t('settings.features.usageLogs.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-medium">Share my usage with my organization</div>
+              <div className="text-sm font-medium">{t('settings.features.usageLogs.label')}</div>
               <div className="text-xs text-text-secondary/50 mt-0.5">
-                Off by default (GDPR opt-in). When enabled, an aggregated summary (estimated cost, lines added/removed, duration, model) is recorded for your organization at the end of each session, so admins can track team usage. No prompts or code are ever sent. You can turn it off at any time.
+                {t('settings.features.usageLogs.help')}
               </div>
             </div>
             <button
@@ -917,13 +926,13 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Daily Digest Section (opt-in — off by default) */}
       <div>
-        <SectionHeader icon={Bell} title="Daily digest" />
+        <SectionHeader icon={Bell} title={t('settings.features.digest.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-medium">Daily team digest</div>
+              <div className="text-sm font-medium">{t('settings.features.digest.label')}</div>
               <div className="text-xs text-text-secondary/50 mt-0.5">
-                Off by default. When enabled, you get one notification at 9:00 AM summarizing your team's activity from the last 24 hours (PRs shipped, tickets moved to Done). Nothing is sent when there was no activity.
+                {t('settings.features.digest.help')}
               </div>
             </div>
             <button
@@ -947,12 +956,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Split View Section */}
       <div>
-        <SectionHeader icon={Columns} title="Split View" />
+        <SectionHeader icon={Columns} title={t('settings.features.split.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">Enable split view</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">Display two agents side by side on wide screens</div>
+              <div className="text-sm font-medium">{t('settings.features.split.label')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.split.help')}</div>
             </div>
             <button
               onClick={() => { toggleSplitEnabled(); updateSplitEnabled(!splitEnabled) }}
@@ -970,12 +979,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* PR Review Watcher Section */}
       <div>
-        <SectionHeader icon={GitPullRequest} title="PR Review Watcher" />
+        <SectionHeader icon={GitPullRequest} title={t('settings.features.prWatcher.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">Watch PR reviews</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">Poll GitHub to track review status on agents' pull requests</div>
+              <div className="text-sm font-medium">{t('settings.features.prWatcher.label')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.prWatcher.help')}</div>
             </div>
             <button
               onClick={() => {
@@ -997,8 +1006,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               <div className="border-t border-line-subtle pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-medium">Polling interval</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">How often the GitHub API is polled</div>
+                    <div className="text-sm font-medium">{t('settings.features.prWatcher.intervalLabel')}</div>
+                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.prWatcher.intervalHelp')}</div>
                   </div>
                   <div className="relative">
                     <select
@@ -1010,10 +1019,10 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                       }}
                       className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
                     >
-                      <option value={30_000}>30 seconds</option>
-                      <option value={60_000}>1 minute</option>
-                      <option value={120_000}>2 minutes</option>
-                      <option value={300_000}>5 minutes</option>
+                      <option value={30_000}>{t('settings.features.prWatcher.interval30s')}</option>
+                      <option value={60_000}>{t('settings.features.prWatcher.interval1m')}</option>
+                      <option value={120_000}>{t('settings.features.prWatcher.interval2m')}</option>
+                      <option value={300_000}>{t('settings.features.prWatcher.interval5m')}</option>
                     </select>
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
                   </div>
@@ -1022,8 +1031,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               <div className="border-t border-line-subtle pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-medium">Auto-launch skills</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">Send /magic:resolve or /magic:done directly to the agent's terminal. Disabled by default for safety.</div>
+                    <div className="text-sm font-medium">{t('settings.features.prWatcher.autoLaunchLabel')}</div>
+                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.prWatcher.autoLaunchHelp')}</div>
                   </div>
                   <button
                     onClick={() => {
@@ -1048,12 +1057,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Spotlight Section */}
       <div>
-        <SectionHeader icon={Search} title="Spotlight" />
+        <SectionHeader icon={Search} title={t('settings.features.spotlight.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">Enable global shortcut</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">Open the Quick Launch panel from anywhere with a keyboard shortcut</div>
+              <div className="text-sm font-medium">{t('settings.features.spotlight.label')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.spotlight.help')}</div>
             </div>
             <button
               onClick={handleSpotlightToggle}
@@ -1069,8 +1078,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           <div className="border-t border-line-subtle pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm font-medium">Shortcut</div>
-                <div className="text-xs text-text-secondary/50 mt-0.5">Choose the keyboard shortcut to toggle Quick Launch</div>
+                <div className="text-sm font-medium">{t('settings.features.spotlight.shortcutLabel')}</div>
+                <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.spotlight.shortcutHelp')}</div>
               </div>
               <div className="relative">
                 <select
@@ -1090,7 +1099,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           {spotlightError && (
             <div className="flex items-center gap-2 px-3 py-2 bg-red/10 border border-red/20 rounded-lg text-xs text-red">
               <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>Failed to register shortcut. It may be in use by another application. Try a different shortcut.</span>
+              <span>{t('settings.features.spotlight.error')}</span>
             </div>
           )}
         </div>
@@ -1098,12 +1107,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Background App Section */}
       <div>
-        <SectionHeader icon={MonitorSmartphone} title="Background App" />
+        <SectionHeader icon={MonitorSmartphone} title={t('settings.features.background.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">Launch at login</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">Start Magic Slash automatically when you log in</div>
+              <div className="text-sm font-medium">{t('settings.features.background.autoStartLabel')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.background.autoStartHelp')}</div>
             </div>
             <button
               onClick={() => {
@@ -1121,9 +1130,9 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             </button>
           </div>
           <div className="border-t border-line-subtle pt-4">
-            <div className="text-sm font-medium mb-1">Menu bar</div>
+            <div className="text-sm font-medium mb-1">{t('settings.features.background.menuBarLabel')}</div>
             <div className="text-xs text-text-secondary/50">
-              Magic Slash runs in the menu bar. Click the tray icon to see agent status, or right-click for quick actions. Closing the window hides it to the tray.
+              {t('settings.features.background.menuBarHelp')}
             </div>
           </div>
         </div>
@@ -1139,61 +1148,35 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Shortcuts tab */}
       {contentTab === 'shortcuts' && <div>
-        <SectionHeader icon={Keyboard} title="Keyboard Shortcuts" />
+        <SectionHeader icon={Keyboard} title={t('settings.shortcuts.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="grid grid-cols-2 gap-3 text-sm">
+            {([
+              ['sidebar.newAgent', 'N'],
+              ['settings.shortcuts.duplicateAgent', 'D'],
+              ['settings.shortcuts.closeAgent', 'W'],
+              ['settings.shortcuts.previousAgent', '↑'],
+              ['settings.shortcuts.nextAgent', '↓'],
+              ['settings.shortcuts.toggleAgentInfo', 'I'],
+              ['settings.shortcuts.toggleAgentsList', 'B'],
+              ['sidebar.skills', ';'],
+              ['settings.tab.repositories', 'P'],
+              ['sidebar.settings', ','],
+              ['settings.shortcuts.toggleSplit', '/'],
+            ] as const).map(([labelKey, key]) => (
+              <div key={labelKey} className="flex items-center justify-between">
+                <span className="text-text-secondary">{t(labelKey)}</span>
+                <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> {key}</kbd>
+              </div>
+            ))}
             <div className="flex items-center justify-between">
-              <span className="text-text-secondary">New agent</span>
-              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> N</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Duplicate agent</span>
-              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> D</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Close agent</span>
-              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> W</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Previous agent</span>
-              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ↑</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Next agent</span>
-              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ↓</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Toggle agent info</span>
-              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> I</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Toggle agents list</span>
-              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> B</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Skills</span>
-              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ;</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Repositories</span>
-              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> P</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Settings</span>
-              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> ,</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Toggle Split View</span>
-              <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary"><span className="text-sm">⌘</span> /</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-text-secondary">Quick Launch</span>
+              <span className="text-text-secondary">{t('settings.shortcuts.quickLaunch')}</span>
               {spotlightEnabled ? (
                 <kbd className="px-2 py-0.5 bg-surface border border-line rounded text-xs text-text-secondary">
                   {SPOTLIGHT_OPTIONS.find(o => o.value === spotlightShortcut)?.label ?? spotlightShortcut}
                 </kbd>
               ) : (
-                <span className="px-2 py-0.5 text-xs text-text-secondary/40">Disabled</span>
+                <span className="px-2 py-0.5 text-xs text-text-secondary/40">{t('settings.shortcuts.disabled')}</span>
               )}
             </div>
           </div>
@@ -1202,7 +1185,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* About tab */}
       {contentTab === 'about' && <div>
-        <SectionHeader icon={Info} title="About" />
+        <SectionHeader icon={Info} title={t('settings.about.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4 flex items-center justify-between">
           <div>
             <div className="font-medium">Magic Slash</div>
@@ -1216,7 +1199,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-colors"
             >
               <Clock className="w-3.5 h-3.5" />
-              Changelog
+              {t('settings.about.changelog')}
             </a>
             <button
               onClick={handleWhatsNew}
@@ -1224,7 +1207,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-accent bg-accent/10 border border-accent/20 rounded-lg hover:bg-accent/20 transition-colors disabled:opacity-50"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              {loadingWhatsNew ? 'Loading...' : "What's New"}
+              {loadingWhatsNew ? t('common.loading') : t('settings.about.whatsNew')}
             </button>
           </div>
         </div>

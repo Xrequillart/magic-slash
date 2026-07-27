@@ -6,6 +6,7 @@ import '@xterm/xterm/css/xterm.css'
 import type { TerminalInfo } from '../../types'
 import { formatDroppedPaths } from '../utils/formatDroppedPaths'
 import { useThemeTokens, type ThemeTokens } from '../theme'
+import { useT } from '../i18n'
 
 /**
  * xterm wants colour values, not classes, so the terminal reads the theme
@@ -29,6 +30,7 @@ interface TerminalViewProps {
 }
 
 export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }: TerminalViewProps) {
+  const t = useT()
   const containerRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -337,13 +339,13 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
           }}
           className="absolute bottom-4 right-4 z-20 bg-ink/15 hover:bg-ink/25 text-ink/70 px-3 py-1.5 rounded-full text-xs transition-all duration-200"
         >
-          Scroll to bottom
+          {t('terminalView.scrollToBottom')}
         </button>
       )}
       {isDragOver && (
         <div className="absolute inset-0 drop-overlay border-2 border-dashed rounded-lg flex items-center justify-center pointer-events-none z-10">
           <span className="text-on-brand text-sm font-medium bg-black/70 px-4 py-2 rounded-lg">
-            Drop files here
+            {t('terminalView.dropFiles')}
           </span>
         </div>
       )}

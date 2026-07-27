@@ -1,11 +1,15 @@
 import { useRef, useState, useEffect, useCallback, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Shield, User } from 'lucide-react'
+import { useT } from '../../i18n'
+import type { MessageKey } from '../../i18n'
 import type { MembershipRole } from '../../../types'
 
-const ROLE_OPTIONS: { value: MembershipRole; label: string; description: string; icon: typeof Shield }[] = [
-  { value: 'user', label: 'User', description: 'Can see the team and work on shared repositories', icon: User },
-  { value: 'admin', label: 'Admin', description: 'Can invite, change roles and archive the organization', icon: Shield },
+// Catalogue keys, not labels — same reason as THEMES and SETTINGS_TABS: module
+// scope is evaluated once at import, so a literal would freeze at the boot language.
+const ROLE_OPTIONS: { value: MembershipRole; labelKey: MessageKey; descriptionKey: MessageKey; icon: typeof Shield }[] = [
+  { value: 'user', labelKey: 'role.user', descriptionKey: 'role.user.help', icon: User },
+  { value: 'admin', labelKey: 'role.admin', descriptionKey: 'role.admin.help', icon: Shield },
 ]
 
 const PANEL_WIDTH = 240
@@ -28,6 +32,7 @@ export function RoleSelect({
   onChange: (role: MembershipRole) => void
   disabled?: boolean
 }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -108,7 +113,7 @@ export function RoleSelect({
         }`}
       >
         <SelectedIcon className="w-3 h-3 shrink-0" />
-        <span className="truncate">{selected.label}</span>
+        <span className="truncate">{t(selected.labelKey)}</span>
         <ChevronDown className={`w-3 h-3 shrink-0 ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
@@ -142,8 +147,8 @@ export function RoleSelect({
               >
                 <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isSelected ? 'text-accent' : 'text-text-secondary/60'}`} />
                 <div className="min-w-0 flex-1">
-                  <div className={`text-xs font-medium ${isSelected ? 'text-accent' : 'text-ink'}`}>{opt.label}</div>
-                  <div className="text-[11px] text-text-secondary/50 mt-0.5">{opt.description}</div>
+                  <div className={`text-xs font-medium ${isSelected ? 'text-accent' : 'text-ink'}`}>{t(opt.labelKey)}</div>
+                  <div className="text-[11px] text-text-secondary/50 mt-0.5">{t(opt.descriptionKey)}</div>
                 </div>
                 {isSelected && <Check className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />}
               </button>

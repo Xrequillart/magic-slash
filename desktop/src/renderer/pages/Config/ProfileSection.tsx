@@ -3,9 +3,11 @@ import { User, Pencil } from 'lucide-react'
 import { ProfileOnboardingWizard } from '../../components/ProfileOnboardingWizard'
 import { ProfileForm } from './ProfileForm'
 import { SectionHeader } from './SectionHeader'
-import { ROLE_LABELS, LEVEL_LABELS, STYLE_LABELS, type UserProfile } from '../../../types'
+import { useT, ROLE_LABEL_KEYS, LEVEL_LABEL_KEYS, STYLE_LABEL_KEYS } from '../../i18n'
+import type { UserProfile } from '../../../types'
 
 export function ProfileSection() {
+  const t = useT()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [showWizard, setShowWizard] = useState(false)
@@ -37,14 +39,14 @@ export function ProfileSection() {
       <div>
         <SectionHeader
           icon={User}
-          title="Profile"
+          title={t('profile.section')}
           action={profile && (
             <button
               onClick={() => setShowWizard(true)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
               <Pencil className="w-3 h-3" />
-              <span>Edit profile</span>
+              <span>{t('profile.edit')}</span>
             </button>
           )}
         />
@@ -60,18 +62,18 @@ export function ProfileSection() {
               <div>
                 <div className="text-sm font-medium">{profile.name}</div>
                 <div className="text-xs text-text-secondary/50 mt-0.5">
-                  {LEVEL_LABELS[profile.technical_level] || profile.technical_level}
+                  {LEVEL_LABEL_KEYS[profile.technical_level] ? t(LEVEL_LABEL_KEYS[profile.technical_level]) : profile.technical_level}
                 </div>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-1.5">
               <span className="px-2 py-0.5 bg-accent/10 text-accent text-xs font-medium rounded">
-                {ROLE_LABELS[profile.role] || profile.role}
+                {ROLE_LABEL_KEYS[profile.role] ? t(ROLE_LABEL_KEYS[profile.role]) : profile.role}
               </span>
               {profile.communication_style && (
                 <span className="px-2 py-0.5 bg-surface text-text-secondary text-xs font-medium rounded">
-                  {STYLE_LABELS[profile.communication_style] || profile.communication_style}
+                  {STYLE_LABEL_KEYS[profile.communication_style] ? t(STYLE_LABEL_KEYS[profile.communication_style]) : profile.communication_style}
                 </span>
               )}
               {profile.languages?.map((lang) => (

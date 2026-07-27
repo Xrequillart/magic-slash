@@ -2,15 +2,16 @@ import { useState, useRef, useCallback } from 'react'
 import { Play, ChevronDown } from 'lucide-react'
 import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useClickOutside } from '../../hooks/useClickOutside'
+import { useT, type MessageKey } from '../../i18n'
 import type { ProjectScripts, ScriptCategory, PackageScript } from '../../../types'
 
 const CATEGORY_ORDER: ScriptCategory[] = ['dev', 'build', 'test', 'lint', 'other']
-const CATEGORY_LABELS: Record<ScriptCategory, string> = {
-  dev: 'Dev',
-  build: 'Build',
-  test: 'Test',
-  lint: 'Lint',
-  other: 'Other',
+const CATEGORY_LABELS: Record<ScriptCategory, MessageKey> = {
+  dev: 'scripts.dev',
+  build: 'scripts.build',
+  test: 'scripts.test',
+  lint: 'scripts.lint',
+  other: 'scripts.other',
 }
 
 interface ScriptsDropdownProps {
@@ -20,6 +21,7 @@ interface ScriptsDropdownProps {
 }
 
 export function ScriptsDropdown({ repoPath, agentId, agentName }: ScriptsDropdownProps) {
+  const t = useT()
   const [isOpen, setIsOpen] = useState(false)
   const [projectScripts, setProjectScripts] = useState<ProjectScripts | null>(null)
   const [loading, setLoading] = useState(false)
@@ -79,16 +81,16 @@ export function ScriptsDropdown({ repoPath, agentId, agentName }: ScriptsDropdow
         className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary/50 border border-dashed border-border/40 rounded hover:border-accent/50 hover:text-accent hover:bg-accent/5 transition-colors"
       >
         <Play className="w-3 h-3" />
-        Scripts
+        {t('agentInfo.scripts')}
         <ChevronDown className="w-2.5 h-2.5" />
       </button>
 
       {isOpen && (
         <div className="absolute top-full right-0 mt-1 z-50 min-w-[260px] max-h-[320px] overflow-y-auto bg-bg-secondary border border-border/50 rounded-lg shadow-xl">
           {loading ? (
-            <div className="px-3 py-2 text-xs text-text-secondary/50">Loading...</div>
+            <div className="px-3 py-2 text-xs text-text-secondary/50">{t('common.loading')}</div>
           ) : !groupedScripts || projectScripts?.scripts.length === 0 ? (
-            <div className="px-3 py-2 text-xs text-text-secondary/50">No scripts found</div>
+            <div className="px-3 py-2 text-xs text-text-secondary/50">{t('agentInfo.noScripts')}</div>
           ) : (
             CATEGORY_ORDER.map((category) => {
               const scripts = groupedScripts[category]
@@ -97,7 +99,7 @@ export function ScriptsDropdown({ repoPath, agentId, agentName }: ScriptsDropdow
               return (
                 <div key={category}>
                   <div className="px-3 py-1.5 text-[10px] text-text-secondary/40 uppercase tracking-wider font-semibold bg-bg-tertiary/30">
-                    {CATEGORY_LABELS[category]}
+                    {t(CATEGORY_LABELS[category])}
                   </div>
                   {scripts.map((script) => {
                     const running = isScriptRunning(script.name)

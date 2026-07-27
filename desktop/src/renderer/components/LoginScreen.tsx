@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Cloud, X, LogIn, UserPlus, Loader2, KeyRound } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { useT } from '../i18n'
 
 interface LoginScreenProps {
   isOpen: boolean
@@ -26,6 +27,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
   const [orgName, setOrgName] = useState('')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
+  const t = useT()
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -52,14 +54,14 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
     setError(null)
     setNotice(null)
     if (resetStep === 'request') {
-      if (!email.trim()) { setError('Email is required'); return }
+      if (!email.trim()) { setError(t('login.error.emailRequired')); return }
       setBusy(true)
       try {
         await requestPasswordReset(email.trim())
         setNotice('We emailed you a 6-digit code. Enter it below with your new password.')
         setResetStep('confirm')
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not send the reset email')
+        setError(e instanceof Error ? e.message : t('login.error.resetEmailFailed'))
       } finally {
         setBusy(false)
       }
@@ -67,7 +69,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
     }
     // confirm step
     if (!code.trim() || !password) {
-      setError('Code and new password are required')
+      setError(t('login.error.codeAndPasswordRequired'))
       return
     }
     setBusy(true)
@@ -76,7 +78,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
       goToMode('signin')
       setNotice('Password updated. You can now sign in with your new password.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not reset your password')
+      setError(e instanceof Error ? e.message : t('login.error.resetFailed'))
     } finally {
       setBusy(false)
     }
@@ -88,7 +90,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
     setError(null)
     setNotice(null)
     if (!email.trim() || !password) {
-      setError('Email and password are required')
+      setError(t('login.error.credentialsRequired'))
       return
     }
     setBusy(true)
@@ -106,7 +108,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
         setMode('signin')
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Authentication failed')
+      setError(e instanceof Error ? e.message : t('login.error.authFailed'))
     } finally {
       setBusy(false)
     }
@@ -115,10 +117,10 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
   if (!isOpen) return null
 
   const title = mode === 'signin'
-    ? 'Sign in to Magic Slash'
+    ? t('login.signinTitle')
     : mode === 'signup'
-      ? 'Create your account'
-      : 'Reset your password'
+      ? t('login.signupTitle')
+      : t('login.resetTitle')
 
   return (
     <div
@@ -148,9 +150,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
         {/* Body */}
         <div className="px-5 pb-5 space-y-3">
           <p className="text-xs text-text-secondary/60">
-            {mode === 'reset'
-              ? 'Reset your password with a 6-digit code sent to your email — no link to click.'
-              : 'Sign in to continue. Magic Slash keeps your config, agents and history in your organization’s cloud.'}
+            {mode === 'reset' ? t('login.resetHelp') : t('login.signinHelp')}
           </p>
 
           <div className="space-y-2">
@@ -161,7 +161,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
+                placeholder={t('login.emailPlaceholder')}
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
                 className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
@@ -174,7 +174,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
                 inputMode="numeric"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="6-digit code"
+                placeholder={t('login.codePlaceholder')}
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
                 className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
@@ -187,7 +187,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={mode === 'reset' ? 'New password' : 'Password'}
+                placeholder={mode === 'reset' ? t('login.newPasswordPlaceholder') : t('login.passwordPlaceholder')}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
                 className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
               />
@@ -198,7 +198,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
                 type="text"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
-                placeholder="Organization name (optional)"
+                placeholder={t('login.orgPlaceholder')}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
                 className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
               />
@@ -231,42 +231,42 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
               <KeyRound className="w-4 h-4" />
             )}
             {mode === 'signin'
-              ? 'Sign in'
+              ? t('login.signIn')
               : mode === 'signup'
-                ? 'Sign up'
+                ? t('login.signUp')
                 : resetStep === 'request'
-                  ? 'Send code'
-                  : 'Reset password'}
+                  ? t('login.sendCode')
+                  : t('login.resetPassword')}
           </button>
 
           <div className="text-center text-xs text-text-secondary/60 space-y-1">
             {mode === 'signin' && (
               <>
                 <div>
-                  No account?{' '}
+                  {t('login.noAccount')}{' '}
                   <button onClick={() => goToMode('signup')} className="text-accent hover:underline">
-                    Create one
+                    {t('login.createOne')}
                   </button>
                 </div>
                 <div>
                   <button onClick={() => goToMode('reset')} className="text-accent hover:underline">
-                    Forgot password?
+                    {t('login.forgotPassword')}
                   </button>
                 </div>
               </>
             )}
             {mode === 'signup' && (
               <div>
-                Already have an account?{' '}
+                {t('login.haveAccount')}{' '}
                 <button onClick={() => goToMode('signin')} className="text-accent hover:underline">
-                  Sign in
+                  {t('login.signIn')}
                 </button>
               </div>
             )}
             {mode === 'reset' && (
               <div>
                 <button onClick={() => goToMode('signin')} className="text-accent hover:underline">
-                  Back to sign in
+                  {t('login.backToSignIn')}
                 </button>
               </div>
             )}

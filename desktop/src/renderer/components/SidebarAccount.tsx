@@ -4,17 +4,21 @@ import { LogIn, Settings, AlertTriangle, CircleUserRound } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useStore } from '../store'
 import { LoginScreen } from './LoginScreen'
+import { useT } from '../i18n'
 
 /**
  * Derive a friendly display name from an email address. Until GitHub OAuth
  * carries a real name (user_metadata.full_name), the local-part of the email is
  * the best we have: "xavier@poppins.io" → "Xavier", "jean.dupont@x" → "Jean".
+ *
+ * `fallback` is passed in rather than translated here: the function is pure and
+ * module-scope, so reading a translator would freeze it at the boot language.
  */
-function displayNameFromEmail(email?: string): string {
-  if (!email) return 'Account'
+function displayNameFromEmail(email: string | undefined, fallback: string): string {
+  if (!email) return fallback
   const local = email.split('@')[0]
   const first = local.split(/[._+-]/)[0]
-  if (!first) return 'Account'
+  if (!first) return fallback
   return first.charAt(0).toUpperCase() + first.slice(1)
 }
 
@@ -31,6 +35,7 @@ function displayNameFromEmail(email?: string): string {
  */
 export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
   const { status } = useAuth()
+  const t = useT()
   const config = useStore((s) => s.config)
   const openSettingsModal = useStore((s) => s.openSettingsModal)
 
@@ -64,7 +69,7 @@ export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
           className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium text-text-secondary rounded-lg hover:bg-text-secondary/10 hover:text-ink transition-all"
         >
           <LogIn className="w-3.5 h-3.5" />
-          <span>Login / Sign up</span>
+          <span>{t('sidebar.login')}</span>
         </button>
         {/* Portal to <body> so the fixed overlay covers the whole app. */}
         {createPortal(
@@ -77,7 +82,7 @@ export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
 
   // Signed in → account button opening Settings.
   if (status.enabled && status.loggedIn) {
-    const name = displayNameFromEmail(status.user?.email)
+    const name = displayNameFromEmail(status.user?.email, t('sidebar.accountFallback'))
     return (
       <button
         onClick={openSettings}
@@ -106,7 +111,7 @@ export function SidebarAccount({ shortcutKey }: { shortcutKey?: string }) {
       }`}
     >
       <Settings className="w-3.5 h-3.5" />
-      <span>Settings</span>
+      <span>{t('sidebar.settings')}</span>
       {shortcutKey && <span className="ml-auto text-xs opacity-50 shrink-0">{shortcutKey}</span>}
       <WarningBadge />
     </button>

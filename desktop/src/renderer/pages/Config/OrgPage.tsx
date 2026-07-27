@@ -6,7 +6,37 @@ import { Modal } from '../../components/Modal'
 import { RoleSelect } from './RoleSelect'
 import { SectionHeader } from './SectionHeader'
 import { showToast } from '../../components/Toast'
+import { useT } from '../../i18n'
+import type { MessageKey, Translate } from '../../i18n'
 import type { Invitation, Member, MembershipRole, Org } from '../../../types'
+
+/**
+ * Enum values from the database, rendered as-is before: `role` and invitation
+ * `status` are shown to the user, so they need a catalogue entry each. Both fall
+ * back to the raw value — a status the desktop app does not know yet (a newer
+ * backend) must still render, rather than showing an empty badge.
+ */
+const ROLE_KEYS: Record<MembershipRole, MessageKey> = {
+  admin: 'org.role.admin',
+  user: 'org.role.user',
+}
+
+const INVITE_STATUS_KEYS: Record<string, MessageKey> = {
+  pending: 'org.inviteStatus.pending',
+  accepted: 'org.inviteStatus.accepted',
+  expired: 'org.inviteStatus.expired',
+  revoked: 'org.inviteStatus.revoked',
+}
+
+function roleLabel(role: MembershipRole, t: Translate): string {
+  const key = ROLE_KEYS[role]
+  return key ? t(key) : role
+}
+
+function inviteStatusLabel(status: string, t: Translate): string {
+  const key = INVITE_STATUS_KEYS[status]
+  return key ? t(key) : status
+}
 
 /** Sub-heading inside an organization card. */
 function CardSection({ label, count, action }: { label: string; count?: number; action?: React.ReactNode }) {
@@ -67,6 +97,7 @@ function OrganizationCard({
   onLeave,
   onArchive,
 }: OrganizationCardProps) {
+  const t = useT()
   const isAdmin = org.role === 'admin'
   // An accepted invitation is a member now — it is already listed (with its role
   // and actions) in Members just above, so repeating it here is pure noise. Only
@@ -89,26 +120,26 @@ function OrganizationCard({
         </div>
         {isActive ? (
           <span className="flex items-center h-7 px-2 rounded-lg text-[11px] font-medium bg-green/10 text-green shrink-0">
-            Active
+            {t('org.active')}
           </span>
         ) : (
           <button
             onClick={() => onSwitch(org.id)}
             disabled={switching}
             className="flex items-center gap-1.5 h-7 px-2 text-[11px] font-medium text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-40 shrink-0"
-            title="Make this the active organization"
+            title={t('org.switchToTitle')}
           >
             {switching ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowRightLeft className="w-3 h-3" />}
-            Switch to
+            {t('org.switchTo')}
           </button>
         )}
       </div>
 
       {/* Members */}
       <div className="px-4 py-3 border-b border-line-subtle">
-        <CardSection label="Members" count={members.length} />
+        <CardSection label={t('org.members')} count={members.length} />
         {members.length === 0 ? (
-          <div className="text-xs text-text-secondary/40 py-1">No members yet.</div>
+          <div className="text-xs text-text-secondary/40 py-1">{t('org.membersEmpty')}</div>
         ) : (
           <div className="-mx-1 overflow-x-auto">
             <table className="w-full min-w-[22rem] border-collapse text-left">
@@ -116,9 +147,9 @@ function OrganizationCard({
                   but a screen reader still needs the columns named. */}
               <thead className="sr-only">
                 <tr>
-                  <th scope="col">Member</th>
-                  <th scope="col">Role</th>
-                  {isAdmin && <th scope="col">Actions</th>}
+                  <th scope="col">{t('org.colMember')}</th>
+                  <th scope="col">{t('org.colRole')}</th>
+                  {isAdmin && <th scope="col">{t('org.colActions')}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-subtle">
@@ -132,7 +163,7 @@ function OrganizationCard({
                       <td className="max-w-0 px-1 py-2">
                         <span className="block truncate text-sm">
                           {m.email ?? m.userId}
-                          {isSelf && <span className="text-text-secondary/40"> (you)</span>}
+                          {isSelf && <span className="text-text-secondary/40">{t('org.you')}</span>}
                         </span>
                       </td>
                       <td className="w-px whitespace-nowrap px-1 py-2">
@@ -144,7 +175,7 @@ function OrganizationCard({
                           <span className={`inline-flex items-center h-7 px-2 rounded-lg text-[11px] font-medium ${
                             m.role === 'admin' ? 'bg-accent/15 text-accent' : 'bg-surface-strong text-text-secondary'
                           }`}>
-                            {m.role}
+                            {roleLabel(m.role, t)}
                           </span>
                         )}
                       </td>
@@ -155,7 +186,7 @@ function OrganizationCard({
                             <button
                               onClick={() => onRemoveMember(org.id, m.userId)}
                               className="flex items-center justify-center h-7 w-7 shrink-0 text-text-secondary/60 bg-surface border border-line rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all"
-                              title="Remove member"
+                              title={t('org.removeMember')}
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -175,7 +206,7 @@ function OrganizationCard({
       {isAdmin && (
         <div className="px-4 py-3 border-b border-line-subtle">
           <CardSection
-            label="Invitations"
+            label={t('org.invitations')}
             count={openInvitations.length}
             action={
               <button
@@ -183,12 +214,12 @@ function OrganizationCard({
                 className="flex items-center gap-1.5 h-7 px-2 text-[11px] font-medium text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <UserPlus className="w-3 h-3" />
-                Invite
+                {t('org.invite')}
               </button>
             }
           />
           {openInvitations.length === 0 ? (
-            <div className="text-xs text-text-secondary/40 py-1">No pending invitation.</div>
+            <div className="text-xs text-text-secondary/40 py-1">{t('org.invitationsEmpty')}</div>
           ) : (
             <div className="space-y-1">
               {openInvitations.map((inv) => (
@@ -197,23 +228,23 @@ function OrganizationCard({
                   <span className={`flex items-center h-7 px-2 rounded-lg text-[11px] font-medium ${
                     inv.status === 'pending' ? 'bg-yellow/10 text-yellow' : 'bg-surface-strong text-text-secondary'
                   }`}>
-                    {inv.status}
+                    {inviteStatusLabel(inv.status, t)}
                   </span>
                   {inv.status === 'pending' && (
                     <button
                       onClick={() => onCopyToken(inv.token)}
                       className="flex items-center gap-1 h-7 px-2 text-[11px] font-medium text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                      title="Copy invitation link"
+                      title={t('org.copyInviteLink')}
                     >
                       {copiedToken === inv.token ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      {copiedToken === inv.token ? 'Copied' : 'Invite link'}
+                      {copiedToken === inv.token ? t('common.copied') : t('org.inviteLink')}
                     </button>
                   )}
                   <button
                     onClick={() => onDeleteInvitation(inv.id)}
                     disabled={deletingInvite === inv.id}
                     className="flex items-center justify-center h-7 w-7 shrink-0 text-text-secondary/60 bg-surface border border-line rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all disabled:opacity-50"
-                    title="Delete invitation"
+                    title={t('org.deleteInvitation')}
                   >
                     {deletingInvite === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                   </button>
@@ -228,7 +259,7 @@ function OrganizationCard({
       <div className="px-4 py-3 flex items-center gap-2">
         {isSoleAdmin ? (
           <p className="text-xs text-text-secondary/50">
-            You are the last admin. Promote another member before leaving, or archive the organization.
+            {t('org.soleAdmin')}
           </p>
         ) : (
           <button
@@ -237,7 +268,7 @@ function OrganizationCard({
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-40"
           >
             {leaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
-            Leave organization
+            {t('org.leave')}
           </button>
         )}
         {isAdmin && (
@@ -246,7 +277,7 @@ function OrganizationCard({
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all ml-auto"
           >
             <Archive className="w-3.5 h-3.5" />
-            Archive organization
+            {t('org.archive')}
           </button>
         )}
       </div>
@@ -263,6 +294,7 @@ function extractInviteToken(input: string): string {
 
 export function OrgPage() {
   const { status, loading: authLoading } = useAuth()
+  const t = useT()
   const {
     org: activeOrg,
     orgs,
@@ -309,9 +341,9 @@ export function OrgPage() {
     setBusyMember(userId)
     try {
       await updateRole(orgId, userId, role)
-      showToast('Role updated', 'success')
+      showToast(t('toast.roleUpdated'), 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to update role', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.roleUpdateFailed'), 'error')
     } finally {
       setBusyMember(null)
     }
@@ -321,9 +353,9 @@ export function OrgPage() {
     setBusyMember(userId)
     try {
       await removeMember(orgId, userId)
-      showToast('Member removed', 'success')
+      showToast(t('toast.memberRemoved'), 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to remove member', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.memberRemoveFailed'), 'error')
     } finally {
       setBusyMember(null)
     }
@@ -333,9 +365,9 @@ export function OrgPage() {
     setLeavingOrgId(orgId)
     try {
       await leaveOrg(orgId)
-      showToast('You left the organization', 'success')
+      showToast(t('toast.orgLeft'), 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to leave organization', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.orgLeaveFailed'), 'error')
     } finally {
       setLeavingOrgId(null)
     }
@@ -345,9 +377,9 @@ export function OrgPage() {
     setSwitchingOrgId(orgId)
     try {
       await switchOrg(orgId)
-      showToast('Switched organization', 'success')
+      showToast(t('toast.orgSwitched'), 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to switch organization', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.orgSwitchFailed'), 'error')
     } finally {
       setSwitchingOrgId(null)
     }
@@ -358,10 +390,10 @@ export function OrgPage() {
     setArchiving(true)
     try {
       await archiveOrg(archiveOrgTarget.id)
-      showToast('Organization archived', 'success')
+      showToast(t('toast.orgArchived'), 'success')
       setArchiveOrgTarget(null)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to archive organization', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.orgArchiveFailed'), 'error')
     } finally {
       setArchiving(false)
     }
@@ -378,10 +410,10 @@ export function OrgPage() {
     setInviting(true)
     try {
       await invite(inviteEmail.trim(), inviteRole, inviteOrg.id)
-      showToast('Invitation created', 'success')
+      showToast(t('toast.invitationCreated'), 'success')
       setInviteOrg(null)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to create invitation', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.invitationCreateFailed'), 'error')
     } finally {
       setInviting(false)
     }
@@ -392,11 +424,11 @@ export function OrgPage() {
     setCreating(true)
     try {
       await createOrg(createName.trim())
-      showToast(`Organization "${createName.trim()}" created`, 'success')
+      showToast(t('toast.orgCreated', { name: createName.trim() }), 'success')
       setShowCreate(false)
       setCreateName('')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to create organization', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.orgCreateFailed'), 'error')
     } finally {
       setCreating(false)
     }
@@ -407,11 +439,11 @@ export function OrgPage() {
     setJoining(true)
     try {
       await accept(extractInviteToken(joinToken))
-      showToast('You joined the organization', 'success')
+      showToast(t('toast.orgJoined'), 'success')
       setShowJoin(false)
       setJoinToken('')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to join organization', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.orgJoinFailed'), 'error')
     } finally {
       setJoining(false)
     }
@@ -429,9 +461,9 @@ export function OrgPage() {
     setDeletingInvite(id)
     try {
       await deleteInvitation(id)
-      showToast('Invitation deleted', 'success')
+      showToast(t('toast.invitationDeleted'), 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to delete invitation', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.invitationDeleteFailed'), 'error')
     } finally {
       setDeletingInvite(null)
     }
@@ -441,11 +473,11 @@ export function OrgPage() {
   if (!authLoading && !status.enabled) {
     return (
       <div className="flex flex-col gap-6">
-        <SectionHeader icon={Cloud} title="Organization" spacing="none" />
+        <SectionHeader icon={Cloud} title={t('org.section')} spacing="none" />
         <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
           <Cloud className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
-          <div className="text-sm text-text-secondary/60">Cloud features are not configured in this build.</div>
-          <div className="text-xs text-text-secondary/40 mt-1">Magic Slash works fully offline — no account required.</div>
+          <div className="text-sm text-text-secondary/60">{t('org.cloudDisabled')}</div>
+          <div className="text-xs text-text-secondary/40 mt-1">{t('org.cloudDisabledHint')}</div>
         </div>
       </div>
     )
@@ -455,15 +487,15 @@ export function OrgPage() {
     return (
       <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
         <Building2 className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
-        <div className="text-sm text-text-secondary/60">Sign in to manage your organization.</div>
-        <div className="text-xs text-text-secondary/40 mt-1">Settings → Account → Cloud account.</div>
+        <div className="text-sm text-text-secondary/60">{t('org.signInTitle')}</div>
+        <div className="text-xs text-text-secondary/40 mt-1">{t('org.signInHint')}</div>
       </div>
     )
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <SectionHeader icon={Building2} title={`Organizations (${orgs.length})`} spacing="none" />
+      <SectionHeader icon={Building2} title={t('org.sectionCount', { count: orgs.length })} spacing="none" />
 
       {orgLoading && orgs.length === 0 ? (
         <div className="flex items-center justify-center py-8 text-text-secondary/50">
@@ -472,8 +504,8 @@ export function OrgPage() {
       ) : orgs.length === 0 ? (
         <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
           <Users className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
-          <div className="text-sm text-text-secondary/60">You do not belong to any organization.</div>
-          <div className="text-xs text-text-secondary/40 mt-1">Create one, or join with an invitation.</div>
+          <div className="text-sm text-text-secondary/60">{t('org.emptyTitle')}</div>
+          <div className="text-xs text-text-secondary/40 mt-1">{t('org.emptyHint')}</div>
         </div>
       ) : (
         orgs.map((o) => (
@@ -508,14 +540,14 @@ export function OrgPage() {
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
         >
           <Plus className="w-3.5 h-3.5" />
-          Create an organization
+          {t('org.create')}
         </button>
         <button
           onClick={() => { setJoinToken(''); setShowJoin(true) }}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
         >
           <UserPlus className="w-3.5 h-3.5" />
-          Join an organization
+          {t('org.join')}
         </button>
       </div>
 
@@ -523,14 +555,14 @@ export function OrgPage() {
       <Modal
         isOpen={inviteOrg !== null}
         onClose={() => setInviteOrg(null)}
-        title={inviteOrg ? `Invite to ${inviteOrg.name}` : 'Invite'}
+        title={inviteOrg ? t('org.inviteModal.title', { name: inviteOrg.name }) : t('org.inviteModal.titleFallback')}
         footer={
           <>
             <button
               onClick={() => setInviteOrg(null)}
               className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleInvite}
@@ -538,26 +570,26 @@ export function OrgPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
             >
               {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
-              Send invitation
+              {t('org.inviteModal.send')}
             </button>
           </>
         }
       >
         <div className="space-y-3">
           <p className="text-xs text-text-secondary/60">
-            An invitation link is generated — copy it from the list and send it to your colleague.
+            {t('org.inviteModal.help')}
           </p>
           <input
             type="email"
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
-            placeholder="colleague@example.com"
+            placeholder={t('org.inviteModal.emailPlaceholder')}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleInvite() }}
             className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
           />
           <div className="flex items-center justify-between">
-            <span className="text-xs text-text-secondary/60">Role</span>
+            <span className="text-xs text-text-secondary/60">{t('org.colRole')}</span>
             <RoleSelect value={inviteRole} onChange={setInviteRole} />
           </div>
         </div>
@@ -567,14 +599,14 @@ export function OrgPage() {
       <Modal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        title="Create an organization"
+        title={t('org.create')}
         footer={
           <>
             <button
               onClick={() => setShowCreate(false)}
               className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleCreate}
@@ -582,20 +614,20 @@ export function OrgPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
             >
               {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-              Create
+              {t('org.createModal.submit')}
             </button>
           </>
         }
       >
         <div className="space-y-2">
           <p className="text-xs text-text-secondary/60">
-            You become its admin. It is not made active — use “Switch to” on the card when you want to work in it.
+            {t('org.createModal.help')}
           </p>
           <input
             type="text"
             value={createName}
             onChange={(e) => setCreateName(e.target.value)}
-            placeholder="Organization name"
+            placeholder={t('org.createModal.namePlaceholder')}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleCreate() }}
             className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
@@ -607,14 +639,14 @@ export function OrgPage() {
       <Modal
         isOpen={showJoin}
         onClose={() => setShowJoin(false)}
-        title="Join an organization"
+        title={t('org.join')}
         footer={
           <>
             <button
               onClick={() => setShowJoin(false)}
               className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleJoin}
@@ -622,20 +654,20 @@ export function OrgPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40"
             >
               {joining ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
-              Join
+              {t('org.joinModal.submit')}
             </button>
           </>
         }
       >
         <div className="space-y-2">
           <p className="text-xs text-text-secondary/60">
-            Paste the invitation link you received, or just its token.
+            {t('org.joinModal.help')}
           </p>
           <input
             type="text"
             value={joinToken}
             onChange={(e) => setJoinToken(e.target.value)}
-            placeholder="https://app.magic-slash.io/invite/…"
+            placeholder={t('org.joinModal.tokenPlaceholder')}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleJoin() }}
             className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
@@ -647,14 +679,14 @@ export function OrgPage() {
       <Modal
         isOpen={archiveOrgTarget !== null}
         onClose={() => setArchiveOrgTarget(null)}
-        title="Archive organization"
+        title={t('org.archive')}
         footer={
           <>
             <button
               onClick={() => setArchiveOrgTarget(null)}
               className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleArchive}
@@ -662,7 +694,7 @@ export function OrgPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-red hover:bg-red/80 rounded-lg transition-all disabled:opacity-40"
             >
               {archiving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
-              Archive organization
+              {t('org.archive')}
             </button>
           </>
         }
@@ -672,9 +704,9 @@ export function OrgPage() {
             <AlertTriangle className="w-4 h-4 text-red" />
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-ink">Archive {archiveOrgTarget?.name ?? 'this organization'}?</p>
+            <p className="text-sm text-ink">{t('org.archiveModal.confirm', { name: archiveOrgTarget?.name ?? t('org.archiveModal.thisOrganization') })}</p>
             <p className="text-xs text-text-secondary/60">
-              The organization and its members lose access — it disappears for everyone. Its data is retained, not deleted, but this cannot be undone from the app.
+              {t('org.archiveModal.body')}
             </p>
           </div>
         </div>

@@ -4,24 +4,24 @@ import { useActivityHistory } from '../../hooks/useActivityHistory'
 import { useHistoryAnalytics } from '../../hooks/useHistoryAnalytics'
 import { ActivityHeatmap } from './ActivityHeatmap'
 import type { HistoryAction, HistoryEntry } from '../../../types'
-import { useLocale } from '../../i18n'
+import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
 
 const CARD_ANIM_MS = 150
 const CARD_STAGGER_MS = 50
 
-const ACTION_CONFIG: Record<HistoryAction, { label: string; color: string; dot: string }> = {
-  agent_created: { label: 'Agent created', color: 'bg-accent', dot: 'bg-accent' },
-  started: { label: 'Started', color: 'bg-green', dot: 'bg-green' },
-  waiting: { label: 'Waiting for input', color: 'bg-orange', dot: 'bg-orange' },
-  completed: { label: 'Task completed', color: 'bg-green', dot: 'bg-green' },
-  committed: { label: 'Committed', color: 'bg-yellow', dot: 'bg-yellow' },
-  pr_created: { label: 'PR created', color: 'bg-blue', dot: 'bg-blue' },
-  review: { label: 'In review', color: 'bg-purple', dot: 'bg-purple' },
-  review_approved: { label: 'Review approved', color: 'bg-green', dot: 'bg-green' },
-  review_changes_requested: { label: 'Changes requested', color: 'bg-red', dot: 'bg-red' },
-  merged: { label: 'Merged', color: 'bg-green', dot: 'bg-green' },
-  done: { label: 'Done', color: 'bg-teal', dot: 'bg-teal' },
-  agent_closed: { label: 'Agent closed', color: 'bg-text-secondary', dot: 'bg-text-secondary' },
+const ACTION_CONFIG: Record<HistoryAction, { labelKey: MessageKey; color: string; dot: string }> = {
+  agent_created: { labelKey: 'history.action.agentCreated', color: 'bg-accent', dot: 'bg-accent' },
+  started: { labelKey: 'history.action.started', color: 'bg-green', dot: 'bg-green' },
+  waiting: { labelKey: 'history.action.waiting', color: 'bg-orange', dot: 'bg-orange' },
+  completed: { labelKey: 'history.action.completed', color: 'bg-green', dot: 'bg-green' },
+  committed: { labelKey: 'history.action.committed', color: 'bg-yellow', dot: 'bg-yellow' },
+  pr_created: { labelKey: 'history.action.prCreated', color: 'bg-blue', dot: 'bg-blue' },
+  review: { labelKey: 'history.action.review', color: 'bg-purple', dot: 'bg-purple' },
+  review_approved: { labelKey: 'history.action.reviewApproved', color: 'bg-green', dot: 'bg-green' },
+  review_changes_requested: { labelKey: 'history.action.reviewChangesRequested', color: 'bg-red', dot: 'bg-red' },
+  merged: { labelKey: 'history.action.merged', color: 'bg-green', dot: 'bg-green' },
+  done: { labelKey: 'history.action.done', color: 'bg-teal', dot: 'bg-teal' },
+  agent_closed: { labelKey: 'history.action.agentClosed', color: 'bg-text-secondary', dot: 'bg-text-secondary' },
 }
 
 // hour12 stays false in every language: this is a dense activity log, and a
@@ -31,14 +31,14 @@ function formatTime(timestamp: number, locale: string): string {
   return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-function formatDuration(fromTs: number, toTs: number): string {
+function formatDuration(fromTs: number, toTs: number, t: Translate): string {
   const diffMs = Math.abs(toTs - fromTs)
   const diffMin = Math.round(diffMs / 60000)
-  if (diffMin < 1) return '< 1 min'
-  if (diffMin < 60) return `${diffMin} min`
+  if (diffMin < 1) return t('duration.lessThanMinute')
+  if (diffMin < 60) return t('duration.minutes', { count: diffMin })
   const h = Math.floor(diffMin / 60)
   const m = diffMin % 60
-  return m > 0 ? `${h}h ${m}m` : `${h}h`
+  return m > 0 ? t('duration.hoursMinutes', { hours: h, minutes: m }) : t('duration.hours', { count: h })
 }
 
 function RepoTag({ repo }: { repo: string }) {
@@ -52,6 +52,7 @@ function RepoTag({ repo }: { repo: string }) {
 
 function SingleEntryRow({ entry, isDimmed }: { entry: HistoryEntry; isDimmed: boolean }) {
   const locale = useLocale()
+  const t = useT()
   const config = ACTION_CONFIG[entry.action]
   return (
     <div className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-subtle border border-line-field transition-all duration-200 min-w-0 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}>
@@ -72,7 +73,7 @@ function SingleEntryRow({ entry, isDimmed }: { entry: HistoryEntry; isDimmed: bo
         <span className="text-xs text-text-secondary/40 flex-shrink-0">+{entry.repositories.length - 1}</span>
       )}
       <span className="text-xs text-text-secondary flex-shrink-0">
-        {config.label}
+        {t(config.labelKey)}
       </span>
     </div>
   )
@@ -80,6 +81,7 @@ function SingleEntryRow({ entry, isDimmed }: { entry: HistoryEntry; isDimmed: bo
 
 export function HistoryPage() {
   const locale = useLocale()
+  const t = useT()
   const { entries, groups, loading } = useActivityHistory()
   const { heatmapData } = useHistoryAnalytics(entries)
   const hasEntries = groups.some(g => g.entries.length > 0)
@@ -155,9 +157,9 @@ export function HistoryPage() {
           <Clock className="w-8 h-8 text-text-secondary/50" />
         </div>
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-ink mb-1">No history yet</h3>
+          <h3 className="text-lg font-semibold text-ink mb-1">{t('history.emptyTitle')}</h3>
           <p className="text-sm text-text-secondary">
-            Actions will appear here as your agents work.
+            {t('history.emptyHint')}
           </p>
         </div>
       </div>
@@ -185,14 +187,14 @@ export function HistoryPage() {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line-field rounded-lg hover:bg-surface-subtle hover:text-ink transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Older</span>
+                <span>{t('history.older')}</span>
               </button>
 
               <div className="flex flex-col items-center gap-0.5">
                 <span className="text-sm font-medium text-ink">{currentGroup.label}</span>
                 <span className="text-xs text-text-secondary/50">
-                  {currentGroup.entries.length} {currentGroup.entries.length === 1 ? 'event' : 'events'}
-                  {groups.length > 1 && ` · day ${dayIndex + 1} of ${groups.length}`}
+                  {t(currentGroup.entries.length === 1 ? 'history.events.one' : 'history.events.other', { count: currentGroup.entries.length })}
+                  {groups.length > 1 && t('history.dayOf', { current: dayIndex + 1, total: groups.length })}
                 </span>
               </div>
 
@@ -201,7 +203,7 @@ export function HistoryPage() {
                 disabled={isFirstDay}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line-field rounded-lg hover:bg-surface-subtle hover:text-ink transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                <span>Newer</span>
+                <span>{t('history.newer')}</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -228,7 +230,7 @@ export function HistoryPage() {
                 const oldestTs = tg.entries[tg.entries.length - 1].timestamp
                 const firstTime = formatTime(oldestTs, locale)
                 const lastTime = formatTime(newestTs, locale)
-                const duration = formatDuration(oldestTs, newestTs)
+                const duration = formatDuration(oldestTs, newestTs, t)
 
                 return (
                   <div
@@ -268,10 +270,10 @@ export function HistoryPage() {
                           ) : null
                         })()}
                         <span className="text-xs text-text-secondary/50 flex-shrink-0">
-                          {tg.entries.length} events · {duration}
+                          {t(tg.entries.length === 1 ? 'history.groupSummary.one' : 'history.groupSummary.other', { count: tg.entries.length, duration })}
                         </span>
                         <span className="text-xs text-text-secondary flex-shrink-0">
-                          {lastConfig.label}
+                          {t(lastConfig.labelKey)}
                         </span>
                         <ChevronRight
                           className={`w-4 h-4 text-text-secondary/40 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
@@ -305,7 +307,7 @@ export function HistoryPage() {
                               </span>
                             )}
                             <span className="text-xs text-text-secondary flex-shrink-0 ml-auto">
-                              {config.label}
+                              {t(config.labelKey)}
                             </span>
                           </div>
                         )

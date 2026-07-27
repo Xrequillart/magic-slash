@@ -1,17 +1,17 @@
 import { useState, useCallback } from 'react'
 import { Check, Loader2 } from 'lucide-react'
-import { ROLE_LABELS, LEVEL_LABELS, STYLE_LABELS, type UserProfile } from '../../../types'
 import { showToast } from '../../components/Toast'
+import { useT, ROLE_LABEL_KEYS, LEVEL_LABEL_KEYS, STYLE_LABEL_KEYS, type MessageKey } from '../../i18n'
+import type { UserProfile } from '../../../types'
 
-const ROLE_OPTIONS = (Object.entries(ROLE_LABELS) as [UserProfile['role'], string][]).map(
-  ([value, label]) => ({ value, label })
-)
-const LEVEL_OPTIONS = (Object.entries(LEVEL_LABELS) as [UserProfile['technical_level'], string][]).map(
-  ([value, label]) => ({ value, label })
-)
-const STYLE_OPTIONS = (Object.entries(STYLE_LABELS) as [NonNullable<UserProfile['communication_style']>, string][]).map(
-  ([value, label]) => ({ value, label })
-)
+const ROLE_OPTIONS = Object.entries(ROLE_LABEL_KEYS) as [UserProfile['role'], MessageKey][]
+const LEVEL_OPTIONS = Object.entries(LEVEL_LABEL_KEYS) as [UserProfile['technical_level'], MessageKey][]
+const STYLE_OPTIONS = Object.entries(STYLE_LABEL_KEYS) as [
+  NonNullable<UserProfile['communication_style']>,
+  MessageKey,
+][]
+// Endonyms: a language is named in its own language, whatever the interface is
+// set to — and these strings are stored in the profile, read back by the skills.
 const LANGUAGE_OPTIONS = ['English', 'Français']
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -48,6 +48,7 @@ function Pill({ selected, onClick, children }: { selected: boolean; onClick: () 
  * point for first launch and for editing — this is the same fields, flattened.
  */
 export function ProfileForm({ onSaved }: { onSaved: () => void }) {
+  const t = useT()
   const [name, setName] = useState('')
   const [role, setRole] = useState<UserProfile['role'] | ''>('')
   const [technicalLevel, setTechnicalLevel] = useState<UserProfile['technical_level'] | ''>('')
@@ -77,10 +78,10 @@ export function ProfileForm({ onSaved }: { onSaved: () => void }) {
       if (freeText.trim()) profile.freeText = freeText.trim()
 
       await window.electronAPI.profile.save(profile)
-      showToast('Profile saved', 'success')
+      showToast(t('toast.profileSaved'), 'success')
       onSaved()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to save profile', 'error')
+      showToast(e instanceof Error ? e.message : t('toast.profileSaveFailed'), 'error')
     } finally {
       setSaving(false)
     }
@@ -89,58 +90,58 @@ export function ProfileForm({ onSaved }: { onSaved: () => void }) {
   return (
     <div className="bg-surface border border-line-strong rounded-xl p-4 flex flex-col gap-4">
       <p className="text-xs text-text-secondary/60">
-        No profile yet. Claude uses it to adapt its vocabulary, level of detail and language to you.
+        {t('profile.form.intro')}
       </p>
 
-      <Field label="First name">
+      <Field label={t('profile.form.firstName')}>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Your first name"
+          placeholder={t('profile.form.firstNamePlaceholder')}
           className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
         />
       </Field>
 
-      <Field label="Role">
+      <Field label={t('profile.form.role')}>
         <div className="flex flex-wrap gap-1.5">
-          {ROLE_OPTIONS.map((opt) => (
-            <Pill key={opt.value} selected={role === opt.value} onClick={() => setRole(opt.value)}>
-              {opt.label}
+          {ROLE_OPTIONS.map(([value, labelKey]) => (
+            <Pill key={value} selected={role === value} onClick={() => setRole(value)}>
+              {t(labelKey)}
             </Pill>
           ))}
         </div>
       </Field>
 
-      <Field label="Technical level">
+      <Field label={t('profile.form.level')}>
         <div className="flex flex-wrap gap-1.5">
-          {LEVEL_OPTIONS.map((opt) => (
+          {LEVEL_OPTIONS.map(([value, labelKey]) => (
             <Pill
-              key={opt.value}
-              selected={technicalLevel === opt.value}
-              onClick={() => setTechnicalLevel(opt.value)}
+              key={value}
+              selected={technicalLevel === value}
+              onClick={() => setTechnicalLevel(value)}
             >
-              {opt.label}
+              {t(labelKey)}
             </Pill>
           ))}
         </div>
       </Field>
 
-      <Field label="Communication style" hint="optional">
+      <Field label={t('profile.form.style')} hint={t('profile.form.optional')}>
         <div className="flex flex-wrap gap-1.5">
-          {STYLE_OPTIONS.map((opt) => (
+          {STYLE_OPTIONS.map(([value, labelKey]) => (
             <Pill
-              key={opt.value}
-              selected={communicationStyle === opt.value}
-              onClick={() => setCommunicationStyle((prev) => (prev === opt.value ? '' : opt.value))}
+              key={value}
+              selected={communicationStyle === value}
+              onClick={() => setCommunicationStyle((prev) => (prev === value ? '' : value))}
             >
-              {opt.label}
+              {t(labelKey)}
             </Pill>
           ))}
         </div>
       </Field>
 
-      <Field label="Languages" hint="optional">
+      <Field label={t('profile.form.languages')} hint={t('profile.form.optional')}>
         <div className="flex flex-wrap gap-1.5">
           {LANGUAGE_OPTIONS.map((lang) => (
             <Pill key={lang} selected={languages.includes(lang)} onClick={() => toggleLanguage(lang)}>
@@ -150,11 +151,11 @@ export function ProfileForm({ onSaved }: { onSaved: () => void }) {
         </div>
       </Field>
 
-      <Field label="Anything else" hint="optional">
+      <Field label={t('profile.form.freeText')} hint={t('profile.form.optional')}>
         <textarea
           value={freeText}
           onChange={(e) => setFreeText(e.target.value)}
-          placeholder="e.g., I prefer short answers, I work on mobile apps..."
+          placeholder={t('profile.form.freeTextPlaceholder')}
           rows={3}
           className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 resize-none"
         />
@@ -167,7 +168,7 @@ export function ProfileForm({ onSaved }: { onSaved: () => void }) {
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-          Save profile
+          {t('profile.form.save')}
         </button>
       </div>
     </div>

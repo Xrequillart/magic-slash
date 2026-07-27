@@ -4,7 +4,7 @@ import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from 
 import { VSCodeIcon } from '../../components/agent-info-sidebar/icons'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useStore } from '../../store'
-import { useLocale } from '../../i18n'
+import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
 
 const TOKEN_BUDGET = 4000
 const CHAR_BUDGET = 16000
@@ -62,14 +62,28 @@ function getWeight(tokens: number): 'high' | 'medium' | 'low' {
   return 'low'
 }
 
-const weightStyles: Record<string, { className: string; label: string }> = {
-  high: { className: 'bg-red/10 text-red', label: 'High' },
-  medium: { className: 'bg-orange/10 text-orange', label: 'Medium' },
-  low: { className: 'bg-green/10 text-green', label: 'Low' },
+const weightStyles: Record<string, { className: string; labelKey: MessageKey }> = {
+  high: { className: 'bg-red/10 text-red', labelKey: 'skills.weight.high' },
+  medium: { className: 'bg-orange/10 text-orange', labelKey: 'skills.weight.medium' },
+  low: { className: 'bg-green/10 text-green', labelKey: 'skills.weight.low' },
+}
+
+// A skill's origin, shown as a badge. Keys rather than the raw union member, so
+// the badge reads "intégré" in French instead of the internal identifier.
+const SOURCE_KEYS: Record<string, MessageKey> = {
+  'built-in': 'skills.source.builtIn',
+  custom: 'skills.source.custom',
+  repo: 'skills.source.repo',
+}
+
+function sourceLabel(source: string, t: Translate): string {
+  const key = SOURCE_KEYS[source]
+  return key ? t(key) : source
 }
 
 function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSkills: RepoSkillInfo[] }) {
   const [showBreakdown, setShowBreakdown] = useState(false)
+  const t = useT()
   const { totalTokens, totalChars, breakdown } = useMemo(() => {
     const entries: SkillTokenEntry[] = []
     for (const s of skills) {
@@ -95,16 +109,16 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
       {/* Gauges side by side */}
       <div className="flex items-center gap-2 text-sm text-text-secondary">
         <Gauge className="w-4 h-4" />
-        <span>Skills Budget</span>
+        <span>{t('skills.budget.section')}</span>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <BudgetBar label="Tokens (2% context)" value={totalTokens} max={TOKEN_BUDGET} unit="tokens" barColor="bg-accent" />
-        <BudgetBar label="Characters (fallback)" value={totalChars} max={CHAR_BUDGET} unit="chars" barColor="bg-orange" />
+        <BudgetBar label={t('skills.budget.tokens')} value={totalTokens} max={TOKEN_BUDGET} unit={t('skills.budget.unitTokens')} barColor="bg-accent" />
+        <BudgetBar label={t('skills.budget.chars')} value={totalChars} max={CHAR_BUDGET} unit={t('skills.budget.unitChars')} barColor="bg-orange" />
       </div>
       <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-surface-subtle border border-line-subtle">
         <Info className="w-3.5 h-3.5 text-text-secondary/40 flex-shrink-0 mt-0.5" />
         <p className="text-[11px] text-text-secondary/40 leading-relaxed">
-          Skill descriptions are injected into the system prompt on every message. The <strong className="text-text-secondary/60">2% context</strong> gauge tracks token usage against ~2% of the model's context window — the recommended ceiling to keep skills from crowding out actual conversation. The <strong className="text-text-secondary/60">characters (fallback)</strong> gauge is a simpler byte-level check used when a tokenizer is unavailable.
+          {t('skills.budget.help')}
         </p>
       </div>
 
@@ -116,7 +130,7 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
             className="flex items-center gap-1.5 text-xs text-text-secondary/50 hover:text-text-secondary transition-colors"
           >
             <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showBreakdown ? 'rotate-90' : ''}`} />
-            <span>Details by skill</span>
+            <span>{t('skills.budget.details')}</span>
           </button>
           {showBreakdown && (
             <div className="mt-2 px-4 py-3 rounded-xl bg-surface-subtle border border-line-field">
@@ -126,10 +140,10 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
                   const ws = weightStyles[entry.weight]
                   return (
                     <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
-                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 ${sourceColor}`}>{entry.source}</span>
+                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 ${sourceColor}`}>{sourceLabel(entry.source, t)}</span>
                       <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{entry.name}</span>
-                      <span className="text-[10px] text-text-secondary/50 w-14 text-right flex-shrink-0">{entry.tokens} tok</span>
-                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 w-14 text-center ${ws.className}`}>{ws.label}</span>
+                      <span className="text-[10px] text-text-secondary/50 w-14 text-right flex-shrink-0">{t('skills.budget.tok', { count: entry.tokens })}</span>
+                      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 w-14 text-center ${ws.className}`}>{t(ws.labelKey)}</span>
                     </div>
                   )
                 })}
@@ -143,6 +157,7 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
 }
 
 function DuplicateSkillsAlert({ duplicates }: { duplicates: DuplicateSkillEntry[] }) {
+  const t = useT()
   if (duplicates.length === 0) return null
 
   return (
@@ -150,14 +165,14 @@ function DuplicateSkillsAlert({ duplicates }: { duplicates: DuplicateSkillEntry[
       <div className="flex items-center gap-2 mb-2">
         <AlertTriangle className="w-4 h-4 text-orange flex-shrink-0" />
         <p className="text-xs text-orange">
-          {duplicates.length} skill name{duplicates.length > 1 ? 's are' : ' is'} used in multiple sources. Duplicates may cause unexpected behavior.
+          {t(duplicates.length > 1 ? 'skills.duplicates.other' : 'skills.duplicates.one', { count: duplicates.length })}
         </p>
       </div>
       <div className="flex flex-col gap-1.5 ml-6">
         {duplicates.map((dup) => (
           <div key={dup.name} className="flex items-center gap-2">
             <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{dup.name}</span>
-            <span className="text-[10px] text-orange/70 flex-shrink-0">{dup.sources.length}x</span>
+            <span className="text-[10px] text-orange/70 flex-shrink-0">{t('skills.duplicates.times', { count: dup.sources.length })}</span>
             <div className="flex items-center gap-1 flex-shrink-0">
               {dup.sources.map((s, i) => {
                 const sourceColor = s.source === 'built-in'
@@ -166,8 +181,8 @@ function DuplicateSkillsAlert({ duplicates }: { duplicates: DuplicateSkillEntry[
                     ? 'bg-blue/10 text-blue'
                     : 'bg-green/10 text-green'
                 const label = s.source === 'repo' && s.repoName
-                  ? `repo (${s.repoName})`
-                  : s.source
+                  ? t('skills.source.repoNamed', { name: s.repoName })
+                  : sourceLabel(s.source, t)
                 return (
                   <span
                     key={`${s.source}-${s.repoName || ''}-${i}`}
@@ -186,6 +201,7 @@ function DuplicateSkillsAlert({ duplicates }: { duplicates: DuplicateSkillEntry[
 }
 
 function LongDescriptionsAlert({ longDescriptions, onFix }: { longDescriptions: { name: string; source: string; wordCount: number; filePath: string }[]; onFix: () => void }) {
+  const t = useT()
   if (longDescriptions.length === 0) return null
 
   return (
@@ -193,14 +209,14 @@ function LongDescriptionsAlert({ longDescriptions, onFix }: { longDescriptions: 
       <div className="flex items-center gap-2 mb-2">
         <AlertTriangle className="w-4 h-4 text-orange flex-shrink-0" />
         <p className="text-xs text-orange">
-          {longDescriptions.length} skill{longDescriptions.length > 1 ? 's' : ''} with {longDescriptions.length > 1 ? 'descriptions' : 'a description'} longer than 110 words. Consider optimizing {longDescriptions.length > 1 ? 'them' : 'it'} for better performance.
+          {t(longDescriptions.length > 1 ? 'skills.longDesc.other' : 'skills.longDesc.one', { count: longDescriptions.length })}
         </p>
       </div>
       <div className="flex flex-col gap-1.5 ml-6">
         {longDescriptions.map((entry) => (
           <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
             <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{entry.name}</span>
-            <span className="text-[10px] text-orange/70 flex-shrink-0">{entry.wordCount} words</span>
+            <span className="text-[10px] text-orange/70 flex-shrink-0">{t('skills.longDesc.words', { count: entry.wordCount })}</span>
           </div>
         ))}
       </div>
@@ -210,14 +226,14 @@ function LongDescriptionsAlert({ longDescriptions, onFix }: { longDescriptions: 
           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-orange border border-orange/20 rounded-lg hover:bg-orange/10 transition-colors"
         >
           <VSCodeIcon className="w-3.5 h-3.5" />
-          Open in VS Code
+          {t('skills.openInVSCode')}
         </button>
         <button
           onClick={onFix}
           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-orange border border-orange/20 rounded-lg hover:bg-orange/10 transition-colors"
         >
           <Wand2 className="w-3.5 h-3.5" />
-          Fix with agent
+          {t('skills.fixWithAgent')}
         </button>
       </div>
     </div>
@@ -225,13 +241,14 @@ function LongDescriptionsAlert({ longDescriptions, onFix }: { longDescriptions: 
 }
 
 function SkillsWarnings({ duplicates, longDescriptions, onFixLongDescriptions }: { duplicates: DuplicateSkillEntry[]; longDescriptions: { name: string; source: string; wordCount: number; filePath: string }[]; onFixLongDescriptions: () => void }) {
+  const t = useT()
   if (duplicates.length === 0 && longDescriptions.length === 0) return null
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 text-sm text-text-secondary">
         <AlertTriangle className="w-4 h-4" />
-        <span>Warnings</span>
+        <span>{t('skills.warnings')}</span>
       </div>
       <DuplicateSkillsAlert duplicates={duplicates} />
       <LongDescriptionsAlert longDescriptions={longDescriptions} onFix={onFixLongDescriptions} />
@@ -304,6 +321,7 @@ function SkillEditor({
   const [body, setBody] = useState('')
   const [imagePath, setImagePath] = useState<string | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const t = useT()
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [sharing, setSharing] = useState(false)
@@ -348,13 +366,13 @@ function SkillEditor({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      setError('Skill name is required')
+      setError(t('skills.error.nameRequired'))
       return
     }
 
     // Validate name: only lowercase letters, numbers, hyphens
     if (!/^[a-z0-9-]+$/.test(name.trim())) {
-      setError('Skill name must contain only lowercase letters, numbers, and hyphens')
+      setError(t('skills.error.nameFormat'))
       return
     }
 
@@ -393,10 +411,10 @@ function SkillEditor({
   }
 
   const headerTitle = (() => {
-    if (skill?.isRepoSkill) return `${skill.name} (repo: ${skill.repoName}, read-only)`
-    if (isReadOnly) return `${skill?.name} (read-only)`
-    if (isNew) return 'New Skill'
-    return `Edit ${skill?.name}`
+    if (skill?.isRepoSkill) return t('skills.editor.repoTitle', { name: skill.name, repo: skill.repoName ?? '' })
+    if (isReadOnly) return t('skills.editor.readOnlyTitle', { name: skill?.name ?? '' })
+    if (isNew) return t('skills.editor.newTitle')
+    return t('skills.editor.editTitle', { name: skill?.name ?? '' })
   })()
 
   return (
@@ -419,7 +437,7 @@ function SkillEditor({
             className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-all disabled:opacity-50"
           >
             <Share2 className="w-4 h-4" />
-            {sharing ? 'Sharing...' : 'Share'}
+            {sharing ? t('skills.editor.sharing') : t('skills.editor.share')}
           </button>
         )}
       </div>
@@ -434,7 +452,7 @@ function SkillEditor({
       <div className="flex flex-col gap-4">
         {/* Name */}
         <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">Name</label>
+          <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.name')}</label>
           <input
             type="text"
             value={name}
@@ -444,18 +462,18 @@ function SkillEditor({
             className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50"
           />
           {isNew && (
-            <p className="mt-1 text-xs text-text-secondary/60">Lowercase letters, numbers, and hyphens only</p>
+            <p className="mt-1 text-xs text-text-secondary/60">{t('skills.editor.nameHelp')}</p>
           )}
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">Description</label>
+          <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.description')}</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             disabled={isReadOnly}
-            placeholder="Describe when this skill should be triggered..."
+            placeholder={t('skills.editor.descriptionPlaceholder')}
             rows={3}
             className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50 resize-none"
           />
@@ -463,7 +481,7 @@ function SkillEditor({
 
         {/* Allowed Tools */}
         <div>
-          <label className="block text-base font-medium text-text-secondary mb-1.5">Allowed Tools</label>
+          <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.allowedTools')}</label>
           <input
             type="text"
             value={allowedTools}
@@ -477,7 +495,7 @@ function SkillEditor({
         {/* Image */}
         {!isReadOnly && (
           <div>
-            <label className="block text-base font-medium text-text-secondary mb-1.5">Image (optional)</label>
+            <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.image')}</label>
             <div className="flex items-center gap-3">
               {imagePreview ? (
                 <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-line">
@@ -503,7 +521,7 @@ function SkillEditor({
                 className="px-3 py-2 text-sm font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-all flex items-center gap-2"
               >
                 <ImagePlus className="w-4 h-4" />
-                {imagePreview || imagePath ? 'Change' : 'Upload'}
+                {imagePreview || imagePath ? t('skills.editor.change') : t('skills.editor.upload')}
               </button>
             </div>
           </div>
@@ -512,13 +530,13 @@ function SkillEditor({
         {/* Content (markdown body) */}
         <div>
           <label className="block text-base font-medium text-text-secondary mb-1.5">
-            Content (Markdown)
+            {t('skills.editor.content')}
           </label>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             disabled={isReadOnly}
-            placeholder="Write the skill instructions in markdown..."
+            placeholder={t('skills.editor.contentPlaceholder')}
             rows={16}
             className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink font-mono placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50 resize-y"
           />
@@ -534,7 +552,7 @@ function SkillEditor({
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent hover:bg-accent-hover text-on-brand rounded-lg transition-colors disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? t('common.saving') : t('common.save')}
           </button>
 
           {!isNew && onDelete && (
@@ -544,7 +562,7 @@ function SkillEditor({
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-colors disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" />
-              {deleting ? 'Deleting...' : 'Delete'}
+              {deleting ? t('skills.editor.deleting') : t('common.remove')}
             </button>
           )}
 
@@ -558,6 +576,7 @@ export function SkillsPage() {
   const { skills, loading, loadSkills, getSkill, createSkill, updateSkill, deleteSkill, downloadSkill, importSkill, getImage, repoSkills, repoSkillsLoading, loadRepoSkills, getRepoSkill } = useSkills()
   const { launchClaudeTerminal } = useTerminals()
   const { closeModal } = useStore()
+  const t = useT()
   const [imageCache, setImageCache] = useState<Record<string, string | null>>({})
 
   // Hash routing state
@@ -716,7 +735,7 @@ export function SkillsPage() {
   const handleFixLongDescriptions = useCallback(async () => {
     const details = longDescriptions.map((e) => `- ${e.name} (${e.wordCount} words, located in ${e.filePath})`).join('\n')
     const prompt = `Optimize the descriptions of the following skills to be under 110 words each while keeping their meaning and trigger conditions:\n${details}\nRead each skill file, rewrite only the description field in the frontmatter, and save.`
-    const terminal = await launchClaudeTerminal('Fix skill descriptions', '~/Documents')
+    const terminal = await launchClaudeTerminal(t('skills.fixAgentName'), '~/Documents')
     // Dismiss the Skills overlay so the freshly launched agent is visible.
     closeModal()
     setTimeout(() => {
@@ -787,16 +806,16 @@ export function SkillsPage() {
               <div>
                 <div className="flex items-center gap-2 text-sm text-text-secondary">
                   <Sparkles className="w-4 h-4" />
-                  <span>Built-in</span>
+                  <span>{t('skills.builtIn')}</span>
                 </div>
-                <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">Magic Slash core skills, powering the development workflow</p>
+                <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">{t('skills.builtInHelp')}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {builtInSkills.map((skill) => (
                     <SkillCard
                       key={skill.dirName}
                       skill={skill}
                       imageUrl={imageCache[skill.dirName] ?? null}
-                      badge={{ label: 'built-in', className: 'bg-accent/10 text-accent' }}
+                      badge={{ label: t('skills.source.builtIn'), className: 'bg-accent/10 text-accent' }}
                       onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
                     />
                   ))}
@@ -810,9 +829,9 @@ export function SkillsPage() {
                 <div>
                   <div className="flex items-center gap-2 text-sm text-text-secondary">
                     <PenTool className="w-4 h-4" />
-                    <span>Custom</span>
+                    <span>{t('skills.custom')}</span>
                   </div>
-                  <p className="text-xs text-text-secondary/30 mt-0.5">User-level skills, available across all projects</p>
+                  <p className="text-xs text-text-secondary/30 mt-0.5">{t('skills.customHelp')}</p>
                 </div>
                 {customSkills.length > 0 && (
                   <div className="flex items-center gap-2">
@@ -821,35 +840,35 @@ export function SkillsPage() {
                       className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                     >
                       <FolderInput className="w-3 h-3" />
-                      <span>Import</span>
+                      <span>{t('skills.import')}</span>
                     </button>
                     <button
                       onClick={() => { window.location.hash = '#/new' }}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                     >
                       <Plus className="w-3 h-3" />
-                      <span>New skill</span>
+                      <span>{t('skills.new')}</span>
                     </button>
                   </div>
                 )}
               </div>
               {customSkills.length === 0 ? (
                 <div className="w-full py-8 border border-dashed border-border/50 rounded-xl">
-                  <div className="text-sm text-text-secondary/50 mb-3 text-center">No custom skills yet</div>
+                  <div className="text-sm text-text-secondary/50 mb-3 text-center">{t('skills.customEmpty')}</div>
                   <div className="flex items-center justify-center gap-3">
                     <button
                       onClick={() => { window.location.hash = '#/new' }}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                     >
                       <Plus className="w-3 h-3" />
-                      <span>Create skill</span>
+                      <span>{t('skills.create')}</span>
                     </button>
                     <button
                       onClick={handleImport}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                     >
                       <FolderInput className="w-3 h-3" />
-                      <span>Import folder</span>
+                      <span>{t('skills.importFolder')}</span>
                     </button>
                   </div>
                 </div>
@@ -871,16 +890,16 @@ export function SkillsPage() {
             <div>
               <div className="flex items-center gap-2 text-sm text-text-secondary">
                 <GitFork className="w-4 h-4" />
-                <span>Repository Skills</span>
+                <span>{t('skills.repos')}</span>
               </div>
-              <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">Skills defined in your registered repositories (.claude/skills/ and .claude/commands/)</p>
+              <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">{t('skills.reposHelp')}</p>
               {repoSkillsLoading && (
                 <div className="flex items-center justify-center py-6">
                   <div className="w-5 h-5 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
                 </div>
               )}
               {!repoSkillsLoading && Object.keys(repoSkillsByRepo).length === 0 && (
-                <p className="text-sm text-text-secondary/40">No skills found in registered repositories</p>
+                <p className="text-sm text-text-secondary/40">{t('skills.reposEmpty')}</p>
               )}
               {!repoSkillsLoading && Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => (
                 <div key={repoName} className="mb-4">

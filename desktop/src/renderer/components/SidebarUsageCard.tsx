@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Minus, Plus, User } from 'lucide-react'
 import { useStore } from '../store'
 import { gaugeColors, formatReset } from './agent-info-sidebar/LimitGauge'
+import { useT } from '../i18n'
 import type { ClaudeAccount } from '../../types'
 
 // "session ▬▬ 89%" gauge for the collapsed card. Both gauges share one row, so
@@ -31,6 +32,7 @@ function UsageBar({ label, percent, resetsAt, now }: {
   resetsAt?: number
   now: number
 }) {
+  const t = useT()
   const pct = Math.min(100, Math.max(0, percent))
   const colors = gaugeColors(pct)
   return (
@@ -39,7 +41,7 @@ function UsageBar({ label, percent, resetsAt, now }: {
         <span className="text-text-secondary/60">{label}</span>
         <span className="flex items-center gap-1.5">
           {typeof resetsAt === 'number' && (
-            <span className="text-text-secondary/35">{formatReset(resetsAt, now)}</span>
+            <span className="text-text-secondary/35">{formatReset(resetsAt, now, t)}</span>
           )}
           <span className={`font-semibold ${colors.text}`}>{Math.round(pct)}%</span>
         </span>
@@ -60,6 +62,7 @@ function UsageBar({ label, percent, resetsAt, now }: {
 // pills via the header button. Visibility and collapsed state are persisted config.
 export function SidebarUsageCard() {
   const { terminals, config, setConfig } = useStore()
+  const t = useT()
   const minimized = config?.usageCardMinimized === true
 
   // Account rate limits are account-global (identical across agents); take the
@@ -104,15 +107,15 @@ export function SidebarUsageCard() {
         <div className="flex items-center justify-between gap-1.5">
           {hasGauges ? (
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              {hasFive && <UsageMiniBar label="session" percent={accountUsage!.fiveHourPercent!} />}
-              {hasSeven && <UsageMiniBar label="weekly" percent={accountUsage!.sevenDayPercent!} />}
+              {hasFive && <UsageMiniBar label={t('usage.sessionShort')} percent={accountUsage!.fiveHourPercent!} />}
+              {hasSeven && <UsageMiniBar label={t('usage.weeklyShort')} percent={accountUsage!.sevenDayPercent!} />}
             </div>
           ) : (
-            <span className="text-[10px] text-text-secondary/40">No usage data</span>
+            <span className="text-[10px] text-text-secondary/40">{t('usage.noData')}</span>
           )}
           <button
             onClick={toggleMinimized}
-            title="Expand"
+            title={t('usage.expand')}
             className="p-0.5 rounded text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
           >
             <Plus className="w-3 h-3" />
@@ -124,12 +127,12 @@ export function SidebarUsageCard() {
             <span className="flex items-center gap-1.5 text-[11px] text-text-secondary/60 min-w-0">
               <User className="w-3 h-3 shrink-0" />
               <span className="truncate">
-                {account?.displayName ?? account?.emailAddress ?? 'Claude account'}
+                {account?.displayName ?? account?.emailAddress ?? t('usage.claudeAccount')}
               </span>
             </span>
             <button
               onClick={toggleMinimized}
-              title="Minimize"
+              title={t('usage.minimize')}
               className="p-0.5 rounded text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
             >
               <Minus className="w-3 h-3" />
@@ -139,7 +142,7 @@ export function SidebarUsageCard() {
             <div className="space-y-2">
               {hasFive && (
                 <UsageBar
-                  label="Session (5h)"
+                  label={t('usage.session')}
                   percent={accountUsage!.fiveHourPercent!}
                   resetsAt={accountUsage!.fiveHourResetsAt}
                   now={now}
@@ -147,7 +150,7 @@ export function SidebarUsageCard() {
               )}
               {hasSeven && (
                 <UsageBar
-                  label="Weekly (7d)"
+                  label={t('usage.weekly')}
                   percent={accountUsage!.sevenDayPercent!}
                   resetsAt={accountUsage!.sevenDayResetsAt}
                   now={now}
@@ -156,7 +159,7 @@ export function SidebarUsageCard() {
             </div>
           ) : (
             <div className="text-[10px] text-text-secondary/40 text-center py-1.5 leading-snug">
-              No usage data yet — Claude.ai Pro/Max after the first agent activity.
+              {t('usage.noDataHint')}
             </div>
           )}
         </>

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { User, ChevronLeft, ChevronRight, X, Check } from 'lucide-react'
-import { ROLE_LABELS, LEVEL_LABELS, STYLE_LABELS, type UserProfile } from '../../types'
+import { useT, ROLE_LABEL_KEYS, LEVEL_LABEL_KEYS, STYLE_LABEL_KEYS, type MessageKey } from '../i18n'
+import type { UserProfile } from '../../types'
 
 interface ProfileOnboardingWizardProps {
   isOpen: boolean
@@ -9,27 +10,30 @@ interface ProfileOnboardingWizardProps {
   initialData?: UserProfile
 }
 
-const ROLE_OPTIONS = (Object.entries(ROLE_LABELS) as [UserProfile['role'], string][]).map(
-  ([value, label]) => ({ value, label })
-)
+// Catalogue keys throughout: module scope is evaluated once at import, so a
+// literal here would pin the wizard to whatever language the app booted in.
+const ROLE_OPTIONS = Object.entries(ROLE_LABEL_KEYS) as [UserProfile['role'], MessageKey][]
 
-const TECH_LEVEL_OPTIONS: { value: UserProfile['technical_level']; label: string; description: string }[] = [
-  { value: 'beginner', label: LEVEL_LABELS.beginner, description: 'New to development or technical concepts' },
-  { value: 'intermediate', label: LEVEL_LABELS.intermediate, description: 'Comfortable with code and tooling' },
-  { value: 'expert', label: LEVEL_LABELS.expert, description: 'Deep technical knowledge and experience' },
+const TECH_LEVEL_OPTIONS: { value: UserProfile['technical_level']; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
+  { value: 'beginner', labelKey: LEVEL_LABEL_KEYS.beginner, descriptionKey: 'profile.wizard.level.beginner.help' },
+  { value: 'intermediate', labelKey: LEVEL_LABEL_KEYS.intermediate, descriptionKey: 'profile.wizard.level.intermediate.help' },
+  { value: 'expert', labelKey: LEVEL_LABEL_KEYS.expert, descriptionKey: 'profile.wizard.level.expert.help' },
 ]
 
-const COMMUNICATION_STYLE_OPTIONS: { value: NonNullable<UserProfile['communication_style']>; label: string; description: string }[] = [
-  { value: 'simple', label: STYLE_LABELS.simple, description: 'Concise answers, minimal jargon' },
-  { value: 'technical', label: STYLE_LABELS.technical, description: 'Code-focused, precise terminology' },
-  { value: 'detailed', label: STYLE_LABELS.detailed, description: 'Thorough explanations with context' },
+const COMMUNICATION_STYLE_OPTIONS: { value: NonNullable<UserProfile['communication_style']>; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
+  { value: 'simple', labelKey: STYLE_LABEL_KEYS.simple, descriptionKey: 'profile.wizard.style.simple.help' },
+  { value: 'technical', labelKey: STYLE_LABEL_KEYS.technical, descriptionKey: 'profile.wizard.style.technical.help' },
+  { value: 'detailed', labelKey: STYLE_LABEL_KEYS.detailed, descriptionKey: 'profile.wizard.style.detailed.help' },
 ]
 
+// Endonyms: a language is named in its own language, whatever the interface is
+// set to — and these strings are stored in the profile, read back by the skills.
 const LANGUAGE_OPTIONS = ['English', 'Français']
 
 const TOTAL_STEPS = 6
 
 export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, initialData }: ProfileOnboardingWizardProps) {
+  const t = useT()
   const [step, setStep] = useState(1)
   const [name, setName] = useState('')
   const [role, setRole] = useState<UserProfile['role'] | ''>('')
@@ -129,7 +133,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
               <User className="w-4 h-4 text-accent" />
             </div>
             <h3 className="text-base font-semibold">
-              {editMode ? 'Edit Profile' : 'Welcome to Magic Slash'}
+              {editMode ? t('profile.wizard.titleEdit') : t('profile.wizard.titleWelcome')}
             </h3>
           </div>
           <button
@@ -157,14 +161,14 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <div className="text-sm font-medium mb-1">What's your first name?</div>
-                <div className="text-xs text-text-secondary/50 mb-3">Claude will use this to personalize responses</div>
+                <div className="text-sm font-medium mb-1">{t('profile.wizard.nameQuestion')}</div>
+                <div className="text-xs text-text-secondary/50 mb-3">{t('profile.wizard.nameHelp')}</div>
               </div>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Your first name"
+                placeholder={t('profile.form.firstNamePlaceholder')}
                 autoFocus
                 className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
                 onKeyDown={(e) => { if (e.key === 'Enter' && canAdvance()) handleNext() }}
@@ -175,21 +179,21 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
           {step === 2 && (
             <div className="space-y-4">
               <div>
-                <div className="text-sm font-medium mb-1">What's your role?</div>
-                <div className="text-xs text-text-secondary/50 mb-3">Helps Claude adapt the level of detail</div>
+                <div className="text-sm font-medium mb-1">{t('profile.wizard.roleQuestion')}</div>
+                <div className="text-xs text-text-secondary/50 mb-3">{t('profile.wizard.roleHelp')}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                {ROLE_OPTIONS.map((opt) => (
+                {ROLE_OPTIONS.map(([value, labelKey]) => (
                   <button
-                    key={opt.value}
-                    onClick={() => setRole(opt.value)}
+                    key={value}
+                    onClick={() => setRole(value)}
                     className={`px-3 py-2 text-sm rounded-lg border transition-all ${
-                      role === opt.value
+                      role === value
                         ? 'bg-accent/10 border-accent/30 text-accent'
                         : 'bg-surface border-line-field text-text-secondary hover:bg-surface hover:text-ink'
                     }`}
                   >
-                    {opt.label}
+                    {t(labelKey)}
                   </button>
                 ))}
               </div>
@@ -199,8 +203,8 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
           {step === 3 && (
             <div className="space-y-4">
               <div>
-                <div className="text-sm font-medium mb-1">Technical level</div>
-                <div className="text-xs text-text-secondary/50 mb-3">Claude adjusts vocabulary and explanations accordingly</div>
+                <div className="text-sm font-medium mb-1">{t('profile.wizard.levelQuestion')}</div>
+                <div className="text-xs text-text-secondary/50 mb-3">{t('profile.wizard.levelHelp')}</div>
               </div>
               <div className="space-y-2">
                 {TECH_LEVEL_OPTIONS.map((opt) => (
@@ -214,9 +218,9 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                     }`}
                   >
                     <div className={`text-sm font-medium ${technicalLevel === opt.value ? 'text-accent' : 'text-ink'}`}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">{opt.description}</div>
+                    <div className="text-xs text-text-secondary/50 mt-0.5">{t(opt.descriptionKey)}</div>
                   </button>
                 ))}
               </div>
@@ -226,8 +230,8 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
           {step === 4 && (
             <div className="space-y-4">
               <div>
-                <div className="text-sm font-medium mb-1">Communication style</div>
-                <div className="text-xs text-text-secondary/50 mb-3">Optional - how should Claude communicate?</div>
+                <div className="text-sm font-medium mb-1">{t('profile.wizard.styleQuestion')}</div>
+                <div className="text-xs text-text-secondary/50 mb-3">{t('profile.wizard.styleHelp')}</div>
               </div>
               <div className="space-y-2">
                 {COMMUNICATION_STYLE_OPTIONS.map((opt) => (
@@ -241,9 +245,9 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                     }`}
                   >
                     <div className={`text-sm font-medium ${communicationStyle === opt.value ? 'text-accent' : 'text-ink'}`}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">{opt.description}</div>
+                    <div className="text-xs text-text-secondary/50 mt-0.5">{t(opt.descriptionKey)}</div>
                   </button>
                 ))}
               </div>
@@ -253,8 +257,8 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
           {step === 5 && (
             <div className="space-y-4">
               <div>
-                <div className="text-sm font-medium mb-1">Preferred languages</div>
-                <div className="text-xs text-text-secondary/50 mb-3">Optional - Claude will communicate in these languages</div>
+                <div className="text-sm font-medium mb-1">{t('profile.wizard.languagesQuestion')}</div>
+                <div className="text-xs text-text-secondary/50 mb-3">{t('profile.wizard.languagesHelp')}</div>
               </div>
               <div className="flex gap-2">
                 {LANGUAGE_OPTIONS.map((lang) => (
@@ -278,13 +282,13 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
           {step === 6 && (
             <div className="space-y-4">
               <div>
-                <div className="text-sm font-medium mb-1">Anything else?</div>
-                <div className="text-xs text-text-secondary/50 mb-3">Optional - anything else Claude should know about you</div>
+                <div className="text-sm font-medium mb-1">{t('profile.wizard.freeTextQuestion')}</div>
+                <div className="text-xs text-text-secondary/50 mb-3">{t('profile.wizard.freeTextHelp')}</div>
               </div>
               <textarea
                 value={freeText}
                 onChange={(e) => setFreeText(e.target.value)}
-                placeholder="e.g., I prefer short answers, I work on mobile apps..."
+                placeholder={t('profile.form.freeTextPlaceholder')}
                 rows={4}
                 className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 resize-none"
               />
@@ -301,7 +305,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
-                Back
+                {t('common.back')}
               </button>
             )}
           </div>
@@ -311,7 +315,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 onClick={onClose}
                 className="px-3 py-1.5 text-xs font-medium text-text-secondary/50 hover:text-text-secondary transition-colors"
               >
-                Skip
+                {t('common.skip')}
               </button>
             )}
             {step < TOTAL_STEPS ? (
@@ -320,7 +324,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 disabled={!canAdvance()}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-accent border border-accent/20 rounded-lg hover:bg-accent/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                Next
+                {t('common.next')}
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             ) : (
@@ -330,7 +334,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <Check className="w-3.5 h-3.5" />
-                Finish
+                {t('profile.wizard.finish')}
               </button>
             )}
           </div>

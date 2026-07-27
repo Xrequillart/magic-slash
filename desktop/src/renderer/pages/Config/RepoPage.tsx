@@ -8,11 +8,18 @@ import { useOrg } from '../../hooks/useOrg'
 import { Modal } from '../../components/Modal'
 import { showToast } from '../../components/Toast'
 import { PROJECT_COLORS } from '../../utils/projectColors'
+import { useT } from '../../i18n'
 
 interface RepoPageProps {
   repoName: string
 }
 
+/**
+ * Sample commit message for the format preview. Deliberately NOT translated to
+ * the interface language: it illustrates the shape Claude will produce, and what
+ * Claude writes follows this repo's own `languages.commit` setting, not the UI's.
+ * Translating it would show a French sample above a repo that commits in English.
+ */
 function generateCommitExample(format: string, style: string, includeTicketId: boolean): string {
   const examples: Record<string, { type?: string; scope?: string; emoji?: string; msg: string }> = {
     'conventional': { type: 'feat', msg: 'add user authentication' },
@@ -74,6 +81,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
   } = useConfig()
 
   const { orgs } = useOrg()
+  const t = useT()
   const { status } = useAuth()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -186,9 +194,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
     try {
       await updateRepository(repoName, { path })
       setPathChanged(false)
-      showToast('Path updated')
+      showToast(t('toast.pathUpdated'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update path', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.pathUpdateFailed'), 'error')
     }
   }
 
@@ -197,9 +205,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
       const keywordsArray = keywords.split(',').map(k => k.trim()).filter(k => k)
       await updateRepository(repoName, { keywords: keywordsArray })
       setKeywordsChanged(false)
-      showToast('Keywords updated')
+      showToast(t('toast.keywordsUpdated'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update keywords', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.keywordsUpdateFailed'), 'error')
     }
   }
 
@@ -207,18 +215,18 @@ export function RepoPage({ repoName }: RepoPageProps) {
     if (!orgId) return
     try {
       await setRepositoryOrg(repoName, orgId)
-      showToast('Repository shared with the organization')
+      showToast(t('toast.repoShared'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to share repository', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.repoShareFailed'), 'error')
     }
   }
 
   const handleMakePersonal = async () => {
     try {
       await setRepositoryOrg(repoName, null)
-      showToast('Repository is now personal')
+      showToast(t('toast.repoNowPersonal'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update repository', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.repoUpdateFailed'), 'error')
     }
   }
 
@@ -232,18 +240,18 @@ export function RepoPage({ repoName }: RepoPageProps) {
       setPathChanged(false)
       const result = await validatePath(folder)
       setPathStatus(result)
-      showToast('Local folder set')
+      showToast(t('toast.localFolderSet'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to set local folder', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.localFolderFailed'), 'error')
     }
   }
 
   const handleLanguageChange = async (key: string, value: string) => {
     try {
       await updateRepositoryLanguages(repoName, { [key]: value === 'default' ? null : value })
-      showToast('Language updated')
+      showToast(t('toast.languageUpdated'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update language', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.languageUpdateFailed'), 'error')
     }
   }
 
@@ -251,9 +259,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
     try {
       const settingValue = value === 'default' ? null : value
       await updateRepositoryCommitSettings(repoName, { [key]: settingValue })
-      showToast('Setting updated')
+      showToast(t('toast.settingUpdated'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update setting', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
     }
   }
 
@@ -261,18 +269,18 @@ export function RepoPage({ repoName }: RepoPageProps) {
     try {
       const settingValue = value === 'default' ? null : value
       await updateRepositoryResolveSettings(repoName, { [key]: settingValue })
-      showToast('Setting updated')
+      showToast(t('toast.settingUpdated'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update setting', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
     }
   }
 
   const handlePRSettingChange = async (key: string, value: boolean) => {
     try {
       await updateRepositoryPullRequestSettings(repoName, { [key]: value ? null : false })
-      showToast('Setting updated')
+      showToast(t('toast.settingUpdated'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update setting', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
     }
   }
 
@@ -283,36 +291,36 @@ export function RepoPage({ repoName }: RepoPageProps) {
       } else {
         await updateRepositoryIssuesSettings(repoName, { [key]: value })
       }
-      showToast('Setting updated')
+      showToast(t('toast.settingUpdated'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update setting', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
     }
   }
 
   const handleBranchSettingChange = async (key: string, value: string) => {
     try {
       await updateRepositoryBranchSettings(repoName, { [key]: value })
-      showToast('Branch setting updated')
+      showToast(t('toast.branchSettingUpdated'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update branch setting', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.branchSettingUpdateFailed'), 'error')
     }
   }
 
   const handleWorktreeFilesChange = async (files: string[]) => {
     try {
       await updateRepositoryWorktreeFilesSettings(repoName, files)
-      showToast('Worktree files updated')
+      showToast(t('toast.worktreeFilesUpdated'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update worktree files', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.worktreeFilesUpdateFailed'), 'error')
     }
   }
 
   const handleColorChange = async (color: string) => {
     try {
       await updateRepository(repoName, { color })
-      showToast('Color updated')
+      showToast(t('toast.colorUpdated'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update color', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.colorUpdateFailed'), 'error')
     }
   }
 
@@ -321,13 +329,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
     try {
       const lang = repo.languages?.pullRequest || 'en'
       await createPRTemplate(repo.path, lang)
-      showToast('PR template created')
+      showToast(t('toast.prTemplateCreated'))
       // Reload template
       const result = await getPRTemplate(repo.path)
       setTemplate(result)
       if (result.content) setTemplateContent(result.content)
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to create template', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.prTemplateCreateFailed'), 'error')
     }
   }
 
@@ -336,9 +344,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
     try {
       await updatePRTemplate(repo.path, templateContent)
       setTemplateChanged(false)
-      showToast('PR template updated')
+      showToast(t('toast.prTemplateUpdated'))
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update template', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.prTemplateUpdateFailed'), 'error')
     }
   }
 
@@ -346,10 +354,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
     setIsDeleting(true)
     try {
       await deleteRepository(repoName)
-      showToast(`Repository '${repoName}' deleted`)
+      showToast(t('toast.repoDeleted', { name: repoName }))
       window.location.hash = '#/'
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to delete repository', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.repoDeleteFailed'), 'error')
     } finally {
       setIsDeleting(false)
       setIsDeleteModalOpen(false)
@@ -365,10 +373,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
     try {
       await renameRepository(repoName, newName)
-      showToast(`Repository renamed to '${newName}'`)
+      showToast(t('toast.repoRenamed', { name: newName }))
       window.location.hash = `#/repo/${encodeURIComponent(newName)}`
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to rename repository', 'error')
+      showToast(error instanceof Error ? error.message : t('toast.repoRenameFailed'), 'error')
       setEditedName(repoName)
     }
   }
@@ -376,8 +384,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
   if (!repo) {
     return (
       <div className="text-center py-16">
-        <p className="text-lg mb-4">Repository not found</p>
-        <a href="#/" className="text-accent hover:underline">Back to repositories</a>
+        <p className="text-lg mb-4">{t('repo.notFound')}</p>
+        <a href="#/" className="text-accent hover:underline">{t('repo.back')}</a>
       </div>
     )
   }
@@ -419,7 +427,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             className="w-52 px-3 py-2.5 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="en">English</option>
-            <option value="fr">Francais</option>
+            <option value="fr">Français</option>
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
         </div>
@@ -456,14 +464,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
           <button
             onClick={() => { window.location.hash = '#/' }}
             className="p-1.5 text-text-secondary hover:text-ink hover:bg-bg-tertiary rounded-lg transition-colors"
-            title="Back to repositories"
+            title={t('repo.back')}
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <h1 className="text-2xl font-semibold">{repoName}</h1>
         </div>
         <p className="text-text-secondary text-sm">
-          {readOnly ? 'Repository settings, read-only' : 'Configure repository settings'}
+          {readOnly ? t('repo.subtitleReadOnly') : t('repo.subtitle')}
         </p>
       </div>
 
@@ -472,11 +480,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
         <div className="flex items-start gap-4 p-4 mb-6 bg-surface-subtle border border-line-field rounded-xl">
           <Lock className="w-5 h-5 text-text-secondary flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-semibold text-sm mb-1">Read-only</h3>
+            <h3 className="font-semibold text-sm mb-1">{t('repo.readOnly.title')}</h3>
             <p className="text-xs text-text-secondary">
-              These settings are shared by everyone in
-              {scopeOrg ? ` ${scopeOrg.name}` : ' the organization'}, so only its admins change them.
-              You can still set your local folder below — it stays on this machine and is never shared.
+              {t('repo.readOnly.body', { org: scopeOrg?.name ?? t('repo.readOnly.theOrganization') })}
             </p>
           </div>
         </div>
@@ -488,12 +494,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
           <AlertTriangle className="w-5 h-5 text-red flex-shrink-0 mt-0.5" />
           <div>
             <h3 className="font-semibold text-red text-sm mb-1">
-              {pathStatus.exists ? 'Not a Git repository' : 'Directory not found'}
+              {pathStatus.exists ? t('repo.gitWarning.notGitTitle') : t('repo.gitWarning.missingTitle')}
             </h3>
             <p className="text-xs text-text-secondary">
-              {pathStatus.exists
-                ? 'This directory is not initialized as a Git repository. Run "git init" in this folder or select a different path.'
-                : 'The specified path does not exist. Please update the path to a valid directory.'}
+              {pathStatus.exists ? t('repo.gitWarning.notGitBody') : t('repo.gitWarning.missingBody')}
             </p>
           </div>
         </div>
@@ -504,17 +508,16 @@ export function RepoPage({ repoName }: RepoPageProps) {
         <div className="flex items-start gap-4 p-4 mb-6 bg-yellow/10 border border-yellow/20 rounded-xl">
           <FolderOpen className="w-5 h-5 text-yellow flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <h3 className="font-semibold text-yellow text-sm mb-1">No local folder set</h3>
+            <h3 className="font-semibold text-yellow text-sm mb-1">{t('repo.noLocal.title')}</h3>
             <p className="text-xs text-text-secondary mb-3">
-              This team repository has no local folder on this machine yet. Select where it lives to
-              work on it — the path stays private to you and is never shared with your team.
+              {t('repo.noLocal.body')}
             </p>
             <button
               onClick={handlePickFolder}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow/15 hover:bg-yellow/25 text-yellow text-xs font-medium rounded-lg transition-colors"
             >
               <FolderOpen className="w-3.5 h-3.5" />
-              Select local folder
+              {t('repo.noLocal.action')}
             </button>
           </div>
         </div>
@@ -522,26 +525,24 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Scope / Sharing Section */}
       <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Scope</h2>
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.scope.section')}</h2>
         <div className="bg-surface border border-line-strong rounded-xl p-4 flex items-start justify-between gap-6">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               {repo?.orgId ? (
                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-medium">
                   <Building2 className="w-3.5 h-3.5" />
-                  Team{scopeOrg ? ` — ${scopeOrg.name}` : ''}
+                  {scopeOrg ? t('repo.scope.teamNamed', { name: scopeOrg.name }) : t('repo.scope.team')}
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-strong text-text-secondary text-xs font-medium">
                   <Lock className="w-3.5 h-3.5" />
-                  Personal
+                  {t('repo.scope.personal')}
                 </span>
               )}
             </div>
             <p className="text-xs text-text-secondary/50">
-              {repo?.orgId
-                ? 'Shared with the organization — every member sees it and binds their own local folder.'
-                : 'Only you can see this repository. Share it with an organization to make it a team repo.'}
+              {repo?.orgId ? t('repo.scope.teamHelp') : t('repo.scope.personalHelp')}
             </p>
           </div>
           <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 shrink-0 min-w-0">
@@ -551,7 +552,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 className="flex items-center justify-center gap-1.5 px-3 py-2 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors"
               >
                 <Lock className="w-3.5 h-3.5" />
-                Make personal
+                {t('repo.scope.makePersonal')}
               </button>
             ) : orgs.length > 0 ? (
               <div className="relative">
@@ -560,7 +561,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   onChange={(e) => handleShare(e.target.value)}
                   className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
                 >
-                  <option value="" disabled>Share with organization…</option>
+                  <option value="" disabled>{t('repo.scope.sharePlaceholder')}</option>
                   {orgs.map((o) => (
                     <option key={o.id} value={o.id}>{o.name}</option>
                   ))}
@@ -568,7 +569,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
               </div>
             ) : (
-              <p className="text-xs text-text-secondary/40 text-right">Join an organization to share repos.</p>
+              <p className="text-xs text-text-secondary/40 text-right">{t('repo.scope.joinOrg')}</p>
             )}
           </fieldset>
         </div>
@@ -576,13 +577,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* General Section */}
       <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">General</h2>
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.general.section')}</h2>
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           {/* Name */}
           <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Name</label>
-              <p className="text-xs text-text-secondary/50">Repository display name</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.general.name')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.general.nameHelp')}</p>
             </div>
             <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
               <input
@@ -593,7 +594,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               />
               {editedName !== repoName && editedName.trim() && (
                 <button onClick={handleRename} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                  Save
+                  {t('common.save')}
                 </button>
               )}
             </fieldset>
@@ -603,9 +604,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
               you, and a read-only member still needs to point the repo at it. */}
           <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Path</label>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.general.path')}</label>
               <p className="text-xs text-text-secondary/50">
-                {readOnly ? 'Local path on this machine — yours only' : 'Local path to the repository'}
+                {readOnly ? t('repo.general.pathHelpReadOnly') : t('repo.general.pathHelp')}
               </p>
             </div>
             <div className="flex flex-col gap-2 w-72">
@@ -618,7 +619,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 />
                 <button
                   onClick={handlePickFolder}
-                  title="Choose folder"
+                  title={t('repo.general.chooseFolder')}
                   className="p-2 bg-surface border border-line rounded-lg text-text-secondary hover:text-ink transition-colors shrink-0"
                 >
                   <FolderOpen className="w-4 h-4" />
@@ -629,17 +630,17 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   pathStatus.isGit ? 'text-green' : 'text-yellow'
                 }`}>
                   {pathStatus.isGit ? (
-                    <><Check className="w-3 h-3" /> Valid git repository</>
+                    <><Check className="w-3 h-3" /> {t('repo.general.pathValid')}</>
                   ) : pathStatus.exists ? (
-                    <><AlertTriangle className="w-3 h-3" /> Not a git repository</>
+                    <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathNotGit')}</>
                   ) : (
-                    <><AlertTriangle className="w-3 h-3" /> Directory does not exist</>
+                    <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathMissing')}</>
                   )}
                 </div>
               )}
               {pathChanged && (
                 <button onClick={savePath} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                  Save
+                  {t('common.save')}
                 </button>
               )}
             </div>
@@ -648,8 +649,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
           {/* Keywords */}
           <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Keywords</label>
-              <p className="text-xs text-text-secondary/50">Auto-detection keywords (comma-separated)</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.general.keywords')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.general.keywordsHelp')}</p>
             </div>
             <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
               <input
@@ -660,20 +661,20 @@ export function RepoPage({ repoName }: RepoPageProps) {
               />
               {keywordsChanged && (
                 <button onClick={saveKeywords} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                  Save
+                  {t('common.save')}
                 </button>
               )}
             </fieldset>
           </div>
 
           {/* Discussion Language */}
-          <LangSelect langKey="discussion" label="Discussion Language" description="Language used by Claude when discussing with you" />
+          <LangSelect langKey="discussion" label={t('repo.general.discussionLang')} description={t('repo.general.discussionLangHelp')} />
 
           {/* Color */}
           <div className="flex items-start justify-between gap-6 py-3">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Color</label>
-              <p className="text-xs text-text-secondary/50">Project color in sidebar</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.general.color')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.general.colorHelp')}</p>
             </div>
             <fieldset disabled={readOnly} className="flex gap-2 min-w-0">
               {PROJECT_COLORS.map((color) => (
@@ -696,12 +697,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Branches Section */}
       <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Branches</h2>
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.branches.section')}</h2>
         <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
           <div className="flex items-start justify-between gap-6 py-3">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Development Branch</label>
-              <p className="text-xs text-text-secondary/50">Base branch for comparing commits</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.branches.development')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.branches.developmentHelp')}</p>
             </div>
             <div className="relative">
               <select
@@ -711,7 +712,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
               >
                 <option value="">
-                  {branchesLoading ? 'Loading...' : 'Select branch'}
+                  {branchesLoading ? t('common.loading') : t('repo.branches.select')}
                 </option>
                 {remoteBranches.map((branch) => (
                   <option key={branch} value={branch}>{branch}</option>
@@ -725,12 +726,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Worktree Files Section */}
       <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Worktree</h2>
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.worktree.section')}</h2>
         <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
           <div className="py-3">
             <div className="flex-1 mb-3">
-              <label className="block text-sm font-medium mb-0.5">Files to copy</label>
-              <p className="text-xs text-text-secondary/50">Files copied from the main repo to new worktrees (e.g., .env, .env.local)</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.worktree.files')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.worktree.filesHelp')}</p>
             </div>
             <div className="flex flex-wrap gap-2 mb-3">
               {(repo.worktreeFiles || []).map((file, index) => (
@@ -780,7 +781,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
               >
                 <Plus className="w-3 h-3" />
-                Add
+                {t('repo.worktree.add')}
               </button>
             </div>
           </div>
@@ -789,15 +790,15 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Commit Section */}
       <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Commit</h2>
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.commit.section')}</h2>
         <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-          <LangSelect langKey="commit" label="Language" description="Language used for commit messages" />
+          <LangSelect langKey="commit" label={t('repo.commit.language')} description={t('repo.commit.languageHelp')} />
 
           {/* Style */}
           <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Style</label>
-              <p className="text-xs text-text-secondary/50">Single line or multi-line with body</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
             </div>
             <div className="relative">
               <select
@@ -805,8 +806,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 onChange={(e) => handleCommitSettingChange('style', e.target.value)}
                 className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
               >
-                <option value="single-line">Single line</option>
-                <option value="multi-line">Multi-line (with body)</option>
+                <option value="single-line">{t('repo.commit.styleSingle')}</option>
+                <option value="multi-line">{t('repo.commit.styleMulti')}</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
             </div>
@@ -815,8 +816,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
           {/* Format */}
           <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Format</label>
-              <p className="text-xs text-text-secondary/50">Commit message format/convention</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
             </div>
             <div className="relative">
               <select
@@ -824,10 +825,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 onChange={(e) => handleCommitSettingChange('format', e.target.value)}
                 className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
               >
-                <option value="conventional">Conventional (type: description)</option>
-                <option value="angular">Angular (type(scope): description)</option>
-                <option value="gitmoji">Gitmoji (emoji + description)</option>
-                <option value="none">None (free form)</option>
+                <option value="conventional">{t('repo.commit.formatConventional')}</option>
+                <option value="angular">{t('repo.commit.formatAngular')}</option>
+                <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
+                <option value="none">{t('repo.commit.formatNone')}</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
             </div>
@@ -836,8 +837,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
           {/* Co-Author Toggle */}
           <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Co-Author</label>
-              <p className="text-xs text-text-secondary/50">Add Claude as co-author in commits</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.commit.coAuthor')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.commit.coAuthorHelp')}</p>
             </div>
             <label className="relative inline-block w-11 h-6 cursor-pointer">
               <input
@@ -854,8 +855,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
           {/* Include Ticket ID Toggle */}
           <div className="flex items-center justify-between gap-6 py-3">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Include Ticket ID</label>
-              <p className="text-xs text-text-secondary/50">Add ticket ID from branch name in commit message</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.commit.ticketId')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.commit.ticketIdHelp')}</p>
             </div>
             <label className="relative inline-block w-11 h-6 cursor-pointer">
               <input
@@ -871,7 +872,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
           {/* Commit Preview */}
           <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
-            <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">Example</div>
+            <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
             <pre className="text-sm whitespace-pre-wrap text-text-secondary">{commitPreview}</pre>
           </div>
         </fieldset>
@@ -879,13 +880,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Resolve Section */}
       <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Resolve</h2>
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.resolve.section')}</h2>
         <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
           {/* Commit Mode */}
           <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Commit Mode</label>
-              <p className="text-xs text-text-secondary/50">How to commit resolve changes</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitMode')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitModeHelp')}</p>
             </div>
             <div className="relative">
               <select
@@ -893,9 +894,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 onChange={(e) => handleResolveSettingChange('commitMode', e.target.value)}
                 className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
               >
-                <option value="new">New commit</option>
-                <option value="amend">Amend last commit</option>
-                <option value="ask">Ask (choose at runtime)</option>
+                <option value="new">{t('repo.resolve.modeNew')}</option>
+                <option value="amend">{t('repo.resolve.modeAmend')}</option>
+                <option value="ask">{t('repo.resolve.modeAsk')}</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
             </div>
@@ -905,8 +906,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
           {resolveCommitModeVal !== 'amend' && (
             <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
               <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">Commit Format</label>
-                <p className="text-xs text-text-secondary/50">Format source for resolve commit messages</p>
+                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitFormat')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitFormatHelp')}</p>
               </div>
               <div className="relative">
                 <select
@@ -914,8 +915,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   onChange={(e) => handleResolveSettingChange('useCommitConfig', e.target.value === 'commit')}
                   className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
                 >
-                  <option value="commit">Use commit settings</option>
-                  <option value="custom">Custom</option>
+                  <option value="commit">{t('repo.resolve.useCommitConfig')}</option>
+                  <option value="custom">{t('repo.resolve.customConfig')}</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
               </div>
@@ -927,8 +928,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
             <>
               <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium mb-0.5">Style</label>
-                  <p className="text-xs text-text-secondary/50">Single line or multi-line with body</p>
+                  <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
+                  <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
                 </div>
                 <div className="relative">
                   <select
@@ -936,8 +937,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
                     onChange={(e) => handleResolveSettingChange('style', e.target.value)}
                     className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
                   >
-                    <option value="single-line">Single line</option>
-                    <option value="multi-line">Multi-line (with body)</option>
+                    <option value="single-line">{t('repo.commit.styleSingle')}</option>
+                    <option value="multi-line">{t('repo.commit.styleMulti')}</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
                 </div>
@@ -945,8 +946,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
               <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium mb-0.5">Format</label>
-                  <p className="text-xs text-text-secondary/50">Commit message format/convention</p>
+                  <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
+                  <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
                 </div>
                 <div className="relative">
                   <select
@@ -954,10 +955,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
                     onChange={(e) => handleResolveSettingChange('format', e.target.value)}
                     className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
                   >
-                    <option value="conventional">Conventional (type: description)</option>
-                    <option value="angular">Angular (type(scope): description)</option>
-                    <option value="gitmoji">Gitmoji (emoji + description)</option>
-                    <option value="none">None (free form)</option>
+                    <option value="conventional">{t('repo.commit.formatConventional')}</option>
+                    <option value="angular">{t('repo.commit.formatAngular')}</option>
+                    <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
+                    <option value="none">{t('repo.commit.formatNone')}</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
                 </div>
@@ -968,8 +969,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
           {/* Reply to Comments Toggle */}
           <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Reply to Comments</label>
-              <p className="text-xs text-text-secondary/50">Reply in-thread on resolved GitHub comments</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.reply')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyHelp')}</p>
             </div>
             <label className="relative inline-block w-11 h-6 cursor-pointer">
               <input
@@ -987,8 +988,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
           {resolveReplyVal && (
             <div className="flex items-start justify-between gap-6 py-3">
               <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">Reply Language</label>
-                <p className="text-xs text-text-secondary/50">Language for reply messages on GitHub</p>
+                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.replyLang')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyLangHelp')}</p>
               </div>
               <div className="relative">
                 <select
@@ -997,7 +998,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   className="w-52 px-3 py-2.5 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
                 >
                   <option value="en">English</option>
-                  <option value="fr">Francais</option>
+                  <option value="fr">Français</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
               </div>
@@ -1007,20 +1008,20 @@ export function RepoPage({ repoName }: RepoPageProps) {
           {/* Preview / Info */}
           {resolveCommitModeVal === 'new' && (
             <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
-              <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">Example</div>
+              <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
               <pre className="text-sm whitespace-pre-wrap text-text-secondary">{resolvePreview}</pre>
             </div>
           )}
           {resolveCommitModeVal === 'amend' && (
             <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0" />
-              <span className="text-sm text-text-secondary">Push will use <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code></span>
+              <span className="text-sm text-text-secondary">{t('repo.resolve.amendNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code></span>
             </div>
           )}
           {resolveCommitModeVal === 'ask' && (
             <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0 mt-0.5" />
-              <span className="text-sm text-text-secondary">You'll be asked to choose <strong>new commit</strong> or <strong>amend</strong> on each resolve. Choosing amend will push with <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
+              <span className="text-sm text-text-secondary">{t('repo.resolve.askNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
             </div>
           )}
         </fieldset>
@@ -1028,15 +1029,15 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Pull Request Section */}
       <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Pull Request</h2>
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.pr.section')}</h2>
         <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-          <LangSelect langKey="pullRequest" label="Language" description="Language used for pull request titles and descriptions" />
+          <LangSelect langKey="pullRequest" label={t('repo.commit.language')} description={t('repo.pr.languageHelp')} />
 
           {/* Auto-link Tickets */}
           <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Auto-link Tickets</label>
-              <p className="text-xs text-text-secondary/50">Add Jira/GitHub ticket links in PR description</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.pr.autoLink')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.pr.autoLinkHelp')}</p>
             </div>
             <label className="relative inline-block w-11 h-6 cursor-pointer">
               <input
@@ -1054,21 +1055,21 @@ export function RepoPage({ repoName }: RepoPageProps) {
           <div className="py-3">
             <div className="flex items-start justify-between gap-6 mb-3">
               <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">PR Template</label>
-                <p className="text-xs text-text-secondary/50">Template used when creating pull requests</p>
+                <label className="block text-sm font-medium mb-0.5">{t('repo.pr.template')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.pr.templateHelp')}</p>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 {templateLoading ? (
-                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking...</>
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('repo.pr.templateChecking')}</>
                 ) : template?.exists ? (
-                  <><Check className="w-3.5 h-3.5 text-green" /> Template found</>
+                  <><Check className="w-3.5 h-3.5 text-green" /> {t('repo.pr.templateFound')}</>
                 ) : (
                   <button
                     onClick={handleGenerateTemplate}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                   >
                     <Plus className="w-3 h-3" />
-                    Generate template
+                    {t('repo.pr.templateGenerate')}
                   </button>
                 )}
               </div>
@@ -1085,7 +1086,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                       onClick={handleSaveTemplate}
                       className="px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors"
                     >
-                      Save
+                      {t('common.save')}
                     </button>
                   )}
                 </div>
@@ -1096,7 +1097,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                     setTemplateChanged(e.target.value !== template.content)
                   }}
                   className="w-full h-64 p-4 bg-surface border border-line-field rounded-lg text-sm resize-y focus:outline-none focus:border-accent transition-colors"
-                  placeholder="PR template content..."
+                  placeholder={t('repo.pr.templatePlaceholder')}
                 />
               </div>
             )}
@@ -1106,15 +1107,15 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Jira / GitHub Issues Section */}
       <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Jira / GitHub Issues</h2>
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.issues.section')}</h2>
         <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-          <LangSelect langKey="jiraComment" label="Comment Language" description="Language used for Jira and GitHub issue comments" />
+          <LangSelect langKey="jiraComment" label={t('repo.issues.commentLang')} description={t('repo.issues.commentLangHelp')} />
 
           {/* Comment on PR */}
           <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Comment on PR Creation</label>
-              <p className="text-xs text-text-secondary/50">Add a comment with PR link when creating a pull request</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.issues.commentOnPR')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.issues.commentOnPRHelp')}</p>
             </div>
             <label className="relative inline-block w-11 h-6 cursor-pointer">
               <input
@@ -1131,9 +1132,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
           {/* Jira URL */}
           <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">Jira URL</label>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.issues.jiraUrl')}</label>
               <p className="text-xs text-text-secondary/50">
-                Base URL for Jira tickets (e.g., PROJ-123)
+                {t('repo.issues.jiraUrlHelp')}
               </p>
             </div>
             <input
@@ -1148,9 +1149,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
           {/* GitHub Issues URL */}
           <div className="flex items-start justify-between gap-6 py-3">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">GitHub Issues URL</label>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.issues.githubUrl')}</label>
               <p className="text-xs text-text-secondary/50">
-                Base URL for GitHub issues (e.g., #456)
+                {t('repo.issues.githubUrlHelp')}
               </p>
             </div>
             <input
@@ -1166,19 +1167,19 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {/* Danger Zone */}
       <div className="mb-6">
-        <h2 className="text-xs text-red/50 uppercase tracking-wider mb-4">Danger Zone</h2>
+        <h2 className="text-xs text-red/50 uppercase tracking-wider mb-4">{t('repo.danger.section')}</h2>
         <fieldset disabled={readOnly} className="bg-red/5 border border-red/10 rounded-xl p-4 w-full min-w-0">
           <div className="flex items-center justify-between">
             <div>
-              <label className="block text-sm font-medium mb-0.5">Delete this repository</label>
-              <p className="text-xs text-text-secondary/50">Remove this repository from Magic Slash configuration</p>
+              <label className="block text-sm font-medium mb-0.5">{t('repo.danger.delete')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.danger.deleteHelp')}</p>
             </div>
             <button
               onClick={() => setIsDeleteModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all"
             >
               <Trash2 className="w-3 h-3" />
-              Delete repository
+              {t('repo.danger.deleteAction')}
             </button>
           </div>
         </fieldset>
@@ -1188,27 +1189,27 @@ export function RepoPage({ repoName }: RepoPageProps) {
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        title="Delete repository"
+        title={t('repo.delete.title')}
         footer={
           <>
             <button
               onClick={() => setIsDeleteModalOpen(false)}
               className="px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleDelete}
               disabled={isDeleting}
               className="px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 disabled:opacity-50 transition-all"
             >
-              {isDeleting ? 'Deleting...' : 'Delete repository'}
+              {isDeleting ? t('repo.delete.deleting') : t('repo.danger.deleteAction')}
             </button>
           </>
         }
       >
-        <p>Are you sure you want to delete <strong className="text-ink">{repoName}</strong>?</p>
-        <p className="mt-2 text-text-secondary/50">This action cannot be undone.</p>
+        <p>{t('repo.delete.confirm', { name: repoName })}</p>
+        <p className="mt-2 text-text-secondary/50">{t('repo.delete.irreversible')}</p>
       </Modal>
     </div>
   )

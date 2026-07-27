@@ -23,19 +23,22 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProfileOnboardingWizard } from './components/ProfileOnboardingWizard'
 import { useWindowSplitMode } from './hooks/useWindowSplitMode'
 import FilePreviewPanel from './components/FilePreviewPanel'
+import { useT, type MessageKey } from './i18n'
 
 function LoadingScreen() {
+  const t = useT()
   return (
     <div className="flex items-center justify-center h-screen bg-transparent">
       <div className="flex flex-col items-center gap-4">
         <div className="w-8 h-8 border-3 border-line-strong border-t-accent rounded-full animate-spin" />
-        <p className="text-ink/60">Loading...</p>
+        <p className="text-ink/60">{t('common.loading')}</p>
       </div>
     </div>
   )
 }
 
 function ErrorScreen({ error }: { error: string }) {
+  const t = useT()
   return (
     <div className="flex items-center justify-center h-screen bg-transparent">
       <div className="text-center">
@@ -44,7 +47,7 @@ function ErrorScreen({ error }: { error: string }) {
           onClick={() => window.location.reload()}
           className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-brand rounded-lg transition-colors"
         >
-          Retry
+          {t('common.retry')}
         </button>
       </div>
     </div>
@@ -52,6 +55,7 @@ function ErrorScreen({ error }: { error: string }) {
 }
 
 export function App() {
+  const t = useT()
   const { closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, setActiveTerminal, rightPaneTerminalIds, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, noReposWarningShown, setNoReposWarningShown, activeModal, openSettingsModal, closeModal } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal, launchClaudeTerminal } = useTerminals()
@@ -211,22 +215,22 @@ export function App() {
     const unsubscribe = window.electronAPI.config.onValidationErrors((data) => {
       const count = data.errors.length
       showToast(
-        `Invalid configuration: ${count} error${count > 1 ? 's' : ''} found in config.json`,
+        t(count > 1 ? 'toast.invalidConfig.other' : 'toast.invalidConfig.one', { count }),
         'error',
         {
           persistent: true,
           actions: [
             {
-              label: 'Reset to defaults',
+              label: t('toast.resetToDefaults'),
               icon: <RotateCcw className="w-3.5 h-3.5" />,
               onClick: async () => {
                 await window.electronAPI.config.repair()
                 loadConfig()
-                showToast('Configuration repaired successfully', 'success')
+                showToast(t('toast.configRepaired'), 'success')
               },
             },
             {
-              label: 'Open in VS Code',
+              label: t('toast.openInVSCode'),
               icon: <VSCodeIcon className="w-3.5 h-3.5" />,
               onClick: () => {
                 window.electronAPI.shell.openInVSCode(data.configPath)
@@ -237,7 +241,7 @@ export function App() {
       )
     })
     return () => { unsubscribe() }
-  }, [loadConfig])
+  }, [loadConfig, t])
 
   // Surface configured repositories whose folder is missing or is not a git repo,
   // with a one-click "re-point folder" action. Runs on launch (initial fetch +
@@ -251,9 +255,9 @@ export function App() {
       try {
         await window.electronAPI.config.updateRepository(name, { path: folder })
         loadConfig()
-        showToast(`Re-pointed "${name}"`, 'success')
+        showToast(t('toast.repoRepointed', { name }), 'success')
       } catch (err) {
-        showToast(err instanceof Error ? err.message : `Failed to re-point "${name}"`, 'error')
+        showToast(err instanceof Error ? err.message : t('toast.repoRepointFailed', { name }), 'error')
       }
     }
 
@@ -264,12 +268,14 @@ export function App() {
         if (repo.reason === 'no-local-path') continue
         if (shownRef.has(repo.name)) continue
         shownRef.add(repo.name)
-        const why = repo.reason === 'missing' ? 'folder is missing' : 'is not a git repository'
-        showToast(`Repository "${repo.name}" ${why} (${repo.path})`, 'error', {
+        const key: MessageKey = repo.reason === 'missing'
+          ? 'toast.repoInvalidMissing'
+          : 'toast.repoInvalidNotGit'
+        showToast(t(key, { name: repo.name, path: repo.path }), 'error', {
           persistent: true,
           actions: [
             {
-              label: 'Re-point folder',
+              label: t('toast.repointFolder'),
               icon: <FolderOpen className="w-3.5 h-3.5" />,
               onClick: () => repointFolder(repo.name),
             },
@@ -287,16 +293,13 @@ export function App() {
   // caches from the DB, so the latest change may not have been saved. Tell the
   // user, and refresh the local config view so it reflects the re-synced state.
   useEffect(() => {
-    const LABELS: Record<'config' | 'agents' | 'history', string> = {
-      config: 'settings',
-      agents: 'agents',
-      history: 'activity history',
+    const KIND_KEYS: Record<'config' | 'agents' | 'history', MessageKey> = {
+      config: 'toast.cloudWriteKind.config',
+      agents: 'toast.cloudWriteKind.agents',
+      history: 'toast.cloudWriteKind.history',
     }
     const unsubscribe = window.electronAPI.connectivity.onWriteError(({ kind }) => {
-      showToast(
-        `Failed to save your ${LABELS[kind]} to the cloud. Your latest change may not have been saved — reloaded from the server.`,
-        'error',
-      )
+      showToast(t('toast.cloudWriteFailed', { kind: t(KIND_KEYS[kind]) }), 'error')
       if (kind === 'config') loadConfig()
     })
     return () => { unsubscribe() }
@@ -369,25 +372,25 @@ export function App() {
 
       {/* Page overlays — Settings, Skills, History and Team */}
       {activeModal === 'settings' && (
-        <PageModal title="Settings" onClose={handleCloseModal}>
+        <PageModal title={t('sidebar.settings')} onClose={handleCloseModal}>
           <ConfigPage />
         </PageModal>
       )}
 
       {activeModal === 'skills' && (
-        <PageModal title="Skills" onClose={handleCloseModal}>
+        <PageModal title={t('sidebar.skills')} onClose={handleCloseModal}>
           <SkillsPage />
         </PageModal>
       )}
 
       {activeModal === 'history' && (
-        <PageModal title="History" onClose={handleCloseModal}>
+        <PageModal title={t('sidebar.history')} onClose={handleCloseModal}>
           <HistoryPage />
         </PageModal>
       )}
 
       {activeModal === 'team' && (
-        <PageModal title="Team" onClose={handleCloseModal} headerRight={<LiveIndicator />}>
+        <PageModal title={t('sidebar.team')} onClose={handleCloseModal} headerRight={<LiveIndicator />}>
           <DashboardPage />
         </PageModal>
       )}
@@ -410,13 +413,13 @@ export function App() {
               <div className="p-2 bg-yellow/10 rounded-lg">
                 <AlertTriangle className="w-4 h-4 text-yellow" />
               </div>
-              <h3 className="text-base font-semibold">Close this agent?</h3>
+              <h3 className="text-base font-semibold">{t('app.closeAgent.title')}</h3>
             </div>
 
             {/* Body */}
             <div className="px-5 pb-5">
               <p className="text-text-secondary text-sm mb-4">
-                Are you sure you want to close this agent?
+                {t('app.closeAgent.body')}
               </p>
 
               <div className="flex gap-2">
@@ -424,14 +427,14 @@ export function App() {
                   onClick={closeCloseAgentModal}
                   className="flex-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   ref={confirmCloseButtonRef}
                   onClick={handleCloseAgent}
                   className="flex-1 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all focus:outline-none"
                 >
-                  Yes, close agent
+                  {t('app.closeAgent.confirm')}
                 </button>
               </div>
             </div>
@@ -454,13 +457,13 @@ export function App() {
               <div className="p-2 bg-yellow/10 rounded-lg">
                 <AlertTriangle className="w-4 h-4 text-yellow" />
               </div>
-              <h3 className="text-base font-semibold">Configuration required</h3>
+              <h3 className="text-base font-semibold">{t('app.configRequired.title')}</h3>
             </div>
 
             {/* Body */}
             <div className="px-5 pb-5">
               <p className="text-text-secondary text-sm mb-5">
-                No repository is configured. To use Magic Slash, you must first add at least one repository in the configuration.
+                {t('app.configRequired.body')}
               </p>
 
               <div className="flex gap-2">
@@ -468,13 +471,13 @@ export function App() {
                   onClick={() => setShowNoReposModal(false)}
                   className="flex-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
                 >
-                  Later
+                  {t('app.later')}
                 </button>
                 <button
                   onClick={handleGoToConfig}
                   className="flex-1 px-3 py-1.5 text-xs font-medium text-yellow border border-yellow/20 rounded-lg hover:bg-yellow/10 transition-all"
                 >
-                  Configure
+                  {t('app.configure')}
                 </button>
               </div>
             </div>

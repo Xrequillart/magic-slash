@@ -2,17 +2,18 @@ import { useState, useRef, useCallback } from 'react'
 import { Edit2, Check, ChevronDown } from 'lucide-react'
 import { useClickOutside } from '../../hooks/useClickOutside'
 import type { TerminalMetadata } from '../../../types'
+import { useT, type MessageKey } from '../../i18n'
 
 const STATUS_OPTIONS = [
-  { value: '',             label: 'no status',    bg: 'bg-surface-strong',      text: 'text-text-secondary' },
-  { value: 'in progress',  label: 'in progress',  bg: 'bg-yellow/20',     text: 'text-yellow' },
-  { value: 'committed',    label: 'committed',     bg: 'bg-cyan-500/20',   text: 'text-cyan-400' },
-  { value: 'ready for PR', label: 'ready for PR',  bg: 'bg-orange/20',     text: 'text-orange' },
-  { value: 'PR created',   label: 'PR created',    bg: 'bg-green/20',      text: 'text-green' },
-  { value: 'in review',    label: 'in review',     bg: 'bg-blue/20',       text: 'text-blue' },
-  { value: 'changes requested', label: 'changes requested', bg: 'bg-red/20', text: 'text-red' },
-  { value: 'Review addressed', label: 'review addressed', bg: 'bg-teal-500/20', text: 'text-teal-400' },
-  { value: 'PR merged',    label: 'PR merged',     bg: 'bg-purple/20',     text: 'text-purple' },
+  { value: '',             labelKey: 'statusPill.none',    bg: 'bg-surface-strong',      text: 'text-text-secondary' },
+  { value: 'in progress',  labelKey: 'statusPill.inProgress',  bg: 'bg-yellow/20',     text: 'text-yellow' },
+  { value: 'committed',    labelKey: 'statusPill.committed',     bg: 'bg-cyan-500/20',   text: 'text-cyan-400' },
+  { value: 'ready for PR', labelKey: 'statusPill.readyForPR',  bg: 'bg-orange/20',     text: 'text-orange' },
+  { value: 'PR created',   labelKey: 'statusPill.prCreated',    bg: 'bg-green/20',      text: 'text-green' },
+  { value: 'in review',    labelKey: 'statusPill.inReview',     bg: 'bg-blue/20',       text: 'text-blue' },
+  { value: 'changes requested', labelKey: 'statusPill.changesRequested', bg: 'bg-red/20', text: 'text-red' },
+  { value: 'Review addressed', labelKey: 'statusPill.reviewAddressed', bg: 'bg-teal-500/20', text: 'text-teal-400' },
+  { value: 'PR merged',    labelKey: 'statusPill.prMerged',     bg: 'bg-purple/20',     text: 'text-purple' },
 ] as const
 
 // Neutral badge for a non-empty status that isn't in STATUS_OPTIONS (e.g. a newer
@@ -20,10 +21,18 @@ const STATUS_OPTIONS = [
 // back to "no status", which would hide that the workflow actually progressed.
 const UNKNOWN_STATUS_STYLE = { bg: 'bg-surface-strong', text: 'text-text-secondary' } as const
 
-function getStatusOption(status: string) {
+// `labelKey: null` marks the unknown case: there is no catalogue entry for a
+// status this version does not know, so the raw value is carried through instead.
+function getStatusOption(status: string): {
+  value: string
+  labelKey: MessageKey | null
+  rawLabel?: string
+  bg: string
+  text: string
+} {
   const match = STATUS_OPTIONS.find(s => s.value === status)
   if (match) return match
-  if (status) return { value: status, label: status, ...UNKNOWN_STATUS_STYLE }
+  if (status) return { value: status, labelKey: null, rawLabel: status, ...UNKNOWN_STATUS_STYLE }
   return STATUS_OPTIONS[0]
 }
 
@@ -66,6 +75,7 @@ export function TicketHeader({
   descriptionInputRef,
   onStatusChange,
 }: TicketHeaderProps) {
+  const t = useT()
   const [isStatusOpen, setIsStatusOpen] = useState(false)
   const statusRef = useRef<HTMLDivElement>(null)
   const closeStatus = useCallback(() => setIsStatusOpen(false), [])
@@ -87,7 +97,7 @@ export function TicketHeader({
             <span className="text-ink text-xs font-semibold">{metadata.ticketId}</span>
           )
         ) : (
-          <span className="text-text-secondary/40 text-xs">No ticket</span>
+          <span className="text-text-secondary/40 text-xs">{t('agentInfo.noTicket')}</span>
         )}
         {metadata && (
           <div ref={statusRef} className="relative">
@@ -98,7 +108,7 @@ export function TicketHeader({
                   onClick={() => setIsStatusOpen(!isStatusOpen)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer border-none ${statusOption.bg} ${statusOption.text}`}
                 >
-                  {statusOption.label}
+                  {statusOption.labelKey ? t(statusOption.labelKey) : statusOption.rawLabel}
                   <ChevronDown className={`w-3 h-3 transition-transform ${isStatusOpen ? 'rotate-180' : ''}`} />
                 </button>
               )
@@ -121,7 +131,7 @@ export function TicketHeader({
                     >
                       <span className={`w-2 h-2 rounded-full ${option.text}`} style={{ backgroundColor: 'currentColor' }} />
                       <span className={isSelected ? 'text-ink font-medium' : 'text-text-secondary'}>
-                        {option.label}
+                        {t(option.labelKey)}
                       </span>
                       {isSelected && (
                         <Check className="w-3 h-3 text-ink ml-auto" />
@@ -148,7 +158,7 @@ export function TicketHeader({
               if (e.key === 'Escape') setIsEditingTitle(false)
             }}
             onBlur={saveTitle}
-            placeholder="Enter title..."
+            placeholder={t('agentInfo.titlePlaceholder')}
             className="flex-1 bg-surface border border-accent rounded px-2 py-1 text-ink font-semibold text-sm focus:outline-none"
           />
         </div>
@@ -160,7 +170,7 @@ export function TicketHeader({
           {metadata?.title ? (
             <h2 className="flex-1 text-ink font-semibold text-sm leading-tight break-words">{metadata.title}</h2>
           ) : (
-            <h2 className="flex-1 text-text-secondary/40 italic text-sm">Click to add title</h2>
+            <h2 className="flex-1 text-text-secondary/40 italic text-sm">{t('agentInfo.addTitle')}</h2>
           )}
           <Edit2 className="w-3.5 h-3.5 text-text-secondary/30 hover:text-text-secondary/60 transition-colors flex-shrink-0 mt-0.5" />
         </div>
@@ -178,7 +188,7 @@ export function TicketHeader({
                 if (e.key === 'Escape') setIsEditingDescription(false)
                 if (e.key === 'Enter' && e.metaKey) saveDescription()
               }}
-              placeholder="Enter description..."
+              placeholder={t('agentInfo.descriptionPlaceholder')}
               rows={3}
               className="w-full bg-surface border border-accent rounded px-2 py-1.5 text-xs text-ink/70 focus:outline-none resize-none leading-relaxed"
             />
@@ -189,7 +199,7 @@ export function TicketHeader({
                 className="flex items-center gap-1 px-2 py-1 text-xs text-green hover:bg-green/10 rounded transition-colors"
               >
                 <Check className="w-3 h-3" />
-                Save
+                {t('common.save')}
               </button>
             </div>
           </div>
@@ -204,7 +214,7 @@ export function TicketHeader({
                   {metadata.description}
                 </div>
               ) : (
-                <span className="flex-1 text-xs text-text-secondary/40 italic">Click to add description</span>
+                <span className="flex-1 text-xs text-text-secondary/40 italic">{t('agentInfo.addDescription')}</span>
               )}
               <Edit2 className="w-3 h-3 text-text-secondary/30 hover:text-text-secondary/60 transition-colors flex-shrink-0 mt-0.5" />
             </div>

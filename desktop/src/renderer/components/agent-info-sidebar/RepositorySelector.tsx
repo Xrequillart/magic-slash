@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import { X, Folder, Check } from 'lucide-react'
 import { useModalExit } from '../../hooks/useModalExit'
+import { useT } from '../../i18n'
 
 interface RepositorySelectorProps {
   isOpen: boolean
@@ -17,6 +18,7 @@ export function RepositorySelector({
   attachedRepos,
   onToggleRepository,
 }: RepositorySelectorProps) {
+  const t = useT()
   // Stays mounted past `isOpen` so it can animate out, like every other dialog.
   const { mounted, closing, onExitAnimationEnd } = useModalExit(isOpen)
 
@@ -40,7 +42,7 @@ export function RepositorySelector({
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
           <div className="flex items-center gap-2">
             <Folder className="w-4 h-4 text-purple" />
-            <span className="text-xs font-semibold text-ink">Select repositories</span>
+            <span className="text-xs font-semibold text-ink">{t('agentInfo.selectRepositories')}</span>
           </div>
           <button
             onClick={onClose}
@@ -71,7 +73,7 @@ export function RepositorySelector({
 
           {availableRepos.length === 0 && (
             <div className="text-center py-8 text-xs text-text-secondary/50">
-              No repositories configured
+              {t('agentInfo.noRepositories')}
             </div>
           )}
         </div>
