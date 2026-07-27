@@ -500,6 +500,38 @@ export interface UsageStats {
   capped: boolean
 }
 
+/**
+ * One org-wide activity_events row, normalized for the Team page's flow metrics.
+ *
+ * Distinct from HistoryEntry (the personal History feed) on two counts: it spans
+ * every member, and it carries `userId` so an in-flight item can be attributed.
+ */
+export interface OrgActivityEvent {
+  id: string
+  userId: string | null
+  /**
+   * agents.id uuid. The DB nulls this when the agent row is deleted (composite FK
+   * with `on delete set null`), and closing an agent deletes its row — so EVERY
+   * event of a finished ticket has agentId === null. Reliable only for agents that
+   * are still alive; `ticketId` is the durable correlation key.
+   */
+  agentId: string | null
+  action: HistoryAction
+  ticketId: string | null
+  repositories: string[]
+  /** ISO timestamp of when the event occurred (client-written, so clocks can skew). */
+  occurredAt: string
+}
+
+/** Org-wide activity rows for the Team page, aggregated client-side by the renderer. */
+export interface OrgActivity {
+  events: OrgActivityEvent[]
+  /** True when the query hit its row cap: the window is partial, so trim the analysis to `since`. */
+  capped: boolean
+  /** ISO timestamp of the oldest event the analysis may trust. */
+  since: string
+}
+
 export interface Invitation {
   id: string
   email: string
@@ -555,7 +587,15 @@ export type HistoryAction =
   | 'started'
   | 'committed'
   | 'pr_created'
+  /**
+   * A reviewer picked the PR up (status 'in review'). Historic rows also carry
+   * this value for 'Review addressed' — which is why the flow metrics treat a
+   * bare `review` as a WEAK first-response signal and prefer the explicit
+   * verdicts. Rows written from now on distinguish the two.
+   */
   | 'review'
+  /** The author pushed fixes answering a review (status 'Review addressed'). */
+  | 'review_addressed'
   | 'merged'
   | 'done'
   | 'review_approved'

@@ -1,6 +1,6 @@
 import * as path from 'path'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Config, Invitation, InvitationStatus, Member, MembershipRole, Org, OrgAgent, OrgSharedConfig, UsageStats } from '../../types'
+import type { Config, Invitation, InvitationStatus, Member, MembershipRole, Org, OrgActivity, OrgAgent, OrgSharedConfig, UsageStats } from '../../types'
 import { getAuthedClient } from './auth'
 import { loadSession } from './session-store'
 import { readConfig, writeConfig, hydrateConfig, mergeOrgSharedConfig, setCurrentOrgId } from '../config/config'
@@ -117,6 +117,25 @@ export async function listOrgAgents(): Promise<OrgAgent[]> {
  */
 export async function listOrgUsageStats(): Promise<UsageStats> {
   return getStore().loadOrgUsageStats()
+}
+
+/** How far back the Team page may look, and how many rows it may pull. */
+const ACTIVITY_MAX_WINDOW_MS = 90 * 24 * 60 * 60 * 1000
+const ACTIVITY_ROW_LIMIT = 5000
+
+/**
+ * Org-wide activity events for the Team page's flow metrics. Delegates to the
+ * store (org-scoped by RLS — any member may read). Degrades to no events when
+ * cloud is off or the user is logged out.
+ *
+ * `sinceMs` is clamped to the 90-day window: the renderer asks once for the full
+ * window and narrows to 7/30/90 days client-side, so a wider request would only
+ * ever be a bug or a hostile renderer.
+ */
+export async function listOrgActivity(sinceMs?: number): Promise<OrgActivity> {
+  const floor = Date.now() - ACTIVITY_MAX_WINDOW_MS
+  const requested = typeof sinceMs === 'number' && Number.isFinite(sinceMs) ? sinceMs : floor
+  return getStore().loadOrgActivity(Math.max(requested, floor), ACTIVITY_ROW_LIMIT)
 }
 
 export interface PickUpTaskResult {

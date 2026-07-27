@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import type { AcceptInvitationResult, PickUpTaskResult } from '../cloud/org'
-import type { Config, Invitation, Member, MembershipRole, Org, OrgAgent, OrgSharedConfig, RealtimeStatus, UsageStats } from '../../types'
+import type { Config, Invitation, Member, MembershipRole, Org, OrgActivity, OrgAgent, OrgSharedConfig, RealtimeStatus, UsageStats } from '../../types'
 import { getRealtimeStatus } from '../cloud/realtime'
 import {
   getCurrentOrg,
@@ -14,6 +14,7 @@ import {
   listOrgs,
   createOrganization,
   listOrgAgents,
+  listOrgActivity,
   listOrgUsageStats,
   pickUpTask,
   removeMember,
@@ -32,6 +33,7 @@ interface MemberArgs { orgId: string; userId: string }
 interface RoleArgs { orgId: string; userId: string; role: MembershipRole }
 interface SetSharedArgs { shared: OrgSharedConfig; orgId?: string }
 interface PickUpArgs { ticketId: string; repositories: string[] }
+interface ActivityArgs { sinceMs?: number }
 
 export function setupOrgHandlers(): void {
   ipcMain.handle('org:current', async (): Promise<Org | null> => getCurrentOrg())
@@ -47,6 +49,12 @@ export function setupOrgHandlers(): void {
   ipcMain.handle('org:listAgents', async (): Promise<OrgAgent[]> => listOrgAgents())
 
   ipcMain.handle('org:getUsageStats', async (): Promise<UsageStats> => listOrgUsageStats())
+
+  // sinceMs is advisory: listOrgActivity clamps it to the 90-day window, so a
+  // bogus or absent value degrades to the full window rather than throwing.
+  ipcMain.handle('org:getActivity', async (_event, args?: ActivityArgs): Promise<OrgActivity> =>
+    listOrgActivity(args?.sinceMs),
+  )
 
   // Pick up a colleague's task: resolve their repo(s) to a LOCAL configured path
   // and hand back the cwd + `/magic:continue` prompt (renderer launches). Throws a

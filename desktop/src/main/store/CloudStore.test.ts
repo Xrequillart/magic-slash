@@ -65,6 +65,8 @@ function makeClient(resultsByTable: Record<string, QueryResult>) {
     const b: any = {
       select: (...args: unknown[]) => { record('select', args); return b },
       eq: (...args: unknown[]) => { record('eq', args); return b },
+      gte: (...args: unknown[]) => { record('gte', args); return b },
+      in: (...args: unknown[]) => { record('in', args); return b },
       order: (...args: unknown[]) => { record('order', args); return b },
       limit: (...args: unknown[]) => { record('limit', args); return b },
       maybeSingle: (...args: unknown[]) => { record('maybeSingle', args); return b },
@@ -310,6 +312,134 @@ describe('loadHistory', () => {
         { table: 'activity_events', method: 'limit', args: [500] },
       ]),
     )
+  })
+})
+
+// ── loadOrgActivity (org-wide, action-filtered) ─────────────────────────────
+
+describe('loadOrgActivity', () => {
+  const SINCE = Date.UTC(2026, 3, 1)
+
+  it('reads the whole org — no user_id filter, unlike loadHistory', async () => {
+    const { client, calls, from } = makeClient({
+      memberships: membershipsOk,
+      activity_events: { data: [], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadOrgActivity(SINCE, 5000)
+
+    expect(from).toHaveBeenCalledWith('activity_events')
+    const activityCalls = calls.filter((c) => c.table === 'activity_events')
+    expect(activityCalls).toEqual(
+      expect.arrayContaining([
+        { table: 'activity_events', method: 'eq', args: ['org_id', ORG] },
+        { table: 'activity_events', method: 'gte', args: ['occurred_at', new Date(SINCE).toISOString()] },
+        { table: 'activity_events', method: 'order', args: ['occurred_at', { ascending: false }] },
+        { table: 'activity_events', method: 'limit', args: [5000] },
+      ]),
+    )
+    // The whole point of this reader: team-level metrics need every member's events.
+    expect(activityCalls).not.toEqual(
+      expect.arrayContaining([
+        { table: 'activity_events', method: 'eq', args: ['user_id', UID] },
+      ]),
+    )
+  })
+
+  it('filters to the flow actions, excluding the high-volume noise', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      activity_events: { data: [], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadOrgActivity(SINCE, 5000)
+
+    const inCall = calls.find((c) => c.table === 'activity_events' && c.method === 'in')
+    expect(inCall).toBeDefined()
+    const [column, actions] = inCall!.args as [string, string[]]
+    expect(column).toBe('action')
+    expect(actions).toContain('pr_created')
+    expect(actions).toContain('merged')
+    expect(actions).toContain('review_addressed')
+    // `completed` fires every Claude-Code turn and `committed` every commit; letting
+    // them through would let the row cap truncate weeks of flow signal.
+    expect(actions).not.toContain('completed')
+    expect(actions).not.toContain('committed')
+  })
+
+  it('maps rows and keeps capped=false below the limit', async () => {
+    const rows = [
+      {
+        id: 'evt-1',
+        user_id: UID,
+        agent_id: 'uuid-agent-1',
+        action: 'pr_created',
+        ticket_id: 'PROJ-1',
+        repositories: ['/repo/a'],
+        occurred_at: '2026-07-24T10:00:00Z',
+      },
+    ]
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      activity_events: { data: rows, error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    const result = await store.loadOrgActivity(SINCE, 5000)
+
+    expect(result.capped).toBe(false)
+    expect(result.since).toBe(new Date(SINCE).toISOString())
+    expect(result.events).toEqual([
+      {
+        id: 'evt-1',
+        userId: UID,
+        agentId: 'uuid-agent-1',
+        action: 'pr_created',
+        ticketId: 'PROJ-1',
+        repositories: ['/repo/a'],
+        occurredAt: '2026-07-24T10:00:00Z',
+      },
+    ])
+  })
+
+  it('on a capped read, trims `since` to the oldest row actually returned', async () => {
+    // Rows arrive newest-first, so the last one is the oldest trustworthy point.
+    // Reporting the requested window instead would let the UI draw confident
+    // zeroes for weeks that were simply cut off by the cap.
+    const rows = Array.from({ length: 3 }, (_, i) => ({
+      id: `evt-${i}`,
+      user_id: UID,
+      agent_id: null,
+      action: 'merged',
+      ticket_id: `PROJ-${i}`,
+      repositories: [],
+      occurred_at: `2026-07-2${3 - i}T00:00:00Z`,
+    }))
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      activity_events: { data: rows, error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    const result = await store.loadOrgActivity(SINCE, 3)
+
+    expect(result.capped).toBe(true)
+    expect(result.since).toBe('2026-07-21T00:00:00Z')
+  })
+
+  it('degrades to no events when there is no auth context', async () => {
+    h.state.client = null
+
+    const store = new CloudStore()
+    const result = await store.loadOrgActivity(SINCE, 5000)
+
+    expect(result).toEqual({ events: [], capped: false, since: new Date(SINCE).toISOString() })
   })
 })
 
