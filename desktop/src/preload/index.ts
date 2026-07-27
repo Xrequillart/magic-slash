@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgAgent, OrgAgentChange, RealtimeStatus, UsageStats, ThemeId } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgAgent, OrgAgentChange, RealtimeStatus, UsageStats, ThemeId, LanguageId } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -76,6 +76,9 @@ const configApi = {
 
   updateTheme: (theme: ThemeId) =>
     ipcRenderer.invoke('config:updateTheme', { theme }),
+
+  updateLanguage: (language: LanguageId): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:updateLanguage', { language }),
 
   repair: (): Promise<{ repaired: boolean; fixes: string[] }> =>
     ipcRenderer.invoke('config:repair'),
@@ -528,6 +531,22 @@ const themeApi = {
 }
 
 /**
+ * Interface language. Read like the theme, and for the same reason: a cold start
+ * in French must not flash English while the config hydrates. Changes are asked
+ * for through `config.updateLanguage` (the choice is a stored preference), so
+ * there is no `set` here.
+ */
+const languageApi = {
+  initial: (): string | null => launchArgument('language'),
+
+  onChanged: (callback: (language: LanguageId) => void) => {
+    const listener = (_event: IpcRendererEvent, language: LanguageId) => callback(language)
+    ipcRenderer.on('language:changed', listener)
+    return () => ipcRenderer.removeListener('language:changed', listener)
+  },
+}
+
+/**
  * Interface scale. Applied by the main process on the window's webContents, so
  * the renderer only reads it and asks for changes — it never scales itself.
  */
@@ -568,6 +587,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   connectivity: connectivityApi,
   theme: themeApi,
   zoom: zoomApi,
+  language: languageApi,
 })
 
 // Type definitions for the renderer
@@ -594,6 +614,7 @@ declare global {
       connectivity: typeof connectivityApi
       theme: typeof themeApi
       zoom: typeof zoomApi
+      language: typeof languageApi
     }
   }
 

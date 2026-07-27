@@ -2,13 +2,27 @@ import { hydrateConfig, resetConfigCache } from '../config/config'
 import { hydrateAgents, resetAgentsCache } from '../config/agents'
 import { hydrateHistory, resetHistoryCache } from '../config/activity-history'
 import { hydrateProfile } from '../config/profile'
-import { applyTheme } from '../appearance'
+import { applyLanguage, applyTheme } from '../appearance'
+import type { Config } from '../../types'
 
 // Coordinates a one-time hydration of the in-memory caches (config, agents,
 // history) from the store once auth + connectivity are established. Every mutating
 // IPC path awaits ensureHydrated() so it never reads a cold (empty) cache.
 
 let hydrationPromise: Promise<void> | null = null
+
+/**
+ * Adopt the cloud language, but only when the row actually carries one.
+ *
+ * An account that has never chosen a language leaves the column NULL, and
+ * `applyLanguage(undefined)` falls back to English *and persists it* — so a user
+ * running in French from the local mirror would flip to English seconds after
+ * launch, and stay there on every cold launch after that. Silence from the cloud
+ * means "no opinion", not "English".
+ */
+function adoptCloudLanguage(language: Config['language']): void {
+  if (language) applyLanguage(language)
+}
 
 /**
  * Hydrate config, agents and history from the store exactly once. Subsequent
@@ -23,6 +37,9 @@ export function ensureHydrated(): Promise<void> {
       // the local cache and the native chrome if it was changed on another
       // machine, and repaints every open window.
       applyTheme(config.theme)
+      // Likewise for the interface language: it may have been changed on another
+      // machine, and switching now rebuilds the menus, the tray and every window.
+      adoptCloudLanguage(config.language)
       await hydrateAgents()
       await hydrateHistory()
       await hydrateProfile()
@@ -44,6 +61,7 @@ export function rehydrate(): Promise<void> {
   hydrationPromise = (async () => {
     const config = await hydrateConfig()
     applyTheme(config.theme)
+    adoptCloudLanguage(config.language)
     await hydrateAgents()
     await hydrateHistory()
   })().catch((error) => {

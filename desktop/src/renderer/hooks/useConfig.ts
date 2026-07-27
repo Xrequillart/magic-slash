@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
-import type { RepositoryConfig, ThemeId } from '../../types'
+import type { LanguageId, RepositoryConfig, ThemeId } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -113,6 +113,14 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  // Re-rendering in the new language is the main process's job too (it owns the
+  // menus, the tray and the other windows), so this only records the choice.
+  const updateLanguage = useCallback(async (language: LanguageId) => {
+    const result = await window.electronAPI.config.updateLanguage(language)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const validatePath = useCallback(async (path: string) => {
     return window.electronAPI.config.validatePath(path)
   }, [])
@@ -150,6 +158,7 @@ export function useConfig() {
     updateSpotlight,
     updateLaunchMode,
     updateTheme,
+    updateLanguage,
     validatePath,
     getPRTemplate,
     createPRTemplate,

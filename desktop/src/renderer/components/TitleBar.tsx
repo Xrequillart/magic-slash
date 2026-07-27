@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store'
+import { useT } from '../i18n'
 
 // Inline SVG components for left sidebar toggle icons
 const LeftSidebarOpenIcon = () => (
@@ -36,6 +37,7 @@ const RightSidebarCloseIcon = () => (
 )
 
 export function TitleBar() {
+  const t = useT()
   const { terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar, isSplitMode, splitTerminalId, focusedPane, isWideScreen, splitEnabled, splitActive, toggleSplitActive } = useStore()
   const activeTerminal = terminals.find((t) => t.id === activeTerminalId)
   const splitTerminal = terminals.find((t) => t.id === splitTerminalId)
@@ -101,7 +103,7 @@ export function TitleBar() {
                   }`}
                   title="Normal view (⌘/)"
                 >
-                  Normal
+                  {t('titlebar.normalView')}
                 </button>
                 <button
                   onClick={() => { if (!splitActive) toggleSplitActive() }}
@@ -110,15 +112,17 @@ export function TitleBar() {
                   }`}
                   title="Split view (⌘/)"
                 >
-                  Split view
+                  {t('titlebar.splitView')}
                 </button>
               </div>
             )}
         </div>
       </div>
 
-      {/* Center - Active agent name(s) */}
-      <div className="absolute left-1/2 -translate-x-1/2 text-sm truncate max-w-[40%]">
+      {/* Center - Active agent name(s). Absolutely positioned, so a width cap is
+          the only thing keeping it clear of the left controls; 36% rather than 40%
+          because the split toggle beside it is wider in French. */}
+      <div className="absolute left-1/2 -translate-x-1/2 text-sm truncate max-w-[36%]">
         {isSplitMode && splitTerminal ? (
           <div className="flex items-center gap-2">
             <span className={focusedPane === 'primary' ? 'text-ink' : 'text-text-secondary/50'}>

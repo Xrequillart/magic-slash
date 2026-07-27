@@ -1,7 +1,7 @@
 import * as path from 'path'
 import * as os from 'os'
 import { randomUUID } from 'crypto'
-import type { Config, RepositoryConfig, LaunchMode, OrgSharedConfig, ThemeId } from '../../types'
+import type { Config, RepositoryConfig, LanguageId, LaunchMode, OrgSharedConfig, ThemeId } from '../../types'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
 import { expandPath } from './validation'
 import { getStore, reportWriteError } from '../store/Store'
@@ -491,6 +491,19 @@ export function updateSplitActive(active: boolean): Config {
 export function updateTheme(theme: ThemeId): Config {
   const config = readConfig()
   config.theme = theme
+  writeConfig(config)
+  return config
+}
+
+/**
+ * Store the chosen interface language. Same two destinations as the theme: the
+ * cloud is the reference (it follows the user from machine to machine) and the
+ * main process mirrors it locally so the next launch opens in the right language
+ * before the config has hydrated — see main/appearance.ts.
+ */
+export function updateLanguage(language: LanguageId): Config {
+  const config = readConfig()
+  config.language = language
   writeConfig(config)
   return config
 }

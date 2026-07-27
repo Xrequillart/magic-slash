@@ -4,6 +4,7 @@ import { useActivityHistory } from '../../hooks/useActivityHistory'
 import { useHistoryAnalytics } from '../../hooks/useHistoryAnalytics'
 import { ActivityHeatmap } from './ActivityHeatmap'
 import type { HistoryAction, HistoryEntry } from '../../../types'
+import { useLocale } from '../../i18n'
 
 const CARD_ANIM_MS = 150
 const CARD_STAGGER_MS = 50
@@ -23,9 +24,11 @@ const ACTION_CONFIG: Record<HistoryAction, { label: string; color: string; dot: 
   agent_closed: { label: 'Agent closed', color: 'bg-text-secondary', dot: 'bg-text-secondary' },
 }
 
-function formatTime(timestamp: number): string {
+// hour12 stays false in every language: this is a dense activity log, and a
+// 24-hour clock is what both locales read fastest here.
+function formatTime(timestamp: number, locale: string): string {
   const d = new Date(timestamp)
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 function formatDuration(fromTs: number, toTs: number): string {
@@ -48,12 +51,13 @@ function RepoTag({ repo }: { repo: string }) {
 }
 
 function SingleEntryRow({ entry, isDimmed }: { entry: HistoryEntry; isDimmed: boolean }) {
+  const locale = useLocale()
   const config = ACTION_CONFIG[entry.action]
   return (
     <div className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-subtle border border-line-field transition-all duration-200 min-w-0 ${isDimmed ? 'opacity-30 blur-sm' : ''}`}>
       <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${config.dot}`} />
       <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
-        {formatTime(entry.timestamp)}
+        {formatTime(entry.timestamp, locale)}
       </span>
       <span className="text-sm font-medium text-ink truncate min-w-0 flex-1">
         {entry.agentName}
@@ -75,6 +79,7 @@ function SingleEntryRow({ entry, isDimmed }: { entry: HistoryEntry; isDimmed: bo
 }
 
 export function HistoryPage() {
+  const locale = useLocale()
   const { entries, groups, loading } = useActivityHistory()
   const { heatmapData } = useHistoryAnalytics(entries)
   const hasEntries = groups.some(g => g.entries.length > 0)
@@ -221,8 +226,8 @@ export function HistoryPage() {
                 // entries are sorted newest-first; oldest = last element
                 const newestTs = tg.entries[0].timestamp
                 const oldestTs = tg.entries[tg.entries.length - 1].timestamp
-                const firstTime = formatTime(oldestTs)
-                const lastTime = formatTime(newestTs)
+                const firstTime = formatTime(oldestTs, locale)
+                const lastTime = formatTime(newestTs, locale)
                 const duration = formatDuration(oldestTs, newestTs)
 
                 return (
@@ -292,7 +297,7 @@ export function HistoryPage() {
                           >
                             <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${config.dot}`} />
                             <span className="text-xs text-text-secondary/60 font-mono flex-shrink-0">
-                              {formatTime(entry.timestamp)}
+                              {formatTime(entry.timestamp, locale)}
                             </span>
                             {entry.description && (
                               <span className="text-xs text-text-secondary/70 truncate min-w-0 flex-1">

@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Check, Loader2, Lock, CircleUserRound, SquareTerminal, Palette, type LucideIcon } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Check, Loader2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage } from './OrgPage'
 import { AppearancePage } from './AppearancePage'
+import { LanguagePage } from './LanguagePage'
 import { SectionHeader } from './SectionHeader'
 import { RateLimitBar } from '../../components/agent-info-sidebar/LimitGauge'
 import { useStore } from '../../store'
@@ -14,6 +15,7 @@ import type { SpotlightShortcut, LaunchMode, ClaudeAccount, SpendSummary, Settin
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 import { formatUsd } from '../../utils/usageStats'
+import { useLocale, useT, type MessageKey } from '../../i18n'
 
 const SPOTLIGHT_OPTIONS: { label: string; value: string }[] = [
   { label: '\u2303 Space', value: 'Control+Space' },
@@ -37,22 +39,31 @@ const LAUNCH_MODE_OPTIONS: { value: LaunchMode; label: string; description: stri
 // Icons mirror each tab's own section header, so the rail and the content agree.
 // Claude Code is the exception: it holds four sections (account, launch mode,
 // rate usage, spend) and gets the CLI's own icon rather than any one of theirs.
-const SETTINGS_TABS: { id: SettingsTab; label: string; icon: LucideIcon }[] = [
-  { id: 'account', label: 'Account', icon: CircleUserRound },
-  { id: 'organization', label: 'Organization', icon: Building2 },
-  { id: 'repositories', label: 'Repositories', icon: FolderGit },
-  { id: 'claude-code', label: 'Claude Code', icon: SquareTerminal },
-  { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'features', label: 'Features', icon: Sparkles },
-  { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
-  { id: 'about', label: 'About', icon: Info },
+//
+// Message KEYS, not labels: this list is module scope, so a `t()` call here would
+// be evaluated once at import and pin the rail to whatever language the app
+// booted in. The labels are resolved in the render path instead.
+const SETTINGS_TABS: { id: SettingsTab; labelKey: MessageKey; icon: LucideIcon }[] = [
+  { id: 'account', labelKey: 'settings.tab.account', icon: CircleUserRound },
+  { id: 'organization', labelKey: 'settings.tab.organization', icon: Building2 },
+  { id: 'repositories', labelKey: 'settings.tab.repositories', icon: FolderGit },
+  { id: 'claude-code', labelKey: 'settings.tab.claudeCode', icon: SquareTerminal },
+  { id: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
+  { id: 'language', labelKey: 'settings.tab.language', icon: Languages },
+  { id: 'features', labelKey: 'settings.tab.features', icon: Sparkles },
+  { id: 'shortcuts', labelKey: 'settings.tab.shortcuts', icon: Keyboard },
+  { id: 'about', labelKey: 'settings.tab.about', icon: Info },
 ]
 
-function formatTokensCompact(n: number): string {
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
-  return `${n}`
+// toFixed would pin the decimal separator to a point, so the mantissa goes
+// through toLocaleString: French wants "12,5M", not "12.5M".
+function formatTokensCompact(n: number, locale: string): string {
+  const scaled = (value: number, digits: number, unit: string) =>
+    `${value.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits })}${unit}`
+  if (n >= 1_000_000_000) return scaled(n / 1_000_000_000, 2, 'B')
+  if (n >= 1_000_000) return scaled(n / 1_000_000, 1, 'M')
+  if (n >= 1_000) return scaled(n / 1_000, 1, 'k')
+  return n.toLocaleString(locale)
 }
 
 // Human-readable label for a Claude seat tier / billing type.
@@ -169,6 +180,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode } = useConfig()
   const orgs = useStore((s) => s.orgs)
   const activeOrg = useStore((s) => s.activeOrg)
+  const t = useT()
+  const locale = useLocale()
   // Deep-link support: another view can request a specific settings tab via the
   // store (e.g. the sidebar account menu → Organization). Initialise straight
   // from it so the requested tab paints on first render (no Profile → target
@@ -560,7 +573,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
-                <span className="truncate">{tab.label}</span>
+                <span className="truncate">{t(tab.labelKey)}</span>
               </button>
             )
           })}
@@ -795,8 +808,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 ]).map(({ label, b }) => (
                   <Fragment key={label}>
                     <span className="text-text-secondary">{label}</span>
-                    <span className="font-mono text-right">{formatTokensCompact(b.tokens)}</span>
-                    <span className="font-mono text-right text-ink">~{formatUsd(b.costUsd)}</span>
+                    <span className="font-mono text-right">{formatTokensCompact(b.tokens, locale)}</span>
+                    <span className="font-mono text-right text-ink">~{formatUsd(b.costUsd, locale)}</span>
                   </Fragment>
                 ))}
               </div>
@@ -1120,6 +1133,9 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Appearance tab */}
       {contentTab === 'appearance' && <AppearancePage />}
+
+      {/* Language & Region tab */}
+      {contentTab === 'language' && <LanguagePage />}
 
       {/* Shortcuts tab */}
       {contentTab === 'shortcuts' && <div>

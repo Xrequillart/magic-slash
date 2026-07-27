@@ -5,6 +5,7 @@ import * as os from 'os'
 import { readConfig } from '../config/config'
 import { expandPath } from '../config/validation'
 import AdmZip from 'adm-zip'
+import { t } from '../i18n'
 
 const BUILT_IN_SKILLS = ['magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
 
@@ -223,7 +224,7 @@ export function setupSkillsHandlers() {
 
     const result = await dialog.showSaveDialog(window, {
       defaultPath: path.join(os.homedir(), 'Downloads', `${name}.zip`),
-      filters: [{ name: 'ZIP Archive', extensions: ['zip'] }],
+      filters: [{ name: t('dialog.filter.zip'), extensions: ['zip'] }],
     })
     if (result.canceled || !result.filePath) return { success: false, canceled: true }
 
@@ -242,7 +243,7 @@ export function setupSkillsHandlers() {
 
     const result = await dialog.showOpenDialog(window, {
       properties: ['openDirectory'],
-      title: 'Select a skill folder',
+      title: t('dialog.selectSkillFolder'),
     })
 
     if (result.canceled || result.filePaths.length === 0) {
@@ -413,9 +414,9 @@ export function setupSkillsHandlers() {
 
     const result = await dialog.showOpenDialog(window, {
       properties: ['openFile'],
-      title: 'Select an image',
+      title: t('dialog.selectImage'),
       filters: [
-        { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'svg', 'webp'] }
+        { name: t('dialog.filter.images'), extensions: ['png', 'jpg', 'jpeg', 'svg', 'webp'] }
       ]
     })
 

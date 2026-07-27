@@ -4,6 +4,7 @@ import { getAllTerminals, updateTerminalMetadataFromHook } from '../pty/terminal
 import { addHistoryEntry } from '../config/activity-history'
 import { fetchPRStatus, type AggregatedReviewStatus } from '../github'
 import type { RepositoryMetadata } from '../../types'
+import { t } from '../i18n'
 
 const DEFAULT_POLL_INTERVAL_MS = 60_000
 const MIN_POLL_INTERVAL_MS = 30_000
@@ -153,8 +154,8 @@ export class PRReviewWatcher {
         if (!windowFocused && now - lastNotified > NOTIFICATION_COOLDOWN_MS && prevStatus !== snapshot.status) {
           this.lastNotifiedAt.set(target.prUrl, now)
           this.showNotification(
-            'PR review update',
-            `${target.prUrl}: ${snapshot.status}`,
+            t('notification.prReview.title'),
+            t('notification.prReview.body', { url: target.prUrl, status: snapshot.status }),
           )
         }
 

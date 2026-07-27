@@ -1,9 +1,18 @@
-import type { UsageStatRow } from '../../types'
+import { localeOf } from '../../i18n'
+import { DEFAULT_LANGUAGE, type UsageStatRow } from '../../types'
 
-/** Format a USD amount for display: `<$0.01` under a cent, rounded thousands, else two decimals. */
-export function formatUsd(n: number): string {
+/**
+ * Format a USD amount for display: `<$0.01` under a cent, rounded thousands, else
+ * two decimals.
+ *
+ * The locale is a parameter rather than read from the language store because this
+ * is a plain function, not a component — a hook is impossible here. Callers pass
+ * `useLocale()`. It only affects the thousands grouping (a French reader expects
+ * `$12 500`, not `$12,500`); the `$` stays, since the amount genuinely is USD.
+ */
+export function formatUsd(n: number, locale: string = localeOf(DEFAULT_LANGUAGE)): string {
   if (n > 0 && n < 0.01) return '<$0.01'
-  if (n >= 1000) return `$${Math.round(n).toLocaleString('en-US')}`
+  if (n >= 1000) return `$${Math.round(n).toLocaleString(locale)}`
   return `$${n.toFixed(2)}`
 }
 

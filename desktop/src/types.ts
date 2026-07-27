@@ -220,6 +220,37 @@ export function isValidTheme(value: unknown): value is ThemeId {
 }
 
 /**
+ * Languages the interface is available in, in the order the picker shows them.
+ * Adding one is an entry here plus its catalogue in src/i18n — the catalogue is
+ * typed against the English one, so TypeScript refuses a language whose
+ * translation is incomplete.
+ *
+ * This is the APPLICATION locale only. It has nothing to do with the per-repo
+ * `languages.{commit,pullRequest,…}` settings (which language Claude writes a
+ * commit message in) nor with profile.md's `languages`.
+ */
+export const LANGUAGE_IDS = ['en', 'fr'] as const
+
+export type LanguageId = (typeof LANGUAGE_IDS)[number]
+
+export const DEFAULT_LANGUAGE: LanguageId = 'en'
+
+/**
+ * The BCP-47 tag each language formats dates and numbers with. It lives here,
+ * next to the ids, because the main process needs it too — notifications are
+ * composed before any renderer exists. Typed as a total record, so a new
+ * language cannot be added without giving it a locale.
+ */
+export const LANGUAGE_LOCALE: Record<LanguageId, string> = {
+  en: 'en-US',
+  fr: 'fr-FR',
+}
+
+export function isValidLanguage(value: unknown): value is LanguageId {
+  return typeof value === 'string' && (LANGUAGE_IDS as readonly string[]).includes(value)
+}
+
+/**
  * Interface scale, as an Electron zoom factor. The steps are what the +/−
  * buttons and ⌘+ / ⌘− walk through; any value in range is accepted, since the
  * OS and the menu can land on one of their own.
@@ -252,6 +283,10 @@ export interface Config {
    * account onto a laptop with a different screen.
    */
   theme?: ThemeId
+  /** Absent = never chosen; the app applies DEFAULT_LANGUAGE. Like the theme, it
+   *  follows the account rather than the machine — reading the app in French is
+   *  a property of the person, not of the screen. */
+  language?: LanguageId
   splitEnabled?: boolean
   splitActive?: boolean
   autoStartAtLogin?: boolean
@@ -316,6 +351,7 @@ export type SettingsTab =
   | 'repositories'
   | 'claude-code'
   | 'appearance'
+  | 'language'
   | 'features'
   | 'shortcuts'
   | 'about'
