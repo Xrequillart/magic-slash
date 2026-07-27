@@ -1,4 +1,4 @@
-import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgSharedConfig, OrgAgent, SkillInvocationInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
+import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, SkillInvocationInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -66,6 +66,14 @@ export interface Store {
   /** Org-wide usage rows (all members) for the dashboard, aggregated client-side. Read-only. */
   loadOrgUsageStats(): Promise<UsageStats>
 
+  /**
+   * Org-wide activity events (all members) for the Team page's flow metrics.
+   * Read-only, and open to any org member — the RLS select policy is scoped by
+   * org, not by user. Deliberately separate from loadHistory, which stays scoped
+   * to the caller for the personal History feed.
+   */
+  loadOrgActivity(sinceMs: number, limit: number): Promise<OrgActivity>
+
   /** Admin-only: push the org's shared config (languages/commit/pullRequest/repoKeywords). */
   setOrgSharedConfig(orgId: string, shared: OrgSharedConfig): Promise<void>
 
@@ -114,6 +122,7 @@ export const NOOP_STORE: Store = {
   async appendUsage() { /* no-op */ },
   async recordSkillInvocation() { /* no-op */ },
   async loadOrgUsageStats() { return { rows: [], capped: false } },
+  async loadOrgActivity() { return { events: [], capped: false, since: new Date(0).toISOString() } },
   async setOrgSharedConfig() { /* no-op */ },
   async loadProfile() { return null },
   async saveProfile() { /* no-op */ },

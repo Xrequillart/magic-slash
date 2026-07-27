@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgAgent, OrgAgentChange, RealtimeStatus, UsageStats, ThemeId, LanguageId } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, UsageStats, ThemeId, LanguageId } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -472,6 +472,9 @@ const orgApi = {
   listAgents: (): Promise<OrgAgent[]> => ipcRenderer.invoke('org:listAgents'),
   // Team dashboard: org-wide usage stats (read is open to any member).
   getUsageStats: (): Promise<UsageStats> => ipcRenderer.invoke('org:getUsageStats'),
+  // Team dashboard: org-wide activity events driving the flow metrics. sinceMs is
+  // clamped to 90 days in the main process; the renderer narrows further itself.
+  getActivity: (sinceMs?: number): Promise<OrgActivity> => ipcRenderer.invoke('org:getActivity', { sinceMs }),
   // Team dashboard: pick up a colleague's task. Resolves their repo(s) to a LOCAL
   // configured path; rejects when nothing maps locally. Renderer then launches.
   pickUpTask: (ticketId: string, repositories: string[]): Promise<{ cwd: string; initialPrompt: string }> =>

@@ -3,6 +3,7 @@ import { readConfig } from '../config/config'
 import { getAllTerminals, updateTerminalMetadataFromHook } from '../pty/terminal-manager'
 import { addHistoryEntry } from '../config/activity-history'
 import { fetchPRStatus, type AggregatedReviewStatus } from '../github'
+import { shouldEmitMerged } from './merge-detection'
 import type { RepositoryMetadata } from '../../types'
 import { t } from '../i18n'
 
@@ -15,6 +16,8 @@ const NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000
 interface LastKnown {
   status: AggregatedReviewStatus
   updatedAt: number
+  /** Tracked so a merge is emitted once per PR, not on every subsequent tick. */
+  merged: boolean
 }
 
 export class PRReviewWatcher {
@@ -97,6 +100,10 @@ export class PRReviewWatcher {
         if (!prUrl) continue
         // Stop polling closed-but-unmerged PRs
         if (repoMeta.prClosed === true && repoMeta.prMerged !== true) continue
+        // A merge is terminal: the status cannot change again and the `merged`
+        // activity event has already been emitted (prMerged is written with it).
+        // Polling on would only burn GitHub rate limit.
+        if (repoMeta.prMerged === true) continue
         targets.push({ terminalId: terminal.id, repoPath, prUrl, existing: repoMeta })
       }
     }
@@ -146,6 +153,22 @@ export class PRReviewWatcher {
           }
         }
 
+        // Merge is GitHub-sourced, so the flow metrics get a reliable cycle end
+        // even when nobody runs /magic:done. Deliberately OUTSIDE the status
+        // transition above: merging an approved PR leaves `status` at 'approved',
+        // so gating on a status change would drop this event.
+        if (shouldEmitMerged(previous, snapshot, target.existing)) {
+          const terminal = terminals.find(t => t.id === target.terminalId)
+          addHistoryEntry({
+            agentId: target.terminalId,
+            agentName: terminal?.metadata?.title || terminal?.name || target.terminalId,
+            action: 'merged',
+            ticketId: terminal?.metadata?.ticketId,
+            description: terminal?.metadata?.description,
+            repositories: terminal?.repositories || [],
+          })
+        }
+
         // Notify only if window is not focused, on a real transition, respecting cooldown
         const mainWindow = this.getMainWindow()
         const windowFocused = mainWindow?.isFocused() ?? false
@@ -159,7 +182,11 @@ export class PRReviewWatcher {
           )
         }
 
-        this.lastKnownStatus.set(target.prUrl, { status: snapshot.status, updatedAt: snapshot.updatedAt })
+        this.lastKnownStatus.set(target.prUrl, {
+          status: snapshot.status,
+          updatedAt: snapshot.updatedAt,
+          merged: snapshot.merged,
+        })
 
         if (mainWindow) {
           mainWindow.webContents.send('prWatcher:updated', {

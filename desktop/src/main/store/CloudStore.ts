@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, AppInstallationInfo, Config, HistoryEntry, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SkillInvocationInput, SpotlightConfig, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SkillInvocationInput, SpotlightConfig, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
 import { isValidLanguage, isValidTheme } from '../../types'
 import { isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 import { getAuthedClient } from '../cloud/auth'
@@ -41,6 +41,38 @@ interface ActivityEventRow {
   repositories: string[]
   occurred_at: string
 }
+
+/**
+ * The org-wide read selects `user_id` (to attribute in-flight work) and skips
+ * `description` (free text nobody aggregates). Kept as its own shape rather than
+ * widening ActivityEventRow, so loadHistory's contract stays untouched.
+ */
+interface OrgActivityEventRow {
+  id: string
+  user_id: string | null
+  agent_id: string | null
+  action: string
+  ticket_id: string | null
+  repositories: string[]
+  occurred_at: string
+}
+
+/**
+ * Actions the flow metrics can actually use. `completed` (every Claude-Code turn)
+ * and `committed` (every commit) are excluded on purpose: they dwarf these in
+ * volume and would eat the row budget without informing a single metric.
+ */
+const FLOW_ACTIONS: readonly HistoryAction[] = [
+  'started',
+  'pr_created',
+  'review',
+  'review_addressed',
+  'review_approved',
+  'review_changes_requested',
+  'merged',
+  'agent_created',
+  'agent_closed',
+]
 
 interface RepositoryRow {
   id: string
@@ -878,6 +910,55 @@ export class CloudStore implements Store {
       occurredAt: r.occurred_at,
     }))
     return { rows, capped }
+  }
+
+  /**
+   * Org-wide activity events for the Team page's flow metrics.
+   *
+   * Two deliberate differences from loadHistory, which reads the same table:
+   *
+   * 1. NO user_id filter. The RLS select policy is `is_org_member(org_id)`, so any
+   *    member may read the whole org — that is what makes team-level flow metrics
+   *    possible. loadHistory keeps its own scoping for the personal feed.
+   * 2. An action allowlist. `completed` fires on every Claude-Code turn and
+   *    `committed` on every commit, so they outnumber the flow-relevant actions by
+   *    an order of magnitude. Without the filter the row cap below would silently
+   *    truncate weeks of flow signal for a team that is merely chatty.
+   */
+  async loadOrgActivity(sinceMs: number, limit: number): Promise<OrgActivity> {
+    const sinceIso = new Date(sinceMs).toISOString()
+    const empty: OrgActivity = { events: [], capped: false, since: sinceIso }
+
+    const ctx = await this.context()
+    if (!ctx) return empty
+
+    const { data, error } = await ctx.client
+      .from('activity_events')
+      .select('id, user_id, agent_id, action, ticket_id, repositories, occurred_at')
+      .eq('org_id', ctx.orgId)
+      .gte('occurred_at', sinceIso)
+      .in('action', FLOW_ACTIONS)
+      .order('occurred_at', { ascending: false })
+      .limit(limit)
+
+    if (error || !data) return empty
+
+    const capped = data.length === limit
+    const events = (data as OrgActivityEventRow[]).map((row) => ({
+      id: row.id,
+      userId: row.user_id,
+      agentId: row.agent_id,
+      action: row.action as HistoryAction,
+      ticketId: row.ticket_id,
+      repositories: Array.isArray(row.repositories) ? row.repositories : [],
+      occurredAt: row.occurred_at,
+    }))
+
+    // Rows come newest-first, so on a capped read the LAST row is the oldest the
+    // caller may trust. Reporting the requested window instead would invite the
+    // UI to draw confident zeroes for weeks that were simply cut off.
+    const since = capped && events.length > 0 ? events[events.length - 1].occurredAt : sinceIso
+    return { events, capped, since }
   }
 
   // -------------------------------------------------------------------------

@@ -17,6 +17,9 @@ const ACTION_CONFIG: Record<HistoryAction, { labelKey: MessageKey; color: string
   committed: { labelKey: 'history.action.committed', color: 'bg-yellow', dot: 'bg-yellow' },
   pr_created: { labelKey: 'history.action.prCreated', color: 'bg-blue', dot: 'bg-blue' },
   review: { labelKey: 'history.action.review', color: 'bg-purple', dot: 'bg-purple' },
+  // Blue marks an author-side action (same family as pr_created), which keeps it
+  // readable against purple 'review' — a reviewer picking the PR up.
+  review_addressed: { labelKey: 'history.action.reviewAddressed', color: 'bg-blue', dot: 'bg-blue' },
   review_approved: { labelKey: 'history.action.reviewApproved', color: 'bg-green', dot: 'bg-green' },
   review_changes_requested: { labelKey: 'history.action.reviewChangesRequested', color: 'bg-red', dot: 'bg-red' },
   merged: { labelKey: 'history.action.merged', color: 'bg-green', dot: 'bg-green' },
