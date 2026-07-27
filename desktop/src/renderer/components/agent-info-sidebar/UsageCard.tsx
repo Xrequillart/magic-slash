@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Gauge, DollarSign, Cpu, Clock, RefreshCw, Minus, Plus } from 'lucide-react'
 import type { TerminalUsage } from '../../../types'
-import { formatTimestamp } from './utils'
+import { formatTimestamp, contextColors } from './utils'
 import { useT, useLocale, type Translate } from '../../i18n'
 import { formatUsd } from '../../utils/usageStats'
-import { gaugeColors } from './LimitGauge'
 
 interface UsageCardProps {
   usage: TerminalUsage
@@ -45,7 +44,7 @@ export function UsageCard({ usage }: UsageCardProps) {
 
   const hasContext = typeof contextPercent === 'number'
   const pct = Math.min(100, Math.max(0, contextPercent ?? 0))
-  const colors = gaugeColors(pct)
+  const colors = contextColors(pct)
 
   const [minimized, setMinimized] = useState(false)
 

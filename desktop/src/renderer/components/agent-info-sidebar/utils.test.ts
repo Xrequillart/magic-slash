@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatTimestamp, formatRelativeDate } from './utils'
+import { formatTimestamp, formatRelativeDate, contextColors } from './utils'
 import { t as translate, type MessageKey } from '../../../i18n'
 
 // Both formatters take a translator; bind English so the expectations below stay
@@ -68,5 +68,22 @@ describe('formatRelativeDate', () => {
   it('returns input unchanged if no match', () => {
     expect(formatRelativeDate('just now', t)).toBe('just now')
     expect(formatRelativeDate('', t)).toBe('')
+  })
+})
+
+describe('contextColors', () => {
+  it('stays green below 40%', () => {
+    expect(contextColors(0)).toEqual({ bar: 'bg-green', text: 'text-green' })
+    expect(contextColors(39.9)).toEqual({ bar: 'bg-green', text: 'text-green' })
+  })
+
+  it('turns orange from 40% up to 70%', () => {
+    expect(contextColors(40)).toEqual({ bar: 'bg-orange', text: 'text-orange' })
+    expect(contextColors(69.9)).toEqual({ bar: 'bg-orange', text: 'text-orange' })
+  })
+
+  it('turns red from 70%', () => {
+    expect(contextColors(70)).toEqual({ bar: 'bg-red', text: 'text-red' })
+    expect(contextColors(100)).toEqual({ bar: 'bg-red', text: 'text-red' })
   })
 })

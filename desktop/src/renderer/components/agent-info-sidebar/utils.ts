@@ -63,3 +63,25 @@ export function formatRelativeDate(relativeDate: string, t: Translate): string {
 
   return result
 }
+
+/**
+ * Colour for the session context gauge: green, then orange from 40%, then red
+ * from 70%. Deliberately not `gaugeColors` from LimitGauge — that one paints
+ * the plan rate limits, where 60% of a weekly quota is unremarkable. A context
+ * window is the opposite: filling it is what triggers a compaction, so the
+ * warning has to arrive far earlier.
+ *
+ * Returns Tailwind classes rather than colours. `orange`, `red` and `green`
+ * resolve against the per-theme tokens written by the theme registry
+ * (src/themes.ts), so every theme supplies its own shade — the light ones need
+ * a much darker orange to stay legible on white than the dark ones do.
+ *
+ * Lives here, next to the formatters, rather than in LimitGauge: that module
+ * pulls in the i18n hook, which touches `window` at import and cannot be loaded
+ * from a node-environment test.
+ */
+export function contextColors(pct: number): { bar: string; text: string } {
+  if (pct >= 70) return { bar: 'bg-red', text: 'text-red' }
+  if (pct >= 40) return { bar: 'bg-orange', text: 'text-orange' }
+  return { bar: 'bg-green', text: 'text-green' }
+}
