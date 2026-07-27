@@ -110,6 +110,7 @@ const BADGE_TONES = {
   green: 'bg-green/10 text-green',
   yellow: 'bg-yellow/10 text-yellow',
   red: 'bg-red/10 text-red',
+  purple: 'bg-purple/10 text-purple',
 } as const
 
 export type BadgeTone = keyof typeof BADGE_TONES
@@ -127,21 +128,6 @@ export function Badge({
     <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${BADGE_TONES[tone]} ${className}`}>
       {children}
     </span>
-  )
-}
-
-// ── Dashboard tile ───────────────────────────────────────────────────────────
-
-/** A single headline number. `value` is pre-formatted by the caller. */
-export function StatTile({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-black/5 bg-white p-5">
-      <div className="flex items-center gap-1.5 text-xs text-muted">
-        <Icon className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate">{label}</span>
-      </div>
-      <div className="mt-2 font-display text-3xl font-black leading-none tracking-tight text-ink">{value}</div>
-    </div>
   )
 }
 

@@ -1,17 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bot, GitPullRequest, Coins } from 'lucide-react'
 import { useRequireSession } from '@/lib/session'
 import { fetchInstallations, type Installation } from '@/lib/installations'
 import { doneCount, isOnboarded, onboardingState } from '@/lib/onboarding'
 import { fetchOrgs, type Org } from '@/lib/orgs'
 import { fetchProfile, type UserProfile } from '@/lib/profile'
-import { fetchUserStats, formatUsd, type UserStats } from '@/lib/stats'
+import { fetchTeamOverview, type TeamOverview } from '@/lib/team'
 import { AppShell } from '@/components/AppShell'
 import { Confetti } from '@/components/Confetti'
 import { GettingStarted } from '@/components/GettingStarted'
-import { FullPageLoader, StatTile } from '@/components/ui'
+import { TeamRepos } from '@/components/TeamRepos'
+import { FullPageLoader } from '@/components/ui'
 
 /** Fallback greeting name, from the local part of the email. */
 function nameFromEmail(email?: string): string {
@@ -26,7 +26,7 @@ export default function Dashboard() {
   // undefined = not fetched yet, null = fetched and there is no profile row.
   const [profile, setProfile] = useState<UserProfile | null | undefined>(undefined)
   const [installs, setInstalls] = useState<Installation[] | null>(null)
-  const [stats, setStats] = useState<UserStats | null>(null)
+  const [team, setTeam] = useState<TeamOverview | null>(null)
 
   const [bursts, setBursts] = useState(0)
   const lastDone = useRef<number | null>(null)
@@ -40,7 +40,7 @@ export default function Dashboard() {
     loadOrgs()
     fetchProfile().then(setProfile)
     fetchInstallations().then(setInstalls)
-    fetchUserStats().then(setStats)
+    fetchTeamOverview().then(setTeam)
   }, [session, loadOrgs])
 
   const state = onboardingState(orgs, profile, installs)
@@ -67,14 +67,10 @@ export default function Dashboard() {
       <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">Hey {greeting}.</h1>
 
       <div className="mt-10">
-        {/* Stats are meaningless before the app has run, and they compete with the
-            checklist for attention — so they wait until onboarding is behind you. */}
+        {/* The team view is meaningless before the app has run, and it competes with
+            the checklist for attention — so it waits until onboarding is behind you. */}
         {isOnboarded(state) ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatTile icon={Bot} label="Agents" value={stats ? String(stats.agents) : '—'} />
-            <StatTile icon={GitPullRequest} label="In review" value={stats ? String(stats.inReview) : '—'} />
-            <StatTile icon={Coins} label="This month" value={stats ? formatUsd(stats.monthCostUsd) : '—'} />
-          </div>
+          <TeamRepos overview={team} />
         ) : (
           state && (
             <GettingStarted
