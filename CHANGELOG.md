@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.56.0] - 2026-07-27
+
+### Added
+
+- **Desktop**: Derive an agent's organization from its repositories
+- Show team repositories on the webapp dashboard
+- **Desktop**: Archive agents on close instead of deleting them
+- **Desktop**: Replace team flow metrics with per-repo agent counts
+
+### Fixed
+
+- **Desktop**: Identify a repository by path for worktree files
+
 ## [0.55.1] - 2026-07-27
 
 ### Added
@@ -1668,6 +1681,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.56.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.56.0
 [0.55.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.55.1
 [0.55.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.55.0
 [0.54.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.54.1
