@@ -2,7 +2,7 @@
 name: magic:pr
 description: Pushes code, creates a GitHub Pull Request, and updates the linked Jira/GitHub ticket. Use this skill when the user indicates their coding work is done and they want to create or finalize a PR — even if they don't explicitly say "PR". Triggers on phrases like: "done", "terminé", "j'ai fini", "create PR", "créer la PR", "ready for PR", "prêt pour la PR", "ship it", "envoie la sauce", "let's get this merged", "push my changes", "pousse tout ça", "wrap it up", "c'est bon pour moi", or any completion signal in English or French.
 argument-hint: <base-branch> (optional, e.g., develop, staging)
-allowed-tools: Bash(*), Read, mcp__github__*, mcp__atlassian__*, AskUserQuestion
+allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, Skill, mcp__github__*, mcp__atlassian__*, AskUserQuestion
 ---
 
 # magic-slash v0.54.1 - /pr
@@ -14,9 +14,11 @@ allowed-tools: Bash(*), Read, mcp__github__*, mcp__atlassian__*, AskUserQuestion
 > - **Step 3**: Push to remote — the PR needs code on the remote
 > - **Step 6**: Create the Pull Request — the core deliverable of this skill
 > - **Step 6.4**: Update Magic Slash metadata — keeps the Desktop app UI in sync
+> - **Step 6.5**: Announce the PR to the user — they need the link before anything long-running starts
 > - **Step 7**: Update the Jira/GitHub ticket — closes the feedback loop with the team
+> - **Step 7.4**: Watch the CI and review feedback — turns the PR from "created" into "actually green"
 
-You are an assistant that finalizes a task by pushing commits, creating a PR and updating the Jira/GitHub ticket.
+You are an assistant that finalizes a task by pushing commits, creating a PR, updating the Jira/GitHub ticket, and then watching the PR until its checks are green and its review feedback is handled.
 
 ## Configuration
 
@@ -59,9 +61,10 @@ Use `AskUserQuestion` with the text from **`MSG_BRANCH_ASK`**.
 
 ### Pull Request parameters
 
-| Parameter         | Repo path                                          | Default | Description                     |
-| ----------------- | -------------------------------------------------- | ------- | ------------------------------- |
-| Auto-link tickets | `.repositories.<name>.pullRequest.autoLinkTickets` | `true`  | Add Jira/GitHub links in the PR |
+| Parameter         | Repo path                                          | Default | Description                                    |
+| ----------------- | -------------------------------------------------- | ------- | ---------------------------------------------- |
+| Auto-link tickets | `.repositories.<name>.pullRequest.autoLinkTickets` | `true`  | Add Jira/GitHub links in the PR                |
+| Watch CI          | `.repositories.<name>.pullRequest.watchCI`         | `true`  | Watch checks and review feedback after Step 7  |
 
 ### Issues parameters
 
@@ -453,6 +456,21 @@ Replace:
 
 This command is silent and never blocks the process.
 
+## Step 6.5: Announce the created PR
+
+> Announce **immediately** after creation, before the ticket update and before the watch phase. Everything that follows can take tens of minutes; the user must have the link in hand before that starts, not after.
+
+Display **`MSG_PR_CREATED`**, substituting:
+
+- `{PR_NUMBER}`: the PR number returned by Step 6.3 (e.g. `42`)
+- `{PR_TITLE}`: the PR title as created
+- `{PR_URL}`: the full PR URL
+- `{base_branch}` / `{head_branch}`: the branches resolved in Steps 6.0 and 1
+
+The number and title must appear together on one line in the `#{PR_NUMBER} — {PR_TITLE}` form, and the URL must be printed bare (no markdown link wrapper) so the terminal makes it clickable.
+
+Do not merge this announcement into the Step 7.3 summary. They serve different moments: this one confirms the PR exists, the other closes the whole workflow.
+
 ## Step 7: Update the Jira/GitHub ticket
 
 Use `$TICKET_ID` (extracted in Step 0.1). If `$TICKET_ID` is empty, use `AskUserQuestion` to ask the user if they want to link a ticket manually (and which one). If they decline, skip to Step 7.3.
@@ -491,9 +509,132 @@ If a GitHub issue ID is found:
 
 Display **`MSG_SUMMARY`**, substituting `{branch}`, `{PR_URL}`, `{PR_NUMBER}`, `{TICKET_ID}`, and `{ticket_status}`.
 
+`MSG_SUMMARY` has two variants — pick based on `pullRequest.watchCI` (from the config loaded in the Configuration step, default `true`), taking into account the skip conditions listed in Step 7.4.0:
+
+- **`watchCI` is `true`**: use the **watch** variant, whose next-steps announce that the watch phase is starting. Then continue to Step 7.4.
+- **`watchCI` is `false`**: use the **manual** variant (the classic "wait for CI, then run /magic:review" list) and stop here — skip Step 7.4 entirely.
+
+## Step 7.4: Watch the CI and handle review feedback
+
+> This is what turns "the PR is created" into "the PR is actually mergeable". Without it, the user has to come back later to discover a red pipeline or an unread Greptile review.
+
+Read `references/ci-watch.md` before executing this step — it holds the watcher contract, the exact `gh` commands, the time budget, and the report schema. Do not improvise the polling logic.
+
+### 7.4.0: Check whether watching is enabled
+
+Read `pullRequest.watchCI` from the config already loaded in the Configuration step. Default: `true`.
+
+If `watchCI` is `false`, skip the whole of Step 7.4.
+
+Also skip (and say so in one line) when any of these hold — watching would just burn 30 minutes for nothing:
+
+- `gh` is not available or not authenticated (`gh auth status` fails)
+- The PR was created as a draft
+- Step 1.1 found an existing PR and the user chose to stop
+
+### 7.4.1: Resolve the watcher inputs
+
+```bash
+gh repo view --json nameWithOwner -q .nameWithOwner
+git rev-parse HEAD
+```
+
+Combined with `$PR_NUMBER` (Step 6.3) and the head branch (Step 1), these are the four values the watcher needs.
+
+### 7.4.2: Launch the watcher sub-agent
+
+Launch an `Agent` (subagent_type=`general-purpose`) with `run_in_background: false`.
+
+The prompt must contain, and nothing more:
+
+1. The four inputs from Step 7.4.1 (PR number, repo slug, head branch, head SHA)
+2. An instruction to read `~/.claude/skills/magic-pr/references/ci-watch.md` and follow it exactly
+3. The reminder that it is a **read-only observer**: it must not edit files, commit, push, or comment on the PR
+4. The requirement to return the JSON report from that document as its entire final message
+
+Keeping the watcher in a sub-agent is deliberate: 30 minutes of polling output stays out of the main context, and only the compact report comes back.
+
+If the sub-agent returns something that is not parseable as the report schema, do not retry the whole watch — fall back to a single direct snapshot (`gh pr checks "$PR_NUMBER" --json bucket,name,state,link,workflow`) and treat that as the report.
+
+### 7.4.3: All green, no feedback — finish here
+
+When `checks.state` is `all_passed` (or `no_checks`) **and** `review.actionable_count` is `0`:
+
+1. Display **`MSG_CI_ALL_GREEN`**, substituting `{PR_NUMBER}`, `{PR_URL}`, `{passed}`/`{total}`, `{waited}` (minutes), and `{reviewers}` (the bots that reported nothing actionable, or `—`)
+2. Update the metadata status:
+
+   ```bash
+   [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&status=CI%20green" > /dev/null 2>&1 || true
+   ```
+
+3. **Stop.** The work is done — do not chain into `/magic:review` or `/magic:resolve`, and do not ask the user for anything else.
+
+### 7.4.4: Checks failed — auto-fix loop
+
+Handle CI failures **before** review comments: a fix push re-triggers both the checks and the review bots, which invalidates any comment list gathered earlier.
+
+Display **`MSG_CI_FAILED`**, substituting `{PR_NUMBER}`, `{failed}`/`{total}`, and the failure list (each with `{name}`, `{error_class}`, `{diagnosis}`, `{link}`).
+
+Then run up to **3** fix rounds. For each round:
+
+1. **Fix**: for each failure, read the files named in `suspected_files`, reproduce locally when the failing command is available in the project (`npm run lint`, `npm test`, `tsc --noEmit`…), and apply the correction with `Edit`. Prepend `$NODE_PREFIX` (Step 0.6) to any Node.js command.
+2. **Validate**: re-run the detected verification command from Step 2.1 locally before pushing. A fix that does not pass locally will not pass in CI either.
+3. **Commit**: one commit per round, scoped to the CI fix:
+
+   ```bash
+   git add <fixed-files>
+   git commit -m "fix(ci): <what was broken>"
+   ```
+
+   Follow the repo's commit `format`/`style` config, as `/magic:commit` does.
+4. **Push**: `git push` (with `$NODE_PREFIX` if set).
+5. **Re-launch the watcher** (Step 7.4.2) against the new head SHA and re-evaluate from Step 7.4.3.
+
+Display **`MSG_CI_AUTO_FIX`** at each round, substituting `{attempt}`, `{fixes}` (what was changed), and `{COMMIT_SHA}`.
+
+**Failures that must not be auto-fixed** — report them and stop the loop immediately:
+
+- Secrets or credentials detected by a scanner
+- Failures in code untouched by this PR (pre-existing breakage or a flaky test)
+- Deploy, infrastructure, or external-service failures
+- Any failure whose fix would change intended behaviour rather than correct a defect
+
+For these, and after 3 unsuccessful rounds, display **`MSG_CI_FIX_EXHAUSTED`** — substituting `{attempts}`, the remaining failures, and `{PR_URL}` — then stop. Do not push a fourth speculative fix.
+
+### 7.4.5: Review feedback — chain into /magic:resolve
+
+When the checks are settled (green, or failures explicitly handed back to the user) **and** `review.actionable_count` is greater than `0`:
+
+1. Display **`MSG_REVIEW_COMMENTS_FOUND`**, substituting `{count}`, `{reviewers}`, and the comment list (each with `{source}`, `{path}`, `{line}`, `{severity}`, `{request}`)
+2. Chain into the resolve workflow **without asking the user first** — the review feedback is handled automatically:
+   - Invoke the `magic-resolve` skill via the `Skill` tool
+   - If that is unavailable, read `~/.claude/skills/magic-resolve/SKILL.md` and execute its **Steps 3 to 7.5** (retrieve comments → apply fixes → preview → validate → commit → push → reply → re-request review), reusing the PR number and ticket ID already resolved here instead of re-detecting them
+3. Pass along the watcher's `actionable` list as context so resolve does not re-classify the informational and stale comments the watcher already filtered out
+4. After resolve pushes its fixes, re-launch the watcher once (Step 7.4.2) to confirm the new commit is green and that no new feedback landed. Re-evaluate from Step 7.4.3, but do **not** start another resolve cycle from this skill — if a second round of comments arrives, report it and let the user decide.
+
+### 7.4.6: Timeout or watcher error
+
+- `checks.state` is `timed_out`: display **`MSG_CI_WATCH_TIMEOUT`**, substituting `{waited}` (minutes), the still-pending check names, and `{PR_URL}`. Report only what was observed — never claim checks passed when they never completed.
+- `checks.state` is `error`: report the error message from `notes` and tell the user to check the PR manually.
+
+In both cases, still handle any actionable review feedback already collected (Step 7.4.5) before finishing.
+
 ## Step 8: Multi-repo summary (if applicable)
 
 If you created PRs in multiple worktrees, display **`MSG_MULTI_REPO_FINAL`**, substituting `{TICKET-ID}` and the per-worktree results (each with `{worktree-name}`, `{PR_URL}`, and any `{error reason}` for failed worktrees).
+
+### Multi-repo and the watch phase
+
+In multi-repo mode, Step 7.4 does **not** run inside each worktree cycle — waiting 30 minutes on the first PR before creating the second one would leave the user with a half-finished set of PRs.
+
+Instead:
+
+1. Create every PR first (Steps 1–7 per worktree), announcing each one via Step 6.5
+2. Update the ticket once (Step 7)
+3. Display this multi-repo summary
+4. **Then** run Step 7.4 once per created PR, sequentially, `cd`-ing into the matching worktree before each watch so that fixes land in the right repo
+
+Skip the watch for any worktree whose PR cycle failed.
 
 ---
 
@@ -501,3 +642,4 @@ If you created PRs in multiple worktrees, display **`MSG_MULTI_REPO_FINAL`**, su
 
 - `references/messages.md` — All bilingual message templates (EN/FR). Read relevant sections as needed (not the whole file at once).
 - `references/node-setup.md` — Node.js version manager detection. Read before any Node.js-dependent command (Step 0.6).
+- `references/ci-watch.md` — Watcher contract, `gh` commands, time budget, and report schema. Read before Step 7.4.

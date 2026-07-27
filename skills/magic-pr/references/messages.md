@@ -436,9 +436,63 @@ Continuing to next repository...
 Passage au repository suivant...
 ```
 
-## MSG_SUMMARY
+## MSG_PR_CREATED
+
+Displayed in Step 6.5, immediately after the PR is created — before the ticket update and before the watch phase.
 
 ### en
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 Pull Request created
+
+   #{PR_NUMBER} — {PR_TITLE}
+
+   {PR_URL}
+
+   {head_branch} → {base_branch}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### fr
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 Pull Request créée
+
+   #{PR_NUMBER} — {PR_TITLE}
+
+   {PR_URL}
+
+   {head_branch} → {base_branch}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## MSG_SUMMARY
+
+Two variants. Use **watch** when `pullRequest.watchCI` is `true` (Step 7.4 follows), **manual** when it is `false`.
+
+### en — watch
+
+```text
+✅ PR created!
+
+📌 Branch   : {branch}
+🔗 PR       : {PR_URL}
+🎫 Ticket   : {TICKET_ID} → {ticket_status}
+
+Now watching the PR — you can leave this running:
+1. Waiting for the CI checks to finish
+2. Failing checks get fixed and re-pushed automatically (up to 3 attempts)
+3. Review feedback from bots or humans gets addressed automatically
+4. Run /magic:done once the PR is merged
+```
+
+### en — manual
 
 ```text
 ✅ PR created!
@@ -454,7 +508,23 @@ Next steps:
 4. Run /magic:done to finalize the task
 ```
 
-### fr
+### fr — watch
+
+```text
+✅ PR créée !
+
+📌 Branche  : {branch}
+🔗 PR       : {PR_URL}
+🎫 Ticket   : {TICKET_ID} → {ticket_status}
+
+Je surveille la PR — tu peux laisser tourner :
+1. J'attends la fin des checks CI
+2. Les checks en échec sont corrigés et repoussés automatiquement (3 tentatives max)
+3. Les retours de review (bots ou humains) sont traités automatiquement
+4. Lance /magic:done une fois la PR mergée
+```
+
+### fr — manual
 
 ```text
 ✅ PR créée !
@@ -468,6 +538,202 @@ Prochaines étapes :
 2. Attend l'approbation et les checks CI
 3. Merge la PR une fois approuvée
 4. Lance /magic:done pour finaliser la tâche
+```
+
+## MSG_CI_ALL_GREEN
+
+Displayed in Step 7.4.3 — the terminal state of a healthy PR.
+
+### en
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ PR #{PR_NUMBER} is green
+
+   Checks    : {passed}/{total} passed
+   Review    : no actionable feedback ({reviewers})
+   Waited    : {waited} min
+
+   {PR_URL}
+
+Nothing left to do here — merge when you're ready,
+then run /magic:done to close out the ticket.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### fr
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ La PR #{PR_NUMBER} est verte
+
+   Checks    : {passed}/{total} passés
+   Review    : aucun retour à traiter ({reviewers})
+   Attente   : {waited} min
+
+   {PR_URL}
+
+Plus rien à faire ici — merge quand tu veux,
+puis lance /magic:done pour clore le ticket.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## MSG_CI_FAILED
+
+Displayed in Step 7.4.4 when the checks finished with at least one failure.
+
+### en
+
+```text
+❌ CI failed on PR #{PR_NUMBER} — {failed}/{total} checks
+
+  • {name} ({error_class})
+    {diagnosis}
+    {link}
+
+Fixing automatically...
+```
+
+### fr
+
+```text
+❌ CI en échec sur la PR #{PR_NUMBER} — {failed}/{total} checks
+
+  • {name} ({error_class})
+    {diagnosis}
+    {link}
+
+Correction automatique en cours...
+```
+
+## MSG_CI_AUTO_FIX
+
+Displayed at each round of the auto-fix loop (Step 7.4.4).
+
+### en
+
+```text
+🔧 Fix attempt {attempt}/3
+
+   {fixes}
+
+   Committed : {COMMIT_SHA}
+   Pushed — waiting for the CI to run again.
+```
+
+### fr
+
+```text
+🔧 Tentative de correction {attempt}/3
+
+   {fixes}
+
+   Commit  : {COMMIT_SHA}
+   Poussé — j'attends que la CI reparte.
+```
+
+## MSG_CI_FIX_EXHAUSTED
+
+Displayed when the auto-fix loop gives up, or when a failure must not be auto-fixed.
+
+### en
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  CI still failing after {attempts} attempt(s)
+
+Remaining failures:
+  • {name} ({error_class})
+    {diagnosis}
+    {link}
+
+I'm stopping here rather than pushing another speculative fix.
+
+   {PR_URL}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### fr
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  CI toujours en échec après {attempts} tentative(s)
+
+Échecs restants :
+  • {name} ({error_class})
+    {diagnosis}
+    {link}
+
+Je m'arrête ici plutôt que de pousser une correction au hasard.
+
+   {PR_URL}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## MSG_REVIEW_COMMENTS_FOUND
+
+Displayed in Step 7.4.5 before chaining into the resolve workflow.
+
+### en
+
+```text
+💬 {count} actionable review comment(s) on the PR — from {reviewers}
+
+  • [{severity}] {source} · {path}:{line}
+    {request}
+
+Addressing them now via /magic:resolve...
+```
+
+### fr
+
+```text
+💬 {count} commentaire(s) de review à traiter sur la PR — de {reviewers}
+
+  • [{severity}] {source} · {path}:{line}
+    {request}
+
+Je les traite maintenant via /magic:resolve...
+```
+
+## MSG_CI_WATCH_TIMEOUT
+
+Displayed in Step 7.4.6 when the 30 min budget runs out with checks still pending.
+
+### en
+
+```text
+⏱️  Stopped watching after {waited} min — some checks are still running
+
+Still pending:
+  • {name}
+
+I can't tell you whether the PR is green. Check it directly:
+   {PR_URL}
+
+Re-run /magic:pr later, or /magic:resolve if review comments show up.
+```
+
+### fr
+
+```text
+⏱️  Arrêt de la surveillance après {waited} min — des checks tournent encore
+
+Toujours en attente :
+  • {name}
+
+Je ne peux pas te dire si la PR est verte. Vérifie directement :
+   {PR_URL}
+
+Relance /magic:pr plus tard, ou /magic:resolve si des commentaires arrivent.
 ```
 
 ## MSG_MULTI_REPO_FINAL
