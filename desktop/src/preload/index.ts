@@ -51,8 +51,6 @@ const configApi = {
   updateRepositoryWorktreeFilesSettings: (name: string, settings: string[]) =>
     ipcRenderer.invoke('config:updateRepositoryWorktreeFilesSettings', { name, settings }),
 
-  setHistoryEnabled: (enabled: boolean) =>
-    ipcRenderer.invoke('config:setHistoryEnabled', { enabled }),
   setSyncClaudeTheme: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setSyncClaudeTheme', { enabled }),
   setUsageCardEnabled: (enabled: boolean): Promise<{ config: Config }> =>
@@ -265,18 +263,11 @@ const historyApi = {
     ipcRenderer.invoke('history:getLast', { repoPath }),
 }
 
-// Activity History API (append-only — no clear: activity_events is append-only)
-const activityHistoryApi = {
-  getAll: () => ipcRenderer.invoke('activityHistory:getAll'),
-  add: (params: { agentId: string; agentName: string; action: string; ticketId?: string; description?: string; repositories: string[] }) =>
-    ipcRenderer.invoke('activityHistory:add', params),
-}
-
 // Connectivity API (cloud is mandatory: the renderer blocks the whole app until
 // the backend reports 'ok'). See main/ipc/connectivity-handlers.ts.
 export type ConnectivityStatus = 'ok' | 'unauthorized' | 'unreachable' | 'disabled'
 
-export type StoreWriteKind = 'config' | 'agents' | 'history'
+export type StoreWriteKind = 'config' | 'agents'
 
 export interface InvalidRepo {
   name: string
@@ -583,7 +574,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   config: configApi,
   terminal: terminalApi,
   history: historyApi,
-  activityHistory: activityHistoryApi,
   window: windowApi,
   dialog: dialogApi,
   shell: shellApi,
@@ -610,7 +600,6 @@ declare global {
       config: typeof configApi
       terminal: typeof terminalApi
       history: typeof historyApi
-      activityHistory: typeof activityHistoryApi
       window: typeof windowApi
       dialog: typeof dialogApi
       shell: typeof shellApi

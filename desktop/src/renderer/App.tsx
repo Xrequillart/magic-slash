@@ -15,7 +15,6 @@ import { WhatsNewModal } from './components/WhatsNewModal'
 import { ConfigPage } from './pages/Config'
 import { TerminalsPage } from './pages/Terminals'
 import { SkillsPage } from './pages/Skills'
-import { HistoryPage } from './pages/History'
 import { DashboardPage } from './pages/Dashboard'
 import { PageModal } from './components/PageModal'
 import { LiveIndicator } from './components/LiveIndicator'
@@ -293,10 +292,9 @@ export function App() {
   // caches from the DB, so the latest change may not have been saved. Tell the
   // user, and refresh the local config view so it reflects the re-synced state.
   useEffect(() => {
-    const KIND_KEYS: Record<'config' | 'agents' | 'history', MessageKey> = {
+    const KIND_KEYS: Record<'config' | 'agents', MessageKey> = {
       config: 'toast.cloudWriteKind.config',
       agents: 'toast.cloudWriteKind.agents',
-      history: 'toast.cloudWriteKind.history',
     }
     const unsubscribe = window.electronAPI.connectivity.onWriteError(({ kind }) => {
       showToast(t('toast.cloudWriteFailed', { kind: t(KIND_KEYS[kind]) }), 'error')
@@ -381,7 +379,7 @@ export function App() {
 
       <FilePreviewPanel />
 
-      {/* Page overlays — Settings, Skills, History and Team */}
+      {/* Page overlays — Settings, Skills and Team */}
       {activeModal === 'settings' && (
         <PageModal title={t('sidebar.settings')} onClose={handleCloseModal}>
           <ConfigPage />
@@ -391,12 +389,6 @@ export function App() {
       {activeModal === 'skills' && (
         <PageModal title={t('sidebar.skills')} onClose={handleCloseModal}>
           <SkillsPage />
-        </PageModal>
-      )}
-
-      {activeModal === 'history' && (
-        <PageModal title={t('sidebar.history')} onClose={handleCloseModal}>
-          <HistoryPage />
         </PageModal>
       )}
 

@@ -3,7 +3,7 @@ import type { SkillInvocationInput } from '../../types'
 import type { Store } from '../store/Store'
 import { setStore, NOOP_STORE } from '../store/Store'
 
-// readConfig is mocked so we can flip the activity-recording opt-out per test.
+// readConfig is mocked so we can flip the GDPR recording opt-in per test.
 vi.mock('../config/config', () => ({ readConfig: vi.fn() }))
 import { readConfig } from '../config/config'
 import { recordSkillInvocation } from './skill-invocations'
@@ -21,8 +21,8 @@ function fakeStore(overrides: Partial<Store> = {}): Store {
 beforeEach(() => {
   recorded = []
   setStore(fakeStore())
-  // Opt-out default: historyEnabled absent means recording is ON.
-  vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {} })
+  // Opt-IN, so every test that expects a write has to grant consent first.
+  vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {}, usageLogsEnabled: true })
 })
 
 describe('recordSkillInvocation', () => {
@@ -42,22 +42,16 @@ describe('recordSkillInvocation', () => {
     expect(recorded).toEqual([{ skill: 'magic-commit' }])
   })
 
-  it('is not gated by usageLogsEnabled — only the skill name is collected', async () => {
-    // Unlike recordUsageSnapshot, this path must never consult the GDPR opt-in:
-    // usageLogsEnabled off must not stop skill telemetry.
-    vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {}, usageLogsEnabled: false })
+  it('records nothing when usageLogsEnabled is absent — the opt-in defaults to OFF', async () => {
+    // Only the skill name is collected, but it is still a record of what a human
+    // did: it must not be the one channel left open when consent was never given.
+    vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {} })
     await recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-plan' })
-    expect(recorded).toHaveLength(1)
+    expect(recorded).toEqual([])
   })
 
-  it('records when historyEnabled is true', async () => {
-    vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {}, historyEnabled: true })
-    await recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-pr' })
-    expect(recorded).toHaveLength(1)
-  })
-
-  it('records nothing when historyEnabled is false — same opt-out as the activity feed', async () => {
-    vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {}, historyEnabled: false })
+  it('records nothing when usageLogsEnabled is false — same opt-in as usage and activity', async () => {
+    vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {}, usageLogsEnabled: false })
     await recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-pr' })
     expect(recorded).toEqual([])
   })

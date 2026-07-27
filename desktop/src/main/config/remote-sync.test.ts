@@ -24,7 +24,6 @@ import {
 
 /** Every column NULL: "the user has never chosen any of these". */
 const emptyRow = (): UserSettingsRow => ({
-  history_enabled: null,
   usage_card_enabled: null,
   usage_card_minimized: null,
   usage_logs_enabled: null,
@@ -81,12 +80,12 @@ describe('applyRemoteSettingsRow', () => {
   it('adopts a changed setting and publishes it', async () => {
     await seed()
 
-    applyRemoteSettingsRow({ ...emptyRow(), history_enabled: false, launch_mode: 'plan' })
+    applyRemoteSettingsRow({ ...emptyRow(), usage_logs_enabled: false, launch_mode: 'plan' })
 
-    expect(readConfig().historyEnabled).toBe(false)
+    expect(readConfig().usageLogsEnabled).toBe(false)
     expect(readConfig().launchMode).toBe('plan')
     expect(pushed).toHaveLength(1)
-    expect(pushed[0].historyEnabled).toBe(false)
+    expect(pushed[0].usageLogsEnabled).toBe(false)
     expect(applyAppearanceFromConfig).toHaveBeenCalledWith(pushed[0])
     expect(changes).toHaveLength(1)
   })
@@ -135,7 +134,7 @@ describe('applyRemoteSettingsRow', () => {
   it('leaves repositories untouched', async () => {
     await seed({ repositories: { api: { path: '/repo/api', keywords: ['api'] } } as unknown as Config['repositories'] })
 
-    applyRemoteSettingsRow({ ...emptyRow(), history_enabled: false })
+    applyRemoteSettingsRow({ ...emptyRow(), usage_logs_enabled: false })
 
     expect(Object.keys(readConfig().repositories)).toEqual(['api'])
     expect(Object.keys(pushed[0].repositories)).toEqual(['api'])
@@ -145,7 +144,7 @@ describe('applyRemoteSettingsRow', () => {
     // Hydration has not run (or failed) and the interface is behind the
     // connectivity gate. Installing a settings-only config would briefly present
     // an app with no repositories, and hydration reads the same row anyway.
-    applyRemoteSettingsRow({ ...emptyRow(), history_enabled: false })
+    applyRemoteSettingsRow({ ...emptyRow(), usage_logs_enabled: false })
 
     expect(pushed).toEqual([])
     expect(changes).toEqual([])
@@ -155,7 +154,7 @@ describe('applyRemoteSettingsRow', () => {
     await seed()
     addConfigChangeListener(() => { throw new Error('listener blew up') })
 
-    applyRemoteSettingsRow({ ...emptyRow(), history_enabled: false })
+    applyRemoteSettingsRow({ ...emptyRow(), usage_logs_enabled: false })
 
     expect(pushed).toHaveLength(1)
   })

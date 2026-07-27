@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { HistoryEntry, Config } from '../../types'
 import type { Store } from '../store/Store'
 import { setStore, NOOP_STORE } from '../store/Store'
-import { readHistory, addHistoryEntry, hydrateHistory } from './activity-history'
+import { addHistoryEntry } from './activity-history'
 import { readConfig } from './config'
 
 vi.mock('./config', () => ({ readConfig: vi.fn(() => ({} as Config)) }))
@@ -12,130 +12,85 @@ function mockConfig(config: Partial<Config>): void {
   vi.mocked(readConfig).mockReturnValue(config as Config)
 }
 
-// History lives in the append-only Supabase `activity_events` table behind the
-// Store — there is no local history.json and no clear operation (dropped: the
-// table is append-only; a read limit replaces the old purge).
+// Activity events live in the append-only Supabase `activity_events` table behind
+// the Store. Write-only: there is no local history.json, no in-memory cache and no
+// read-back — the personal History page that used to read one is gone.
 
 let appended: HistoryEntry[] = []
 
-function fakeStore(initial: HistoryEntry[] = []): Store {
-  appended = structuredClone(initial)
+function fakeStore(): Store {
+  appended = []
   return {
     ...NOOP_STORE,
-    loadHistory: async (limit) => structuredClone(appended).slice(-limit),
     appendHistory: async (e) => { appended.push(structuredClone(e)) },
   }
 }
 
-async function seed(initial: HistoryEntry[] = []): Promise<void> {
-  mockConfig({})
-  setStore(fakeStore(initial))
-  await hydrateHistory()
-}
-
-describe('hydrateHistory / readHistory', () => {
-  it('returns [] when the store has no history', async () => {
-    await seed([])
-    expect(readHistory()).toEqual([])
-  })
-
-  it('returns the entries loaded from the store', async () => {
-    await seed([
-      { id: '1', agentId: 'a1', agentName: 'Claude 1', action: 'started', repositories: [], timestamp: 1000 },
-    ])
-    const result = readHistory()
-    expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('1')
-  })
-})
+const PARAMS = { agentId: 'a1', agentName: 'Claude 1', action: 'started' as const, repositories: [] }
 
 describe('addHistoryEntry', () => {
-  beforeEach(async () => { await seed([]) })
+  beforeEach(() => {
+    setStore(fakeStore())
+    mockConfig({ usageLogsEnabled: true })
+  })
 
-  it('creates an entry with all fields', () => {
-    const entry = addHistoryEntry({
+  it('writes an event carrying all fields', async () => {
+    addHistoryEntry({
       agentId: 'a1',
       agentName: 'Claude 1',
       action: 'started',
       ticketId: 'PROJ-123',
       description: 'Fix login',
       repositories: ['/repo1'],
-    })!
-    expect(entry.id).toBeDefined()
-    expect(entry.agentId).toBe('a1')
-    expect(entry.agentName).toBe('Claude 1')
-    expect(entry.action).toBe('started')
-    expect(entry.ticketId).toBe('PROJ-123')
-    expect(entry.description).toBe('Fix login')
-    expect(entry.repositories).toEqual(['/repo1'])
-    expect(entry.timestamp).toBeGreaterThan(0)
-  })
-
-  it('appends to the in-memory cache', () => {
-    addHistoryEntry({ agentId: 'a1', agentName: 'Claude 1', action: 'committed', repositories: [] })
-    expect(readHistory()).toHaveLength(1)
-  })
-
-  it('writes through to the store', async () => {
-    addHistoryEntry({ agentId: 'a1', agentName: 'Claude 1', action: 'committed', repositories: [] })
+    })
     await Promise.resolve()
+
     expect(appended).toHaveLength(1)
-  })
-
-  it('appends after existing entries', async () => {
-    await seed([
-      { id: 'existing', agentId: 'a0', agentName: 'Old', action: 'started', repositories: [], timestamp: 1000 },
-    ])
-    addHistoryEntry({ agentId: 'a1', agentName: 'Claude 1', action: 'committed', repositories: [] })
-    const result = readHistory()
-    expect(result).toHaveLength(2)
-    expect(result[0].id).toBe('existing')
-  })
-
-  it('caps the in-memory cache at the read limit (500)', async () => {
-    const existing: HistoryEntry[] = Array.from({ length: 500 }, (_, i) => ({
-      id: `entry-${i}`,
+    expect(appended[0]).toMatchObject({
       agentId: 'a1',
-      agentName: 'Claude',
+      agentName: 'Claude 1',
       action: 'started',
-      repositories: [],
-      timestamp: i,
-    }))
-    await seed(existing)
+      ticketId: 'PROJ-123',
+      description: 'Fix login',
+      repositories: ['/repo1'],
+    })
+    expect(appended[0].timestamp).toBeGreaterThan(0)
+  })
 
-    addHistoryEntry({ agentId: 'a2', agentName: 'Claude 2', action: 'committed', repositories: [] })
+  it('swallows a failed write instead of throwing into the caller', async () => {
+    setStore({ ...NOOP_STORE, appendHistory: async () => { throw new Error('offline') } })
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    const result = readHistory()
-    expect(result).toHaveLength(500)
-    expect(result[0].id).toBe('entry-1')
-    expect(result[result.length - 1].agentName).toBe('Claude 2')
+    expect(() => addHistoryEntry(PARAMS)).not.toThrow()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
   })
 })
 
-describe('addHistoryEntry — historyEnabled opt-out', () => {
-  beforeEach(async () => { await seed([]) })
+describe('addHistoryEntry — usageLogsEnabled GDPR opt-in', () => {
+  beforeEach(() => { setStore(fakeStore()) })
 
-  it('records when historyEnabled is true', async () => {
-    mockConfig({ historyEnabled: true })
-    expect(addHistoryEntry({ agentId: 'a1', agentName: 'Claude', action: 'started', repositories: [] })).not.toBeNull()
+  it('records when usageLogsEnabled is true', async () => {
+    mockConfig({ usageLogsEnabled: true })
+    addHistoryEntry(PARAMS)
     await Promise.resolve()
-    expect(readHistory()).toHaveLength(1)
     expect(appended).toHaveLength(1)
   })
 
-  it('records when historyEnabled is absent (opt-out default is ON)', async () => {
+  it('records nothing when usageLogsEnabled is absent (opt-in default is OFF)', async () => {
     mockConfig({})
-    expect(addHistoryEntry({ agentId: 'a1', agentName: 'Claude', action: 'started', repositories: [] })).not.toBeNull()
+    addHistoryEntry(PARAMS)
     await Promise.resolve()
-    expect(readHistory()).toHaveLength(1)
-    expect(appended).toHaveLength(1)
+    expect(appended).toEqual([])
   })
 
-  it('records nothing — cache or store — when historyEnabled is false', async () => {
-    mockConfig({ historyEnabled: false })
-    expect(addHistoryEntry({ agentId: 'a1', agentName: 'Claude', action: 'started', repositories: [] })).toBeNull()
+  it('records nothing when usageLogsEnabled is false', async () => {
+    mockConfig({ usageLogsEnabled: false })
+    addHistoryEntry(PARAMS)
     await Promise.resolve()
-    expect(readHistory()).toEqual([])
     expect(appended).toEqual([])
   })
 })

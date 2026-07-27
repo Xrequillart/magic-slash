@@ -21,7 +21,6 @@ import { getSupabase } from './supabase'
 export interface UserSettings {
   theme: string | null
   language: string | null
-  historyEnabled: boolean | null
   usageCardEnabled: boolean | null
   usageLogsEnabled: boolean | null
   dailyDigestEnabled: boolean | null
@@ -37,7 +36,6 @@ export type UserSettingsPatch = Partial<UserSettings>
 interface UserSettingsRow {
   theme: string | null
   language: string | null
-  history_enabled: boolean | null
   usage_card_enabled: boolean | null
   usage_logs_enabled: boolean | null
   daily_digest_enabled: boolean | null
@@ -49,13 +47,12 @@ interface UserSettingsRow {
 }
 
 const COLUMNS =
-  'theme, language, history_enabled, usage_card_enabled, usage_logs_enabled, daily_digest_enabled, split_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode'
+  'theme, language, usage_card_enabled, usage_logs_enabled, daily_digest_enabled, split_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   theme: 'theme',
   language: 'language',
-  historyEnabled: 'history_enabled',
   usageCardEnabled: 'usage_card_enabled',
   usageLogsEnabled: 'usage_logs_enabled',
   dailyDigestEnabled: 'daily_digest_enabled',
@@ -70,7 +67,6 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
 export const EMPTY_SETTINGS: UserSettings = {
   theme: null,
   language: null,
-  historyEnabled: null,
   usageCardEnabled: null,
   usageLogsEnabled: null,
   dailyDigestEnabled: null,
@@ -92,7 +88,6 @@ export const EMPTY_SETTINGS: UserSettings = {
 export const DEFAULTS = {
   theme: 'dark',
   language: 'en',
-  historyEnabled: true,
   usageCardEnabled: true,
   usageLogsEnabled: false,
   dailyDigestEnabled: false,
@@ -107,7 +102,6 @@ function toSettings(row: UserSettingsRow): UserSettings {
   return {
     theme: row.theme,
     language: row.language,
-    historyEnabled: row.history_enabled,
     usageCardEnabled: row.usage_card_enabled,
     usageLogsEnabled: row.usage_logs_enabled,
     dailyDigestEnabled: row.daily_digest_enabled,

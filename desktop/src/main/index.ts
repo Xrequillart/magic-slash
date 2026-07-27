@@ -12,7 +12,6 @@ import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpd
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
-import { registerActivityHistoryHandlers } from './ipc/activity-history-handlers'
 import { setupConnectivityHandlers } from './ipc/connectivity-handlers'
 import { setupAppearanceHandlers } from './ipc/appearance-handlers'
 import { setStore } from './store/Store'
@@ -211,7 +210,6 @@ function setupHandlers() {
   setupAppearanceHandlers()
   setupSkillsHandlers()
   setupScriptHandlers(() => mainWindow)
-  registerActivityHistoryHandlers()
   setupProfileHandlers()
   setupUsageHandlers()
   // Cloud is MANDATORY: auth + organization + connectivity gate. The renderer

@@ -21,11 +21,10 @@ import { isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
  * preference (Settings → Features, Launch Mode, Atlassian flag). Every column is
  * nullable and NULL means "the user never chose": the app's withDefaults() owns
  * the defaults, and several settings genuinely treat absent as a third state
- * distinct from false (history is ON when unset; autoStartAtLogin only touches
- * the macOS login item once explicitly set).
+ * distinct from false (autoStartAtLogin only touches the macOS login item once
+ * explicitly set).
  */
 export interface UserSettingsRow {
-  history_enabled: boolean | null
   usage_card_enabled: boolean | null
   usage_card_minimized: boolean | null
   usage_logs_enabled: boolean | null
@@ -46,7 +45,7 @@ export interface UserSettingsRow {
 }
 
 export const USER_SETTINGS_COLUMNS =
-  'history_enabled, usage_card_enabled, usage_card_minimized, usage_logs_enabled, ' +
+  'usage_card_enabled, usage_card_minimized, usage_logs_enabled, ' +
   'daily_digest_enabled, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
@@ -63,7 +62,6 @@ export const USER_SETTINGS_COLUMNS =
  * user_settings owns".
  */
 export const SETTINGS_KEYS = [
-  'historyEnabled',
   'usageCardEnabled',
   'usageCardMinimized',
   'usageLogsEnabled',
@@ -93,7 +91,6 @@ function isSet<T>(value: T | null | undefined): value is T {
 /** Project a Config onto its user_settings row. Absent keys become NULL. */
 export function configToSettingsRow(config: Config): UserSettingsRow {
   return {
-    history_enabled: orNull(config.historyEnabled),
     usage_card_enabled: orNull(config.usageCardEnabled),
     usage_card_minimized: orNull(config.usageCardMinimized),
     usage_logs_enabled: orNull(config.usageLogsEnabled),
@@ -125,7 +122,6 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
  * round trip at all (see config/remote-sync.ts).
  */
 export function applySettingsRow(config: Config, row: UserSettingsRow): void {
-  if (isSet(row.history_enabled)) config.historyEnabled = row.history_enabled
   if (isSet(row.usage_card_enabled)) config.usageCardEnabled = row.usage_card_enabled
   if (isSet(row.usage_card_minimized)) config.usageCardMinimized = row.usage_card_minimized
   if (isSet(row.usage_logs_enabled)) config.usageLogsEnabled = row.usage_logs_enabled

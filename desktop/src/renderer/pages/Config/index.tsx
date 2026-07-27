@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, type LucideIcon } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage } from './OrgPage'
@@ -196,7 +196,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   const [spotlightError, setSpotlightError] = useState(false)
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
   const [showBypassWarning, setShowBypassWarning] = useState(false)
-  const [historyEnabled, setHistoryEnabled] = useState(config?.historyEnabled ?? true)
   const [usageCardEnabled, setUsageCardEnabled] = useState(config?.usageCardEnabled ?? true)
   const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? false)
   const [dailyDigestEnabled, setDailyDigestEnabled] = useState(config?.dailyDigest?.enabled ?? false)
@@ -215,11 +214,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   useEffect(() => {
     if (configLaunchMode !== undefined) setLaunchMode(configLaunchMode)
   }, [configLaunchMode])
-
-  const configHistoryEnabled = config?.historyEnabled
-  useEffect(() => {
-    if (configHistoryEnabled !== undefined) setHistoryEnabled(configHistoryEnabled)
-  }, [configHistoryEnabled])
 
   const configUsageCardEnabled = config?.usageCardEnabled
   useEffect(() => {
@@ -798,34 +792,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Features tab */}
       {contentTab === 'features' && <div className="flex flex-col gap-8">
-
-      {/* History Section */}
-      <div>
-        <SectionHeader icon={History} title={t('settings.features.history.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.features.history.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.history.help')}</div>
-            </div>
-            <button
-              onClick={async () => {
-                const newValue = !historyEnabled
-                setHistoryEnabled(newValue)
-                const result = await window.electronAPI.config.setHistoryEnabled(newValue)
-                setConfig(result.config)
-              }}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                historyEnabled ? 'bg-accent' : 'bg-ink/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                historyEnabled ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Usage Card Section */}
       <div>

@@ -37,20 +37,10 @@ interface AgentRow {
   metadata: TerminalMetadata & { __app?: { id: string; tsCreate?: number; splitPane?: 'left' | 'right' } }
 }
 
-interface ActivityEventRow {
-  id: string
-  agent_id: string | null
-  action: string
-  ticket_id: string | null
-  description: string | null
-  repositories: string[]
-  occurred_at: string
-}
-
 /**
- * The org-wide read selects `user_id` (to attribute in-flight work) and skips
- * `description` (free text nobody aggregates). Kept as its own shape rather than
- * widening ActivityEventRow, so loadHistory's contract stays untouched.
+ * The only read of activity_events: the org-wide one behind the Team page. It
+ * selects `user_id` (to attribute in-flight work) and skips `description` (free
+ * text nobody aggregates).
  */
 interface OrgActivityEventRow {
   id: string
@@ -161,11 +151,13 @@ function projectSharedFields(config: Config): Record<string, unknown> {
 const SHARED_KEYS = ['languages', 'commit', 'pullRequest', 'repoKeywords'] as const
 
 /**
- * Single Supabase-backed Store implementation. Config, agents and history all
- * live in the database — nothing is persisted locally. Reads/writes are scoped
- * to the current user's active organization, and the per-user data inside it
- * (config, agents, activity) is additionally scoped to the signed-in user: only
- * the explicitly org-wide readers (loadOrgAgents, loadOrgUsageStats) span members.
+ * Single Supabase-backed Store implementation. Config, agents and the event
+ * tables all live in the database — nothing is persisted locally. Reads/writes are
+ * scoped to the current user's active organization, and the per-user data inside it
+ * (config, agents) is additionally scoped to the signed-in user: only the
+ * explicitly org-wide readers (loadOrgAgents, loadOrgUsageStats, loadOrgActivity)
+ * span members. The event tables are append-only and write-only from here, save
+ * for those org-wide readers.
  */
 /** Everything a query needs: an authed client, the caller, and the active org. */
 interface CloudContext {
@@ -178,8 +170,6 @@ export class CloudStore implements Store {
   private activeOrgId: string | undefined
   /** app agent id ("claude-…") → agents.id (uuid). Rebuilt on every loadAgents. */
   private agentIdMap = new Map<string, string>()
-  /** agents.id (uuid) → display name, for reconstructing history entries. */
-  private agentNameByUuid = new Map<string, string>()
   /** app agent id → digest of its last-synced repository ids (see syncRepoLinks). */
   private agentRepoKey = new Map<string, string>()
 
@@ -642,7 +632,6 @@ export class CloudStore implements Store {
     if (error || !data) return []
 
     this.agentIdMap.clear()
-    this.agentNameByUuid.clear()
     this.agentRepoKey.clear()
     const rows = data as AgentRow[]
     const linksByAgent = await this.fetchRepoLinks(ctx, rows.map((r) => r.id))
@@ -652,7 +641,6 @@ export class CloudStore implements Store {
       const agent = this.fromAgentRow(raw)
       agent.repositoryIds = linksByAgent.get(raw.id) ?? []
       this.agentIdMap.set(agent.id, raw.id)
-      this.agentNameByUuid.set(raw.id, agent.name)
       this.agentRepoKey.set(agent.id, agent.repositoryIds.join(','))
       agents.push(agent)
     }
@@ -755,7 +743,6 @@ export class CloudStore implements Store {
     const rows = agents.map((a) => {
       const uuid = this.agentIdMap.get(a.id) ?? randomUUID()
       this.agentIdMap.set(a.id, uuid)
-      this.agentNameByUuid.set(uuid, a.name)
       return this.toAgentRow(a, uuid, ctx.uid)
     })
     if (rows.length === 0) return
@@ -795,8 +782,7 @@ export class CloudStore implements Store {
     // Drop the app id → uuid binding so a future agent reusing this app id
     // (ids are `claude-${Date.now()}`) mints a fresh row instead of upserting
     // onto the archived one — which, since toAgentRow never sets archived_at,
-    // would resurrect it as an invisible agent. agentNameByUuid is deliberately
-    // kept: loadHistory resolves closed agents' names through it.
+    // would resurrect it as an invisible agent.
     this.agentIdMap.delete(appId)
     this.agentRepoKey.delete(appId)
   }
@@ -831,66 +817,8 @@ export class CloudStore implements Store {
   }
 
   // -------------------------------------------------------------------------
-  // History (activity_events — append-only, read-limited)
+  // Activity events (activity_events — append-only, write-only from here)
   // -------------------------------------------------------------------------
-
-  /**
-   * Fill agentNameByUuid for uuids the agents cache does not know — closed
-   * agents, whose rows loadAgents() filters out. Without this, every history
-   * entry of an archived agent would render name-less after a restart, which is
-   * the very thing archiving exists to fix. Deliberately queried WITHOUT the
-   * archived filter, and bounded by the history page size.
-   */
-  private async hydrateAgentNames(ctx: CloudContext, uuids: (string | null)[]): Promise<void> {
-    const missing = [...new Set(uuids.filter((id): id is string => !!id && !this.agentNameByUuid.has(id)))]
-    if (missing.length === 0) return
-
-    const { data, error } = await ctx.client
-      .from('agents')
-      .select('id, name')
-      .eq('org_id', ctx.orgId)
-      .in('id', missing)
-
-    if (error || !data) return
-    for (const row of data as { id: string; name: string }[]) {
-      this.agentNameByUuid.set(row.id, row.name)
-    }
-  }
-
-  /**
-   * The caller's OWN activity feed. Scoped by user_id for the same reason as
-   * loadAgents: RLS exposes the whole org's events, but the History page is a
-   * personal feed and agent names resolve from the caller's own agents cache, so
-   * a teammate's events would render name-less anyway.
-   */
-  async loadHistory(limit: number): Promise<HistoryEntry[]> {
-    const ctx = await this.context()
-    if (!ctx) return []
-
-    const { data, error } = await ctx.client
-      .from('activity_events')
-      .select('id, agent_id, action, ticket_id, description, repositories, occurred_at')
-      .eq('org_id', ctx.orgId)
-      .eq('user_id', ctx.uid)
-      .order('occurred_at', { ascending: false })
-      .limit(limit)
-
-    if (error || !data) return []
-
-    await this.hydrateAgentNames(ctx, (data as ActivityEventRow[]).map((row) => row.agent_id))
-
-    // Reverse to oldest-first to match the legacy read order.
-    return (data as ActivityEventRow[]).reverse().map((row) => ({
-      id: row.id,
-      agentId: row.agent_id ?? '',
-      agentName: (row.agent_id ? this.agentNameByUuid.get(row.agent_id) : undefined) ?? '',
-      action: row.action as HistoryEntry['action'],
-      ticketId: row.ticket_id ?? undefined,
-      description: row.description ?? undefined,
-      repositories: Array.isArray(row.repositories) ? row.repositories : [],
-      timestamp: Date.parse(row.occurred_at) || Date.now(),
-    }))
-  }
 
   async appendHistory(entry: HistoryEntry): Promise<void> {
     const ctx = await this.context()
@@ -999,13 +927,14 @@ export class CloudStore implements Store {
   }
 
   /**
-   * Org-wide activity events for the Team page's flow metrics.
+   * Org-wide activity events for the Team page's flow metrics — the only read of
+   * activity_events left, now that the personal History feed is gone.
    *
-   * Two deliberate differences from loadHistory, which reads the same table:
+   * Two things to note:
    *
    * 1. NO user_id filter. The RLS select policy is `is_org_member(org_id)`, so any
    *    member may read the whole org — that is what makes team-level flow metrics
-   *    possible. loadHistory keeps its own scoping for the personal feed.
+   *    possible.
    * 2. An action allowlist. `completed` fires on every Claude-Code turn and
    *    `committed` on every commit, so they outnumber the flow-relevant actions by
    *    an order of magnitude. Without the filter the row cap below would silently

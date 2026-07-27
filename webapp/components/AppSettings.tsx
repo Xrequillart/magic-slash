@@ -150,16 +150,6 @@ export function AppSettings({
       {/* ── Features ────────────────────────────────────────────────────────── */}
       <SettingsCard icon={Sparkles} title="Features">
         <SettingRow
-          label="Enable history"
-          description="Record your agent activity (tickets, commits, PRs, reviews) and which skills you run, and show the History entry in the sidebar. When off, nothing is recorded."
-        >
-          <Toggle
-            checked={settings.historyEnabled ?? DEFAULTS.historyEnabled}
-            onChange={(historyEnabled) => onPatch({ historyEnabled })}
-            label="Enable history"
-          />
-        </SettingRow>
-        <SettingRow
           label="Show usage card in sidebar"
           description="Display the connected account and the Session (5h) / Weekly (7d) gauges at the bottom of the sidebar."
         >
@@ -171,7 +161,7 @@ export function AppSettings({
         </SettingRow>
         <SettingRow
           label="Share my usage with my organization"
-          description="Off by default. When enabled, an aggregated summary (estimated cost, lines added/removed, duration, model) is recorded for your organization at the end of each session, so admins can track team usage. No prompts or code are ever sent. You can turn it off at any time."
+          description="Off by default. When enabled, your agent activity (tickets, commits, PRs, reviews), the skills you run and an aggregated end-of-session summary (estimated cost, lines added/removed, duration, model) are recorded for your organization, so the Team dashboard reflects your work. No prompts or code are ever sent. When off, nothing is recorded — and you can turn it off at any time."
         >
           <Toggle
             checked={settings.usageLogsEnabled ?? DEFAULTS.usageLogsEnabled}

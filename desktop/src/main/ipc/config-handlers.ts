@@ -252,14 +252,6 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
     return { config }
   })
 
-  // Update split enabled setting
-  ipcMain.handle('config:setHistoryEnabled', async (_event, { enabled }: { enabled: boolean }) => {
-    const config = readConfig()
-    config.historyEnabled = enabled
-    writeConfig(config)
-    return { config }
-  })
-
   // Repaint Claude Code in the terminal panes to match the app theme
   ipcMain.handle('config:setSyncClaudeTheme', async (_event, { enabled }: { enabled: boolean }) => {
     const config = readConfig()

@@ -169,7 +169,7 @@ describe('startUserSyncRealtime', () => {
 })
 
 describe('event forwarding', () => {
-  const row = { history_enabled: false, launch_mode: 'plan' } as unknown as UserSettingsRow
+  const row = { usage_logs_enabled: false, launch_mode: 'plan' } as unknown as UserSettingsRow
 
   it('forwards the new settings row on INSERT and UPDATE', async () => {
     await startUserSyncRealtime('user-1')

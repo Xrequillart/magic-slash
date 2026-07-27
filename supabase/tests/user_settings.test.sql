@@ -11,7 +11,7 @@ values
   ('00000000-0000-0000-0000-000000000000', '22222222-2222-2222-2222-222222222222', 'authenticated', 'authenticated', 'u2@example.com', now(), now());
 
 -- Seed one settings row + one device per user (as owner, RLS bypassed).
-insert into public.user_settings (user_id, history_enabled, launch_mode)
+insert into public.user_settings (user_id, usage_logs_enabled, launch_mode)
 values
   ('11111111-1111-1111-1111-111111111111', false, 'plan'),
   ('22222222-2222-2222-2222-222222222222', true, 'default');
@@ -44,7 +44,7 @@ select is(
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
 select throws_ok(
-  $sql$ insert into public.user_settings (user_id, history_enabled) values ('22222222-2222-2222-2222-222222222222', true) $sql$,
+  $sql$ insert into public.user_settings (user_id, usage_logs_enabled) values ('22222222-2222-2222-2222-222222222222', true) $sql$,
   '42501',
   'new row violates row-level security policy for table "user_settings"',
   'a user cannot create settings for someone else'

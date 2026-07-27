@@ -58,8 +58,11 @@ export interface Store {
   /** Org-wide agents roster (all members) for the team dashboard. Read-only. */
   loadOrgAgents(): Promise<OrgAgent[]>
 
-  /** Most-recent `limit` history entries, oldest-first (matches the legacy read order). */
-  loadHistory(limit: number): Promise<HistoryEntry[]>
+  /**
+   * Append ONE activity event (append-only, fire-and-forget). Write-only: the
+   * personal History feed that used to read these rows back is gone, and the Team
+   * page reads the org-wide aggregate through loadOrgActivity instead.
+   */
   appendHistory(entry: HistoryEntry): Promise<void>
 
   /** Append ONE aggregated usage snapshot at session end (append-only, fire-and-forget). */
@@ -77,9 +80,8 @@ export interface Store {
 
   /**
    * Org-wide activity events (all members). Read-only, and open to any org
-   * member — the RLS select policy is scoped by org, not by user. Deliberately
-   * separate from loadHistory, which stays scoped to the caller for the personal
-   * History feed.
+   * member — the RLS select policy is scoped by org, not by user. The only read
+   * of activity_events left: nothing reads back the caller's own events.
    */
   loadOrgActivity(sinceMs: number, limit: number): Promise<OrgActivity>
 
@@ -127,7 +129,6 @@ export const NOOP_STORE: Store = {
   async saveAgents() { /* no-op */ },
   async archiveAgent() { /* no-op */ },
   async loadOrgAgents() { return [] },
-  async loadHistory() { return [] },
   async appendHistory() { /* no-op */ },
   async appendUsage() { /* no-op */ },
   async recordSkillInvocation() { /* no-op */ },
@@ -156,13 +157,15 @@ export function getStore(): Store {
 // ---------------------------------------------------------------------------
 // Write-through failure reporting
 // ---------------------------------------------------------------------------
-// The cache modules (config/agents/activity-history) write through to the store
-// asynchronously and keep a synchronous read API. When a write-through fails the
-// in-memory cache would silently diverge from the DB, so we surface the failure
-// through a handler wired in the main process (emits an IPC event + re-hydrates).
+// The cache modules (config/agents) write through to the store asynchronously and
+// keep a synchronous read API. When a write-through fails the in-memory cache
+// would silently diverge from the DB, so we surface the failure through a handler
+// wired in the main process (emits an IPC event + re-hydrates). The append-only
+// event tables (activity/usage/skills) are NOT reported here: they back no cache,
+// so a lost write diverges nothing and would trigger a pointless rehydrate.
 
 /** Which cache write failed to persist to the DB. */
-export type StoreWriteKind = 'config' | 'agents' | 'history'
+export type StoreWriteKind = 'config' | 'agents'
 
 type WriteErrorHandler = (kind: StoreWriteKind, error: unknown) => void
 

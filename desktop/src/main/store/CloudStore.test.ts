@@ -421,87 +421,12 @@ describe('agents', () => {
   })
 })
 
-// ── loadHistory (per-user scoping) ──────────────────────────────────────────
-
-describe('loadHistory', () => {
-  it('scopes the activity feed to the caller, not just the org', async () => {
-    const { client, calls } = makeClient({
-      memberships: membershipsOk,
-      activity_events: { data: [], error: null },
-    })
-    h.state.client = client
-
-    const store = new CloudStore()
-    await store.loadHistory(500)
-
-    const historyCalls = calls.filter((c) => c.table === 'activity_events')
-    expect(historyCalls).toEqual(
-      expect.arrayContaining([
-        { table: 'activity_events', method: 'eq', args: ['org_id', ORG] },
-        { table: 'activity_events', method: 'eq', args: ['user_id', UID] },
-        { table: 'activity_events', method: 'limit', args: [500] },
-      ]),
-    )
-  })
-
-  // Archiving keeps the agent_id link a hard delete used to null. The name still
-  // has to come from somewhere: loadAgents filters archived rows out, so History
-  // looks the missing uuids up directly.
-  it('names an archived agent by looking its uuid up, unfiltered', async () => {
-    const { client, calls } = makeClient({
-      memberships: membershipsOk,
-      activity_events: {
-        data: [{ id: 'e1', agent_id: 'uuid-closed', action: 'agent_closed', repositories: [], occurred_at: '2026-07-27T10:00:00Z' }],
-        error: null,
-      },
-      agents: { data: [{ id: 'uuid-closed', name: 'Closed agent' }], error: null },
-    })
-    h.state.client = client
-
-    const entries = await new CloudStore().loadHistory(500)
-
-    expect(entries[0].agentName).toBe('Closed agent')
-    expect(calls).toContainEqual({ table: 'agents', method: 'in', args: ['id', ['uuid-closed']] })
-    // Unfiltered on purpose — an archived row must still resolve.
-    expect(calls.filter((c) => c.table === 'agents' && c.method === 'is')).toEqual([])
-  })
-
-  it('does not re-query a uuid the agents cache already named', async () => {
-    const { client, calls } = makeClient({
-      memberships: membershipsOk,
-      activity_events: {
-        data: [{ id: 'e1', agent_id: 'uuid-1', action: 'started', repositories: [], occurred_at: '2026-07-27T10:00:00Z' }],
-        error: null,
-      },
-      agents: {
-        data: [{
-          id: 'uuid-1',
-          org_id: ORG,
-          owner_id: UID,
-          name: 'Agent claude-1',
-          repositories: [],
-          metadata: { __app: { id: 'claude-1' } },
-        }],
-        error: null,
-      },
-    })
-    h.state.client = client
-
-    const store = new CloudStore()
-    await store.loadAgents()
-    const entries = await store.loadHistory(500)
-
-    expect(entries[0].agentName).toBe('Agent claude-1')
-    expect(calls.filter((c) => c.table === 'agents' && c.method === 'in')).toEqual([])
-  })
-})
-
 // ── loadOrgActivity (org-wide, action-filtered) ─────────────────────────────
 
 describe('loadOrgActivity', () => {
   const SINCE = Date.UTC(2026, 3, 1)
 
-  it('reads the whole org — no user_id filter, unlike loadHistory', async () => {
+  it('reads the whole org — no user_id filter, since it feeds the Team page', async () => {
     const { client, calls, from } = makeClient({
       memberships: membershipsOk,
       activity_events: { data: [], error: null },
@@ -1003,7 +928,6 @@ describe('loadConfig', () => {
 
 /** A fully-NULL settings row: the user has a row but never chose anything. */
 const emptySettingsRow = {
-  history_enabled: null,
   usage_card_enabled: null,
   usage_card_minimized: null,
   usage_logs_enabled: null,
@@ -1033,7 +957,6 @@ describe('user settings', () => {
       user_settings: {
         data: {
           ...emptySettingsRow,
-          history_enabled: false,
           usage_card_enabled: true,
           usage_card_minimized: true,
           usage_logs_enabled: true,
@@ -1058,7 +981,6 @@ describe('user settings', () => {
     const config = await new CloudStore().loadConfig()
 
     expect(config).toMatchObject({
-      historyEnabled: false,
       usageCardEnabled: true,
       usageCardMinimized: true,
       usageLogsEnabled: true,
@@ -1088,9 +1010,9 @@ describe('user settings', () => {
     const config = await new CloudStore().loadConfig()
 
     // NULL must not collapse to false: several settings treat absent as a third
-    // state (history is ON when unset; autoStartAtLogin gates touching the
-    // macOS login item at all).
-    expect(config).not.toHaveProperty('historyEnabled')
+    // state (autoStartAtLogin gates touching the macOS login item at all, and a
+    // false there would spam a system notification on the next launch).
+    expect(config).not.toHaveProperty('usageLogsEnabled')
     expect(config).not.toHaveProperty('autoStartAtLogin')
     expect(config).not.toHaveProperty('launchMode')
     expect(config).not.toHaveProperty('prReviews')
@@ -1101,7 +1023,7 @@ describe('user settings', () => {
   it('lets user_settings win over a legacy copy left in the config blob', async () => {
     const { client } = makeClient({
       memberships: membershipsOk,
-      configs: { data: { data: { launchMode: 'default', historyEnabled: true } }, error: null },
+      configs: { data: { data: { launchMode: 'default', usageCardEnabled: true } }, error: null },
       repositories: { data: [], error: null },
       repository_paths: { data: [], error: null },
       user_settings: { data: { ...emptySettingsRow, launch_mode: 'plan' }, error: null },
@@ -1112,7 +1034,7 @@ describe('user settings', () => {
     expect(config?.launchMode).toBe('plan')
     // A column the user never set falls back to whatever the legacy blob held,
     // so nothing is lost in the transition.
-    expect(config?.historyEnabled).toBe(true)
+    expect(config?.usageCardEnabled).toBe(true)
   })
 
   it('ignores an invalid enum written by a newer app version', async () => {
@@ -1186,7 +1108,6 @@ describe('user settings', () => {
     const config: any = {
       version: '1',
       repositories: {},
-      historyEnabled: false,
       dailyDigest: { enabled: true },
       prReviews: { enabled: true, pollIntervalMs: 60_000 },
       spotlight: { enabled: true, shortcut: 'Control+Space' },
@@ -1195,7 +1116,6 @@ describe('user settings', () => {
 
     expect(upserts.user_settings[0]).toEqual({
       user_id: UID,
-      history_enabled: false,
       usage_card_enabled: null,
       usage_card_minimized: null,
       usage_logs_enabled: null,
@@ -1470,7 +1390,6 @@ describe('saveConfig', () => {
     const config: any = {
       version: '1',
       launchMode: 'default',
-      historyEnabled: false,
       spotlight: { enabled: true, shortcut: 'Alt+M' },
       repositories: { demo: { id: 'r1', path: '/p', keywords: ['kw'], commit: { format: 'angular' } } },
     }
@@ -1480,7 +1399,6 @@ describe('saveConfig', () => {
     expect(savedBlob).not.toHaveProperty('repositories')
     // Settings now live in user_settings — the blob must not keep a second copy.
     expect(savedBlob).not.toHaveProperty('launchMode')
-    expect(savedBlob).not.toHaveProperty('historyEnabled')
     expect(savedBlob).not.toHaveProperty('spotlight')
     expect(savedBlob.version).toBe('1')
     // Shared projection derived from the in-memory repos is still mirrored top-level.

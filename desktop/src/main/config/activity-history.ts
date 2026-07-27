@@ -1,44 +1,19 @@
-import * as crypto from 'crypto'
 import type { HistoryEntry, HistoryAction } from '../../types'
-import { getStore, reportWriteError } from '../store/Store'
+import { getStore } from '../store/Store'
 import { readConfig } from './config'
 
-// Read limit for the activity feed. activity_events is append-only (there is no
-// clear/purge), so instead of capping on write we simply read the most recent
-// READ_LIMIT entries. This replaces the old MAX_ENTRIES=500 purge.
-const READ_LIMIT = 500
-
-// In-memory history cache. History lives in the Supabase `activity_events` table
-// (see store/CloudStore.ts) — there is no local history.json.
-let historyCache: HistoryEntry[] = []
-
-/** Load recent history from the store into the cache. Call after auth is established. */
-export async function hydrateHistory(): Promise<HistoryEntry[]> {
-  try {
-    historyCache = await getStore().loadHistory(READ_LIMIT)
-  } catch (error) {
-    console.error('Error hydrating activity history:', error)
-    historyCache = []
-  }
-  return historyCache
-}
-
-/** Drop the cached history (on sign-out). */
-export function resetHistoryCache(): void {
-  historyCache = []
-}
-
-export function readHistory(): HistoryEntry[] {
-  return historyCache
-}
-
 /**
- * Record ONE activity event, unless the user opted out.
+ * Record ONE activity event in the append-only `activity_events` table.
  *
- * Gated behind Config.historyEnabled (opt-out, default ON). The toggle used to
- * hide the sidebar entry point only, which meant a user who turned history off
- * kept writing to `activity_events` — inconsistent with the usage-logs opt-in
- * next to it. Off now means "don't record", and returns null.
+ * GDPR opt-in: gated behind Config.usageLogsEnabled (default OFF) — the same
+ * consent that gates usage_events and skill_invocations. Every row the app writes
+ * about what a human did now sits behind ONE flag, instead of the activity feed
+ * riding an opt-out of its own. Reading the org aggregate (the Team page) is
+ * unaffected, exactly like usage.
+ *
+ * Fire-and-forget, like the two other event tables: there is no in-memory cache
+ * to keep consistent (the personal History page that read one is gone) and hence
+ * no reportWriteError wiring — a failed write is simply lost.
  */
 export function addHistoryEntry(params: {
   agentId: string
@@ -47,11 +22,10 @@ export function addHistoryEntry(params: {
   ticketId?: string
   description?: string
   repositories: string[]
-}): HistoryEntry | null {
-  if (readConfig().historyEnabled === false) return null
+}): void {
+  if (readConfig().usageLogsEnabled !== true) return
 
   const entry: HistoryEntry = {
-    id: crypto.randomUUID(),
     agentId: params.agentId,
     agentName: params.agentName,
     action: params.action,
@@ -61,18 +35,9 @@ export function addHistoryEntry(params: {
     timestamp: Date.now(),
   }
 
-  historyCache.push(entry)
-  // Keep the in-memory cache bounded to the read limit (oldest-first order).
-  if (historyCache.length > READ_LIMIT) {
-    historyCache.splice(0, historyCache.length - READ_LIMIT)
-  }
-
   void getStore()
     .appendHistory(entry)
     .catch((error) => {
-      console.error('Error persisting activity history:', error)
-      reportWriteError('history', error)
+      console.error('Error recording activity event:', error)
     })
-
-  return entry
 }

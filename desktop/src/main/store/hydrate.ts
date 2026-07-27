@@ -1,12 +1,11 @@
 import { hydrateConfig, resetConfigCache } from '../config/config'
 import { hydrateAgents, resetAgentsCache } from '../config/agents'
-import { hydrateHistory, resetHistoryCache } from '../config/activity-history'
 import { hydrateProfile } from '../config/profile'
 import { applyLanguage, applyTheme } from '../appearance'
 import type { Config } from '../../types'
 
 // Coordinates a one-time hydration of the in-memory caches (config, agents,
-// history) from the store once auth + connectivity are established. Every mutating
+// profile) from the store once auth + connectivity are established. Every mutating
 // IPC path awaits ensureHydrated() so it never reads a cold (empty) cache.
 
 let hydrationPromise: Promise<void> | null = null
@@ -43,9 +42,8 @@ export function applyAppearanceFromConfig(config: Config): void {
 }
 
 /**
- * Hydrate config, agents and history from the store exactly once. Subsequent
- * calls return the same in-flight/settled promise. Agents must be hydrated
- * before history so history entries can resolve their agent names.
+ * Hydrate config, agents and profile from the store exactly once. Subsequent
+ * calls return the same in-flight/settled promise.
  */
 export function ensureHydrated(): Promise<void> {
   if (!hydrationPromise) {
@@ -53,7 +51,6 @@ export function ensureHydrated(): Promise<void> {
       const config = await hydrateConfig()
       applyAppearanceFromConfig(config)
       await hydrateAgents()
-      await hydrateHistory()
       await hydrateProfile()
     })().catch((error) => {
       // Allow a later retry if hydration failed.
@@ -74,7 +71,6 @@ export function rehydrate(): Promise<void> {
     const config = await hydrateConfig()
     applyAppearanceFromConfig(config)
     await hydrateAgents()
-    await hydrateHistory()
   })().catch((error) => {
     hydrationPromise = null
     throw error
@@ -91,5 +87,4 @@ export function resetHydration(): void {
   hydrationPromise = null
   resetConfigCache()
   resetAgentsCache()
-  resetHistoryCache()
 }

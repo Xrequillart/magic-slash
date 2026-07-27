@@ -94,14 +94,9 @@ export const fr: Record<keyof typeof en, string> = {
   'titlebar.splitViewTitle': 'Vue divisée (⌘/)',
   'titlebar.info': 'Infos',
 
-  // ── Historique ───────────────────────────────────────────────────────────
-  'history.today': 'Aujourd’hui — {date}',
-  'history.yesterday': 'Hier — {date}',
-
   // ── Barre latérale gauche ────────────────────────────────────────────────
   'sidebar.newAgent': 'Nouvel agent',
   'sidebar.skills': 'Skills',
-  'sidebar.history': 'Historique',
   'sidebar.team': 'Équipe',
   'sidebar.settings': 'Réglages',
   'sidebar.login': 'Connexion / Inscription',
@@ -221,10 +216,6 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.spend.empty': 'Aucun historique d’usage trouvé dans ~/.claude pour l’instant.',
 
   // ── Réglages → Fonctionnalités ───────────────────────────────────────────
-  'settings.features.history.section': 'Historique',
-  'settings.features.history.label': 'Activer l’historique',
-  'settings.features.history.help':
-    'Enregistre l’activité de vos agents (tickets, commits, PR, revues) et les skills que vous lancez, et affiche l’entrée Historique dans la barre latérale. Désactivé, rien n’est enregistré.',
   'settings.features.usageCard.section': 'Carte d’usage',
   'settings.features.usageCard.label': 'Afficher la carte d’usage dans la barre latérale',
   'settings.features.usageCard.help':
@@ -232,7 +223,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.features.usageLogs.section': 'Journaux d’usage',
   'settings.features.usageLogs.label': 'Partager mon usage avec mon organisation',
   'settings.features.usageLogs.help':
-    'Désactivé par défaut (consentement RGPD). Une fois activé, un résumé agrégé (coût estimé, lignes ajoutées/supprimées, durée, modèle) est enregistré pour votre organisation à la fin de chaque session, afin que les administrateurs suivent l’usage de l’équipe. Aucun prompt ni code n’est jamais transmis. Vous pouvez le désactiver à tout moment.',
+    'Désactivé par défaut (consentement RGPD). Une fois activé, l’activité de vos agents (tickets, commits, PR, revues), les skills que vous lancez et un résumé agrégé de fin de session (coût estimé, lignes ajoutées/supprimées, durée, modèle) sont enregistrés pour votre organisation, afin que le tableau de bord Équipe reflète votre travail. Aucun prompt ni code n’est jamais transmis. Désactivé, rien n’est enregistré — et vous pouvez le couper à tout moment.',
   'settings.features.digest.section': 'Résumé quotidien',
   'settings.features.digest.label': 'Résumé quotidien de l’équipe',
   'settings.features.digest.help':
@@ -737,33 +728,6 @@ export const fr: Record<keyof typeof en, string> = {
   'dashboard.repos.unmatched.one': '1 agent sur un dépôt personnel ou non rattaché',
   'dashboard.repos.unmatched.other': '{count} agents sur des dépôts personnels ou non rattachés',
 
-  // ── Historique d'activité ────────────────────────────────────────────────
-  'history.action.agentCreated': 'Agent créé',
-  'history.action.started': 'Démarré',
-  'history.action.waiting': 'En attente de votre réponse',
-  'history.action.completed': 'Tâche terminée',
-  'history.action.committed': 'Committé',
-  'history.action.prCreated': 'PR créée',
-  'history.action.review': 'En revue',
-  'history.action.reviewAddressed': 'Retours traités',
-  'history.action.reviewApproved': 'Revue approuvée',
-  'history.action.reviewChangesRequested': 'Modifications demandées',
-  'history.action.merged': 'Mergée',
-  'history.action.done': 'Terminé',
-  'history.action.agentClosed': 'Agent fermé',
-  'history.emptyTitle': 'Aucun historique pour l’instant',
-  'history.emptyHint': 'Les actions apparaîtront ici à mesure que vos agents travaillent.',
-  'history.older': 'Plus ancien',
-  'history.newer': 'Plus récent',
-  'history.events.one': '{count} évènement',
-  'history.events.other': '{count} évènements',
-  'history.dayOf': ' · jour {current} sur {total}',
-  'history.groupSummary.one': '{count} évènement · {duration}',
-  'history.groupSummary.other': '{count} évènements · {duration}',
-  'history.loadFailed': 'Impossible de charger l’historique d’activité',
-  'heatmap.tooltip.one': '{date} — {count} action',
-  'heatmap.tooltip.other': '{date} — {count} actions',
-
   // ── Skills ───────────────────────────────────────────────────────────────
   'skills.budget.section': 'Budget des skills',
   'skills.budget.tokens': 'Tokens (2 % du contexte)',
@@ -972,7 +936,6 @@ export const fr: Record<keyof typeof en, string> = {
     'Impossible d’enregistrer {kind} dans le cloud. Votre dernière modification n’a peut-être pas été sauvegardée — les données ont été rechargées depuis le serveur.',
   'toast.cloudWriteKind.config': 'vos réglages',
   'toast.cloudWriteKind.agents': 'vos agents',
-  'toast.cloudWriteKind.history': 'votre historique d’activité',
 
   // ── Écran de connexion ───────────────────────────────────────────────────
   'login.signinTitle': 'Se connecter à Magic Slash',

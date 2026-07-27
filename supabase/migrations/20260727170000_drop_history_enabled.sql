@@ -1,0 +1,33 @@
+-- Migration: drop user_settings.history_enabled
+--
+-- WHY
+-- -----------------------------------------------------------------------------
+-- `history_enabled` was the opt-OUT (default ON) behind two things at once: the
+-- personal History page in the desktop app, and whether the app wrote rows to
+-- `activity_events` / `skill_invocations` at all. Both reasons are gone:
+--
+--   1. The History page is removed. Nothing reads a user's own activity rows any
+--      more — the only remaining read of activity_events is the org-wide one
+--      behind the Team dashboard (loadOrgActivity), which is scoped by org and
+--      never by user.
+--   2. Recording is now gated by `usage_logs_enabled`, the GDPR opt-in (default
+--      OFF) that already gated `usage_events`. One consent for every row the app
+--      writes about what a human did, instead of an opt-in for usage next to an
+--      opt-out for activity — which was the inconsistency this settles.
+--
+-- The column therefore has no reader and no writer left. Dropped rather than kept
+-- nullable-and-ignored so it cannot be mistaken for a live preference: a ghost
+-- toggle in the schema is how a future build resurrects a setting the UI no longer
+-- offers. Users who had turned history off keep exactly the outcome they asked
+-- for — nothing is recorded unless they opt into usage logs.
+--
+-- Nothing else references the column: no index, no constraint, no policy, and no
+-- function (the one-off backfill in 20260725100000 has already run — an older
+-- migration replaying against a fresh database still sees its own column, since
+-- this DROP comes after it).
+--
+-- The rows already in activity_events are untouched: the table is append-only and
+-- stays the Team dashboard's source. This changes what is written from now on, not
+-- what was written before.
+
+alter table public.user_settings drop column if exists history_enabled;

@@ -351,12 +351,8 @@ export function Sidebar() {
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const shortcutKey = isMac ? '⌘N' : 'Ctrl+N'
   const skillsShortcutKey = isMac ? '⌘;' : 'Ctrl+;'
-  const historyShortcutKey = isMac ? '⌘H' : 'Ctrl+H'
   const teamShortcutKey = isMac ? '⌘T' : 'Ctrl+T'
   const settingsShortcutKey = isMac ? '⌘,' : 'Ctrl+,'
-
-  // History is opt-out (Settings → Features), and gates both its button and ⌘H.
-  const historyEnabled = config?.historyEnabled !== false
 
   // Listen for Command+; keyboard shortcut to open skills
   useEffect(() => {
@@ -370,20 +366,6 @@ export function Sidebar() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [openModal])
-
-  // Listen for Command+H keyboard shortcut to open history
-  useEffect(() => {
-    if (!historyEnabled) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
-        e.preventDefault()
-        openModal('history')
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [openModal, historyEnabled])
 
   // Listen for Command+T keyboard shortcut to open the team dashboard
   useEffect(() => {
@@ -448,18 +430,6 @@ export function Sidebar() {
           <span>{t('sidebar.skills')}</span>
           <span className="ml-auto text-xs opacity-50">{skillsShortcutKey}</span>
         </button>
-
-        {/* History button */}
-        {historyEnabled && (
-          <button
-            onClick={() => openModal('history')}
-            className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-ink"
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span>{t('sidebar.history')}</span>
-            <span className="ml-auto text-xs opacity-50">{historyShortcutKey}</span>
-          </button>
-        )}
 
         {/* Team dashboard button */}
         <button

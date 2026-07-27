@@ -100,14 +100,9 @@ export const en = {
   'titlebar.splitViewTitle': 'Split view (⌘/)',
   'titlebar.info': 'Info',
 
-  // ── History ──────────────────────────────────────────────────────────────
-  'history.today': 'Today — {date}',
-  'history.yesterday': 'Yesterday — {date}',
-
   // ── Left sidebar ─────────────────────────────────────────────────────────
   'sidebar.newAgent': 'New agent',
   'sidebar.skills': 'Skills',
-  'sidebar.history': 'History',
   'sidebar.team': 'Team',
   'sidebar.settings': 'Settings',
   'sidebar.login': 'Login / Sign up',
@@ -226,10 +221,6 @@ export const en = {
   'settings.spend.empty': 'No usage history found in ~/.claude yet.',
 
   // ── Settings → Features ──────────────────────────────────────────────────
-  'settings.features.history.section': 'History',
-  'settings.features.history.label': 'Enable history',
-  'settings.features.history.help':
-    'Record your agent activity (tickets, commits, PRs, reviews) and which skills you run, and show the History entry in the sidebar. When off, nothing is recorded.',
   'settings.features.usageCard.section': 'Usage card',
   'settings.features.usageCard.label': 'Show usage card in sidebar',
   'settings.features.usageCard.help':
@@ -237,7 +228,7 @@ export const en = {
   'settings.features.usageLogs.section': 'Usage logs',
   'settings.features.usageLogs.label': 'Share my usage with my organization',
   'settings.features.usageLogs.help':
-    'Off by default (GDPR opt-in). When enabled, an aggregated summary (estimated cost, lines added/removed, duration, model) is recorded for your organization at the end of each session, so admins can track team usage. No prompts or code are ever sent. You can turn it off at any time.',
+    'Off by default (GDPR opt-in). When enabled, your agent activity (tickets, commits, PRs, reviews), the skills you run and an aggregated end-of-session summary (estimated cost, lines added/removed, duration, model) are recorded for your organization, so the Team dashboard reflects your work. No prompts or code are ever sent. When off, nothing is recorded — and you can turn it off at any time.',
   'settings.features.digest.section': 'Daily digest',
   'settings.features.digest.label': 'Daily team digest',
   'settings.features.digest.help':
@@ -734,33 +725,6 @@ export const en = {
   'dashboard.repos.unmatched.one': '1 agent on a personal or unlinked repository',
   'dashboard.repos.unmatched.other': '{count} agents on personal or unlinked repositories',
 
-  // ── Activity history ─────────────────────────────────────────────────────
-  'history.action.agentCreated': 'Agent created',
-  'history.action.started': 'Started',
-  'history.action.waiting': 'Waiting for input',
-  'history.action.completed': 'Task completed',
-  'history.action.committed': 'Committed',
-  'history.action.prCreated': 'PR created',
-  'history.action.review': 'In review',
-  'history.action.reviewAddressed': 'Review addressed',
-  'history.action.reviewApproved': 'Review approved',
-  'history.action.reviewChangesRequested': 'Changes requested',
-  'history.action.merged': 'Merged',
-  'history.action.done': 'Done',
-  'history.action.agentClosed': 'Agent closed',
-  'history.emptyTitle': 'No history yet',
-  'history.emptyHint': 'Actions will appear here as your agents work.',
-  'history.older': 'Older',
-  'history.newer': 'Newer',
-  'history.events.one': '{count} event',
-  'history.events.other': '{count} events',
-  'history.dayOf': ' · day {current} of {total}',
-  'history.groupSummary.one': '{count} event · {duration}',
-  'history.groupSummary.other': '{count} events · {duration}',
-  'history.loadFailed': 'Failed to load activity history',
-  'heatmap.tooltip.one': '{date} — {count} action',
-  'heatmap.tooltip.other': '{date} — {count} actions',
-
   // ── Skills ───────────────────────────────────────────────────────────────
   'skills.budget.section': 'Skills Budget',
   'skills.budget.tokens': 'Tokens (2% context)',
@@ -972,7 +936,6 @@ export const en = {
     'Failed to save your {kind} to the cloud. Your latest change may not have been saved — reloaded from the server.',
   'toast.cloudWriteKind.config': 'settings',
   'toast.cloudWriteKind.agents': 'agents',
-  'toast.cloudWriteKind.history': 'activity history',
 
   // ── Login screen ─────────────────────────────────────────────────────────
   'login.signinTitle': 'Sign in to Magic Slash',

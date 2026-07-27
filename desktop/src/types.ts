@@ -319,7 +319,6 @@ export interface Config {
   }
   spotlight?: SpotlightConfig
   launchMode?: LaunchMode
-  historyEnabled?: boolean
   usageCardEnabled?: boolean    // show the Claude usage card in the sidebar
   usageCardMinimized?: boolean  // sidebar usage card collapsed to gauges only
   // GDPR opt-in (default OFF): when true, an aggregated usage snapshot is written
@@ -643,8 +642,11 @@ export type HistoryAction =
   | 'agent_created'
   | 'agent_closed'
 
+/**
+ * One activity event on its way to `activity_events`. Write-only: nothing reads
+ * these rows back per-user, so the shape carries no DB id — the row gets its own.
+ */
 export interface HistoryEntry {
-  id: string
   agentId: string
   agentName: string
   action: HistoryAction
@@ -652,14 +654,6 @@ export interface HistoryEntry {
   description?: string
   repositories: string[]
   timestamp: number
-}
-
-export interface TicketEventGroup {
-  key: string
-  ticketId?: string
-  agentName: string
-  lastAction: HistoryAction
-  entries: HistoryEntry[]
 }
 
 export type ScriptCategory = 'dev' | 'build' | 'test' | 'lint' | 'other'
