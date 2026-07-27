@@ -17,6 +17,7 @@ import {
   updateTerminalRepositoriesFromHook,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
+import { resolveAgentCwd } from '../pty/agent-cwd'
 import {
   saveAgent,
   removeAgent,
@@ -273,7 +274,7 @@ export function restoreAgents() {
     }
 
     for (const agent of agents) {
-      const cwd = agent.repositories[0] || os.homedir()
+      const cwd = resolveAgentCwd(agent.repositories, os.homedir())
 
       const callbacks = createTerminalCallbacks(agent.id, agent.name)
       launchClaude(

@@ -6,6 +6,7 @@ import { execSync, execFileSync } from 'child_process'
 import { readConfig } from '../config/config'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
 import { expandPath } from '../config/validation'
+import { resolveAgentCwd } from './agent-cwd'
 import { getCommonPaths } from '../utils/paths'
 import type { TerminalMetadata, TerminalState, LaunchMode, TerminalUsage } from '../../types'
 export type { TerminalMetadata, TerminalState }
@@ -543,8 +544,10 @@ export function launchClaude(
             // Already dead, ignore
           }
 
-          // Create new PTY process and attach to terminal with current size
-          const restartCwd = terminal.repositories[0] || workingDir
+          // Create new PTY process and attach to terminal with current size.
+          // Repositories attached since the first spawn are honored here, so an
+          // agent bound to a repo after launch restarts inside that repo.
+          const restartCwd = resolveAgentCwd(terminal.repositories, workingDir)
           const previousStateBeforeRestart = terminal.state
           const newPty = createPtyProcess(restartCwd, terminal.cols, terminal.rows)
           terminal.pty = newPty
@@ -554,6 +557,16 @@ export function launchClaude(
           // Notify state change
           if (terminal.onStateChange) {
             terminal.onStateChange('idle', previousStateBeforeRestart)
+          }
+
+          // The restart directory may differ from the original one (repository
+          // attached after launch), so re-read the branch from where we now are.
+          const restartBranch = detectGitBranch(restartCwd)
+          if (restartBranch !== terminal.branchName) {
+            terminal.branchName = restartBranch
+            if (terminal.onBranchChange) {
+              terminal.onBranchChange(restartBranch)
+            }
           }
         } catch (e) {
           console.error(`[launchClaude] Restart failed for terminal ${id}:`, e)
