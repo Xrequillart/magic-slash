@@ -48,7 +48,7 @@
 
 /* Theme tokens. These are the DEFAULT theme's values, and they exist only so a
    document paints correctly before any script has run. The real values are
-   written on <html> by applyTheme() from the registry in theme/themes.ts, which
+   written on <html> by applyTheme() from the registry in src/themes.ts, which
    is the single source — keep these in step with its `dark` entry. */
 :root {
   --c-bg: 10 10 11;

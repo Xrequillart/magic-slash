@@ -1,5 +1,5 @@
-import type { MessageKey } from '../../i18n'
-import { THEME_IDS, type ThemeId } from '../../types'
+import type { MessageKey } from './i18n'
+import { THEME_IDS, type ThemeId } from './types'
 
 /**
  * Every colour the app can paint, as a role rather than a value. Components use
@@ -15,6 +15,14 @@ import { THEME_IDS, type ThemeId } from '../../types'
  *    window's vibrancy, not an opaque grey), and it differs per theme: black on
  *    a light background needs more of it than white on a dark one to read the
  *    same. Nothing applies an opacity modifier on top of them.
+ *
+ * This sits at the shared level rather than under renderer/, next to the
+ * THEME_IDS and THEME_APPEARANCE it is typed against, because the main process
+ * reads it too: claude-theme.ts derives the palette handed to Claude Code in the
+ * terminal from these very tokens. Duplicating the values there instead would be
+ * two registries drifting apart one theme at a time. Nothing here touches the
+ * DOM or React — it is data, and the renderer's theme/ module re-exports it so
+ * components still import from '../theme' as before.
  */
 export interface ThemeTokens {
   // Window and panels

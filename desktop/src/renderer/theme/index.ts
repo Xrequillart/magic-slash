@@ -1,10 +1,10 @@
 import { useSyncExternalStore } from 'react'
 import type { ThemeId } from '../../types'
 import { applyTheme, resolveTheme } from './applyTheme'
-import { THEMES, type ThemeTokens } from './themes'
+import { THEMES, type ThemeTokens } from '../../themes'
 
-export { THEMES, THEME_IDS } from './themes'
-export type { Theme, ThemeTokens } from './themes'
+export { THEMES, THEME_IDS } from '../../themes'
+export type { Theme, ThemeTokens } from '../../themes'
 export { resolveTheme } from './applyTheme'
 
 /**

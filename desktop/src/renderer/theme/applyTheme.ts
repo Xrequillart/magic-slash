@@ -1,5 +1,5 @@
 import { DEFAULT_THEME, isValidTheme, THEME_APPEARANCE, type ThemeId } from '../../types'
-import { THEMES, type ThemeTokens } from './themes'
+import { THEMES, type ThemeTokens } from '../../themes'
 
 /**
  * Paints a theme by writing its tokens as CSS variables on <html>, which is what

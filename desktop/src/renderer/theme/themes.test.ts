@@ -12,7 +12,7 @@ import {
   THEME_APPEARANCE,
   type ThemeId,
 } from '../../types'
-import { THEMES, THEME_IDS } from './themes'
+import { THEMES, THEME_IDS } from '../../themes'
 import { cssVarName, resolveTheme } from './applyTheme'
 
 const RENDERER_DIR = join(__dirname, '..')
