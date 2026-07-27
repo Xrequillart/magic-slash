@@ -20,7 +20,8 @@ export const PR_WORKFLOW_STATUSES: readonly string[] = [
 
 export interface TeamAgent {
   id: string
-  orgId: string
+  /** Derived by the backend from the agent's repositories; null when personal. */
+  orgId: string | null
   ownerId: string | null
   /** The owner's title for the agent, falling back to the terminal name. */
   label: string
@@ -28,22 +29,32 @@ export interface TeamAgent {
   status?: string
   /** Absolute paths on the OWNER's machine — never ours. */
   repositories: string[]
+  /**
+   * The repositories this agent is attached to (agent_repositories). The
+   * portable link, and what the backend derives the agent's organization from.
+   * Empty for agents saved before the link existed.
+   */
+  repositoryIds: string[]
   /** A pull request that is neither merged nor closed, when the agent has one. */
   prUrl?: string
 }
 
 export interface TeamRepo {
   id: string
-  orgId: string
+  /** Null for a personal repository. */
+  orgId: string | null
   name: string
   color: string | null
 }
+
+/** Which scope a Team tab shows: one organization, or personal repositories. */
+export type RepoScope = string | null
 
 export interface TeamRepoRow {
   id: string
   name: string
   color: string
-  orgId: string
+  orgId: string | null
   agents: TeamAgent[]
   prCount: number
 }
@@ -111,9 +122,22 @@ export function buildTeamRows(
   agents: TeamAgent[],
   repos: TeamRepo[],
   localFolderByRepoId: Record<string, string> = {},
+  scope?: RepoScope,
 ): { rows: TeamRepoRow[]; unmatched: number } {
+  // `scope` picks one tab: an organization id, or null for personal repos.
+  // Undefined keeps everything, which is what a single-org user sees.
+  if (scope !== undefined) {
+    repos = repos.filter((r) => (r.orgId ?? null) === scope)
+    agents = agents.filter((a) => (a.orgId ?? null) === scope)
+  }
+
+  // The link by id is authoritative. Path matching stays as a fallback for
+  // agents saved before agent_repositories existed, and for the ones the
+  // backfill could not resolve — without it they would silently vanish.
   const belongs = (agent: TeamAgent, repo: TeamRepo) =>
-    agent.repositories.some((p) => pathBelongsToRepo(p, repo.name, localFolderByRepoId[repo.id]))
+    agent.repositoryIds.length > 0
+      ? agent.repositoryIds.includes(repo.id)
+      : agent.repositories.some((p) => pathBelongsToRepo(p, repo.name, localFolderByRepoId[repo.id]))
 
   const rows: TeamRepoRow[] = repos.map((repo, index) => {
     const matched = agents.filter((agent) => belongs(agent, repo))

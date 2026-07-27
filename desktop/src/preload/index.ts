@@ -519,7 +519,6 @@ const orgApi = {
   updateRole: (orgId: string, userId: string, role: MembershipRole): Promise<void> =>
     ipcRenderer.invoke('org:updateRole', { orgId, userId, role }),
   archive: (orgId: string): Promise<void> => ipcRenderer.invoke('org:archive', { orgId }),
-  switch: (orgId: string): Promise<Config> => ipcRenderer.invoke('org:switch', { orgId }),
 }
 
 // Expose APIs to renderer

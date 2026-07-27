@@ -6,11 +6,11 @@ import { loadSession } from './session-store'
 // ---------------------------------------------------------------------------
 // Org-agents Realtime subscription (main process).
 //
-// Subscribes to postgres_changes on public.agents, org-scoped via a
-// `org_id=eq.<orgId>` filter AND the table's org-scoped RLS. The socket is
-// authorized with the user's JWT (realtime.setAuth) so the SAME RLS the REST
-// path enforces also gates the stream — a member of org A never receives org
-// B's events (AC#3). Events are forwarded to the renderer via injected emitters
+// Subscribes to postgres_changes on public.agents with NO filter: the app has
+// no active organization, and no filter can express "every org I belong to".
+// The socket is authorized with the user's JWT (realtime.setAuth) so the SAME
+// RLS the REST path enforces also gates the stream — a member of org A never
+// receives org B's events. Events are forwarded to the renderer via emitters
 // (wired in connectivity-handlers to webContents.send). This module NEVER
 // mutates the local config/agents cache — teammates' agents are read-only.
 // ---------------------------------------------------------------------------
@@ -18,6 +18,7 @@ import { loadSession } from './session-store'
 /** DB row shape for `agents` as delivered by REST select and Realtime payloads. */
 export interface OrgAgentRow {
   id: string
+  org_id?: string | null
   owner_id: string | null
   name: string
   ticket_id: string | null
@@ -69,6 +70,7 @@ export function mapOrgAgentRow(row: OrgAgentRow): OrgAgent {
   return {
     id: row.id,
     ownerId: row.owner_id ?? null,
+    orgId: row.org_id ?? null,
     name: row.name,
     // Empty string is the unset default the app writes, so `||` not `??`.
     title: meta.title || undefined,
@@ -128,14 +130,14 @@ function dispatchChange(change: OrgAgentChange): void {
 
 let channel: RealtimeChannel | null = null
 let activeClient: SupabaseClient | null = null
-let subscribedOrgId: string | null = null
+let subscribed = false
 let authListenerUnsub: (() => void) | null = null
 let lastStatus: RealtimeStatus = 'reconnecting'
 
 // A channel that never reports SUBSCRIBED (socket that won't connect, join push
-// that never lands) would otherwise hold `subscribedOrgId` forever, and the
-// connectivity poller's `!getActiveRealtimeOrgId()` guard would never retry —
-// the app stays on "Reconnecting…" for the rest of the session. Give the join a
+// that never lands) would otherwise hold the slot forever, and the connectivity
+// poller's `!isOrgAgentsRealtimeActive()` guard would never retry — the app
+// stays on "Reconnecting…" for the rest of the session. Give the join a
 // deadline and release the slot when it passes, so the next poll re-attempts.
 const SUBSCRIBE_DEADLINE_MS = 15_000
 let subscribeWatchdog: ReturnType<typeof setTimeout> | null = null
@@ -147,12 +149,12 @@ function clearSubscribeWatchdog(): void {
   }
 }
 
-function armSubscribeWatchdog(orgId: string): void {
+function armSubscribeWatchdog(): void {
   clearSubscribeWatchdog()
   subscribeWatchdog = setTimeout(() => {
     subscribeWatchdog = null
     // Still waiting on the same channel? Tear it down so a retry can happen.
-    if (lastStatus === 'live' || subscribedOrgId !== orgId) return
+    if (lastStatus === 'live' || !subscribed) return
     console.warn('[realtime] org-agents channel never subscribed — tearing down so the next connectivity check retries')
     void stopOrgAgentsRealtime()
   }, SUBSCRIBE_DEADLINE_MS)
@@ -160,9 +162,9 @@ function armSubscribeWatchdog(orgId: string): void {
   subscribeWatchdog.unref?.()
 }
 
-/** The org id the channel is currently subscribed to, or null when inactive. */
-export function getActiveRealtimeOrgId(): string | null {
-  return subscribedOrgId
+/** Whether the agents channel is currently claimed (subscribed or joining). */
+export function isOrgAgentsRealtimeActive(): boolean {
+  return subscribed
 }
 
 /**
@@ -222,8 +224,8 @@ function ensureTokenReapply(client: SupabaseClient): void {
   }
 }
 
-// Serialize all start/stop operations. Both `switchOrg` and the connectivity
-// poller can trigger a start, and each start awaits (getAuthedClient, teardown)
+// Serialize all start/stop operations. The connectivity poller and a sign-in
+// can both trigger a start, and each start awaits (getAuthedClient, teardown)
 // — without serialization two of them could interleave across an await and
 // orphan a WebSocket channel (the second `channel = client.channel(...)` would
 // overwrite the first without removing it). Chaining every entrypoint onto the
@@ -238,17 +240,17 @@ function withLock<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /**
- * Subscribe to org-scoped agent changes. Idempotent for the same org (a repeat
- * call while already subscribed is a no-op). Switching orgs tears down the old
- * channel first. Degrades to a no-op when cloud is unavailable / logged out.
- * Serialized against every other start/stop call (see withLock).
+ * Subscribe to agent changes across every organization the user belongs to.
+ * Idempotent (a repeat call while already subscribed is a no-op). Degrades to a
+ * no-op when cloud is unavailable / logged out. Serialized against every other
+ * start/stop call (see withLock).
  */
-export function startOrgAgentsRealtime(orgId: string): Promise<void> {
-  return withLock(() => startInternal(orgId))
+export function startOrgAgentsRealtime(): Promise<void> {
+  return withLock(startInternal)
 }
 
-async function startInternal(orgId: string): Promise<void> {
-  if (channel && subscribedOrgId === orgId) return
+async function startInternal(): Promise<void> {
+  if (channel && subscribed) return
 
   const client = await getAuthedClient()
   if (!client) return
@@ -264,13 +266,18 @@ async function startInternal(orgId: string): Promise<void> {
   ensureTokenReapply(client)
 
   activeClient = client
-  subscribedOrgId = orgId
+  subscribed = true
   try {
     channel = client
       .channel('org-agents')
       .on(
+        // NO org filter. No filter can express "every org I belong to", and the
+        // app no longer has one active org to narrow to. The table's RLS says
+        // exactly that, and Realtime enforces the same policies on the socket —
+        // the same reasoning as the user-repositories channel in
+        // settings-realtime.ts.
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'agents', filter: `org_id=eq.${orgId}` },
+        { event: '*', schema: 'public', table: 'agents' },
         handleChange,
       )
       .subscribe((status: string) => {
@@ -278,20 +285,20 @@ async function startInternal(orgId: string): Promise<void> {
         if (lastStatus === 'live') clearSubscribeWatchdog()
         statusEmitter?.(lastStatus)
       })
-    armSubscribeWatchdog(orgId)
+    armSubscribeWatchdog()
   } catch (error) {
-    // subscribe() throws when the socket can't even be created. Release the org
-    // slot (rather than leaving it claimed by a channel that doesn't exist) so
-    // the next connectivity check retries instead of wedging on "Reconnecting…".
+    // subscribe() throws when the socket can't even be created. Release the slot
+    // (rather than leaving it claimed by a channel that doesn't exist) so the
+    // next connectivity check retries instead of wedging on "Reconnecting…".
     console.error('[realtime] failed to subscribe to org-agents:', error)
     channel = null
     activeClient = null
-    subscribedOrgId = null
+    subscribed = false
   }
 }
 
 /**
- * Tear down the org-agents channel (sign-out / unauthorized / org switch).
+ * Tear down the org-agents channel (sign-out / unauthorized).
  * Never throws. Serialized against every other start/stop call (see withLock).
  */
 export function stopOrgAgentsRealtime(): Promise<void> {
@@ -299,7 +306,7 @@ export function stopOrgAgentsRealtime(): Promise<void> {
 }
 
 async function stopInternal(): Promise<void> {
-  subscribedOrgId = null
+  subscribed = false
   clearSubscribeWatchdog()
   if (lastStatus !== 'reconnecting') {
     lastStatus = 'reconnecting'

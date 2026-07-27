@@ -238,7 +238,7 @@ describe('agents', () => {
     metadata: { __app: { id: appId } },
   })
 
-  it('loadAgents scopes the select to the caller, not just the org', async () => {
+  it('loadAgents scopes to the owner across every org, including agents with none', async () => {
     const { client, calls } = makeClient({
       memberships: membershipsOk,
       agents: { data: [agentRow('uuid-1', 'claude-1', UID)], error: null },
@@ -248,11 +248,10 @@ describe('agents', () => {
     const store = new CloudStore()
     await store.loadAgents()
 
+    // Ownership is the scope. Filtering on an org here would drop the caller's
+    // agents whose repos are all personal — they have no org to match.
     const agentCalls = calls.filter((c) => c.table === 'agents' && c.method === 'eq')
-    expect(agentCalls).toEqual([
-      { table: 'agents', method: 'eq', args: ['org_id', ORG] },
-      { table: 'agents', method: 'eq', args: ['owner_id', UID] },
-    ])
+    expect(agentCalls).toEqual([{ table: 'agents', method: 'eq', args: ['owner_id', UID] }])
   })
 
   it('loadAgents excludes archived agents, so closed work is never restored', async () => {
@@ -311,7 +310,6 @@ describe('agents', () => {
     // and by `archived_at is null` so a second close is a no-op.
     const updateIndex = calls.findIndex((c) => c.table === 'agents' && c.method === 'update')
     expect(calls.slice(updateIndex).filter((c) => c.method === 'eq')).toEqual([
-      { table: 'agents', method: 'eq', args: ['org_id', ORG] },
       { table: 'agents', method: 'eq', args: ['owner_id', UID] },
       { table: 'agents', method: 'eq', args: ['id', 'uuid-1'] },
     ])
@@ -348,6 +346,62 @@ describe('agents', () => {
     expect(rows[0].id).not.toBe('uuid-1')
   })
 
+  it('saveAgents links the agent to the repositories it resolved', async () => {
+    const { client, inserts } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [], error: null },
+      agent_repositories: { data: [], error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().saveAgents([
+      { id: 'claude-1', name: 'A', repositories: ['/repo'], repositoryIds: ['r1', 'r2'] } as Agent,
+    ])
+
+    const rows = inserts.agent_repositories[0] as Array<Record<string, unknown>>
+    expect(rows.map((r) => r.repo_id)).toEqual(['r1', 'r2'])
+  })
+
+  it('saveAgents skips the round-trip when the links did not change', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [agentRow('uuid-1', 'claude-1', UID)], error: null },
+      agent_repositories: { data: [{ agent_id: 'uuid-1', repo_id: 'r1' }], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    const [agent] = await store.loadAgents()
+    expect(agent.repositoryIds).toEqual(['r1'])
+
+    const before = calls.filter((c) => c.table === 'agent_repositories').length
+    await store.saveAgents([agent])
+
+    // saveAgents runs on every metadata hook; re-reading the links each time
+    // would put a query on the hot path for nothing.
+    expect(calls.filter((c) => c.table === 'agent_repositories')).toHaveLength(before)
+  })
+
+  it('saveAgents never unlinks an agent whose paths simply could not be resolved', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [agentRow('uuid-1', 'claude-1', UID)], error: null },
+      agent_repositories: { data: [{ agent_id: 'uuid-1', repo_id: 'r1' }], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents()
+    // Config failed to load → no path resolves → repositoryIds is empty, but the
+    // agent still has paths. Treating that as "detached" would drop it out of
+    // its team's view.
+    await store.saveAgents([
+      { id: 'claude-1', name: 'A', repositories: ['/repo'], repositoryIds: [] } as Agent,
+    ])
+
+    expect(calls.filter((c) => c.table === 'agent_repositories' && c.method === 'delete')).toEqual([])
+  })
+
   it('saveAgents stamps the caller as owner on every upserted row', async () => {
     const { client, upserts } = makeClient({
       memberships: membershipsOk,
@@ -360,7 +414,10 @@ describe('agents', () => {
 
     const rows = upserts.agents[0] as Array<Record<string, unknown>>
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ org_id: ORG, owner_id: UID, name: 'Agent A' })
+    expect(rows[0]).toMatchObject({ owner_id: UID, name: 'Agent A' })
+    // The org is derived by the backend from agent_repositories; sending one
+    // would fight the trigger, and on an upsert it would overwrite the truth.
+    expect(rows[0]).not.toHaveProperty('org_id')
   })
 })
 
@@ -726,8 +783,73 @@ describe('loadOrgUsageStats', () => {
 
 // ── repositories ─────────────────────────────────────────────────────────────
 
+describe('loadConfig repository keys', () => {
+  const row = (id: string, name: string, orgId: string | null) => ({
+    id, owner_id: UID, org_id: orgId, name,
+    keywords: [], color: null, languages: null, commit: null,
+    pull_request: null, resolve: null, issues: null, branches: null, worktree_files: null,
+  })
+
+  // Names are unique per SCOPE, not globally. With every org visible at once, a
+  // plain record[name] = … would drop one repo with no error whatsoever.
+  it('suffixes a colliding name with its organization, keeping the real name intact', async () => {
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      user_settings: { data: null, error: null },
+      configs: { data: { data: {} }, error: null },
+      organizations: { data: [{ id: 'org-a', name: 'Acme' }, { id: 'org-b', name: 'Globex' }], error: null },
+      repositories: { data: [row('r1', 'api', 'org-a'), row('r2', 'api', 'org-b')], error: null },
+      repository_paths: { data: [], error: null },
+    })
+    h.state.client = client
+
+    const config = await new CloudStore().loadConfig()
+    const keys = Object.keys(config!.repositories)
+
+    expect(keys).toHaveLength(2)
+    expect(keys).toContain('api')
+    expect(keys).toContain('api (Globex)')
+    // Whatever the key, `name` stays the row's real name — writes go through it.
+    expect(Object.values(config!.repositories).map((r) => r.name)).toEqual(['api', 'api'])
+  })
+
+  it('gives the bare key to the personal repo, and orders orgs by name', async () => {
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      user_settings: { data: null, error: null },
+      configs: { data: { data: {} }, error: null },
+      organizations: { data: [{ id: 'org-a', name: 'Acme' }], error: null },
+      repositories: { data: [row('r1', 'api', 'org-a'), row('r2', 'api', null)], error: null },
+      repository_paths: { data: [], error: null },
+    })
+    h.state.client = client
+
+    const config = await new CloudStore().loadConfig()
+
+    // Deterministic regardless of what the database returned first, so the key
+    // a skill resolved yesterday is the same one today.
+    expect(config!.repositories['api'].id).toBe('r2')
+    expect(config!.repositories['api (Acme)'].id).toBe('r1')
+  })
+
+  it('leaves distinct names alone', async () => {
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      user_settings: { data: null, error: null },
+      configs: { data: { data: {} }, error: null },
+      organizations: { data: [{ id: 'org-a', name: 'Acme' }], error: null },
+      repositories: { data: [row('r1', 'api', 'org-a'), row('r2', 'web', 'org-a')], error: null },
+      repository_paths: { data: [], error: null },
+    })
+    h.state.client = client
+
+    const config = await new CloudStore().loadConfig()
+    expect(Object.keys(config!.repositories).sort()).toEqual(['api', 'web'])
+  })
+})
+
 describe('listRepositories', () => {
-  it('maps rows, joins the caller path, and scopes team repos to the active org', async () => {
+  it('maps rows, joins the caller path, and keeps every org the user belongs to', async () => {
     const { client } = makeClient({
       memberships: membershipsOk,
       repositories: {
@@ -744,8 +866,9 @@ describe('listRepositories', () => {
 
     const repos = await new CloudStore().listRepositories()
 
-    // r3 (a different org's team repo) is filtered out; r1 personal + r2 active-org team remain.
-    expect(repos.map((r) => r.id)).toEqual(['r1', 'r2'])
+    // Every repo RLS returned is kept: there is no active org to narrow to, and
+    // hiding another org's repos would make them unreachable.
+    expect(repos.map((r) => r.id)).toEqual(['r1', 'r2', 'r3'])
     const perso = repos.find((r) => r.id === 'r1')!
     expect(perso.path).toBe('/Users/me/perso')
     expect(perso.orgId).toBeNull()

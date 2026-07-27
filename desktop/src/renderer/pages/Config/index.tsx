@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Check, Loader2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, type LucideIcon } from 'lucide-react'
+import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, History, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage } from './OrgPage'
@@ -10,7 +10,6 @@ import { RateLimitBar } from '../../components/agent-info-sidebar/LimitGauge'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
 import { useAuth } from '../../hooks/useAuth'
-import { useOrg } from '../../hooks/useOrg'
 import type { SpotlightShortcut, LaunchMode, ClaudeAccount, SpendSummary, SettingsTab, RepositoryConfig } from '../../../types'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
@@ -91,31 +90,17 @@ function displayNameFromEmail(email: string | undefined, fallback: string): stri
 /**
  * Footer pinned to the bottom of the settings tab rail. Shows the signed-in
  * account, an organization switcher (when the user belongs to more than one),
- * and a Sign out action. Moved here from the sidebar account dropdown.
+ * and a Sign out action. Moved here from the sidebar account dropdown. There is
+ * no organization switcher: every org's repositories are visible at once.
  */
 function SettingsAccountFooter() {
   const { status, logout } = useAuth()
-  const { org, orgs, switchOrg } = useOrg()
   const t = useT()
-  const [switching, setSwitching] = useState<string | null>(null)
 
   if (!status.enabled || !status.loggedIn) return null
 
   const name = displayNameFromEmail(status.user?.email, t('sidebar.accountFallback'))
   const initial = name.charAt(0).toUpperCase()
-
-  const handleSwitchOrg = async (orgId: string) => {
-    if (orgId === org?.id || switching) return
-    setSwitching(orgId)
-    try {
-      await switchOrg(orgId)
-      showToast(t('toast.orgSwitched'), 'success')
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : t('toast.orgSwitchFailed'), 'error')
-    } finally {
-      setSwitching(null)
-    }
-  }
 
   const handleLogout = async () => {
     try {
@@ -127,34 +112,6 @@ function SettingsAccountFooter() {
 
   return (
     <div className="mt-auto border-t border-line-field p-2 space-y-1">
-      {/* Organization switcher — only when the user belongs to more than one. */}
-      {orgs.length > 1 && (
-        <div className="pb-1">
-          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-text-secondary/40">
-            {t('settings.footer.organizations')}
-          </div>
-          {orgs.map((o) => {
-            const isActive = o.id === org?.id
-            return (
-              <button
-                key={o.id}
-                onClick={() => handleSwitchOrg(o.id)}
-                disabled={switching !== null}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-text-secondary rounded-lg hover:bg-surface-strong hover:text-ink transition-colors disabled:opacity-50"
-              >
-                <Building2 className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{o.name}</span>
-                {switching === o.id ? (
-                  <Loader2 className="w-3.5 h-3.5 ml-auto shrink-0 animate-spin" />
-                ) : isActive ? (
-                  <Check className="w-3.5 h-3.5 ml-auto shrink-0 text-accent" />
-                ) : null}
-              </button>
-            )
-          })}
-        </div>
-      )}
-
       {/* Account identity */}
       <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-text-secondary">
         <span className="flex items-center justify-center w-5 h-5 rounded-full bg-accent/20 text-accent text-[10px] font-semibold shrink-0">
@@ -185,7 +142,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   const { config, terminals, splitEnabled, toggleSplitEnabled, setConfig, settingsInitialTab, setSettingsInitialTab } = useStore()
   const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode } = useConfig()
   const orgs = useStore((s) => s.orgs)
-  const activeOrg = useStore((s) => s.activeOrg)
   const t = useT()
   const locale = useLocale()
   // Deep-link support: another view can request a specific settings tab via the
@@ -340,11 +296,22 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   const repos = Object.entries(config?.repositories || {})
   const projectNames = repos.map(([name]) => name)
 
-  // Repos split by scope. Team repos include those the org owns but this user
-  // hasn't bound to a local folder yet (needsLocalPath) — they must stay visible,
-  // that's how you discover a colleague's repo and point it at your own clone.
+  // One section per organization, plus a personal one. Every org the user
+  // belongs to is listed at once — there is no active org to narrow to. A team
+  // repo the user has not bound to a local folder yet (needsLocalPath) stays
+  // visible: that is how you discover a colleague's repo and point it at your
+  // own clone.
   const personalRepos = useMemo(() => repos.filter(([, r]) => !r.orgId), [repos])
-  const teamRepos = useMemo(() => repos.filter(([, r]) => !!r.orgId), [repos])
+  const reposByOrg = useMemo(() => {
+    const byOrg = new Map<string, typeof repos>()
+    for (const org of orgs) byOrg.set(org.id, [])
+    for (const entry of repos) {
+      const orgId = entry[1].orgId
+      if (!orgId) continue
+      byOrg.set(orgId, [...(byOrg.get(orgId) ?? []), entry])
+    }
+    return byOrg
+  }, [repos, orgs])
 
   // Generate color map for projects
   const colorMap = useMemo(
@@ -376,7 +343,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
     const hasGithub = githubStatus[name]
     const color = colorMap[name]
     const agentCount = agentCountByRepo[name] || 0
-    const scopeOrg = repo.orgId ? orgs.find((o) => o.id === repo.orgId) : null
 
     return (
       <a
@@ -394,14 +360,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium truncate">{name}</span>
-            {/* Org name on a team repo — the section header already says "Team",
-                but a repo can belong to another org than the active one. */}
-            {repo.orgId && scopeOrg && scopeOrg.id !== activeOrg?.id && (
-              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent/15 text-accent">
-                <Building2 className="w-2.5 h-2.5" />
-                {scopeOrg.name}
-              </span>
-            )}
             {/* GitHub status badge — only meaningful once a local folder is bound */}
             {!repo.needsLocalPath && (
               <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
@@ -649,23 +607,26 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               )}
             </div>
 
-            {/* Team — every repo of the active org, even those with no local folder yet */}
-            {(teamRepos.length > 0 || activeOrg) && (
-              <div>
-                <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-text-secondary/50 mb-2">
-                  <Building2 className="w-3 h-3" />
-                  <span>{activeOrg?.name ?? t('settings.repos.team')}</span>
-                  <span className="text-text-secondary/30">{teamRepos.length}</span>
-                </div>
-                {teamRepos.length === 0 ? (
-                  <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
-                    {t('settings.repos.noTeam')}
+            {/* One section per organization, in the order useOrg lists them */}
+            {orgs.map((org) => {
+              const orgRepos = reposByOrg.get(org.id) ?? []
+              return (
+                <div key={org.id}>
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-text-secondary/50 mb-2">
+                    <Building2 className="w-3 h-3" />
+                    <span>{org.name}</span>
+                    <span className="text-text-secondary/30">{orgRepos.length}</span>
                   </div>
-                ) : (
-                  <div className="space-y-2">{teamRepos.map(renderRepoRow)}</div>
-                )}
-              </div>
-            )}
+                  {orgRepos.length === 0 ? (
+                    <div className="px-4 py-3 text-xs text-text-secondary/40 border border-dashed border-line-field rounded-xl">
+                      {t('settings.repos.noTeam')}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">{orgRepos.map(renderRepoRow)}</div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>}

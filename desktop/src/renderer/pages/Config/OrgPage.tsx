@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Cloud, Users, Mail, LogOut, Copy, Check, Loader2, Building2, Trash2, AlertTriangle, Archive, X, Plus, UserPlus, ArrowRightLeft } from 'lucide-react'
+import { Cloud, Users, Mail, LogOut, Copy, Check, Loader2, Building2, Trash2, AlertTriangle, Archive, X, Plus, UserPlus } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useOrg } from '../../hooks/useOrg'
 import { Modal } from '../../components/Modal'
@@ -55,14 +55,11 @@ interface OrganizationCardProps {
   org: Org
   members: Member[]
   invitations: Invitation[]
-  isActive: boolean
   currentUserId?: string
   busyMember: string | null
   deletingInvite: string | null
   copiedToken: string | null
   leaving: boolean
-  switching: boolean
-  onSwitch: (orgId: string) => void
   onInvite: (org: Org) => void
   onChangeRole: (orgId: string, userId: string, role: MembershipRole) => void
   onRemoveMember: (orgId: string, userId: string) => void
@@ -74,21 +71,18 @@ interface OrganizationCardProps {
 
 /**
  * One organization, self-contained: identity, members, invitations and the
- * destructive actions. A user can belong to several orgs, so the page renders
- * one of these per membership rather than only showing the active one.
+ * destructive actions. A user can belong to several orgs, and all of them are
+ * live at once — there is no active one to single out.
  */
 function OrganizationCard({
   org,
   members,
   invitations,
-  isActive,
   currentUserId,
   busyMember,
   deletingInvite,
   copiedToken,
   leaving,
-  switching,
-  onSwitch,
   onInvite,
   onChangeRole,
   onRemoveMember,
@@ -118,21 +112,6 @@ function OrganizationCard({
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium truncate">{org.name}</div>
         </div>
-        {isActive ? (
-          <span className="flex items-center h-7 px-2 rounded-lg text-[11px] font-medium bg-green/10 text-green shrink-0">
-            {t('org.active')}
-          </span>
-        ) : (
-          <button
-            onClick={() => onSwitch(org.id)}
-            disabled={switching}
-            className="flex items-center gap-1.5 h-7 px-2 text-[11px] font-medium text-text-secondary bg-surface border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all disabled:opacity-40 shrink-0"
-            title={t('org.switchToTitle')}
-          >
-            {switching ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowRightLeft className="w-3 h-3" />}
-            {t('org.switchTo')}
-          </button>
-        )}
       </div>
 
       {/* Members */}
@@ -296,7 +275,6 @@ export function OrgPage() {
   const { status, loading: authLoading } = useAuth()
   const t = useT()
   const {
-    org: activeOrg,
     orgs,
     membersByOrg,
     invitationsByOrg,
@@ -309,14 +287,12 @@ export function OrgPage() {
     updateRole,
     leaveOrg,
     archiveOrg,
-    switchOrg,
   } = useOrg()
 
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
   const [deletingInvite, setDeletingInvite] = useState<string | null>(null)
   const [busyMember, setBusyMember] = useState<string | null>(null)
   const [leavingOrgId, setLeavingOrgId] = useState<string | null>(null)
-  const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null)
 
   // Modals. Each holds the org it acts on, so the same modal serves every card.
   const [inviteOrg, setInviteOrg] = useState<Org | null>(null)
@@ -372,18 +348,6 @@ export function OrgPage() {
       setLeavingOrgId(null)
     }
   }, [leaveOrg])
-
-  const handleSwitch = useCallback(async (orgId: string) => {
-    setSwitchingOrgId(orgId)
-    try {
-      await switchOrg(orgId)
-      showToast(t('toast.orgSwitched'), 'success')
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : t('toast.orgSwitchFailed'), 'error')
-    } finally {
-      setSwitchingOrgId(null)
-    }
-  }, [switchOrg])
 
   const handleArchive = useCallback(async () => {
     if (!archiveOrgTarget || archiving) return
@@ -514,14 +478,11 @@ export function OrgPage() {
             org={o}
             members={membersByOrg[o.id] ?? []}
             invitations={invitationsByOrg[o.id] ?? []}
-            isActive={o.id === activeOrg?.id}
             currentUserId={currentUserId}
             busyMember={busyMember}
             deletingInvite={deletingInvite}
             copiedToken={copiedToken}
             leaving={leavingOrgId === o.id}
-            switching={switchingOrgId === o.id}
-            onSwitch={handleSwitch}
             onInvite={openInvite}
             onChangeRole={handleChangeRole}
             onRemoveMember={handleRemoveMember}

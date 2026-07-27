@@ -44,7 +44,10 @@ export function useOrgAgents() {
         const idx = prev.findIndex((a) => a.id === change.agent!.id)
         if (idx === -1) return [...prev, change.agent]
         const next = [...prev]
-        next[idx] = change.agent
+        // A realtime payload carries the agents row alone, never its
+        // agent_repositories links — keep the ones we loaded rather than drop
+        // the agent out of its repository on the next status change.
+        next[idx] = { ...change.agent, repositoryIds: change.agent.repositoryIds ?? prev[idx].repositoryIds }
         return next
       })
     })

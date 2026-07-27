@@ -1,6 +1,18 @@
 import type { Agent, TerminalMetadata } from '../../types'
-import { filterValidRepositories } from './config'
+import { filterValidRepositories, readConfig } from './config'
+import { expandPath } from './validation'
+import { resolveRepoIds } from '../../repoMatch'
 import { getStore, reportWriteError } from '../store/Store'
+
+/**
+ * The configured repositories these paths belong to, as `repositories` table
+ * ids. Resolved here, once, because every write of an agent's paths funnels
+ * through this module — and the backend derives the agent's organization from
+ * these ids, so a path left unresolved is an agent its team cannot see.
+ */
+function repoIdsFor(repositories: string[]): string[] {
+  return resolveRepoIds(repositories, readConfig().repositories ?? {}, expandPath)
+}
 
 export function createDefaultMetadata(): TerminalMetadata {
   return {
@@ -113,6 +125,7 @@ export function saveAgent(id: string, name: string, repositories: string[], meta
     id,
     name,
     repositories: validRepositories,
+    repositoryIds: repoIdsFor(validRepositories),
     tsCreate: tsCreate ?? existingAgent?.tsCreate ?? Date.now(),
     metadata: {
       ...createDefaultMetadata(),
@@ -141,6 +154,7 @@ export function updateAgentRepositories(id: string, repositories: string[]): voi
   const agent = agents.find(a => a.id === id)
   if (agent) {
     agent.repositories = filterValidRepositories(repositories)
+    agent.repositoryIds = repoIdsFor(agent.repositories)
     writeAgents(agents)
   }
 }

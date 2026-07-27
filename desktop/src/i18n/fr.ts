@@ -160,7 +160,6 @@ export const fr: Record<keyof typeof en, string> = {
   'common.copied': 'Copié',
 
   // ── Réglages → pied du rail d'onglets ───────────────────────────────────
-  'settings.footer.organizations': 'Organisations',
   'settings.footer.signOut': 'Se déconnecter',
 
   // ── Réglages → Dépôts ────────────────────────────────────────────────────
@@ -170,7 +169,6 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.repos.emptyTitle': 'Aucun dépôt configuré',
   'settings.repos.emptyHint': 'Cliquez pour ajouter votre premier projet',
   'settings.repos.personal': 'Personnels',
-  'settings.repos.team': 'Équipe',
   'settings.repos.noPersonal': 'Aucun dépôt personnel — utilisez « Ajouter un dépôt » ci-dessus.',
   'settings.repos.noTeam': 'Aucun dépôt partagé dans cette organisation pour l’instant.',
   'settings.repos.connected': 'Connecté',
@@ -290,8 +288,6 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.about.whatsNew': 'Nouveautés',
 
   // ── Notifications éphémères ──────────────────────────────────────────────
-  'toast.orgSwitched': 'Organisation changée',
-  'toast.orgSwitchFailed': 'Impossible de changer d’organisation',
   'toast.launchModeUpdated': 'Mode de lancement mis à jour',
   'toast.releaseNotesFailed': 'Impossible de charger les notes de version',
   'toast.invalidFolderName': 'Nom de dossier invalide',
@@ -468,9 +464,6 @@ export const fr: Record<keyof typeof en, string> = {
   'org.signInHint': 'Réglages → Compte → Compte cloud.',
   'org.emptyTitle': 'Vous n’appartenez à aucune organisation.',
   'org.emptyHint': 'Créez-en une, ou rejoignez-en une avec une invitation.',
-  'org.active': 'Active',
-  'org.switchTo': 'Basculer',
-  'org.switchToTitle': 'Faire de celle-ci l’organisation active',
 
   'org.members': 'Membres',
   'org.membersEmpty': 'Aucun membre pour l’instant.',
@@ -732,6 +725,8 @@ export const fr: Record<keyof typeof en, string> = {
   'dashboard.openPR': 'Ouvrir la pull request',
   'dashboard.viewPR': 'Voir la PR',
   'dashboard.repos.section': 'Dépôts',
+  'dashboard.repos.personal': 'Personnel',
+  'dashboard.repos.noReposInScope': 'Aucun dépôt ici pour l’instant.',
   'dashboard.repos.agentCount.one': '{count} agent',
   'dashboard.repos.agentCount.other': '{count} agents',
   'dashboard.repos.noAgents': 'aucun agent',

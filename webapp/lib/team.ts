@@ -1,6 +1,6 @@
 import { fetchMembers, fetchOrgs, type Org } from './orgs'
 import { getSupabase } from './supabase'
-import { buildTeamRows, type TeamAgent, type TeamRepo, type TeamRepoRow } from './teamRows'
+import type { TeamAgent, TeamRepo } from './teamRows'
 
 /**
  * The Team view: for every repository shared with one of your organizations, who
@@ -11,23 +11,20 @@ import { buildTeamRows, type TeamAgent, type TeamRepo, type TeamRepoRow } from '
  * agents whose terminal happens to be open on their owner's machine.
  */
 
+/**
+ * Everything the page needs, unaggregated: the tabs are a view concern, so the
+ * component picks a scope and calls buildTeamRows itself rather than the fetch
+ * deciding for it.
+ */
 export interface TeamOverview {
-  rows: TeamRepoRow[]
-  /** Agents on a personal repo, or on one no org repo matches. */
-  unmatched: number
+  repos: TeamRepo[]
+  agents: TeamAgent[]
+  /** repo id → the caller's own clone folder name, for path fallback matching. */
+  localFolders: Record<string, string>
   /** owner id → email, so an agent shows a readable member label. */
   emailByOwner: Record<string, string>
-  /** Org name per row, only worth showing when the user belongs to several. */
-  orgNameById: Record<string, string>
-  multiOrg: boolean
-}
-
-export const EMPTY_OVERVIEW: TeamOverview = {
-  rows: [],
-  unmatched: 0,
-  emailByOwner: {},
-  orgNameById: {},
-  multiOrg: false,
+  /** The user's organizations, in the order the tabs should appear. */
+  orgs: { id: string; name: string }[]
 }
 
 interface RepoMetadata {
@@ -38,7 +35,7 @@ interface RepoMetadata {
 
 interface AgentRow {
   id: string
-  org_id: string
+  org_id: string | null
   owner_id: string | null
   name: string
   ticket_id: string | null
@@ -62,9 +59,10 @@ function livePrUrl(row: AgentRow): string | undefined {
   return undefined
 }
 
-function toTeamAgent(row: AgentRow): TeamAgent {
+function toTeamAgent(row: AgentRow, repositoryIds: string[]): TeamAgent {
   const meta = row.metadata ?? {}
   return {
+    repositoryIds,
     id: row.id,
     orgId: row.org_id,
     ownerId: row.owner_id,
@@ -78,25 +76,51 @@ function toTeamAgent(row: AgentRow): TeamAgent {
   }
 }
 
-async function fetchTeamAgents(orgIds: string[]): Promise<TeamAgent[]> {
-  // Archived agents are closed work kept only for the history attached to them.
+async function fetchTeamAgents(): Promise<TeamAgent[]> {
+  // No org filter: RLS returns exactly what the caller may see — their own
+  // agents (including those with no organization) plus every agent of the orgs
+  // they belong to. Archived agents are closed work, kept only for history.
   const { data, error } = await getSupabase()
     .from('agents')
     .select('id, org_id, owner_id, name, ticket_id, status, repositories, metadata')
-    .in('org_id', orgIds)
     .is('archived_at', null)
   if (error || !data) return []
-  return (data as AgentRow[]).map(toTeamAgent)
+
+  const rows = data as AgentRow[]
+  const links = await fetchRepoLinks(rows.map((r) => r.id))
+  return rows.map((row) => toTeamAgent(row, links[row.id] ?? []))
 }
 
-async function fetchRepos(orgIds: string[]): Promise<TeamRepo[]> {
+/**
+ * agent id → the repositories it is attached to, in attachment order. RLS
+ * returns exactly the links of the agents the caller can already see.
+ */
+async function fetchRepoLinks(agentIds: string[]): Promise<Record<string, string[]>> {
+  if (agentIds.length === 0) return {}
+  const { data, error } = await getSupabase()
+    .from('agent_repositories')
+    .select('agent_id, repo_id')
+    .in('agent_id', agentIds)
+    .order('created_at', { ascending: true })
+  if (error || !data) return {}
+
+  const out: Record<string, string[]> = {}
+  for (const row of data as { agent_id: string; repo_id: string }[]) {
+    ;(out[row.agent_id] ??= []).push(row.repo_id)
+  }
+  return out
+}
+
+async function fetchRepos(): Promise<TeamRepo[]> {
+  // Same reasoning as fetchTeamAgents: RLS already scopes this to the caller's
+  // own repos plus their orgs'. Personal ones (org_id null) belong here too —
+  // they are the "Personal" tab.
   const { data, error } = await getSupabase()
     .from('repositories')
     .select('id, org_id, name, color')
-    .in('org_id', orgIds)
     .order('name', { ascending: true })
   if (error || !data) return []
-  return (data as { id: string; org_id: string; name: string; color: string | null }[]).map((r) => ({
+  return (data as { id: string; org_id: string | null; name: string; color: string | null }[]).map((r) => ({
     id: r.id,
     orgId: r.org_id,
     name: r.name,
@@ -133,24 +157,21 @@ async function fetchEmails(orgs: Org[]): Promise<Record<string, string>> {
 }
 
 export async function fetchTeamOverview(): Promise<TeamOverview> {
+  // No early return on "no organization": a user with only personal repos still
+  // has a Team page — it just has a single Personal tab.
   const orgs = await fetchOrgs()
-  if (orgs.length === 0) return EMPTY_OVERVIEW
-
-  const orgIds = orgs.map((o) => o.id)
   const [repos, agents, localFolders, emailByOwner] = await Promise.all([
-    fetchRepos(orgIds),
-    fetchTeamAgents(orgIds),
+    fetchRepos(),
+    fetchTeamAgents(),
     fetchLocalFolders(),
     fetchEmails(orgs),
   ])
 
-  const { rows, unmatched } = buildTeamRows(agents, repos, localFolders)
-
   return {
-    rows,
-    unmatched,
+    repos,
+    agents,
+    localFolders,
     emailByOwner,
-    orgNameById: Object.fromEntries(orgs.map((o) => [o.id, o.name])),
-    multiOrg: orgs.length > 1,
+    orgs: orgs.map((o) => ({ id: o.id, name: o.name })),
   }
 }

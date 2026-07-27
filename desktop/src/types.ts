@@ -80,6 +80,14 @@ export interface RepositoryConfig {
   // `needsLocalPath` = true when this user has no local path bound on this
   // machine yet (the repo shows in a warning state and can't launch agents).
   id?: string
+  /**
+   * The repository's real name in the cloud. Normally identical to its key in
+   * Config.repositories — but names are only unique per scope, so when two of
+   * the user's organizations both have an `api`, the second one's KEY carries an
+   * org suffix (`api (Acme)`) while this stays `api`. Anything writing back to
+   * the repositories table must use this, never the key.
+   */
+  name?: string
   orgId?: string | null
   ownerId?: string | null
   needsLocalPath?: boolean
@@ -152,6 +160,13 @@ export interface Agent {
   id: string
   name: string
   repositories: string[]  // List of attached repository paths
+  /**
+   * The `repositories` table ids those paths resolve to, in attachment order.
+   * Derived locally by resolveRepoIds() (src/repoMatch.ts) — a path is machine-
+   * specific, this is the portable link, and it is what the backend derives the
+   * agent's organization from. Empty when no path matches a configured repo.
+   */
+  repositoryIds?: string[]
   tsCreate?: number
   metadata?: TerminalMetadata
   splitPane?: 'left' | 'right'
@@ -321,9 +336,6 @@ export interface Config {
   dailyDigest?: {
     enabled: boolean
   }
-  // Cloud: the org the local install is currently associated with (set after
-  // signing up / accepting an invitation). Purely a local hint — never required.
-  currentOrgId?: string
 }
 
 /**
@@ -419,6 +431,12 @@ export interface OrgAgent {
   id: string
   /** owner membership user id (auth.users id), or null when ownership was cleared. */
   ownerId: string | null
+  /**
+   * The organization this agent's work belongs to, DERIVED by the backend from
+   * its repositories. Null when it only touches personal repos — such an agent
+   * is visible to its owner alone.
+   */
+  orgId: string | null
   /** Resolved in the renderer from the org member list (owner_id → email). */
   ownerEmail?: string
   name: string
@@ -431,6 +449,13 @@ export interface OrgAgent {
   ticketId?: string
   status?: string
   repositories: string[]
+  /**
+   * The `repositories` table ids this agent is attached to (agent_repositories),
+   * in attachment order. The portable link — a teammate's paths mean nothing on
+   * our machine. Absent on rows delivered by realtime, which carry the agent row
+   * alone; consumers keep the ids they already had rather than lose the link.
+   */
+  repositoryIds?: string[]
   /** PR review state per repo, distilled from metadata.repositoryMetadata. */
   prReviews?: OrgAgentPRReview[]
   /** ISO timestamp of the last write (agents.updated_at). */

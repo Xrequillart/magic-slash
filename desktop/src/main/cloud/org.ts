@@ -3,10 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Config, Invitation, InvitationStatus, Member, MembershipRole, Org, OrgActivity, OrgAgent, OrgSharedConfig, UsageStats } from '../../types'
 import { getAuthedClient } from './auth'
 import { loadSession } from './session-store'
-import { readConfig, writeConfig, hydrateConfig, mergeOrgSharedConfig, setCurrentOrgId } from '../config/config'
+import { readConfig, mergeOrgSharedConfig } from '../config/config'
 import { expandPath } from '../config/validation'
 import { getStore } from '../store/Store'
-import { startOrgAgentsRealtime } from './realtime'
 
 interface OrgRow {
   id: string
@@ -27,16 +26,15 @@ function firstOrg(rel: OrgRow | OrgRow[] | null): OrgRow | null {
 }
 
 /**
- * The org this install is currently associated with. Prefers the locally
- * remembered currentOrgId, otherwise the first membership. Returns null when
- * cloud is disabled, the user is logged out, or has no membership.
+ * A default organization for the handful of calls that still need to name one
+ * without the caller supplying it (listing members, creating an invitation).
+ * The user's first membership — there is no "active org" any more: agents take
+ * their org from their repositories, and every org's repos are visible at once.
+ * Null when cloud is disabled, the user is logged out, or has no membership.
  */
 export async function getCurrentOrg(): Promise<Org | null> {
   const orgs = await listOrgs()
-  if (orgs.length === 0) return null
-
-  const preferredId = readConfig().currentOrgId
-  return orgs.find((o) => o.id === preferredId) ?? orgs[0]
+  return orgs[0] ?? null
 }
 
 /**
@@ -206,12 +204,12 @@ export async function removeMember(orgId: string, userId: string): Promise<void>
 /**
  * Leave an org (removes the current user's own membership). The
  * leave_organization RPC enforces the last-admin lockout guard, so a sole admin
- * of an org that still has members cannot leave. When the user leaves the active
- * org we clear the remembered currentOrgId so getCurrentOrg repoints cleanly.
+ * of an org that still has members cannot leave. Its repositories simply stop
+ * being visible on the next config load, and the agents that worked on them lose
+ * their derived organization.
  */
 export async function leaveOrg(orgId: string): Promise<void> {
   await callVoidRpc('leave_organization', { p_org_id: orgId })
-  if (readConfig().currentOrgId === orgId) setCurrentOrgId(undefined)
 }
 
 /** Change a member's role (admin only). The RPC enforces the last-admin guard on demotion. */
@@ -221,12 +219,10 @@ export async function updateMemberRole(orgId: string, userId: string, role: Memb
 
 /**
  * Archive (soft-delete) an org (admin only). The RPC sets archived_at; the org
- * then drops out of every read path server-side. When it was the active org we
- * clear the remembered currentOrgId so getCurrentOrg repoints cleanly.
+ * then drops out of every read path server-side, taking its repositories with it.
  */
 export async function archiveOrg(orgId: string): Promise<void> {
   await callVoidRpc('archive_organization', { p_org_id: orgId })
-  if (readConfig().currentOrgId === orgId) setCurrentOrgId(undefined)
 }
 
 /**
@@ -331,53 +327,20 @@ export interface AcceptInvitationResult {
 }
 
 /**
- * Read the org's shared config and merge it into the local config (best-effort).
- * 'fill' keeps existing local values (onboarding); 'replace' swaps the shared
- * keys to the org's values (used when switching the active org).
+ * Read the org's shared config and merge it into that org's repositories
+ * (best-effort). Existing local values always win.
  */
-async function mergeSharedConfigWith(
-  client: SupabaseClient,
-  orgId: string,
-  mode: 'fill' | 'replace' = 'fill',
-): Promise<Config> {
+async function mergeSharedConfigWith(client: SupabaseClient, orgId: string): Promise<Config> {
   try {
     const { data: shared, error } = await client.rpc('get_org_shared_config', { p_org_id: orgId })
     if (!error && shared) {
-      return mergeOrgSharedConfig(shared as OrgSharedConfig, orgId, mode)
+      return mergeOrgSharedConfig(shared as OrgSharedConfig, orgId)
     }
   } catch (mergeError) {
     // Inheriting shared config is best-effort — never fail over it.
     console.error('[cloud] Failed to merge org shared config:', mergeError)
   }
   return readConfig()
-}
-
-/**
- * Switch the active org: remember it locally, then RE-APPLY the org's shared
- * config with REPLACE semantics so the shared skills/agents config (languages,
- * commit/PR format, repo keywords) actually swaps to the newly-active org rather
- * than retaining the previous org's values. Returns the updated local config.
- * Degrades local-first: throws the standard error when cloud is unavailable, and
- * the shared-config re-apply is best-effort (never fails the switch).
- */
-export async function switchOrg(orgId: string): Promise<Config> {
-  const client = await getAuthedClient()
-  if (!client) throw new Error('Cloud features are not available')
-
-  // Configs are per (org, user): point the store at the newly-active org and
-  // re-hydrate that org's config row (rather than mutating the current one).
-  getStore().setActiveOrgId(orgId)
-  const config = await hydrateConfig()
-  config.currentOrgId = orgId
-  writeConfig(config)
-
-  // Re-point the realtime subscription at the newly-active org so the team
-  // dashboard streams the right org's agents (best-effort — never fail the
-  // switch over it).
-  void startOrgAgentsRealtime(orgId).catch((error) =>
-    console.error('[cloud] failed to resubscribe realtime after org switch:', error),
-  )
-  return config
 }
 
 /**
@@ -424,8 +387,6 @@ export async function acceptInvitation(token: string): Promise<AcceptInvitationR
   const { data: orgId, error } = await client.rpc('accept_invitation', { invitation_token: token })
   if (error) throw new Error(error.message)
   if (!orgId) throw new Error('accept_invitation returned no org')
-
-  setCurrentOrgId(orgId as string)
 
   // Membership now exists → safe to read the org's shared config.
   const config = await mergeSharedConfigWith(client, orgId as string)

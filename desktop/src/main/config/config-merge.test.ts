@@ -36,31 +36,35 @@ function baseConfig(): Config {
 }
 
 describe('mergeOrgSharedConfig', () => {
+  const ORG = 'org-1'
+  const OTHER = 'org-2'
+
+  /** A repo of ORG. `name` is the real cloud name; the record key may differ. */
+  function repo(name: string, extra: Partial<Config['repositories'][string]> = {}) {
+    return { name, orgId: ORG, path: `/local/${name}`, keywords: [], ...extra }
+  }
+
   it('fills unset language fields but never overrides existing local ones', async () => {
     const config = baseConfig()
-    config.repositories = {
-      web: { path: '/local/web', keywords: ['web'], languages: { commit: 'fr' } },
-    }
+    config.repositories = { web: repo('web', { keywords: ['web'], languages: { commit: 'fr' } }) }
     await seed(config)
 
     const shared: OrgSharedConfig = { languages: { commit: 'en', pullRequest: 'en' } }
-    const result = mergeOrgSharedConfig(shared)
+    const result = mergeOrgSharedConfig(shared, ORG)
 
     expect(result.repositories.web.languages).toEqual({ commit: 'fr', pullRequest: 'en' })
   })
 
   it('fills unset commit and pullRequest fields, preserving those already set', async () => {
     const config = baseConfig()
-    config.repositories = {
-      api: { path: '/local/api', keywords: ['api'], commit: { format: 'gitmoji' } },
-    }
+    config.repositories = { api: repo('api', { keywords: ['api'], commit: { format: 'gitmoji' } }) }
     await seed(config)
 
     const shared: OrgSharedConfig = {
       commit: { format: 'angular', style: 'single-line', coAuthor: false },
       pullRequest: { autoLinkTickets: true },
     }
-    const result = mergeOrgSharedConfig(shared)
+    const result = mergeOrgSharedConfig(shared, ORG)
 
     expect(result.repositories.api.commit).toEqual({
       format: 'gitmoji', // local wins
@@ -73,9 +77,9 @@ describe('mergeOrgSharedConfig', () => {
   it('applies shared keywords only to repos with defaulted keywords', async () => {
     const config = baseConfig()
     config.repositories = {
-      empty: { path: '/local/empty', keywords: [] },
-      defaulted: { path: '/local/defaulted', keywords: ['defaulted'] },
-      customized: { path: '/local/customized', keywords: ['payments', 'billing'] },
+      empty: repo('empty'),
+      defaulted: repo('defaulted', { keywords: ['defaulted'] }),
+      customized: repo('customized', { keywords: ['payments', 'billing'] }),
     }
     await seed(config)
 
@@ -86,7 +90,7 @@ describe('mergeOrgSharedConfig', () => {
         customized: ['should', 'not', 'apply'],
       },
     }
-    const result = mergeOrgSharedConfig(shared)
+    const result = mergeOrgSharedConfig(shared, ORG)
 
     expect(result.repositories.empty.keywords).toEqual(['shared', 'kw'])
     expect(result.repositories.defaulted.keywords).toEqual(['shared', 'kw'])
@@ -95,40 +99,66 @@ describe('mergeOrgSharedConfig', () => {
 
   it('never touches local repo paths', async () => {
     const config = baseConfig()
-    config.repositories = {
-      web: { path: '/very/local/path', keywords: [] },
-    }
+    config.repositories = { web: repo('web', { path: '/very/local/path' }) }
     await seed(config)
 
-    const result = mergeOrgSharedConfig({ languages: { commit: 'en' }, repoKeywords: { web: ['x'] } })
+    const result = mergeOrgSharedConfig({ languages: { commit: 'en' }, repoKeywords: { web: ['x'] } }, ORG)
 
     expect(result.repositories.web.path).toBe('/very/local/path')
   })
 
-  it('records the org id when provided', async () => {
-    await seed(baseConfig())
-    const result = mergeOrgSharedConfig({}, 'org-123')
-    expect(result.currentOrgId).toBe('org-123')
+  // Every org's repositories are visible at once, so a merge that reached all of
+  // them would hand one team's conventions to another's repo.
+  it('leaves the repositories of another organization alone', async () => {
+    const config = baseConfig()
+    config.repositories = {
+      mine: repo('mine'),
+      theirs: { name: 'theirs', orgId: OTHER, path: '/local/theirs', keywords: [] },
+    }
+    await seed(config)
+
+    const result = mergeOrgSharedConfig(
+      { languages: { commit: 'en' }, repoKeywords: { theirs: ['nope'] } },
+      ORG,
+    )
+
+    expect(result.repositories.mine.languages).toEqual({ commit: 'en' })
+    expect(result.repositories.theirs.languages).toBeUndefined()
+    expect(result.repositories.theirs.keywords).toEqual([])
   })
 
-  it('does not set an org id when none is provided', async () => {
-    await seed(baseConfig())
-    const result = mergeOrgSharedConfig({})
-    expect(result.currentOrgId).toBeUndefined()
+  it('leaves personal repositories alone — they belong to the user, not a team', async () => {
+    const config = baseConfig()
+    config.repositories = { side: { name: 'side', path: '/local/side', keywords: [] } }
+    await seed(config)
+
+    const result = mergeOrgSharedConfig({ languages: { commit: 'en' } }, ORG)
+
+    expect(result.repositories.side.languages).toBeUndefined()
+  })
+
+  it('matches shared keywords on the real name, not on the record key', async () => {
+    // Two orgs own an `api`; the second one's KEY carries an org suffix, but the
+    // org's shared config still addresses it by its real name.
+    const config = baseConfig()
+    config.repositories = { 'api (Acme)': repo('api') }
+    await seed(config)
+
+    const result = mergeOrgSharedConfig({ repoKeywords: { api: ['shared'] } }, ORG)
+
+    expect(result.repositories['api (Acme)'].keywords).toEqual(['shared'])
   })
 
   it('ignores empty and malformed shared config without throwing', async () => {
     const config = baseConfig()
-    config.repositories = {
-      web: { path: '/local/web', keywords: ['web'], languages: { commit: 'fr' } },
-    }
+    config.repositories = { web: repo('web', { keywords: ['web'], languages: { commit: 'fr' } }) }
     await seed(config)
 
-    expect(() => mergeOrgSharedConfig({})).not.toThrow()
+    expect(() => mergeOrgSharedConfig({}, ORG)).not.toThrow()
     const result = mergeOrgSharedConfig({
       languages: 'nope' as unknown as OrgSharedConfig['languages'],
       repoKeywords: { web: 'nope' as unknown as string[] },
-    })
+    }, ORG)
     expect(result.repositories.web.languages).toEqual({ commit: 'fr' })
     expect(result.repositories.web.keywords).toEqual(['web'])
   })

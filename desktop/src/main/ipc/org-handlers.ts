@@ -21,7 +21,6 @@ import {
   leaveOrg,
   updateMemberRole,
   archiveOrg,
-  switchOrg,
 } from '../cloud/org'
 
 interface InviteArgs { email: string; role?: MembershipRole; orgId?: string }
@@ -112,5 +111,4 @@ export function setupOrgHandlers(): void {
     return createOrganization(name)
   })
 
-  ipcMain.handle('org:switch', async (_event, { orgId }: OrgIdArgs): Promise<Config> => switchOrg(orgId))
 }

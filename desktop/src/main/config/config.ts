@@ -615,20 +615,6 @@ export function setIntegration(name: 'atlassian', enabled: boolean): Config {
   return config
 }
 
-/** Persist which cloud org this install is associated with. */
-export function setCurrentOrgId(orgId: string | undefined): Config {
-  const config = readConfig()
-  if (orgId) {
-    config.currentOrgId = orgId
-  } else {
-    delete config.currentOrgId
-  }
-  // Point the store at the active org so subsequent reads/writes target it.
-  getStore().setActiveOrgId(orgId)
-  writeConfig(config)
-  return config
-}
-
 /**
  * Copy accepted source values onto target. In 'fill' mode only keys the target
  * has not set yet are written (local values win); in 'replace' mode every
@@ -638,79 +624,72 @@ function applyValues(
   target: Record<string, unknown>,
   source: Record<string, unknown>,
   accept: (value: unknown) => boolean,
-  mode: 'fill' | 'replace',
 ): void {
   for (const [key, value] of Object.entries(source)) {
     if (!accept(value)) continue
-    if (mode === 'replace' || target[key] === undefined) {
-      target[key] = value
-    }
+    if (target[key] === undefined) target[key] = value
   }
 }
 
 /**
- * Merge an org's shared config into the local config across every existing
- * repository. Only the shared fields are touched — languages, commit/PR format,
- * and repo keywords; local-only bits (repo paths, integration toggles) are never
- * modified. Missing/malformed input is ignored (never throws on data).
+ * Merge an organization's shared config into the local config, across THAT
+ * organization's repositories. Only the shared fields are touched — languages,
+ * commit/PR format, and repo keywords; local-only bits (repo paths, integration
+ * toggles) are never modified. Missing/malformed input is ignored (never throws
+ * on data).
  *
- * Two modes:
- *  - 'fill' (default): applied as DEFAULTS — existing local values always win.
- *    Used on invitation onboarding so the invitee keeps anything they set.
- *  - 'replace': the org's values overwrite the local ones for the shared keys.
- *    Used when SWITCHING the active org, so the shared config actually swaps to
- *    reflect the newly-active org instead of retaining the previous org's values.
+ * Applied as DEFAULTS: an existing local value always wins, so an invitee keeps
+ * whatever they had already set. There used to be a 'replace' mode, for when
+ * switching the active org had to swap one org's conventions for another's;
+ * with no active org and a per-repo scope, nothing overwrites anything.
  */
-export function mergeOrgSharedConfig(
-  shared: OrgSharedConfig,
-  orgId?: string,
-  mode: 'fill' | 'replace' = 'fill',
-): Config {
+export function mergeOrgSharedConfig(shared: OrgSharedConfig, orgId: string): Config {
   const config = readConfig()
   config.repositories = config.repositories || {}
 
-  for (const repo of Object.values(config.repositories)) {
+  // Only the repositories of THIS organization. Every org's repos are visible
+  // at once now, so applying one org's conventions to all of them would give a
+  // repo of org B the commit format of org A. A personal repo inherits from no
+  // org at all — it belongs to the user, not to a team.
+  const scoped = Object.values(config.repositories).filter((r) => r.orgId === orgId)
+
+  for (const repo of scoped) {
     if (shared.languages && typeof shared.languages === 'object') {
       repo.languages = repo.languages || {}
-      applyValues(repo.languages, shared.languages, (v) => typeof v === 'string', mode)
+      applyValues(repo.languages, shared.languages, (v) => typeof v === 'string')
     }
 
     if (shared.commit && typeof shared.commit === 'object') {
       repo.commit = repo.commit || {}
-      applyValues(repo.commit, shared.commit, (v) => v !== undefined, mode)
+      applyValues(repo.commit, shared.commit, (v) => v !== undefined)
     }
 
     if (shared.pullRequest && typeof shared.pullRequest === 'object') {
       repo.pullRequest = repo.pullRequest || {}
-      applyValues(repo.pullRequest, shared.pullRequest, (v) => v !== undefined, mode)
+      applyValues(repo.pullRequest, shared.pullRequest, (v) => v !== undefined)
     }
   }
 
   // Repo keywords keyed by repo name. In 'fill' mode only a repo with no
   // meaningful keywords yet inherits them; in 'replace' mode the matching repo's
   // keywords are overwritten with the org's.
+  // Keyed by the repo's real NAME, which is its key in the record except when
+  // two orgs share a name (see toRepositoryRecord) — so match on `name`, and
+  // only within this org's repos.
   if (shared.repoKeywords && typeof shared.repoKeywords === 'object') {
     for (const [name, keywords] of Object.entries(shared.repoKeywords)) {
-      const repo = config.repositories[name]
-      if (!repo || !Array.isArray(keywords) || keywords.length === 0) continue
-      if (mode === 'replace') {
-        repo.keywords = keywords
-      } else {
-        const isDefaulted = repo.keywords.length === 0 || (repo.keywords.length === 1 && repo.keywords[0] === name)
-        if (isDefaulted) repo.keywords = keywords
-      }
+      if (!Array.isArray(keywords) || keywords.length === 0) continue
+      const repo = scoped.find((r) => (r.name ?? '') === name)
+      if (!repo) continue
+      const isDefaulted = repo.keywords.length === 0 || (repo.keywords.length === 1 && repo.keywords[0] === name)
+      if (isDefaulted) repo.keywords = keywords
     }
   }
 
-  if (orgId) config.currentOrgId = orgId
-
-  // Persist the merged identity of PERSONAL repos only. Team repos carry their
-  // shared identity centrally in the repositories table, so we must not rewrite
-  // their shared row on a mere org switch/onboarding. currentOrgId is persisted
-  // via the blob below.
-  for (const [name, repo] of Object.entries(config.repositories)) {
-    if (!repo.orgId) persistRepoIdentity(name)
-  }
+  // Nothing to persist for team repos: they carry their shared identity
+  // centrally in the repositories table, and this merge only ever wrote the
+  // org's own values back onto them. Personal repos are not touched by an org's
+  // shared config at all any more, so there is nothing to push either.
   writeConfig(config)
   return config
 }

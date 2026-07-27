@@ -14,7 +14,6 @@ export function useOrg() {
   const orgs = useStore((s) => s.orgs)
   const setActiveOrg = useStore((s) => s.setActiveOrg)
   const setOrgs = useStore((s) => s.setOrgs)
-  const setConfig = useStore((s) => s.setConfig)
 
   const [members, setMembers] = useState<Member[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
@@ -138,17 +137,6 @@ export function useOrg() {
     [refresh],
   )
 
-  const switchOrg = useCallback(
-    async (orgId: string) => {
-      // switchOrg re-applies the org's shared config (replace semantics) and
-      // returns the updated local config — reflect it in the store immediately.
-      const config = await window.electronAPI.org.switch(orgId)
-      if (config) setConfig(config)
-      await refresh()
-    },
-    [refresh, setConfig],
-  )
-
   return {
     org: activeOrg,
     orgs,
@@ -166,6 +154,5 @@ export function useOrg() {
     updateRole,
     leaveOrg,
     archiveOrg,
-    switchOrg,
   }
 }

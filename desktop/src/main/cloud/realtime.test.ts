@@ -41,7 +41,7 @@ vi.mock('./session-store', () => ({
 import {
   startOrgAgentsRealtime,
   stopOrgAgentsRealtime,
-  getActiveRealtimeOrgId,
+  isOrgAgentsRealtimeActive,
   setRealtimeEmitters,
   mapOrgAgentRow,
 } from './realtime'
@@ -73,48 +73,48 @@ beforeEach(async () => {
 })
 
 describe('startOrgAgentsRealtime', () => {
-  it('authorizes the socket then subscribes with an org-scoped filter', async () => {
-    await startOrgAgentsRealtime('org-1')
+  it('authorizes the socket then subscribes to every agent RLS lets through', async () => {
+    await startOrgAgentsRealtime()
 
     expect(h.state.client.realtime.setAuth).toHaveBeenCalledWith('access-token')
     expect(h.state.client.channel).toHaveBeenCalledWith('org-agents')
     expect(h.channel.on).toHaveBeenCalledWith(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'agents', filter: 'org_id=eq.org-1' },
+      { event: '*', schema: 'public', table: 'agents' },
       expect.any(Function),
     )
     expect(h.channel.subscribe).toHaveBeenCalled()
-    expect(getActiveRealtimeOrgId()).toBe('org-1')
+    expect(isOrgAgentsRealtimeActive()).toBe(true)
   })
 
-  it('is a no-op when already subscribed to the same org', async () => {
-    await startOrgAgentsRealtime('org-1')
-    await startOrgAgentsRealtime('org-1')
+  it('is a no-op when already subscribed', async () => {
+    await startOrgAgentsRealtime()
+    await startOrgAgentsRealtime()
     expect(h.state.client.channel).toHaveBeenCalledTimes(1)
   })
 
   it('serializes concurrent starts so no channel is orphaned', async () => {
-    // Both switchOrg and the connectivity poller can fire a start at once.
+    // The connectivity poller can fire a start while one is already in flight.
     // Without serialization they interleave across the getAuthedClient await
     // and each opens a channel, leaking the first. The lock must collapse these
     // into a single subscription.
     await Promise.all([
-      startOrgAgentsRealtime('org-1'),
-      startOrgAgentsRealtime('org-1'),
+      startOrgAgentsRealtime(),
+      startOrgAgentsRealtime(),
     ])
     expect(h.state.client.channel).toHaveBeenCalledTimes(1)
-    expect(getActiveRealtimeOrgId()).toBe('org-1')
+    expect(isOrgAgentsRealtimeActive()).toBe(true)
   })
 
   it('does nothing when there is no session token', async () => {
     h.state.token = undefined
-    await startOrgAgentsRealtime('org-1')
+    await startOrgAgentsRealtime()
     expect(h.state.client.channel).not.toHaveBeenCalled()
-    expect(getActiveRealtimeOrgId()).toBeNull()
+    expect(isOrgAgentsRealtimeActive()).toBe(false)
   })
 
   it('maps channel status to live / reconnecting', async () => {
-    await startOrgAgentsRealtime('org-1')
+    await startOrgAgentsRealtime()
     const statusCb = h.channel.subscribe.mock.calls[0][0] as (s: string) => void
     statusCb('SUBSCRIBED')
     statusCb('CHANNEL_ERROR')
@@ -123,7 +123,7 @@ describe('startOrgAgentsRealtime', () => {
   })
 
   it('forwards INSERT/UPDATE with a mapped agent and DELETE with the row id', async () => {
-    await startOrgAgentsRealtime('org-1')
+    await startOrgAgentsRealtime()
     const changeCb = h.channel.on.mock.calls[0][2] as (payload: unknown) => void
 
     changeCb({
@@ -139,6 +139,7 @@ describe('startOrgAgentsRealtime', () => {
         agent: {
           id: 'uuid-1',
           ownerId: 'u1',
+          orgId: null,
           name: 'Agent A',
           ticketId: 'T-1',
           status: 'in progress',
@@ -153,7 +154,7 @@ describe('startOrgAgentsRealtime', () => {
   it('reports an archived agent as a removal, not as an update', async () => {
     // Closing an agent archives the row, so it reaches the socket as an UPDATE.
     // Every consumer's contract for "gone" is DELETE.
-    await startOrgAgentsRealtime('org-1')
+    await startOrgAgentsRealtime()
     const changeCb = h.channel.on.mock.calls[0][2] as (payload: unknown) => void
 
     changeCb({
@@ -165,7 +166,7 @@ describe('startOrgAgentsRealtime', () => {
   })
 
   it('still maps a normal UPDATE when archived_at is null', async () => {
-    await startOrgAgentsRealtime('org-1')
+    await startOrgAgentsRealtime()
     const changeCb = h.channel.on.mock.calls[0][2] as (payload: unknown) => void
 
     changeCb({
@@ -177,37 +178,37 @@ describe('startOrgAgentsRealtime', () => {
       {
         eventType: 'UPDATE',
         id: 'uuid-1',
-        agent: { id: 'uuid-1', ownerId: 'u1', name: 'Agent A', repositories: [] },
+        agent: { id: 'uuid-1', ownerId: 'u1', orgId: null, name: 'Agent A', repositories: [] },
       },
     ])
   })
 
-  it('releases the org slot when subscribe() throws, so a later start retries', async () => {
+  it('releases the slot when subscribe() throws, so a later start retries', async () => {
     // No WebSocket transport / dead socket: subscribe() blows up. Keeping the
-    // org "claimed" here would make the connectivity poller's
-    // !getActiveRealtimeOrgId() guard skip every retry — the app would stay on
+    // slot "claimed" here would make the connectivity poller's
+    // !isOrgAgentsRealtimeActive() guard skip every retry — the app would stay on
     // "Reconnecting…" for the rest of the session.
     h.channel.subscribe.mockImplementationOnce(() => {
       throw new Error('WebSocket not available')
     })
 
-    await startOrgAgentsRealtime('org-1')
-    expect(getActiveRealtimeOrgId()).toBeNull()
+    await startOrgAgentsRealtime()
+    expect(isOrgAgentsRealtimeActive()).toBe(false)
 
-    await startOrgAgentsRealtime('org-1')
+    await startOrgAgentsRealtime()
     expect(h.state.client.channel).toHaveBeenCalledTimes(2)
-    expect(getActiveRealtimeOrgId()).toBe('org-1')
+    expect(isOrgAgentsRealtimeActive()).toBe(true)
   })
 
   it('tears the channel down when it never reports SUBSCRIBED within the deadline', async () => {
     vi.useFakeTimers()
     try {
-      await startOrgAgentsRealtime('org-1')
-      expect(getActiveRealtimeOrgId()).toBe('org-1')
+      await startOrgAgentsRealtime()
+      expect(isOrgAgentsRealtimeActive()).toBe(true)
 
       // Socket connected but the join never lands: nothing ever calls back.
       await vi.advanceTimersByTimeAsync(15_000)
-      expect(getActiveRealtimeOrgId()).toBeNull()
+      expect(isOrgAgentsRealtimeActive()).toBe(false)
       expect(h.state.client.removeChannel).toHaveBeenCalled()
     } finally {
       vi.useRealTimers()
@@ -217,40 +218,36 @@ describe('startOrgAgentsRealtime', () => {
   it('keeps a live channel past the deadline', async () => {
     vi.useFakeTimers()
     try {
-      await startOrgAgentsRealtime('org-1')
+      await startOrgAgentsRealtime()
       const statusCb = h.channel.subscribe.mock.calls[0][0] as (s: string) => void
       statusCb('SUBSCRIBED')
 
       await vi.advanceTimersByTimeAsync(15_000)
-      expect(getActiveRealtimeOrgId()).toBe('org-1')
+      expect(isOrgAgentsRealtimeActive()).toBe(true)
       expect(h.state.client.removeChannel).not.toHaveBeenCalled()
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it('resubscribes on org switch (tears down old channel, opens a new one)', async () => {
-    await startOrgAgentsRealtime('org-1')
-    await startOrgAgentsRealtime('org-2')
+  it('subscribes without an org filter, so every org the user belongs to streams', async () => {
+    await startOrgAgentsRealtime()
 
-    expect(h.state.client.removeChannel).toHaveBeenCalledTimes(1)
-    expect(h.channel.on).toHaveBeenLastCalledWith(
-      'postgres_changes',
-      expect.objectContaining({ filter: 'org_id=eq.org-2' }),
-      expect.any(Function),
-    )
-    expect(getActiveRealtimeOrgId()).toBe('org-2')
+    // No filter can express "any org I belong to"; the table's RLS says exactly
+    // that and Realtime enforces it on the socket.
+    const binding = h.channel.on.mock.calls[0][1] as Record<string, unknown>
+    expect(binding).toEqual({ event: '*', schema: 'public', table: 'agents' })
   })
 })
 
 describe('stopOrgAgentsRealtime', () => {
-  it('removes the channel, unsubscribes the auth listener, and clears the active org', async () => {
-    await startOrgAgentsRealtime('org-1')
+  it('removes the channel, unsubscribes the auth listener, and releases the slot', async () => {
+    await startOrgAgentsRealtime()
     await stopOrgAgentsRealtime()
 
     expect(h.state.client.removeChannel).toHaveBeenCalledWith(h.channel)
     expect(h.authSubscription.unsubscribe).toHaveBeenCalled()
-    expect(getActiveRealtimeOrgId()).toBeNull()
+    expect(isOrgAgentsRealtimeActive()).toBe(false)
   })
 
   it('is safe to call when nothing is subscribed', async () => {
@@ -274,6 +271,7 @@ describe('mapOrgAgentRow', () => {
     ).toEqual({
       id: 'uuid-2',
       ownerId: null,
+      orgId: null,
       name: 'B',
       ticketId: 'T-9',
       status: 'committed',

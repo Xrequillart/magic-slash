@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, ExternalLink, FolderGit2 } from 'lucide-react'
 import type { TeamOverview } from '@/lib/team'
-import type { TeamAgent, TeamRepoRow } from '@/lib/teamRows'
+import { buildTeamRows, type RepoScope, type TeamAgent, type TeamRepoRow } from '@/lib/teamRows'
 import { Badge, Card, SectionHeader, type BadgeTone } from '@/components/ui'
 
 /**
@@ -56,11 +56,9 @@ function AgentRow({ agent, email }: { agent: TeamAgent; email?: string }) {
 
 function RepoCard({
   row,
-  orgName,
   emailByOwner,
 }: {
   row: TeamRepoRow
-  orgName?: string
   emailByOwner: Record<string, string>
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -78,10 +76,7 @@ function RepoCard({
       >
         <Chevron className={`h-4 w-4 shrink-0 text-muted ${hasAgents ? '' : 'opacity-0'}`} />
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
-          {row.name}
-          {orgName && <span className="ml-2 text-xs font-normal text-muted">{orgName}</span>}
-        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{row.name}</span>
         <span className="shrink-0 text-xs text-muted">{agentCountLabel(row.agents.length)}</span>
         {row.prCount > 0 && <Badge tone="purple">{row.prCount} on a PR</Badge>}
       </button>
@@ -94,10 +89,40 @@ function RepoCard({
 }
 
 /**
- * Who is working on what, per repository shared with your organization. The web
- * counterpart of the desktop app's Team page, reading the same rows.
+ * Who is working on what, per repository — one tab per organization, plus a
+ * personal one. The web counterpart of the desktop app's Team page, reading the
+ * same rows. Switching tabs is a view change and nothing else: there is no
+ * active organization to set.
  */
 export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
+  const [scope, setScope] = useState<RepoScope | undefined>(undefined)
+
+  const tabs = useMemo(() => {
+    if (!overview) return []
+    const list: { scope: RepoScope; label: string }[] = overview.orgs.map((o) => ({
+      scope: o.id,
+      label: o.name,
+    }))
+    // Only offer the personal tab when there is something in it.
+    const hasPersonal =
+      overview.repos.some((r) => !r.orgId) || overview.agents.some((a) => !a.orgId)
+    if (hasPersonal) list.push({ scope: null, label: 'Personal' })
+    return list
+  }, [overview])
+
+  // Default to the first tab with agents in it, so a busy org is not hidden
+  // behind a click just because it sorts second.
+  const activeScope: RepoScope | undefined = useMemo(() => {
+    if (scope !== undefined && tabs.some((t) => t.scope === scope)) return scope
+    const busy = tabs.find((t) => overview?.agents.some((a) => (a.orgId ?? null) === t.scope))
+    return busy?.scope ?? tabs[0]?.scope
+  }, [scope, tabs, overview])
+
+  const { rows, unmatched } = useMemo(() => {
+    if (!overview || activeScope === undefined) return { rows: [], unmatched: 0 }
+    return buildTeamRows(overview.agents, overview.repos, overview.localFolders, activeScope)
+  }, [overview, activeScope])
+
   if (!overview) {
     return (
       <>
@@ -107,8 +132,8 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
     )
   }
 
-  const totalAgents = overview.rows.reduce((n, r) => n + r.agents.length, 0)
-  const totalPr = overview.rows.reduce((n, r) => n + r.prCount, 0)
+  const totalAgents = rows.reduce((n, r) => n + r.agents.length, 0)
+  const totalPr = rows.reduce((n, r) => n + r.prCount, 0)
 
   return (
     <>
@@ -116,7 +141,7 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
         icon={FolderGit2}
         title="Repositories"
         action={
-          overview.rows.length > 0 ? (
+          rows.length > 0 ? (
             <span className="text-xs text-muted">
               {agentCountLabel(totalAgents)} · {totalPr} on a PR
             </span>
@@ -124,32 +149,51 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
         }
       />
 
-      {overview.rows.length === 0 ? (
-        <Card className="p-8 text-center">
-          <FolderGit2 className="mx-auto mb-3 h-8 w-8 text-black/15" />
-          <p className="text-sm text-muted">No repository shared with your team yet.</p>
-          <p className="mt-1 text-xs text-muted">
-            Repos shared to an org from the desktop app appear here, with everyone working on them.
-          </p>
-        </Card>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {overview.rows.map((row) => (
-            <RepoCard
-              key={row.id}
-              row={row}
-              orgName={overview.multiOrg ? overview.orgNameById[row.orgId] : undefined}
-              emailByOwner={overview.emailByOwner}
-            />
+      {tabs.length > 1 && (
+        <div className="mb-3 flex flex-wrap items-center gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.scope ?? 'personal'}
+              onClick={() => setScope(tab.scope)}
+              className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                tab.scope === activeScope
+                  ? 'border-accent/30 bg-accent/10 text-accent'
+                  : 'border-black/10 bg-white text-muted hover:bg-black/[0.03] hover:text-ink'
+              }`}
+            >
+              {tab.label}
+            </button>
           ))}
         </div>
       )}
 
-      {overview.unmatched > 0 && (
+      {rows.length === 0 ? (
+        <Card className="p-8 text-center">
+          <FolderGit2 className="mx-auto mb-3 h-8 w-8 text-black/15" />
+          {/* An empty tab is a different situation from having no repo at all,
+              and only the latter deserves the "go share one" nudge. */}
+          <p className="text-sm text-muted">
+            {tabs.length > 1 ? 'No repository here yet.' : 'No repository shared with your team yet.'}
+          </p>
+          {tabs.length <= 1 && (
+            <p className="mt-1 text-xs text-muted">
+              Repos shared to an org from the desktop app appear here, with everyone working on them.
+            </p>
+          )}
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {rows.map((row) => (
+            <RepoCard key={row.id} row={row} emailByOwner={overview.emailByOwner} />
+          ))}
+        </div>
+      )}
+
+      {unmatched > 0 && (
         <p className="mt-3 text-xs text-muted">
-          {overview.unmatched === 1
-            ? '1 agent on a personal or unlinked repository'
-            : `${overview.unmatched} agents on personal or unlinked repositories`}
+          {unmatched === 1
+            ? '1 agent on a repository this view cannot resolve'
+            : `${unmatched} agents on repositories this view cannot resolve`}
         </p>
       )}
     </>

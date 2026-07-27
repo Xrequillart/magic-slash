@@ -7,11 +7,10 @@ import { applyRemoteSettingsRow, scheduleRemoteRefresh, setRemoteSyncEmitters } 
 import { recordAppInstallation } from '../app-installation'
 import { validateAllRepoPaths } from '../config/repo-validation'
 import { restoreAgents } from './terminal-handlers'
-import { getCurrentOrg } from '../cloud/org'
 import {
   startOrgAgentsRealtime,
   stopOrgAgentsRealtime,
-  getActiveRealtimeOrgId,
+  isOrgAgentsRealtimeActive,
   setRealtimeEmitters,
 } from '../cloud/realtime'
 import { loadSession } from '../cloud/session-store'
@@ -105,16 +104,13 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
           void recordAppInstallation(app.getVersion())
         }
         emitInvalidRepos()
-        // Start the org-agents realtime subscription once the backend is
-        // reachable + authed. Idempotent per org; resolve the org only until a
-        // channel is live to avoid an extra query on every poll.
-        if (!getActiveRealtimeOrgId()) {
-          const org = await getCurrentOrg()
-          if (org) {
-            void startOrgAgentsRealtime(org.id).catch((error) =>
-              console.error('[connectivity] failed to start realtime:', error),
-            )
-          }
+        // Start the agents realtime subscription once the backend is reachable
+        // + authed. It spans every org the user belongs to (RLS scopes the
+        // socket), so there is no org to resolve first.
+        if (!isOrgAgentsRealtimeActive()) {
+          void startOrgAgentsRealtime().catch((error) =>
+            console.error('[connectivity] failed to start realtime:', error),
+          )
         }
         // The settings/repositories channels are USER-scoped: no org is resolved
         // for them, which is deliberate — preferences belong to the account, so

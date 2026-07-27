@@ -169,7 +169,6 @@ export const en = {
   'common.copied': 'Copied',
 
   // ── Settings → tab rail footer ───────────────────────────────────────────
-  'settings.footer.organizations': 'Organizations',
   'settings.footer.signOut': 'Sign out',
 
   // ── Settings → Repositories ──────────────────────────────────────────────
@@ -179,7 +178,6 @@ export const en = {
   'settings.repos.emptyTitle': 'No repositories configured',
   'settings.repos.emptyHint': 'Click to add your first project',
   'settings.repos.personal': 'Personal',
-  'settings.repos.team': 'Team',
   'settings.repos.noPersonal': 'No personal repository — use “Add repository” above.',
   'settings.repos.noTeam': 'No shared repository in this organization yet.',
   'settings.repos.connected': 'Connected',
@@ -291,8 +289,6 @@ export const en = {
   'settings.about.whatsNew': 'What’s New',
 
   // ── Toasts ───────────────────────────────────────────────────────────────
-  'toast.orgSwitched': 'Switched organization',
-  'toast.orgSwitchFailed': 'Failed to switch organization',
   'toast.launchModeUpdated': 'Launch mode updated',
   'toast.releaseNotesFailed': 'Could not load release notes',
   'toast.invalidFolderName': 'Invalid folder name',
@@ -468,9 +464,6 @@ export const en = {
   'org.signInHint': 'Settings → Account → Cloud account.',
   'org.emptyTitle': 'You do not belong to any organization.',
   'org.emptyHint': 'Create one, or join with an invitation.',
-  'org.active': 'Active',
-  'org.switchTo': 'Switch to',
-  'org.switchToTitle': 'Make this the active organization',
 
   'org.members': 'Members',
   'org.membersEmpty': 'No members yet.',
@@ -729,6 +722,8 @@ export const en = {
   'dashboard.openPR': 'Open the pull request',
   'dashboard.viewPR': 'View PR',
   'dashboard.repos.section': 'Repositories',
+  'dashboard.repos.personal': 'Personal',
+  'dashboard.repos.noReposInScope': 'No repository here yet.',
   'dashboard.repos.agentCount.one': '{count} agent',
   'dashboard.repos.agentCount.other': '{count} agents',
   'dashboard.repos.noAgents': 'no agent',

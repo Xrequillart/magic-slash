@@ -180,6 +180,8 @@ export class CloudStore implements Store {
   private agentIdMap = new Map<string, string>()
   /** agents.id (uuid) → display name, for reconstructing history entries. */
   private agentNameByUuid = new Map<string, string>()
+  /** app agent id → digest of its last-synced repository ids (see syncRepoLinks). */
+  private agentRepoKey = new Map<string, string>()
 
   setActiveOrgId(orgId: string | undefined): void {
     this.activeOrgId = orgId
@@ -258,12 +260,15 @@ export class CloudStore implements Store {
 
     const ctx = await this.context()
     if (!ctx) {
-      // No active org: there is no config blob and no team repos to read, but the
-      // user's own settings and personal repos are still theirs. `version` is
-      // rewritten by migrateConfig() from app.getVersion() on the next pass.
+      // No membership at all: there is no config blob to read, but the user's
+      // own settings and repos are still theirs. `version` is rewritten by
+      // migrateConfig() from app.getVersion() on the next pass.
       const config: Config = { version: 'unknown', repositories: {} }
       if (settings) applySettingsRow(config, settings)
-      config.repositories = this.toRepositoryRecord(await this.fetchRepositories({ ...user, orgId: null }))
+      config.repositories = this.toRepositoryRecord(
+        await this.fetchRepositories(user),
+        await this.fetchOrgNames(user),
+      )
       return config
     }
 
@@ -300,16 +305,15 @@ export class CloudStore implements Store {
     }
 
     const config = blob as unknown as Config
-    // Keep the remembered org id in sync with what we actually loaded.
-    if (typeof config.currentOrgId === 'string') {
-      this.activeOrgId = config.currentOrgId
-    }
     // user_settings is the source of truth for preferences; it is applied OVER
     // any legacy copy left in the blob (pre-migration installs), so the two can
     // never disagree in favour of the stale one.
     if (settings) applySettingsRow(config, settings)
     // Repositories are assembled from their own tables, not the blob.
-    config.repositories = this.toRepositoryRecord(await this.fetchRepositories(ctx))
+    config.repositories = this.toRepositoryRecord(
+      await this.fetchRepositories(ctx),
+      await this.fetchOrgNames(ctx),
+    )
     return config
   }
 
@@ -376,11 +380,43 @@ export class CloudStore implements Store {
   }
 
   /** Map assembled repos to the name-keyed Config.repositories record. */
-  private toRepositoryRecord(repos: StoredRepository[]): Record<string, RepositoryConfig> {
+  /**
+   * Name-keyed record, as the /magic:* skills expect (they look a repo up by
+   * matching $PWD against `.repositories.<key>.path`, then read settings off
+   * that key).
+   *
+   * Names are unique per SCOPE, not globally: `uq_repositories_org_name` and
+   * `uq_repositories_owner_name`. Two of the user's orgs can each have an `api`,
+   * and now that every org's repos are visible at once, a plain `record[name] =`
+   * would drop one of them with no error at all. So a colliding repo gets its
+   * org appended to its KEY — `api`, then `api (Acme)` — while `name` keeps the
+   * real one for anything writing back to the table.
+   *
+   * Order decides who keeps the bare key, so it must not depend on what the
+   * database happened to return first: personal repos, then orgs by name.
+   */
+  private toRepositoryRecord(
+    repos: StoredRepository[],
+    orgNameById: Map<string, string> = new Map(),
+  ): Record<string, RepositoryConfig> {
+    const ordered = [...repos].sort((a, b) => {
+      const orgA = a.orgId ? orgNameById.get(a.orgId) ?? a.orgId : ''
+      const orgB = b.orgId ? orgNameById.get(b.orgId) ?? b.orgId : ''
+      return orgA.localeCompare(orgB) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id)
+    })
+
     const record: Record<string, RepositoryConfig> = {}
-    for (const r of repos) {
-      record[r.name] = {
+    for (const r of ordered) {
+      let key = r.name
+      if (record[key]) {
+        const suffix = r.orgId ? orgNameById.get(r.orgId) ?? r.orgId : 'personal'
+        key = `${r.name} (${suffix})`
+        // Two orgs with the same NAME would collide again; the id ends it.
+        if (record[key]) key = `${r.name} (${suffix} · ${r.id.slice(0, 6)})`
+      }
+      record[key] = {
         id: r.id,
+        name: r.name,
         orgId: r.orgId,
         ownerId: r.ownerId,
         path: r.path ?? '',
@@ -400,11 +436,14 @@ export class CloudStore implements Store {
   }
 
   /**
-   * Fetch repos visible to the caller (own personal + active-org team) with the
-   * caller's own path. `orgId: null` means no active org, which narrows the set to
-   * personal repos only.
+   * Every repository the caller can see — their own, plus the team repos of ALL
+   * the organizations they belong to — with their own local path.
+   *
+   * No org filter: there is no active organization any more. RLS already returns
+   * exactly the visible set, and an agent's organization comes from the repo it
+   * works on, so hiding the other orgs' repos would only make them unreachable.
    */
-  private async fetchRepositories(ctx: { client: SupabaseClient; uid: string; orgId: string | null }): Promise<StoredRepository[]> {
+  private async fetchRepositories(ctx: { client: SupabaseClient; uid: string }): Promise<StoredRepository[]> {
     const [reposRes, pathsRes] = await Promise.all([
       ctx.client
         .from('repositories')
@@ -418,11 +457,16 @@ export class CloudStore implements Store {
       for (const p of pathsRes.data as RepositoryPathRow[]) pathById.set(p.repo_id, p.path)
     }
 
-    return (reposRes.data as RepositoryRow[])
-      // RLS returns personal (owned) + team repos of ALL the user's orgs; scope
-      // team repos to the ACTIVE org so switching orgs swaps the visible set.
-      .filter((r) => r.org_id === null || r.org_id === ctx.orgId)
-      .map((r) => this.mapRepositoryRow(r, pathById.get(r.id) ?? null))
+    return (reposRes.data as RepositoryRow[]).map((r) => this.mapRepositoryRow(r, pathById.get(r.id) ?? null))
+  }
+
+  /** Org id → name, for disambiguating repositories that share a name. */
+  private async fetchOrgNames(ctx: { client: SupabaseClient }): Promise<Map<string, string>> {
+    const names = new Map<string, string>()
+    const { data, error } = await ctx.client.from('organizations').select('id, name')
+    if (error || !data) return names
+    for (const row of data as { id: string; name: string }[]) names.set(row.id, row.name)
+    return names
   }
 
   async listRepositories(): Promise<StoredRepository[]> {
@@ -532,11 +576,16 @@ export class CloudStore implements Store {
   // Agents
   // -------------------------------------------------------------------------
 
-  private toAgentRow(agent: Agent, id: string, orgId: string, uid: string): Record<string, unknown> {
+  /**
+   * `org_id` is deliberately absent: an agent has no organization of its own.
+   * The backend derives it from agent_repositories (see the derive_agent_org
+   * trigger), so sending one here would fight the trigger — and on an upsert an
+   * omitted column is left untouched, which is exactly what we want.
+   */
+  private toAgentRow(agent: Agent, id: string, uid: string): Record<string, unknown> {
     const meta = agent.metadata
     return {
       id,
-      org_id: orgId,
       owner_id: uid,
       name: agent.name,
       ticket_id: meta?.ticketId ?? null,
@@ -557,6 +606,7 @@ export class CloudStore implements Store {
       id: app?.id ?? row.id,
       name: row.name,
       repositories: Array.isArray(row.repositories) ? row.repositories : [],
+      repositoryIds: [],
       tsCreate: app?.tsCreate,
       metadata: metadata as TerminalMetadata,
       splitPane: app?.splitPane,
@@ -564,12 +614,16 @@ export class CloudStore implements Store {
   }
 
   /**
-   * The caller's OWN agents in the active org. Scoped by owner_id as well as
-   * org_id: RLS lets any member SELECT every agent of the org (the team dashboard
-   * needs that — see loadOrgAgents), but this list drives local terminal
-   * restoration, so it must never hand one member's agents to another. Rows whose
-   * owner_id was nulled by the membership FK (an ex-member's agents) belong to
-   * nobody and are deliberately excluded.
+   * The caller's OWN agents, across every organization — and the ones with no
+   * organization at all.
+   *
+   * Scoped by owner_id, and by owner_id ONLY: an agent belongs to its owner, and
+   * its organization is derived from its repositories, so an agent working on a
+   * personal repo has none. Filtering on an org here would silently drop those
+   * from terminal restoration. RLS lets any member SELECT the whole org's agents
+   * (the team page needs that — see loadOrgAgents), so this filter is what
+   * narrows the list to the caller, not a redundancy. Rows whose owner_id was
+   * nulled by the membership FK belong to nobody and stay excluded.
    *
    * Archived agents are excluded too: they are closed work kept only for the
    * history they are attached to. Without this filter, restoreAgents() would
@@ -582,7 +636,6 @@ export class CloudStore implements Store {
     const { data, error } = await ctx.client
       .from('agents')
       .select('id, org_id, owner_id, name, ticket_id, description, branch_name, base_branch, status, repositories, metadata, updated_at')
-      .eq('org_id', ctx.orgId)
       .eq('owner_id', ctx.uid)
       .is('archived_at', null)
 
@@ -590,14 +643,97 @@ export class CloudStore implements Store {
 
     this.agentIdMap.clear()
     this.agentNameByUuid.clear()
+    this.agentRepoKey.clear()
+    const rows = data as AgentRow[]
+    const linksByAgent = await this.fetchRepoLinks(ctx, rows.map((r) => r.id))
+
     const agents: Agent[] = []
-    for (const raw of data as AgentRow[]) {
+    for (const raw of rows) {
       const agent = this.fromAgentRow(raw)
+      agent.repositoryIds = linksByAgent.get(raw.id) ?? []
       this.agentIdMap.set(agent.id, raw.id)
       this.agentNameByUuid.set(raw.id, agent.name)
+      this.agentRepoKey.set(agent.id, agent.repositoryIds.join(','))
       agents.push(agent)
     }
     return agents
+  }
+
+  /**
+   * agent uuid → attached repository ids, in attachment order (which is what
+   * decides the derived organization, so the order is data).
+   */
+  private async fetchRepoLinks(ctx: CloudContext, agentUuids: string[]): Promise<Map<string, string[]>> {
+    const byAgent = new Map<string, string[]>()
+    if (agentUuids.length === 0) return byAgent
+
+    const { data, error } = await ctx.client
+      .from('agent_repositories')
+      .select('agent_id, repo_id')
+      .in('agent_id', agentUuids)
+      .order('created_at', { ascending: true })
+    if (error || !data) return byAgent
+
+    for (const row of data as { agent_id: string; repo_id: string }[]) {
+      const list = byAgent.get(row.agent_id) ?? []
+      list.push(row.repo_id)
+      byAgent.set(row.agent_id, list)
+    }
+    return byAgent
+  }
+
+  /**
+   * Reconcile agent_repositories for the agents whose links actually changed.
+   *
+   * saveAgents runs on EVERY agent mutation — including each metadata hook — so
+   * this is gated on a per-agent digest of the ids: unchanged agents cost
+   * nothing. Rows are diffed rather than deleted-and-reinserted, because
+   * created_at ordering is what picks the derived organization; recreating the
+   * links would let it flip.
+   */
+  private async syncRepoLinks(ctx: CloudContext, agents: Agent[]): Promise<void> {
+    const changed = agents.filter(
+      (a) => this.agentRepoKey.get(a.id) !== (a.repositoryIds ?? []).join(','),
+    )
+    if (changed.length === 0) return
+
+    const uuidByAppId = new Map(changed.map((a) => [a.id, this.agentIdMap.get(a.id)!]))
+    const existing = await this.fetchRepoLinks(ctx, [...uuidByAppId.values()])
+
+    const toInsert: { agent_id: string; repo_id: string }[] = []
+    for (const agent of changed) {
+      const uuid = uuidByAppId.get(agent.id)!
+      const desired = agent.repositoryIds ?? []
+      const before = existing.get(uuid) ?? []
+
+      for (const repoId of desired) {
+        if (!before.includes(repoId)) toInsert.push({ agent_id: uuid, repo_id: repoId })
+      }
+
+      // "Resolved nothing" is not "detached from everything": a config that
+      // failed to load leaves every path unresolvable, and deleting on that
+      // would drop the agent out of its team's view until someone re-attaches a
+      // repo by hand. Only an agent with no paths at all is a genuine detach.
+      const unresolved = desired.length === 0 && agent.repositories.length > 0
+      const stale = unresolved ? [] : before.filter((repoId) => !desired.includes(repoId))
+      if (stale.length > 0) {
+        const { error } = await ctx.client
+          .from('agent_repositories')
+          .delete()
+          .eq('agent_id', uuid)
+          .in('repo_id', stale)
+        if (error) throw new Error(`syncRepoLinks (delete) failed: ${error.message}`)
+      }
+    }
+
+    if (toInsert.length > 0) {
+      const { error } = await ctx.client.from('agent_repositories').insert(toInsert)
+      if (error) throw new Error(`syncRepoLinks (insert) failed: ${error.message}`)
+    }
+
+    for (const agent of changed) {
+      this.agentRepoKey.set(agent.id, (agent.repositoryIds ?? []).join(','))
+    }
   }
 
   /**
@@ -620,12 +756,15 @@ export class CloudStore implements Store {
       const uuid = this.agentIdMap.get(a.id) ?? randomUUID()
       this.agentIdMap.set(a.id, uuid)
       this.agentNameByUuid.set(uuid, a.name)
-      return this.toAgentRow(a, uuid, ctx.orgId, ctx.uid)
+      return this.toAgentRow(a, uuid, ctx.uid)
     })
     if (rows.length === 0) return
 
     const { error } = await ctx.client.from('agents').upsert(rows, { onConflict: 'id' })
     if (error) throw new Error(`saveAgents failed: ${error.message}`)
+
+    // After the upsert: the link rows reference agents that must already exist.
+    await this.syncRepoLinks(ctx, agents)
   }
 
   /**
@@ -643,10 +782,11 @@ export class CloudStore implements Store {
     const ctx = await this.context()
     if (!ctx) return
 
+    // Scoped by owner, not by org: an agent on a personal repo has no org, and
+    // ownership is the real permission boundary anyway.
     const { error } = await ctx.client
       .from('agents')
       .update({ archived_at: new Date().toISOString() })
-      .eq('org_id', ctx.orgId)
       .eq('owner_id', ctx.uid)
       .eq('id', uuid)
       .is('archived_at', null)
@@ -658,14 +798,19 @@ export class CloudStore implements Store {
     // would resurrect it as an invisible agent. agentNameByUuid is deliberately
     // kept: loadHistory resolves closed agents' names through it.
     this.agentIdMap.delete(appId)
+    this.agentRepoKey.delete(appId)
   }
 
   /**
-   * Org-wide agents roster for the team dashboard. Unlike loadAgents (which maps
-   * to the LOCAL Agent shape and drives terminal restoration), this preserves
-   * owner_id + updated_at so the dashboard can group by member and show recency.
-   * Read-only: never touches the local agents cache. RLS scopes it to the org,
-   * and archived (closed) agents are filtered out — the roster is live work.
+   * The agents roster behind the Team page: every agent the caller can see —
+   * their own, plus those of every organization they belong to. Unlike
+   * loadAgents (which maps to the LOCAL Agent shape and drives terminal
+   * restoration), this preserves owner_id, org_id and updated_at so the page can
+   * put each agent under the right organization and show recency.
+   *
+   * No org filter: RLS already returns exactly the visible set, and the page has
+   * a tab per org rather than one active org. Archived (closed) agents are
+   * filtered out — the roster is live work.
    */
   async loadOrgAgents(): Promise<OrgAgent[]> {
     const ctx = await this.context()
@@ -673,12 +818,16 @@ export class CloudStore implements Store {
 
     const { data, error } = await ctx.client
       .from('agents')
-      .select('id, owner_id, name, ticket_id, status, repositories, metadata, updated_at')
-      .eq('org_id', ctx.orgId)
+      .select('id, org_id, owner_id, name, ticket_id, status, repositories, metadata, updated_at')
       .is('archived_at', null)
 
     if (error || !data) return []
-    return (data as OrgAgentRow[]).map(mapOrgAgentRow)
+
+    // The links come from their own table, so the roster carries the portable
+    // agent→repository relation rather than the owner's local paths.
+    const rows = data as OrgAgentRow[]
+    const linksByAgent = await this.fetchRepoLinks(ctx, rows.map((r) => r.id))
+    return rows.map((row) => ({ ...mapOrgAgentRow(row), repositoryIds: linksByAgent.get(row.id) ?? [] }))
   }
 
   // -------------------------------------------------------------------------

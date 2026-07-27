@@ -4,7 +4,7 @@ import type { OrgAgent } from '../../../types'
 import { useConfig } from '../../hooks/useConfig'
 import { useOrg } from '../../hooks/useOrg'
 import { useOrgAgents } from '../../hooks/useOrgAgents'
-import { buildRepoRows, type RepoRow } from '../../utils/repoRows'
+import { buildRepoRows, type RepoRow, type RepoScope } from '../../utils/repoRows'
 import { useT, type Translate } from '../../i18n'
 import { OwnerLabel, StatusPill, TicketBadge } from './parts'
 
@@ -97,10 +97,13 @@ function RepoCard({
 export function RepoSection() {
   const { agents } = useOrgAgents()
   const { config } = useConfig()
-  const { members } = useOrg()
+  const { members, orgs } = useOrg()
   const t = useT()
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  // Which tab is open. `undefined` = not chosen yet, so the default below can
+  // follow the data once it loads instead of freezing on an empty tab.
+  const [scope, setScope] = useState<RepoScope | undefined>(undefined)
 
   // owner_id → email, so agents show a readable member label.
   const emailByOwner = useMemo(() => {
@@ -111,9 +114,30 @@ export function RepoSection() {
     return map
   }, [members])
 
+  // One tab per organization, plus a personal one. The personal tab is only
+  // offered when there is something in it: an always-present empty tab reads as
+  // a bug.
+  const tabs = useMemo(() => {
+    const repos = Object.values(config?.repositories ?? {})
+    const list: { scope: RepoScope; label: string }[] = orgs.map((o) => ({ scope: o.id, label: o.name }))
+    const hasPersonal = repos.some((r) => !r.orgId) || agents.some((a) => !a.orgId)
+    if (hasPersonal) list.push({ scope: null, label: t('dashboard.repos.personal') })
+    return list
+  }, [orgs, config?.repositories, agents, t])
+
+  // Default to the first tab that actually has agents — opening on an empty org
+  // while another one is busy would hide the whole page behind a click.
+  const activeScope: RepoScope | undefined = useMemo(() => {
+    if (scope !== undefined && tabs.some((tab) => tab.scope === scope)) return scope
+    const busy = tabs.find((tab) => agents.some((a) => (a.orgId ?? null) === tab.scope))
+    return busy?.scope ?? tabs[0]?.scope
+  }, [scope, tabs, agents])
+
   const { rows, unmatched } = useMemo(
-    () => buildRepoRows(agents, config?.repositories ?? {}),
-    [agents, config?.repositories],
+    () => (activeScope === undefined
+      ? { rows: [], unmatched: 0 }
+      : buildRepoRows(agents, config?.repositories ?? {}, activeScope)),
+    [agents, config?.repositories, activeScope],
   )
 
   const totals = useMemo(
@@ -143,11 +167,35 @@ export function RepoSection() {
         )}
       </div>
 
+      {/* One tab per organization. Purely a view: switching tabs changes nothing
+          but what is listed — there is no active organization to set. */}
+      {tabs.length > 1 && (
+        <div className="flex items-center gap-1 flex-wrap">
+          {tabs.map((tab) => (
+            <button
+              key={tab.scope ?? 'personal'}
+              onClick={() => setScope(tab.scope)}
+              className={`h-7 px-2.5 text-[11px] font-medium rounded-lg border transition-all ${
+                tab.scope === activeScope
+                  ? 'bg-accent/15 border-accent/30 text-accent'
+                  : 'bg-surface border-line text-text-secondary hover:bg-surface-strong hover:text-ink'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
           <FolderGit2 className="w-8 h-8 opacity-30" />
-          <p>{t('dashboard.repos.noRepos')}</p>
-          <p className="text-xs text-text-secondary/60 max-w-sm text-center">{t('dashboard.repos.noReposHint')}</p>
+          {/* An empty TAB is a different situation from having no team repo at
+              all, and only the latter deserves the "go share one" nudge. */}
+          <p>{tabs.length > 1 ? t('dashboard.repos.noReposInScope') : t('dashboard.repos.noRepos')}</p>
+          {tabs.length <= 1 && (
+            <p className="text-xs text-text-secondary/60 max-w-sm text-center">{t('dashboard.repos.noReposHint')}</p>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
