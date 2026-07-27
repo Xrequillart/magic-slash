@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Config } from '../../types'
-import type { UserSettingsRow } from '../store/CloudStore'
+import type { UserSettingsRow } from '../store/user-settings-mapper'
 import type { Store } from '../store/Store'
 import { setStore, NOOP_STORE } from '../store/Store'
 

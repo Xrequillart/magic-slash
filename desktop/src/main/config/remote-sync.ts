@@ -1,5 +1,5 @@
 import type { Config } from '../../types'
-import { applySettingsRow, SETTINGS_KEYS, type UserSettingsRow } from '../store/CloudStore'
+import { applySettingsRow, SETTINGS_KEYS, type UserSettingsRow } from '../store/user-settings-mapper'
 import { applyAppearanceFromConfig } from '../store/hydrate'
 import { hasConfigCache, hydrateConfig, installRemoteConfig, readConfig } from './config'
 

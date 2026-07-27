@@ -1,5 +1,5 @@
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
-import type { UserSettingsRow } from '../store/CloudStore'
+import type { UserSettingsRow } from '../store/user-settings-mapper'
 import { getAuthedClient } from './auth'
 import { loadSession } from './session-store'
 

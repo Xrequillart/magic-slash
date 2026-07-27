@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { UserSettingsRow } from '../store/CloudStore'
+import type { UserSettingsRow } from '../store/user-settings-mapper'
 
 // Mock the authed client + session store so the module exercises only its own
 // lifecycle logic (no network, no socket). Unlike the org-agents harness this one
