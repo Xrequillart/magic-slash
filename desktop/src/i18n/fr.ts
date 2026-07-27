@@ -818,6 +818,7 @@ export const fr: Record<keyof typeof en, string> = {
   'skills.error.nameFormat':
     'Le nom du skill ne peut contenir que des minuscules, des chiffres et des tirets',
 
+  'skills.allSkills': 'Tous les skills',
   'skills.builtIn': 'Intégrés',
   'skills.builtInHelp': 'Les skills cœur de Magic Slash, qui pilotent le cycle de développement',
   'skills.custom': 'Personnalisés',

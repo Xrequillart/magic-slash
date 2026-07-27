@@ -814,6 +814,7 @@ export const en = {
   'skills.error.nameRequired': 'Skill name is required',
   'skills.error.nameFormat': 'Skill name must contain only lowercase letters, numbers, and hyphens',
 
+  'skills.allSkills': 'All skills',
   'skills.builtIn': 'Built-in',
   'skills.builtInHelp': 'Magic Slash core skills, powering the development workflow',
   'skills.custom': 'Custom',

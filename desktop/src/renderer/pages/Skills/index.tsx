@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, ArrowLeft, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2 } from 'lucide-react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid } from 'lucide-react'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 import { VSCodeIcon } from '../../components/agent-info-sidebar/icons'
 import { useTerminals } from '../../hooks/useTerminals'
@@ -300,20 +300,172 @@ function SkillCard({
   )
 }
 
+/**
+ * Permanent left rail: every skill, grouped by origin, so you can move from one
+ * to the next without going back to the list first. "All skills" at the top is
+ * a destination of its own — the overview with the gauges and the warnings.
+ * Mirrors the settings rail: same width, same surface, same active pill.
+ */
+function SkillsRail({
+  builtInSkills,
+  customSkills,
+  repoSkillsByRepo,
+  imageCache,
+  activeKey,
+  onSelect,
+  onNew,
+}: {
+  builtInSkills: SkillInfo[]
+  customSkills: SkillInfo[]
+  repoSkillsByRepo: Record<string, { color?: string; skills: RepoSkillInfo[] }>
+  imageCache: Record<string, string | null>
+  activeKey: string
+  onSelect: (hash: string) => void
+  onNew: () => void
+}) {
+  const t = useT()
+  // The active row can sit far down a long rail — a skill opened from the list
+  // would otherwise be selected off-screen.
+  const activeRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [activeKey])
+
+  const renderRow = (key: string, label: string, hash: string, leading: React.ReactNode) => {
+    const isActive = activeKey === key
+    return (
+      <button
+        key={key}
+        ref={isActive ? activeRef : undefined}
+        onClick={() => onSelect(hash)}
+        className={`w-full flex items-center gap-2 text-left px-2.5 py-1.5 mt-0.5 text-sm rounded-lg transition-all ${
+          isActive ? 'bg-accent/15 text-ink font-medium' : 'text-text-secondary hover:text-ink hover:bg-surface'
+        }`}
+      >
+        {leading}
+        <span className="truncate capitalize">{label}</span>
+      </button>
+    )
+  }
+
+  // `first` rather than a `first:` variant: the repository groups each sit in
+  // their own wrapper, so a CSS first-child rule would fire on every one of them
+  // and eat the separation instead of only skipping it at the top of the rail.
+  const groupHeader = (
+    icon: React.ReactNode,
+    label: string,
+    count: number,
+    { action, first }: { action?: React.ReactNode; first?: boolean } = {}
+  ) => (
+    <div className={`flex items-center gap-1.5 px-2.5 mb-1.5 ${first ? 'mt-3' : 'mt-7'} text-[11px] uppercase tracking-wider text-text-secondary/50`}>
+      {icon}
+      <span className="truncate">{label}</span>
+      <span className="text-text-secondary/30">{count}</span>
+      {action && <span className="ml-auto">{action}</span>}
+    </div>
+  )
+
+  const avatar = (dirName: string, name: string) => {
+    const url = imageCache[dirName] ?? null
+    return url ? (
+      <img src={url} alt={name} className="w-5 h-5 rounded object-cover shrink-0" />
+    ) : (
+      <span className="w-5 h-5 rounded bg-surface-strong flex items-center justify-center shrink-0">
+        <Image className="w-3 h-3 text-text-secondary/50" />
+      </span>
+    )
+  }
+
+  return (
+    <div className="w-56 shrink-0 flex flex-col border-r border-line-field bg-surface-sunken-soft">
+      <div className="px-2 pt-3 pb-1 border-b border-line-field">
+        <button
+          onClick={() => onSelect('#/')}
+          className={`w-full flex items-center gap-2 px-2.5 py-1.5 mb-2 text-sm font-medium rounded-lg transition-colors ${
+            activeKey === 'all'
+              ? 'bg-accent/15 text-ink'
+              : 'text-text-secondary hover:bg-surface hover:text-ink'
+          }`}
+        >
+          <LayoutGrid className="w-4 h-4 shrink-0" />
+          <span className="truncate">{t('skills.allSkills')}</span>
+        </button>
+      </div>
+
+      {/* No `space-y` here: its `> * + *` rule outranks a plain `mt-*` class, so
+          it would flatten every group header's separation back to 2px. The rows
+          carry their own `mt-0.5` instead, and sibling margins collapse — a
+          header's `mt-7` wins over the 2px above it. */}
+      <nav className="flex-1 overflow-y-auto px-2 pb-3">
+        {builtInSkills.length > 0 && (
+          <>
+            {groupHeader(<Sparkles className="w-3 h-3" />, t('skills.builtIn'), builtInSkills.length, { first: true })}
+            {builtInSkills.map((s) =>
+              renderRow(`skill:${s.dirName}`, s.name, `#/skill/${encodeURIComponent(s.dirName)}`, avatar(s.dirName, s.name))
+            )}
+          </>
+        )}
+
+        {groupHeader(<PenTool className="w-3 h-3" />, t('skills.custom'), customSkills.length, {
+          first: builtInSkills.length === 0,
+          action: (
+            <button
+              onClick={onNew}
+              title={t('skills.new')}
+              className="p-0.5 rounded text-text-secondary/50 hover:text-ink hover:bg-surface transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+          ),
+        })}
+        {customSkills.length === 0 ? (
+          <p className="px-2.5 py-1 text-xs text-text-secondary/40">{t('skills.customEmpty')}</p>
+        ) : (
+          customSkills.map((s) =>
+            renderRow(`skill:${s.dirName}`, s.name, `#/skill/${encodeURIComponent(s.dirName)}`, avatar(s.dirName, s.name))
+          )
+        )}
+        {activeKey === 'new' && (
+          <div className="w-full flex items-center gap-2 px-2.5 py-1.5 mt-0.5 text-sm rounded-lg bg-accent/15 text-ink font-medium">
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t('skills.editor.newTitle')}</span>
+          </div>
+        )}
+
+        {Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => (
+          <div key={repoName}>
+            {groupHeader(
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color || '#6B7280' }} />,
+              repoName,
+              rSkills.length
+            )}
+            {rSkills.map((rs) =>
+              renderRow(
+                `repo-skill:${rs.filePath}`,
+                rs.name,
+                `#/repo-skill/${encodeURIComponent(rs.filePath)}`,
+                <GitFork className="w-4 h-4 shrink-0 text-text-secondary/40" />
+              )
+            )}
+          </div>
+        ))}
+      </nav>
+    </div>
+  )
+}
+
 function SkillEditor({
   skill,
   isNew,
   onSave,
   onDelete,
   onShare,
-  onBack,
 }: {
   skill: SkillDetail | null
   isNew: boolean
   onSave: (name: string, content: string, imagePath?: string) => Promise<void>
   onDelete?: () => Promise<void>
   onShare?: (name: string) => Promise<void>
-  onBack: () => void
 }) {
   const [name, setName] = useState(skill?.name || '')
   const [description, setDescription] = useState(skill?.description || '')
@@ -418,15 +570,9 @@ function SkillEditor({
   })()
 
   return (
-    <div className="flex flex-col gap-6 animate-fade-in max-w-[62rem] mx-auto w-full">
-      {/* Header */}
+    <div className="flex flex-col gap-6 max-w-[62rem] w-full">
+      {/* Header — no back arrow: the rail is always there to navigate from */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="p-1.5 rounded-lg hover:bg-surface-strong transition-colors text-text-secondary hover:text-ink"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
         <h2 className="text-xl font-semibold capitalize flex-1">
           {headerTitle}
         </h2>
@@ -620,8 +766,12 @@ export function SkillsPage() {
     loadRepoSkills()
   }, [loadSkills, loadRepoSkills])
 
-  // Load skill detail when navigating to a skill
+  // Load skill detail when navigating to a skill. Dropped first, on every route
+  // change: the rail keeps this page mounted, so without the reset the editor
+  // would mount against the previously loaded skill and keep its name and
+  // description — the fields seed from props once, at mount.
   useEffect(() => {
+    setEditSkill(null)
     if (route.page === 'skill' && route.params.name) {
       getSkill(route.params.name).then(setEditSkill).catch(() => {
         window.location.hash = '#/'
@@ -630,8 +780,6 @@ export function SkillsPage() {
       getRepoSkill(route.params.filePath).then(setEditSkill).catch(() => {
         window.location.hash = '#/'
       })
-    } else if (route.page === 'new') {
-      setEditSkill(null)
     }
   }, [route, getSkill, getRepoSkill])
 
@@ -698,11 +846,6 @@ export function SkillsPage() {
     return entries
   }, [skills, repoSkills])
 
-  const navigateToList = useCallback(() => {
-    window.location.hash = '#/'
-    setEditSkill(null)
-  }, [])
-
   const handleCreateSave = useCallback(async (name: string, content: string, imagePath?: string) => {
     await createSkill(name, content, imagePath)
     window.location.hash = '#/'
@@ -743,28 +886,31 @@ export function SkillsPage() {
     }, 500)
   }, [longDescriptions, launchClaudeTerminal, closeModal])
 
-  const content = (() => {
-    // Skill detail / editor view
+  // Which rail row is lit, and what the content pane is showing. The pane is
+  // keyed on it so switching skills remounts the editor — its form state is
+  // seeded from props, and a reused instance would keep the previous skill's.
+  const activeKey = (() => {
+    if (route.page === 'new') return 'new'
+    if (route.page === 'skill' && route.params.name) return `skill:${route.params.name}`
+    if (route.page === 'repo-skill' && route.params.filePath) return `repo-skill:${route.params.filePath}`
+    return 'all'
+  })()
+
+  // A page opens at its top. The pane is the scroll container and survives the
+  // switch, so a long skill would otherwise leave the next one scrolled past
+  // its own heading.
+  const contentScrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    contentScrollRef.current?.scrollTo({ top: 0 })
+  }, [activeKey])
+
+  const detail = (() => {
     if (route.page === 'new') {
-      return (
-        <SkillEditor
-          skill={null}
-          isNew
-          onSave={handleCreateSave}
-          onBack={navigateToList}
-        />
-      )
+      return <SkillEditor skill={null} isNew onSave={handleCreateSave} />
     }
 
     if (route.page === 'repo-skill' && editSkill) {
-      return (
-        <SkillEditor
-          skill={editSkill}
-          isNew={false}
-          onSave={async () => {}}
-          onBack={navigateToList}
-        />
-      )
+      return <SkillEditor skill={editSkill} isNew={false} onSave={async () => {}} />
     }
 
     if (route.page === 'skill' && editSkill) {
@@ -775,165 +921,182 @@ export function SkillsPage() {
           onSave={handleUpdateSave}
           onDelete={editSkill.isBuiltIn ? undefined : handleDelete}
           onShare={editSkill.isBuiltIn ? undefined : () => downloadSkill(editSkill.dirName)}
-          onBack={navigateToList}
         />
       )
     }
 
-    // List view
+    // The detail is still loading (getSkill resolves a tick after the route).
     return (
-      <div className="flex flex-col gap-10 animate-fade-in max-w-[62rem] mx-auto w-full">
-        {/* Warnings */}
-        {!loading && (
-          <SkillsWarnings duplicates={duplicateSkills} longDescriptions={longDescriptions} onFixLongDescriptions={handleFixLongDescriptions} />
-        )}
-
-        {/* Token Budget Gauge */}
-        {!loading && (skills.length > 0 || repoSkills.length > 0) && (
-          <TokenBudgetGauge skills={skills} repoSkills={repoSkills} />
-        )}
-
-        {loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-6 h-6 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
-          </div>
-        )}
-
-        {!loading && (
-          <>
-            {/* Built-in section */}
-            {builtInSkills.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 text-sm text-text-secondary">
-                  <Sparkles className="w-4 h-4" />
-                  <span>{t('skills.builtIn')}</span>
-                </div>
-                <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">{t('skills.builtInHelp')}</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {builtInSkills.map((skill) => (
-                    <SkillCard
-                      key={skill.dirName}
-                      skill={skill}
-                      imageUrl={imageCache[skill.dirName] ?? null}
-                      badge={{ label: t('skills.source.builtIn'), className: 'bg-accent/10 text-accent' }}
-                      onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Custom section */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <div className="flex items-center gap-2 text-sm text-text-secondary">
-                    <PenTool className="w-4 h-4" />
-                    <span>{t('skills.custom')}</span>
-                  </div>
-                  <p className="text-xs text-text-secondary/30 mt-0.5">{t('skills.customHelp')}</p>
-                </div>
-                {customSkills.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleImport}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                    >
-                      <FolderInput className="w-3 h-3" />
-                      <span>{t('skills.import')}</span>
-                    </button>
-                    <button
-                      onClick={() => { window.location.hash = '#/new' }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>{t('skills.new')}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-              {customSkills.length === 0 ? (
-                <div className="w-full py-8 border border-dashed border-border/50 rounded-xl">
-                  <div className="text-sm text-text-secondary/50 mb-3 text-center">{t('skills.customEmpty')}</div>
-                  <div className="flex items-center justify-center gap-3">
-                    <button
-                      onClick={() => { window.location.hash = '#/new' }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>{t('skills.create')}</span>
-                    </button>
-                    <button
-                      onClick={handleImport}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                    >
-                      <FolderInput className="w-3 h-3" />
-                      <span>{t('skills.importFolder')}</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {customSkills.map((skill) => (
-                    <SkillCard
-                      key={skill.dirName}
-                      skill={skill}
-                      imageUrl={imageCache[skill.dirName] ?? null}
-                      onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Repository Skills section */}
-            <div>
-              <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <GitFork className="w-4 h-4" />
-                <span>{t('skills.repos')}</span>
-              </div>
-              <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">{t('skills.reposHelp')}</p>
-              {repoSkillsLoading && (
-                <div className="flex items-center justify-center py-6">
-                  <div className="w-5 h-5 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
-                </div>
-              )}
-              {!repoSkillsLoading && Object.keys(repoSkillsByRepo).length === 0 && (
-                <p className="text-sm text-text-secondary/40">{t('skills.reposEmpty')}</p>
-              )}
-              {!repoSkillsLoading && Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => (
-                <div key={repoName} className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: color || '#6B7280' }}
-                    />
-                    <span className="text-sm font-medium text-text-secondary">{repoName}</span>
-                    <span className="text-xs text-text-secondary/40">{rSkills.length}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {rSkills.map((rs) => (
-                      <SkillCard
-                        key={rs.filePath}
-                        skill={rs}
-                        imageUrl={null}
-                        onClick={() => { window.location.hash = `#/repo-skill/${encodeURIComponent(rs.filePath)}` }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+      <div className="flex items-center justify-center py-12">
+        <div className="w-6 h-6 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
       </div>
     )
   })()
 
+  // Overview — the "All skills" destination: warnings, budget, and the cards.
+  const overview = (
+    <div className="flex flex-col gap-10 max-w-[62rem] mx-auto w-full">
+      {/* Warnings */}
+      {!loading && (
+        <SkillsWarnings duplicates={duplicateSkills} longDescriptions={longDescriptions} onFixLongDescriptions={handleFixLongDescriptions} />
+      )}
+
+      {/* Token Budget Gauge */}
+      {!loading && (skills.length > 0 || repoSkills.length > 0) && (
+        <TokenBudgetGauge skills={skills} repoSkills={repoSkills} />
+      )}
+
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-6 h-6 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
+        </div>
+      )}
+
+      {!loading && (
+        <>
+          {/* Built-in section */}
+          {builtInSkills.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
+                <Sparkles className="w-4 h-4" />
+                <span>{t('skills.builtIn')}</span>
+              </div>
+              <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">{t('skills.builtInHelp')}</p>
+              <div className="grid grid-cols-3 gap-2">
+                {builtInSkills.map((skill) => (
+                  <SkillCard
+                    key={skill.dirName}
+                    skill={skill}
+                    imageUrl={imageCache[skill.dirName] ?? null}
+                    badge={{ label: t('skills.source.builtIn'), className: 'bg-accent/10 text-accent' }}
+                    onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Custom section */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="flex items-center gap-2 text-sm text-text-secondary">
+                  <PenTool className="w-4 h-4" />
+                  <span>{t('skills.custom')}</span>
+                </div>
+                <p className="text-xs text-text-secondary/30 mt-0.5">{t('skills.customHelp')}</p>
+              </div>
+              {customSkills.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleImport}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
+                  >
+                    <FolderInput className="w-3 h-3" />
+                    <span>{t('skills.import')}</span>
+                  </button>
+                  <button
+                    onClick={() => { window.location.hash = '#/new' }}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>{t('skills.new')}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+            {customSkills.length === 0 ? (
+              <div className="w-full py-8 border border-dashed border-border/50 rounded-xl">
+                <div className="text-sm text-text-secondary/50 mb-3 text-center">{t('skills.customEmpty')}</div>
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={() => { window.location.hash = '#/new' }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>{t('skills.create')}</span>
+                  </button>
+                  <button
+                    onClick={handleImport}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
+                  >
+                    <FolderInput className="w-3 h-3" />
+                    <span>{t('skills.importFolder')}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {customSkills.map((skill) => (
+                  <SkillCard
+                    key={skill.dirName}
+                    skill={skill}
+                    imageUrl={imageCache[skill.dirName] ?? null}
+                    onClick={() => { window.location.hash = `#/skill/${encodeURIComponent(skill.dirName)}` }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Repository Skills section */}
+          <div>
+            <div className="flex items-center gap-2 text-sm text-text-secondary">
+              <GitFork className="w-4 h-4" />
+              <span>{t('skills.repos')}</span>
+            </div>
+            <p className="text-xs text-text-secondary/30 mt-0.5 mb-3">{t('skills.reposHelp')}</p>
+            {repoSkillsLoading && (
+              <div className="flex items-center justify-center py-6">
+                <div className="w-5 h-5 border-2 border-line-strong border-t-accent rounded-full animate-spin" />
+              </div>
+            )}
+            {!repoSkillsLoading && Object.keys(repoSkillsByRepo).length === 0 && (
+              <p className="text-sm text-text-secondary/40">{t('skills.reposEmpty')}</p>
+            )}
+            {!repoSkillsLoading && Object.entries(repoSkillsByRepo).map(([repoName, { color, skills: rSkills }]) => (
+              <div key={repoName} className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: color || '#6B7280' }}
+                  />
+                  <span className="text-sm font-medium text-text-secondary">{repoName}</span>
+                  <span className="text-xs text-text-secondary/40">{rSkills.length}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {rSkills.map((rs) => (
+                    <SkillCard
+                      key={rs.filePath}
+                      skill={rs}
+                      imageUrl={null}
+                      onClick={() => { window.location.hash = `#/repo-skill/${encodeURIComponent(rs.filePath)}` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-auto p-6">
-        {content}
+    <div className="h-full flex animate-fade-in">
+      <SkillsRail
+        builtInSkills={builtInSkills}
+        customSkills={customSkills}
+        repoSkillsByRepo={repoSkillsByRepo}
+        imageCache={imageCache}
+        activeKey={activeKey}
+        onSelect={(hash) => { window.location.hash = hash }}
+        onNew={() => { window.location.hash = '#/new' }}
+      />
+      <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-6">
+        <div key={activeKey} className="animate-page-in">
+          {activeKey === 'all' ? overview : detail}
+        </div>
       </div>
     </div>
   )
