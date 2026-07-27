@@ -53,6 +53,8 @@ const configApi = {
 
   setHistoryEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('config:setHistoryEnabled', { enabled }),
+  setSyncClaudeTheme: (enabled: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setSyncClaudeTheme', { enabled }),
   setUsageCardEnabled: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setUsageCardEnabled', { enabled }),
   setUsageCardMinimized: (minimized: boolean): Promise<{ config: Config }> =>

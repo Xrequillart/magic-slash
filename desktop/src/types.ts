@@ -288,6 +288,13 @@ export interface Config {
    *  follows the account rather than the machine — reading the app in French is
    *  a property of the person, not of the screen. */
   language?: LanguageId
+  /**
+   * Whether Claude Code in the terminal panes is repainted to match `theme`.
+   * Absent = on: without it, a light theme leaves parts of the transcript white
+   * on white, which reads as a bug rather than as a setting nobody enabled.
+   * Follows the account like the theme it tracks — see main/claude-theme.ts.
+   */
+  syncClaudeTheme?: boolean
   splitEnabled?: boolean
   splitActive?: boolean
   autoStartAtLogin?: boolean

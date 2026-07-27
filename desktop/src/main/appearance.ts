@@ -1,6 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { BrowserWindow, nativeTheme } from 'electron'
+import { syncClaudeTheme } from './claude-theme'
 import { CONFIG_DIR } from './config/config'
 import { currentLanguage, setLanguage } from './i18n'
 import { clampZoom, DEFAULT_LANGUAGE, DEFAULT_THEME, DEFAULT_ZOOM, isValidLanguage, isValidTheme, nextZoom, THEME_APPEARANCE, type LanguageId, type ThemeId } from '../types'
@@ -81,6 +82,10 @@ export function initAppearance(): void {
   // knows a language this one does not.
   setLanguage(isValidLanguage(stored.language) ? stored.language : DEFAULT_LANGUAGE)
   nativeTheme.themeSource = THEME_APPEARANCE[currentTheme_]
+  // From the local mirror, before the cloud has said anything: a terminal
+  // launched in the first seconds should already find its theme on disk. If the
+  // cloud then disagrees, hydration calls applyTheme() and this is rewritten.
+  syncClaudeTheme(currentTheme_)
 }
 
 export function currentTheme(): ThemeId {
@@ -130,6 +135,10 @@ export function applyTheme(preference: unknown): ThemeId {
   currentTheme_ = theme
   nativeTheme.themeSource = THEME_APPEARANCE[theme]
   persist()
+  // Claude Code in the terminal panes follows along. Unconditionally, not only
+  // when `changed`: this also runs when the setting itself is toggled, where the
+  // theme is the same and the file has to be written or removed all the same.
+  syncClaudeTheme(theme)
   if (changed) broadcast('theme:changed', theme)
   return theme
 }

@@ -603,6 +603,10 @@ export const en = {
   'settings.appearance.themeSection': 'Theme',
   'settings.appearance.followsAccount':
     'The theme follows your account — every machine you sign in on uses it.',
+  'settings.appearance.terminalSection': 'Terminal',
+  'settings.appearance.claudeTheme.label': 'Match Claude Code to the theme',
+  'settings.appearance.claudeTheme.help':
+    'Claude Code takes the chosen theme’s colours in the app’s terminals, repainting sessions that are already open. Claude Code started from a real terminal is left alone.',
   'settings.appearance.displaySection': 'Display',
   'settings.appearance.scale': 'Interface scale',
   // Split around the two <kbd> accelerators rendered between them.
@@ -611,6 +615,7 @@ export const en = {
   'settings.appearance.scaleHelpAfter': '. Stays on this machine, since it compensates for this screen.',
   'settings.appearance.zoomReset': 'Reset to 100%',
   'toast.themeChangeFailed': 'Failed to change theme',
+  'toast.claudeThemeSyncFailed': 'Failed to change the Claude Code theme',
 
   // ── User profile fields ──────────────────────────────────────────────────
   'profile.role.product': 'Product',

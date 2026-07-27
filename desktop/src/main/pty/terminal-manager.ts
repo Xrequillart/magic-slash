@@ -3,6 +3,7 @@ import * as os from 'os'
 import * as fs from 'fs'
 import * as path from 'path'
 import { execSync, execFileSync } from 'child_process'
+import { claudeThemeFlag } from '../claude-theme'
 import { readConfig } from '../config/config'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
 import { expandPath } from '../config/validation'
@@ -440,9 +441,12 @@ export function launchClaude(
   const createPtyProcess = (currentCwd: string, cols: number = 120, rows: number = DEFAULT_PTY_ROWS) => {
     const launchMode = launchModeOverride ?? readConfig().launchMode
     const modeFlag = launchMode && launchMode !== 'default' ? ` --permission-mode ${launchMode}` : ''
+    // Resolved per spawn rather than per terminal, so a restart picks up a theme
+    // (or a setting) changed while the session was running.
+    const themeFlag = claudeThemeFlag()
     const claudeCmd = pendingPrompt
-      ? `claude${modeFlag} ${JSON.stringify(pendingPrompt)}`
-      : `claude${modeFlag}`
+      ? `claude${modeFlag}${themeFlag} ${JSON.stringify(pendingPrompt)}`
+      : `claude${modeFlag}${themeFlag}`
     pendingPrompt = null
     const ptyProcess = pty.spawn(shell, ['-li', '-c', claudeCmd], {
       name: 'xterm-256color',

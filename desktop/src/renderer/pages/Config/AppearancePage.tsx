@@ -1,4 +1,5 @@
-import { Check, Minus, Palette, Plus, RotateCcw, Scaling } from 'lucide-react'
+import { Check, Minus, Palette, Plus, RotateCcw, Scaling, SquareTerminal } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useConfig } from '../../hooks/useConfig'
 import { useZoom } from '../../hooks/useZoom'
 import { showToast } from '../../components/Toast'
@@ -49,7 +50,7 @@ function ThemePreview({ id }: { id: ThemeId }) {
 
 /**
  * Theme picker. The list is the registry, so a theme added in
- * renderer/theme/themes.ts shows up here with no change to this file.
+ * src/themes.ts shows up here with no change to this file.
  */
 /**
  * Interface scale. The buttons walk the same steps as ⌘+ / ⌘−, and the value
@@ -103,6 +104,62 @@ function ZoomControl() {
   )
 }
 
+/**
+ * Whether Claude Code in the terminal panes follows the app's theme.
+ *
+ * Lives here rather than under Features because it is an appearance decision and
+ * only makes sense next to the picker it tracks. Optimistic like the other
+ * toggles in Settings: the switch moves first and reverts if the write fails,
+ * because the visible result of a successful one happens in another process.
+ */
+function ClaudeThemeToggle() {
+  const { config, updateSyncClaudeTheme } = useConfig()
+  const t = useT()
+  const stored = config?.syncClaudeTheme
+  const [enabled, setEnabled] = useState(stored ?? true)
+
+  useEffect(() => {
+    if (stored !== undefined) setEnabled(stored)
+  }, [stored])
+
+  const toggle = async () => {
+    const next = !enabled
+    setEnabled(next)
+    try {
+      await updateSyncClaudeTheme(next)
+    } catch (error) {
+      setEnabled(!next)
+      showToast(error instanceof Error ? error.message : t('toast.claudeThemeSyncFailed'), 'error')
+    }
+  }
+
+  return (
+    <div className="bg-surface border border-line-strong rounded-xl p-4">
+      <div className="flex items-center justify-between gap-6">
+        <div>
+          <div className="text-sm font-medium">{t('settings.appearance.claudeTheme.label')}</div>
+          <p className="text-xs text-text-secondary/50 mt-0.5">
+            {t('settings.appearance.claudeTheme.help')}
+          </p>
+        </div>
+        <button
+          onClick={toggle}
+          role="switch"
+          aria-checked={enabled}
+          aria-label={t('settings.appearance.claudeTheme.label')}
+          className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+            enabled ? 'bg-accent' : 'bg-ink/20'
+          }`}
+        >
+          <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
+            enabled ? 'translate-x-[18px]' : 'translate-x-0'
+          }`} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function AppearancePage() {
   const { updateTheme } = useConfig()
   const active = useTheme()
@@ -150,6 +207,11 @@ export function AppearancePage() {
       <p className="text-xs text-text-secondary/50 mt-3">
         {t('settings.appearance.followsAccount')}
       </p>
+
+      <div className="mt-8">
+        <SectionHeader icon={SquareTerminal} title={t('settings.appearance.terminalSection')} />
+        <ClaudeThemeToggle />
+      </div>
 
       <div className="mt-8">
         <SectionHeader icon={Scaling} title={t('settings.appearance.displaySection')} />

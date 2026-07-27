@@ -113,6 +113,14 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  // Same division of labour: the main process owns the generated Claude Code
+  // theme and the terminals it is handed to, so this only records the choice.
+  const updateSyncClaudeTheme = useCallback(async (enabled: boolean) => {
+    const result = await window.electronAPI.config.setSyncClaudeTheme(enabled)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   // Re-rendering in the new language is the main process's job too (it owns the
   // menus, the tray and the other windows), so this only records the choice.
   const updateLanguage = useCallback(async (language: LanguageId) => {
@@ -158,6 +166,7 @@ export function useConfig() {
     updateSpotlight,
     updateLaunchMode,
     updateTheme,
+    updateSyncClaudeTheme,
     updateLanguage,
     validatePath,
     getPRTemplate,

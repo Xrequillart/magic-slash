@@ -130,6 +130,7 @@ interface UserSettingsRow {
   atlassian_integration_enabled: boolean | null
   theme: string | null
   language: string | null
+  sync_claude_theme: boolean | null
 }
 
 const USER_SETTINGS_COLUMNS =
@@ -137,7 +138,7 @@ const USER_SETTINGS_COLUMNS =
   'daily_digest_enabled, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
-  'language'
+  'language, sync_claude_theme'
 
 /**
  * Config keys that now live in `user_settings`. Stripped from the org-scoped
@@ -160,6 +161,7 @@ const SETTINGS_KEYS = [
   'integrations',
   'theme',
   'language',
+  'syncClaudeTheme',
 ] as const
 
 /** `undefined` (key absent from Config) → `null` (column unset). */
@@ -192,6 +194,7 @@ function configToSettingsRow(config: Config): UserSettingsRow {
     atlassian_integration_enabled: orNull(config.integrations?.atlassian),
     theme: orNull(config.theme),
     language: orNull(config.language),
+    sync_claude_theme: orNull(config.syncClaudeTheme),
   }
 }
 
@@ -217,6 +220,7 @@ function applySettingsRow(config: Config, row: UserSettingsRow): void {
   // Same treatment for the interface language: an unknown one reads as "unset",
   // so this build falls back to English rather than to a locale it cannot show.
   if (isValidLanguage(row.language)) config.language = row.language
+  if (isSet(row.sync_claude_theme)) config.syncClaudeTheme = row.sync_claude_theme
 
   const prReviews: NonNullable<Config['prReviews']> = {}
   if (isSet(row.pr_reviews_enabled)) prReviews.enabled = row.pr_reviews_enabled

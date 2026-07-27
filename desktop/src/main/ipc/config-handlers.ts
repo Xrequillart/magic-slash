@@ -260,6 +260,18 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
     return { config }
   })
 
+  // Repaint Claude Code in the terminal panes to match the app theme
+  ipcMain.handle('config:setSyncClaudeTheme', async (_event, { enabled }: { enabled: boolean }) => {
+    const config = readConfig()
+    config.syncClaudeTheme = enabled
+    writeConfig(config)
+    // Re-apply the current theme, which writes or removes the generated theme
+    // file now that the setting has changed. Sessions already open follow: the
+    // CLI watches its themes directory, so this reaches them without a restart.
+    applyTheme(config.theme)
+    return { config }
+  })
+
   // Show/hide the Claude usage card in the sidebar
   ipcMain.handle('config:setUsageCardEnabled', async (_event, { enabled }: { enabled: boolean }) => {
     const config = readConfig()

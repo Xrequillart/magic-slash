@@ -604,6 +604,10 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.appearance.themeSection': 'Thème',
   'settings.appearance.followsAccount':
     'Le thème suit votre compte — il s’applique sur toutes les machines où vous vous connectez.',
+  'settings.appearance.terminalSection': 'Terminal',
+  'settings.appearance.claudeTheme.label': 'Accorder Claude Code au thème',
+  'settings.appearance.claudeTheme.help':
+    'Claude Code adopte les couleurs du thème choisi dans les terminaux de l’app. Les sessions déjà ouvertes se repeignent aussi. Votre Claude Code lancé depuis un vrai terminal n’est pas touché.',
   'settings.appearance.displaySection': 'Affichage',
   'settings.appearance.scale': 'Échelle de l’interface',
   'settings.appearance.scaleHelpBefore':
@@ -612,6 +616,7 @@ export const fr: Record<keyof typeof en, string> = {
     '. Reste sur cette machine, puisqu’elle compense les particularités de cet écran.',
   'settings.appearance.zoomReset': 'Revenir à 100 %',
   'toast.themeChangeFailed': 'Impossible de changer de thème',
+  'toast.claudeThemeSyncFailed': 'Impossible de changer le thème de Claude Code',
 
   // ── Champs du profil utilisateur ─────────────────────────────────────────
   'profile.role.product': 'Produit',

@@ -773,6 +773,7 @@ const emptySettingsRow = {
   atlassian_integration_enabled: null,
   theme: null,
   language: null,
+  sync_claude_theme: null,
 }
 
 describe('user settings', () => {
@@ -800,6 +801,7 @@ describe('user settings', () => {
           auto_start_at_login: true,
           launch_mode: 'acceptEdits',
           atlassian_integration_enabled: false,
+          sync_claude_theme: false,
         },
         error: null,
       },
@@ -821,6 +823,7 @@ describe('user settings', () => {
       autoStartAtLogin: true,
       launchMode: 'acceptEdits',
       integrations: { github: true, atlassian: false },
+      syncClaudeTheme: false,
     })
     expect(calls.some((c) => c.table === 'user_settings' && c.method === 'eq' && c.args[0] === 'user_id' && c.args[1] === UID)).toBe(true)
   })
@@ -963,6 +966,7 @@ describe('user settings', () => {
       atlassian_integration_enabled: null,
       theme: null,
       language: null,
+      sync_claude_theme: null,
     })
   })
 
