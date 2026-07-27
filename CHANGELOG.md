@@ -5,13 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.54.0] - 2026-07-27
+
+### Added
+
+- **Desktop**: Add an application language setting (en/fr)
+
+### Changed
+
+- **Desktop**: Align repo detail cards with the standard card surface
+
+### Fixed
+
+- **Desktop**: Keep the local language when the cloud has none
+- **Desktop**: Hold the main-process language outside appearance.ts
+
 ## [0.53.0] - 2026-07-26
 
 ### Added
 
 - **Desktop**: Make the interface themeable with eight light and dark themes
 - **Desktop**: Add an interface scale setting
-- **Desktop**: Add an application language setting (English / French)
 - **Desktop**: Animate page changes in the settings
 - **Desktop**: Animate modals when they close
 - Restrict team repository settings to org admins and the repo creator
@@ -1608,6 +1622,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.54.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.54.0
 [0.53.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.53.0
 [0.52.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.52.6
 [0.52.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.52.5
