@@ -81,3 +81,26 @@ export function formatRelative(iso: string): string {
 export function formatDevicePlatform(install: Installation): string {
   return [install.platform, install.arch].filter(Boolean).join(' · ')
 }
+
+/**
+ * Compares two version strings by their numeric components. Coarse on purpose:
+ * a pre-release suffix (`0.54.1-beta.2`) compares as its leading number, which
+ * is enough to answer "is this machine behind another one?" — the only question
+ * asked of it.
+ */
+function compareVersions(a: string, b: string): number {
+  const pa = a.split('.')
+  const pb = b.split('.')
+  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
+    const na = parseInt(pa[i] ?? '0', 10) || 0
+    const nb = parseInt(pb[i] ?? '0', 10) || 0
+    if (na !== nb) return na - nb
+  }
+  return 0
+}
+
+/** The newest version any of these machines runs, or null when there are none. */
+export function highestVersion(installs: Installation[]): string | null {
+  if (installs.length === 0) return null
+  return installs.reduce((best, i) => (compareVersions(i.appVersion, best) > 0 ? i.appVersion : best), installs[0].appVersion)
+}

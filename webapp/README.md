@@ -29,8 +29,12 @@ npm run dev                        # http://localhost:3000
 ## Routes
 
 - `/` — login (redirects to `/dashboard` when already signed in)
-- `/dashboard` — signed-in home: your organizations + sign out
+- `/dashboard` — signed-in home: stats, or the getting-started checklist
+- `/application` — the desktop app: whether it is in use and on what version,
+  then its preferences (appearance, language, features, Claude Code launch mode)
 - `/organization` — org detail: members (via `list_org_members`), role, org switcher
+- `/account` — identity, Claude profile, and the machines you signed in from
+- `/repository/[id]` — per-repository settings
 - `/invite/[token]` — public invitation funnel: preview org → sign up (or sign in)
   → accept the invitation (then a link to download the desktop app)
 
@@ -41,6 +45,12 @@ npm run dev                        # http://localhost:3000
 - `auth.signUp({ email, password })` / `auth.signInWithPassword(...)`
 - `rpc('accept_invitation', { invitation_token })` — requires an authenticated
   session; the JWT email must match the invited email
+- `user_settings` — one own-row of application preferences, upserted by
+  `/application`. Every column is nullable and NULL means "never chosen", so the
+  desktop applies its own default; the webapp mirrors those defaults in
+  `lib/settings.ts` for display and only writes a column the user touched.
+- `app_installations` — read-only here; the desktop upserts one row per machine
+  on every launch, which is what `/application` and `/account` report on.
 
 ## Deploy (Vercel)
 

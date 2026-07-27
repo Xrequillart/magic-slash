@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Building2, ChevronDown, LogOut, UserRound } from 'lucide-react'
+import { AppWindow, Building2, ChevronDown, LogOut, UserRound } from 'lucide-react'
 import { getSupabase } from '@/lib/supabase'
 
 /**
@@ -14,6 +14,7 @@ import { getSupabase } from '@/lib/supabase'
  */
 
 const MENU_LINKS = [
+  { href: '/application', label: 'Application', icon: AppWindow },
   { href: '/organization', label: 'Organization', icon: Building2 },
   { href: '/account', label: 'Account', icon: UserRound },
 ]
