@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { shouldEmitMerged } from './watcher'
+import { shouldEmitMerged } from './merge-detection'
 
 /**
  * `merged` is the cycle-end anchor for every flow metric, so emitting it twice

@@ -3,6 +3,7 @@ import { readConfig } from '../config/config'
 import { getAllTerminals, updateTerminalMetadataFromHook } from '../pty/terminal-manager'
 import { addHistoryEntry } from '../config/activity-history'
 import { fetchPRStatus, type AggregatedReviewStatus } from '../github'
+import { shouldEmitMerged } from './merge-detection'
 import type { RepositoryMetadata } from '../../types'
 import { t } from '../i18n'
 
@@ -17,32 +18,6 @@ interface LastKnown {
   updatedAt: number
   /** Tracked so a merge is emitted once per PR, not on every subsequent tick. */
   merged: boolean
-}
-
-/**
- * Whether this tick should append a `merged` activity event.
- *
- * Extracted and pure because a silent double-count would live exactly here, and
- * the two guards defend against different things:
- *
- * - `existing.prMerged` is the DURABLE marker. It is persisted in the terminal's
- *   repositoryMetadata alongside the emission, so it survives an app restart —
- *   which the in-memory map does not.
- * - `previous.merged` covers repeat ticks inside a single run.
- *
- * Note the caller must NOT gate this on a review-status transition: a PR that is
- * approved and then merged keeps `status === 'approved'`, so a status-change
- * guard would drop the merge event entirely.
- */
-export function shouldEmitMerged(
-  previous: { merged: boolean } | undefined,
-  snapshot: { merged: boolean },
-  existing: Pick<RepositoryMetadata, 'prMerged'>,
-): boolean {
-  if (!snapshot.merged) return false
-  if (existing.prMerged === true) return false
-  if (previous?.merged === true) return false
-  return true
 }
 
 export class PRReviewWatcher {
