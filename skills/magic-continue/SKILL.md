@@ -287,7 +287,7 @@ If files detected: Display `MSG_WORKTREE_FILES_DETECTED`. If user says yes, save
 ```bash
 # Persist to the cloud via the desktop app when running; otherwise write the local config file.
 if [ -n "$MAGIC_SLASH_PORT" ]; then
-  curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/config/worktree-files?repo=$(echo -n '{REPO_NAME}' | jq -sRr @uri)&files=$(echo -n '["file1","file2"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
+  curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/config/worktree-files?path=$(echo -n "$PWD" | jq -sRr @uri)&files=$(echo -n '["file1","file2"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
 else
   LOCAL_CONFIG=~/.config/magic-slash/config.json
   [ -f "$LOCAL_CONFIG" ] && jq --arg repo "{REPO_NAME}" --argjson files '["file1", "file2"]' \

@@ -142,16 +142,37 @@ describe('read-back endpoints', () => {
     expect(missing.body).toBe('null')
   })
 
-  it('GET /config/worktree-files forwards repo + parsed files to the writer', async () => {
-    let received: { repo: string; files: string[] } | null = null
-    setWorktreeFilesWriter((repo, files) => {
-      received = { repo, files }
+  describe('GET /config/worktree-files', () => {
+    type Received = { files: string[]; path: string | null; repo: string | null }
+    let received: Received | null = null
+
+    beforeEach(() => {
+      received = null
+      setWorktreeFilesWriter((files, path, repo) => {
+        received = { files, path, repo }
+      })
     })
-    const files = encodeURIComponent(JSON.stringify(['.env', '.npmrc', 42]))
-    const { status } = await httpGet(`/config/worktree-files?repo=api&files=${files}`)
-    expect(status).toBe(200)
-    // Non-string entries (42) are filtered out before reaching the writer.
-    expect(received).toEqual({ repo: 'api', files: ['.env', '.npmrc'] })
+
+    const FILES = encodeURIComponent(JSON.stringify(['.env', '.npmrc', 42]))
+
+    it('forwards the working directory, which identifies the repo unambiguously', async () => {
+      const { status } = await httpGet(`/config/worktree-files?path=%2Fx%2Fapi-PER-1&files=${FILES}`)
+      expect(status).toBe(200)
+      // Non-string entries (42) are filtered out before reaching the writer.
+      expect(received).toEqual({ files: ['.env', '.npmrc'], path: '/x/api-PER-1', repo: null })
+    })
+
+    it('still accepts a bare repo name, for skills that have not been updated', async () => {
+      const { status } = await httpGet(`/config/worktree-files?repo=api&files=${FILES}`)
+      expect(status).toBe(200)
+      expect(received).toEqual({ files: ['.env', '.npmrc'], path: null, repo: 'api' })
+    })
+
+    it('does not call the writer when neither identifier is given', async () => {
+      const { status } = await httpGet(`/config/worktree-files?files=${FILES}`)
+      expect(status).toBe(200)
+      expect(received).toBeNull()
+    })
   })
 
   describe('GET /skill', () => {

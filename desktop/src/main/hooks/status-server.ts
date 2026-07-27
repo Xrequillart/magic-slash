@@ -46,7 +46,12 @@ type SkillCallback = (terminalId: string | undefined, skill: string) => void
 // Loosely typed on purpose — the values are just JSON-serialized to the response.
 type ConfigProvider = () => unknown
 type AgentProvider = (terminalId: string) => unknown
-type WorktreeFilesWriter = (repo: string, files: string[]) => void
+/**
+ * `path` is the working directory the skill is in (a repo or one of its
+ * worktrees) and is the reliable identifier; `repo` is the legacy name, kept for
+ * skills that have not been updated.
+ */
+type WorktreeFilesWriter = (files: string[], path: string | null, repo: string | null) => void
 
 let server: http.Server | null = null
 let serverPort: number = 0
@@ -385,14 +390,19 @@ export function startStatusServer(): Promise<number> {
         } else if (url.pathname === '/config/worktree-files') {
           // Write: persist a repo's worktreeFiles to the cloud store (the one config mutation
           // skills perform). Kept as GET+query to match the other curl-friendly write routes.
+          // `path` identifies the repo unambiguously; `repo` (a name) cannot,
+          // since two organizations may each have one by that name — and it was
+          // already unreliable, being the folder basename rather than the
+          // configured key. Older skills send only `repo`.
+          const path = url.searchParams.get('path')
           const repo = url.searchParams.get('repo')
           const filesRaw = url.searchParams.get('files')
 
-          if (repo && filesRaw && worktreeFilesWriter) {
+          if ((path || repo) && filesRaw && worktreeFilesWriter) {
             try {
               const files = JSON.parse(filesRaw)
               if (Array.isArray(files)) {
-                worktreeFilesWriter(repo, files.filter((f): f is string => typeof f === 'string'))
+                worktreeFilesWriter(files.filter((f): f is string => typeof f === 'string'), path, repo)
               }
             } catch (e) {
               console.error('[StatusServer] /config/worktree-files failed:', e)

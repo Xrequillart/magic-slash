@@ -31,15 +31,19 @@ curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/agent?id=$MAGIC_SLASH_TERMINAL_ID"
 
 ## Write endpoints
 
-These endpoints update the Magic Slash Desktop UI / cloud store. They are silent (`|| true`) and never block the workflow. All require `$MAGIC_SLASH_PORT`; the terminal-scoped ones (`/metadata`, `/repositories`) additionally require `$MAGIC_SLASH_TERMINAL_ID`, while `/config/worktree-files` is keyed on `repo=` and needs only the port.
+These endpoints update the Magic Slash Desktop UI / cloud store. They are silent (`|| true`) and never block the workflow. All require `$MAGIC_SLASH_PORT`; the terminal-scoped ones (`/metadata`, `/repositories`) additionally require `$MAGIC_SLASH_TERMINAL_ID`, while `/config/worktree-files` identifies the repository by `path=` and needs only the port.
 
-### `GET /config/worktree-files?repo=<name>&files=<json array>`
+### `GET /config/worktree-files?path=<working directory>&files=<json array>`
 
-Persists a repository's `worktreeFiles` to the cloud store. `repo` and `files` (a URL-encoded JSON
-array of strings) are required. Replaces the legacy `jq`-into-local-file write when the app is running.
+Persists a repository's `worktreeFiles` to the cloud store. `files` is a URL-encoded JSON array of
+strings. Replaces the legacy `jq`-into-local-file write when the app is running.
+
+Identify the repository with `path` — the directory you are in, the repo itself or one of its
+worktrees. A bare `repo=<name>` is still accepted for compatibility, but a name is not unique: two
+organizations can each have an `api`, and the app then keys the second one differently.
 
 ```bash
-curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/config/worktree-files?repo=api&files=%5B%22.env%22%5D"
+curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/config/worktree-files?path=%2FUsers%2Fme%2Fapi&files=%5B%22.env%22%5D"
 ```
 
 ## Endpoint `/metadata`

@@ -18,6 +18,8 @@ import { setupAppearanceHandlers } from './ipc/appearance-handlers'
 import { setStore } from './store/Store'
 import { CloudStore } from './store/CloudStore'
 import { readConfig, writeConfig, updateRepositoryWorktreeFilesSettings } from './config/config'
+import { expandPath } from './config/validation'
+import { resolveRepoIds } from '../repoMatch'
 import { readAgents } from './config/agents'
 import { TrayManager } from './tray/tray-manager'
 import { AgentStateAggregator } from './tray/agent-state-aggregator'
@@ -566,8 +568,20 @@ async function initializeHooksAndSessions() {
     // one config mutation they perform (worktreeFiles).
     setConfigProvider(() => readConfig())
     setAgentProvider((terminalId: string) => readAgents().find((a) => a.id === terminalId) ?? null)
-    setWorktreeFilesWriter((repo: string, files: string[]) => {
-      updateRepositoryWorktreeFilesSettings(repo, { worktreeFiles: files })
+    setWorktreeFilesWriter((files: string[], path: string | null, repo: string | null) => {
+      // Resolve to the repo's KEY in the config record, which is not always its
+      // name: two orgs can share a name, and the second one's key is suffixed.
+      const repositories = readConfig().repositories ?? {}
+      const [repoId] = path ? resolveRepoIds([path], repositories, expandPath) : []
+      const key = repoId
+        ? Object.keys(repositories).find((k) => repositories[k].id === repoId)
+        : Object.keys(repositories).find((k) => k === repo || repositories[k].name === repo)
+
+      if (!key) {
+        console.warn(`[worktree-files] no configured repository matches path=${path} repo=${repo}`)
+        return
+      }
+      updateRepositoryWorktreeFilesSettings(key, { worktreeFiles: files })
     })
 
     // Install shell integration hooks
