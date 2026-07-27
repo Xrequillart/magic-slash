@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.57.1] - 2026-07-27
+
+### Changed
+
+- **Desktop**: Gate activity and skill logs behind the usage opt-in
+
+### Removed
+
+- **Desktop**: Remove the activity History page and its enable-history switch
+
+### Fixed
+
+- **Desktop**: Derive an event's organization from its agent, fixing the foreign key error that blocked activity, usage and skill logging
+
 ## [0.57.0] - 2026-07-27
 
 ### Added
@@ -1688,6 +1702,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.57.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.57.1
 [0.57.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.57.0
 [0.56.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.56.0
 [0.55.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.55.1
