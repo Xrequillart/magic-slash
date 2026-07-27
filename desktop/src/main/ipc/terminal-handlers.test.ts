@@ -44,10 +44,10 @@ vi.mock('../pty/terminal-manager', () => ({
   updateTerminalRepositoriesFromHook: vi.fn(),
 }))
 
-const removeAgent = vi.fn()
+const archiveAgent = vi.fn()
 vi.mock('../config/agents', () => ({
   saveAgent: vi.fn(),
-  removeAgent: (...args: unknown[]) => removeAgent(...args),
+  archiveAgent: (...args: unknown[]) => archiveAgent(...args),
   readAgents: vi.fn(() => []),
   updateAgentSplitPane: vi.fn(),
 }))
@@ -87,7 +87,7 @@ beforeEach(() => {
 })
 
 describe('session-end usage flush (terminal:kill)', () => {
-  it('records the in-memory usage snapshot exactly once, before removeAgent', async () => {
+  it('records the in-memory usage snapshot exactly once, before archiveAgent', async () => {
     const id = 'claude-kill-1'
     term.getTerminal.mockReturnValue({
       id,
@@ -111,10 +111,10 @@ describe('session-end usage flush (terminal:kill)', () => {
         durationMs: 5000,
       }),
     )
-    expect(removeAgent).toHaveBeenCalledTimes(1)
-    // Flush must happen BEFORE removeAgent so the store can still resolve the uuid.
+    expect(archiveAgent).toHaveBeenCalledTimes(1)
+    // Flush must happen BEFORE archiveAgent so the store can still resolve the uuid.
     expect(recordUsageSnapshot.mock.invocationCallOrder[0]).toBeLessThan(
-      removeAgent.mock.invocationCallOrder[0],
+      archiveAgent.mock.invocationCallOrder[0],
     )
   })
 
@@ -125,7 +125,7 @@ describe('session-end usage flush (terminal:kill)', () => {
     await invoke('terminal:kill', { id })
 
     expect(recordUsageSnapshot).not.toHaveBeenCalled()
-    expect(removeAgent).toHaveBeenCalledTimes(1)
+    expect(archiveAgent).toHaveBeenCalledTimes(1)
   })
 
   it('writes only ONE snapshot when a stray onExit fires during the kill (usageFlushed guard)', async () => {

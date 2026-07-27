@@ -12,7 +12,7 @@
 -- `request.jwt.claims` `sub` for auth.uid() to read.
 
 begin;
-select plan(11);
+select plan(15);
 
 -- ---------------------------------------------------------------------------
 -- Seed as the table owner (RLS bypassed here). One org, two members: u1 is its
@@ -40,6 +40,16 @@ values
   ('a0000000-0000-0000-0000-000000000002', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', 'U2 Agent'),
   ('a0000000-0000-0000-0000-000000000003', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', null, 'Orphan To Delete'),
   ('a0000000-0000-0000-0000-000000000004', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', null, 'Orphan To Adopt');
+
+-- One activity event attached to u2's agent. Closing an agent must never orphan
+-- it: that is the whole point of archiving instead of deleting (test 15).
+insert into public.activity_events (org_id, user_id, agent_id, action)
+values (
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '22222222-2222-2222-2222-222222222222',
+  'a0000000-0000-0000-0000-000000000002',
+  'agent_closed'
+);
 
 -- ---------------------------------------------------------------------------
 -- Context: u2, a plain member of the org.
@@ -146,6 +156,49 @@ with upd as (
   returning 1
 )
 select is((select count(*) from upd), 1::bigint, 'an admin can adopt an orphaned agent');
+
+-- ---------------------------------------------------------------------------
+-- Archiving (20260727140000_agents_archive.sql). Closing an agent stamps
+-- archived_at through the ordinary agents_update policy — no RPC, no new grant.
+-- ---------------------------------------------------------------------------
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222"}';
+
+-- 12. A member archives its own agent.
+with upd as (
+  update public.agents set archived_at = now()
+   where id = 'a0000000-0000-0000-0000-000000000002' and archived_at is null
+  returning 1
+)
+select is((select count(*) from upd), 1::bigint, 'a member can archive its own agent');
+
+-- 13. …and only its own: the UPDATE policy filters by USING, so archiving a
+--     teammate's agent touches zero rows.
+with upd as (
+  update public.agents set archived_at = now()
+   where id = 'a0000000-0000-0000-0000-000000000001'
+  returning 1
+)
+select is((select count(*) from upd), 0::bigint, 'a member cannot archive a teammate''s agent');
+
+-- 14. An archived agent stays SELECTable: the filtering is done by the client
+--     queries, not by RLS, so History can still resolve its name and an admin
+--     can still clean up orphans. (Three agents remain: #3 was deleted above.)
+select is(
+  (select count(*) from public.agents),
+  3::bigint,
+  'an archived agent is still readable by the org'
+);
+
+-- 15. The regression this whole change exists for: a hard delete nulled
+--     activity_events.agent_id through the composite FK's on delete set null.
+--     Archiving keeps the link.
+select is(
+  (select agent_id from public.activity_events where action = 'agent_closed'),
+  'a0000000-0000-0000-0000-000000000002'::uuid,
+  'archiving keeps the activity event attached to its agent'
+);
 
 select * from finish();
 rollback;

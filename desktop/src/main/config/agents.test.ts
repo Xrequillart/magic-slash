@@ -8,7 +8,7 @@ import {
   readAgents,
   writeAgents,
   saveAgent,
-  removeAgent,
+  archiveAgent,
   updateAgentMetadata,
   updateAgentSplitPane,
   hydrateAgents,
@@ -19,13 +19,18 @@ import {
 // synchronous cache API (which writes through to the store).
 
 let savedAgents: unknown[] = []
+let archivedAgents: string[] = []
+let saveCalls = 0
 
 function fakeStore(initial: unknown[] = []): Store {
   savedAgents = structuredClone(initial)
+  archivedAgents = []
+  saveCalls = 0
   return {
     ...NOOP_STORE,
     loadAgents: async () => structuredClone(savedAgents) as Agent[],
-    saveAgents: async (a) => { savedAgents = structuredClone(a) },
+    saveAgents: async (a) => { saveCalls += 1; savedAgents = structuredClone(a) },
+    archiveAgent: async (id) => { archivedAgents.push(id) },
   }
 }
 
@@ -200,22 +205,30 @@ describe('saveAgent', () => {
   })
 })
 
-describe('removeAgent', () => {
-  it('removes an agent by id', async () => {
+describe('archiveAgent', () => {
+  it('drops the agent from the cache and archives it in the store', async () => {
     await seed([
       { id: 'a1', name: 'Agent 1', repositories: [], tsCreate: 100 },
       { id: 'a2', name: 'Agent 2', repositories: [], tsCreate: 200 },
     ])
-    removeAgent('a1')
+    archiveAgent('a1')
     const agents = readAgents()
     expect(agents).toHaveLength(1)
     expect(agents[0].id).toBe('a2')
+    expect(archivedAgents).toEqual(['a1'])
+  })
+
+  it('never rewrites the whole roster: closing one agent is not a saveAgents', async () => {
+    await seed([{ id: 'a1', name: 'Agent 1', repositories: [], tsCreate: 100 }])
+    archiveAgent('a1')
+    expect(saveCalls).toBe(0)
   })
 
   it('is a no-op if the id does not exist', async () => {
     await seed([{ id: 'a1', name: 'Agent 1', repositories: [], tsCreate: 100 }])
-    removeAgent('nope')
+    archiveAgent('nope')
     expect(readAgents()).toHaveLength(1)
+    expect(archivedAgents).toEqual([])
   })
 })
 

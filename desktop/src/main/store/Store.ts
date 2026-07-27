@@ -44,7 +44,16 @@ export interface Store {
   setRepositoryPath(id: string, path: string | null): Promise<void>
 
   loadAgents(): Promise<Agent[]>
+  /** Upsert the caller's agents. Never destructive: an absent agent is left alone. */
   saveAgents(agents: Agent[]): Promise<void>
+
+  /**
+   * Soft-delete ONE agent (the user closed it). Never a hard delete: the row is
+   * kept so its activity, usage and skill-invocation events keep their agent
+   * link — a deleted row would null those FKs and orphan the history.
+   * Idempotent, and a no-op for an agent the store never loaded.
+   */
+  archiveAgent(appId: string): Promise<void>
 
   /** Org-wide agents roster (all members) for the team dashboard. Read-only. */
   loadOrgAgents(): Promise<OrgAgent[]>
@@ -67,10 +76,10 @@ export interface Store {
   loadOrgUsageStats(): Promise<UsageStats>
 
   /**
-   * Org-wide activity events (all members) for the Team page's flow metrics.
-   * Read-only, and open to any org member — the RLS select policy is scoped by
-   * org, not by user. Deliberately separate from loadHistory, which stays scoped
-   * to the caller for the personal History feed.
+   * Org-wide activity events (all members). Read-only, and open to any org
+   * member — the RLS select policy is scoped by org, not by user. Deliberately
+   * separate from loadHistory, which stays scoped to the caller for the personal
+   * History feed.
    */
   loadOrgActivity(sinceMs: number, limit: number): Promise<OrgActivity>
 
@@ -116,6 +125,7 @@ export const NOOP_STORE: Store = {
   async setRepositoryPath() { /* no-op */ },
   async loadAgents() { return [] },
   async saveAgents() { /* no-op */ },
+  async archiveAgent() { /* no-op */ },
   async loadOrgAgents() { return [] },
   async loadHistory() { return [] },
   async appendHistory() { /* no-op */ },

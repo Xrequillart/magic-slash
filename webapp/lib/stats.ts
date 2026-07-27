@@ -66,7 +66,9 @@ export async function fetchUserStats(): Promise<UserStats> {
   if (!uid) return EMPTY_STATS
 
   const [agentsRes, usageRes] = await Promise.all([
-    supabase.from('agents').select('id, metadata').eq('owner_id', uid),
+    // Archived (closed) agents are kept in the table for their history, but they
+    // are not live work — same filter as the desktop's CloudStore read paths.
+    supabase.from('agents').select('id, metadata').eq('owner_id', uid).is('archived_at', null),
     supabase.from('usage_events').select('cost_usd').eq('user_id', uid).gte('occurred_at', startOfMonthISO()),
   ])
 

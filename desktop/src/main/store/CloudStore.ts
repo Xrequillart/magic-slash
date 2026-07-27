@@ -167,6 +167,13 @@ const SHARED_KEYS = ['languages', 'commit', 'pullRequest', 'repoKeywords'] as co
  * (config, agents, activity) is additionally scoped to the signed-in user: only
  * the explicitly org-wide readers (loadOrgAgents, loadOrgUsageStats) span members.
  */
+/** Everything a query needs: an authed client, the caller, and the active org. */
+interface CloudContext {
+  client: SupabaseClient
+  uid: string
+  orgId: string
+}
+
 export class CloudStore implements Store {
   private activeOrgId: string | undefined
   /** app agent id ("claude-…") → agents.id (uuid). Rebuilt on every loadAgents. */
@@ -178,7 +185,7 @@ export class CloudStore implements Store {
     this.activeOrgId = orgId
   }
 
-  private async context(): Promise<{ client: SupabaseClient; uid: string; orgId: string } | null> {
+  private async context(): Promise<CloudContext | null> {
     const client = await getAuthedClient()
     if (!client) return null
     const uid = loadSession()?.user?.id
@@ -563,6 +570,10 @@ export class CloudStore implements Store {
    * restoration, so it must never hand one member's agents to another. Rows whose
    * owner_id was nulled by the membership FK (an ex-member's agents) belong to
    * nobody and are deliberately excluded.
+   *
+   * Archived agents are excluded too: they are closed work kept only for the
+   * history they are attached to. Without this filter, restoreAgents() would
+   * spawn a PTY for every agent ever closed.
    */
   async loadAgents(): Promise<Agent[]> {
     const ctx = await this.context()
@@ -573,6 +584,7 @@ export class CloudStore implements Store {
       .select('id, org_id, owner_id, name, ticket_id, description, branch_name, base_branch, status, repositories, metadata, updated_at')
       .eq('org_id', ctx.orgId)
       .eq('owner_id', ctx.uid)
+      .is('archived_at', null)
 
     if (error || !data) return []
 
@@ -588,29 +600,22 @@ export class CloudStore implements Store {
     return agents
   }
 
+  /**
+   * Upsert the caller's agents. Deliberately NOT destructive.
+   *
+   * This used to reconcile by absence: an app id missing from `agents` meant
+   * "deleted", and the row was dropped. But the only legitimate producer of an
+   * absence is a user closing an agent — which now goes through archiveAgent().
+   * Every other absence is a cache divergence (hydrateAgents() empties its cache
+   * when a load throws, while loadAgents() returns [] without clearing
+   * agentIdMap), and reconciling on it would silently destroy a member's whole
+   * roster. The DB is the source of truth: a row that vanishes from the local
+   * cache for any other reason simply comes back at the next hydration.
+   */
   async saveAgents(agents: Agent[]): Promise<void> {
     const ctx = await this.context()
     if (!ctx) return
 
-    const desired = new Set(agents.map((a) => a.id))
-
-    // Delete rows whose app agent id no longer exists locally. Scoped by owner_id
-    // as well: closing an agent must never reach a teammate's row.
-    for (const [appId, uuid] of [...this.agentIdMap.entries()]) {
-      if (!desired.has(appId)) {
-        const { error } = await ctx.client
-          .from('agents')
-          .delete()
-          .eq('org_id', ctx.orgId)
-          .eq('owner_id', ctx.uid)
-          .eq('id', uuid)
-        if (error) throw new Error(`saveAgents (delete) failed: ${error.message}`)
-        this.agentIdMap.delete(appId)
-        this.agentNameByUuid.delete(uuid)
-      }
-    }
-
-    // Upsert the desired set.
     const rows = agents.map((a) => {
       const uuid = this.agentIdMap.get(a.id) ?? randomUUID()
       this.agentIdMap.set(a.id, uuid)
@@ -624,10 +629,43 @@ export class CloudStore implements Store {
   }
 
   /**
+   * Archive ONE agent: the row stays, stamped with archived_at, so the activity,
+   * usage and skill-invocation rows that reference it keep their link (a delete
+   * would null those FKs — see the migration). Scoped by owner_id like every
+   * agent write: closing an agent must never reach a teammate's row.
+   */
+  async archiveAgent(appId: string): Promise<void> {
+    // Read the uuid before any await: a concurrent write must not observe a
+    // half-updated map, and callers flush usage right before closing.
+    const uuid = this.agentIdMap.get(appId)
+    if (!uuid) return
+
+    const ctx = await this.context()
+    if (!ctx) return
+
+    const { error } = await ctx.client
+      .from('agents')
+      .update({ archived_at: new Date().toISOString() })
+      .eq('org_id', ctx.orgId)
+      .eq('owner_id', ctx.uid)
+      .eq('id', uuid)
+      .is('archived_at', null)
+    if (error) throw new Error(`archiveAgent failed: ${error.message}`)
+
+    // Drop the app id → uuid binding so a future agent reusing this app id
+    // (ids are `claude-${Date.now()}`) mints a fresh row instead of upserting
+    // onto the archived one — which, since toAgentRow never sets archived_at,
+    // would resurrect it as an invisible agent. agentNameByUuid is deliberately
+    // kept: loadHistory resolves closed agents' names through it.
+    this.agentIdMap.delete(appId)
+  }
+
+  /**
    * Org-wide agents roster for the team dashboard. Unlike loadAgents (which maps
    * to the LOCAL Agent shape and drives terminal restoration), this preserves
    * owner_id + updated_at so the dashboard can group by member and show recency.
-   * Read-only: never touches the local agents cache. RLS scopes it to the org.
+   * Read-only: never touches the local agents cache. RLS scopes it to the org,
+   * and archived (closed) agents are filtered out — the roster is live work.
    */
   async loadOrgAgents(): Promise<OrgAgent[]> {
     const ctx = await this.context()
@@ -637,6 +675,7 @@ export class CloudStore implements Store {
       .from('agents')
       .select('id, owner_id, name, ticket_id, status, repositories, metadata, updated_at')
       .eq('org_id', ctx.orgId)
+      .is('archived_at', null)
 
     if (error || !data) return []
     return (data as OrgAgentRow[]).map(mapOrgAgentRow)
@@ -645,6 +684,29 @@ export class CloudStore implements Store {
   // -------------------------------------------------------------------------
   // History (activity_events — append-only, read-limited)
   // -------------------------------------------------------------------------
+
+  /**
+   * Fill agentNameByUuid for uuids the agents cache does not know — closed
+   * agents, whose rows loadAgents() filters out. Without this, every history
+   * entry of an archived agent would render name-less after a restart, which is
+   * the very thing archiving exists to fix. Deliberately queried WITHOUT the
+   * archived filter, and bounded by the history page size.
+   */
+  private async hydrateAgentNames(ctx: CloudContext, uuids: (string | null)[]): Promise<void> {
+    const missing = [...new Set(uuids.filter((id): id is string => !!id && !this.agentNameByUuid.has(id)))]
+    if (missing.length === 0) return
+
+    const { data, error } = await ctx.client
+      .from('agents')
+      .select('id, name')
+      .eq('org_id', ctx.orgId)
+      .in('id', missing)
+
+    if (error || !data) return
+    for (const row of data as { id: string; name: string }[]) {
+      this.agentNameByUuid.set(row.id, row.name)
+    }
+  }
 
   /**
    * The caller's OWN activity feed. Scoped by user_id for the same reason as
@@ -665,6 +727,8 @@ export class CloudStore implements Store {
       .limit(limit)
 
     if (error || !data) return []
+
+    await this.hydrateAgentNames(ctx, (data as ActivityEventRow[]).map((row) => row.agent_id))
 
     // Reverse to oldest-first to match the legacy read order.
     return (data as ActivityEventRow[]).reverse().map((row) => ({

@@ -150,6 +150,38 @@ describe('startOrgAgentsRealtime', () => {
     ])
   })
 
+  it('reports an archived agent as a removal, not as an update', async () => {
+    // Closing an agent archives the row, so it reaches the socket as an UPDATE.
+    // Every consumer's contract for "gone" is DELETE.
+    await startOrgAgentsRealtime('org-1')
+    const changeCb = h.channel.on.mock.calls[0][2] as (payload: unknown) => void
+
+    changeCb({
+      eventType: 'UPDATE',
+      new: { id: 'uuid-1', owner_id: 'u1', name: 'Agent A', repositories: [], archived_at: '2026-07-27T10:00:00Z' },
+    })
+
+    expect(changes).toEqual([{ eventType: 'DELETE', id: 'uuid-1' }])
+  })
+
+  it('still maps a normal UPDATE when archived_at is null', async () => {
+    await startOrgAgentsRealtime('org-1')
+    const changeCb = h.channel.on.mock.calls[0][2] as (payload: unknown) => void
+
+    changeCb({
+      eventType: 'UPDATE',
+      new: { id: 'uuid-1', owner_id: 'u1', name: 'Agent A', repositories: [], archived_at: null },
+    })
+
+    expect(changes).toEqual([
+      {
+        eventType: 'UPDATE',
+        id: 'uuid-1',
+        agent: { id: 'uuid-1', ownerId: 'u1', name: 'Agent A', repositories: [] },
+      },
+    ])
+  })
+
   it('releases the org slot when subscribe() throws, so a later start retries', async () => {
     // No WebSocket transport / dead socket: subscribe() blows up. Keeping the
     // org "claimed" here would make the connectivity poller's

@@ -61,6 +61,8 @@ function normalizeAgents(raw: unknown): Agent[] {
 // In-memory agents cache. Agents live in the Supabase `agents` table (see
 // store/CloudStore.ts) — there is no local agents.json. readAgents() serves the
 // cache synchronously; writeAgents() updates it and writes through to the store.
+// Closing an agent goes through archiveAgent(), never through an absence in
+// writeAgents(): the store's upsert is deliberately non-destructive.
 // ---------------------------------------------------------------------------
 
 let agentsCache: Agent[] = []
@@ -143,10 +145,25 @@ export function updateAgentRepositories(id: string, repositories: string[]): voi
   }
 }
 
-export function removeAgent(id: string): void {
+/**
+ * Close an agent: drop it from the cache and archive its row (soft delete).
+ *
+ * Not a writeAgents() call — that would upsert every remaining agent for
+ * nothing, and the store no longer infers a removal from an absence. The row
+ * survives on purpose: its activity, usage and skill-invocation events keep
+ * pointing at it, so the History page can still name it.
+ */
+export function archiveAgent(id: string): void {
   const agents = readAgents()
-  const filtered = agents.filter(a => a.id !== id)
-  writeAgents(filtered)
+  if (!agents.some(a => a.id === id)) return
+
+  agentsCache = agents.filter(a => a.id !== id)
+  void getStore()
+    .archiveAgent(id)
+    .catch((error) => {
+      console.error('Error archiving agent:', error)
+      reportWriteError('agents', error)
+    })
 }
 
 export function updateAgentSplitPane(id: string, pane: 'left' | 'right'): void {

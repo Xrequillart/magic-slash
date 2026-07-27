@@ -20,7 +20,7 @@ import {
 import { resolveAgentCwd } from '../pty/agent-cwd'
 import {
   saveAgent,
-  removeAgent,
+  archiveAgent,
   readAgents,
   updateAgentSplitPane,
 } from '../config/agents'
@@ -74,7 +74,7 @@ const NOTIFICATION_COOLDOWN = 30000 // 30 seconds between notifications per term
  * no-op when the opt-in is off). Deduped per terminal id so it can be called from
  * both the explicit-kill path and the natural-exit path without double-writing.
  *
- * MUST be called BEFORE removeAgent(id) so the store's agentIdMap can still map
+ * MUST be called BEFORE archiveAgent(id) so the store's agentIdMap can still map
  * the app id → agents.id uuid (mirrors how addHistoryEntry resolves the agent).
  * tokens is intentionally not derived from contextTokens (a point-in-time context
  * gauge, not cumulative session tokens) — see recordUsageSnapshot/appendUsage.
@@ -425,12 +425,12 @@ export function setupTerminalHandlers(
         repositories: t.repositories || [],
       })
     }
-    // Flush the aggregated usage snapshot BEFORE removeAgent so the store can still
+    // Flush the aggregated usage snapshot BEFORE archiveAgent so the store can still
     // resolve this agent's uuid (one write per session; GDPR-gated inside).
     flushUsageSnapshot(id)
     killTerminal(id)
-    // Remove agent from disk
-    removeAgent(id)
+    // Archive, never delete: the row is kept so the events above keep their link.
+    archiveAgent(id)
     usageFlushed.delete(id)
   })
 

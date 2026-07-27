@@ -67,6 +67,7 @@ function makeClient(resultsByTable: Record<string, QueryResult>) {
       eq: (...args: unknown[]) => { record('eq', args); return b },
       gte: (...args: unknown[]) => { record('gte', args); return b },
       in: (...args: unknown[]) => { record('in', args); return b },
+      is: (...args: unknown[]) => { record('is', args); return b },
       order: (...args: unknown[]) => { record('order', args); return b },
       limit: (...args: unknown[]) => { record('limit', args); return b },
       maybeSingle: (...args: unknown[]) => { record('maybeSingle', args); return b },
@@ -254,7 +255,31 @@ describe('agents', () => {
     ])
   })
 
-  it('saveAgents scopes the reconciliation delete to the caller', async () => {
+  it('loadAgents excludes archived agents, so closed work is never restored', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [], error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().loadAgents()
+
+    expect(calls).toContainEqual({ table: 'agents', method: 'is', args: ['archived_at', null] })
+  })
+
+  it('loadOrgAgents excludes archived agents from the team roster', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [], error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().loadOrgAgents()
+
+    expect(calls).toContainEqual({ table: 'agents', method: 'is', args: ['archived_at', null] })
+  })
+
+  it('saveAgents never deletes: an agent missing from the cache keeps its row', async () => {
     const { client, calls } = makeClient({
       memberships: membershipsOk,
       agents: { data: [agentRow('uuid-1', 'claude-1', UID)], error: null },
@@ -263,16 +288,64 @@ describe('agents', () => {
 
     const store = new CloudStore()
     await store.loadAgents() // populates agentIdMap with claude-1 → uuid-1
-    await store.saveAgents([]) // claude-1 is gone locally → its row is deleted
+    await store.saveAgents([]) // a cache divergence must not destroy the roster
 
-    // The delete must carry owner_id so it can never reach a teammate's row.
-    const deleteIndex = calls.findIndex((c) => c.table === 'agents' && c.method === 'delete')
-    expect(deleteIndex).toBeGreaterThan(-1)
-    expect(calls.slice(deleteIndex).filter((c) => c.method === 'eq')).toEqual([
+    expect(calls.filter((c) => c.method === 'delete')).toEqual([])
+  })
+
+  it('archiveAgent stamps archived_at on the caller\'s own row only', async () => {
+    const { client, calls, updates } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [agentRow('uuid-1', 'claude-1', UID)], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents()
+    await store.archiveAgent('claude-1')
+
+    const payload = (updates.agents[0] as { archived_at: string })
+    expect(typeof payload.archived_at).toBe('string')
+
+    // Scoped by owner_id so closing an agent can never reach a teammate's row,
+    // and by `archived_at is null` so a second close is a no-op.
+    const updateIndex = calls.findIndex((c) => c.table === 'agents' && c.method === 'update')
+    expect(calls.slice(updateIndex).filter((c) => c.method === 'eq')).toEqual([
       { table: 'agents', method: 'eq', args: ['org_id', ORG] },
       { table: 'agents', method: 'eq', args: ['owner_id', UID] },
       { table: 'agents', method: 'eq', args: ['id', 'uuid-1'] },
     ])
+    expect(calls.slice(updateIndex)).toContainEqual({
+      table: 'agents', method: 'is', args: ['archived_at', null],
+    })
+  })
+
+  it('archiveAgent is a no-op for an agent the store never loaded', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [], error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().archiveAgent('claude-unknown')
+
+    expect(calls.filter((c) => c.table === 'agents')).toEqual([])
+  })
+
+  it('an app id reused after archiving mints a new row instead of resurrecting the old one', async () => {
+    const { client, upserts } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [agentRow('uuid-1', 'claude-1', UID)], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents()
+    await store.archiveAgent('claude-1')
+    await store.saveAgents([{ id: 'claude-1', name: 'Reborn', repositories: [] } as Agent])
+
+    const rows = upserts.agents[0] as Array<Record<string, unknown>>
+    expect(rows[0].id).not.toBe('uuid-1')
   })
 
   it('saveAgents stamps the caller as owner on every upserted row', async () => {
@@ -312,6 +385,57 @@ describe('loadHistory', () => {
         { table: 'activity_events', method: 'limit', args: [500] },
       ]),
     )
+  })
+
+  // Archiving keeps the agent_id link a hard delete used to null. The name still
+  // has to come from somewhere: loadAgents filters archived rows out, so History
+  // looks the missing uuids up directly.
+  it('names an archived agent by looking its uuid up, unfiltered', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      activity_events: {
+        data: [{ id: 'e1', agent_id: 'uuid-closed', action: 'agent_closed', repositories: [], occurred_at: '2026-07-27T10:00:00Z' }],
+        error: null,
+      },
+      agents: { data: [{ id: 'uuid-closed', name: 'Closed agent' }], error: null },
+    })
+    h.state.client = client
+
+    const entries = await new CloudStore().loadHistory(500)
+
+    expect(entries[0].agentName).toBe('Closed agent')
+    expect(calls).toContainEqual({ table: 'agents', method: 'in', args: ['id', ['uuid-closed']] })
+    // Unfiltered on purpose — an archived row must still resolve.
+    expect(calls.filter((c) => c.table === 'agents' && c.method === 'is')).toEqual([])
+  })
+
+  it('does not re-query a uuid the agents cache already named', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      activity_events: {
+        data: [{ id: 'e1', agent_id: 'uuid-1', action: 'started', repositories: [], occurred_at: '2026-07-27T10:00:00Z' }],
+        error: null,
+      },
+      agents: {
+        data: [{
+          id: 'uuid-1',
+          org_id: ORG,
+          owner_id: UID,
+          name: 'Agent claude-1',
+          repositories: [],
+          metadata: { __app: { id: 'claude-1' } },
+        }],
+        error: null,
+      },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents()
+    const entries = await store.loadHistory(500)
+
+    expect(entries[0].agentName).toBe('Agent claude-1')
+    expect(calls.filter((c) => c.table === 'agents' && c.method === 'in')).toEqual([])
   })
 })
 

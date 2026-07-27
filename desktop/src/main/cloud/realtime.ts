@@ -31,6 +31,12 @@ export interface OrgAgentRow {
     repositoryMetadata?: Record<string, RepositoryMetadata>
   } & Record<string, unknown>
   updated_at?: string | null
+  /**
+   * Set when the owner closed the agent. Absent from the REST selects (they
+   * filter on it server-side); present on realtime payloads, which carry every
+   * column — that is how an archive reaches the roster.
+   */
+  archived_at?: string | null
 }
 
 /**
@@ -178,6 +184,14 @@ function handleChange(payload: any): void {
   }
   const row = payload?.new as OrgAgentRow | undefined
   if (!row?.id) return
+  // Closing an agent archives the row, so it arrives as an UPDATE — but every
+  // consumer's contract for "this agent is gone" is DELETE, and archived agents
+  // are invisible app-wide. Synthesising the removal here keeps that in one
+  // place; it is the line to revisit if archives ever become browsable.
+  if (row.archived_at) {
+    dispatchChange({ eventType: 'DELETE', id: row.id })
+    return
+  }
   dispatchChange({ eventType, id: row.id, agent: mapOrgAgentRow(row) })
 }
 
