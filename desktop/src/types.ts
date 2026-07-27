@@ -401,8 +401,8 @@ export interface Member {
 /**
  * Compact per-repository PR review summary for a teammate's agent, sourced from
  * the agent row's metadata.repositoryMetadata (already synced org-wide by the
- * PRReviewWatcher). Read-only; surfaced on the team dashboard so "awaiting
- * review" / "blocked" work is visible without opening each agent.
+ * PRReviewWatcher). Read-only; surfaced on the Team page so a teammate's open
+ * pull request is one click away without opening their agent.
  */
 export interface OrgAgentPRReview {
   /** Repository path key from repositoryMetadata (owner's local path). */
@@ -422,6 +422,12 @@ export interface OrgAgent {
   /** Resolved in the renderer from the org member list (owner_id → email). */
   ownerEmail?: string
   name: string
+  /**
+   * The human title the owner gave the agent (metadata.title), when they set
+   * one. Preferred over `name` for display — `name` is the generated terminal
+   * label ("Claude 3"), which says nothing about the work.
+   */
+  title?: string
   ticketId?: string
   status?: string
   repositories: string[]

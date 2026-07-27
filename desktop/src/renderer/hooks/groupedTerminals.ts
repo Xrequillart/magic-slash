@@ -24,13 +24,25 @@ export const WORKFLOW_GROUPS: {
   { key: 'done',             labelKey: 'workflow.done' },
 ]
 
+/**
+ * The workflow statuses that mean "this agent has a live PR". The single source
+ * of truth for that question: the sidebar groups on it, and the Team page counts
+ * on it. 'PR merged' is deliberately out — the PR is no longer in flight.
+ */
+export const PR_WORKFLOW_STATUSES: readonly string[] = [
+  'PR created',
+  'in review',
+  'changes requested',
+  'Review addressed',
+]
+
 export function classifyTerminal(terminal: TerminalInfo): WorkflowGroupKey {
   const { state } = terminal
   const status = terminal.metadata?.status || ''
 
   if (state === 'error' || state === 'waiting') return 'needs_attention'
 
-  if (['PR created', 'in review', 'changes requested', 'Review addressed'].includes(status)) return 'in_review'
+  if (PR_WORKFLOW_STATUSES.includes(status)) return 'in_review'
   if (status === 'PR merged') return 'done'
   if (['', 'in progress', 'committed', 'ready for PR'].includes(status)) return 'active'
 

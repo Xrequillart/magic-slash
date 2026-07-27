@@ -251,6 +251,32 @@ describe('mapOrgAgentRow', () => {
     })
   })
 
+  it('carries metadata.title, which the Team page shows instead of the terminal name', () => {
+    const agent = mapOrgAgentRow({
+      id: 'uuid-3',
+      owner_id: 'u1',
+      name: 'Claude 3',
+      ticket_id: 'T-1',
+      status: null,
+      repositories: [],
+      metadata: { title: 'Archive agents instead of deleting them' },
+    })
+    expect(agent.title).toBe('Archive agents instead of deleting them')
+  })
+
+  it('leaves title undefined when the owner never set one (empty string default)', () => {
+    const agent = mapOrgAgentRow({
+      id: 'uuid-4',
+      owner_id: 'u1',
+      name: 'Claude 4',
+      ticket_id: null,
+      status: null,
+      repositories: [],
+      metadata: { title: '' },
+    })
+    expect(agent.title).toBeUndefined()
+  })
+
   // A minimal, valid row helper so each prReviews case only spells out the
   // metadata under test.
   const rowWithMeta = (metadata: OrgAgentRow['metadata']): OrgAgentRow => ({

@@ -25,6 +25,7 @@ export interface OrgAgentRow {
   repositories: unknown
   metadata?: {
     __app?: unknown
+    title?: string
     ticketId?: string
     status?: string
     repositoryMetadata?: Record<string, RepositoryMetadata>
@@ -35,8 +36,8 @@ export interface OrgAgentRow {
 /**
  * Distill the org-wide PR review summary from a row's metadata.repositoryMetadata
  * (populated org-wide by the PRReviewWatcher). Keeps only repos that carry a PR,
- * so the dashboard's "awaiting review" / "blocked" widgets have exactly what they
- * need. Returns undefined when no repo has a PR (keeps the OrgAgent shape lean).
+ * so the Team page can link straight to a teammate's open pull request. Returns
+ * undefined when no repo has a PR (keeps the OrgAgent shape lean).
  */
 function extractPRReviews(repoMeta: Record<string, RepositoryMetadata> | undefined): OrgAgentPRReview[] | undefined {
   if (!repoMeta || typeof repoMeta !== 'object') return undefined
@@ -63,6 +64,8 @@ export function mapOrgAgentRow(row: OrgAgentRow): OrgAgent {
     id: row.id,
     ownerId: row.owner_id ?? null,
     name: row.name,
+    // Empty string is the unset default the app writes, so `||` not `??`.
+    title: meta.title || undefined,
     ticketId: row.ticket_id ?? meta.ticketId ?? undefined,
     status: row.status ?? meta.status ?? undefined,
     repositories: Array.isArray(row.repositories) ? (row.repositories as string[]) : [],
