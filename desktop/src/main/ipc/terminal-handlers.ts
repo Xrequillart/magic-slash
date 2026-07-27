@@ -215,12 +215,17 @@ function createTerminalCallbacks(id: string, name: string) {
       const newStatus = metadata.status || ''
       const oldStatus = previousStatus.get(id) || ''
       if (newStatus && newStatus !== oldStatus) {
+        // 'in review' and 'Review addressed' used to collapse into one `review`
+        // action, which made the two opposite meanings indistinguishable — a
+        // reviewer picking the PR up vs. the author re-pushing their fixes. The
+        // flow metrics need them apart to measure time-to-first-review honestly.
         const statusToAction: Record<string, HistoryAction> = {
           'in progress': 'started',
           'committed': 'committed',
           'PR created': 'pr_created',
           'in review': 'review',
-          'Review addressed': 'review',
+          'Review addressed': 'review_addressed',
+          'changes requested': 'review_changes_requested',
           'PR merged': 'merged',
         }
         const action = statusToAction[newStatus]

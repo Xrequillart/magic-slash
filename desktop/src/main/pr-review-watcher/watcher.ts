@@ -15,6 +15,34 @@ const NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000
 interface LastKnown {
   status: AggregatedReviewStatus
   updatedAt: number
+  /** Tracked so a merge is emitted once per PR, not on every subsequent tick. */
+  merged: boolean
+}
+
+/**
+ * Whether this tick should append a `merged` activity event.
+ *
+ * Extracted and pure because a silent double-count would live exactly here, and
+ * the two guards defend against different things:
+ *
+ * - `existing.prMerged` is the DURABLE marker. It is persisted in the terminal's
+ *   repositoryMetadata alongside the emission, so it survives an app restart —
+ *   which the in-memory map does not.
+ * - `previous.merged` covers repeat ticks inside a single run.
+ *
+ * Note the caller must NOT gate this on a review-status transition: a PR that is
+ * approved and then merged keeps `status === 'approved'`, so a status-change
+ * guard would drop the merge event entirely.
+ */
+export function shouldEmitMerged(
+  previous: { merged: boolean } | undefined,
+  snapshot: { merged: boolean },
+  existing: Pick<RepositoryMetadata, 'prMerged'>,
+): boolean {
+  if (!snapshot.merged) return false
+  if (existing.prMerged === true) return false
+  if (previous?.merged === true) return false
+  return true
 }
 
 export class PRReviewWatcher {
@@ -97,6 +125,10 @@ export class PRReviewWatcher {
         if (!prUrl) continue
         // Stop polling closed-but-unmerged PRs
         if (repoMeta.prClosed === true && repoMeta.prMerged !== true) continue
+        // A merge is terminal: the status cannot change again and the `merged`
+        // activity event has already been emitted (prMerged is written with it).
+        // Polling on would only burn GitHub rate limit.
+        if (repoMeta.prMerged === true) continue
         targets.push({ terminalId: terminal.id, repoPath, prUrl, existing: repoMeta })
       }
     }
@@ -146,6 +178,22 @@ export class PRReviewWatcher {
           }
         }
 
+        // Merge is GitHub-sourced, so the flow metrics get a reliable cycle end
+        // even when nobody runs /magic:done. Deliberately OUTSIDE the status
+        // transition above: merging an approved PR leaves `status` at 'approved',
+        // so gating on a status change would drop this event.
+        if (shouldEmitMerged(previous, snapshot, target.existing)) {
+          const terminal = terminals.find(t => t.id === target.terminalId)
+          addHistoryEntry({
+            agentId: target.terminalId,
+            agentName: terminal?.metadata?.title || terminal?.name || target.terminalId,
+            action: 'merged',
+            ticketId: terminal?.metadata?.ticketId,
+            description: terminal?.metadata?.description,
+            repositories: terminal?.repositories || [],
+          })
+        }
+
         // Notify only if window is not focused, on a real transition, respecting cooldown
         const mainWindow = this.getMainWindow()
         const windowFocused = mainWindow?.isFocused() ?? false
@@ -159,7 +207,11 @@ export class PRReviewWatcher {
           )
         }
 
-        this.lastKnownStatus.set(target.prUrl, { status: snapshot.status, updatedAt: snapshot.updatedAt })
+        this.lastKnownStatus.set(target.prUrl, {
+          status: snapshot.status,
+          updatedAt: snapshot.updatedAt,
+          merged: snapshot.merged,
+        })
 
         if (mainWindow) {
           mainWindow.webContents.send('prWatcher:updated', {
