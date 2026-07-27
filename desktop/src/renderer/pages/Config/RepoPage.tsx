@@ -523,7 +523,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Scope / Sharing Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Scope</h2>
-        <div className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 flex items-start justify-between gap-6">
+        <div className="bg-surface border border-line-strong rounded-xl p-4 flex items-start justify-between gap-6">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               {repo?.orgId ? (
@@ -577,7 +577,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* General Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">General</h2>
-        <div className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4">
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
           {/* Name */}
           <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
@@ -697,7 +697,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Branches Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Branches</h2>
-        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 w-full min-w-0">
+        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
           <div className="flex items-start justify-between gap-6 py-3">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">Development Branch</label>
@@ -726,7 +726,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Worktree Files Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Worktree</h2>
-        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 w-full min-w-0">
+        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
           <div className="py-3">
             <div className="flex-1 mb-3">
               <label className="block text-sm font-medium mb-0.5">Files to copy</label>
@@ -790,7 +790,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Commit Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Commit</h2>
-        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 w-full min-w-0">
+        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
           <LangSelect langKey="commit" label="Language" description="Language used for commit messages" />
 
           {/* Style */}
@@ -880,7 +880,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Resolve Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Resolve</h2>
-        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 w-full min-w-0">
+        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
           {/* Commit Mode */}
           <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
@@ -1029,7 +1029,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Pull Request Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Pull Request</h2>
-        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 w-full min-w-0">
+        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
           <LangSelect langKey="pullRequest" label="Language" description="Language used for pull request titles and descriptions" />
 
           {/* Auto-link Tickets */}
@@ -1107,7 +1107,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       {/* Jira / GitHub Issues Section */}
       <div className="mb-6">
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">Jira / GitHub Issues</h2>
-        <fieldset disabled={readOnly} className="bg-bg-tertiary/30 border border-line-subtle rounded-xl p-4 w-full min-w-0">
+        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
           <LangSelect langKey="jiraComment" label="Comment Language" description="Language used for Jira and GitHub issue comments" />
 
           {/* Comment on PR */}
