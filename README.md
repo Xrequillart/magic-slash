@@ -294,7 +294,8 @@ npm run desktop:package
         "replyLanguage": "en"
       },
       "pullRequest": {
-        "autoLinkTickets": true
+        "autoLinkTickets": true,
+        "watchCI": true
       },
       "issues": {
         "commentOnPR": true,
@@ -351,9 +352,10 @@ Each repository can be independently configured:
 
 #### Pull Request settings
 
-| Setting           | Description                                    | Default |
-| ----------------- | ---------------------------------------------- | ------- |
-| `autoLinkTickets` | Add Jira/GitHub ticket links in PR description | `true`  |
+| Setting           | Description                                                                      | Default |
+| ----------------- | -------------------------------------------------------------------------------- | ------- |
+| `autoLinkTickets` | Add Jira/GitHub ticket links in PR description                                    | `true`  |
+| `watchCI`         | After creating the PR, watch the checks, auto-fix failures, address review feedback | `true`  |
 
 #### Issues settings
 
