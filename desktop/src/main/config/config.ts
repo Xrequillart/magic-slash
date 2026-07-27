@@ -100,21 +100,81 @@ function withDefaults(config: Config): Config {
 
 let configCache: Config | null = null
 
-/** Load the config from the store into the cache. Call after auth is established. */
+/**
+ * Bumped by EVERY mutation of the cache. Exists because a load from the store is
+ * slow (loadConfig makes several sequential round trips) while every local
+ * mutation is a synchronous read-modify-write on the cached object — so a load
+ * that started before a local edit would, on resolving, reinstall a snapshot
+ * taken BEFORE it and silently revert the user's change. Worse, the next write
+ * would push that stale snapshot back to the database, because saveUserSettings
+ * writes every settings column at once.
+ *
+ * Callers that load asynchronously capture this counter first and discard their
+ * result if it moved (see hydrateConfig).
+ */
+let configGeneration = 0
+
+/** The current cache generation. Capture before an await, compare after. */
+export function configCacheGeneration(): number {
+  return configGeneration
+}
+
+/** Whether anything has been loaded into the cache yet (a cold cache has not). */
+export function hasConfigCache(): boolean {
+  return configCache !== null
+}
+
+/**
+ * Load the config from the store into the cache. Call after auth is established,
+ * and again whenever the database may have changed under us (a remote edit).
+ *
+ * Two guards make it safe to call mid-session rather than only at startup:
+ *  - a local mutation during the load wins (see configGeneration), because the
+ *    user's just-made change is fresher than a snapshot that predates it;
+ *  - a failed or empty load defaults ONLY a cold cache. Replacing a warm cache
+ *    with defaults on a transient network error would blank every setting and
+ *    make the configured repositories vanish from the interface — and the next
+ *    local edit would then persist those defaults.
+ */
 export async function hydrateConfig(): Promise<Config> {
+  const generation = configGeneration
+  let loaded: Config | null = null
   try {
-    const loaded = await getStore().loadConfig()
-    configCache = withDefaults(loaded ?? defaultConfig())
+    loaded = await getStore().loadConfig()
   } catch (error) {
     console.error('Error hydrating config:', error)
+  }
+
+  if (configGeneration !== generation) return readConfig()
+
+  if (loaded) {
+    configCache = withDefaults(loaded)
+  } else if (!configCache) {
     configCache = withDefaults(defaultConfig())
   }
+  return configCache
+}
+
+/**
+ * Install a config assembled from the database (a remote edit arriving over
+ * Realtime) into the cache, applying the usual defaulting.
+ *
+ * Deliberately does NOT write through to the store: the value came FROM the
+ * database, so echoing it back would be a pointless round trip that also
+ * re-broadcasts to every other client. Deliberately does NOT bump the
+ * generation either: the counter protects local edits from being reverted by a
+ * slow load, and this is not a local edit — bumping it would make an
+ * in-flight hydrateConfig() throw away a legitimate reload.
+ */
+export function installRemoteConfig(config: Config): Config {
+  configCache = withDefaults(config)
   return configCache
 }
 
 /** Drop the cached config (on sign-out) so a different user never sees stale data. */
 export function resetConfigCache(): void {
   configCache = null
+  configGeneration++
 }
 
 export function readConfig(): Config {
@@ -123,6 +183,7 @@ export function readConfig(): Config {
 
 export function writeConfig(config: Config): void {
   configCache = config
+  configGeneration++
   void getStore()
     .saveConfig(config)
     .catch((error) => {
