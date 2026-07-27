@@ -3,6 +3,7 @@ import { DEFAULT_LANGUAGE, isValidLanguage, type LanguageId } from '../../types'
 import { localeOf, t as translate, type Translate } from '../../i18n'
 
 export type { MessageKey, Translate } from '../../i18n'
+export { ROLE_LABEL_KEYS, LEVEL_LABEL_KEYS, STYLE_LABEL_KEYS } from '../../i18n/profileLabels'
 
 /**
  * The renderer's view of the interface language, for the three windows at once.
