@@ -210,14 +210,61 @@ export function startOfLocalWeek(ms: number): number {
 // ---------------------------------------------------------------------------
 
 /**
+ * A ticket id carrying a project prefix — `PROJ-123`. These are unique across an
+ * organization, so they correlate on their own.
+ */
+const PREFIXED_TICKET = /^[A-Za-z][A-Za-z0-9]*-\d+$/
+
+/** Stable repo scope for ticket ids that are only unique within one repository. */
+function repoScopeOf(repositories: readonly string[] | undefined): string {
+  if (!repositories || repositories.length === 0) return ''
+  // Basenames, because a teammate's absolute paths never match ours (the same
+  // reason pickUpTask matches on repository name).
+  return [...new Set(repositories.map((r) => r.split('/').pop() || r))].sort().join('+')
+}
+
+/**
  * The durable correlation key. `ticketId` first: it survives the agent row being
  * deleted, which is what makes finished tickets measurable at all. The `agent:`
  * fallback only ever matches still-live agents.
+ *
+ * Prefixed ids (`PROJ-123`) are NOT repo-scoped, deliberately. In this workflow a
+ * ticket is the unit of delivery, not a repository: `/magic:start` opens sibling
+ * worktrees for one ticket, so a full-stack ticket's api and web PRs belong to the
+ * same flow and must correlate across repos.
+ *
+ * Bare numeric ids are a different matter. GitHub issue numbers are unique only
+ * within their repository, and the worktree parser yields a plain number, so two
+ * repos in one org both having issue #148 would otherwise merge into a single
+ * flow — interleaving unrelated starts and merges into nonsense cycle times.
+ * Those get scoped by repository.
+ *
+ * Caveat: the scope is derived from the event's `repositories`, so attaching a new
+ * repo to an agent mid-flow changes the key and splits the cycle. That is the
+ * lesser evil against silently merging unrelated work.
  */
-export function flowKeyOf(event: Pick<OrgActivityEvent, 'ticketId' | 'agentId'>): string | null {
-  if (event.ticketId) return event.ticketId
+export function flowKeyOf(event: Pick<OrgActivityEvent, 'ticketId' | 'agentId' | 'repositories'>): string | null {
+  const ticket = event.ticketId
+  if (ticket) {
+    if (PREFIXED_TICKET.test(ticket)) return ticket
+    const scope = repoScopeOf(event.repositories)
+    return scope ? `${scope}#${ticket}` : `#${ticket}`
+  }
   if (event.agentId) return `agent:${event.agentId}`
   return null
+}
+
+/**
+ * The same key, derived from a live agent. Must stay in lockstep with `flowKeyOf`:
+ * the live board looks its events up by this string, so any divergence silently
+ * turns every age into the coarse `updatedAt` fallback.
+ */
+export function agentFlowKey(agent: Pick<OrgAgent, 'id' | 'ticketId' | 'repositories'>): string {
+  return flowKeyOf({
+    ticketId: agent.ticketId ?? null,
+    agentId: agent.id,
+    repositories: agent.repositories,
+  }) ?? `agent:${agent.id}`
 }
 
 export interface GroupedEvents {
@@ -584,8 +631,7 @@ export function stageEnteredAt(
   stage: FlowStage,
   eventsByKey: Map<string, OrgActivityEvent[]>,
 ): number | null {
-  const key = agent.ticketId || `agent:${agent.id}`
-  const events = eventsByKey.get(key)
+  const events = eventsByKey.get(agentFlowKey(agent))
   const wanted = STAGE_ENTRY_ACTIONS[stage]
 
   if (events) {
@@ -666,8 +712,7 @@ export function collectStalled(
       if (e.stage === 'ready_to_merge') return true
       if (e.stage === 'coding') {
         // Only when no PR exists yet — otherwise the awaiting-review widget owns it.
-        const key = e.agent.ticketId || `agent:${e.agent.id}`
-        const events = eventsByKey.get(key) ?? []
+        const events = eventsByKey.get(agentFlowKey(e.agent)) ?? []
         return !events.some((ev) => ev.action === 'pr_created')
       }
       return false

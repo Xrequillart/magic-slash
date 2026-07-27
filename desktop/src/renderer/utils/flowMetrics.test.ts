@@ -7,6 +7,7 @@ import {
   collectStageDurations,
   collectStalled,
   computeThroughputByWeek,
+  agentFlowKey,
   flowKeyOf,
   groupEventsByFlowKey,
   median,
@@ -55,15 +56,53 @@ function durations(events: OrgActivityEvent[]) {
 
 describe('flowKeyOf', () => {
   it('prefers ticketId, the only key that survives the agent row being deleted', () => {
-    expect(flowKeyOf({ ticketId: 'PROJ-9', agentId: 'uuid-1' })).toBe('PROJ-9')
+    expect(flowKeyOf({ ticketId: 'PROJ-9', agentId: 'uuid-1', repositories: ['/repo/a'] })).toBe('PROJ-9')
   })
 
   it('falls back to the agent uuid when there is no ticket', () => {
-    expect(flowKeyOf({ ticketId: null, agentId: 'uuid-1' })).toBe('agent:uuid-1')
+    expect(flowKeyOf({ ticketId: null, agentId: 'uuid-1', repositories: [] })).toBe('agent:uuid-1')
   })
 
   it('returns null when neither is present', () => {
-    expect(flowKeyOf({ ticketId: null, agentId: null })).toBeNull()
+    expect(flowKeyOf({ ticketId: null, agentId: null, repositories: [] })).toBeNull()
+  })
+
+  it('correlates a prefixed ticket across repos — a full-stack ticket is one flow', () => {
+    // /magic:start opens sibling worktrees for one ticket, so the api and web PRs
+    // of PROJ-9 belong to the same cycle. Repo-scoping these would split it.
+    const api = flowKeyOf({ ticketId: 'PROJ-9', agentId: null, repositories: ['/work/api'] })
+    const web = flowKeyOf({ ticketId: 'PROJ-9', agentId: null, repositories: ['/work/web'] })
+    expect(api).toBe(web)
+  })
+
+  it('scopes a bare issue number by repo, so #148 in two repos stays two flows', () => {
+    // GitHub issue numbers are unique only within a repository, and the worktree
+    // parser yields a plain number — without scoping these would merge.
+    const a = flowKeyOf({ ticketId: '148', agentId: null, repositories: ['/work/api'] })
+    const b = flowKeyOf({ ticketId: '148', agentId: null, repositories: ['/work/web'] })
+    expect(a).not.toBe(b)
+    expect(a).toBe('api#148')
+  })
+
+  it('builds a repo scope independent of path and ordering', () => {
+    const one = flowKeyOf({ ticketId: '7', agentId: null, repositories: ['/a/web', '/a/api'] })
+    const two = flowKeyOf({ ticketId: '7', agentId: null, repositories: ['/elsewhere/api', '/elsewhere/web'] })
+    expect(one).toBe(two)
+  })
+
+  it('still keys a bare number with no repositories at all', () => {
+    expect(flowKeyOf({ ticketId: '148', agentId: null, repositories: [] })).toBe('#148')
+  })
+})
+
+describe('agentFlowKey', () => {
+  it('matches the key groupEventsByFlowKey produced for the same work', () => {
+    // A divergence here is silent: the live board would find no events and fall
+    // back to the coarse updatedAt for every age.
+    const numeric = event('started', Date.UTC(2026, 5, 1), { ticketId: '148', repositories: ['/work/api'] })
+    const { byKey } = groupEventsByFlowKey([numeric])
+    const key = agentFlowKey({ id: 'agent-uuid-1', ticketId: '148', repositories: ['/work/api'] })
+    expect(byKey.has(key)).toBe(true)
   })
 })
 
