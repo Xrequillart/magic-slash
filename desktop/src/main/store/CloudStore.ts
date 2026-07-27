@@ -25,7 +25,10 @@ interface ConfigRow {
 
 interface AgentRow {
   id: string
-  org_id: string
+  // DERIVED from the agent's repositories, and null for an agent on personal repos
+  // only (or on none yet) — see migration 20260727160000. Selected but never read:
+  // the client is not allowed an opinion on it.
+  org_id: string | null
   owner_id: string | null
   name: string
   ticket_id: string | null
@@ -194,6 +197,28 @@ export class CloudStore implements Store {
     const uid = loadSession()?.user?.id
     if (!uid) return null
     return { client, uid }
+  }
+
+  /**
+   * Context for the three append-only event tables: an authed client, the actor,
+   * and the active organization WHEN THERE IS ONE.
+   *
+   * Deliberately not context(), which bails without a membership: an event's
+   * organization is not the writer's to choose. A BEFORE INSERT trigger stamps it
+   * from the referenced agent, whose own org_id is derived from its repositories
+   * (migrations 20260727160000 / 20260727180000) — so nothing needs an org
+   * resolved in order to record. Requiring one only meant dropping every event of
+   * a user who works on personal repositories alone.
+   *
+   * `orgId` therefore is NOT the row's organization. It is the fallback
+   * attribution for a row carrying no agent at all — a skill run in a terminal the
+   * app never spawned — which is the one case the trigger has nothing to derive
+   * from. Null when the user belongs to no organization.
+   */
+  private async eventContext(): Promise<{ client: SupabaseClient; uid: string; orgId: string | null } | null> {
+    const user = await this.userContext()
+    if (!user) return null
+    return { ...user, orgId: await this.resolveOrgId(user.client, user.uid) }
   }
 
   private async resolveOrgId(client: SupabaseClient, uid: string): Promise<string | null> {
@@ -820,8 +845,14 @@ export class CloudStore implements Store {
   // Activity events (activity_events — append-only, write-only from here)
   // -------------------------------------------------------------------------
 
+  /**
+   * Append ONE activity event. `org_id` is sent for the agent-less case only — the
+   * BEFORE INSERT trigger overrides it from the agent whenever agent_id resolves,
+   * because an event belongs where its agent belongs and not where the user
+   * happens to be looking. See eventContext().
+   */
   async appendHistory(entry: HistoryEntry): Promise<void> {
-    const ctx = await this.context()
+    const ctx = await this.eventContext()
     if (!ctx) return
 
     const agentUuid = this.agentIdMap.get(entry.agentId) ?? null
@@ -845,12 +876,13 @@ export class CloudStore implements Store {
 
   /**
    * Append ONE aggregated usage snapshot at session end. Maps the app agent id to
-   * the agents.id uuid via agentIdMap (exactly like appendHistory). tokens is left
-   * null on purpose: TerminalUsage.contextTokens is a point-in-time context gauge,
-   * not a cumulative session-token count, so it must not be mapped into this row.
+   * the agents.id uuid via agentIdMap, and leaves `org_id` to the trigger, exactly
+   * like appendHistory. tokens is left null on purpose: TerminalUsage.contextTokens
+   * is a point-in-time context gauge, not a cumulative session-token count, so it
+   * must not be mapped into this row.
    */
   async appendUsage(event: UsageEventInput): Promise<void> {
-    const ctx = await this.context()
+    const ctx = await this.eventContext()
     if (!ctx) return
 
     const agentUuid = this.agentIdMap.get(event.agentId) ?? null
@@ -873,10 +905,12 @@ export class CloudStore implements Store {
   /**
    * Append ONE skill invocation. Same agent-id mapping as appendUsage; an absent
    * or unknown agent yields a null agent_id rather than dropping the row — runs
-   * from a terminal the app did not spawn have no agent, and still count.
+   * from a terminal the app did not spawn have no agent, and still count. Those are
+   * also the only rows whose `org_id` survives as sent: with no agent, the trigger
+   * has nothing to derive an organization from.
    */
   async recordSkillInvocation(input: SkillInvocationInput): Promise<void> {
-    const ctx = await this.context()
+    const ctx = await this.eventContext()
     if (!ctx) return
 
     const agentUuid = (input.agentId && this.agentIdMap.get(input.agentId)) ?? null

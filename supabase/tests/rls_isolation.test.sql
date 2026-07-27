@@ -182,12 +182,19 @@ select throws_ok(
 );
 
 -- 13. Tenant integrity: a usage event in Org One cannot reference Org Two's
---     agent. The composite FK (org_id, agent_id) → agents(org_id, id) rejects it
---     with a foreign_key_violation (23503), regardless of RLS.
+--     agent. The guarantee is unchanged; the mechanism that enforces it moved.
+--     It used to be the composite FK (org_id, agent_id) → agents(org_id, id)
+--     rejecting the mismatch with a foreign_key_violation (23503). Since
+--     20260727180000 the BEFORE INSERT trigger re-stamps org_id from the agent
+--     itself, so the row no longer mismatches — it now claims to belong to Org
+--     Two, and the RLS WITH CHECK refuses it (42501) because the caller is not a
+--     member there. That the policy still gets the final word is the point: RLS
+--     WITH CHECK is evaluated on the row AFTER BEFORE-triggers have rewritten it,
+--     so the trigger cannot be used to smuggle a row into another tenant.
 select throws_ok(
   $sql$ insert into public.usage_events (org_id, user_id, agent_id, model) values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', 'b0000000-0000-0000-0000-000000000002', 'claude') $sql$,
-  '23503',
-  NULL,
+  '42501',
+  'new row violates row-level security policy for table "usage_events"',
   'a usage event cannot reference an agent from another org'
 );
 

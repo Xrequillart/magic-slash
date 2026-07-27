@@ -212,12 +212,28 @@ describe('appendUsage', () => {
 
   it('is a no-op (no insert) when the client is not authed', async () => {
     const { client, from } = makeClient({ memberships: membershipsOk, usage_events: { error: null } })
-    h.state.client = null // getAuthedClient() → null → context() bails
+    h.state.client = null // getAuthedClient() → null → eventContext() bails
 
     const store = new CloudStore()
     await expect(store.appendUsage({ agentId: 'claude-1' })).resolves.toBeUndefined()
     expect(from).not.toHaveBeenCalled()
     void client
+  })
+
+  // No membership is no longer a reason to drop the row: an event's org is derived
+  // from its agent by trigger, so a user working on personal repos alone still
+  // records their usage. Only the authed client and the actor are required.
+  it('records without an organization, attributing no org', async () => {
+    const { client, inserts } = makeClient({
+      memberships: { data: [], error: null },
+      usage_events: { error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().appendUsage({ agentId: 'claude-1', costUsd: 2, occurredAt: 1000 })
+
+    expect(inserts.usage_events).toHaveLength(1)
+    expect(inserts.usage_events[0]).toMatchObject({ org_id: null, user_id: UID })
   })
 })
 
@@ -1257,7 +1273,10 @@ describe('recordSkillInvocation', () => {
     expect((inserts.skill_invocations[0] as Record<string, unknown>).agent_id).toBe('uuid-agent-1')
   })
 
-  it('does nothing without an organization', async () => {
+  // An event's org is derived from its agent by trigger, so no membership is needed
+  // to record one. Requiring an org used to drop every event of a user working on
+  // personal repositories alone — including one who belongs to no org at all.
+  it('still records without an organization, attributing no org', async () => {
     const { client, inserts } = makeClient({
       memberships: { data: [], error: null },
       skill_invocations: { error: null },
@@ -1266,7 +1285,8 @@ describe('recordSkillInvocation', () => {
 
     await new CloudStore().recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-commit' })
 
-    expect(inserts.skill_invocations ?? []).toHaveLength(0)
+    expect(inserts.skill_invocations).toHaveLength(1)
+    expect(inserts.skill_invocations[0]).toMatchObject({ org_id: null, user_id: UID, skill: 'magic-commit' })
   })
 })
 
