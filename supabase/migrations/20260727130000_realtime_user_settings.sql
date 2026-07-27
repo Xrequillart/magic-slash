@@ -1,0 +1,25 @@
+-- ---------------------------------------------------------------------------
+-- Realtime for user settings
+-- ---------------------------------------------------------------------------
+-- Add public.user_settings to the supabase_realtime publication so the desktop
+-- app learns about a preference changed elsewhere — on the web app, or on
+-- another machine — while it is RUNNING, instead of only at its next launch.
+--
+-- Before this, user_settings was the one settings surface with no live path:
+-- public.agents, public.repositories and public.repository_paths were already
+-- published, but the desktop's config cache is hydrated exactly once per session
+-- (store/hydrate.ts), so a web-side toggle sat invisible until a restart.
+--
+-- Access is still governed entirely by the table's existing RLS. user_settings
+-- is strictly own-rows (user_settings_select = `user_id = auth.uid()`), and
+-- Realtime enforces the SAME policy on the socket, so a user only ever receives
+-- change events for their own row — the `user_id=eq.<uid>` filter the client
+-- adds is a bandwidth optimization, not the security boundary.
+--
+-- REPLICA IDENTITY FULL matches public.agents. The stream is only consumed for
+-- INSERT/UPDATE (where `new` carries every column regardless), so this is not
+-- strictly required today; it is set anyway because the WAL cost is negligible
+-- on a table written a handful of times per user per session, and it keeps `old`
+-- available so a consumer can diff two versions of a row without guessing.
+alter publication supabase_realtime add table public.user_settings;
+alter table public.user_settings replica identity full;

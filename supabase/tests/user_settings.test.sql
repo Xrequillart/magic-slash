@@ -3,7 +3,7 @@
 -- real version change.
 
 begin;
-select plan(13);
+select plan(14);
 
 insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
 values
@@ -123,6 +123,23 @@ update public.app_installations set app_version = '0.53.0' where device_id = 'de
 select ok(
   (select app_version_updated_at > now() - interval '1 minute' from public.app_installations where device_id = 'device-u1'),
   'a version change refreshes app_version_updated_at'
+);
+
+-- ---------------------------------------------------------------------------
+-- Realtime publication
+-- ---------------------------------------------------------------------------
+-- The desktop app hydrates its config cache once per session, so a preference
+-- changed on the web app reaches a RUNNING app only through the Realtime stream.
+-- Dropping this table from the publication would break that silently — nothing
+-- errors, settings just quietly stop syncing until the next launch.
+select ok(
+  exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'user_settings'
+  ),
+  'user_settings is published to supabase_realtime'
 );
 
 select * from finish();

@@ -25,6 +25,24 @@ function adoptCloudLanguage(language: Config['language']): void {
 }
 
 /**
+ * Adopt the appearance a config carries. The cloud is the reference for both the
+ * theme and the interface language, so this corrects the local mirror and the
+ * native chrome when either was changed elsewhere — on another machine, or on the
+ * web app — and repaints/rebuilds every window, the menus and the tray.
+ *
+ * Extracted so the three places that learn a config is authoritative all apply
+ * it the same way: first hydration, a forced rehydrate, and a settings change
+ * arriving over Realtime (config/remote-sync.ts). Both appliers self-guard on
+ * "actually changed", so calling this with an unchanged config is a no-op —
+ * except for the Claude Code theme file, which applyTheme() rewrites
+ * unconditionally because `syncClaudeTheme` may be what changed.
+ */
+export function applyAppearanceFromConfig(config: Config): void {
+  applyTheme(config.theme)
+  adoptCloudLanguage(config.language)
+}
+
+/**
  * Hydrate config, agents and history from the store exactly once. Subsequent
  * calls return the same in-flight/settled promise. Agents must be hydrated
  * before history so history entries can resolve their agent names.
@@ -33,13 +51,7 @@ export function ensureHydrated(): Promise<void> {
   if (!hydrationPromise) {
     hydrationPromise = (async () => {
       const config = await hydrateConfig()
-      // The cloud is the reference for the theme: adopt it now, which corrects
-      // the local cache and the native chrome if it was changed on another
-      // machine, and repaints every open window.
-      applyTheme(config.theme)
-      // Likewise for the interface language: it may have been changed on another
-      // machine, and switching now rebuilds the menus, the tray and every window.
-      adoptCloudLanguage(config.language)
+      applyAppearanceFromConfig(config)
       await hydrateAgents()
       await hydrateHistory()
       await hydrateProfile()
@@ -60,8 +72,7 @@ export function ensureHydrated(): Promise<void> {
 export function rehydrate(): Promise<void> {
   hydrationPromise = (async () => {
     const config = await hydrateConfig()
-    applyTheme(config.theme)
-    adoptCloudLanguage(config.language)
+    applyAppearanceFromConfig(config)
     await hydrateAgents()
     await hydrateHistory()
   })().catch((error) => {

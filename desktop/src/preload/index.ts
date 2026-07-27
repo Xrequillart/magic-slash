@@ -91,6 +91,15 @@ const configApi = {
     return () => ipcRenderer.removeListener('config:validationErrors', listener)
   },
 
+  // The config changed WITHOUT this window asking: a setting or a repository was
+  // edited on the web app, or on this account's other machine, and reached us over
+  // Realtime. The whole config is in the payload, so there is nothing to fetch.
+  onChanged: (callback: (config: Config) => void) => {
+    const listener = (_event: IpcRendererEvent, config: Config) => callback(config)
+    ipcRenderer.on('config:changed', listener)
+    return () => ipcRenderer.removeListener('config:changed', listener)
+  },
+
   validatePath: (path: string) =>
     ipcRenderer.invoke('config:validatePath', { path }),
 

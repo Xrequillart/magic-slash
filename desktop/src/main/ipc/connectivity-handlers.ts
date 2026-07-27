@@ -3,6 +3,7 @@ import type { ConnectivityStatus, StoreWriteKind } from '../store/Store'
 import { getStore, setWriteErrorHandler } from '../store/Store'
 import { ensureHydrated, rehydrate, resetHydration } from '../store/hydrate'
 import { migrateConfig } from '../config/migrate'
+import { applyRemoteSettingsRow, scheduleRemoteRefresh, setRemoteSyncEmitters } from '../config/remote-sync'
 import { recordAppInstallation } from '../app-installation'
 import { validateAllRepoPaths } from '../config/repo-validation'
 import { restoreAgents } from './terminal-handlers'
@@ -13,6 +14,13 @@ import {
   getActiveRealtimeOrgId,
   setRealtimeEmitters,
 } from '../cloud/realtime'
+import { loadSession } from '../cloud/session-store'
+import {
+  getActiveSyncUserId,
+  setUserSyncHandlers,
+  startUserSyncRealtime,
+  stopUserSyncRealtime,
+} from '../cloud/settings-realtime'
 
 let restoredOnce = false
 
@@ -60,6 +68,26 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
     (status) => getMainWindow()?.webContents.send('org:realtimeStatusChanged', status),
   )
 
+  // Same wiring for the user-scoped channels: a setting or a repository changed
+  // on the web app (or on another machine) is adopted by remote-sync, then the
+  // renderer is handed the new config so the interface follows without a restart.
+  setRemoteSyncEmitters({
+    onConfigChanged: (config) => getMainWindow()?.webContents.send('config:changed', config),
+    onRepositoriesReloaded: () => emitInvalidRepos(),
+  })
+
+  setUserSyncHandlers({
+    onSettingsRow: (row) => applyRemoteSettingsRow(row),
+    onRepositoriesChanged: () => scheduleRemoteRefresh(),
+    // A (re)subscription is the only hint that events were missed: nothing is
+    // replayed, so a sleep, a network drop or a token refresh leaves the local
+    // copy silently behind. This also covers the FIRST join, which is not waste:
+    // hydration runs before the channels open, and a change landing in that gap
+    // would otherwise go unseen until the next launch. Both channels joining at
+    // once collapses into one reload via the debounce.
+    onResubscribed: () => scheduleRemoteRefresh(),
+  })
+
   const check = async (): Promise<ConnectivityStatus> => {
     const status = await getStore().ping()
 
@@ -88,14 +116,27 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
             )
           }
         }
+        // The settings/repositories channels are USER-scoped: no org is resolved
+        // for them, which is deliberate — preferences belong to the account, so
+        // they must sync for a user with no membership too, and an org switch must
+        // not interrupt them.
+        if (!getActiveSyncUserId()) {
+          const uid = loadSession()?.user?.id
+          if (uid) {
+            void startUserSyncRealtime(uid).catch((error) =>
+              console.error('[connectivity] failed to start settings realtime:', error),
+            )
+          }
+        }
       } catch (error) {
         console.error('[connectivity] hydration failed:', error)
       }
     } else if (status === 'unauthorized') {
       restoredOnce = false
       resetHydration()
-      // Session gone → tear down the realtime channel so the next user starts clean.
+      // Session gone → tear down the realtime channels so the next user starts clean.
       void stopOrgAgentsRealtime()
+      void stopUserSyncRealtime()
     }
 
     getMainWindow()?.webContents.send('connectivity:statusChanged', status)

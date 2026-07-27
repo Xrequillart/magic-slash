@@ -56,7 +56,7 @@ function ErrorScreen({ error }: { error: string }) {
 
 export function App() {
   const t = useT()
-  const { closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, setActiveTerminal, rightPaneTerminalIds, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, noReposWarningShown, setNoReposWarningShown, activeModal, openSettingsModal, closeModal } = useStore()
+  const { closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, setActiveTerminal, rightPaneTerminalIds, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, setConfig, noReposWarningShown, setNoReposWarningShown, activeModal, openSettingsModal, closeModal } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal, launchClaudeTerminal } = useTerminals()
   const { flatVisualOrder } = useGroupedTerminals()
@@ -304,6 +304,17 @@ export function App() {
     })
     return () => { unsubscribe() }
   }, [loadConfig])
+
+  // A setting or a repository was changed elsewhere — the web app, or this
+  // account on another machine — and the main process adopted it. The new config
+  // comes with the event, so this replaces the store copy rather than re-fetching.
+  // The settings pages read from `config`, so they follow on their own.
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.config.onChanged((next) => {
+      setConfig(next)
+    })
+    return () => { unsubscribe() }
+  }, [setConfig])
 
   // Keyboard shortcut: Cmd+B to toggle left sidebar
   useEffect(() => {

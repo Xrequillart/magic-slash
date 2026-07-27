@@ -111,7 +111,7 @@ export default function Application() {
             <AppSettings settings={settings} onPatch={patch} />
             <p className="text-xs text-muted">
               These settings belong to the desktop app and follow your account onto every machine you sign
-              in on. A running app picks them up the next time it starts.
+              in on. An app that is already running picks them up right away.
             </p>
           </>
         )}

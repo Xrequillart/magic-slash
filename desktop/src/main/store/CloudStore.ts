@@ -112,7 +112,7 @@ interface ProfileRow {
  * distinct from false (history is ON when unset; autoStartAtLogin only touches
  * the macOS login item once explicitly set).
  */
-interface UserSettingsRow {
+export interface UserSettingsRow {
   history_enabled: boolean | null
   usage_card_enabled: boolean | null
   usage_card_minimized: boolean | null
@@ -145,8 +145,12 @@ const USER_SETTINGS_COLUMNS =
  * `configs` blob on every write so there is exactly one source of truth — the
  * blob keeps only what is genuinely org-scoped (the shared-config projection,
  * `currentOrgId`, `version`).
+ *
+ * Also the exact set config/remote-sync.ts clears before applying an incoming
+ * Realtime row, so this list stays the single definition of "which config keys
+ * user_settings owns".
  */
-const SETTINGS_KEYS = [
+export const SETTINGS_KEYS = [
   'historyEnabled',
   'usageCardEnabled',
   'usageCardMinimized',
@@ -203,8 +207,12 @@ function configToSettingsRow(config: Config): UserSettingsRow {
  * the key stays absent and withDefaults() (not this mapper) decides the default.
  * Enum-like columns are re-validated on read: the DB has matching CHECKs, but a
  * value written by a newer app version must not leak through as an invalid enum.
+ *
+ * Exported because a Realtime payload carries the same row shape: applying
+ * `payload.new` through this mapper is what lets a remote settings change reach
+ * a running app with no round trip at all (see config/remote-sync.ts).
  */
-function applySettingsRow(config: Config, row: UserSettingsRow): void {
+export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   if (isSet(row.history_enabled)) config.historyEnabled = row.history_enabled
   if (isSet(row.usage_card_enabled)) config.usageCardEnabled = row.usage_card_enabled
   if (isSet(row.usage_card_minimized)) config.usageCardMinimized = row.usage_card_minimized
