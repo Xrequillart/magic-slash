@@ -58,7 +58,8 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
     replyLanguage: 'en'
   },
   pullRequest: {
-    autoLinkTickets: true
+    autoLinkTickets: true,
+    watchCI: true
   },
   issues: {
     commentOnPR: true,

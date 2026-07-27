@@ -431,6 +431,8 @@ export const en = {
   'repo.pr.languageHelp': 'Language used for pull request titles and descriptions',
   'repo.pr.autoLink': 'Auto-link Tickets',
   'repo.pr.autoLinkHelp': 'Add Jira/GitHub ticket links in PR description',
+  'repo.pr.watchCI': 'Watch CI & Review',
+  'repo.pr.watchCIHelp': 'After creating the PR, wait for the checks, fix failures automatically, and address review feedback',
   'repo.pr.template': 'PR Template',
   'repo.pr.templateHelp': 'Template used when creating pull requests',
   'repo.pr.templateChecking': 'Checking…',

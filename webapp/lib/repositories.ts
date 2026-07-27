@@ -50,6 +50,7 @@ export interface RepoResolve {
 
 export interface RepoPullRequest {
   autoLinkTickets?: boolean
+  watchCI?: boolean
 }
 
 export interface RepoIssues {
@@ -268,6 +269,7 @@ export const DEFAULTS = {
   resolveFormat: 'angular',
   replyToComments: true,
   autoLinkTickets: true,
+  watchCI: true,
   commentOnPR: true,
 } as const
 

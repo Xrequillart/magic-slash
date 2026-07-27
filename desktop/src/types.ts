@@ -108,6 +108,7 @@ export interface RepositoryConfig {
   }
   pullRequest?: {
     autoLinkTickets?: boolean
+    watchCI?: boolean          // true = watch checks + review feedback after creating the PR
   }
   issues?: {
     commentOnPR?: boolean
@@ -520,6 +521,7 @@ export interface OrgSharedConfig {
   }
   pullRequest?: {
     autoLinkTickets?: boolean
+    watchCI?: boolean
   }
   repoKeywords?: Record<string, string[]>
 }

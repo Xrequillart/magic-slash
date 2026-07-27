@@ -155,6 +155,7 @@ export function RepositoryForm({
   const replyLanguage = repo.resolve.replyLanguage ?? repo.languages.discussion ?? DEFAULTS.language
 
   const autoLinkTickets = repo.pullRequest.autoLinkTickets ?? DEFAULTS.autoLinkTickets
+  const watchCI = repo.pullRequest.watchCI ?? DEFAULTS.watchCI
   const commentOnPR = repo.issues.commentOnPR ?? DEFAULTS.commentOnPR
 
   // Patch helpers send only the key that changed. The page merges it into the
@@ -453,6 +454,17 @@ export function RepositoryForm({
             label="Auto-link tickets"
             checked={autoLinkTickets}
             onChange={(autoLinkTickets) => onPatch({ pullRequest: { autoLinkTickets } })}
+          />
+        </SettingRow>
+
+        <SettingRow
+          label="Watch CI & review"
+          description="After creating the PR, wait for the checks, fix failures automatically, and address review feedback"
+        >
+          <Toggle
+            label="Watch CI & review"
+            checked={watchCI}
+            onChange={(watchCI) => onPatch({ pullRequest: { watchCI } })}
           />
         </SettingRow>
 

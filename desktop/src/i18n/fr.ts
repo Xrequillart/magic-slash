@@ -430,6 +430,8 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.languageHelp': 'Langue des titres et descriptions de pull request',
   'repo.pr.autoLink': 'Lier automatiquement les tickets',
   'repo.pr.autoLinkHelp': 'Ajouter les liens des tickets Jira/GitHub dans la description de la PR',
+  'repo.pr.watchCI': 'Surveiller la CI et la review',
+  'repo.pr.watchCIHelp': 'Après création de la PR, attendre les checks, corriger les échecs automatiquement et traiter les retours de review',
   'repo.pr.template': 'Modèle de PR',
   'repo.pr.templateHelp': 'Modèle utilisé à la création des pull requests',
   'repo.pr.templateChecking': 'Vérification…',

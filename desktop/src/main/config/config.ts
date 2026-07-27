@@ -338,6 +338,7 @@ export function updateRepositoryPullRequestSettings(name: string, settings: Sett
   const pullRequest = config.repositories[name].pullRequest = config.repositories[name].pullRequest || {}
 
   applySetting(pullRequest, 'autoLinkTickets', settings.autoLinkTickets, isBool)
+  applySetting(pullRequest, 'watchCI', settings.watchCI, isBool)
 
   if (Object.keys(pullRequest).length === 0) {
     delete config.repositories[name].pullRequest

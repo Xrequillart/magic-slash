@@ -198,6 +198,9 @@
           "properties": {
             "autoLinkTickets": {
               "type": "boolean"
+            },
+            "watchCI": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
