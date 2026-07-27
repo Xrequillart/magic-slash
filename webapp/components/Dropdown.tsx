@@ -72,17 +72,27 @@ function useAnchoredPanel(open: boolean, close: () => void, width: number) {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
     }
+    /**
+     * A scroll that moves the trigger detaches it from the fixed panel, so the
+     * panel closes. The panel scrolling its OWN overflow moves nothing — and it
+     * is how you reach the options past `max-h-72`, so closing on it would make
+     * a long list unusable.
+     */
+    const onScroll = (e: Event) => {
+      if (panelRef.current?.contains(e.target as Node)) return
+      close()
+    }
 
     document.addEventListener('mousedown', onPointerDown)
     document.addEventListener('keydown', onKeyDown)
     window.addEventListener('resize', close)
     // capture: catches scrolls on any ancestor, not just the window.
-    window.addEventListener('scroll', close, true)
+    window.addEventListener('scroll', onScroll, true)
     return () => {
       document.removeEventListener('mousedown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('resize', close)
-      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('scroll', onScroll, true)
     }
   }, [open, close])
 
@@ -158,7 +168,9 @@ export function Dropdown<T extends string>({
               // Hidden until measured, so the first paint never flashes at 0,0.
               visibility: position ? 'visible' : 'hidden',
             }}
-            className="z-[60] max-h-72 overflow-y-auto rounded-xl border border-black/5 bg-white p-1 shadow-xl shadow-black/10"
+            // overscroll-contain: reaching either end of the list must not chain
+            // into scrolling the page, which would move the trigger and close it.
+            className="z-[60] max-h-72 overflow-y-auto overscroll-contain rounded-xl border border-black/5 bg-white p-1 shadow-xl shadow-black/10"
           >
             {options.map((opt) => {
               const Icon = opt.icon
