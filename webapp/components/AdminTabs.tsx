@@ -39,6 +39,7 @@ export function AdminTabs() {
     (t) => pathname === t.href || pathname.startsWith(`${t.href}/`)
   )?.href
 
+  const listRef = useRef<HTMLElement | null>(null)
   const tabRefs = useRef(new Map<string, HTMLAnchorElement | null>())
   const [indicator, setIndicator] = useState<Indicator | null>(null)
 
@@ -58,7 +59,22 @@ export function AdminTabs() {
     if (!el) return
     // offsetLeft/offsetWidth are layout values, so the parent's entrance
     // translateY does not skew them — the measurement is valid mid-animation.
+    // They are also unaffected by the bar's own scrollLeft (the offsetParent is
+    // the nav), which is what lets the indicator stay correct while scrolled.
     setIndicator({ left: el.offsetLeft, width: el.offsetWidth })
+
+    // Bring the active tab into view when the bar is too narrow to show all
+    // three. Done by setting scrollLeft rather than calling scrollIntoView,
+    // which also scrolls ANCESTORS — on a sticky header that yanks the page.
+    const list = listRef.current
+    if (!list) return
+    const left = el.offsetLeft
+    const right = left + el.offsetWidth
+    if (left < list.scrollLeft) {
+      list.scrollLeft = left
+    } else if (right > list.scrollLeft + list.clientWidth) {
+      list.scrollLeft = right - list.clientWidth
+    }
   }, [activeHref])
 
   useEffect(() => {
@@ -103,8 +119,15 @@ export function AdminTabs() {
 
   return (
     <nav
+      ref={listRef}
       aria-label="Back-office sections"
-      className="animate-admin-nav relative flex min-w-0 items-center gap-1 rounded-full bg-black/[0.04] p-1"
+      // min-w-0 lets the bar shrink between the logo and the account menu, and
+      // overflow-x-auto is what makes that shrinking safe: the tabs stay
+      // shrink-0 so labels never squash, so without a scroll container they
+      // would spill over the account menu on a narrow viewport instead of
+      // staying inside the bar. no-scrollbar hides the bar itself, not the
+      // scrolling — swipe and keyboard both still work.
+      className="animate-admin-nav no-scrollbar relative flex min-w-0 items-center gap-1 overflow-x-auto rounded-full bg-black/[0.04] p-1"
     >
       {/* The sliding background. aria-hidden because the active tab already says
           which one it is through aria-current — this is the same fact, painted. */}

@@ -35,12 +35,22 @@ npm run dev                        # http://localhost:3000
 - `/organization` — org detail: members (via `list_org_members`), role, org switcher
 - `/account` — identity, Claude profile, and the machines you signed in from
 - `/repository/[id]` — per-repository settings
-- `/admin` — platform back-office (read-only): the version distribution across the
-  whole fleet, devices behind the rest, the platform/arch breakdown, devices gone
-  quiet, and every user. Reachable only by a platform admin — the nav entry is not
-  rendered for anyone else and the page redirects to `/dashboard`
-- `/admin/[userId]` — one user, read-only: profile, their whole `user_settings`
-  row, devices, orgs, agents (archived included) and repositories
+- `/admin` — platform back-office (read-only). Redirects to `/admin/users`; it has
+  no content of its own, so that all three sections are addressable in the same
+  shape and the tab bar has a URL to match per section. Reachable only by a
+  platform admin — the nav entry is not rendered for anyone else, and
+  `app/admin/layout.tsx` guards the whole subtree and redirects to `/dashboard`.
+  That layout also owns the chrome, which is what makes the tab bar's entrance
+  animation play on arrival rather than on every tab change
+- `/admin/users` — every account with its resolved app version, device/org/agent
+  counts and last-seen
+- `/admin/users/[userId]` — one user, read-only: profile, their whole
+  `user_settings` row, devices, orgs, agents (archived included) and repositories
+- `/admin/organizations` — every tenant with member/admin/repo/agent and
+  pending-invitation counts, archived ones included. Invitation tokens are never
+  displayed, only counted
+- `/admin/stats` — the fleet: version distribution, devices behind the rest, the
+  platform/arch breakdown, and devices gone quiet
 - `/invite/[token]` — public invitation funnel: preview org → sign up (or sign in)
   → accept the invitation (then a link to download the desktop app)
 
@@ -63,7 +73,10 @@ npm run dev                        # http://localhost:3000
 - `rpc('admin_list_users')`, `rpc('admin_list_installations', { p_user_id })`,
   `rpc('admin_get_user', { p_user_id })`, `rpc('admin_list_user_orgs', { p_user_id })`,
   `rpc('admin_list_user_agents', { p_user_id })`,
-  `rpc('admin_list_user_repositories', { p_user_id })` — the `/admin` pages. All
+  `rpc('admin_list_user_repositories', { p_user_id })`,
+  `rpc('admin_list_orgs')` — the `/admin` pages. `admin_list_orgs` is the only one
+  that is neither fleet-wide-by-user nor scoped to a `p_user_id`: it drives off
+  `organizations`, so a tenant with no members still appears. All
   `SECURITY DEFINER`, all read-only, each raising unless the caller has a
   `platform_admins` row, and each returning an explicit column allowlist rather
   than a table. `profiles.free_text` is returned by none of them. No RLS policy was

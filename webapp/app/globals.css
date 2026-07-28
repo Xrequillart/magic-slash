@@ -111,6 +111,18 @@ fieldset:disabled label:has(> input[type='checkbox']) {
   animation: admin-nav-in 0.24s ease-out forwards;
 }
 
+/* Scrollable without a visible scrollbar. Used by the back-office tab bar, which
+   scrolls only on viewports too narrow for all three tabs — a scrollbar under a
+   40px pill would be most of its height. Hides the indicator, never the ability:
+   swipe, trackpad and keyboard scrolling all still work. */
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Safari, Chrome */
+}
+
 /* The sliding indicator is driven by a transition on transform/width, not by a
    keyframe, so it is silenced here too rather than in the component. */
 @media (prefers-reduced-motion: reduce) {
