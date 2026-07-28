@@ -71,6 +71,20 @@ function railPosition(contentKey: string): number {
   return TAB_POSITION.get(contentKey) ?? 0
 }
 
+/**
+ * Whether a switch is the hop between the repository list and one repository's
+ * detail. Opening a repository is opening a page, not travelling down the rail,
+ * so it sweeps sideways: in from the right on the way in, back out to the right
+ * on the way out. Reaching another settings tab straight from a detail is still
+ * a rail move and keeps its vertical sweep.
+ */
+function isRepoDetailSwitch(fromKey: string, toKey: string): boolean {
+  return (
+    (fromKey === 'repositories' && toKey.startsWith('repo:')) ||
+    (toKey === 'repositories' && fromKey.startsWith('repo:'))
+  )
+}
+
 // toFixed would pin the decimal separator to a point, so the mantissa goes
 // through toLocaleString: French wants "12,5 M", not "12.5M". The unit itself is
 // a catalogue entry — French abbreviates a billion "Md" and spaces it.
@@ -558,6 +572,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         <SweepPane
           pageKey={contentKey}
           order={railPosition}
+          horizontal={isRepoDetailSwitch}
           scrollRef={contentScrollRef}
           className="max-w-4xl flex flex-col gap-6"
         >

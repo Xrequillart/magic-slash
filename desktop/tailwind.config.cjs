@@ -74,13 +74,19 @@ module.exports = {
         // between pages should feel immediate, not like a panel opening. The
         // suffix is the way the content travels — picking an entry further down
         // the rail sweeps both the old and the new page up, going back up sweeps
-        // them down. The two halves run one after the other rather than at once:
-        // SweepPane delays the entrance past the exit, and `both` is what holds
-        // the incoming page hidden for the length of that delay.
+        // them down. The horizontal pair is for opening and closing a sub-page
+        // rather than moving along the rail: going in sweeps left, coming back
+        // out sweeps right. The two halves run one after the other rather than
+        // at once: SweepPane delays the entrance past the exit, and `both` is
+        // what holds the incoming page hidden for the length of that delay.
         'sweep-in-up': 'sweepInUp 0.2s ease-out both',
         'sweep-in-down': 'sweepInDown 0.2s ease-out both',
+        'sweep-in-left': 'sweepInLeft 0.2s ease-out both',
+        'sweep-in-right': 'sweepInRight 0.2s ease-out both',
         'sweep-out-up': 'sweepOutUp 0.16s ease-in forwards',
         'sweep-out-down': 'sweepOutDown 0.16s ease-in forwards',
+        'sweep-out-left': 'sweepOutLeft 0.16s ease-in forwards',
+        'sweep-out-right': 'sweepOutRight 0.16s ease-in forwards',
         'slide-in': 'slideIn 0.3s ease',
         'slide-out': 'slideOut 0.3s ease forwards',
         'tada': 'tada 0.8s ease-in-out',
@@ -126,6 +132,25 @@ module.exports = {
         sweepOutDown: {
           from: { opacity: 1, transform: 'translateY(0)' },
           to: { opacity: 0, transform: 'translateY(16px)' },
+        },
+        // Wider than the vertical pair: sideways travel stands for opening or
+        // closing a page, so it is allowed to read as a gesture rather than as
+        // the near-cut a tab switch gets.
+        sweepInLeft: {
+          from: { opacity: 0, transform: 'translateX(24px)' },
+          to: { opacity: 1, transform: 'translateX(0)' },
+        },
+        sweepInRight: {
+          from: { opacity: 0, transform: 'translateX(-24px)' },
+          to: { opacity: 1, transform: 'translateX(0)' },
+        },
+        sweepOutLeft: {
+          from: { opacity: 1, transform: 'translateX(0)' },
+          to: { opacity: 0, transform: 'translateX(-24px)' },
+        },
+        sweepOutRight: {
+          from: { opacity: 1, transform: 'translateX(0)' },
+          to: { opacity: 0, transform: 'translateX(24px)' },
         },
         slideIn: {
           from: { transform: 'translateX(100%)', opacity: 0 },
