@@ -13,6 +13,12 @@ import { getSupabase } from '@/lib/supabase'
  * as the page — no border, no panel — so the header reads as part of the page
  * rather than a bar over it. The sections that used to be nav pills live in the
  * account menu, which is the only remaining way to reach them.
+ *
+ * `nav` is a slot between the two, empty on every page but the back-office, which
+ * fills it with its own tab bar. Deliberately a generic ReactNode rather than a
+ * `section`/`isAdmin` flag: the header's job is to place whatever the section
+ * gives it, and a flag would put route knowledge in here and grow one branch per
+ * section that ever wants a nav.
  */
 
 interface MenuLink {
@@ -33,7 +39,7 @@ const MENU_LINKS: MenuLink[] = [
 const MENU_ITEM =
   'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium text-muted transition-colors hover:bg-canvas hover:text-ink'
 
-export function TopNav({ email }: { email?: string }) {
+export function TopNav({ email, nav }: { email?: string; nav?: React.ReactNode }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -92,6 +98,10 @@ export function TopNav({ email }: { email?: string }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="h-6" />
         </Link>
+
+        {/* The section slot. Rendered only when filled, so `justify-between` keeps
+            the logo and the menu at the two edges on every other page. */}
+        {nav}
 
         <div ref={menuRef} className="relative shrink-0">
           <button

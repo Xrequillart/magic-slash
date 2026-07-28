@@ -116,6 +116,25 @@ export interface AdminOrg {
   createdAt: string | null
 }
 
+/**
+ * One row of the platform-wide org list. Distinct from `AdminOrg`, which is one
+ * org as seen FROM a user (hence its `role`): this is one org seen from the
+ * platform, where no single role applies and the counts are the point.
+ */
+export interface AdminOrgSummary {
+  orgId: string
+  name: string
+  createdBy: string | null
+  createdByEmail: string | null
+  archivedAt: string | null
+  createdAt: string | null
+  memberCount: number
+  adminCount: number
+  repoCount: number
+  agentCount: number
+  pendingInvitationCount: number
+}
+
 export interface AdminAgent {
   id: string
   name: string
@@ -200,6 +219,23 @@ interface AdminOrgRpcRow {
   role: Role
   archived_at: string | null
   created_at: string | null
+}
+
+interface AdminOrgSummaryRpcRow {
+  org_id: string
+  name: string
+  created_by: string | null
+  created_by_email: string | null
+  archived_at: string | null
+  created_at: string | null
+  // Postgres `count(*)` is bigint, which supabase-js hands back as a JS number
+  // for any value this product will ever see. Typed as number rather than
+  // number | string so callers are not forced through a cast that is never hit.
+  member_count: number
+  admin_count: number
+  repo_count: number
+  agent_count: number
+  pending_invitation_count: number
 }
 
 interface AdminAgentRpcRow {
@@ -298,6 +334,22 @@ function toOrg(r: AdminOrgRpcRow): AdminOrg {
   }
 }
 
+function toOrgSummary(r: AdminOrgSummaryRpcRow): AdminOrgSummary {
+  return {
+    orgId: r.org_id,
+    name: r.name,
+    createdBy: r.created_by,
+    createdByEmail: r.created_by_email,
+    archivedAt: r.archived_at,
+    createdAt: r.created_at,
+    memberCount: r.member_count,
+    adminCount: r.admin_count,
+    repoCount: r.repo_count,
+    agentCount: r.agent_count,
+    pendingInvitationCount: r.pending_invitation_count,
+  }
+}
+
 function toAgent(r: AdminAgentRpcRow): AdminAgent {
   return {
     id: r.id,
@@ -374,6 +426,21 @@ export async function getUser(userId: string): Promise<AdminUserDetail | null> {
   if (error || !data) return null
   const rows = data as AdminUserDetailRpcRow[]
   return rows.length > 0 ? toUserDetail(rows[0]) : null
+}
+
+/**
+ * Every organization on the platform, oldest first, archived ones included
+ * (`archivedAt` says which).
+ *
+ * One round trip, not one per user: the RPC drives off `organizations`, so an org
+ * with no members — a tenant created moments ago, or one whose last member left —
+ * still appears. Composing this from `listUsers()` + `listUserOrgs()` would omit
+ * exactly those.
+ */
+export async function listOrgs(): Promise<AdminOrgSummary[]> {
+  const { data, error } = await getSupabase().rpc('admin_list_orgs')
+  if (error || !data) return []
+  return (data as AdminOrgSummaryRpcRow[]).map(toOrgSummary)
 }
 
 /** The orgs a user belongs to, archived ones included (`archivedAt` says which). */
