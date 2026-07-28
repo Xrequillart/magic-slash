@@ -1,5 +1,6 @@
 import { createClient, type RealtimeClientOptions, type SupabaseClient } from '@supabase/supabase-js'
 import WebSocketImpl from 'ws'
+import { saveSession, toStoredSession } from './session-store'
 
 // The Supabase URL + anon key are injected at build time by vite.config.ts
 // (define block on the main-process build). They are public/safe to ship — RLS
@@ -43,5 +44,19 @@ export function getSupabaseClient(): SupabaseClient | null {
       transport: WebSocketImpl as unknown as RealtimeClientOptions['transport'],
     },
   })
+
+  // THE thing that makes a login survive across restarts. The SDK refreshes the
+  // access token on its own timer (autoRefreshToken), and Supabase rotates the
+  // refresh token on every refresh (enable_refresh_token_rotation, 10s reuse
+  // window). Nothing else writes those rotated tokens back, so without this the
+  // copy on disk is revoked seconds after the first background refresh — roughly
+  // an hour of uptime — and the next cold start presents a dead token and forces
+  // a fresh sign-in. Worse, re-presenting a rotated token reads to GoTrue as a
+  // reuse/abuse attempt, which revokes the entire session family.
+  cachedClient.auth.onAuthStateChange((event, session) => {
+    if (event !== 'TOKEN_REFRESHED' || !session) return
+    saveSession(toStoredSession(session))
+  })
+
   return cachedClient
 }

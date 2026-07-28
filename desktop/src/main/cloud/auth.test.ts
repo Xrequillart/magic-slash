@@ -9,6 +9,7 @@ const h = vi.hoisted(() => {
     verifyOtp: vi.fn(),
     updateUser: vi.fn(),
     setSession: vi.fn(),
+    getSession: vi.fn(),
     signOut: vi.fn(),
   }
   const mockRpc = vi.fn()
@@ -35,9 +36,17 @@ vi.mock('./session-store', () => ({
   loadSession: () => h.state.stored,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   clearSession: (...args: any[]) => h.state.clearSession(...args),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  toStoredSession: (s: any) => ({
+    access_token: s.access_token,
+    refresh_token: s.refresh_token,
+    expires_at: s.expires_at,
+    user: s.user ? { id: s.user.id, email: s.user.email } : undefined,
+  }),
 }))
 
 import {
+  getAuthedClient,
   requestPasswordReset,
   confirmPasswordReset,
   updatePassword,
@@ -58,9 +67,87 @@ beforeEach(() => {
   h.state.cloudEnabled = true
   h.state.client = { auth: h.mockAuth, rpc: h.mockRpc }
   h.state.stored = { access_token: 'access-1', refresh_token: 'refresh-1', expires_at: 9999999999, user: { id: 'u1', email: 'user@example.com' } }
-  // getAuthedClient() applies the stored session and expects a live session back.
+  // Default to a cold client (nothing in memory) so getAuthedClient() takes the
+  // setSession path; the fast-path tests below override getSession explicitly.
+  h.mockAuth.getSession.mockResolvedValue({ data: { session: null }, error: null })
   h.mockAuth.setSession.mockResolvedValue({ data: { session: SESSION }, error: null })
   h.mockAuth.signOut.mockResolvedValue({ error: null })
+})
+
+describe('getAuthedClient', () => {
+  it('reuses the SDK session instead of re-sending the stored refresh token', async () => {
+    // Re-applying a token the SDK already rotated is what trips GoTrue's reuse
+    // detection and revokes the whole session family.
+    h.mockAuth.getSession.mockResolvedValue({ data: { session: SESSION }, error: null })
+
+    await expect(getAuthedClient()).resolves.toBe(h.state.client)
+    expect(h.mockAuth.setSession).not.toHaveBeenCalled()
+  })
+
+  it('persists a token the SDK rotated behind our back', async () => {
+    h.mockAuth.getSession.mockResolvedValue({ data: { session: SESSION }, error: null })
+
+    await getAuthedClient()
+    expect(h.state.saveSession).toHaveBeenCalledWith(expect.objectContaining({ refresh_token: 'refresh-2' }))
+  })
+
+  it('applies the stored session on a cold start and persists the result', async () => {
+    await expect(getAuthedClient()).resolves.toBe(h.state.client)
+    expect(h.mockAuth.setSession).toHaveBeenCalledWith({ access_token: 'access-1', refresh_token: 'refresh-1' })
+    expect(h.state.saveSession).toHaveBeenCalledWith(expect.objectContaining({ refresh_token: 'refresh-2' }))
+    expect(h.state.clearSession).not.toHaveBeenCalled()
+  })
+
+  it('keeps the session when the refresh fails on a network error', async () => {
+    h.mockAuth.setSession.mockResolvedValue({
+      data: { session: null },
+      error: { name: 'AuthRetryableFetchError', message: 'Failed to fetch', status: 0 },
+    })
+
+    await expect(getAuthedClient()).resolves.toBeNull()
+    expect(h.state.clearSession).not.toHaveBeenCalled()
+  })
+
+  it('keeps the session when the server returns a 5xx', async () => {
+    h.mockAuth.setSession.mockResolvedValue({
+      data: { session: null },
+      error: { name: 'AuthApiError', message: 'upstream failure', status: 503 },
+    })
+
+    await expect(getAuthedClient()).resolves.toBeNull()
+    expect(h.state.clearSession).not.toHaveBeenCalled()
+  })
+
+  it('clears the session only when the refresh token is definitively rejected', async () => {
+    h.mockAuth.setSession.mockResolvedValue({
+      data: { session: null },
+      error: { name: 'AuthApiError', message: 'Invalid Refresh Token', status: 400 },
+    })
+
+    await expect(getAuthedClient()).resolves.toBeNull()
+    expect(h.state.clearSession).toHaveBeenCalled()
+  })
+
+  it('applies the same policy to a failure surfaced by getSession', async () => {
+    h.mockAuth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: { name: 'AuthRetryableFetchError', message: 'Failed to fetch', status: 0 },
+    })
+
+    await expect(getAuthedClient()).resolves.toBeNull()
+    expect(h.state.clearSession).not.toHaveBeenCalled()
+    expect(h.mockAuth.setSession).not.toHaveBeenCalled()
+  })
+
+  it('ignores an in-memory session belonging to another user', async () => {
+    h.mockAuth.getSession.mockResolvedValue({
+      data: { session: { ...SESSION, user: { id: 'someone-else' } } },
+      error: null,
+    })
+
+    await expect(getAuthedClient()).resolves.toBe(h.state.client)
+    expect(h.mockAuth.setSession).toHaveBeenCalled()
+  })
 })
 
 describe('requestPasswordReset', () => {

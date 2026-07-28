@@ -1,6 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { safeStorage } from 'electron'
+import type { Session } from '@supabase/supabase-js'
 import { CONFIG_DIR } from '../config/config'
 
 // Persisted Supabase session, encrypted at rest with the OS keychain via
@@ -17,6 +18,16 @@ export interface StoredSession {
 }
 
 const SESSION_FILE = path.join(CONFIG_DIR, 'cloud-session.enc')
+
+/** Narrow a live Supabase session down to the subset we persist. */
+export function toStoredSession(session: Session): StoredSession {
+  return {
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+    expires_at: session.expires_at,
+    user: session.user ? { id: session.user.id, email: session.user.email } : undefined,
+  }
+}
 
 /**
  * Persist a session to disk, encrypted with safeStorage. No-ops silently if

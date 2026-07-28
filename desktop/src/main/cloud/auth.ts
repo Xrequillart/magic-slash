@@ -1,19 +1,16 @@
-import type { Session, SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AuthStatus } from '../../types'
 import { getSupabaseClient, isCloudEnabled } from './supabase-client'
-import { saveSession, loadSession, clearSession, type StoredSession } from './session-store'
+import {
+  saveSession,
+  loadSession,
+  clearSession,
+  toStoredSession as toStored,
+  type StoredSession,
+} from './session-store'
 
 const DISABLED: AuthStatus = { enabled: false, loggedIn: false }
 const LOGGED_OUT: AuthStatus = { enabled: true, loggedIn: false }
-
-function toStored(session: Session): StoredSession {
-  return {
-    access_token: session.access_token,
-    refresh_token: session.refresh_token,
-    expires_at: session.expires_at,
-    user: session.user ? { id: session.user.id, email: session.user.email } : undefined,
-  }
-}
 
 function toStatus(stored: StoredSession): AuthStatus {
   return {
@@ -37,9 +34,35 @@ async function signOutQuietly(client: SupabaseClient, context: string): Promise<
 }
 
 /**
- * Returns a Supabase client with the persisted session applied, or null when
- * cloud is disabled or there is no session. Never throws. Restoring the session
- * lets the SDK refresh the access token transparently for org queries.
+ * Did Supabase definitively reject the refresh token, or did we just fail to
+ * reach it? Only the former justifies signing the user out.
+ *
+ * A rejected refresh token comes back as an auth API error with a 4xx status.
+ * Everything else — AuthRetryableFetchError (offline, DNS, laptop resuming from
+ * sleep), 5xx, 429, a status we don't recognise — is transient, and the session
+ * must survive it. Defaulting to "transient" costs at worst a stale session that
+ * reports unreachable; defaulting the other way logs the user out on every wifi
+ * hiccup.
+ *
+ * Matched structurally rather than with `instanceof` so a plain-object error
+ * (what supabase-js hands back through some paths, and what tests construct) is
+ * classified the same way.
+ */
+function isRefreshTokenRejected(error: unknown): boolean {
+  const { name, status } = (error ?? {}) as { name?: string; status?: number }
+  if (name === 'AuthRetryableFetchError') return false
+  return status === 400 || status === 401 || status === 403
+}
+
+/**
+ * Returns a Supabase client carrying a live session, or null when cloud is
+ * disabled, there is no session, or the session could not be restored right now.
+ * Never throws.
+ *
+ * Clearing policy — CloudStore.ping() distinguishes the two cases by re-reading
+ * the store afterwards: the persisted session is dropped ONLY when Supabase
+ * definitively rejects the refresh token. A transport failure leaves it in place
+ * so the user stays signed in and simply retries when connectivity returns.
  */
 export async function getAuthedClient(): Promise<SupabaseClient | null> {
   const client = getSupabaseClient()
@@ -49,27 +72,54 @@ export async function getAuthedClient(): Promise<SupabaseClient | null> {
   if (!stored) return null
 
   try {
+    // Fast path: the SDK already holds a session in memory and keeps it fresh —
+    // getSession() transparently refreshes an access token that is expired (or
+    // about to be). Re-applying the tokens from disk on every one of the ~15
+    // call sites would instead hand Supabase a refresh token the SDK has likely
+    // already rotated, and reuse detection answers that by revoking the whole
+    // session family — logging the user out of a perfectly healthy session.
+    const { data: live, error: liveError } = await client.auth.getSession()
+    if (liveError) return handleRestoreFailure(liveError)
+
+    if (live.session && (!stored.user || live.session.user?.id === stored.user.id)) {
+      // Belt and braces: keep disk in step if the token came back rotated.
+      if (live.session.refresh_token !== stored.refresh_token) {
+        saveSession(toStored(live.session))
+      }
+      return client
+    }
+
+    // Cold path: nothing in memory (first call after launch, or a different
+    // user) → apply the stored session, refreshing it if the access token aged
+    // out while the app was closed.
     const { data, error } = await client.auth.setSession({
       access_token: stored.access_token,
       refresh_token: stored.refresh_token,
     })
-    if (error) {
-      // The refresh token was rejected (expired/revoked). Drop the stale session
-      // so getStatus() stops reporting a signed-in state the app can't act on.
-      console.warn('[cloud] stored session rejected, clearing:', error.message)
-      clearSession()
-      return null
-    }
+    if (error) return handleRestoreFailure(error)
     if (!data.session) return null
-    // The token may have been refreshed — persist the latest.
+
     saveSession(toStored(data.session))
     return client
   } catch (error) {
-    // Transient failure (e.g. offline): keep the session so the user stays
-    // logged in and can retry once connectivity is back.
+    // A throw here is a bug or a hard transport failure, never a verdict on the
+    // token — keep the session so the user stays logged in and can retry.
     console.error('[cloud] Failed to restore session:', error)
     return null
   }
+}
+
+/** Apply the clearing policy documented on getAuthedClient. Always returns null. */
+function handleRestoreFailure(error: { message?: string }): null {
+  if (isRefreshTokenRejected(error)) {
+    // Expired or revoked: drop it so getStatus() stops reporting a signed-in
+    // state the app cannot act on.
+    console.warn('[cloud] stored session rejected, clearing:', error.message)
+    clearSession()
+  } else {
+    console.warn('[cloud] session restore failed, keeping session:', error.message)
+  }
+  return null
 }
 
 /**
