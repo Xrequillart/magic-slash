@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Bot, Building2, FolderGit2, Laptop, SlidersHorizontal, UserRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useRequirePlatformAdmin } from '@/lib/session'
 import {
   getUser,
   listInstallations,
@@ -20,9 +19,8 @@ import {
   type AdminUserDetail,
 } from '@/lib/admin'
 import { formatAbsoluteDate, formatDevicePlatform, formatRelative } from '@/lib/installations'
-import { AppShell } from '@/components/AppShell'
 import { SettingRow, SettingsCard } from '@/components/SettingRow'
-import { Badge, Card, FullPageLoader, SectionHeader } from '@/components/ui'
+import { Badge, Card, SectionHeader } from '@/components/ui'
 
 /**
  * One user, as the platform sees them: identity, their whole `user_settings` row,
@@ -37,6 +35,11 @@ import { Badge, Card, FullPageLoader, SectionHeader } from '@/components/ui'
  * A user with no `profiles` row and no `user_settings` row still renders: the
  * RPCs are driven off `auth.users`, and "never chose" is shown as such rather than
  * being papered over with the app's defaults.
+ *
+ * No guard and no AppShell: `app/admin/layout.tsx` owns both and does not mount
+ * this page until the visitor is a confirmed platform admin. The `cancelled` guard
+ * below is still needed, though — it is about switching from one USER to another
+ * within the page, which the layout knows nothing about.
  */
 
 /**
@@ -110,7 +113,6 @@ function ListSection<T>({
 export default function AdminUserDetailPage() {
   const params = useParams<{ userId: string }>()
   const userId = params.userId
-  const { session, pending } = useRequirePlatformAdmin()
 
   // undefined = not fetched yet, null = fetched and there is no such user.
   const [user, setUser] = useState<AdminUserDetail | null | undefined>(undefined)
@@ -119,13 +121,8 @@ export default function AdminUserDetailPage() {
   const [agents, setAgents] = useState<AdminAgent[] | null>(null)
   const [repos, setRepos] = useState<AdminRepository[] | null>(null)
 
-  // Keyed on the viewer's id rather than the session object, which a token refresh
-  // replaces for the same person — otherwise all five reads below re-fire hourly
-  // for an identity that did not change.
-  const viewerId = session?.user.id
-
   useEffect(() => {
-    if (pending || !viewerId || !userId) return
+    if (!userId) return
 
     // Five independent reads that resolve in any order, against state that
     // survives a route change: without the two guards below, navigating from one
@@ -157,18 +154,16 @@ export default function AdminUserDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [pending, viewerId, userId])
-
-  if (pending || !session) return <FullPageLoader />
+  }, [userId])
 
   return (
-    <AppShell email={session.user.email ?? undefined}>
+    <>
       <Link
-        href="/admin"
+        href="/admin/users"
         className="inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />
-        Platform
+        Users
       </Link>
 
       {user === undefined ? (
@@ -311,6 +306,6 @@ export default function AdminUserDetailPage() {
           </div>
         </>
       )}
-    </AppShell>
+    </>
   )
 }

@@ -93,6 +93,48 @@ fieldset:disabled label:has(> input[type='checkbox']) {
   animation: modal-content-in 0.2s ease-out forwards;
 }
 
+/* Back-office tab bar, dropping in from above the header on arrival. It lives in
+   app/admin/layout.tsx, which Next.js keeps mounted across the tab routes, so this
+   plays once when the section is entered and NOT again on every tab change. */
+@keyframes admin-nav-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-admin-nav {
+  animation: admin-nav-in 0.24s ease-out forwards;
+}
+
+/* Scrollable without a visible scrollbar. Used by the back-office tab bar, which
+   scrolls only on viewports too narrow for all three tabs — a scrollbar under a
+   40px pill would be most of its height. Hides the indicator, never the ability:
+   swipe, trackpad and keyboard scrolling all still work. */
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Safari, Chrome */
+}
+
+/* The sliding indicator is driven by a transition on transform/width, not by a
+   keyframe, so it is silenced here too rather than in the component. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-admin-nav {
+    animation: none;
+  }
+
+  .admin-tab-indicator {
+    transition: none;
+  }
+}
+
 html,
 body {
   background-color: #ffffff;

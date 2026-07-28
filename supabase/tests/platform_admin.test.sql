@@ -21,7 +21,22 @@
 -- `role authenticated` + a `request.jwt.claims` sub so auth.uid() resolves.
 
 begin;
-select plan(38);
+
+-- 32 fixed assertions, plus ONE PER admin_* function: the anon-privilege check
+-- further down is a catalog sweep that emits a row per function, by design, so
+-- that a function added later is covered without editing this test. The plan has
+-- to follow the same count or the suite fails on "planned 38 but ran 39" the day
+-- it works as intended — which is what happened when admin_list_orgs landed
+-- (20260728100000). Derived here rather than bumped, so the next one is free too.
+select plan(
+  32 + (
+    select count(*)::int
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname like 'admin\_%'
+  )
+);
 
 -- ---------------------------------------------------------------------------
 -- Seed as the table owner (RLS bypassed).
