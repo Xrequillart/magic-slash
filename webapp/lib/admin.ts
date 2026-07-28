@@ -1,4 +1,3 @@
-import { compareVersions, highestVersion } from './installations'
 import type { Role } from './orgs'
 import type { UserSettings } from './settings'
 import { getSupabase } from './supabase'
@@ -400,104 +399,21 @@ export async function listUserRepositories(userId: string): Promise<AdminReposit
   return (data as AdminRepositoryRpcRow[]).map(toRepository)
 }
 
-// ── Rollups (pure) ───────────────────────────────────────────────────────────
+// ── Rollups (pure) ─────────────────────────────────────────────
 
 /**
- * These four are deliberately pure and dependency-free — no Supabase, no React, no
- * Date.now() (the one that needs the clock takes it as an argument). They are the
- * only logic on the back-office that can be wrong in a way a screenshot would not
- * reveal, so they are unit-tested (`admin.test.ts`) rather than inlined into the
- * component that renders them.
+ * The four fleet rollups live in `./adminRollups`, which imports nothing but
+ * `./versions`. They are kept out of this module because the root vitest run
+ * covers `webapp/lib/**` while CI installs only the root's dependencies: a test
+ * importing from here would fail to resolve `@supabase/supabase-js` before
+ * running a single assertion. Re-exported so callers keep one import site.
  */
-
-export interface VersionBucket {
-  version: string
-  count: number
-}
-
-export interface CountBucket {
-  value: string
-  count: number
-}
-
-/** Which device-shape fields the breakdown can group on. */
-export type BreakdownKey = 'platform' | 'arch'
-
-/** Label used for a device that never reported a platform or an arch. */
-export const UNKNOWN_VALUE = 'unknown'
-
-/**
- * Devices per version, newest version first — the fleet histogram.
- *
- * Counts DEVICES, not users: "62% of the fleet is on 0.54.1" is a statement about
- * machines, and a user with two of them contributes twice because both need the
- * update. Ordering is by version rather than by count so the bars read as a
- * timeline and the tail of old builds stays on the same side of the chart between
- * releases.
- */
-export function bucketByVersion(installations: AdminInstallation[]): VersionBucket[] {
-  const counts = new Map<string, number>()
-  for (const i of installations) {
-    counts.set(i.appVersion, (counts.get(i.appVersion) ?? 0) + 1)
-  }
-  return [...counts.entries()]
-    .map(([version, count]) => ({ version, count }))
-    // compareVersions is coarse (numeric components only), so two spellings of
-    // the same version can tie; the string comparison keeps the order stable
-    // instead of leaving it to the sort implementation.
-    .sort((a, b) => compareVersions(b.version, a.version) || b.version.localeCompare(a.version))
-}
-
-/**
- * The devices not on the highest version any device reports.
- *
- * "Highest observed", not "latest released": nothing here knows what has shipped,
- * and a fleet where every machine is one release behind would report itself fully
- * up to date. That is the honest limit of this signal, and it is still the useful
- * one — it answers "who is behind the others", which is what a support question
- * asks. Empty in, empty out; a single-version fleet has no outdated devices.
- */
-export function outdatedInstallations(installations: AdminInstallation[]): AdminInstallation[] {
-  const highest = highestVersion(installations)
-  if (highest === null) return []
-  return installations.filter((i) => compareVersions(i.appVersion, highest) < 0)
-}
-
-/**
- * Devices grouped by `platform` or `arch`, most common first. A missing value
- * becomes `unknown` rather than being dropped, so the buckets always sum to the
- * fleet size — a breakdown that quietly omits rows invites the wrong conclusion.
- *
- * Ties break alphabetically, so two equal buckets do not swap places between
- * renders.
- */
-export function countBy(installations: AdminInstallation[], key: BreakdownKey): CountBucket[] {
-  const counts = new Map<string, number>()
-  for (const i of installations) {
-    const value = i[key]?.trim() || UNKNOWN_VALUE
-    counts.set(value, (counts.get(value) ?? 0) + 1)
-  }
-  return [...counts.entries()]
-    .map(([value, count]) => ({ value, count }))
-    .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
-}
-
-/** A device unseen for this long is worth surfacing on its own. */
-export const QUIET_DAYS = 14
-
-/**
- * The devices that have not launched the app in `days`.
- *
- * `now` is a parameter rather than a `Date.now()` read so this stays pure like its
- * three siblings above — and so it is testable, which matters more here than for
- * any of them: a flipped comparison or a wrong unit renders as a plausible-looking
- * list of names, with nothing on screen to say it is wrong.
- */
-export function quietInstallations(
-  installations: AdminInstallation[],
-  now: number,
-  days = QUIET_DAYS,
-): AdminInstallation[] {
-  const cutoff = days * 24 * 60 * 60 * 1000
-  return installations.filter((i) => now - new Date(i.lastSeenAt).getTime() > cutoff)
-}
+export {
+  bucketByVersion,
+  countBy,
+  outdatedInstallations,
+  quietInstallations,
+  QUIET_DAYS,
+  UNKNOWN_VALUE,
+} from './adminRollups'
+export type { BreakdownKey, CountBucket, FleetDevice, VersionBucket } from './adminRollups'

@@ -6,12 +6,17 @@ import {
   QUIET_DAYS,
   quietInstallations,
   UNKNOWN_VALUE,
-  type AdminInstallation,
-} from './admin'
+  type FleetDevice,
+} from './adminRollups'
 
 /**
  * The back-office's four rollups: arithmetic over the fleet, where being wrong
  * looks exactly like being right.
+ *
+ * Imported from `./adminRollups` rather than `./admin` on purpose. This suite runs
+ * in the ROOT vitest project, which does not install `webapp/`'s dependencies, so
+ * reaching `lib/admin.ts` — and through it `lib/supabase.ts` — fails to resolve
+ * `@supabase/supabase-js` before a single assertion runs.
  *
  * Everything else in `lib/admin.ts` is an RPC call and a field rename. Those are
  * NOT type-checked — the Supabase client is untyped here (no generated
@@ -21,17 +26,18 @@ import {
  * the pgTAP suite is what pins the SQL side.
  */
 
-function device(overrides: Partial<AdminInstallation> = {}): AdminInstallation {
+/** `deviceId` is not read by any rollup; it is here so assertions can name a row. */
+interface TestDevice extends FleetDevice {
+  deviceId: string
+}
+
+function device(overrides: Partial<TestDevice> = {}): TestDevice {
   return {
-    userId: 'u1',
-    email: 'u1@example.com',
     deviceId: 'd1',
-    deviceName: 'mbp',
     appVersion: '0.54.1',
     platform: 'darwin',
     arch: 'arm64',
     lastSeenAt: '2026-07-28T10:00:00.000Z',
-    appVersionUpdatedAt: '2026-07-20T10:00:00.000Z',
     ...overrides,
   }
 }

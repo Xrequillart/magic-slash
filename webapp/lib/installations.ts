@@ -103,35 +103,9 @@ export function formatDevicePlatform(device: { platform: string | null; arch: st
 }
 
 /**
- * Compares two version strings by their numeric components. Coarse on purpose:
- * a pre-release suffix (`0.54.1-beta.2`) compares as its leading number, which
- * is enough to answer "is this machine behind another one?" — the only question
- * asked of it.
- *
- * Exported because the back-office (`lib/admin.ts`) asks the same question of the
- * whole fleet. A second implementation there would be the same coarseness decided
- * twice, and the two would drift the first time one of them learned about
- * pre-release suffixes.
+ * Version comparison lives in `./versions`, which imports nothing — the root
+ * vitest run covers `webapp/lib/**` without installing `webapp/`'s dependencies,
+ * so anything a test reaches must not pull in the Supabase client this module
+ * imports. Re-exported here because this is where callers already look for it.
  */
-export function compareVersions(a: string, b: string): number {
-  const pa = a.split('.')
-  const pb = b.split('.')
-  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
-    const na = parseInt(pa[i] ?? '0', 10) || 0
-    const nb = parseInt(pb[i] ?? '0', 10) || 0
-    if (na !== nb) return na - nb
-  }
-  return 0
-}
-
-/**
- * The newest version any of these machines runs, or null when there are none.
- *
- * Structurally typed for the same reason `compareVersions` is exported: the
- * back-office asks this of the whole fleet (`AdminInstallation`) and `/application`
- * asks it of one user's machines (`Installation`). One answer, one definition.
- */
-export function highestVersion(installs: { appVersion: string }[]): string | null {
-  if (installs.length === 0) return null
-  return installs.reduce((best, i) => (compareVersions(i.appVersion, best) > 0 ? i.appVersion : best), installs[0].appVersion)
-}
+export { compareVersions, highestVersion } from './versions'
