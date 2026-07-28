@@ -56,6 +56,20 @@ const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 
+/**
+ * Absolute date, for the lifecycle moments where "3 months ago" reads as vague.
+ * Null or unparseable input renders as an em dash — the back-office shows a lot of
+ * nullable timestamps, and "—" is the honest label for "never".
+ *
+ * `formatRelative` falls through to this once a date is too old for a relative
+ * label, so the app has one absolute date format rather than one per caller.
+ */
+export function formatAbsoluteDate(iso: string | null): string {
+  const t = iso === null ? NaN : new Date(iso).getTime()
+  if (Number.isNaN(t)) return '—'
+  return new Date(t).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
 /** Coarse "time ago" label. Precision beyond a day is not useful here. */
 export function formatRelative(iso: string): string {
   const then = new Date(iso).getTime()
@@ -74,12 +88,18 @@ export function formatRelative(iso: string): string {
   }
   const d = Math.floor(diff / DAY)
   if (d < 30) return `${d} day${d === 1 ? '' : 's'} ago`
-  return new Date(then).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  return formatAbsoluteDate(iso)
 }
 
-/** "darwin · arm64" — omits whichever half is missing. */
-export function formatDevicePlatform(install: Installation): string {
-  return [install.platform, install.arch].filter(Boolean).join(' · ')
+/**
+ * "darwin · arm64" — omits whichever half is missing.
+ *
+ * Takes the two fields it reads rather than an `Installation`, so the back-office's
+ * `AdminInstallation` (same device, a different set of columns) shares the
+ * separator and the omit-the-missing-half rule instead of restating them.
+ */
+export function formatDevicePlatform(device: { platform: string | null; arch: string | null }): string {
+  return [device.platform, device.arch].filter(Boolean).join(' · ')
 }
 
 /**
@@ -87,8 +107,13 @@ export function formatDevicePlatform(install: Installation): string {
  * a pre-release suffix (`0.54.1-beta.2`) compares as its leading number, which
  * is enough to answer "is this machine behind another one?" — the only question
  * asked of it.
+ *
+ * Exported because the back-office (`lib/admin.ts`) asks the same question of the
+ * whole fleet. A second implementation there would be the same coarseness decided
+ * twice, and the two would drift the first time one of them learned about
+ * pre-release suffixes.
  */
-function compareVersions(a: string, b: string): number {
+export function compareVersions(a: string, b: string): number {
   const pa = a.split('.')
   const pb = b.split('.')
   for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
@@ -99,8 +124,14 @@ function compareVersions(a: string, b: string): number {
   return 0
 }
 
-/** The newest version any of these machines runs, or null when there are none. */
-export function highestVersion(installs: Installation[]): string | null {
+/**
+ * The newest version any of these machines runs, or null when there are none.
+ *
+ * Structurally typed for the same reason `compareVersions` is exported: the
+ * back-office asks this of the whole fleet (`AdminInstallation`) and `/application`
+ * asks it of one user's machines (`Installation`). One answer, one definition.
+ */
+export function highestVersion(installs: { appVersion: string }[]): string | null {
   if (installs.length === 0) return null
   return installs.reduce((best, i) => (compareVersions(i.appVersion, best) > 0 ? i.appVersion : best), installs[0].appVersion)
 }

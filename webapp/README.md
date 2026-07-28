@@ -35,6 +35,12 @@ npm run dev                        # http://localhost:3000
 - `/organization` — org detail: members (via `list_org_members`), role, org switcher
 - `/account` — identity, Claude profile, and the machines you signed in from
 - `/repository/[id]` — per-repository settings
+- `/admin` — platform back-office (read-only): the version distribution across the
+  whole fleet, devices behind the rest, the platform/arch breakdown, devices gone
+  quiet, and every user. Reachable only by a platform admin — the nav entry is not
+  rendered for anyone else and the page redirects to `/dashboard`
+- `/admin/[userId]` — one user, read-only: profile, their whole `user_settings`
+  row, devices, orgs, agents (archived included) and repositories
 - `/invite/[token]` — public invitation funnel: preview org → sign up (or sign in)
   → accept the invitation (then a link to download the desktop app)
 
@@ -51,6 +57,17 @@ npm run dev                        # http://localhost:3000
   `lib/settings.ts` for display and only writes a column the user touched.
 - `app_installations` — read-only here; the desktop upserts one row per machine
   on every launch, which is what `/application` and `/account` report on.
+- `rpc('is_platform_admin')` — whether the caller operates the platform. Used to
+  decide whether the `Admin` nav entry is drawn; the gate itself is re-checked in
+  the database by each RPC below, so this only governs discovery.
+- `rpc('admin_list_users')`, `rpc('admin_list_installations', { p_user_id })`,
+  `rpc('admin_get_user', { p_user_id })`, `rpc('admin_list_user_orgs', { p_user_id })`,
+  `rpc('admin_list_user_agents', { p_user_id })`,
+  `rpc('admin_list_user_repositories', { p_user_id })` — the `/admin` pages. All
+  `SECURITY DEFINER`, all read-only, each raising unless the caller has a
+  `platform_admins` row, and each returning an explicit column allowlist rather
+  than a table. `profiles.free_text` is returned by none of them. No RLS policy was
+  widened to make these work — see `supabase/README.md` → Security model.
 
 ## Deploy (Vercel)
 
