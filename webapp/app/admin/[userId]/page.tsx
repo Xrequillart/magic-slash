@@ -126,11 +126,37 @@ export default function AdminUserDetailPage() {
 
   useEffect(() => {
     if (pending || !viewerId || !userId) return
-    getUser(userId).then(setUser)
-    listInstallations(userId).then(setDevices)
-    listUserOrgs(userId).then(setOrgs)
-    listUserAgents(userId).then(setAgents)
-    listUserRepositories(userId).then(setRepos)
+
+    // Five independent reads that resolve in any order, against state that
+    // survives a route change: without the two guards below, navigating from one
+    // user to another renders TWO people as one. Resetting first clears the
+    // previous user's rows instead of leaving them on screen under the new
+    // user's name; `cancelled` drops responses for the id we already left, so a
+    // slow listUserAgents for A cannot overwrite the fast one for B. Mixed-up
+    // identity is exactly the failure a back-office must not have — nothing on
+    // the page would say the agents belong to someone else.
+    setUser(undefined)
+    setDevices(null)
+    setOrgs(null)
+    setAgents(null)
+    setRepos(null)
+
+    let cancelled = false
+    const apply =
+      <T,>(set: (value: T) => void) =>
+      (value: T) => {
+        if (!cancelled) set(value)
+      }
+
+    getUser(userId).then(apply(setUser))
+    listInstallations(userId).then(apply(setDevices))
+    listUserOrgs(userId).then(apply(setOrgs))
+    listUserAgents(userId).then(apply(setAgents))
+    listUserRepositories(userId).then(apply(setRepos))
+
+    return () => {
+      cancelled = true
+    }
   }, [pending, viewerId, userId])
 
   if (pending || !session) return <FullPageLoader />
