@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.57.3] - 2026-07-28
+
+### Added
+
+- **Desktop**: Give the settings and skills pages a directional transition — picking an entry further down the rail sweeps the pages up, going back up sweeps them down, and the page being left clears the frame before the next one arrives
+
 ## [0.57.2] - 2026-07-28
 
 ### Fixed
@@ -1709,6 +1715,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.57.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.57.3
 [0.57.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.57.2
 [0.57.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.57.1
 [0.57.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.57.0
