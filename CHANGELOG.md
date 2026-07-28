@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.58.0] - 2026-07-28
+
+### Added
+
+- **Webapp**: Add a read-only platform admin back-office, with a tabbed nav across its sections
+- **Supabase**: Add a platform admin role and the read-only RPCs the back-office reads from, including `admin_list_orgs` for the organization list
+- **Desktop**: Open a repository from the settings list with a sideways sweep — the detail arrives from the right and leaves back to the right, so opening a page reads differently from stepping along the rail
+- **Landing**: Add a favicon and an Apple touch icon to the docs site
+- Add a favicon and an Apple touch icon to the webapp
+
+### Fixed
+
+- **Webapp**: Drop stale user-detail responses when the route changes, so a slow request can no longer paint the previous user over the one now on screen
+- **Webapp**: Let the back-office tabs scroll, and refresh the webapp readme
+- **CI**: Keep the fleet rollup tests free of the Supabase import chain
+
 ## [0.57.3] - 2026-07-28
 
 ### Added
@@ -1715,6 +1731,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.58.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.58.0
 [0.57.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.57.3
 [0.57.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.57.2
 [0.57.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.57.1
