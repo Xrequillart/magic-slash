@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AppWindow, Building2, ChevronDown, LogOut, UserRound } from 'lucide-react'
+import { AppWindow, Building2, ChevronDown, LogOut, ShieldCheck, UserRound } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { isPlatformAdmin } from '@/lib/admin'
 import { getSupabase } from '@/lib/supabase'
 
 /**
@@ -13,10 +15,19 @@ import { getSupabase } from '@/lib/supabase'
  * account menu, which is the only remaining way to reach them.
  */
 
-const MENU_LINKS = [
+interface MenuLink {
+  href: string
+  label: string
+  icon: LucideIcon
+  /** Rendered only for a platform admin — see the filter in TopNav below. */
+  platformAdminOnly?: boolean
+}
+
+const MENU_LINKS: MenuLink[] = [
   { href: '/application', label: 'Application', icon: AppWindow },
   { href: '/organization', label: 'Organization', icon: Building2 },
   { href: '/account', label: 'Account', icon: UserRound },
+  { href: '/admin', label: 'Admin', icon: ShieldCheck, platformAdminOnly: true },
 ]
 
 const MENU_ITEM =
@@ -26,6 +37,31 @@ export function TopNav({ email }: { email?: string }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * Whether to offer the back-office at all. Asked here rather than passed in as
+   * a prop, because the answer belongs to the nav and nowhere else: threading it
+   * through AppShell would put a platform concern in the signature of all five
+   * pages that render this chrome, none of which has any other reason to know.
+   *
+   * Non-discoverability only. `/admin` guards itself with useRequirePlatformAdmin
+   * and every admin_* RPC re-checks in the database, so this decides whether the
+   * entry is drawn, never whether the data can be read. Defaults to false, so the
+   * entry never appears while the answer is in flight.
+   */
+  const [platformAdmin, setPlatformAdmin] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    isPlatformAdmin().then((ok) => {
+      if (!cancelled) setPlatformAdmin(ok)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const links = MENU_LINKS.filter((link) => !link.platformAdminOnly || platformAdmin)
 
   // Close on an outside click or Escape — the two ways out people expect.
   useEffect(() => {
@@ -75,7 +111,7 @@ export function TopNav({ email }: { email?: string }) {
               role="menu"
               className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-2xl border border-black/5 bg-white p-1 shadow-xl shadow-black/5"
             >
-              {MENU_LINKS.map(({ href, label, icon: Icon }) => (
+              {links.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
