@@ -69,10 +69,18 @@ module.exports = {
         'float-2': 'float2 12s ease-in-out infinite',
         'float-3': 'float3 11s ease-in-out infinite',
         'fade-in': 'fadeIn 0.2s ease',
-        // Settings page switch: shorter and shallower than fade-in, which is
-        // for something appearing over the app. Moving between pages should
-        // feel immediate, not like a panel opening.
-        'page-in': 'pageIn 0.18s ease-out',
+        // Page switch inside a rail, used by SweepPane. Shorter and shallower
+        // than fade-in, which is for something appearing over the app: moving
+        // between pages should feel immediate, not like a panel opening. The
+        // suffix is the way the content travels — picking an entry further down
+        // the rail sweeps both the old and the new page up, going back up sweeps
+        // them down. The two halves run one after the other rather than at once:
+        // SweepPane delays the entrance past the exit, and `both` is what holds
+        // the incoming page hidden for the length of that delay.
+        'sweep-in-up': 'sweepInUp 0.2s ease-out both',
+        'sweep-in-down': 'sweepInDown 0.2s ease-out both',
+        'sweep-out-up': 'sweepOutUp 0.16s ease-in forwards',
+        'sweep-out-down': 'sweepOutDown 0.16s ease-in forwards',
         'slide-in': 'slideIn 0.3s ease',
         'slide-out': 'slideOut 0.3s ease forwards',
         'tada': 'tada 0.8s ease-in-out',
@@ -101,9 +109,23 @@ module.exports = {
           from: { opacity: 0, transform: 'translateY(10px)' },
           to: { opacity: 1, transform: 'translateY(0)' },
         },
-        pageIn: {
-          from: { opacity: 0, transform: 'translateY(6px)' },
+        // 16px: enough to read the direction at a glance, small enough that a
+        // settings tab still feels switched rather than animated.
+        sweepInUp: {
+          from: { opacity: 0, transform: 'translateY(16px)' },
           to: { opacity: 1, transform: 'translateY(0)' },
+        },
+        sweepInDown: {
+          from: { opacity: 0, transform: 'translateY(-16px)' },
+          to: { opacity: 1, transform: 'translateY(0)' },
+        },
+        sweepOutUp: {
+          from: { opacity: 1, transform: 'translateY(0)' },
+          to: { opacity: 0, transform: 'translateY(-16px)' },
+        },
+        sweepOutDown: {
+          from: { opacity: 1, transform: 'translateY(0)' },
+          to: { opacity: 0, transform: 'translateY(16px)' },
         },
         slideIn: {
           from: { transform: 'translateX(100%)', opacity: 0 },

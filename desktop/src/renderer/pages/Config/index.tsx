@@ -7,6 +7,7 @@ import { AppearancePage } from './AppearancePage'
 import { LanguagePage } from './LanguagePage'
 import { SectionHeader } from './SectionHeader'
 import { RateLimitBar } from '../../components/agent-info-sidebar/LimitGauge'
+import { SweepPane } from '../../components/SweepPane'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
 import { useAuth } from '../../hooks/useAuth'
@@ -56,6 +57,19 @@ const SETTINGS_TABS: { id: SettingsTab; labelKey: MessageKey; icon: LucideIcon }
   { id: 'shortcuts', labelKey: 'settings.tab.shortcuts', icon: Keyboard },
   { id: 'about', labelKey: 'settings.tab.about', icon: Info },
 ]
+
+const TAB_POSITION = new Map<string, number>(SETTINGS_TABS.map((tab, index) => [tab.id, index]))
+
+/**
+ * Where a settings page sits in the rail, read top to bottom. Feeds the sweep
+ * its direction, so the content moves the same way the eye does down the menu.
+ * A repository detail is half a notch under Repositories: opening one reads as
+ * a step down the list, and going back reads as a step up.
+ */
+function railPosition(contentKey: string): number {
+  if (contentKey.startsWith('repo:')) return (TAB_POSITION.get('repositories') ?? 0) + 0.5
+  return TAB_POSITION.get(contentKey) ?? 0
+}
 
 // toFixed would pin the decimal separator to a point, so the mantissa goes
 // through toLocaleString: French wants "12,5 M", not "12.5M". The unit itself is
@@ -165,8 +179,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   /**
    * What the content pane is currently showing. Used as its React key, so
    * moving between tabs — or between two repository pages — remounts the pane
-   * and replays its entrance animation. Without the key React would reuse the
-   * same element and the new page would simply appear.
+   * and plays the sweep. Without the key React would reuse the same element and
+   * the new page would simply appear.
    */
   const contentKey = isRepoRoute ? `repo:${route.params.name ?? ''}` : activeTab
 
@@ -541,7 +555,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
 
       {/* Content */}
       <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-6">
-        <div key={contentKey} className="max-w-4xl flex flex-col gap-6 animate-page-in">
+        <SweepPane
+          pageKey={contentKey}
+          order={railPosition}
+          scrollRef={contentScrollRef}
+          className="max-w-4xl flex flex-col gap-6"
+        >
 
       {/* Repository detail — sub-page of the Repositories tab */}
       {isRepoRoute && <RepoPage repoName={route.params.name || ''} />}
@@ -1139,7 +1158,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           </div>
         </div>
       </div>}
-        </div>
+        </SweepPane>
       </div>
     </div>
   )

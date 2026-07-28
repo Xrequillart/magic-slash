@@ -353,6 +353,10 @@ fieldset:disabled label:has(> input[type="checkbox"]) {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    /* Collapsing the duration alone is not enough for a staggered animation:
+       SweepPane holds the incoming page hidden until its delay elapses, so
+       without this a page switch would leave the pane blank for that long. */
+    animation-delay: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
 }

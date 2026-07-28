@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid } from 'lucide-react'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 import { VSCodeIcon } from '../../components/agent-info-sidebar/icons'
+import { SweepPane } from '../../components/SweepPane'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useStore } from '../../store'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
@@ -896,6 +897,26 @@ export function SkillsPage() {
     return 'all'
   })()
 
+  // Where each row sits in the rail, so the sweep travels the way the eye does.
+  // Built from the very arrays the rail renders, in the order it renders them:
+  // All, the built-ins, the custom skills, the draft row, then the repository
+  // groups. A key the rail does not know about lands at the top, which is where
+  // "All" is — a page reached from outside the rail then sweeps in like a step
+  // down the list.
+  const railPosition = useMemo(() => {
+    const rows = [
+      'all',
+      ...builtInSkills.map((s) => `skill:${s.dirName}`),
+      ...customSkills.map((s) => `skill:${s.dirName}`),
+      'new',
+      ...Object.values(repoSkillsByRepo).flatMap(({ skills: rSkills }) =>
+        rSkills.map((rs) => `repo-skill:${rs.filePath}`)
+      ),
+    ]
+    const positions = new Map(rows.map((key, index) => [key, index]))
+    return (key: string) => positions.get(key) ?? 0
+  }, [builtInSkills, customSkills, repoSkillsByRepo])
+
   // A page opens at its top. The pane is the scroll container and survives the
   // switch, so a long skill would otherwise leave the next one scrolled past
   // its own heading.
@@ -1094,9 +1115,9 @@ export function SkillsPage() {
         onNew={() => { window.location.hash = '#/new' }}
       />
       <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-6">
-        <div key={activeKey} className="animate-page-in">
+        <SweepPane pageKey={activeKey} order={railPosition} scrollRef={contentScrollRef}>
           {activeKey === 'all' ? overview : detail}
-        </div>
+        </SweepPane>
       </div>
     </div>
   )
