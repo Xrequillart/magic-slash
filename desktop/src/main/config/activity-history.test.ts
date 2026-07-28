@@ -70,7 +70,7 @@ describe('addHistoryEntry', () => {
   })
 })
 
-describe('addHistoryEntry — usageLogsEnabled GDPR opt-in', () => {
+describe('addHistoryEntry — usageLogsEnabled (ON by default)', () => {
   beforeEach(() => { setStore(fakeStore()) })
 
   it('records when usageLogsEnabled is true', async () => {
@@ -80,11 +80,11 @@ describe('addHistoryEntry — usageLogsEnabled GDPR opt-in', () => {
     expect(appended).toHaveLength(1)
   })
 
-  it('records nothing when usageLogsEnabled is absent (opt-in default is OFF)', async () => {
+  it('records when usageLogsEnabled is absent — only an explicit false opts out', async () => {
     mockConfig({})
     addHistoryEntry(PARAMS)
     await Promise.resolve()
-    expect(appended).toEqual([])
+    expect(appended).toHaveLength(1)
   })
 
   it('records nothing when usageLogsEnabled is false', async () => {

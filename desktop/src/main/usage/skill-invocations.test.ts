@@ -21,7 +21,8 @@ function fakeStore(overrides: Partial<Store> = {}): Store {
 beforeEach(() => {
   recorded = []
   setStore(fakeStore())
-  // Opt-IN, so every test that expects a write has to grant consent first.
+  // Recording is ON by default; set it explicitly anyway so a test that expects a
+  // write does not depend on the gate's polarity.
   vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {}, usageLogsEnabled: true })
 })
 
@@ -42,15 +43,15 @@ describe('recordSkillInvocation', () => {
     expect(recorded).toEqual([{ skill: 'magic-commit' }])
   })
 
-  it('records nothing when usageLogsEnabled is absent — the opt-in defaults to OFF', async () => {
-    // Only the skill name is collected, but it is still a record of what a human
-    // did: it must not be the one channel left open when consent was never given.
+  it('records when usageLogsEnabled is absent — the default is ON', async () => {
+    // Absent means the user never touched the toggle, and the product records by
+    // default: only an explicit false stops this, exactly as for usage and activity.
     vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {} })
     await recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-plan' })
-    expect(recorded).toEqual([])
+    expect(recorded).toEqual([{ agentId: 'claude-1', skill: 'magic-plan' }])
   })
 
-  it('records nothing when usageLogsEnabled is false — same opt-in as usage and activity', async () => {
+  it('records nothing when usageLogsEnabled is false — same switch as usage and activity', async () => {
     vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {}, usageLogsEnabled: false })
     await recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-pr' })
     expect(recorded).toEqual([])

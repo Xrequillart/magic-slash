@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
-import { Github, Plus, ChevronRight, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, type LucideIcon } from 'lucide-react'
+import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage } from './OrgPage'
@@ -160,6 +160,59 @@ function SettingsAccountFooter() {
   )
 }
 
+// The two halves of the activity-recording breakdown. Message keys rather than
+// labels, for the same reason as SETTINGS_TABS: module scope is evaluated once at
+// import, so a literal would pin the list to the boot language.
+const USAGE_LOGS_COLLECTED: MessageKey[] = [
+  'settings.features.usageLogs.collected.activity',
+  'settings.features.usageLogs.collected.skills',
+  'settings.features.usageLogs.collected.session',
+  'settings.features.usageLogs.collected.context',
+]
+
+const USAGE_LOGS_EXCLUDED: MessageKey[] = [
+  'settings.features.usageLogs.excluded.prompts',
+  'settings.features.usageLogs.excluded.code',
+  'settings.features.usageLogs.excluded.terminal',
+  'settings.features.usageLogs.excluded.secrets',
+]
+
+/**
+ * What activity recording does and does not send, side by side. Shown whatever
+ * the toggle's state: someone who turned it off is exactly the person who wants
+ * to know what they turned off, and someone deciding needs the two lists to
+ * compare — a paragraph the length of both never gets read.
+ *
+ * `t` is passed in rather than pulled from useT() so the desktop and the webapp's
+ * copy of this block stay diffable line by line.
+ */
+function UsageLogsBreakdown({ t }: { t: Translate }) {
+  const columns = [
+    { titleKey: 'settings.features.usageLogs.collected', keys: USAGE_LOGS_COLLECTED, Icon: Check, tone: 'text-green' },
+    { titleKey: 'settings.features.usageLogs.excluded', keys: USAGE_LOGS_EXCLUDED, Icon: X, tone: 'text-red' },
+  ] as const
+
+  return (
+    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4 mt-4 pt-4 border-t border-line-subtle">
+      {columns.map(({ titleKey, keys, Icon, tone }) => (
+        <div key={titleKey}>
+          <div className="text-[11px] uppercase tracking-wider text-text-secondary/50 mb-2">
+            {t(titleKey)}
+          </div>
+          <ul className="space-y-1.5">
+            {keys.map((key) => (
+              <li key={key} className="flex items-start gap-2 text-xs text-text-secondary leading-snug">
+                <Icon className={`w-3.5 h-3.5 shrink-0 mt-px ${tone}`} />
+                <span>{t(key)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /** Hash route within Settings. `repo` is a sub-page of the Repositories tab. */
 interface SettingsRoute {
   page: string
@@ -225,7 +278,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
   const [showBypassWarning, setShowBypassWarning] = useState(false)
   const [usageCardEnabled, setUsageCardEnabled] = useState(config?.usageCardEnabled ?? true)
-  const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? false)
+  const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? true)
   const [dailyDigestEnabled, setDailyDigestEnabled] = useState(config?.dailyDigest?.enabled ?? false)
   const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)
   const [prWatcherInterval, setPrWatcherInterval] = useState(config?.prReviews?.pollIntervalMs ?? 60_000)
@@ -855,7 +908,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         </div>
       </div>
 
-      {/* Usage Logs Section (GDPR opt-in — off by default) */}
+      {/* Activity recording (ON by default — an explicit false opts out) */}
       <div>
         <SectionHeader icon={BarChart3} title={t('settings.features.usageLogs.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
@@ -881,6 +934,23 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 usageLogsEnabled ? 'translate-x-[18px]' : 'translate-x-0'
               }`} />
             </button>
+          </div>
+          {/*
+            The breakdown answers "what am I sharing?", so it goes away with the
+            sharing — same for the sentence about who can read it. What stays in
+            both states is the agents caveat: it is truest for the person who just
+            turned this off, since their agents keep syncing regardless.
+          */}
+          {usageLogsEnabled && (
+            <>
+              <UsageLogsBreakdown t={t} />
+              <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
+                {t('settings.features.usageLogs.footnote')}
+              </div>
+            </>
+          )}
+          <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
+            {t('settings.features.usageLogs.footnote.agents')}
           </div>
         </div>
       </div>

@@ -220,10 +220,26 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.features.usageCard.label': 'Afficher la carte d’usage dans la barre latérale',
   'settings.features.usageCard.help':
     'Affiche le compte connecté et les jauges Session (5 h) / Semaine (7 j) en bas de la barre latérale',
-  'settings.features.usageLogs.section': 'Journaux d’usage',
-  'settings.features.usageLogs.label': 'Partager mon usage avec mon organisation',
+  'settings.features.usageLogs.section': 'Enregistrement de l’activité',
+  'settings.features.usageLogs.label': 'Partager mon activité avec mon équipe',
   'settings.features.usageLogs.help':
-    'Désactivé par défaut (consentement RGPD). Une fois activé, l’activité de vos agents (tickets, commits, PR, revues), les skills que vous lancez et un résumé agrégé de fin de session (coût estimé, lignes ajoutées/supprimées, durée, modèle) sont enregistrés pour votre organisation, afin que le tableau de bord Équipe reflète votre travail. Aucun prompt ni code n’est jamais transmis. Désactivé, rien n’est enregistré — et vous pouvez le couper à tout moment.',
+    'Activé par défaut, et vous pouvez le couper à tout moment. Ce que vous faites avec vos agents est envoyé au cloud Magic Slash pour que le tableau de bord de votre équipe reflète votre travail. Le couper arrête les nouveaux enregistrements ; ce qui a déjà été envoyé est conservé.',
+  'settings.features.usageLogs.collected': 'Collecté',
+  'settings.features.usageLogs.excluded': 'Jamais collecté',
+  'settings.features.usageLogs.collected.activity': 'L’activité des agents : tickets, commits, PR, revues',
+  'settings.features.usageLogs.collected.skills': 'Les skills que vous lancez (/magic:start, /magic:pr, …)',
+  'settings.features.usageLogs.collected.session':
+    'Le résumé de fin de session : coût estimé, lignes ajoutées/supprimées, durée, modèle',
+  'settings.features.usageLogs.collected.context':
+    'L’identifiant et le titre du ticket, et les dépôts sur lesquels vous travaillez',
+  'settings.features.usageLogs.excluded.prompts': 'Vos prompts et les réponses de Claude',
+  'settings.features.usageLogs.excluded.code': 'Votre code, vos diffs, le contenu de vos fichiers',
+  'settings.features.usageLogs.excluded.terminal': 'La sortie du terminal et l’historique des commandes',
+  'settings.features.usageLogs.excluded.secrets': 'Vos jetons, vos clés et vos identifiants',
+  'settings.features.usageLogs.footnote':
+    'Chaque membre de votre organisation voit ces chiffres par personne sur la page Équipe.',
+  'settings.features.usageLogs.footnote.agents':
+    'Quoi que dise ce réglage, vos agents (nom, branche, ticket, dépôts) se synchronisent avec votre équipe — c’est ce qui alimente la vue temps réel.',
   'settings.features.digest.section': 'Résumé quotidien',
   'settings.features.digest.label': 'Résumé quotidien de l’équipe',
   'settings.features.digest.help':

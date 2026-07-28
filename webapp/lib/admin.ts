@@ -84,7 +84,7 @@ export const SETTING_LABELS: { field: keyof AdminUserSettings; label: string }[]
   { field: 'launchMode', label: 'Claude Code launch mode' },
   { field: 'usageCardEnabled', label: 'Usage card' },
   { field: 'usageCardMinimized', label: 'Usage card minimized' },
-  { field: 'usageLogsEnabled', label: 'Usage logs (GDPR opt-in)' },
+  { field: 'usageLogsEnabled', label: 'Activity recording (on by default)' },
   { field: 'dailyDigestEnabled', label: 'Daily digest' },
   { field: 'splitEnabled', label: 'Split view' },
   { field: 'splitActive', label: 'Split view active' },

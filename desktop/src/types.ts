@@ -321,9 +321,12 @@ export interface Config {
   launchMode?: LaunchMode
   usageCardEnabled?: boolean    // show the Claude usage card in the sidebar
   usageCardMinimized?: boolean  // sidebar usage card collapsed to gauges only
-  // GDPR opt-in (default OFF): when true, an aggregated usage snapshot is written
-  // to the org's usage_events table at session end. Gates WRITING your own data
-  // only — reading the org aggregate is open to any member regardless of this flag.
+  // Activity recording, ON by default: an aggregated usage snapshot is written to
+  // usage_events at session end, alongside activity_events and skill_invocations.
+  // Only an EXPLICIT false stops it (absent = never touched = on), so every gate
+  // tests `=== false`. Gates WRITING your own data only — reading the org
+  // aggregate is open to any member regardless of this flag, and the `agents`
+  // table syncs regardless too (that is what powers the live Team view).
   usageLogsEnabled?: boolean
   prReviews?: {
     enabled?: boolean
@@ -476,10 +479,10 @@ export interface OrgAgentChange {
 }
 
 // ---------------------------------------------------------------------------
-// Cloud: usage logs & org stats (opt-in). One aggregated snapshot is written per
-// session at session end (never per statusLine event). Writing is GDPR opt-in
-// (Config.usageLogsEnabled, default OFF); reading the org aggregate is open to
-// any org member (RLS scopes it to the org).
+// Cloud: usage logs & org stats. One aggregated snapshot is written per session at
+// session end (never per statusLine event). Writing is gated by
+// Config.usageLogsEnabled, which is ON by default (an explicit false opts out);
+// reading the org aggregate is open to any org member (RLS scopes it to the org).
 // ---------------------------------------------------------------------------
 
 /** Aggregated end-of-session snapshot to append to the usage_events table. */

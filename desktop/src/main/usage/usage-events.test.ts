@@ -35,10 +35,10 @@ beforeEach(() => {
 })
 
 describe('recordUsageSnapshot', () => {
-  it('does nothing when usageLogsEnabled is not set (default OFF)', async () => {
+  it('appends when usageLogsEnabled is not set — the default is ON', async () => {
     vi.mocked(readConfig).mockReturnValue({ version: 'x', repositories: {} })
     await recordUsageSnapshot(sample)
-    expect(appended).toHaveLength(0)
+    expect(appended).toHaveLength(1)
   })
 
   it('does nothing when usageLogsEnabled is explicitly false', async () => {

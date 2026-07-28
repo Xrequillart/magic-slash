@@ -578,9 +578,9 @@ export function updateLaunchMode(mode: LaunchMode): Config {
 }
 
 /**
- * Toggle the GDPR usage-logs opt-in. Default OFF: only when this is true does the
- * app write an aggregated usage snapshot to usage_events at session end. Reading
- * the org aggregate is unaffected by this flag.
+ * Toggle activity recording. ON by default: the app writes its three event tables
+ * (usage, activity, skills) unless this is explicitly false. Reading the org
+ * aggregate is unaffected by this flag.
  */
 export function updateUsageLogsEnabled(enabled: boolean): Config {
   const config = readConfig()

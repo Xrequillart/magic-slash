@@ -89,7 +89,7 @@ export const DEFAULTS = {
   theme: 'dark',
   language: 'en',
   usageCardEnabled: true,
-  usageLogsEnabled: false,
+  usageLogsEnabled: true,
   dailyDigestEnabled: false,
   splitEnabled: false,
   prReviewsEnabled: true,

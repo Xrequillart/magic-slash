@@ -225,10 +225,25 @@ export const en = {
   'settings.features.usageCard.label': 'Show usage card in sidebar',
   'settings.features.usageCard.help':
     'Display the connected account and the Session (5h) / Weekly (7d) gauges at the bottom of the sidebar',
-  'settings.features.usageLogs.section': 'Usage logs',
-  'settings.features.usageLogs.label': 'Share my usage with my organization',
+  'settings.features.usageLogs.section': 'Activity recording',
+  'settings.features.usageLogs.label': 'Share my activity with my team',
   'settings.features.usageLogs.help':
-    'Off by default (GDPR opt-in). When enabled, your agent activity (tickets, commits, PRs, reviews), the skills you run and an aggregated end-of-session summary (estimated cost, lines added/removed, duration, model) are recorded for your organization, so the Team dashboard reflects your work. No prompts or code are ever sent. When off, nothing is recorded — and you can turn it off at any time.',
+    'On by default, and yours to turn off at any time. What you do with your agents is sent to Magic Slash Cloud so your team’s dashboard reflects your work. Turning it off stops new records; what was already sent is kept.',
+  'settings.features.usageLogs.collected': 'Collected',
+  'settings.features.usageLogs.excluded': 'Never collected',
+  'settings.features.usageLogs.collected.activity': 'Agent activity: tickets, commits, PRs, reviews',
+  'settings.features.usageLogs.collected.skills': 'The skills you run (/magic:start, /magic:pr, …)',
+  'settings.features.usageLogs.collected.session':
+    'End-of-session summary: estimated cost, lines added/removed, duration, model',
+  'settings.features.usageLogs.collected.context': 'Ticket id and title, and the repositories you work in',
+  'settings.features.usageLogs.excluded.prompts': 'Your prompts and Claude’s answers',
+  'settings.features.usageLogs.excluded.code': 'Your code, your diffs, your file contents',
+  'settings.features.usageLogs.excluded.terminal': 'Terminal output and command history',
+  'settings.features.usageLogs.excluded.secrets': 'Your tokens, keys and credentials',
+  'settings.features.usageLogs.footnote':
+    'Every member of your organization can see these figures per person on the Team page.',
+  'settings.features.usageLogs.footnote.agents':
+    'Whatever this setting says, your agents (name, branch, ticket, repositories) sync to your team — that is what powers the live view.',
   'settings.features.digest.section': 'Daily digest',
   'settings.features.digest.label': 'Daily team digest',
   'settings.features.digest.help':

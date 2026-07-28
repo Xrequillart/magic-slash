@@ -10,6 +10,7 @@ import {
   Palette,
   Sparkles,
   SquareTerminal,
+  X,
 } from 'lucide-react'
 import { Dropdown } from '@/components/Dropdown'
 import { ExamplePanel, SettingRow, SettingsCard, Toggle } from '@/components/SettingRow'
@@ -66,6 +67,55 @@ function ThemePreview({ swatch }: { swatch: ThemeSwatch }) {
   )
 }
 
+/**
+ * What activity recording does and does not send, side by side. Mirrors
+ * `UsageLogsBreakdown` in `desktop/src/renderer/pages/Config/index.tsx` — same
+ * items, same order — so the two surfaces cannot drift into telling users
+ * different things. The desktop reads its strings from the message catalogue;
+ * here they are literals, like every other string on this page.
+ *
+ * Shown whatever the toggle's state: someone who turned it off is exactly the
+ * person who wants to know what they turned off.
+ */
+const COLLECTED = [
+  'Agent activity: tickets, commits, PRs, reviews',
+  'The skills you run (/magic:start, /magic:pr, …)',
+  'End-of-session summary: estimated cost, lines added/removed, duration, model',
+  'Ticket id and title, and the repositories you work in',
+]
+
+const NEVER_COLLECTED = [
+  'Your prompts and Claude’s answers',
+  'Your code, your diffs, your file contents',
+  'Terminal output and command history',
+  'Your tokens, keys and credentials',
+]
+
+function UsageLogsBreakdown() {
+  const columns = [
+    { title: 'Collected', items: COLLECTED, Icon: Check, tone: 'text-green' },
+    { title: 'Never collected', items: NEVER_COLLECTED, Icon: X, tone: 'text-red' },
+  ]
+
+  return (
+    <div className="mt-4 grid gap-x-6 gap-y-4 border-t border-black/5 pt-4 sm:grid-cols-2">
+      {columns.map(({ title, items, Icon, tone }) => (
+        <div key={title}>
+          <p className="mb-2 text-[10px] uppercase tracking-wider text-muted">{title}</p>
+          <ul className="space-y-1.5">
+            {items.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs leading-snug text-ink/70">
+                <Icon className={`mt-px h-3.5 w-3.5 shrink-0 ${tone}`} />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function AppSettings({
   settings,
   onPatch,
@@ -81,6 +131,7 @@ export function AppSettings({
   const theme = settings.theme ?? DEFAULTS.theme
   const language = settings.language ?? DEFAULTS.language
   const launchMode = settings.launchMode ?? DEFAULTS.launchMode
+  const usageLogs = settings.usageLogsEnabled ?? DEFAULTS.usageLogsEnabled
   const prReviews = settings.prReviewsEnabled ?? DEFAULTS.prReviewsEnabled
   const pollInterval = settings.prReviewsPollIntervalMs ?? DEFAULTS.prReviewsPollIntervalMs
 
@@ -159,16 +210,48 @@ export function AppSettings({
             label="Show usage card in sidebar"
           />
         </SettingRow>
-        <SettingRow
-          label="Share my usage with my organization"
-          description="Off by default. When enabled, your agent activity (tickets, commits, PRs, reviews), the skills you run and an aggregated end-of-session summary (estimated cost, lines added/removed, duration, model) are recorded for your organization, so the Team dashboard reflects your work. No prompts or code are ever sent. When off, nothing is recorded — and you can turn it off at any time."
-        >
-          <Toggle
-            checked={settings.usageLogsEnabled ?? DEFAULTS.usageLogsEnabled}
-            onChange={(usageLogsEnabled) => onPatch({ usageLogsEnabled })}
-            label="Share my usage with my organization"
-          />
-        </SettingRow>
+        {/*
+          Hand-rolled rather than a SettingRow: the breakdown below has to sit
+          INSIDE the row's border, or the two lists read as belonging to the next
+          setting. Classes are SettingRow's own, so the row still lines up.
+        */}
+        <div className="border-b border-black/5 py-4 last:border-b-0">
+          <div className="flex flex-col gap-x-6 gap-y-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-sm font-bold text-ink">Share my activity with my team</p>
+              <p className="mt-0.5 text-xs text-muted">
+                On by default, and yours to turn off at any time. What you do with your agents is sent to
+                Magic Slash Cloud so your team&rsquo;s dashboard reflects your work. Turning it off stops new
+                records; what was already sent is kept.
+              </p>
+            </div>
+            <div className="shrink-0">
+              <Toggle
+                checked={usageLogs}
+                onChange={(usageLogsEnabled) => onPatch({ usageLogsEnabled })}
+                label="Share my activity with my team"
+              />
+            </div>
+          </div>
+          {/*
+            The breakdown answers "what am I sharing?", so it goes away with the
+            sharing — same for the sentence about who can read it. The agents
+            caveat stays in both states: it is truest for the person who just
+            turned this off, since their agents keep syncing regardless.
+          */}
+          {usageLogs && (
+            <>
+              <UsageLogsBreakdown />
+              <p className="mt-3 text-[11px] leading-snug text-muted">
+                Every member of your organization can see these figures per person on the Team page.
+              </p>
+            </>
+          )}
+          <p className="mt-3 text-[11px] leading-snug text-muted">
+            Whatever this setting says, your agents (name, branch, ticket, repositories) sync to your team
+            — that is what powers the live view.
+          </p>
+        </div>
         <SettingRow
           label="Daily team digest"
           description="Off by default. When enabled, you get one notification at 9:00 AM summarizing your team’s activity from the last 24 hours (PRs shipped, tickets moved to Done). Nothing is sent when there was no activity."

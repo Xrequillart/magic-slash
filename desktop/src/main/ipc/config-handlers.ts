@@ -280,7 +280,7 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
     return { config }
   })
 
-  // GDPR opt-in for writing usage logs (default OFF). Gates WRITING only.
+  // Activity recording (default ON, explicit false opts out). Gates WRITING only.
   ipcMain.handle('config:setUsageLogsEnabled', async (_event, { enabled }: { enabled: boolean }) => {
     const config = updateUsageLogsEnabled(enabled)
     return { config }

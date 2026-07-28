@@ -5,8 +5,10 @@ import { getStore } from '../store/Store'
 /**
  * Record ONE aggregated usage snapshot at session end.
  *
- * GDPR opt-in: writing is gated behind Config.usageLogsEnabled (default OFF). When
- * the flag is not explicitly true this is a no-op — no data leaves the machine.
+ * Gated behind Config.usageLogsEnabled, which is ON by default: only an EXPLICIT
+ * false makes this a no-op. An absent flag means the user never touched the
+ * toggle, and the product's default is to record — so `=== false`, never
+ * `!== true`.
  *
  * Fire-and-forget: this never throws into the caller. Callers may `void` the
  * returned promise; any store/network error is swallowed and logged. usage_events
@@ -14,7 +16,7 @@ import { getStore } from '../store/Store'
  * history), hence no reportWriteError wiring here.
  */
 export async function recordUsageSnapshot(input: UsageEventInput): Promise<void> {
-  if (readConfig().usageLogsEnabled !== true) return
+  if (readConfig().usageLogsEnabled === false) return
   try {
     await getStore().appendUsage(input)
   } catch (error) {
