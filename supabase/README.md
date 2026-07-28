@@ -95,6 +95,23 @@ User-scoped tables (own-rows-only RLS, independent of any org):
 | `user_settings`     | App preferences: Settings → Features, launch mode, Atlassian flag. |
 | `app_installations` | One row per (user, device): the app version that device runs.      |
 
+Neither org-scoped nor own-rows — a category of one:
+
+| Table              | Purpose                                                             |
+| ------------------ | ------------------------------------------------------------------- |
+| `platform_admins`  | Who operates the product. **Deny-all**: unreachable from the API.   |
+
+`platform_admins` is the only table with RLS enabled and **no policy at all**, on
+top of `revoke all … from anon, authenticated`. Both layers are deliberate: the
+revoke is what actually holds (Supabase grants `all` on new `public` tables to
+both roles by default, so RLS alone would leave `authenticated` holding `INSERT`),
+and the missing policy means adding one back cannot re-open it. Consequence,
+accepted rather than worked around: the **first platform admin cannot be created
+from within the application** — a human inserts the row from the Supabase
+dashboard, which runs as the table owner. There is no bootstrap RPC, because a
+self-service one is a "first caller becomes admin" hole. The identity is usable
+only through the read-only `admin_*` functions listed under Security model below.
+
 `user_settings` deliberately holds one **nullable** column per option. NULL means
 "the user never chose", which the desktop app distinguishes from `false` — e.g.
 history and the sidebar usage card are both ON when unset, while
@@ -120,8 +137,14 @@ the app is not running at all: there is no local listener to receive the call.
 `app_installations` is upserted by the desktop app on every launch (from the
 connectivity gate, once authed), so the version is refreshed at each start and
 after every auto-update. `app_version_updated_at` is trigger-maintained and moves
-only on a genuine version change. Fleet-wide "who runs which version" reporting
-goes through the service role, since RLS keeps each row private to its user.
+only on a genuine version change. RLS keeps each row private to its user, so
+fleet-wide "who runs which version" reporting goes through
+`admin_list_installations(uuid)` — a `SECURITY DEFINER` function gated on
+`is_platform_admin()` that returns an explicit column allowlist. No service-role
+key, and no widening of this table's policies. (The `--` comments inside
+`20260725100000_user_settings.sql` still say "service role": they predate
+`platform_admins` and are left as written, since a migration records the state of
+the world when it ran.)
 
 ## Security model
 
@@ -129,7 +152,21 @@ goes through the service role, since RLS keeps each row private to its user.
   isolation keyed on `org_id`: a user only ever sees rows for orgs they are a
   member of. User-scoped tables (`repository_paths`, `profiles`, `user_settings`,
   `app_installations`) are own-rows-only on every verb — not even org admins get
-  a read path.
+  a read path. The single exception is a **platform admin** (a row in
+  `platform_admins`), and it is not an exception in the policies: no policy was
+  widened and none contains `or is_platform_admin()`. Access is instead six
+  read-only `SECURITY DEFINER` functions — `admin_list_users()`,
+  `admin_list_installations(uuid)`, `admin_get_user(uuid)`,
+  `admin_list_user_orgs(uuid)`, `admin_list_user_agents(uuid)`,
+  `admin_list_user_repositories(uuid)` — each of which raises unless
+  `is_platform_admin()`, and each of whose `returns table` **is** the column
+  allowlist. `profiles.free_text`, `technical_level`, `communication_style` and
+  `languages` are returned by none of them. The reason for functions rather than a
+  wider policy: a policy grants every column of a table forever, including ones
+  added later, whereas an allowlist has to be edited — and shows up in the diff —
+  to grow. There are no admin writes, no impersonation and no audit log; the whole
+  surface is `select`-shaped, which is what makes the missing audit log
+  acceptable.
 - Membership checks go through `is_org_member(uuid)` / `is_org_admin(uuid)`,
   `SECURITY DEFINER` functions with a locked `search_path`. This avoids RLS
   recursion on `memberships` and is the single source of truth for access.
