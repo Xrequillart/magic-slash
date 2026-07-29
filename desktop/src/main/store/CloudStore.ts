@@ -598,32 +598,57 @@ export class CloudStore implements Store {
    * omitted column is left untouched, which is exactly what we want.
    */
   private toAgentRow(agent: Agent, id: string, uid: string): Record<string, unknown> {
-    const meta = agent.metadata
+    // The five fields that HAVE a column are peeled off the metadata rather than
+    // copied into it. They used to be written twice — once in the column, once
+    // inside the jsonb — while fromAgentRow read only the jsonb, which made every
+    // column write-only decoration and the JSON the de facto store. Two copies of
+    // one fact is one of them being wrong eventually; the column is the one every
+    // other reader can query, index and join on (mapOrgAgentRow and the webapp's
+    // admin_list_user_agents already read the columns).
+    const { ticketId, description, branchName, baseBranch, status, ...rest } = agent.metadata ?? {}
     return {
       id,
       owner_id: uid,
       name: agent.name,
-      ticket_id: meta?.ticketId ?? null,
-      description: meta?.description ?? null,
-      branch_name: meta?.branchName ?? null,
-      base_branch: meta?.baseBranch ?? null,
-      status: meta?.status ?? null,
+      ticket_id: ticketId ?? null,
+      description: description ?? null,
+      branch_name: branchName ?? null,
+      base_branch: baseBranch ?? null,
+      status: status ?? null,
       repositories: agent.repositories ?? [],
-      metadata: { ...(meta ?? {}), __app: { id: agent.id, tsCreate: agent.tsCreate, splitPane: agent.splitPane } },
+      // What is left has no column of its own: title, fullStackTaskId,
+      // relatedWorktrees, repositoryMetadata, usage — plus __app, the app-side
+      // identity (its local id, creation stamp and pane) that has nowhere else to
+      // live because the row's own id is a uuid the app never sees.
+      metadata: { ...rest, __app: { id: agent.id, tsCreate: agent.tsCreate, splitPane: agent.splitPane } },
     }
   }
 
   private fromAgentRow(row: AgentRow): Agent {
     const app = row.metadata?.__app
-    const metadata = { ...(row.metadata ?? {}) } as AgentRow['metadata']
-    delete metadata.__app
+    const rest = { ...(row.metadata ?? {}) } as AgentRow['metadata']
+    delete rest.__app
+
     return {
       id: app?.id ?? row.id,
       name: row.name,
       repositories: Array.isArray(row.repositories) ? row.repositories : [],
       repositoryIds: [],
       tsCreate: app?.tsCreate,
-      metadata: metadata as TerminalMetadata,
+      // Column first, jsonb second. The fallback is for rows written before
+      // toAgentRow stopped duplicating: they still carry the value in both places,
+      // so reading the column alone would be correct for them too — but a row
+      // written by an even older build, with a jsonb value and a null column,
+      // would silently lose it. `||` rather than `??` because the unset value the
+      // app writes is '' and an empty string must not beat a real one.
+      metadata: {
+        ...rest,
+        ticketId: row.ticket_id || rest.ticketId,
+        description: row.description || rest.description,
+        branchName: row.branch_name || rest.branchName,
+        baseBranch: row.base_branch || rest.baseBranch,
+        status: (row.status || rest.status) as TerminalMetadata['status'],
+      } as TerminalMetadata,
       splitPane: app?.splitPane,
     }
   }

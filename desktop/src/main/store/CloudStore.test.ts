@@ -362,6 +362,115 @@ describe('agents', () => {
     expect(rows[0].id).not.toBe('uuid-1')
   })
 
+  // ── columns vs jsonb ──────────────────────────────────────────────────────
+  //
+  // Every field that has a column used to be written TWICE — once in the column,
+  // once inside `metadata` — while loadAgents read only the jsonb. The columns
+  // were therefore write-only: nothing in the app would have noticed if they had
+  // stopped being filled, which is exactly the state the bug report described.
+
+  it('saveAgents writes each columned field to its column and leaves it out of the jsonb', async () => {
+    const { client, upserts } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [], error: null },
+      agent_repositories: { data: [], error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().saveAgents([
+      {
+        id: 'claude-1',
+        name: 'A',
+        repositories: [],
+        metadata: {
+          ticketId: 'PROJ-1',
+          description: 'desc',
+          branchName: 'feature/x',
+          baseBranch: 'main',
+          status: 'in progress',
+          title: 'kept in the jsonb',
+        },
+      } as Agent,
+    ])
+
+    const row = (upserts.agents[0] as Array<Record<string, unknown>>)[0]
+    expect(row.ticket_id).toBe('PROJ-1')
+    expect(row.description).toBe('desc')
+    expect(row.branch_name).toBe('feature/x')
+    expect(row.base_branch).toBe('main')
+    expect(row.status).toBe('in progress')
+
+    const meta = row.metadata as Record<string, unknown>
+    // No duplication: two copies of one fact is one of them being wrong eventually.
+    expect(meta).not.toHaveProperty('branchName')
+    expect(meta).not.toHaveProperty('ticketId')
+    expect(meta).not.toHaveProperty('status')
+    expect(meta).not.toHaveProperty('description')
+    expect(meta).not.toHaveProperty('baseBranch')
+    // What has no column of its own still travels in the jsonb.
+    expect(meta.title).toBe('kept in the jsonb')
+    expect(meta.__app).toEqual({ id: 'claude-1', tsCreate: undefined, splitPane: undefined })
+  })
+
+  it('loadAgents reads the columns, not the jsonb', async () => {
+    const row = {
+      ...agentRow('uuid-1', 'claude-1', UID),
+      branch_name: 'feature/from-column',
+      ticket_id: 'PROJ-9',
+      status: 'in review',
+      // Deliberately absent from the jsonb: this is what a row written by the
+      // current code looks like.
+      metadata: { __app: { id: 'claude-1' }, title: 'T' },
+    }
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [row], error: null },
+    })
+    h.state.client = client
+
+    const [agent] = await new CloudStore().loadAgents()
+    expect(agent.metadata?.branchName).toBe('feature/from-column')
+    expect(agent.metadata?.ticketId).toBe('PROJ-9')
+    expect(agent.metadata?.status).toBe('in review')
+    expect(agent.metadata?.title).toBe('T')
+  })
+
+  it('loadAgents falls back to the jsonb for a legacy row whose column was never filled', async () => {
+    // A row written before toAgentRow mapped the columns: the value exists only in
+    // the jsonb, and dropping it would lose the branch of every old agent.
+    const row = {
+      ...agentRow('uuid-1', 'claude-1', UID),
+      branch_name: null,
+      metadata: { __app: { id: 'claude-1' }, branchName: 'feature/legacy' },
+    }
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [row], error: null },
+    })
+    h.state.client = client
+
+    const [agent] = await new CloudStore().loadAgents()
+    expect(agent.metadata?.branchName).toBe('feature/legacy')
+  })
+
+  it('an empty column does not beat a real jsonb value', async () => {
+    // '' is what the app writes for an unset field, so it must lose to a real
+    // value rather than shadow it — hence `||` and not `??` in fromAgentRow.
+    const row = {
+      ...agentRow('uuid-1', 'claude-1', UID),
+      branch_name: '',
+      metadata: { __app: { id: 'claude-1' }, branchName: 'feature/real' },
+    }
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [row], error: null },
+    })
+    h.state.client = client
+
+    const [agent] = await new CloudStore().loadAgents()
+    expect(agent.metadata?.branchName).toBe('feature/real')
+  })
+
   it('saveAgents links the agent to the repositories it resolved', async () => {
     const { client, inserts } = makeClient({
       memberships: membershipsOk,
