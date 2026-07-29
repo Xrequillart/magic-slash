@@ -129,7 +129,6 @@ export default function AdminFleet() {
   return (
     <>
       <PageHead
-        path="admin / fleet"
         title="Fleet"
         description="Ce que tourne le parc, et quelles machines ont décroché ou se sont tues."
       />

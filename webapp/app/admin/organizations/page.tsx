@@ -122,7 +122,6 @@ export default function AdminOrganizations() {
   return (
     <>
       <PageHead
-        path="admin / organizations"
         title="Organizations"
         description="Chaque tenant, ses membres et ce qui lui appartient. Cliquer une ligne ouvre sa fiche et ses actions."
       />

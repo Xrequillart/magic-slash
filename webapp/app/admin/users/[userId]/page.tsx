@@ -259,7 +259,6 @@ export default function AdminUserRecord() {
       ) : (
         <div className="mt-3">
           <PageHead
-            path={`admin / users / ${user.userId.slice(0, 8)}`}
             title={user.email ?? user.userId}
           />
 

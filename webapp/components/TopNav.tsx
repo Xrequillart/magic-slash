@@ -14,8 +14,8 @@ import { getSupabase } from '@/lib/supabase'
  * rather than a bar over it. The sections that used to be nav pills live in the
  * account menu, which is the only remaining way to reach them.
  *
- * There is no nav slot. There used to be one, filled by the back-office's tab bar
- * and empty everywhere else; /admin now has a chrome of its own
+ * There is no nav slot. There used to be one, filled by the back-office's section
+ * links and empty everywhere else; /admin now has a chrome of its own
  * (components/regie/ConsoleShell) rather than borrowing this one, so the slot had
  * exactly zero callers left. The account menu keeps its Admin entry — that is the
  * way IN, and the only thing this header still needs to know about the console.

@@ -118,7 +118,6 @@ export default function AdminUsers() {
   return (
     <>
       <PageHead
-        path="admin / users"
         title="Users"
         description="Chaque compte, ce qu'il fait tourner et ce qu'il possède. Cliquer une ligne ouvre sa fiche."
       />

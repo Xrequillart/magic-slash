@@ -260,7 +260,6 @@ export default function AdminOrgRecord() {
 
       <div className="mt-3">
         <PageHead
-          path={`admin / organizations / ${org.orgId.slice(0, 8)}`}
           title={org.name}
           action={
             <ConfirmAction
