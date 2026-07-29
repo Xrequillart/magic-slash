@@ -6,6 +6,7 @@ import { execSync, execFileSync } from 'child_process'
 import { claudeThemeFlag } from '../claude-theme'
 import { readConfig } from '../config/config'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
+import { withDetectedBranch } from './initial-metadata'
 import { expandPath } from '../config/validation'
 import { resolveAgentCwd } from './agent-cwd'
 import { getCommonPaths } from '../utils/paths'
@@ -193,30 +194,6 @@ const STABLE_RUN_MS = 30_000
 const ptyDisposables = new Map<string, Array<{ dispose: () => void }>>()
 
 // Detect the current git branch for a given directory
-/**
- * The metadata an agent starts life with, including the branch we just detected.
- *
- * `terminal.branchName` and `metadata.branchName` are two different things that
- * used to never meet: the first is the checkout git reports and is pushed to the
- * renderer for display, the second is what gets PERSISTED (config/agents.ts →
- * CloudStore.toAgentRow → the `branch_name` column). Nothing copied one into the
- * other, so every agent was stored with an empty branch while the UI showed the
- * right one — the branch was on screen and nowhere else.
- *
- * A supplied `branchName` wins: a skill that already knows which branch it is
- * about to create is a better source than the checkout the terminal happens to
- * open in (usually `main`). `!merged.branchName` rather than an `undefined` check
- * because createDefaultMetadata() writes '' for every unset field.
- */
-export function initialMetadataFor(
-  detectedBranch: string | null,
-  provided?: Partial<TerminalMetadata>,
-): TerminalMetadata {
-  const merged: TerminalMetadata = { ...createDefaultMetadata(), ...provided }
-  if (detectedBranch && !merged.branchName) merged.branchName = detectedBranch
-  return merged
-}
-
 function detectGitBranch(cwd: string): string | null {
   try {
     const result = execSync('/usr/bin/git rev-parse --abbrev-ref HEAD', {
@@ -287,7 +264,7 @@ export function createTerminal(
     cols: 120,
     rows: DEFAULT_PTY_ROWS,
     createdAt: new Date(),
-    metadata: initialMetadataFor(initialBranch),
+    metadata: withDetectedBranch(createDefaultMetadata(), initialBranch),
     onStateChange,
     onBranchChange,
     onMetadataChange,
@@ -640,7 +617,7 @@ export function launchClaude(
     cols: 120,
     rows: DEFAULT_PTY_ROWS,
     createdAt: new Date(),
-    metadata: initialMetadataFor(initialBranch, initialMetadata),
+    metadata: withDetectedBranch({ ...createDefaultMetadata(), ...initialMetadata }, initialBranch),
     onStateChange,
     onBranchChange,
     onMetadataChange,
