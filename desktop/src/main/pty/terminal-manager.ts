@@ -193,6 +193,30 @@ const STABLE_RUN_MS = 30_000
 const ptyDisposables = new Map<string, Array<{ dispose: () => void }>>()
 
 // Detect the current git branch for a given directory
+/**
+ * The metadata an agent starts life with, including the branch we just detected.
+ *
+ * `terminal.branchName` and `metadata.branchName` are two different things that
+ * used to never meet: the first is the checkout git reports and is pushed to the
+ * renderer for display, the second is what gets PERSISTED (config/agents.ts →
+ * CloudStore.toAgentRow → the `branch_name` column). Nothing copied one into the
+ * other, so every agent was stored with an empty branch while the UI showed the
+ * right one — the branch was on screen and nowhere else.
+ *
+ * A supplied `branchName` wins: a skill that already knows which branch it is
+ * about to create is a better source than the checkout the terminal happens to
+ * open in (usually `main`). `!merged.branchName` rather than an `undefined` check
+ * because createDefaultMetadata() writes '' for every unset field.
+ */
+export function initialMetadataFor(
+  detectedBranch: string | null,
+  provided?: Partial<TerminalMetadata>,
+): TerminalMetadata {
+  const merged: TerminalMetadata = { ...createDefaultMetadata(), ...provided }
+  if (detectedBranch && !merged.branchName) merged.branchName = detectedBranch
+  return merged
+}
+
 function detectGitBranch(cwd: string): string | null {
   try {
     const result = execSync('/usr/bin/git rev-parse --abbrev-ref HEAD', {
@@ -263,7 +287,7 @@ export function createTerminal(
     cols: 120,
     rows: DEFAULT_PTY_ROWS,
     createdAt: new Date(),
-    metadata: createDefaultMetadata(),
+    metadata: initialMetadataFor(initialBranch),
     onStateChange,
     onBranchChange,
     onMetadataChange,
@@ -571,6 +595,17 @@ export function launchClaude(
             if (terminal.onBranchChange) {
               terminal.onBranchChange(restartBranch)
             }
+            // Persist it too, not just paint it. Guarded on non-null: a detached
+            // HEAD or a non-repo cwd reports nothing, and overwriting a branch a
+            // skill recorded with "no branch" would lose the better answer.
+            if (restartBranch) {
+              terminal.metadata = mergeMetadata(terminal.metadata, { branchName: restartBranch })
+              try {
+                updateAgentMetadata(id, { branchName: restartBranch })
+              } catch (e) {
+                console.error(`[launchClaude] Failed to persist branch for terminal ${id}:`, e)
+              }
+            }
           }
         } catch (e) {
           console.error(`[launchClaude] Restart failed for terminal ${id}:`, e)
@@ -605,10 +640,7 @@ export function launchClaude(
     cols: 120,
     rows: DEFAULT_PTY_ROWS,
     createdAt: new Date(),
-    metadata: {
-      ...createDefaultMetadata(),
-      ...initialMetadata
-    },
+    metadata: initialMetadataFor(initialBranch, initialMetadata),
     onStateChange,
     onBranchChange,
     onMetadataChange,

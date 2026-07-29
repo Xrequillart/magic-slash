@@ -277,7 +277,7 @@ export function restoreAgents() {
       const cwd = resolveAgentCwd(agent.repositories, os.homedir())
 
       const callbacks = createTerminalCallbacks(agent.id, agent.name)
-      launchClaude(
+      const terminal = launchClaude(
         agent.id,
         agent.name,
         cwd,
@@ -291,8 +291,13 @@ export function restoreAgents() {
         agent.repositories
       )
 
-      // Save restored agent to disk (preserve original tsCreate)
-      saveAgent(agent.id, agent.name, agent.repositories, agent.metadata, agent.tsCreate)
+      // Save the TERMINAL's metadata, not the agent's. launchClaude folds the
+      // branch it just detected into the metadata it returns (initialMetadataFor),
+      // and writing `agent.metadata` back here would persist the stale copy the
+      // agent was loaded with — undoing the detection on every restore. This is
+      // also what backfills the branch of agents created before it was captured at
+      // all: they pick it up the next time the app restores them.
+      saveAgent(agent.id, agent.name, agent.repositories, terminal.metadata, agent.tsCreate)
     }
   } catch (error) {
     console.error('Error restoring agents:', error)
