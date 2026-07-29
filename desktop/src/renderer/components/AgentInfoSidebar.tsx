@@ -411,8 +411,13 @@ export function AgentInfoSidebar() {
           </div>
         ) : (
           <div className="p-4 space-y-4">
-            {/* Usage Card (context, cost, model) */}
-            {metadata?.usage && <UsageCard usage={metadata.usage} />}
+            {/* Usage Card (context, cost, model). Rendered unconditionally so the
+                context gauge is present from the moment an agent is selected: the
+                usage feed only lands after Claude's first response, and a bar that
+                appears out of nowhere mid-session reads as a glitch. With no usage
+                yet the card degrades to the gauge alone — every other row inside it
+                is already conditional. */}
+            <UsageCard usage={metadata?.usage ?? {}} />
 
             {/* Ticket Header Card */}
             <TicketHeader

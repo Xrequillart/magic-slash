@@ -42,9 +42,15 @@ export function UsageCard({ usage }: UsageCardProps) {
     updatedAt,
   } = usage
 
+  // The gauge is always rendered, so it needs a reading for "no figure yet" that
+  // is not 0%: an empty green bar labelled 0% would claim the context is untouched,
+  // which is a measurement, not the absence of one. The bar sits empty and the
+  // label falls back to an em dash until the usage feed reports a percentage.
   const hasContext = typeof contextPercent === 'number'
   const pct = Math.min(100, Math.max(0, contextPercent ?? 0))
   const colors = contextColors(pct)
+  const pctLabel = hasContext ? `${Math.round(pct)}%` : '—'
+  const pctColor = hasContext ? colors.text : 'text-text-secondary/50'
 
   const [minimized, setMinimized] = useState(false)
 
@@ -63,13 +69,13 @@ export function UsageCard({ usage }: UsageCardProps) {
         <span className="text-xs text-text-secondary/50 uppercase tracking-wider shrink-0">{t('agentInfo.sessionContext')}</span>
         {/* Capped at a third of the row so the bar doesn't span the whole card;
             ml-auto pushes it right, grouping it with the percent + expand button. */}
-        <div className="h-1.5 flex-1 min-w-0 max-w-[33%] ml-auto rounded-full bg-surface overflow-hidden">
+        <div className="h-1.5 flex-1 min-w-0 max-w-[33%] ml-auto rounded-full bg-surface-sunken overflow-hidden">
           <div
             className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
             style={{ width: `${pct}%` }}
           />
         </div>
-        <span className={`font-medium text-xs shrink-0 ${colors.text}`}>{Math.round(pct)}%</span>
+        <span className={`font-medium text-xs shrink-0 ${pctColor}`}>{pctLabel}</span>
         <button
           onClick={() => setMinimized(false)}
           title={t('usage.expand')}
@@ -113,47 +119,49 @@ export function UsageCard({ usage }: UsageCardProps) {
         </div>
       </div>
 
-      {/* Context usage */}
-      {hasContext && (
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs">
+      {/* Context usage — always present, empty until the feed reports a figure. */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
+          <span className="flex items-center gap-1.5 text-text-secondary">
+            <Gauge className="w-3.5 h-3.5" />
+            {t('agentInfo.context')}
+          </span>
+          <span className={`font-medium ${pctColor}`}>{pctLabel}</span>
+        </div>
+        <div className="h-1.5 w-full rounded-full bg-surface-sunken overflow-hidden">
+          <div
+            className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        {typeof contextTokens === 'number' && typeof contextWindowSize === 'number' && (
+          <div className="text-[11px] text-text-secondary/70 tabular-nums">
+            {t('agentInfo.tokensOf', { used: formatTokens(contextTokens, locale, t), total: formatTokens(contextWindowSize, locale, t) })}
+          </div>
+        )}
+      </div>
+
+      {/* Cost + duration. Gated as a pair: with the card now rendering before any
+          usage arrives, an unguarded row would contribute its space-y-3 gap below
+          the gauge with nothing in it. */}
+      {(typeof costUsd === 'number' || typeof durationMs === 'number') && (
+        <div className="flex items-center justify-between text-xs">
+          {typeof costUsd === 'number' && (
             <span className="flex items-center gap-1.5 text-text-secondary">
-              <Gauge className="w-3.5 h-3.5" />
-              {t('agentInfo.context')}
+              <DollarSign className="w-3.5 h-3.5" />
+              {/* tabular-nums keeps the digits from shifting as the cost ticks up,
+                  which is what the mono face used to buy us. */}
+              <span className="tabular-nums font-medium text-ink">{formatUsd(costUsd, locale)}</span>
             </span>
-            <span className={`font-medium ${colors.text}`}>{Math.round(pct)}%</span>
-          </div>
-          <div className="h-1.5 w-full rounded-full bg-surface overflow-hidden">
-            <div
-              className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          {typeof contextTokens === 'number' && typeof contextWindowSize === 'number' && (
-            <div className="text-[11px] text-text-secondary/70 tabular-nums">
-              {t('agentInfo.tokensOf', { used: formatTokens(contextTokens, locale, t), total: formatTokens(contextWindowSize, locale, t) })}
-            </div>
+          )}
+          {typeof durationMs === 'number' && (
+            <span className="flex items-center gap-1.5 text-text-secondary">
+              <Clock className="w-3.5 h-3.5" />
+              <span className="tabular-nums">{formatDuration(durationMs, t)}</span>
+            </span>
           )}
         </div>
       )}
-
-      {/* Cost + duration */}
-      <div className="flex items-center justify-between text-xs">
-        {typeof costUsd === 'number' && (
-          <span className="flex items-center gap-1.5 text-text-secondary">
-            <DollarSign className="w-3.5 h-3.5" />
-            {/* tabular-nums keeps the digits from shifting as the cost ticks up,
-                which is what the mono face used to buy us. */}
-            <span className="tabular-nums font-medium text-ink">{formatUsd(costUsd, locale)}</span>
-          </span>
-        )}
-        {typeof durationMs === 'number' && (
-          <span className="flex items-center gap-1.5 text-text-secondary">
-            <Clock className="w-3.5 h-3.5" />
-            <span className="tabular-nums">{formatDuration(durationMs, t)}</span>
-          </span>
-        )}
-      </div>
     </div>
   )
 }
