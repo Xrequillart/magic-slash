@@ -1,51 +1,54 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { AlertTriangle, Cpu, Laptop, LayoutList, MoonStar } from 'lucide-react'
 import {
   bucketByVersion,
   countBy,
-  listInstallations,
   outdatedInstallations,
   QUIET_DAYS,
   quietInstallations,
   type AdminInstallation,
   type CountBucket,
 } from '@/lib/admin'
-import { formatRelative, highestVersion } from '@/lib/installations'
-import { Badge, Card, SectionHeader, type BadgeTone } from '@/components/ui'
+import { formatDevicePlatform, formatRelative, highestVersion } from '@/lib/installations'
+import { useConsoleData } from '@/components/regie/ConsoleData'
+import { PageHead } from '@/components/regie/ConsoleShell'
+import { DataTable, Mono, NoValue, type Column } from '@/components/regie/DataTable'
+import { Empty, Panel, Pill, SectionLabel } from '@/components/regie/primitives'
 
 /**
  * What the fleet runs: version distribution, the devices behind it, the platforms
  * and architectures, and the ones that stopped launching.
  *
- * ONE round trip serves all five sections. Every rollup here is computed from the
- * same device list, so asking the database five aggregate questions would be five
- * queries for data already in hand.
+ * Every rollup is computed from the SAME device list, so asking the database five
+ * aggregate questions would be five queries for data already in hand. That list now
+ * comes from the console's provider rather than a fetch of its own — the layout
+ * already loaded it for the nav counts, and the Users table needs it too.
  *
- * No guard and no AppShell — `app/admin/layout.tsx` owns both.
+ * The rollups themselves (`lib/adminRollups.ts`) are untouched: this page changed
+ * its clothes, not its arithmetic.
  */
 
 /** Bars thinner than this are invisible, which reads as "no devices" — not the same thing. */
 const MIN_BAR_PERCENT = 2
 
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-muted">{children}</p>
-}
-
-/** One horizontal bar: label, bar, count. No chart library — a div is a bar. */
+/**
+ * One horizontal bar. No chart library — a div is a bar.
+ *
+ * The track is the console's blue ground rather than a grey wash, so the bar reads
+ * as a measurement against a scale that belongs to this page.
+ */
 function Bar({ label, count, total }: { label: string; count: number; total: number }) {
   const percent = total === 0 ? 0 : (count / total) * 100
   return (
-    <div className="flex items-center gap-3 py-1.5">
-      <span className="w-24 shrink-0 truncate font-mono text-xs text-ink">{label}</span>
-      <span className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-black/[0.05]">
+    <div className="flex items-center gap-3 px-4 py-1.5">
+      <span className="w-28 shrink-0 truncate font-mono text-[12px] text-ink">{label}</span>
+      <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-regie-ground">
         <span
-          className="block h-full rounded-full bg-accent"
+          className="block h-full rounded-full bg-brand"
           style={{ width: `${Math.max(percent, MIN_BAR_PERCENT)}%` }}
         />
       </span>
-      <span className="w-20 shrink-0 text-right text-xs text-muted">
+      <span className="w-20 shrink-0 text-right font-mono text-[12px] tabular-nums text-regie-dim">
         {count} · {Math.round(percent)}%
       </span>
     </div>
@@ -54,60 +57,68 @@ function Bar({ label, count, total }: { label: string; count: number; total: num
 
 /** Platform and arch use the same shape, so they share one renderer. */
 function Breakdown({ buckets, total }: { buckets: CountBucket[]; total: number }) {
-  if (buckets.length === 0) return <Empty>No device has reported yet.</Empty>
+  if (buckets.length === 0) return <Empty>Aucun device n&apos;a encore reporté.</Empty>
   return (
-    <div>
-      {buckets.map((b) => (
-        <Bar key={b.value} label={b.value} count={b.count} total={total} />
+    <div className="py-2">
+      {buckets.map((bucket) => (
+        <Bar key={bucket.value} label={bucket.value} count={bucket.count} total={total} />
       ))}
     </div>
   )
 }
 
-/** "bob-mbp · bob@example.com" — the two things that identify a device on sight. */
-function deviceLabel(device: AdminInstallation): string {
-  return [device.deviceName ?? 'Unknown device', device.email ?? device.userId].join(' · ')
-}
+type DeviceKey = 'device' | 'owner' | 'platform' | 'version' | 'seen'
 
 /**
- * One device in the "outdated" and "quiet" lists. Both answer "which machine, how
- * long ago", differing only in badge tone and detail line, so the row is written
- * once rather than as two copies that drift on the next padding change.
+ * The columns for both device lists. Outdated and quiet answer the same question —
+ * which machine, whose, how long ago — so they share one definition rather than two
+ * copies that drift on the next change.
+ *
+ * `versionTone` is the only difference: a device behind the fleet is a warning, a
+ * device that stopped launching is not (it may be on the newest version and simply
+ * unused).
  */
-function DeviceRow({
-  device,
-  tone,
-  children,
-}: {
-  device: AdminInstallation
-  tone: BadgeTone
-  children: React.ReactNode
-}) {
-  return (
-    <li className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-ink">{deviceLabel(device)}</p>
-        <p className="mt-0.5 truncate text-xs text-muted">{children}</p>
-      </div>
-      <Badge tone={tone}>v{device.appVersion}</Badge>
-    </li>
-  )
+function deviceColumns(versionTone: 'yellow' | 'neutral'): Column<AdminInstallation, DeviceKey>[] {
+  return [
+    {
+      key: 'device',
+      label: 'Device',
+      sortValue: (d) => d.deviceName,
+      cell: (d) => <Mono>{d.deviceName ?? 'device inconnu'}</Mono>,
+    },
+    {
+      key: 'owner',
+      label: 'Compte',
+      sortValue: (d) => d.email,
+      cell: (d) => <Mono dim>{d.email ?? d.userId}</Mono>,
+    },
+    {
+      key: 'platform',
+      label: 'Plateforme',
+      sortValue: (d) => formatDevicePlatform(d),
+      cell: (d) => <Mono dim>{formatDevicePlatform(d)}</Mono>,
+    },
+    {
+      key: 'version',
+      label: 'Version',
+      sortValue: (d) => d.appVersion,
+      cell: (d) => <Pill tone={versionTone}>{d.appVersion}</Pill>,
+    },
+    {
+      key: 'seen',
+      label: 'Vu',
+      align: 'right',
+      defaultDirection: 'desc',
+      sortValue: (d) => d.lastSeenAt,
+      cell: (d) =>
+        d.lastSeenAt ? <Mono dim>{formatRelative(d.lastSeenAt)}</Mono> : <NoValue />,
+    },
+  ]
 }
 
-export default function AdminStats() {
-  const [devices, setDevices] = useState<AdminInstallation[] | null>(null)
+export default function AdminFleet() {
+  const { installations: fleet, loading } = useConsoleData()
 
-  useEffect(() => {
-    let cancelled = false
-    listInstallations().then((rows) => {
-      if (!cancelled) setDevices(rows)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const fleet = devices ?? []
   const versions = bucketByVersion(fleet)
   const outdated = outdatedInstallations(fleet)
   // The version the fleet is measured against — the highest any device reports,
@@ -117,121 +128,86 @@ export default function AdminStats() {
 
   return (
     <>
-      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">Stats</h1>
-      <p className="mt-3 text-sm text-muted">
-        What the fleet runs, and which machines have fallen behind or gone quiet.
-      </p>
+      <PageHead
+        path="admin / fleet"
+        title="Fleet"
+        description="Ce que tourne le parc, et quelles machines ont décroché ou se sont tues."
+      />
 
-      <div className="mt-10 space-y-8">
-        {/* ── Version distribution, per DEVICE ───────────────────────────── */}
-        <section>
-          <SectionHeader
-            icon={LayoutList}
-            title="App versions"
-            action={
-              devices ? (
-                <span className="text-xs text-muted">
-                  {fleet.length} device{fleet.length === 1 ? '' : 's'}
-                </span>
-              ) : null
-            }
-          />
-          <Card className="p-5">
-            {devices === null ? (
-              <Empty>Loading…</Empty>
-            ) : versions.length === 0 ? (
-              <Empty>No device has launched the app yet.</Empty>
-            ) : (
-              <div>
-                {versions.map((v) => (
-                  <Bar key={v.version} label={`v${v.version}`} count={v.count} total={fleet.length} />
-                ))}
-              </div>
-            )}
-          </Card>
-        </section>
+      <div className="space-y-6">
+        <Panel
+          label="Versions installées"
+          action={!loading && <SectionLabel>{`${fleet.length} devices`}</SectionLabel>}
+        >
+          {loading ? (
+            <Empty>Chargement…</Empty>
+          ) : versions.length === 0 ? (
+            <Empty>Aucun device n&apos;a encore lancé l&apos;app.</Empty>
+          ) : (
+            <div className="py-2">
+              {versions.map((version) => (
+                <Bar
+                  key={version.version}
+                  label={version.version}
+                  count={version.count}
+                  total={fleet.length}
+                />
+              ))}
+            </div>
+          )}
+        </Panel>
 
-        {/* ── Behind the rest of the fleet ────────────────────────────────── */}
-        <section>
-          <SectionHeader
-            icon={AlertTriangle}
-            title="Outdated devices"
-            action={devices ? <span className="text-xs text-muted">{outdated.length}</span> : null}
-          />
-          <Card className="p-5">
-            {devices === null ? (
-              <Empty>Loading…</Empty>
-            ) : outdated.length === 0 ? (
-              <Empty>
-                {fleet.length === 0
-                  ? 'No device has launched the app yet.'
-                  : `Every device is on v${newest}.`}
-              </Empty>
-            ) : (
-              <ul className="divide-y divide-black/5">
-                {outdated.map((d) => (
-                  <DeviceRow key={`${d.userId}-${d.deviceId}`} device={d} tone="yellow">
-                    last seen {formatRelative(d.lastSeenAt)}
-                    {d.appVersionUpdatedAt && ` · updated ${formatRelative(d.appVersionUpdatedAt)}`}
-                  </DeviceRow>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </section>
+        <Panel
+          label="Devices en retard"
+          action={!loading && <SectionLabel>{outdated.length}</SectionLabel>}
+        >
+          {loading ? (
+            <Empty>Chargement…</Empty>
+          ) : (
+            <DataTable
+              rows={outdated}
+              columns={deviceColumns('yellow')}
+              rowKey={(d) => `${d.userId}-${d.deviceId}`}
+              initialSort={{ key: 'seen', direction: 'desc' }}
+              emptyLabel={
+                fleet.length === 0
+                  ? "Aucun device n'a encore lancé l'app."
+                  : `Tous les devices sont en ${newest}.`
+              }
+            />
+          )}
+        </Panel>
 
-        {/* ── What the fleet runs on ──────────────────────────────────────── */}
-        <div className="grid gap-8 sm:grid-cols-2">
-          <section>
-            <SectionHeader icon={Laptop} title="Platforms" />
-            <Card className="p-5">
-              {devices === null ? (
-                <Empty>Loading…</Empty>
-              ) : (
-                <Breakdown buckets={countBy(fleet, 'platform')} total={fleet.length} />
-              )}
-            </Card>
-          </section>
+        <div className="grid gap-6 sm:grid-cols-2">
+          <Panel label="Plateformes">
+            {loading ? <Empty>Chargement…</Empty> : <Breakdown buckets={countBy(fleet, 'platform')} total={fleet.length} />}
+          </Panel>
 
-          <section>
-            <SectionHeader icon={Cpu} title="Architectures" />
-            <Card className="p-5">
-              {devices === null ? (
-                <Empty>Loading…</Empty>
-              ) : (
-                <Breakdown buckets={countBy(fleet, 'arch')} total={fleet.length} />
-              )}
-            </Card>
-          </section>
+          <Panel label="Architectures">
+            {loading ? <Empty>Chargement…</Empty> : <Breakdown buckets={countBy(fleet, 'arch')} total={fleet.length} />}
+          </Panel>
         </div>
 
-        {/* ── Inactivity, straight off last_seen_at ───────────────────────── */}
-        <section>
-          <SectionHeader
-            icon={MoonStar}
-            title={`Quiet for ${QUIET_DAYS}+ days`}
-            action={devices ? <span className="text-xs text-muted">{quiet.length}</span> : null}
-          />
-          <Card className="p-5">
-            {devices === null ? (
-              <Empty>Loading…</Empty>
-            ) : quiet.length === 0 ? (
-              <Empty>
-                {fleet.length === 0
-                  ? 'No device has launched the app yet.'
-                  : `Every device has launched the app in the last ${QUIET_DAYS} days.`}
-              </Empty>
-            ) : (
-              <ul className="divide-y divide-black/5">
-                {quiet.map((d) => (
-                  <DeviceRow key={`${d.userId}-${d.deviceId}`} device={d} tone="neutral">
-                    last seen {formatRelative(d.lastSeenAt)}
-                  </DeviceRow>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </section>
+        <Panel
+          label={`Silencieux depuis ${QUIET_DAYS} jours ou plus`}
+          action={!loading && <SectionLabel>{quiet.length}</SectionLabel>}
+        >
+          {loading ? (
+            <Empty>Chargement…</Empty>
+          ) : (
+            <DataTable
+              rows={quiet}
+              columns={deviceColumns('neutral')}
+              rowKey={(d) => `${d.userId}-${d.deviceId}`}
+              initialSort={{ key: 'seen', direction: 'asc' }}
+              emptyLabel={
+                fleet.length === 0
+                  ? "Aucun device n'a encore lancé l'app."
+                  : `Tous les devices ont lancé l'app dans les ${QUIET_DAYS} derniers jours.`
+              }
+            />
+          )}
+        </Panel>
       </div>
     </>
   )

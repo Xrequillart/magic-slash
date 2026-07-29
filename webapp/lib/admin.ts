@@ -1,3 +1,4 @@
+import { effectiveStatus, type InvitationStatus } from './invitations'
 import type { Role } from './orgs'
 import type { UserSettings } from './settings'
 import { getSupabase } from './supabase'
@@ -14,9 +15,25 @@ import { getSupabase } from './supabase'
  * caller's own row and nothing else no matter who is asking. The RPC is not a
  * convenience wrapper over a table read — it is the only path that exists.
  *
- * There is deliberately no write helper in this file. The back-office looks; it
- * does not touch. Granting platform admin is a manual INSERT from the Supabase
- * dashboard, because `platform_admins` grants `authenticated` nothing at all.
+ * The write helpers at the bottom are narrow ON PURPOSE — three actions, all
+ * scoped to organizations and their members (see
+ * `supabase/migrations/20260729120000_admin_org_management.sql`). They exist for
+ * the cases an org cannot fix from the inside: a tenant left with no admin, an
+ * invite sent to a typo'd address, an archive to undo. Agents, repositories and
+ * the device fleet stay read-only, because nothing in operating the platform
+ * requires mutating them and a write path that exists "just in case" is a way to
+ * lose data by accident.
+ *
+ * Reads and writes fail in OPPOSITE directions, deliberately. A failed read
+ * returns an empty list: the back-office renders "nothing here", which is wrong
+ * but harmless and self-correcting on the next fetch. A failed write throws, and
+ * the caller shows the database's own message — including the one the last-admin
+ * trigger raises, which is the only place that rule is worded.
+ *
+ * Granting platform admin is still a manual INSERT from the Supabase dashboard:
+ * `platform_admins` grants `authenticated` nothing at all, and no RPC here
+ * touches it. Self-service on that table would let an operator lock themselves
+ * out, or promote, without any second pair of eyes.
  */
 
 // ── Shapes ───────────────────────────────────────────────────────────────────
@@ -135,6 +152,38 @@ export interface AdminOrgSummary {
   pendingInvitationCount: number
 }
 
+/**
+ * One member of one org, as the back-office sees them. Carries the email AND the
+ * profile name because neither identifies a person on its own: two accounts at
+ * the same company share a domain, and a uuid identifies nobody in a support
+ * conversation. `name` is null for a member who never opened the desktop app.
+ */
+export interface AdminOrgMember {
+  userId: string
+  email: string | null
+  name: string | null
+  role: Role
+  createdAt: string | null
+}
+
+/**
+ * One invitation of one org. No `token` field, and there must never be one: the
+ * RPC does not return it because a token is a bearer credential that grants org
+ * membership to whoever holds it. `status` is the EFFECTIVE status — a pending
+ * invite past its expiry reads as expired, derived on arrival through
+ * `effectiveStatus` rather than re-implemented here.
+ */
+export interface AdminOrgInvitation {
+  id: string
+  email: string
+  role: Role
+  status: InvitationStatus
+  invitedByEmail: string | null
+  expiresAt: string | null
+  acceptedAt: string | null
+  createdAt: string | null
+}
+
 export interface AdminAgent {
   id: string
   name: string
@@ -236,6 +285,25 @@ interface AdminOrgSummaryRpcRow {
   repo_count: number
   agent_count: number
   pending_invitation_count: number
+}
+
+interface AdminOrgMemberRpcRow {
+  user_id: string
+  email: string | null
+  name: string | null
+  role: Role
+  created_at: string | null
+}
+
+interface AdminOrgInvitationRpcRow {
+  id: string
+  email: string
+  role: Role
+  status: InvitationStatus
+  invited_by_email: string | null
+  expires_at: string | null
+  accepted_at: string | null
+  created_at: string | null
 }
 
 interface AdminAgentRpcRow {
@@ -347,6 +415,31 @@ function toOrgSummary(r: AdminOrgSummaryRpcRow): AdminOrgSummary {
     repoCount: r.repo_count,
     agentCount: r.agent_count,
     pendingInvitationCount: r.pending_invitation_count,
+  }
+}
+
+function toOrgMember(r: AdminOrgMemberRpcRow): AdminOrgMember {
+  return {
+    userId: r.user_id,
+    email: r.email,
+    name: r.name,
+    role: r.role,
+    createdAt: r.created_at,
+  }
+}
+
+function toOrgInvitation(r: AdminOrgInvitationRpcRow): AdminOrgInvitation {
+  return {
+    id: r.id,
+    email: r.email,
+    role: r.role,
+    // Derived here rather than in SQL, for the reason stated on effectiveStatus:
+    // the database cannot persist the flip, so every reader computes it.
+    status: effectiveStatus(r.status, r.expires_at),
+    invitedByEmail: r.invited_by_email,
+    expiresAt: r.expires_at,
+    acceptedAt: r.accepted_at,
+    createdAt: r.created_at,
   }
 }
 
@@ -464,6 +557,87 @@ export async function listUserRepositories(userId: string): Promise<AdminReposit
   })
   if (error || !data) return []
   return (data as AdminRepositoryRpcRow[]).map(toRepository)
+}
+
+/**
+ * The members of one org, admins first then oldest membership.
+ *
+ * `list_org_members` answers the same shape but only for a caller who is a MEMBER
+ * of the org, which a platform operator is not and must not have to become.
+ */
+export async function listOrgMembers(orgId: string): Promise<AdminOrgMember[]> {
+  const { data, error } = await getSupabase().rpc('admin_list_org_members', { p_org_id: orgId })
+  if (error || !data) return []
+  return (data as AdminOrgMemberRpcRow[]).map(toOrgMember)
+}
+
+/**
+ * Every invitation of one org, newest first, whatever its status — a revoked or
+ * expired invite is part of the story an operator is reading. Tokens excluded.
+ */
+export async function listOrgInvitations(orgId: string): Promise<AdminOrgInvitation[]> {
+  const { data, error } = await getSupabase().rpc('admin_list_org_invitations', { p_org_id: orgId })
+  if (error || !data) return []
+  return (data as AdminOrgInvitationRpcRow[]).map(toOrgInvitation)
+}
+
+// ── Writes ───────────────────────────────────────────────────────────────────
+//
+// All three throw on failure with the database's own message, which is what lets
+// the UI report WHY rather than "something went wrong". The messages worth
+// surfacing verbatim: 'cannot remove or demote the last admin while other members
+// remain' (the trigger), 'no such membership in this organization',
+// 'only a pending invitation can be revoked (this one is accepted)'.
+
+/**
+ * Set a member's role in any org — including one left with no admin at all,
+ * which nobody inside that org can repair.
+ *
+ * The last-admin invariant is NOT checked here or in the RPC: a BEFORE UPDATE
+ * trigger on `memberships` enforces it for every caller, and duplicating it
+ * client-side would put the rule in a third place that could disagree.
+ */
+export async function setMembershipRole(orgId: string, userId: string, role: Role): Promise<void> {
+  const { error } = await getSupabase().rpc('admin_set_membership_role', {
+    p_org_id: orgId,
+    p_user_id: userId,
+    p_role: role,
+  })
+  if (error) throw new Error(error.message)
+}
+
+/**
+ * Archive or restore a tenant. Archiving is a soft delete — the org drops out of
+ * every read path for its members while its data stays untouched — so restoring
+ * puts it back exactly as they left it.
+ *
+ * The restore direction exists ONLY for platform admins: an org admin can archive
+ * their own tenant and cannot undo it, because undoing is a support action on
+ * data the operator does not own.
+ */
+export async function setOrgArchived(orgId: string, archived: boolean): Promise<void> {
+  const { error } = await getSupabase().rpc('admin_set_org_archived', {
+    p_org_id: orgId,
+    p_archived: archived,
+  })
+  if (error) throw new Error(error.message)
+}
+
+/**
+ * Revoke a pending invitation, which invalidates its token immediately —
+ * `accept_invitation` requires status 'pending', so the link in the invitee's
+ * mailbox stops working the moment this returns.
+ *
+ * Sets the status rather than deleting the row (which is what the desktop app
+ * does): an operator acting on someone else's tenant should leave a trace of what
+ * they did. Throws on an already-accepted invitation instead of passing quietly —
+ * the person is a member by then, and removing a member is a different action.
+ */
+export async function revokeInvitation(invitationId: string): Promise<void> {
+  const { error } = await getSupabase().rpc('admin_revoke_invitation', {
+    p_invitation_id: invitationId,
+  })
+  if (error) throw new Error(error.message)
 }
 
 // ── Rollups (pure) ─────────────────────────────────────────────

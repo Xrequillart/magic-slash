@@ -1,112 +1,158 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Building2 } from 'lucide-react'
-import { listOrgs, type AdminOrgSummary } from '@/lib/admin'
+import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { formatAbsoluteDate } from '@/lib/installations'
-import { Badge, Card, SectionHeader } from '@/components/ui'
+import { filterRows } from '@/lib/regieTable'
+import { useConsoleData } from '@/components/regie/ConsoleData'
+import { PageHead } from '@/components/regie/ConsoleShell'
+import { DataTable, Mono, NoValue, type Column } from '@/components/regie/DataTable'
+import { Panel, Pill, Toolbar } from '@/components/regie/primitives'
+import type { AdminOrgSummary } from '@/lib/admin'
 
 /**
- * Every tenant, with what is attached to it.
+ * Every tenant, as a table. Clicking a row opens the record, which is where the
+ * actions are.
  *
- * Driven off `organizations`, so an org with nothing attached still appears — a
- * tenant created moments ago, or one whose last member left. That is the shape a
- * list built from memberships silently drops, and an operator looking for the org
- * they just created is exactly the person who would hit it.
+ * Driven off `organizations`, so an org with nothing attached still appears — one
+ * created moments ago, or one whose last member left. That is the shape a list
+ * built from memberships silently drops, and an operator looking for the org they
+ * just made is exactly the person who would hit it.
  *
- * No guard and no AppShell — `app/admin/layout.tsx` owns both.
+ * The `no admin` state gets a red pill rather than a footnote: it is the one row
+ * state that means the tenant cannot administer itself, and it is the reason
+ * admin_set_membership_role exists.
  */
 
-/** One count in the detail line. Singular/plural written once rather than five times. */
-function count(n: number, singular: string): string {
-  return `${n} ${singular}${n === 1 ? '' : 's'}`
-}
+type Key = 'name' | 'members' | 'repos' | 'agents' | 'invites' | 'creator' | 'created'
 
 export default function AdminOrganizations() {
-  const [orgs, setOrgs] = useState<AdminOrgSummary[] | null>(null)
+  const router = useRouter()
+  const { orgs, loading } = useConsoleData()
+  const [query, setQuery] = useState('')
 
-  useEffect(() => {
-    let cancelled = false
-    listOrgs().then((rows) => {
-      if (!cancelled) setOrgs(rows)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const visible = useMemo(
+    () => filterRows(orgs, query, (o) => [o.name, o.createdByEmail, o.orgId]),
+    [orgs, query],
+  )
 
-  const active = orgs?.filter((o) => !o.archivedAt).length ?? 0
+  const columns: Column<AdminOrgSummary, Key>[] = [
+    {
+      key: 'name',
+      label: 'Organisation',
+      width: 'w-[26%]',
+      sortValue: (o) => o.name,
+      cell: (o) => (
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <Mono>{o.name}</Mono>
+          {o.archivedAt && <Pill tone="red">archivée</Pill>}
+          {o.adminCount === 0 && o.memberCount > 0 && <Pill tone="red">aucun admin</Pill>}
+        </span>
+      ),
+    },
+    {
+      key: 'members',
+      label: 'Membres',
+      align: 'right',
+      defaultDirection: 'desc',
+      sortValue: (o) => o.memberCount,
+      cell: (o) => (
+        <Mono dim={o.memberCount === 0}>
+          {o.memberCount}
+          {/* Admins as a fraction of members: "1/6" is the fact an operator wants,
+              and it puts the adminless case next to the number it contradicts. */}
+          <span className="text-regie-dim">{` (${o.adminCount} adm)`}</span>
+        </Mono>
+      ),
+    },
+    {
+      key: 'repos',
+      label: 'Repos',
+      align: 'right',
+      defaultDirection: 'desc',
+      sortValue: (o) => o.repoCount,
+      cell: (o) => <Mono dim={o.repoCount === 0}>{o.repoCount}</Mono>,
+    },
+    {
+      key: 'agents',
+      label: 'Agents',
+      align: 'right',
+      defaultDirection: 'desc',
+      sortValue: (o) => o.agentCount,
+      cell: (o) => <Mono dim={o.agentCount === 0}>{o.agentCount}</Mono>,
+    },
+    {
+      key: 'invites',
+      label: 'Invitations',
+      align: 'right',
+      defaultDirection: 'desc',
+      sortValue: (o) => o.pendingInvitationCount,
+      cell: (o) =>
+        o.pendingInvitationCount > 0 ? (
+          <Pill tone="yellow">{o.pendingInvitationCount} en attente</Pill>
+        ) : (
+          <NoValue />
+        ),
+    },
+    {
+      key: 'creator',
+      label: 'Créée par',
+      sortValue: (o) => o.createdByEmail,
+      cell: (o) =>
+        o.createdByEmail ? (
+          <Mono dim>{o.createdByEmail}</Mono>
+        ) : (
+          // An org outlives the account that created it, and the orphans are the
+          // ones worth spotting.
+          <Pill tone="neutral">créateur supprimé</Pill>
+        ),
+    },
+    {
+      key: 'created',
+      label: 'Créée le',
+      align: 'right',
+      defaultDirection: 'desc',
+      sortValue: (o) => o.createdAt,
+      cell: (o) => <Mono dim>{formatAbsoluteDate(o.createdAt)}</Mono>,
+    },
+  ]
+
+  const archived = orgs.filter((o) => o.archivedAt).length
 
   return (
     <>
-      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">
-        Organizations
-      </h1>
-      <p className="mt-3 text-sm text-muted">
-        Every tenant, its members and what belongs to it. Read-only — nothing on these pages writes.
-      </p>
+      <PageHead
+        path="admin / organizations"
+        title="Organizations"
+        description="Chaque tenant, ses membres et ce qui lui appartient. Cliquer une ligne ouvre sa fiche et ses actions."
+      />
 
-      <section className="mt-10">
-        <SectionHeader
-          icon={Building2}
-          title="Tenants"
-          action={
-            orgs ? (
-              <span className="text-xs text-muted">
-                {/* Both numbers, because "12" alone hides that 4 are archived. */}
-                {active} active{orgs.length !== active && ` · ${orgs.length - active} archived`}
-              </span>
-            ) : null
+      <Toolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Filtrer : nom, créateur…"
+        shown={visible.length}
+        total={orgs.length}
+        noun="organisations"
+      >
+        {/* Stated rather than left to be counted: "12 organisations" hides that 4 of
+            them are archived, and archived orgs are invisible to their own members. */}
+        {archived > 0 && <Pill tone="neutral">{archived} archivée{archived > 1 ? 's' : ''}</Pill>}
+      </Toolbar>
+
+      <Panel>
+        <DataTable
+          rows={visible}
+          columns={columns}
+          rowKey={(o) => o.orgId}
+          onRowClick={(o) => router.push(`/admin/organizations/${o.orgId}`)}
+          initialSort={{ key: 'created', direction: 'desc' }}
+          loading={loading}
+          emptyLabel={
+            query ? 'Aucune organisation ne correspond au filtre.' : 'Aucune organisation pour le moment.'
           }
         />
-        <Card className="p-5">
-          {orgs === null ? (
-            <p className="text-sm text-muted">Loading…</p>
-          ) : orgs.length === 0 ? (
-            <p className="text-sm text-muted">No organization yet.</p>
-          ) : (
-            <ul className="divide-y divide-black/5">
-              {orgs.map((o) => (
-                <li key={o.orgId} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-ink">{o.name}</p>
-                    <p className="mt-0.5 truncate text-xs text-muted">
-                      {[
-                        count(o.memberCount, 'member'),
-                        count(o.repoCount, 'repo'),
-                        count(o.agentCount, 'agent'),
-                        // Only when there are any: "0 pending" is noise on the
-                        // overwhelming majority of rows.
-                        o.pendingInvitationCount > 0
-                          ? `${o.pendingInvitationCount} pending invite${
-                              o.pendingInvitationCount === 1 ? '' : 's'
-                            }`
-                          : null,
-                        // An org outlives the account that created it, and the
-                        // orphans are the ones worth spotting.
-                        o.createdByEmail ? `by ${o.createdByEmail}` : 'creator deleted',
-                        `created ${formatAbsoluteDate(o.createdAt)}`,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </p>
-                  </div>
-                  {o.pendingInvitationCount > 0 && (
-                    <Badge tone="yellow">{o.pendingInvitationCount} pending</Badge>
-                  )}
-                  {o.archivedAt && <Badge tone="red">archived</Badge>}
-                  <Badge tone={o.adminCount === 0 ? 'red' : 'neutral'}>
-                    {/* No admin means nobody can administer the tenant — the
-                        last-admin trigger makes it rare, but not impossible
-                        (a deleted account leaves an owner-less membership). */}
-                    {o.adminCount === 0 ? 'no admin' : count(o.adminCount, 'admin')}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </section>
+      </Panel>
     </>
   )
 }

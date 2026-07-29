@@ -23,8 +23,16 @@ interface InvitationRow {
   created_at: string | null
 }
 
-/** A still-pending invite past its expiry reads as expired (derived at read time). */
-function effectiveStatus(status: InvitationStatus, expiresAt: string | null): InvitationStatus {
+/**
+ * A still-pending invite past its expiry reads as expired (derived at read time).
+ *
+ * Exported because the rule has three call sites and no home in the database:
+ * `accept_invitation` cannot persist the flip (its RAISE would roll the write
+ * back), so the stored status stays 'pending' and every reader derives the same
+ * answer. This module, the back-office (`./admin`) and the desktop app each need
+ * it; two of them can at least share one implementation.
+ */
+export function effectiveStatus(status: InvitationStatus, expiresAt: string | null): InvitationStatus {
   if (status === 'pending' && expiresAt && Date.parse(expiresAt) < Date.now()) return 'expired'
   return status
 }
