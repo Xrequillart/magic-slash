@@ -9,9 +9,10 @@ import {
   fetchInstallations,
   formatDevicePlatform,
   formatRelative,
-  highestVersion,
   type Installation,
 } from '@/lib/installations'
+import { LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
+import { compareVersions } from '@/lib/versions'
 
 /**
  * Whether the desktop app is actually being used on this account, and on which
@@ -21,6 +22,12 @@ import {
  * /account → Devices lists the same machines as a security surface (where am I
  * signed in?). This card answers a different question — am I up and running,
  * and on what — so it leads with the version rather than with the machine.
+ *
+ * "An update is available" is measured against `LATEST_DESKTOP_VERSION`. It used to be
+ * measured against `highestVersion(installs)` — the highest version among THIS USER'S
+ * OWN machines — which compares your laptop to your desktop and so can never tell you
+ * anything at all if you have one machine. The badge was structurally unable to appear
+ * for most people.
  */
 export function AppStatusSection() {
   const [installs, setInstalls] = useState<Installation[] | null>(null)
@@ -43,7 +50,7 @@ export function AppStatusSection() {
   // Rows arrive sorted by last_seen_at descending, so the head is the machine
   // used most recently — the honest answer to "what version am I on".
   const current = installs?.[0] ?? null
-  const newest = installs ? highestVersion(installs) : null
+  const isBehind = (version: string) => compareVersions(version, LATEST_DESKTOP_VERSION) < 0
 
   return (
     <section>
@@ -84,7 +91,9 @@ export function AppStatusSection() {
                 v{current.appVersion}
               </span>
               <Badge tone="green">In use</Badge>
-              {newest && current.appVersion !== newest && <Badge tone="yellow">v{newest} available</Badge>}
+              {isBehind(current.appVersion) && (
+                <Badge tone="yellow">v{LATEST_DESKTOP_VERSION} available</Badge>
+              )}
             </div>
             <p className="mt-2 text-xs text-muted">
               {[current.deviceName, `last active ${formatRelative(current.lastSeenAt)}`]
@@ -105,7 +114,7 @@ export function AppStatusSection() {
                           .join(' · ')}
                       </p>
                     </div>
-                    <Badge tone={d.appVersion === newest ? 'neutral' : 'yellow'}>v{d.appVersion}</Badge>
+                    <Badge tone={isBehind(d.appVersion) ? 'yellow' : 'neutral'}>v{d.appVersion}</Badge>
                   </li>
                 ))}
               </ul>

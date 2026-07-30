@@ -44,3 +44,25 @@ export function highestVersion(installs: { appVersion: string }[]): string | nul
     installs[0].appVersion,
   )
 }
+
+/** Where one build sits relative to what has shipped. `unknown` = never launched. */
+export type VersionStanding = 'current' | 'behind' | 'unknown'
+
+/**
+ * Whether a machine is on the shipped build, and the one thing this used to get
+ * wrong.
+ *
+ * "Up to date" was `version === highestVersion(fleet)` — the newest build ANY machine
+ * reports. That reads as an answer and is not one: minutes after a release nobody has
+ * installed it, so the fleet maximum is still the old build and every machine on it
+ * reports itself current. Worse, it can never say otherwise for a fleet of one,
+ * because that machine IS the maximum. The reference has to come from outside the
+ * fleet — `LATEST_DESKTOP_VERSION` (lib/desktopRelease.ts).
+ *
+ * `>=`, not `===`: someone running a build from source sits AHEAD of the published
+ * release, and "en retard" would be a strange thing to tell them.
+ */
+export function versionStanding(version: string | null, released: string): VersionStanding {
+  if (!version) return 'unknown'
+  return compareVersions(version, released) >= 0 ? 'current' : 'behind'
+}

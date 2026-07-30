@@ -19,9 +19,10 @@ import {
   type AdminUserDetail,
   type AdminUserSettings,
 } from '@/lib/admin'
-import { formatAbsoluteDate, formatDevicePlatform, formatRelative, highestVersion } from '@/lib/installations'
+import { formatAbsoluteDate, formatDevicePlatform, formatRelative } from '@/lib/installations'
 import { THEME_OPTIONS } from '@/lib/settings'
-import { useConsoleData } from '@/components/regie/ConsoleData'
+import { LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
+import { versionStanding } from '@/lib/versions'
 import { PageHead } from '@/components/regie/ConsoleShell'
 import { DataTable, Mono, NoValue, type Column } from '@/components/regie/DataTable'
 import {
@@ -147,11 +148,6 @@ export default function AdminUserRecord() {
   const params = useParams<{ userId: string }>()
   const router = useRouter()
   const userId = params.userId
-  // The whole fleet, already fetched by the layout's provider — the only thing this
-  // page needs from outside its own five reads, and only to know which build is the
-  // newest one anybody is on.
-  const { installations: fleet } = useConsoleData()
-
   // undefined = not fetched yet, null = fetched and there is no such user.
   const [user, setUser] = useState<AdminUserDetail | null | undefined>(undefined)
   const [devices, setDevices] = useState<AdminInstallation[] | null>(null)
@@ -210,13 +206,13 @@ export default function AdminUserRecord() {
   const runningVersion = runningDevice?.appVersion ?? null
 
   /**
-   * The highest version any device on the PLATFORM reports, from the provider the
-   * layout already filled — not from this user's devices, which would make everyone
-   * up to date with themselves. Nothing here knows what has actually shipped, so
-   * "up to date" can only mean "matches the newest build seen in the fleet"; the
-   * Users table draws its badge from the same value.
+   * What the running build is measured against: the version that has SHIPPED, which
+   * is a constant in this app (lib/desktopRelease.ts) rather than anything the fleet
+   * can tell us. Against the fleet's own maximum this card said "à jour" to everyone
+   * for as long as nobody had installed the new release — including, always, an
+   * operator looking at their own single machine.
    */
-  const newest = highestVersion(fleet)
+  const standing = versionStanding(runningVersion, LATEST_DESKTOP_VERSION)
 
   const deviceColumns: Column<AdminInstallation, 'name' | 'platform' | 'version' | 'seen'>[] = [
     {
@@ -517,8 +513,8 @@ export default function AdminUserRecord() {
               {/* The app: what they run, then how they have it set up. One card
                   because both answer "what is their desktop doing", and the version is
                   the first thing a support question turns on — an operator who reads
-                  "0.54.1" while the fleet is on 0.59.2 has their answer before reading
-                  a single setting. */}
+                  "0.54.1" when 0.59.3 has shipped has their answer before reading a
+                  single setting. */}
               <Panel label="Application">
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-4 border-b border-regie-rule-soft px-6 py-7">
                   {/* The desktop app's REAL icon — `public/img/app-icon.png`, resized
@@ -567,20 +563,18 @@ export default function AdminUserRecord() {
                         )}
                       </p>
 
-                      {/* The verdict. No "à jour" when the fleet reports nothing to
-                          compare against, rather than one earned by being the only
-                          row. */}
+                      {/* The verdict, against the SHIPPED release rather than against
+                          the fleet. Only three outcomes now: no device at all, on the
+                          release, or behind it. */}
                       {runningVersion === null ? (
                         <Pill tone="neutral">jamais lancé</Pill>
-                      ) : newest === null ? (
-                        <Pill tone="neutral">version inconnue du parc</Pill>
-                      ) : runningVersion === newest ? (
+                      ) : standing === 'current' ? (
                         <Pill tone="brand">à jour</Pill>
                       ) : (
                         <span className="inline-flex items-center gap-2.5">
                           <Pill tone="yellow">en retard</Pill>
                           <span className="font-mono text-[11px] text-regie-dim">
-                            la plus récente : {newest}
+                            dernière version : {LATEST_DESKTOP_VERSION}
                           </span>
                         </span>
                       )}

@@ -9,7 +9,8 @@ import {
   type AdminInstallation,
   type CountBucket,
 } from '@/lib/admin'
-import { formatDevicePlatform, formatRelative, highestVersion } from '@/lib/installations'
+import { LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
+import { formatDevicePlatform, formatRelative } from '@/lib/installations'
 import { useConsoleData } from '@/components/regie/ConsoleData'
 import { PageHead } from '@/components/regie/ConsoleShell'
 import { DataTable, Mono, NoValue, type Column } from '@/components/regie/DataTable'
@@ -120,10 +121,10 @@ export default function AdminFleet() {
   const { installations: fleet, loading } = useConsoleData()
 
   const versions = bucketByVersion(fleet)
-  const outdated = outdatedInstallations(fleet)
-  // The version the fleet is measured against — the highest any device reports,
-  // which is not necessarily the latest release (nothing here knows that).
-  const newest = highestVersion(fleet)
+  // Measured against the SHIPPED release, not against the fleet's own highest:
+  // against itself this panel was empty the day after a release — nobody had updated
+  // yet, so nobody was "behind the others" while every machine was behind.
+  const outdated = outdatedInstallations(fleet, LATEST_DESKTOP_VERSION)
   const quiet = quietInstallations(fleet, Date.now())
 
   return (
@@ -171,7 +172,7 @@ export default function AdminFleet() {
               emptyLabel={
                 fleet.length === 0
                   ? "Aucun device n'a encore lancé l'app."
-                  : `Tous les devices sont en ${newest}.`
+                  : `Tous les devices sont en ${LATEST_DESKTOP_VERSION}.`
               }
             />
           )}

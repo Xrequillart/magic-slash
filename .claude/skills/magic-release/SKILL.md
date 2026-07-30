@@ -172,6 +172,34 @@ Pouvez-vous indiquer la ligne ou se trouve la version a mettre a jour dans deskt
 
 **IMPORTANT** : Ne cherche PAS un className exact comme `opacity-60` — le style CSS peut changer a tout moment. Utilise uniquement le pattern de version et le contexte structurel (footer).
 
+### 5.3 : webapp/lib/desktopRelease.ts
+
+C'est la reference contre laquelle la webapp decide si une machine est a jour : le
+back-office (liste Users, fiche user, page Fleet) et la page `/application` la
+comparent a ce que chaque device rapporte. Sans cette mise a jour, la webapp
+continue d'annoncer l'ancienne version comme etant la derniere.
+
+Cherche la ligne suivante (pattern generique, pas la version actuelle) :
+
+```regex
+export const LATEST_DESKTOP_VERSION = '[0-9]+\.[0-9]+\.[0-9]+'
+```
+
+Remplace par :
+
+```typescript
+export const LATEST_DESKTOP_VERSION = 'X.Y.Z'
+```
+
+**Sans le `v`** : la valeur est comparee par `compareVersions`, qui parse chaque
+composant avec `parseInt` — un `v` en tete ferait un numero majeur de 0 et passerait
+tout le parc en « en retard ».
+
+Un test verifie cette egalite (`webapp/lib/desktopRelease.test.ts` compare le const a
+`desktop/package.json`), donc un oubli fait echouer la CI au push suivant plutot que
+d'induire un operateur en erreur pendant un cycle de release. La verification de
+l'etape 8.1 l'attrape avant, en local.
+
 Affiche une confirmation pour chaque fichier mis a jour.
 
 ## Etape 6 : Mettre a jour le script d'installation
@@ -331,6 +359,12 @@ else
   echo "  ERREUR  install/install.sh - version X.Y.Z NON trouvee"
   ERRORS=$((ERRORS+1))
 fi && \
+if grep -q "LATEST_DESKTOP_VERSION = 'X.Y.Z'" webapp/lib/desktopRelease.ts; then
+  echo "  OK  webapp/lib/desktopRelease.ts"
+else
+  echo "  ERREUR  webapp/lib/desktopRelease.ts - version X.Y.Z NON trouvee"
+  ERRORS=$((ERRORS+1))
+fi && \
 for f in docs/index.html docs/desktop.html docs/skills.html docs/story.html; do
   if grep -q "vX.Y.Z" "$f"; then
     echo "  OK  $f"
@@ -376,6 +410,7 @@ Resume des modifications pour la version X.Y.Z :
   skills/magic-done/SKILL.md                    v{VERSION_ACTUELLE} -> vX.Y.Z
   desktop/src/renderer/components/Sidebar.tsx    v{VERSION_ACTUELLE} -> vX.Y.Z
   install/install.sh                            v{VERSION_ACTUELLE} -> vX.Y.Z
+  webapp/lib/desktopRelease.ts                  {VERSION_ACTUELLE} -> X.Y.Z
   CHANGELOG.md                                  Nouvelle section ajoutee
 ```
 
@@ -418,7 +453,7 @@ git add package.json desktop/package.json README.md docs/documentation.html \
   skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md \
   skills/magic-pr/SKILL.md skills/magic-review/SKILL.md skills/magic-resolve/SKILL.md \
   skills/magic-done/SKILL.md desktop/src/renderer/components/Sidebar.tsx \
-  install/install.sh CHANGELOG.md
+  webapp/lib/desktopRelease.ts install/install.sh CHANGELOG.md
 ```
 
 Puis execute le commit :

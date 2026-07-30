@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatAbsoluteDate, formatRelative, highestVersion } from '@/lib/installations'
+import { formatAbsoluteDate, formatRelative } from '@/lib/installations'
+import { LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
+import { versionStanding } from '@/lib/versions'
 import { filterRows } from '@/lib/regieTable'
 import { useConsoleData } from '@/components/regie/ConsoleData'
 import { PageHead } from '@/components/regie/ConsoleShell'
@@ -23,8 +25,9 @@ import type { AdminUser } from '@/lib/admin'
  * numeric columns made the row read as a scoreboard, and each is one click away on
  * the record page, where the rows behind the number are too.
  *
- * Rows are fetched by the layout's provider, not here: the version column needs the
- * whole FLEET to know which release is current, and Fleet needs the same rows.
+ * Rows are fetched by the layout's provider, not here: Fleet needs the same ones.
+ * The version column measures against `LATEST_DESKTOP_VERSION`, which is a constant
+ * and needs no fetching at all.
  *
  * No guard: app/admin/layout.tsx owns it and does not mount this page until the
  * visitor is a confirmed platform admin.
@@ -34,12 +37,8 @@ type Key = 'email' | 'name' | 'org' | 'repos' | 'version' | 'seen' | 'created'
 
 export default function AdminUsers() {
   const router = useRouter()
-  const { users, installations, loading } = useConsoleData()
+  const { users, loading } = useConsoleData()
   const [query, setQuery] = useState('')
-
-  // Nothing in this app knows which release is the newest, so "up to date" can
-  // only mean "matches the highest version any device reports".
-  const newest = highestVersion(installations)
 
   // Filtered here rather than inside the table, so the Toolbar's "shown / total"
   // describes the rows actually on screen. The uuid is searchable because an
@@ -111,9 +110,18 @@ export default function AdminUsers() {
       // 0.9.0 before 0.10.0, and a user who never launched sorts last as a
       // missing value rather than as the lowest version.
       sortValue: (u) => u.latestAppVersion,
+      // Brand = on the shipped release, yellow = behind it. Measured against
+      // LATEST_DESKTOP_VERSION rather than against the fleet, which called every
+      // machine current for as long as nobody had updated.
       cell: (u) =>
         u.latestAppVersion ? (
-          <Pill tone={newest === null ? 'neutral' : u.latestAppVersion === newest ? 'brand' : 'yellow'}>
+          <Pill
+            tone={
+              versionStanding(u.latestAppVersion, LATEST_DESKTOP_VERSION) === 'current'
+                ? 'brand'
+                : 'yellow'
+            }
+          >
             {u.latestAppVersion}
           </Pill>
         ) : (

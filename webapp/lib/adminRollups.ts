@@ -68,18 +68,28 @@ export function bucketByVersion(installations: FleetDevice[]): VersionBucket[] {
 }
 
 /**
- * The devices not on the highest version any device reports.
+ * The devices behind `reference` — the published release, when the caller knows it.
  *
- * "Highest observed", not "latest released": nothing here knows what has shipped,
- * and a fleet where every machine is one release behind would report itself fully
- * up to date. That is the honest limit of this signal, and it is still the useful
- * one — it answers "who is behind the others", which is what a support question
- * asks. Empty in, empty out; a single-version fleet has no outdated devices.
+ * `reference` used to be implicit and was the fleet's own highest version, which made
+ * this answer "who is behind the others" rather than "who is behind". The difference
+ * is a whole release: the day after publishing, nobody has updated, so the fleet
+ * maximum is still the old build and this returned an empty list for a fleet that was
+ * entirely out of date.
+ *
+ * It still DEFAULTS to the fleet maximum, because that is the honest answer when the
+ * release cannot be read (offline, rate-limited) and it is never wrong about the rows
+ * it does return — a machine behind another machine is behind something. It is only
+ * incomplete.
+ *
+ * Empty in, empty out; a fleet already on `reference` has no outdated devices.
  */
-export function outdatedInstallations<T extends FleetDevice>(installations: T[]): T[] {
-  const highest = highestVersion(installations)
-  if (highest === null) return []
-  return installations.filter((i) => compareVersions(i.appVersion, highest) < 0)
+export function outdatedInstallations<T extends FleetDevice>(
+  installations: T[],
+  reference?: string | null,
+): T[] {
+  const target = reference ?? highestVersion(installations)
+  if (!target) return []
+  return installations.filter((i) => compareVersions(i.appVersion, target) < 0)
 }
 
 /**

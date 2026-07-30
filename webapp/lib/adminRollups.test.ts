@@ -121,6 +121,27 @@ describe('outdatedInstallations', () => {
       ]),
     ).toEqual([])
   })
+
+  it('measures against the reference version when one is given', () => {
+    // The case the fleet maximum cannot see: every machine on the same build, one
+    // release behind. Against itself the fleet is fully up to date; against the
+    // published release, none of it is.
+    const fleet = [
+      device({ deviceId: 'd1', appVersion: '0.59.2' }),
+      device({ deviceId: 'd2', appVersion: '0.59.2' }),
+    ]
+    expect(outdatedInstallations(fleet)).toEqual([])
+    expect(outdatedInstallations(fleet, '0.59.3').map((d) => d.deviceId)).toEqual(['d1', 'd2'])
+  })
+
+  it('falls back to the fleet maximum when the reference is unknown', () => {
+    // Offline or rate-limited: still incomplete, never wrong about what it returns.
+    const fleet = [
+      device({ deviceId: 'd1', appVersion: '0.59.2' }),
+      device({ deviceId: 'd2', appVersion: '0.59.1' }),
+    ]
+    expect(outdatedInstallations(fleet, null).map((d) => d.deviceId)).toEqual(['d2'])
+  })
 })
 
 describe('countBy', () => {
