@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SETTING_DEFAULTS, SETTING_GROUPS, type AdminUserSettings } from './admin'
+import { SETTING_DEFAULTS, SETTING_GROUPS, type AdminUserSettings } from './settingsCatalog'
 
 /**
  * Guards the two tables that the back-office reads `user_settings` through.

@@ -1,5 +1,10 @@
 import { getSupabase } from './supabase'
 
+// The defaults live in the catalog, which has no I/O and can therefore be unit
+// tested — see the note there. Re-exported so every caller keeps importing them from
+// the module it already imports `UserSettings` and `fetchUserSettings` from.
+export { DEFAULTS } from './settingsCatalog'
+
 /**
  * Application-level preferences, one row per user in `user_settings`.
  *
@@ -77,26 +82,6 @@ export const EMPTY_SETTINGS: UserSettings = {
   launchMode: null,
 }
 
-/**
- * What the desktop app falls back to for an unset column, so the controls here
- * show the same state the app is actually in.
- *
- * Source of truth: `desktop/src/renderer/pages/Config/index.tsx` (the `??`
- * chain where the Features tab reads the config) and `DEFAULT_THEME` /
- * `DEFAULT_LANGUAGE` in `desktop/src/types.ts`.
- */
-export const DEFAULTS = {
-  theme: 'dark',
-  language: 'en',
-  usageCardEnabled: true,
-  usageLogsEnabled: true,
-  dailyDigestEnabled: false,
-  splitEnabled: false,
-  prReviewsEnabled: true,
-  prReviewsPollIntervalMs: 60_000,
-  prReviewsAutoLaunchSkills: false,
-  launchMode: 'default',
-} as const
 
 function toSettings(row: UserSettingsRow): UserSettings {
   return {
