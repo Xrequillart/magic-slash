@@ -234,13 +234,20 @@ export function ConsoleShell({
  * It used to print the route as a path — `admin / users` — above the title. Dropped:
  * the nav is two lines up and lights the section you are in, so the path restated
  * what the pill already said, and on a record page it restated the title too.
+ *
+ * `meta` is the line UNDER the title, for the identifier a record is known by
+ * elsewhere — the uuid a log line or a database query carries, where the title is
+ * the email a human uses. A node rather than a string because it holds a control:
+ * an id worth showing is an id worth copying.
  */
 export function PageHead({
   title,
+  meta,
   description,
   action,
 }: {
   title: string
+  meta?: React.ReactNode
   description?: string
   action?: React.ReactNode
 }) {
@@ -250,6 +257,7 @@ export function PageHead({
         <h1 className="font-display text-[26px] font-black leading-tight tracking-tight text-ink">
           {title}
         </h1>
+        {meta && <div className="mt-1.5">{meta}</div>}
         {description && <p className="mt-1.5 max-w-2xl text-[13px] text-regie-dim">{description}</p>}
       </div>
       {action && <div className="ml-auto">{action}</div>}

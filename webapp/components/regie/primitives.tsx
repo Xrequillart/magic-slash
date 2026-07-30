@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { Check, ChevronDown, Copy, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 /**
@@ -83,6 +84,110 @@ export function Empty({ children }: { children: React.ReactNode }) {
   return <p className="px-4 py-6 text-[13px] text-regie-dim">{children}</p>
 }
 
+/**
+ * Clips its content to a height and offers a button that grows it to fit.
+ *
+ * For a panel that holds more than its share of a screen. A console page is read by
+ * scanning it, and one card tall enough to fill the viewport pushes everything after
+ * it out of reach — while its own top half is usually the answer.
+ *
+ * HOW THE ANIMATION WORKS, and why it is not `max-height: none`: CSS cannot
+ * transition to `auto`, so the open state has to be a NUMBER. The content is measured
+ * and that pixel height is what max-height animates to. Animating to a large constant
+ * instead — the usual shortcut — makes the card race open and stop early, because the
+ * transition is timed over a distance the content does not use.
+ *
+ * The measurement is kept fresh by a ResizeObserver rather than taken once: the
+ * content here is a table that gets its rows from a fetch, so its height changes after
+ * mount, and a stale number would clip the rows that arrived last while OPEN, which is
+ * the one state where nothing may be hidden.
+ *
+ * The button is not rendered when everything already fits. A control that expands
+ * nothing is worse than no control: it teaches that there is more to see.
+ *
+ * NOT `hidden` or unmounted while collapsed: the clipped content stays in the DOM and
+ * readable by a screen reader, which `aria-expanded` on the button then describes. It
+ * holds no focusable element in any current caller — a clipped table of buttons would
+ * need `inert`, not a taller card.
+ */
+export function Collapsible({
+  collapsedHeight,
+  moreLabel = 'Tout afficher',
+  lessLabel = 'Réduire',
+  children,
+}: {
+  /** Pixels of content shown while collapsed. */
+  collapsedHeight: number
+  moreLabel?: string
+  lessLabel?: string
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const [contentHeight, setContentHeight] = useState<number | null>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const regionId = useId()
+
+  useEffect(() => {
+    const content = contentRef.current
+    if (!content) return
+
+    const measure = () =>
+      setContentHeight((previous) =>
+        previous === content.scrollHeight ? previous : content.scrollHeight,
+      )
+
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [])
+
+  // Until the first measurement lands, assume it fits: a button that appears is a
+  // smaller surprise than one that appears and then vanishes.
+  const overflows = contentHeight !== null && contentHeight > collapsedHeight
+
+  return (
+    <>
+      <div
+        id={regionId}
+        className="relative overflow-hidden transition-[max-height] duration-300 ease-out motion-reduce:transition-none"
+        style={{
+          maxHeight: !overflows ? undefined : open ? (contentHeight ?? undefined) : collapsedHeight,
+        }}
+      >
+        <div ref={contentRef}>{children}</div>
+
+        {/* The cut, softened. A hard edge mid-row reads as a rendering bug; a fade
+            says the content continues. Only while collapsed, and never catching a
+            click meant for what is under it. */}
+        {overflows && !open && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-regie-panel to-transparent"
+          />
+        )}
+      </div>
+
+      {overflows && (
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          aria-controls={regionId}
+          className="flex w-full items-center justify-center gap-1.5 border-t border-regie-rule-soft py-2.5 font-display text-[11px] font-bold uppercase tracking-[0.06em] text-regie-dim transition-colors hover:bg-regie-tint hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+        >
+          {open ? lessLabel : moreLabel}
+          <ChevronDown
+            className={`h-3.5 w-3.5 transition-transform duration-300 motion-reduce:transition-none ${
+              open ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
+      )}
+    </>
+  )
+}
+
 // ── Status ───────────────────────────────────────────────────────────────────
 
 const PILL_TONES = {
@@ -112,6 +217,37 @@ export function Pill({
       className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 font-mono text-[11px] leading-tight ${PILL_TONES[tone]}`}
     >
       {children}
+    </span>
+  )
+}
+
+/**
+ * A boolean drawn as the switch the desktop app shows for it, so the console reads
+ * like the screen being described to the operator rather than translating it to
+ * on/off.
+ *
+ * NOT A CONTROL, and shaped so it cannot be taken for one: a span with no cursor, no
+ * hover, no focus ring, no handler and no transition. The record it sits in is
+ * read-only on purpose — nothing in the console mutates a person's own account — and
+ * a switch that moved under the pointer would be the one thing on the page implying
+ * otherwise.
+ *
+ * `role="img"` with a label rather than `aria-hidden`: the position of this switch IS
+ * the value of its row, so it cannot be decoration — there is no text beside it to
+ * carry the state.
+ */
+export function SwitchValue({ on }: { on: boolean }) {
+  return (
+    <span
+      role="img"
+      aria-label={on ? 'activé' : 'désactivé'}
+      className={`inline-flex h-3.5 w-6 shrink-0 items-center rounded-full p-[2px] ${
+        on ? 'bg-brand' : 'bg-black/[0.15]'
+      }`}
+    >
+      <span
+        className={`h-2.5 w-2.5 rounded-full bg-white shadow-sm ${on ? 'translate-x-2.5' : ''}`}
+      />
     </span>
   )
 }
@@ -147,6 +283,77 @@ export function ActionButton({
       {Icon && <Icon className="h-3.5 w-3.5" />}
       {children}
     </button>
+  )
+}
+
+/**
+ * Copies a value to the clipboard. For the strings a console exists to hand over —
+ * an email to paste into a support thread, a uuid to paste into a query.
+ *
+ * They are the values selecting by hand goes worst on: a uuid double-clicks as
+ * three words on its hyphens, and an email picks up the trailing space. So the
+ * button is not a convenience over selection, it is the reliable path.
+ *
+ * The FAILED state is drawn rather than swallowed. `navigator.clipboard` rejects on
+ * a denied permission and does not exist at all outside a secure context, and a copy
+ * button that shows a check either way leaves the operator pasting whatever they
+ * last copied, wondering why the id is wrong.
+ */
+export function CopyButton({
+  value,
+  label,
+  className = '',
+}: {
+  value: string
+  /** Names the value in the button's accessible name: "Copier l'email". */
+  label: string
+  className?: string
+}) {
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
+
+  // Reset from an effect rather than a setTimeout inside the handler, so the timer
+  // is cleared when the component goes away — this page swaps one user's record for
+  // another's under a live "copié", which would otherwise set state after unmount.
+  useEffect(() => {
+    if (state === 'idle') return
+    const timer = setTimeout(() => setState('idle'), 1600)
+    return () => clearTimeout(timer)
+  }, [state])
+
+  const Icon = state === 'copied' ? Check : state === 'failed' ? X : Copy
+
+  return (
+    <span className="inline-flex items-center">
+      <button
+        type="button"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(value)
+            setState('copied')
+          } catch {
+            setState('failed')
+          }
+        }}
+        aria-label={`Copier ${label}`}
+        title={`Copier ${label}`}
+        className={`shrink-0 rounded-md p-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+          state === 'copied'
+            ? 'text-brand'
+            : state === 'failed'
+              ? 'text-red'
+              : 'text-regie-dim hover:bg-black/[0.06] hover:text-ink'
+        } ${className}`}
+      >
+        <Icon className="h-3.5 w-3.5" />
+      </button>
+      {/* Outside the button on purpose: a live region nested in a control whose name
+          is an aria-label is unreachable, and the icon swap is the only feedback a
+          sighted user gets. Rendered empty from the start so the region exists
+          before it has anything to announce. */}
+      <span role="status" className="sr-only">
+        {state === 'copied' ? 'copié' : state === 'failed' ? 'échec de la copie' : ''}
+      </span>
+    </span>
   )
 }
 

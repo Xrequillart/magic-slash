@@ -3,24 +3,36 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Check, X } from 'lucide-react'
 import {
   getUser,
   listInstallations,
   listUserAgents,
   listUserOrgs,
   listUserRepositories,
-  SETTING_LABELS,
+  SETTING_DEFAULTS,
+  SETTING_GROUPS,
   type AdminAgent,
   type AdminInstallation,
   type AdminOrg,
   type AdminRepository,
   type AdminUserDetail,
+  type AdminUserSettings,
 } from '@/lib/admin'
-import { formatAbsoluteDate, formatDevicePlatform, formatRelative } from '@/lib/installations'
+import { formatAbsoluteDate, formatDevicePlatform, formatRelative, highestVersion } from '@/lib/installations'
+import { THEME_OPTIONS } from '@/lib/settings'
+import { useConsoleData } from '@/components/regie/ConsoleData'
 import { PageHead } from '@/components/regie/ConsoleShell'
 import { DataTable, Mono, NoValue, type Column } from '@/components/regie/DataTable'
-import { Empty, Field, Panel, Pill, SectionLabel } from '@/components/regie/primitives'
+import {
+  Collapsible,
+  CopyButton,
+  Empty,
+  Panel,
+  Pill,
+  SectionLabel,
+  SwitchValue,
+} from '@/components/regie/primitives'
 
 /**
  * One user's record: identity, their whole `user_settings` row, their devices,
@@ -33,8 +45,9 @@ import { Empty, Field, Panel, Pill, SectionLabel } from '@/components/regie/prim
  * were, so a user with eleven agents can be read down a column.
  *
  * A user with no `profiles` row and no `user_settings` row still renders: the RPCs
- * are driven off `auth.users`, and "jamais choisi" is shown as such rather than
- * papered over with the app's defaults.
+ * are driven off `auth.users`. Their settings show the default the app applies —
+ * a switch has to be somewhere, and "unset" is not a position — tagged "par défaut"
+ * so the page never claims they chose it.
  *
  * No guard: `app/admin/layout.tsx` owns it. The `cancelled` guard below is still
  * needed — it is about switching from one USER to another within the page, which
@@ -42,20 +55,102 @@ import { Empty, Field, Panel, Pill, SectionLabel } from '@/components/regie/prim
  */
 
 /**
- * How one settings value reads. NULL is "jamais choisi" rather than the default the
- * app would apply: the difference is the whole point of the nullable columns, and
- * collapsing it here would make the page lie about what is stored.
+ * What one setting is actually doing, and whether the user ever said so.
+ *
+ * Resolving the default HERE rather than at each render site is what lets a boolean be
+ * drawn as a switch: the switch has to sit somewhere, and "nowhere" is not a position.
+ * So `effective` is always the value in force, and `unset` carries the other half of
+ * the truth — the difference between "chose off" and "never chose" is the whole point
+ * of the nullable columns, and the row prints "par défaut" beside the control to keep
+ * it.
  */
-function formatSetting(value: string | number | boolean | null): { text: string; unset: boolean } {
-  if (value === null || value === undefined) return { text: 'jamais choisi', unset: true }
-  if (typeof value === 'boolean') return { text: value ? 'on' : 'off', unset: false }
-  return { text: String(value), unset: false }
+function resolveSetting(
+  field: keyof AdminUserSettings,
+  value: string | number | boolean | null,
+): { effective: string | number | boolean; unset: boolean } {
+  const unset = value === null || value === undefined
+  return { effective: unset ? SETTING_DEFAULTS[field] : value, unset }
+}
+
+/**
+ * A theme as the desktop paints it, at chip size: the window bar, the sidebar, two
+ * lines of text and the accent.
+ *
+ * The colours come from `THEME_OPTIONS` — the same data the user-space theme picker
+ * renders from, so the two cannot drift — but the markup is the console's own and
+ * deliberately smaller. Nothing is imported from `components/AppSettings.tsx`: the
+ * console shares DATA with the user space and never components.
+ *
+ * `aria-hidden` because the theme's name sits right beside it; a screen reader
+ * gaining "a small dark rectangle" would be told the same thing twice, worse.
+ * Returns null for a theme id this webapp does not know, which is what a desktop
+ * release shipping a new theme looks like from here — the caller still prints the id.
+ */
+function ThemeChip({ themeId }: { themeId: string }) {
+  const option = THEME_OPTIONS.find((theme) => theme.id === themeId)
+  if (!option) return null
+  const { swatch } = option
+
+  return (
+    <span
+      aria-hidden
+      title={option.label}
+      className="inline-flex h-5 w-8 shrink-0 flex-col overflow-hidden rounded border"
+      style={{ backgroundColor: `rgb(${swatch.bgRgb})`, borderColor: swatch.lineStrong }}
+    >
+      <span className="h-1 w-full shrink-0" style={{ backgroundColor: swatch.surface }} />
+      <span className="flex flex-1 items-center gap-[2px] p-[2px]">
+        <span className="h-full w-[3px] rounded-sm" style={{ backgroundColor: swatch.surface }} />
+        <span className="flex flex-1 flex-col gap-[2px]">
+          <span
+            className="h-[2px] w-full rounded-full"
+            style={{ backgroundColor: `rgb(${swatch.inkRgb})` }}
+          />
+          <span
+            className="h-[2px] w-1/2 rounded-full"
+            style={{ backgroundColor: `rgb(${swatch.accentRgb})` }}
+          />
+        </span>
+      </span>
+    </span>
+  )
+}
+
+/**
+ * One cell of the identity card: a micro-label over its value, sized to sit in a row
+ * with the others.
+ *
+ * `min-w-0` on a flex child is not optional — without it a long email refuses to
+ * shrink below its content and pushes the cells to its right off the card.
+ */
+function InlineField({
+  label,
+  className = 'lg:flex-1',
+  children,
+}: {
+  label: string
+  /** Flex weight at lg and up, where the card becomes one row. */
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={`min-w-0 px-4 py-3 ${className}`}>
+      <dt className="text-[11px] uppercase tracking-[0.08em] text-regie-dim">{label}</dt>
+      <dd className="mt-1 flex items-start gap-1.5 break-all font-mono text-[13px] text-ink">
+        {children}
+      </dd>
+    </div>
+  )
 }
 
 export default function AdminUserRecord() {
   const params = useParams<{ userId: string }>()
   const router = useRouter()
   const userId = params.userId
+  // The whole fleet, already fetched by the layout's provider — the only thing this
+  // page needs from outside its own five reads, and only to know which build is the
+  // newest one anybody is on.
+  const { installations: fleet } = useConsoleData()
 
   // undefined = not fetched yet, null = fetched and there is no such user.
   const [user, setUser] = useState<AdminUserDetail | null | undefined>(undefined)
@@ -99,6 +194,30 @@ export default function AdminUserRecord() {
     }
   }, [userId])
 
+  /**
+   * The version this account "runs": the one on the device it used most recently.
+   *
+   * Not the highest of their versions. It matches the Users table's Version column
+   * and the choice `admin_list_users` documents, so the same person cannot read as
+   * 0.59.2 in the list and 0.54.1 here. A laptop on the current build and a desktop
+   * three releases behind is a real state — the Devices table below reports it per
+   * machine, and this headline names which machine it came from.
+   */
+  const runningDevice =
+    devices && devices.length > 0
+      ? devices.reduce((latest, device) => (device.lastSeenAt > latest.lastSeenAt ? device : latest))
+      : null
+  const runningVersion = runningDevice?.appVersion ?? null
+
+  /**
+   * The highest version any device on the PLATFORM reports, from the provider the
+   * layout already filled — not from this user's devices, which would make everyone
+   * up to date with themselves. Nothing here knows what has actually shipped, so
+   * "up to date" can only mean "matches the newest build seen in the fleet"; the
+   * Users table draws its badge from the same value.
+   */
+  const newest = highestVersion(fleet)
+
   const deviceColumns: Column<AdminInstallation, 'name' | 'platform' | 'version' | 'seen'>[] = [
     {
       key: 'name',
@@ -116,16 +235,12 @@ export default function AdminUserRecord() {
       key: 'version',
       label: 'Version',
       sortValue: (d) => d.appVersion,
-      cell: (d) => (
-        <span className="inline-flex items-center gap-2">
-          <Pill tone="brand">{d.appVersion}</Pill>
-          {d.appVersionUpdatedAt && (
-            <span className="font-mono text-[11px] text-regie-dim">
-              depuis {formatRelative(d.appVersionUpdatedAt)}
-            </span>
-          )}
-        </span>
-      ),
+      // The pill alone. It used to carry "depuis {appVersionUpdatedAt}", which read
+      // as "depuis 3 hours ago" — half translated — and answered a question nobody
+      // asks of this table: how long a device has been on its build matters when
+      // chasing a rollout, which is the Fleet page's job. "Vu" is the column that
+      // says whether this machine is still alive.
+      cell: (d) => <Pill tone="brand">{d.appVersion}</Pill>,
     },
     {
       key: 'seen',
@@ -211,7 +326,13 @@ export default function AdminUserRecord() {
     },
   ]
 
-  const repoColumns: Column<AdminRepository, 'name' | 'owner' | 'keywords' | 'added'>[] = [
+  // Three columns, in the page's narrow left column: the repo, where it is attached,
+  // and whether this account can actually run it. The keywords column is gone — the
+  // widest cell in the table and the least often the question — and the creation date
+  // no longer has a column of its own either, riding instead with the "personnel"
+  // pill that is the only place it means anything. The RPC still returns keywords, so
+  // bringing them back is a column and no migration.
+  const repoColumns: Column<AdminRepository, 'name' | 'owner' | 'path'>[] = [
     {
       key: 'name',
       label: 'Repository',
@@ -222,21 +343,57 @@ export default function AdminUserRecord() {
       key: 'owner',
       label: 'Rattachement',
       sortValue: (r) => r.orgName,
-      cell: (r) => <Pill tone={r.orgId ? 'brand' : 'neutral'}>{r.orgName ?? 'personnel'}</Pill>,
+      // The date rides WITH the "personnel" pill rather than getting a column of its
+      // own, because it only ever applies to those rows — a fourth column standing
+      // empty on every team repo is the noise the keywords column was.
+      //
+      // Only for personal repos, and that is a statement about whose date it is: a
+      // personal repo is in this list because THIS account owns it, so its created_at
+      // is when they added it. A team repo is here through a membership and may have
+      // been created by a colleague years before they joined — printing that date on
+      // their record would read as their doing.
+      cell: (r) => (
+        <span className="inline-flex items-center gap-2">
+          <Pill tone={r.orgId ? 'brand' : 'neutral'}>{r.orgName ?? 'personnel'}</Pill>
+          {!r.orgId && r.createdAt && (
+            <span className="font-mono text-[11px] text-regie-dim">
+              {formatAbsoluteDate(r.createdAt)}
+            </span>
+          )}
+        </span>
+      ),
     },
     {
-      key: 'keywords',
-      label: 'Mots-clés',
-      sortValue: (r) => r.keywords.join(', '),
-      cell: (r) => (r.keywords.length > 0 ? <Mono dim>{r.keywords.join(', ')}</Mono> : <NoValue />),
-    },
-    {
-      key: 'added',
-      label: 'Ajouté',
-      align: 'right',
-      defaultDirection: 'desc',
-      sortValue: (r) => r.createdAt,
-      cell: (r) => <Mono dim>{formatAbsoluteDate(r.createdAt)}</Mono>,
+      key: 'path',
+      label: 'Path',
+      // Whether this account bound the repo to a folder on a machine. A configured
+      // repo with no binding exists, shows up in the app and does nothing, which is
+      // the shape of "my repo doesn't work" with no other symptom — so it earns a
+      // column even in a narrow table.
+      // Sorted desc-first so the unbound ones surface: they are the answer, and the
+      // bound ones are the uninteresting majority.
+      defaultDirection: 'asc',
+      sortValue: (r) => r.hasPath,
+      // A tick or a cross, not a worded pill: this is the one column read by scanning
+      // DOWN it — "which of these is not set up" — and a shape answers that faster
+      // than a word. Red rather than dim grey because an unbound repo is a fault to
+      // find, not a neutral state.
+      // `role="img"` with a label on the wrapper: the icon IS the value, so it cannot
+      // be decoration, and there is no text beside it to carry the meaning.
+      cell: (r) => (
+        <span
+          role="img"
+          aria-label={r.hasPath ? 'Path lié' : 'aucun path lié'}
+          title={r.hasPath ? 'Path lié' : 'Aucun path lié'}
+          className="inline-flex"
+        >
+          {r.hasPath ? (
+            <Check className="h-4 w-4 text-green" />
+          ) : (
+            <X className="h-4 w-4 text-red" />
+          )}
+        </span>
+      ),
     },
   ]
 
@@ -260,78 +417,288 @@ export default function AdminUserRecord() {
         <div className="mt-3">
           <PageHead
             title={user.email ?? user.userId}
+            // The uuid under the email: the title is what a human calls this
+            // account, this is what a log line and a SQL query call it. Copyable
+            // rather than selectable because a double-click on a uuid takes one
+            // hyphen-separated group and leaves the rest.
+            meta={
+              <span className="inline-flex items-center gap-1.5">
+                <span className="break-all font-mono text-[12px] text-regie-dim">{user.userId}</span>
+                <CopyButton value={user.userId} label="l'identifiant" />
+              </span>
+            }
           />
 
           <div className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Name and role only — the RPC's column allowlist stops there. */}
-              <Panel label="Identité">
-                <dl>
-                  <Field label="Nom" value={user.name ?? <span className="text-regie-dim">aucun profil</span>} />
-                  <Field label="Rôle déclaré" value={user.role ?? <span className="text-regie-dim">—</span>} />
-                  <Field label="Inscrit le" value={formatAbsoluteDate(user.createdAt)} />
-                  <Field label="Dernière connexion" value={formatAbsoluteDate(user.lastSignInAt)} />
-                  <Field label="User id" value={user.userId} />
-                </dl>
-              </Panel>
+            {/* Identity across the full width, one field per column. Five facts is
+                too few to stack down a card and too many to read as a sentence, and
+                on a row they answer "who is this" in one glance without pushing the
+                devices and orgs below the fold.
+                A column below lg: at that width five cells in a row are 130px each,
+                which truncates the only two values anyone came here to read. */}
+            <Panel label="Identité">
+              <dl className="flex flex-col divide-y divide-regie-rule-soft lg:flex-row lg:divide-x lg:divide-y-0">
+                <InlineField label="Email" className="lg:flex-[1.75]">
+                  {user.email ? (
+                    <>
+                      <span className="min-w-0">{user.email}</span>
+                      <CopyButton value={user.email} label="l'email" />
+                    </>
+                  ) : (
+                    <span className="text-regie-dim">aucun email</span>
+                  )}
+                </InlineField>
+                {/* Pseudo and role come from `profiles`, which a user who never
+                    opened the wizard does not have — hence "aucun profil" rather
+                    than an empty cell. */}
+                <InlineField label="Pseudo">
+                  {user.name ?? <span className="text-regie-dim">aucun profil</span>}
+                </InlineField>
+                <InlineField label="Rôle déclaré">
+                  {user.role ?? <span className="text-regie-dim">—</span>}
+                </InlineField>
+                <InlineField label="Inscrit le">{formatAbsoluteDate(user.createdAt)}</InlineField>
+                <InlineField label="Dernière connexion">
+                  {formatAbsoluteDate(user.lastSignInAt)}
+                </InlineField>
+              </dl>
+            </Panel>
 
-              {/* The whole user_settings row, in reading order. Two columns because
-                  twenty single-file rows push everything below them off screen. */}
-              <Panel label="Réglages de l'app">
-                <dl className="grid sm:grid-cols-2">
-                  {SETTING_LABELS.map(({ field, label }) => {
-                    const { text, unset } = formatSetting(user.settings[field])
-                    return (
-                      <div
-                        key={field}
-                        className="flex items-baseline justify-between gap-3 border-b border-regie-rule-soft px-4 py-2"
-                      >
-                        <dt className="text-[11px] text-regie-dim">{label}</dt>
-                        <dd
-                          className={`shrink-0 font-mono text-[12px] ${unset ? 'text-regie-dim/70' : 'text-ink'}`}
-                        >
-                          {text}
-                        </dd>
+            {/* WHAT THEY BELONG TO, beside WHAT THEY RUN. Two unrelated questions —
+                who this person works with, and what their desktop is doing — and
+                neither needs the full width. 40 / 60 because the left column is two
+                narrow tables to the app card's version headline, device table and ten
+                feature boxes.
+                `items-start` so a member of one org gets a short card rather than one
+                stretched to the height of the app card beside it. */}
+            <div className="grid items-start gap-6 lg:grid-cols-[2fr_3fr]">
+              {/* Orgs then repos: a repository is reached THROUGH an org (personal
+                  ones aside), so the column reads outside-in. */}
+              <div className="space-y-6">
+                <Panel
+                  label="Organisations"
+                  action={orgs && <SectionLabel>{orgs.length}</SectionLabel>}
+                >
+                  {orgs === null ? (
+                    <Empty>Chargement…</Empty>
+                  ) : (
+                    <DataTable
+                      rows={orgs}
+                      columns={orgColumns}
+                      rowKey={(o) => o.orgId}
+                      // The one cross-entity jump in the console: from a person to
+                      // the tenant, where the actions that concern them actually
+                      // live.
+                      onRowClick={(o) => router.push(`/admin/organizations/${o.orgId}`)}
+                      initialSort={{ key: 'name', direction: 'asc' }}
+                      emptyLabel="Membre d'aucune organisation."
+                    />
+                  )}
+                </Panel>
+
+                <Panel
+                  label="Repositories"
+                  action={repos && <SectionLabel>{repos.length}</SectionLabel>}
+                >
+                  {repos === null ? (
+                    <Empty>Chargement…</Empty>
+                  ) : (
+                    <DataTable
+                      rows={repos}
+                      columns={repoColumns}
+                      rowKey={(r) => r.id}
+                      initialSort={{ key: 'name', direction: 'asc' }}
+                      emptyLabel="Aucun repository configuré."
+                    />
+                  )}
+                </Panel>
+              </div>
+
+              {/* The app: what they run, then how they have it set up. One card
+                  because both answer "what is their desktop doing", and the version is
+                  the first thing a support question turns on — an operator who reads
+                  "0.54.1" while the fleet is on 0.59.2 has their answer before reading
+                  a single setting. */}
+              <Panel label="Application">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-4 border-b border-regie-rule-soft px-6 py-7">
+                  {/* The desktop app's REAL icon — `public/img/app-icon.png`, resized
+                      from `desktop/resources/icon.png`, the file electron-builder ships
+                      as the app icon. Not the webapp's favicon, which is a different
+                      drawing: this is the icon the person is looking at in their dock,
+                      and the version beside it is that app's build.
+                      A copy because the webapp cannot read outside its own public dir —
+                      at 256px, enough for a 44px slot on a 3x screen and 46 kB instead
+                      of the 434 kB original.
+                      Decorative alt: the panel is captioned "Application" and the
+                      version is right there, so a screen reader gains nothing from
+                      "logo Magic Slash" between them. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/img/app-icon.png"
+                    alt=""
+                    className="h-11 w-11 shrink-0 rounded-xl border border-regie-rule-soft shadow-sm shadow-brand/[0.06]"
+                  />
+
+                  {devices === null ? (
+                    <p className="font-display text-[20px] font-bold leading-none text-regie-dim">
+                      Chargement…
+                    </p>
+                  ) : (
+                    <>
+                      {/* Named, so the headline reads as a sentence — "Magic Slash
+                          v0.59.2" — rather than as a bare number needing the panel
+                          caption to mean anything. The name stays when there is no
+                          version: the card is still about their desktop app, and the
+                          pill beside it says they never opened it.
+                          Cera Pro, not the console's monospace. The mono rule is for
+                          values READ CHARACTER BY CHARACTER and compared down a column
+                          — an email, a uuid, a version in the Users table. This one is
+                          alone on a card and is a heading, so it takes the face the
+                          console sets its headings in.
+                          20px and not 28: it only has to be the largest thing in the
+                          card, and at 28 it was competing with the page title above
+                          it, which is the account's own name. */}
+                      <p className="font-display text-[20px] font-bold leading-none tracking-tight text-ink">
+                        Magic Slash{' '}
+                        {runningVersion ? (
+                          `v${runningVersion}`
+                        ) : (
+                          <span className="text-regie-dim">—</span>
+                        )}
+                      </p>
+
+                      {/* The verdict. No "à jour" when the fleet reports nothing to
+                          compare against, rather than one earned by being the only
+                          row. */}
+                      {runningVersion === null ? (
+                        <Pill tone="neutral">jamais lancé</Pill>
+                      ) : newest === null ? (
+                        <Pill tone="neutral">version inconnue du parc</Pill>
+                      ) : runningVersion === newest ? (
+                        <Pill tone="brand">à jour</Pill>
+                      ) : (
+                        <span className="inline-flex items-center gap-2.5">
+                          <Pill tone="yellow">en retard</Pill>
+                          <span className="font-mono text-[11px] text-regie-dim">
+                            la plus récente : {newest}
+                          </span>
+                        </span>
+                      )}
+
+                      {/* Which of their machines this version comes from. With two
+                          devices on two versions the headline is one of them, and
+                          naming it is the difference between a fact and a claim. */}
+                      {runningDevice && (
+                        <span className="ml-auto font-mono text-[11px] text-regie-dim">
+                          {runningDevice.deviceName ?? 'device inconnu'} · vu{' '}
+                          {formatRelative(runningDevice.lastSeenAt)}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* What they run it ON, then how they have it SET UP — stacked, in that
+                    order: the devices table answers "is this machine even alive" and
+                    "which build", which is where a support question starts, and the
+                    feature boxes are what you read once it has narrowed.
+                    Clipped, because that order is also a priority: the ten feature
+                    boxes are the tallest thing on the page and the least often the
+                    answer, so they are one click away instead of pushing Agents and
+                    Repositories off the screen. 300px keeps the version headline, the
+                    devices table and the start of the features in view.
+                    The headline above stays OUT of the collapsible: which build they
+                    run is the one fact this card exists to state. */}
+                <Collapsible collapsedHeight={300} moreLabel="Tout afficher" lessLabel="Réduire">
+                  <div className="divide-y divide-regie-rule-soft">
+                    <section className="min-w-0 p-4">
+                      <header className="mb-2 flex items-baseline gap-2">
+                        <SectionLabel>Devices</SectionLabel>
+                        {devices && (
+                          <span className="font-mono text-[11px] text-regie-dim">{devices.length}</span>
+                        )}
+                      </header>
+                      {/* Boxed, instead of bleeding to the card's edges. DataTable is
+                          built to sit flush inside a Panel, whose rounding clips it; here
+                          it is one section among others and needs its own edges.
+                          `overflow-hidden` is what rounds it: the header row and the last
+                          row would otherwise square off the corners just set. */}
+                      <div className="overflow-hidden rounded-xl border border-regie-rule-soft">
+                        {devices === null ? (
+                          <Empty>Chargement…</Empty>
+                        ) : (
+                          <DataTable
+                            rows={devices}
+                            columns={deviceColumns}
+                            rowKey={(d) => d.deviceId}
+                            initialSort={{ key: 'seen', direction: 'desc' }}
+                            emptyLabel="N'a jamais lancé l'app desktop."
+                          />
+                        )}
                       </div>
-                    )
-                  })}
-                </dl>
+                    </section>
+
+                    <section className="min-w-0 p-4">
+                      <header className="mb-2">
+                        <SectionLabel>Features</SectionLabel>
+                      </header>
+                      {/* One box per feature. The flat 17-row list this replaces made
+                          "PR review poll interval" and "Spotlight shortcut" look like
+                          peers of "Theme", so reading it meant rebuilding the app's own
+                          grouping in your head on every visit.
+                          Two columns from sm rather than xl, now that the section has the
+                          card's whole width back instead of 40% of it. */}
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {SETTING_GROUPS.map((group) => (
+                          <div
+                            key={group.title}
+                            className="overflow-hidden rounded-xl border border-regie-rule-soft bg-regie-ground/40"
+                          >
+                            <p className="border-b border-regie-rule-soft px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-[0.1em] text-regie-dim">
+                              {group.title}
+                            </p>
+                            <dl>
+                              {group.fields.map(({ field, label }) => {
+                                const { effective, unset } = resolveSetting(field, user.settings[field])
+                                return (
+                                  <div
+                                    key={field}
+                                    // items-CENTER, not items-baseline: the theme row is
+                                    // 20px of chip, which makes the row taller than its
+                                    // own text, and on a baseline the label sat at the
+                                    // top of that extra space.
+                                    className="flex items-center justify-between gap-3 px-3 py-1.5"
+                                  >
+                                    <dt className="min-w-0 text-[11px] text-regie-dim">{label}</dt>
+                                    <dd
+                                      className={`flex shrink-0 items-center gap-1.5 font-mono text-[11px] ${unset ? 'text-regie-dim/70' : 'text-ink'}`}
+                                    >
+                                      {/* The theme chip and the switch both show the
+                                          state IN FORCE, default included — the "par
+                                          défaut" tag beside them is what keeps saying
+                                          whether the user ever chose it. */}
+                                      {field === 'theme' && <ThemeChip themeId={String(effective)} />}
+                                      {typeof effective === 'boolean' ? (
+                                        <SwitchValue on={effective} />
+                                      ) : (
+                                        String(effective)
+                                      )}
+                                      {unset && (
+                                        <span className="text-[10px] text-regie-dim/70">par défaut</span>
+                                      )}
+                                    </dd>
+                                  </div>
+                                )
+                              })}
+                            </dl>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+                </Collapsible>
               </Panel>
             </div>
-
-            <Panel
-              label="Devices"
-              action={devices && <SectionLabel>{devices.length}</SectionLabel>}
-            >
-              {devices === null ? (
-                <Empty>Chargement…</Empty>
-              ) : (
-                <DataTable
-                  rows={devices}
-                  columns={deviceColumns}
-                  rowKey={(d) => d.deviceId}
-                  initialSort={{ key: 'seen', direction: 'desc' }}
-                  emptyLabel="N'a jamais lancé l'app desktop."
-                />
-              )}
-            </Panel>
-
-            <Panel label="Organisations" action={orgs && <SectionLabel>{orgs.length}</SectionLabel>}>
-              {orgs === null ? (
-                <Empty>Chargement…</Empty>
-              ) : (
-                <DataTable
-                  rows={orgs}
-                  columns={orgColumns}
-                  rowKey={(o) => o.orgId}
-                  // The one cross-entity jump in the console: from a person to the
-                  // tenant, where the actions that concern them actually live.
-                  onRowClick={(o) => router.push(`/admin/organizations/${o.orgId}`)}
-                  initialSort={{ key: 'name', direction: 'asc' }}
-                  emptyLabel="Membre d'aucune organisation."
-                />
-              )}
-            </Panel>
 
             <Panel label="Agents" action={agents && <SectionLabel>{agents.length}</SectionLabel>}>
               {agents === null ? (
@@ -347,19 +714,6 @@ export default function AdminUserRecord() {
               )}
             </Panel>
 
-            <Panel label="Repositories" action={repos && <SectionLabel>{repos.length}</SectionLabel>}>
-              {repos === null ? (
-                <Empty>Chargement…</Empty>
-              ) : (
-                <DataTable
-                  rows={repos}
-                  columns={repoColumns}
-                  rowKey={(r) => r.id}
-                  initialSort={{ key: 'name', direction: 'asc' }}
-                  emptyLabel="Aucun repository configuré."
-                />
-              )}
-            </Panel>
           </div>
         </div>
       )}
