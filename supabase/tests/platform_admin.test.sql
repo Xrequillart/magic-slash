@@ -22,14 +22,14 @@
 
 begin;
 
--- 32 fixed assertions, plus ONE PER admin_* function: the anon-privilege check
+-- 38 fixed assertions, plus ONE PER admin_* function: the anon-privilege check
 -- further down is a catalog sweep that emits a row per function, by design, so
 -- that a function added later is covered without editing this test. The plan has
 -- to follow the same count or the suite fails on "planned 38 but ran 39" the day
 -- it works as intended — which is what happened when admin_list_orgs landed
 -- (20260728100000). Derived here rather than bumped, so the next one is free too.
 select plan(
-  32 + (
+  38 + (
     select count(*)::int
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
@@ -90,6 +90,12 @@ values
 
 insert into public.agent_repositories (agent_id, repo_id)
 values ('a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-00000000000a');
+
+-- A local path for the TEAM repo only: has_path must be true for that one and false
+-- for the personal one, which is the pair that proves the flag is per (repo, user)
+-- rather than "this user has any path at all".
+insert into public.repository_paths (repo_id, user_id, path)
+values ('c0000000-0000-0000-0000-00000000000a', '22222222-2222-2222-2222-222222222222', '/Users/bob/code/team-repo');
 
 -- ===========================================================================
 -- 1. A non-admin authenticated caller is refused everywhere (AC1, AC7).
@@ -274,42 +280,82 @@ select is(
   'admin_list_users counts active agents separately'
 );
 
--- 28. The whole fleet, one row per device.
+-- 28. The organisation NAMES, not just how many. Element 0 is the org joined
+--     first, which is the one the Users table prints.
+select is(
+  (select org_names from public.admin_list_users()
+   where user_id = '22222222-2222-2222-2222-222222222222'),
+  array['Org One'],
+  'admin_list_users returns the names of the orgs a user belongs to'
+);
+
+-- 29. An empty ARRAY for a user in no org, never null: array_agg over zero rows
+--     yields null, and the table would print "unknown" where the truth is "none".
+select is(
+  (select org_names from public.admin_list_users()
+   where user_id = '33333333-3333-3333-3333-333333333333'),
+  '{}'::text[],
+  'a user in no org gets an empty org_names array, not null'
+);
+
+-- 30. Repositories REACHED, counted once each. u2 owns a personal repo and a
+--     team repo in the org they belong to, so this also proves the two branches
+--     of the predicate do not double-count the team one.
+--     Coverage gap, stated rather than implied: no fixture user is a member of an
+--     org WITHOUT owning its repos, so the membership branch is not exercised on
+--     its own here — same gap as assertion 40 on admin_list_user_repositories,
+--     whose predicate this one copies.
+select is(
+  (select repo_count from public.admin_list_users()
+   where user_id = '22222222-2222-2222-2222-222222222222'),
+  2::bigint,
+  'admin_list_users counts personal and team repositories once each'
+);
+
+-- 31. And 0, not null, for the user who reaches none.
+select is(
+  (select repo_count from public.admin_list_users()
+   where user_id = '33333333-3333-3333-3333-333333333333'),
+  0::bigint,
+  'a user with no repository counts as 0, not null'
+);
+
+-- 32. The whole fleet, one row per device.
 select is(
   (select count(*) from public.admin_list_installations(null)),
   1::bigint,
   'admin_list_installations(null) returns the whole fleet'
 );
 
--- 29. Scoped to one user.
+-- 33. Scoped to one user.
 select is(
   (select device_name from public.admin_list_installations('22222222-2222-2222-2222-222222222222')),
   'bob-mbp',
   'admin_list_installations scopes to one user'
 );
 
--- 30. …and that scoping actually excludes the others.
+-- 34. …and that scoping actually excludes the others.
 select is(
   (select count(*) from public.admin_list_installations('11111111-1111-1111-1111-111111111111')),
   0::bigint,
   'admin_list_installations returns nothing for a user with no device'
 );
 
--- 31. The drill-down header: name and role from profiles, nothing else.
+-- 35. The drill-down header: name and role from profiles, nothing else.
 select is(
   (select name || ' / ' || role from public.admin_get_user('22222222-2222-2222-2222-222222222222')),
   'Bob / product',
   'admin_get_user returns the profile name and role'
 );
 
--- 32. And the settings row, column by column (one sample stands for the 17).
+-- 36. And the settings row, column by column (one sample stands for the 17).
 select is(
   (select theme from public.admin_get_user('22222222-2222-2222-2222-222222222222')),
   'dark',
   'admin_get_user returns the user_settings columns'
 );
 
--- 33. A user with no profiles and no user_settings row still yields a row, with
+-- 37. A user with no profiles and no user_settings row still yields a row, with
 --     nulls — driven off auth.users, so the page renders instead of 404ing.
 select is(
   (select count(*) from public.admin_get_user('33333333-3333-3333-3333-333333333333')),
@@ -317,14 +363,14 @@ select is(
   'admin_get_user returns a row for a user with no profile and no settings'
 );
 
--- 34. Orgs, with the role in each.
+-- 38. Orgs, with the role in each.
 select is(
   (select name || ' / ' || role::text from public.admin_list_user_orgs('22222222-2222-2222-2222-222222222222')),
   'Org One / admin',
   'admin_list_user_orgs returns the org and the role in it'
 );
 
--- 35. Agents include the archived one, with their repositories resolved by name.
+-- 39. Agents include the archived one, with their repositories resolved by name.
 select is(
   (select repo_names from public.admin_list_user_agents('22222222-2222-2222-2222-222222222222')
    where id = 'a0000000-0000-0000-0000-000000000001'),
@@ -332,15 +378,32 @@ select is(
   'admin_list_user_agents resolves repository names from agent_repositories'
 );
 
--- 36. Repositories: the personal one and the team one, in a single list.
+-- 40. Repositories: the personal one and the team one, in a single list.
 select is(
   (select count(*) from public.admin_list_user_repositories('22222222-2222-2222-2222-222222222222')),
   2::bigint,
   'admin_list_user_repositories returns personal and team repositories'
 );
 
+-- 41. The bound repo reports a path…
+select is(
+  (select has_path from public.admin_list_user_repositories('22222222-2222-2222-2222-222222222222')
+   where name = 'team-repo'),
+  true,
+  'admin_list_user_repositories reports a repository bound to a local path'
+);
+
+-- 42. …and the unbound one reports none. Not null: the flag is an `exists`, and
+--     "no binding" is a fact rather than a missing value.
+select is(
+  (select has_path from public.admin_list_user_repositories('22222222-2222-2222-2222-222222222222')
+   where name = 'perso-repo'),
+  false,
+  'a repository with no local path reports has_path false, not null'
+);
+
 -- ===========================================================================
--- 37..38. The column allowlist holds: no admin_* function exposes free_text (AC8).
+-- 43..44. The column allowlist holds: no admin_* function exposes free_text (AC8).
 -- ===========================================================================
 -- Asserted against the SIGNATURE, not against a result set. A row-level check
 -- ("no row contains the seeded prose") passes for any fixture where the column
