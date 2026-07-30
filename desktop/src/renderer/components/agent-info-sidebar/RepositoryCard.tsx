@@ -34,11 +34,11 @@ const REVIEW_STATUS_LABELS: Record<NonNullable<RepositoryMetadata['prReviewStatu
 function ReviewStatusIcon({ status }: { status: NonNullable<RepositoryMetadata['prReviewStatus']> }) {
   switch (status) {
     case 'approved':
-      return <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+      return <CheckCircle2 className="w-3.5 h-3.5 text-green" />
     case 'changes-requested':
-      return <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+      return <AlertCircle className="w-3.5 h-3.5 text-red" />
     case 'commented':
-      return <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
+      return <MessageSquare className="w-3.5 h-3.5 text-blue" />
     case 'pending':
       return <Clock className="w-3.5 h-3.5 text-text-secondary" />
   }
@@ -98,7 +98,7 @@ export function RepositoryCard({
           {/* Remove repository button */}
           <button
             onClick={onRemove}
-            className="flex items-center justify-center p-1 text-text-secondary/50 rounded hover:text-red-500 hover:bg-red-500/10 transition-colors"
+            className="flex items-center justify-center p-1 text-text-secondary/50 rounded hover:text-red hover:bg-red/10 transition-colors"
             title={t('agentInfo.removeRepository')}
           >
             <X className="w-3.5 h-3.5" />
@@ -292,7 +292,7 @@ export function RepositoryCard({
               {t(REVIEW_STATUS_LABELS[repoMetadata.prReviewStatus])}
             </span>
             {repoMetadata.prMerged && (
-              <span className="ml-1 px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 text-[10px] font-semibold uppercase tracking-wide">
+              <span className="ml-1 px-1.5 py-0.5 rounded bg-green/10 text-green text-[10px] font-semibold uppercase tracking-wide">
                 merged
               </span>
             )}
@@ -311,7 +311,7 @@ export function RepositoryCard({
           {(repoMetadata.prReviewStatus === 'changes-requested' || repoMetadata.prReviewStatus === 'commented') && (
             <button
               onClick={() => runSlashCommand(agentId, '/magic:resolve', t)}
-              className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-md text-red-500 text-xs font-medium transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-red/10 hover:bg-red/20 border border-red/20 rounded-md text-red text-xs font-medium transition-colors"
             >
               <Wrench className="w-3 h-3" />
               {t('agentInfo.launchResolve')}
@@ -320,7 +320,7 @@ export function RepositoryCard({
           {repoMetadata.prMerged === true && (
             <button
               onClick={() => runSlashCommand(agentId, '/magic:done', t)}
-              className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 rounded-md text-green-500 text-xs font-medium transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-green/10 hover:bg-green/20 border border-green/20 rounded-md text-green text-xs font-medium transition-colors"
             >
               <CheckCircle className="w-3 h-3" />
               {t('agentInfo.launchDone')}

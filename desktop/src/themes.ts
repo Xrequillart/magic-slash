@@ -73,6 +73,15 @@ export interface ThemeTokens {
   yellowRgb: string
   blueRgb: string
   orangeRgb: string
+  /**
+   * Two more status colours than the six above, because the agent workflow has
+   * nine statuses and ran out of palette. They were `cyan-400` / `teal-400`
+   * straight from Tailwind — fixed values that ignore the theme, so `committed`
+   * and `Review addressed` stayed pale blue on a white window and could not be
+   * read. A status colour is a role like any other.
+   */
+  cyanRgb: string
+  tealRgb: string
 
   /** Terminal: foreground plus the sixteen ANSI slots xterm expects. */
   terminal: {
@@ -148,6 +157,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       yellowRgb: '234 179 8',
       blueRgb: '59 130 246',
       orangeRgb: '249 115 22',
+      cyanRgb: '34 211 238',
+      tealRgb: '45 212 191',
 
       terminal: {
         foreground: '#ffffff',
@@ -207,6 +218,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       yellowRgb: '250 204 21',
       blueRgb: '96 165 250',
       orangeRgb: '251 146 60',
+      cyanRgb: '34 211 238',
+      tealRgb: '45 212 191',
 
       terminal: {
         foreground: '#edf0fc',
@@ -266,6 +279,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       yellowRgb: '251 191 36',
       blueRgb: '96 165 250',
       orangeRgb: '251 146 60',
+      cyanRgb: '34 211 238',
+      tealRgb: '45 212 191',
 
       terminal: {
         foreground: '#f5eee6',
@@ -328,6 +343,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       yellowRgb: '253 224 71',
       blueRgb: '125 179 255',
       orangeRgb: '253 168 94',
+      cyanRgb: '103 232 249',
+      tealRgb: '94 234 212',
 
       terminal: {
         foreground: '#ffffff',
@@ -387,6 +404,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       yellowRgb: '161 98 7',
       blueRgb: '37 99 235',
       orangeRgb: '194 65 12',
+      cyanRgb: '12 99 121',
+      tealRgb: '14 102 96',
 
       terminal: {
         foreground: '#18181b',
@@ -444,6 +463,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       yellowRgb: '161 98 7',
       blueRgb: '29 78 216',
       orangeRgb: '194 65 12',
+      cyanRgb: '21 94 117',
+      tealRgb: '17 94 89',
 
       terminal: {
         foreground: '#0f172a',
@@ -503,6 +524,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       yellowRgb: '146 64 14',
       blueRgb: '29 78 216',
       orangeRgb: '154 52 18',
+      cyanRgb: '21 94 117',
+      tealRgb: '17 94 89',
 
       terminal: {
         foreground: '#2b231a',
@@ -564,6 +587,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       yellowRgb: '113 63 18',
       blueRgb: '30 58 138',
       orangeRgb: '124 45 18',
+      cyanRgb: '22 78 99',
+      tealRgb: '19 78 74',
 
       terminal: {
         foreground: '#000000',

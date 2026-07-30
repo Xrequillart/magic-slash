@@ -54,7 +54,7 @@ export default function FileContentRenderer({ repoPath, filePath, status }: Prop
       )
     }
     return (
-      <div className="flex items-center justify-center h-32 text-red-400 text-sm">
+      <div className="flex items-center justify-center h-32 text-red text-sm">
         {t('filePreview.unreadable')}
       </div>
     )

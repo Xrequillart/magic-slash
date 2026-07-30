@@ -40,6 +40,12 @@ module.exports = {
         yellow: 'rgb(var(--c-yellow) / <alpha-value>)',
         blue: 'rgb(var(--c-blue) / <alpha-value>)',
         orange: 'rgb(var(--c-orange) / <alpha-value>)',
+        // These two REPLACE Tailwind's own `cyan` and `teal` scales, which is the
+        // point: `text-cyan-400` was being used for an agent status and ignored the
+        // theme. Overriding the family means the numbered classes stop resolving, so
+        // the old form fails loudly instead of quietly painting a fixed colour.
+        cyan: 'rgb(var(--c-cyan) / <alpha-value>)',
+        teal: 'rgb(var(--c-teal) / <alpha-value>)',
         border: 'rgb(var(--c-border) / <alpha-value>)',
         'text-secondary': 'rgb(var(--c-text-secondary) / <alpha-value>)',
         /** Primary text. What `text-white` meant before the app had themes. */

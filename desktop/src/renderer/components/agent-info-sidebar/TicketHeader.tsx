@@ -4,15 +4,20 @@ import { useClickOutside } from '../../hooks/useClickOutside'
 import type { TerminalMetadata } from '../../../types'
 import { useT, type MessageKey } from '../../i18n'
 
+// Every colour here is a theme token. `committed` and `Review addressed` used to be
+// `cyan-500`/`cyan-400` and `teal-500`/`teal-400` straight from Tailwind's palette —
+// fixed values that do not follow the theme, so on any of the four light themes the
+// pill was pale blue on white and unreadable. The tokens carry a per-theme value
+// (desktop/src/themes.ts), dark on a light window and bright on a dark one.
 const STATUS_OPTIONS = [
   { value: '',             labelKey: 'statusPill.none',    bg: 'bg-surface-strong',      text: 'text-text-secondary' },
   { value: 'in progress',  labelKey: 'statusPill.inProgress',  bg: 'bg-yellow/20',     text: 'text-yellow' },
-  { value: 'committed',    labelKey: 'statusPill.committed',     bg: 'bg-cyan-500/20',   text: 'text-cyan-400' },
+  { value: 'committed',    labelKey: 'statusPill.committed',     bg: 'bg-cyan/20',       text: 'text-cyan' },
   { value: 'ready for PR', labelKey: 'statusPill.readyForPR',  bg: 'bg-orange/20',     text: 'text-orange' },
   { value: 'PR created',   labelKey: 'statusPill.prCreated',    bg: 'bg-green/20',      text: 'text-green' },
   { value: 'in review',    labelKey: 'statusPill.inReview',     bg: 'bg-blue/20',       text: 'text-blue' },
   { value: 'changes requested', labelKey: 'statusPill.changesRequested', bg: 'bg-red/20', text: 'text-red' },
-  { value: 'Review addressed', labelKey: 'statusPill.reviewAddressed', bg: 'bg-teal-500/20', text: 'text-teal-400' },
+  { value: 'Review addressed', labelKey: 'statusPill.reviewAddressed', bg: 'bg-teal/20', text: 'text-teal' },
   { value: 'PR merged',    labelKey: 'statusPill.prMerged',     bg: 'bg-purple/20',     text: 'text-purple' },
 ] as const
 
