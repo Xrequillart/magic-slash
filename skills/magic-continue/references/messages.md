@@ -130,6 +130,58 @@ Plusieurs issues #{number} trouvées :
 Laquelle veux-tu utiliser ? (ou 'all')
 ```
 
+## MSG_JIRA_CUSTOM_FIELDS_FOUND
+
+### en
+
+```text
+📄 {ticket_id} has no usable spec in its description — content found in custom fields: {field_names}
+
+Treated as part of the ticket description for the rest of this session.
+```
+
+### fr
+
+```text
+📄 {ticket_id} n'a pas de spec dans sa description — contenu trouvé dans des champs personnalisés : {field_names}
+
+Traité comme faisant partie de la description du ticket pour la suite de la session.
+```
+
+> `{field_names}`: display names of the fields kept, comma-separated (the raw-id fallback of `references/jira-custom-fields.md` §3 applies).
+
+## MSG_JIRA_TICKET_EMPTY
+
+### en
+
+```text
+⚠️ {ticket_id} is nearly empty: no usable description, and no custom field carrying content either.
+
+Working from the title alone means guessing what this ticket is about.
+
+Options:
+1. Describe what has to be done (free text)
+2. Continue with the title alone, at your own risk
+3. Stop
+
+Choose (1/2/3):
+```
+
+### fr
+
+```text
+⚠️ {ticket_id} est quasi vide : pas de description exploitable, et aucun champ personnalisé ne porte de contenu.
+
+Partir du seul titre revient à deviner le sujet du ticket.
+
+Options :
+1. Décrire ce qu'il faut faire (texte libre)
+2. Continuer avec le seul titre, à tes risques
+3. Arrêter
+
+Choix (1/2/3) :
+```
+
 ## MSG_TRANSITION_FAILED
 
 ### en
