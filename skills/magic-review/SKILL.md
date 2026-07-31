@@ -215,3 +215,21 @@ If `integrations.atlassian` is `false`, skip this step entirely.
 ### 12.1: Add comment
 
 If the ticket is a Jira ticket and `commentOnPR` is not `false`, add a comment on the Jira ticket using `MSG_JIRA_REVIEW_COMMENT`.
+
+---
+
+## Step 13: Record the run
+
+**Always run this, as the very last thing you do — including when the workflow stopped early.**
+
+Magic Slash opened a run record when this skill started. This closes it. Without it the run stays open and is counted as *abandoned*, so finished work disappears from the usage statistics.
+
+Set `outcome` to `success` when the workflow completed, or `failed` when it stopped on an error you could not resolve.
+
+This writes to a file instead of calling the desktop app, so it works whether or not the app is running.
+
+```bash
+MS_DIR="$HOME/.config/magic-slash"; mkdir -p "$MS_DIR" 2>/dev/null
+printf '{"type":"end","skill":"magic-review","agentId":"%s","outcome":"success","occurredAt":%s000}\n' \
+  "$MAGIC_SLASH_TERMINAL_ID" "$(date +%s)" >> "$MS_DIR/pending-skills.ndjson" 2>/dev/null || true
+```

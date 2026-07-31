@@ -697,6 +697,22 @@ Display `MSG_FINAL_SUMMARY` (or `MSG_FINAL_SUMMARY_FULLSTACK` for multi-repo). P
 - `{frontend_modified}`, `{frontend_created}` — same but scoped to the frontend worktree
 - `{interaction}` — summary of how the backend and frontend changes interact (e.g., new API endpoints consumed by the frontend); derive from the cross-repo interactions noted in the step 5.1 exploration and the actual changes made
 
+## Step 6: Record the run
+
+**Always run this, as the very last thing you do — including when the workflow stopped early.**
+
+Magic Slash opened a run record when this skill started. This closes it. Without it the run stays open and is counted as *abandoned*, so finished work disappears from the usage statistics.
+
+Set `outcome` to `success` when the workflow completed, or `failed` when it stopped on an error you could not resolve.
+
+This writes to a file instead of calling the desktop app, so it works whether or not the app is running.
+
+```bash
+MS_DIR="$HOME/.config/magic-slash"; mkdir -p "$MS_DIR" 2>/dev/null
+printf '{"type":"end","skill":"magic-start","agentId":"%s","outcome":"success","occurredAt":%s000}\n' \
+  "$MAGIC_SLASH_TERMINAL_ID" "$(date +%s)" >> "$MS_DIR/pending-skills.ndjson" 2>/dev/null || true
+```
+
 ---
 
 For the Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`), see `references/api.md`.
