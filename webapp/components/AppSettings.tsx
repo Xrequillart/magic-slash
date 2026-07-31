@@ -95,11 +95,22 @@ const COLLECTED: MessageKey[] = [
   'settings.usageLogs.collected.context',
 ]
 
+// The last two answer what the skills line opposite invites: a run now carries its
+// duration and its outcome, so whether the words typed after /magic:pr travel with
+// it (they do not) and which skills reach the table at all are the two questions
+// that follow. Both are enforced desktop-side, in main/usage/skill-invocations.ts.
+//
+// The second is deliberately a NAME test rather than an ownership one: isMagicSkill
+// folds the plugin prefix and then requires a `magic-` basename, so a third-party
+// `acme:magic-deploy` clears it. Wording it as "nothing that is not ours" would
+// promise more than the filter delivers.
 const NEVER_COLLECTED: MessageKey[] = [
   'settings.usageLogs.excluded.prompts',
   'settings.usageLogs.excluded.code',
   'settings.usageLogs.excluded.terminal',
   'settings.usageLogs.excluded.secrets',
+  'settings.usageLogs.excluded.args',
+  'settings.usageLogs.excluded.otherSkills',
 ]
 
 function UsageLogsBreakdown({ t }: { t: Translate }) {

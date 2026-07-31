@@ -227,7 +227,8 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.features.usageLogs.collected': 'Collecté',
   'settings.features.usageLogs.excluded': 'Jamais collecté',
   'settings.features.usageLogs.collected.activity': 'L’activité des agents : tickets, commits, PR, revues',
-  'settings.features.usageLogs.collected.skills': 'Les skills que vous lancez (/magic:start, /magic:pr, …)',
+  'settings.features.usageLogs.collected.skills':
+    'Les skills que vous lancez (/magic:start, /magic:pr, …), la durée de chaque exécution et comment elle s’est terminée',
   'settings.features.usageLogs.collected.session':
     'Le résumé de fin de session : coût estimé, lignes ajoutées/supprimées, durée, modèle',
   'settings.features.usageLogs.collected.context':
@@ -236,6 +237,8 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.features.usageLogs.excluded.code': 'Votre code, vos diffs, le contenu de vos fichiers',
   'settings.features.usageLogs.excluded.terminal': 'La sortie du terminal et l’historique des commandes',
   'settings.features.usageLogs.excluded.secrets': 'Vos jetons, vos clés et vos identifiants',
+  'settings.features.usageLogs.excluded.args': 'Ce que vous tapez après le nom d’un skill',
+  'settings.features.usageLogs.excluded.otherSkills': 'Les skills dont le nom ne commence pas par « magic- »',
   'settings.features.usageLogs.footnote':
     'Chaque membre de votre organisation voit ces chiffres par personne sur la page Équipe.',
   'settings.features.usageLogs.footnote.agents':

@@ -171,11 +171,23 @@ const USAGE_LOGS_COLLECTED: MessageKey[] = [
   'settings.features.usageLogs.collected.context',
 ]
 
+// The last two are the counterweight to the skills line opposite: now that a run
+// carries its duration and its outcome, the obvious next question is whether the
+// words next to /magic:pr travel with it (they do not — types.ts, SkillInvocationInput)
+// and which skills reach the table at all.
+//
+// That second one is worded as a NAME test, not as ownership, because that is all
+// isMagicSkill does (main/usage/skill-invocations.ts): it folds the plugin prefix,
+// then requires the basename to start with `magic-`. Promising "nothing that is not
+// ours" would over-claim — a third-party skill called `acme:magic-deploy` clears that
+// filter. The panel states the rule the code actually enforces.
 const USAGE_LOGS_EXCLUDED: MessageKey[] = [
   'settings.features.usageLogs.excluded.prompts',
   'settings.features.usageLogs.excluded.code',
   'settings.features.usageLogs.excluded.terminal',
   'settings.features.usageLogs.excluded.secrets',
+  'settings.features.usageLogs.excluded.args',
+  'settings.features.usageLogs.excluded.otherSkills',
 ]
 
 /**
