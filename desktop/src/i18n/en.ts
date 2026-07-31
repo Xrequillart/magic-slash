@@ -232,7 +232,8 @@ export const en = {
   'settings.features.usageLogs.collected': 'Collected',
   'settings.features.usageLogs.excluded': 'Never collected',
   'settings.features.usageLogs.collected.activity': 'Agent activity: tickets, commits, PRs, reviews',
-  'settings.features.usageLogs.collected.skills': 'The skills you run (/magic:start, /magic:pr, …)',
+  'settings.features.usageLogs.collected.skills':
+    'The skills you run (/magic:start, /magic:pr, …), how long each run takes and how it ended',
   'settings.features.usageLogs.collected.session':
     'End-of-session summary: estimated cost, lines added/removed, duration, model',
   'settings.features.usageLogs.collected.context': 'Ticket id and title, and the repositories you work in',
@@ -240,6 +241,8 @@ export const en = {
   'settings.features.usageLogs.excluded.code': 'Your code, your diffs, your file contents',
   'settings.features.usageLogs.excluded.terminal': 'Terminal output and command history',
   'settings.features.usageLogs.excluded.secrets': 'Your tokens, keys and credentials',
+  'settings.features.usageLogs.excluded.args': 'What you type after a skill’s name',
+  'settings.features.usageLogs.excluded.otherSkills': 'Any skill whose name does not start with “magic-”',
   'settings.features.usageLogs.footnote':
     'Every member of your organization can see these figures per person on the Team page.',
   'settings.features.usageLogs.footnote.agents':
