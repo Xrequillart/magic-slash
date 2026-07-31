@@ -264,5 +264,19 @@
     "expected_skill": "magic:commit",
     "notes": "Commit with git flag — should still trigger commit skill",
     "difficulty": "medium"
+  },
+  {
+    "id": 39,
+    "query": "je démarre PROJ-321, c'est un ticket frontend avec une maquette",
+    "expected_skill": "magic:start",
+    "notes": "French start intent on a frontend ticket — mockup vocabulary must not deflect it away from start",
+    "difficulty": "medium"
+  },
+  {
+    "id": 40,
+    "query": "tu penses quoi de la maquette de la page settings ? le layout du modal me semble bizarre",
+    "expected_skill": null,
+    "notes": "Design vocabulary with no ticket ID and no start intent — UI keywords alone must not fire magic:start",
+    "difficulty": "hard"
   }
 ]

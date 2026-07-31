@@ -16,3 +16,5 @@
 | Rebase | Rebaser | Reapply commits on top of another base |
 | Scope | Périmètre | Set of repos affected by a task |
 | Dispatcher | Répartiteur | Strategy selector (solo vs multi-agent) |
+| Mockup | Maquette | Visual reference the implementation must reproduce |
+| Design fidelity | Fidélité au design | Degree to which the code matches the design reference |

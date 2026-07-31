@@ -2,7 +2,7 @@
 name: magic:start
 description: This skill should be used when the user mentions a ticket ID like "PROJ-123", "#456", says "start", "commencer", "travailler sur", "je vais bosser sur", "begin work on", "work on ticket", "work on issue", "démarre", "démarrer", or indicates they want to start working on a specific task.
 argument-hint: <TICKET-ID>
-allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, AskUserQuestion, mcp__atlassian__*, mcp__github__*
+allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, WebFetch, Agent, AskUserQuestion, mcp__atlassian__*, mcp__github__*
 ---
 
 # magic-slash v0.59.3 - /start
@@ -16,6 +16,7 @@ Follow each step in order. Each step builds on the previous one.
 - `references/messages.md` — All bilingual messages (MSG_*). Read relevant sections as needed (not the whole file at once).
 - `references/node-setup.md` — Node.js version manager detection. Read before installing dependencies (Step 4.3).
 - `references/plan-template-{type}-{lang}.md` — Implementation plan template. Read the matching file (`single`/`fullstack` + `en`/`fr`) in Step 5.2.
+- `references/design-context.md` — Design reference detection, resolution and the `.magic/design-brief.md` artifact. Read in Step 5.0, only when a UI signal is detected.
 - `references/glossary.md` — EN/FR terminology for git concepts. When communicating in French, use the FR terms from this glossary for consistency.
 - `references/api.md` — Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`).
 
@@ -80,7 +81,17 @@ Analyze `$ARGUMENTS`:
 
 Use `mcp__atlassian__getJiraIssue` to retrieve ticket details. If you don't know the `cloudId`, use `mcp__atlassian__getAccessibleAtlassianResources` first.
 
-If the MCP call fails (timeout, auth error), retry once. If it fails again, ask the user to provide the ticket title and description manually so the workflow can continue.
+Pass an explicit `fields` array so design references are never dropped:
+
+```json
+["summary","description","issuetype","status","labels","components","attachment"]
+```
+
+`attachment` is metadata only (`filename`, `mimeType`, `content`) and is what Step 5.0 needs to spot an image attachment. Comments are **not** requested here: they are retrieved later, and only if Step 5.0 detects a UI signal (see `references/design-context.md` §2.1), so a backend ticket never pays for its comment thread.
+
+In parallel, also call `mcp__atlassian__getJiraIssueRemoteIssueLinks` for the same issue: a Figma file is very often attached as a remote link rather than pasted in the description. Extract `object.url` and `object.title` from each entry and keep them for Step 5.0.
+
+If the MCP call fails (timeout, auth error), retry once. If it fails again, ask the user to provide the ticket title and description manually so the workflow can continue. A failure on the remote links call is never blocking: continue without them.
 
 → Continue to Step 2.5, then Step 2.6, then Step 2.7.
 
@@ -109,6 +120,18 @@ Use `mcp__github__get_issue` for each repo — launch all calls in parallel for 
 - **No issue found**: Display `MSG_NO_ISSUE_FOUND`.
 - **Single issue**: Use it. Scope = that repo.
 - **Multiple issues**: Use `AskUserQuestion` with the list of issues as options. Display `MSG_GITHUB_MULTI_ISSUE` as the question text.
+
+### 2B.5: Scan the comments for design references
+
+A Figma link is often dropped in a follow-up comment rather than in the issue body, so Tier 2 detection in Step 5.0 needs to see one. Fetching the whole thread would put it in context on every ticket, backend included — so filter it in the shell instead, and let only the matches through:
+
+```bash
+gh issue view {number} --repo {owner}/{repo} --comments 2>/dev/null \
+  | grep -ioE '(figma\.com|\.fig\b|design/|mockups?/|[a-z0-9_./-]+\.(html|css|styles\.ts))[^[:space:]]*' \
+  | sort -u | head -20
+```
+
+On a ticket with no design reference this prints nothing, so it costs nothing — and empty output is the nominal backend case, not a failure. (`grep` exits 1 when it matches nothing, but the pipeline's status is `head`'s, so the command still succeeds.) If `gh` is unavailable or fails, continue with the issue body alone. The full thread is never retrieved here: `references/design-context.md` §2.1 reads it later, once a signal has actually fired.
 
 → Continue to Step 2.5, then Step 2.6, then Step 2.7.
 
@@ -341,6 +364,18 @@ Create a `CLAUDE.local.md` in each worktree using `MSG_MULTI_REPO_CONTEXT` from 
 
 Display `MSG_TASK_SUMMARY` (or `MSG_TASK_SUMMARY_FULLSTACK` for multi-repo).
 
+### 5.0: Design context (conditional)
+
+Check the ticket (title, description, labels, components, attachment metadata, remote links, and the filtered comment matches from Step 2B.5) for a UI signal. Full comment threads are not available yet: they are fetched in `references/design-context.md` §2.1 once a signal has fired.
+
+- **Tier 1** — a label or component in {`frontend`, `front`, `ui`, `ux`, `design`, `css`, `web`}: sufficient alone.
+- **Tier 2** — a resolvable reference: repo-relative path to `.html`/`.css`/a spec `.md`/a `*.styles.ts`, a `figma.com` URL, an image attachment, a `design/` or `mockups/` folder, a `.fig` file: sufficient alone.
+- **Tier 3** — at least **two** of these keywords: `maquette`, `mockup`, `design`, `écran`/`screen`, `composant`/`component`, `bouton`/`button`, `modal`, `layout`, `responsive`, `style`.
+
+**If a signal is detected**: Read `references/design-context.md` to resolve the references and write `.magic/design-brief.md` in each worktree. The brief must exist before the plan is written in Step 5.2.
+
+**If no signal is detected** (e.g. backend-only labels `backend`, `api`, `db`, `infra`, `ci` with no Tier 1 or Tier 2 hit): skip this step entirely. Do not read `references/design-context.md`, do not write a brief, and leave the `Design fidelity` axis of Step 5.5.2 at `N/A`.
+
 ### 5.1: Codebase exploration (conditional)
 
 Evaluate whether codebase exploration is needed before launching a sub-agent.
@@ -356,8 +391,11 @@ Evaluate whether codebase exploration is needed before launching a sub-agent.
 - The ticket references components whose location or structure you don't know
 - The change spans multiple modules or layers
 - It's a full-stack task (multi-repo)
+- A design brief exists (step 5.0 wrote `.magic/design-brief.md`) — the mockup's markup and classes must be located in the codebase
 
 **If exploration is needed**: Launch an `Agent` (subagent_type=`Explore`) to explore the codebase. Request a structured summary: (1) project structure & framework, (2) config & stack, (3) existing patterns with file paths, (4) impacted files with current state, (5) cross-repo interactions if full-stack. Target 5-15 files, return summary only — not raw file contents. Use the sub-agent's returned summary to create the implementation plan in step 5.2.
+
+If `.magic/design-brief.md` exists, add to the prompt: read it first (give the absolute path) and report which existing components, styles or tokens match the referenced design.
 
 **If exploration is skipped**: Proceed directly to step 5.2, building the implementation plan from the ticket information alone.
 
@@ -369,15 +407,18 @@ Read the matching plan template from `references/plan-template-{type}-{lang}.md`
 
 Keep the plan focused: aim for **3-7 implementation steps**, each with 2-3 concrete actions. A plan that's too detailed wastes context; too vague and the implementation drifts.
 
+The template carries a design-context section (`### Design context` / `### Contexte design`). If `.magic/design-brief.md` exists, fill it in and name each resolved reference explicitly (e.g. the mockup file path) so the plan can be checked against it. If no brief exists, drop the section.
+
 ### 5.2.3: Plan review (via sub-agent)
 
-Launch an `Agent` to review the implementation plan. Provide: ticket summary (ID, title, description, acceptance criteria), codebase exploration summary (from step 5.1), and the full proposed plan.
+Launch an `Agent` to review the implementation plan. Provide: ticket summary (ID, title, description, acceptance criteria), codebase exploration summary (from step 5.1), and the full proposed plan. When `.magic/design-brief.md` exists, give its absolute path and instruct the agent to read it.
 
 The agent reviews the plan on these axes:
 - **Completeness**: Does the plan cover all acceptance criteria?
 - **Step ordering**: Are dependencies between steps respected?
 - **Missing files**: Are there impacted files forgotten (tests, types, migrations, configs)?
 - **Over-engineering**: Does the plan do more than what the ticket asks for?
+- **Design fidelity** (only when a brief exists): Does the plan reference each resolved design reference explicitly, and does it reuse the mockup's markup and classes instead of inventing a layout?
 
 The agent returns a short list of actionable suggestions, or explicitly states the plan looks good.
 
@@ -414,7 +455,7 @@ Never start implementation without explicit user approval.
 
 Display `MSG_PROGRESS_SOLO` (with step 1/1 since the sub-agent handles all steps).
 
-Launch an `Agent` with: ticket summary (ID, title, 2-3 sentence goal), acceptance criteria, full plan (verbatim), worktree path, constraints (no commits, use `Edit`/`Write`, follow patterns). For full-stack: list all paths, implement backend first. Review sub-agent output after completion.
+Launch an `Agent` with: ticket summary (ID, title, 2-3 sentence goal), acceptance criteria, full plan (verbatim), worktree path, constraints (no commits, use `Edit`/`Write`, follow patterns). For full-stack: list all paths, implement backend first. If `.magic/design-brief.md` exists, instruct the agent to read it first at its absolute path and to follow its `Mandatory rule` section (reuse the mockup's markup and classes). Review sub-agent output after completion.
 
 #### 5.4B: Multi-agent mode
 
@@ -425,6 +466,7 @@ Each subagent prompt includes (keep it concise — summary, not the full ticket 
 - Acceptance criteria (if any)
 - Assigned plan steps (copy the relevant steps verbatim from the plan)
 - Worktree path to work in
+- If `.magic/design-brief.md` exists: its absolute path in that worktree, with the instruction to read it before writing any UI code and to follow its `Mandatory rule` section
 - Constraints: no commits, follow project patterns, use `Edit`/`Write`
 - Note: subagents have access to Bash, Read, Write, Edit, Glob, Grep only (no MCP tools)
 
@@ -447,7 +489,7 @@ git ls-files --others --exclude-standard
 
 2. If no files changed, skip this step silently.
 3. Display `MSG_SIMPLIFY`.
-4. Launch an `Agent` with: worktree path, changed files list (only these modifiable), instruction to invoke `/simplify` (may explore full codebase but modify only changed files).
+4. Launch an `Agent` with: worktree path, changed files list (only these modifiable), instruction to invoke `/simplify` (may explore full codebase but modify only changed files). If `.magic/design-brief.md` exists, give its absolute path as read-only context: simplification must not drop markup or classes required by the mockup.
 5. If no issues found, continue silently.
 
 ### 5.5: Confidence assessment and final summary
@@ -472,6 +514,7 @@ The confidence evaluation is performed by an **independent critic agent** — a 
 - The diff: output of `git diff HEAD` in the worktree + list of untracked files
 - The rubric below (axes, calibration, scoring formula)
 - The worktree path (so it can read files for context — but it must not modify any file)
+- The full content of `.magic/design-brief.md` when it exists (inlined, not just the path) — the critic has never seen the plan, so the brief is its only way to judge design fidelity
 
 **What the critic agent does NOT receive**:
 - The implementation plan
@@ -486,6 +529,7 @@ The confidence evaluation is performed by an **independent critic agent** — a 
 - **Test coverage**: Were tests added/updated when the project has a test suite?
 - **Edge cases**: Were error handling and boundary conditions considered?
 - **Scope adherence**: Did the implementation stay within the ticket scope?
+- **Design fidelity**: Does the implementation match the design brief (markup, classes, tokens)? `N/A` by default — this axis is active only when `.magic/design-brief.md` exists.
 
 For each axis, assign one of: **MET** | **PARTIALLY MET** | **NOT MET** | **N/A**
 
@@ -495,6 +539,7 @@ For each axis, assign one of: **MET** | **PARTIALLY MET** | **NOT MET** | **N/A*
 - **Test coverage**: MET = tests added or updated covering the main paths and at least one edge case; PARTIALLY MET = tests cover the happy path but miss edge cases or error scenarios.
 - **Edge cases**: MET = error handling and boundary conditions are explicitly handled (null checks, empty states, limits); PARTIALLY MET = common errors handled but some boundary conditions left unguarded.
 - **Scope adherence**: MET = implementation stays strictly within the ticket scope with no unrelated changes; PARTIALLY MET = minor tangential cleanup included alongside the scoped work.
+- **Design fidelity**: MET = the markup, classes and tokens of the brief's source of truth are reused as-is; PARTIALLY MET = the visual intent is followed but part of the markup or several tokens were reinvented.
 
 **Minimum axis rule**: if fewer than 3 axes are non-N/A, cap the maximum score at **8** — too few axes provide insufficient signal for a perfect score.
 
@@ -512,6 +557,13 @@ For each axis, assign one of: **MET** | **PARTIALLY MET** | **NOT MET** | **N/A*
 
 After selecting the base score from the table, apply one adjustment: if the majority of remaining axes (excluding the NOT MET ones) are MET rather than PARTIALLY MET, add +1 to the score (max 10). Note: the minimum axis rule cap is applied after this adjustment.
 
+**Design fidelity guards** (the score table itself is unchanged):
+
+- If `.magic/design-brief.md` exists **and its `Source of truth` table has at least one row**, the `Design fidelity` axis **cannot** be rated `N/A`: rate it MET, PARTIALLY MET or NOT MET. A fraudulent `N/A` would hide an ignored mockup behind a 10/10.
+- If a brief exists but its `Source of truth` table is empty (every reference was unresolvable — typically a Jira screenshot on a ticket that is not really a UI task), the axis returns to `N/A`. There is nothing to be faithful to, so no cap applies and no auto-fix iteration is spent on an unfixable axis.
+- If a brief exists and `Design fidelity` is `PARTIALLY MET`, cap the final score at **7**. Without this cap, condition 2 yields 9 — above the ≥ 8 exit threshold of the auto-fix loop — and a half-ignored mockup would pass.
+- **Precedence of the caps, in this order**: (1) base score from the table, (2) the `+1` adjustment, (3) the PARTIALLY MET design cap, (4) the minimum axis rule cap. Each step applies to the result of the previous one.
+
 **Critic mindset**: approach the evaluation as an external code reviewer who has never seen this code before. A score of 6 with clear attention points is more useful than an inflated 9. When in doubt between two ratings for an axis, choose the lower one.
 
 **Expected output format** from the critic agent (structured text, not JSON):
@@ -523,6 +575,7 @@ AXIS RESULTS:
 - Test coverage: {MET|PARTIALLY MET|NOT MET|N/A} — {one-sentence justification}
 - Edge cases: {MET|PARTIALLY MET|NOT MET|N/A} — {one-sentence justification}
 - Scope adherence: {MET|PARTIALLY MET|NOT MET|N/A} — {one-sentence justification}
+- Design fidelity: {MET|PARTIALLY MET|NOT MET|N/A} — {one-sentence justification}
 
 SCORE: {number}/10
 
@@ -550,6 +603,8 @@ LOOP:
        - The diff collected in step 1
        - The full evaluation rubric above (axes, calibration, scoring, output format)
        - The worktree path (read-only access for context)
+       - The content of .magic/design-brief.md when it exists (inlined; otherwise state that no brief
+         exists, so the Design fidelity axis is N/A)
        - Instruction: "You are an independent code reviewer. You have NOT seen the implementation
          plan or any prior conversation. Evaluate the diff against the ticket requirements using
          ONLY the rubric provided. Do not modify any file."
@@ -588,6 +643,9 @@ LOOP:
   9. Launch a fix Agent with:
      - The worktree path
      - The list of modifiable files (only files changed during implementation)
+     - When .magic/design-brief.md exists: its absolute path, read-only and never modifiable, with the
+       instruction to read it before touching UI code (it is git-excluded, so it is never in the
+       modifiable-files list and must be named explicitly)
      - A precise description of the selected attention point to fix
      - Instruction: "Do no harm — fix only the described issue; do not alter unrelated code or degrade any axis that currently passes"
 

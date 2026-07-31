@@ -23,6 +23,12 @@
 - Implémentation similaire trouvée dans : `path/to/reference.ts`
 - Pattern à suivre : [description]
 
+### Contexte design
+- Source de vérité : [rang 1-5 — type] (rang 1 = maquette HTML/CSS du repo, rang 5 = prose)
+- Chemin(s) de la maquette : `path/to/mockup.html`
+- Règle impérative : réutiliser le markup et les classes de la maquette, ne pas inventer un layout alternatif
+- Déviations autorisées : [adaptation au design system existant du repo]
+
 ## Étapes d'implémentation
 
 ### Étape 1 : [Titre court]
