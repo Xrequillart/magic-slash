@@ -244,6 +244,14 @@ This tells the Desktop sidebar which project this terminal belongs to, so the us
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(echo -n '["'$(pwd)'"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
+**Report the branch** — reported HERE and not in step 2.5 alongside the rest of the metadata, because step 2.5 runs from the main repo: the worktree is only located in step 3 and entered in step 5, so `git branch --show-current` would there return the development branch and fill `branch_name` with the wrong value. Null is recoverable, a plausible wrong branch is not.
+
+Read from git rather than from `{BRANCH_NAME}`: whichever of Case 1 or Case 2 got here, this reports the branch actually checked out.
+
+```bash
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&branchName=$(echo -n "$(git branch --show-current)" | jq -sRr @uri)" > /dev/null 2>&1 || true
+```
+
 ## Step 6.1: Copy worktree files (only if worktree was newly created in Case 2)
 
 If the worktree already existed (Case 1), skip this step.
