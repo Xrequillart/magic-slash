@@ -90,21 +90,56 @@ into `testAccountsSource` themselves.
 
 The last rule is the one that generalises: a project can call its secrets file
 anything, and the fact that it is git-ignored is the author's own statement that
-it must not travel. Check every candidate before opening it:
+it must not travel.
+
+Checking a candidate takes **two** steps, in this order. Containment first,
+because `check-ignore` answers a question about a pathname, not about a file:
+`../../.aws/credentials` and `/Users/me/.ssh/id_rsa` are not ignored *by this
+repo* — nothing outside the worktree ever is — so `check-ignore` returns "not
+ignored" and would wave them straight through into a permanently archived PR
+body. A symlink is the same hole wearing a disguise: the link itself is tracked
+and innocent, its target is not.
 
 ```bash
 # $CANDIDATE = the one path the cascade is about to open, checked before every
 # single read — the override path, a tier-3 hit, anything. Never batch: one
 # candidate, one check, one decision.
-git -C "$REPO_ROOT" check-ignore -q -- "$CANDIDATE"
+
+# Step 1 — containment. Resolve symlinks and `..`, then require the real path to
+# sit inside the worktree. Reject before reading, not after.
+REAL_ROOT=$(cd "$REPO_ROOT" && pwd -P) || exit 1
+REAL_CANDIDATE=$(cd "$(dirname "$REPO_ROOT/$CANDIDATE")" 2>/dev/null && pwd -P)/$(basename "$CANDIDATE")
+case "$REAL_CANDIDATE" in
+  "$REAL_ROOT"/*) ;;                       # inside the worktree — continue
+  *) echo "reject: outside the repo"; ;;   # absolute, ../ traversal, or symlink out
+esac
+
+# Step 2 — git's own verdict, on the resolved path.
+git -C "$REAL_ROOT" check-ignore -q -- "$REAL_CANDIDATE"
 echo "exit=$?"
 ```
+
+Reject the candidate outright, without reading it, when **any** of these hold:
+
+| Condition | Why |
+| --------- | --- |
+| `$CANDIDATE` is absolute (starts with `/`) or begins with `~` | It names a file the repo does not own |
+| It contains a `..` segment | Traversal out of the worktree |
+| `$REAL_CANDIDATE` is not under `$REAL_ROOT` | Same, after symlinks are resolved |
+| Step 1 could not resolve the path | **Fail closed** — an unresolvable path is never approved |
+
+Then apply `check-ignore`'s verdict on the **resolved** path:
 
 | Exit | Meaning | Action |
 | ---- | ------- | ------ |
 | `0` | The path is git-ignored | **Reject the candidate** and move to the next one |
 | `1` | The path is tracked or untracked-but-not-ignored | Allowed |
 | other | `git` error (not a repo, bad path) | **Reject** — fail closed |
+
+This matters most in `inline` mode, where the consequence of a bypass is a
+credential written into a public, permanent record. But apply it in `reference`
+mode too: naming the path of a file outside the repo already leaks where the
+project keeps its secrets.
 
 Two further rules that hold regardless of source:
 
