@@ -1,4 +1,5 @@
 import { useEffect, useCallback, ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useModalExit } from '../hooks/useModalExit'
 
@@ -33,7 +34,13 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
 
   if (!mounted) return null
 
-  return (
+  // Portalled to the body rather than left where it is called from. `fixed` is
+  // measured against the nearest ancestor holding a transform, and several of
+  // the panes a modal is opened from keep one after their entrance animation
+  // settles (SweepPane's layers, for one). Rendered in place, the backdrop would
+  // then cover that pane alone and the dialog would centre on the content column
+  // instead of the window.
+  return createPortal(
     <div
       className={`fixed inset-0 bg-black/70 flex items-center justify-center z-50 ${
         closing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop'
@@ -86,6 +93,7 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
