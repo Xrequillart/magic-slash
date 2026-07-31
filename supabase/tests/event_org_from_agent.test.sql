@@ -14,7 +14,7 @@
 -- and `reset role;` returns to the owner to seed or switch users.
 
 begin;
-select plan(12);
+select plan(13);
 
 insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
 values
@@ -182,6 +182,15 @@ values ('a0000000-0000-0000-0000-000000000004', '11111111-1111-1111-1111-1111111
 insert into public.activity_events (org_id, user_id, agent_id, action)
 values (null, '11111111-1111-1111-1111-111111111111', 'a0000000-0000-0000-0000-000000000004', 'agent_created');
 
+-- A skill run in the same window, and the reason it is asserted separately below:
+-- `/magic:start` is the skill that attaches the repository, and the PreToolUse hook
+-- fires at INVOCATION — so this row is written before there is any org to derive,
+-- every single time. It is the common path for the skill rollups
+-- (org_skill_counts / personal_skill_counts), not an edge case: without the carry,
+-- every team's magic-start would be counted as its author's personal work.
+insert into public.skill_invocations (org_id, user_id, agent_id, skill)
+values (null, '11111111-1111-1111-1111-111111111111', 'a0000000-0000-0000-0000-000000000004', 'magic-start');
+
 insert into public.agent_repositories (agent_id, repo_id)
 values ('a0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000002');
 
@@ -190,6 +199,18 @@ select is(
   (select org_id from public.activity_events where agent_id = 'a0000000-0000-0000-0000-000000000004'),
   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid,
   'an event written before the repo was attached follows the agent''s new org'
+);
+
+-- 13. The same carry, asserted on skill_invocations rather than assumed from the row
+--     above. sync_event_orgs() updates all three event tables in one body, so this
+--     could look redundant — it is not: a future edit that drops or mistypes one of
+--     those three statements would leave assertion 12 green while silently stranding
+--     every skill run written before its repo landed. The tables are separate FKs,
+--     separate policies and separate readers; each earns its own assertion.
+select is(
+  (select org_id from public.skill_invocations where agent_id = 'a0000000-0000-0000-0000-000000000004'),
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid,
+  'a skill run logged before the repo was attached follows the agent''s new org'
 );
 
 select * from finish();
