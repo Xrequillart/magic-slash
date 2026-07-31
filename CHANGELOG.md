@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.63.0] - 2026-07-31
+
+### Added
+
+- **Start**: Read jira custom fields when a ticket has no usable spec
+
+### Changed
+
+- **Desktop**: Drop the abandoned count from skill stats
+
+### Fixed
+
+- **Desktop**: Serialize agent cloud writes to stop false save errors
+
 ## [0.62.0] - 2026-07-31
 
 ### Added
@@ -1822,6 +1836,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.63.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.63.0
 [0.62.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.62.0
 [0.61.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.61.0
 [0.60.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.60.0
