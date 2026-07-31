@@ -628,6 +628,9 @@ else
     'Bash(bun *)'
     'Bash(jq *)'
     'Bash(gh *)'
+    # WebFetch is deliberately NOT pre-approved: /magic:start declares it in allowed-tools to resolve
+    # public design URLs, but an unscoped grant would widen every future session for a rare path.
+    # The user is prompted on the first fetch instead.
   )
 
   # Atlassian MCP tools (only if enabled)
@@ -635,6 +638,7 @@ else
     MAGIC_SLASH_PERMS+=(
       'mcp__atlassian__getAccessibleAtlassianResources'
       'mcp__atlassian__getJiraIssue'
+      'mcp__atlassian__getJiraIssueRemoteIssueLinks'
       'mcp__atlassian__getTransitionsForJiraIssue'
       'mcp__atlassian__transitionJiraIssue'
       'mcp__atlassian__addCommentToJiraIssue'

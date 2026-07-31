@@ -23,6 +23,12 @@
 - Similar implementation found in: `path/to/reference.ts`
 - Pattern to follow: [description]
 
+### Design context
+- Source of truth: [rank 1-5 — type] (rank 1 = repo HTML/CSS mockup, rank 5 = prose)
+- Mockup path(s): `path/to/mockup.html`
+- Mandatory rule: reuse the mockup's markup and classes, do not invent an alternative layout
+- Allowed deviations: [adapting to the repo's existing design system]
+
 ## Implementation Steps
 
 ### Step 1: [Short title]

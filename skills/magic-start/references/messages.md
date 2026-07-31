@@ -416,6 +416,80 @@ Sauvegarder dans la config pour les prochains worktrees ? (o/n)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
+## MSG_DESIGN_REFS_FOUND
+
+### en
+
+```text
+🔍 Design references detected, strongest source of truth first:
+{ref_list}
+
+Written to .magic/design-brief.md — the implementation reuses it instead of inventing a layout.
+```
+
+### fr
+
+```text
+🔍 Références de design détectées, source de vérité la plus forte en premier :
+{ref_list}
+
+Écrites dans .magic/design-brief.md — l'implémentation la réutilise au lieu d'inventer un layout.
+```
+
+> One line per reference: `{rank}. {type} — {reference} — ✅ read` / `⚠️ unresolved ({reason})`,
+> in French `✅ lu` / `⚠️ non résolu ({reason})`. Display only — the brief keeps the English statuses
+> (`design-context.md` §4.2).
+
+## MSG_DESIGN_REF_UNRESOLVED
+
+### en
+
+```text
+⚠️ Design reference unreadable: {reference} ({reason}) — a definitive limit, not a transient error.
+Recorded as unresolved in .magic/design-brief.md; the implementation will flag the gap, not guess.
+```
+
+### fr
+
+```text
+⚠️ Référence de design illisible : {reference} ({reason}) — limite définitive, inutile de réessayer.
+Notée comme non résolue dans .magic/design-brief.md ; l'implémentation signalera le manque sans deviner.
+```
+
+## MSG_DESIGN_NO_REF
+
+### en
+
+```text
+🔍 {ticket_id} looks like a UI task, but no design reference was found.
+Nothing usable in the description, the comments, the attachments, the remote links or the repo.
+
+Without a mockup I will invent the layout, and design fidelity becomes unverifiable.
+
+Options:
+1. Provide a reference
+2. Continue without a mockup
+3. Stop
+
+Choose (1/2/3):
+```
+
+### fr
+
+```text
+🔍 {ticket_id} ressemble à une tâche UI, mais aucune référence de design n'a été trouvée.
+Rien d'exploitable dans la description, les commentaires, les pièces jointes, les liens ni le repo.
+
+Sans maquette, j'inventerai le layout et la fidélité au design sera invérifiable.
+
+Options :
+1. Fournir une référence
+2. Continuer sans maquette
+3. Arrêter
+
+Choix (1/2/3) :
+```
+
 ## MSG_STRATEGY_SOLO
 
 ### en
