@@ -105,13 +105,22 @@ and innocent, its target is not.
 # single read — the override path, a tier-3 hit, anything. Never batch: one
 # candidate, one check, one decision.
 
-# Step 1 — containment. Resolve symlinks and `..`, then require the real path to
-# sit inside the worktree. Reject before reading, not after.
-REAL_ROOT=$(cd "$REPO_ROOT" && pwd -P) || exit 1
-REAL_CANDIDATE=$(cd "$(dirname "$REPO_ROOT/$CANDIDATE")" 2>/dev/null && pwd -P)/$(basename "$CANDIDATE")
+CAND_ABS="$REPO_ROOT/$CANDIDATE"
+
+# Step 1a — the final component must not itself be a symlink. Reject rather than
+# chase: `pwd -P` below resolves the directories, so this is the one component it
+# cannot speak for, and a source worth configuring is a real file in the repo.
+[ -L "$CAND_ABS" ] && echo "reject: symlinked source"
+
+# Step 1b — containment, on the fully resolved path. `pwd -P` resolves `..` and
+# any symlinked parent directory; the basename is safe to re-append only because
+# step 1a has already established that it is not a link.
+REAL_ROOT=$(cd "$REPO_ROOT" && pwd -P) || echo "reject: unresolvable root"
+REAL_DIR=$(cd "$(dirname "$CAND_ABS")" 2>/dev/null && pwd -P) || echo "reject: unresolvable"
+REAL_CANDIDATE="$REAL_DIR/$(basename "$CAND_ABS")"
 case "$REAL_CANDIDATE" in
   "$REAL_ROOT"/*) ;;                       # inside the worktree — continue
-  *) echo "reject: outside the repo"; ;;   # absolute, ../ traversal, or symlink out
+  *) echo "reject: outside the repo" ;;    # absolute, ../ traversal, or symlinked parent
 esac
 
 # Step 2 — git's own verdict, on the resolved path.
@@ -125,7 +134,8 @@ Reject the candidate outright, without reading it, when **any** of these hold:
 | --------- | --- |
 | `$CANDIDATE` is absolute (starts with `/`) or begins with `~` | It names a file the repo does not own |
 | It contains a `..` segment | Traversal out of the worktree |
-| `$REAL_CANDIDATE` is not under `$REAL_ROOT` | Same, after symlinks are resolved |
+| The final component is a symlink (`[ -L ]`) | Its target is outside what any pathname check can vouch for |
+| `$REAL_CANDIDATE` is not under `$REAL_ROOT` | Same, after `..` and symlinked parents are resolved |
 | Step 1 could not resolve the path | **Fail closed** — an unresolvable path is never approved |
 
 Then apply `check-ignore`'s verdict on the **resolved** path:
