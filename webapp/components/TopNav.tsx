@@ -7,6 +7,9 @@ import { AppWindow, Building2, ChevronDown, LogOut, ShieldCheck, UserRound } fro
 import type { LucideIcon } from 'lucide-react'
 import { isPlatformAdmin } from '@/lib/admin'
 import { getSupabase } from '@/lib/supabase'
+import type { MessageKey } from '@/lib/i18n'
+import { useT } from '@/lib/i18n/useLanguage'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 
 /**
  * App chrome, reduced to a logo and an account menu. It sits on the same canvas
@@ -23,17 +26,17 @@ import { getSupabase } from '@/lib/supabase'
 
 interface MenuLink {
   href: string
-  label: string
+  label: MessageKey
   icon: LucideIcon
   /** Rendered only for a platform admin — see the filter in TopNav below. */
   platformAdminOnly?: boolean
 }
 
 const MENU_LINKS: MenuLink[] = [
-  { href: '/application', label: 'Application', icon: AppWindow },
-  { href: '/organization', label: 'Organization', icon: Building2 },
-  { href: '/account', label: 'Account', icon: UserRound },
-  { href: '/admin', label: 'Admin', icon: ShieldCheck, platformAdminOnly: true },
+  { href: '/application', label: 'nav.application', icon: AppWindow },
+  { href: '/organization', label: 'nav.organization', icon: Building2 },
+  { href: '/account', label: 'nav.account', icon: UserRound },
+  { href: '/admin', label: 'nav.admin', icon: ShieldCheck, platformAdminOnly: true },
 ]
 
 const MENU_ITEM =
@@ -41,6 +44,7 @@ const MENU_ITEM =
 
 export function TopNav({ email }: { email?: string }) {
   const router = useRouter()
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -126,13 +130,18 @@ export function TopNav({ email }: { email?: string }) {
                   className={`${MENU_ITEM} rounded-xl`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {label}
+                  {t(label)}
                 </Link>
               ))}
               <div className="my-1 h-px bg-black/5" />
+              {/* The one place a signed-in user can change it: the pre-auth pages
+                  carry their own switcher, and this menu is where every other
+                  account-wide preference already lives. */}
+              <LanguageSwitcher variant="menu" />
+              <div className="my-1 h-px bg-black/5" />
               <button role="menuitem" onClick={signOut} className={`${MENU_ITEM} rounded-xl`}>
                 <LogOut className="h-4 w-4 shrink-0" />
-                Sign out
+                {t('nav.signOut')}
               </button>
             </div>
           )}

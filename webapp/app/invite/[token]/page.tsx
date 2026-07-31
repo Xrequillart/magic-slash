@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase'
 import { DOWNLOAD_URL } from '@/lib/installations'
+import { useT } from '@/lib/i18n/useLanguage'
+import type { MessageKey } from '@/lib/i18n'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 
 interface InvitationPreview {
   org_name: string
@@ -24,15 +27,16 @@ function isAlreadyRegistered(message: string): boolean {
   return m.includes('already registered') || m.includes('already been registered') || m.includes('user already exists')
 }
 
-const UNAVAILABLE_COPY: Record<string, string> = {
-  accepted: 'This invitation has already been accepted. Just download the app and sign in.',
-  revoked: 'This invitation has been revoked. Ask an admin to send you a new one.',
-  expired: 'This invitation has expired. Ask an admin to send you a new one.',
+const UNAVAILABLE_KEYS: Record<string, MessageKey> = {
+  accepted: 'invite.unavailable.accepted',
+  revoked: 'invite.unavailable.revoked',
+  expired: 'invite.unavailable.expired',
 }
 
 export default function InvitePage({ params }: { params: { token: string } }) {
   const token = params.token
   const router = useRouter()
+  const { t } = useT()
   const [phase, setPhase] = useState<Phase>('loading')
   const [preview, setPreview] = useState<InvitationPreview | null>(null)
   const [password, setPassword] = useState('')
@@ -77,7 +81,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
         if (isAlreadyRegistered(signUp.error.message)) {
           const signIn = await supabase.auth.signInWithPassword({ email, password })
           if (signIn.error) {
-            setError('An account already exists for this email. Check your password and try again.')
+            setError(t('invite.error.exists'))
             setSubmitting(false)
             return
           }
@@ -87,7 +91,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
           return
         }
       } else if (!signUp.data.session) {
-        setError('Check your inbox to confirm your email, then reopen this link to finish.')
+        setError(t('invite.error.confirmEmail'))
         setSubmitting(false)
         return
       }
@@ -105,7 +109,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
       // true so the button stays disabled while the route transition happens.
       router.replace('/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      setError(err instanceof Error ? err.message : t('invite.error.generic'))
       setSubmitting(false)
     }
   }
@@ -119,36 +123,42 @@ export default function InvitePage({ params }: { params: { token: string } }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/img/mascot-peace.png" alt="" className="w-64 drop-shadow-xl" />
         <h2 className="mt-10 max-w-sm text-center font-display text-3xl font-black leading-tight text-ink">
-          Your team is waiting for you.
+          {t('invite.asideTitle')}
         </h2>
-        <p className="mt-3 max-w-sm text-center text-muted">
-          Join your organization on Magic Slash and start shipping with your AI dev agents.
-        </p>
+        <p className="mt-3 max-w-sm text-center text-muted">{t('invite.asideBody')}</p>
       </aside>
 
       {/* Right — form */}
-      <section className="flex w-full flex-col items-center justify-center px-6 py-12 lg:w-1/2">
+      <section className="relative flex w-full flex-col items-center justify-center px-6 py-12 lg:w-1/2">
+        {/* Top of the form column, not of the page: on a wide screen the left half is
+            an illustration, and a control floating over it would look unmoored. */}
+        <div className="absolute right-6 top-6">
+          <LanguageSwitcher />
+        </div>
+
         {/* mobile logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="mb-10 h-7 lg:hidden" />
+        <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="mb-10 mt-12 h-7 lg:hidden" />
 
         <div className="w-full max-w-sm">
-          {phase === 'loading' && <p className="text-center text-muted">Loading your invitation…</p>}
+          {phase === 'loading' && <p className="text-center text-muted">{t('invite.loading')}</p>}
 
           {phase === 'invalid' && (
             <div className="text-center">
-              <h1 className="font-display text-2xl font-black text-ink">Invitation not found</h1>
-              <p className="mt-2 text-sm text-muted">
-                This invitation link is invalid. Ask an admin to send you a new one.
-              </p>
+              <h1 className="font-display text-2xl font-black text-ink">
+                {t('invite.notFound.title')}
+              </h1>
+              <p className="mt-2 text-sm text-muted">{t('invite.notFound.body')}</p>
             </div>
           )}
 
           {phase === 'unavailable' && preview && (
             <div className="text-center">
-              <h1 className="font-display text-2xl font-black text-ink">Invitation unavailable</h1>
+              <h1 className="font-display text-2xl font-black text-ink">
+                {t('invite.unavailable.title')}
+              </h1>
               <p className="mt-2 text-sm text-muted">
-                {UNAVAILABLE_COPY[preview.status] ?? 'This invitation can no longer be used.'}
+                {t(UNAVAILABLE_KEYS[preview.status] ?? 'invite.unavailable.fallback')}
               </p>
               {preview.status === 'accepted' && (
                 <a
@@ -157,7 +167,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
                   rel="noopener noreferrer"
                   className="mt-6 inline-block rounded-full bg-ink px-6 py-3 font-display text-sm font-medium text-white transition-colors hover:bg-black/80"
                 >
-                  Download the app
+                  {t('invite.downloadApp')}
                 </a>
               )}
             </div>
@@ -167,19 +177,19 @@ export default function InvitePage({ params }: { params: { token: string } }) {
             <>
               <div className="mb-8">
                 <span className="inline-flex items-center rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-                  {preview.role === 'admin' ? 'Admin invitation' : 'Team invitation'}
+                  {preview.role === 'admin' ? t('invite.badge.admin') : t('invite.badge.team')}
                 </span>
                 <h1 className="mt-4 font-display text-3xl font-black leading-tight text-ink">
-                  Join <span className="text-brand">{preview.org_name}</span>
+                  {t('invite.joinLead')} <span className="text-brand">{preview.org_name}</span>
                 </h1>
-                <p className="mt-2 text-sm text-muted">
-                  Create your Magic Slash account to accept this invitation.
-                </p>
+                <p className="mt-2 text-sm text-muted">{t('invite.subtitle')}</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Email</label>
+                  <label className="mb-1 block text-xs font-medium text-muted">
+                    {t('invite.email')}
+                  </label>
                   <input
                     type="email"
                     value={preview.email}
@@ -188,7 +198,9 @@ export default function InvitePage({ params }: { params: { token: string } }) {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted">Password</label>
+                  <label className="mb-1 block text-xs font-medium text-muted">
+                    {t('invite.password')}
+                  </label>
                   <input
                     type="password"
                     value={password}
@@ -196,7 +208,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
                     required
                     minLength={8}
                     autoFocus
-                    placeholder="At least 8 characters"
+                    placeholder={t('invite.passwordPlaceholder')}
                     className="w-full rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-accent"
                   />
                 </div>
@@ -212,7 +224,9 @@ export default function InvitePage({ params }: { params: { token: string } }) {
                   disabled={submitting || password.length < 8}
                   className="w-full rounded-full bg-ink px-4 py-3 font-display text-sm font-medium text-white transition-colors hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {submitting ? 'Joining…' : `Accept & join ${preview.org_name}`}
+                  {submitting
+                    ? t('invite.submitting')
+                    : t('invite.submit', { org: preview.org_name })}
                 </button>
               </form>
             </>

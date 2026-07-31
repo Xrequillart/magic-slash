@@ -3,26 +3,12 @@
 import { Shield, User } from 'lucide-react'
 import { Dropdown, type DropdownOption } from '@/components/Dropdown'
 import type { Role } from '@/lib/orgs'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * Role picker for a member row — the generic Dropdown with the two membership
  * roles and their consequences spelled out, sized to sit inside a table cell.
  */
-
-const ROLE_OPTIONS: DropdownOption<Role>[] = [
-  {
-    value: 'user',
-    label: 'Member',
-    description: 'Can see the team and work on shared repositories',
-    icon: User,
-  },
-  {
-    value: 'admin',
-    label: 'Admin',
-    description: 'Can invite, change roles and archive the organization',
-    icon: Shield,
-  },
-]
 
 export function RoleSelect({
   value,
@@ -33,10 +19,27 @@ export function RoleSelect({
   onChange: (role: Role) => void
   disabled?: boolean
 }) {
+  const { t } = useT()
+
+  const options: DropdownOption<Role>[] = [
+    {
+      value: 'user',
+      label: t('org.role.member'),
+      description: t('org.role.member.help'),
+      icon: User,
+    },
+    {
+      value: 'admin',
+      label: t('org.role.admin'),
+      description: t('org.role.admin.help'),
+      icon: Shield,
+    },
+  ]
+
   return (
     <Dropdown
       value={value}
-      options={ROLE_OPTIONS}
+      options={options}
       onChange={onChange}
       disabled={disabled}
       width={260}

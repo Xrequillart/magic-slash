@@ -5,6 +5,8 @@ import { ChevronDown, ChevronRight, ExternalLink, FolderGit2 } from 'lucide-reac
 import type { TeamOverview } from '@/lib/team'
 import { buildTeamRows, type RepoScope, type TeamAgent, type TeamRepoRow } from '@/lib/teamRows'
 import { Badge, Card, SectionHeader, type BadgeTone } from '@/components/ui'
+import type { MessageKey, Translate } from '@/lib/i18n'
+import { useT } from '@/lib/i18n/useLanguage'
 import { SkillStats } from '@/components/SkillStats'
 
 /**
@@ -23,32 +25,60 @@ const STATUS_TONES: Record<string, BadgeTone> = {
   'PR merged': 'green',
 }
 
-function agentCountLabel(count: number): string {
-  if (count === 0) return 'no agent'
-  return `${count} agent${count === 1 ? '' : 's'}`
+/**
+ * The same statuses, named for display. The STORED value is the English phrase — the
+ * desktop writes it into `agents.status` — so it doubles as the lookup key here, and
+ * a status this build has never heard of is printed verbatim rather than dropped.
+ */
+const STATUS_LABELS: Record<string, MessageKey> = {
+  'in progress': 'team.status.inProgress',
+  committed: 'team.status.committed',
+  'ready for PR': 'team.status.readyForPR',
+  'PR created': 'team.status.prCreated',
+  'in review': 'team.status.inReview',
+  'changes requested': 'team.status.changesRequested',
+  'Review addressed': 'team.status.reviewAddressed',
+  'PR merged': 'team.status.prMerged',
+}
+
+/**
+ * "no agent" / "1 agent" / "3 agents". One catalogue entry per form rather than an
+ * `s` appended to a count: the plural rule is the translation's business, not this
+ * function's.
+ */
+function agentCountLabel(count: number, t: Translate): string {
+  if (count === 0) return t('team.agents.none')
+  return count === 1 ? t('team.agents.one') : t('team.agents.many', { count })
 }
 
 function AgentRow({ agent, email }: { agent: TeamAgent; email?: string }) {
+  const { t } = useT()
   return (
     <div className="flex items-center gap-3 border-t border-black/5 py-2.5 pl-11 pr-4">
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-ink">{agent.label}</p>
-        <p className="truncate text-xs text-muted">{email ?? agent.ownerId ?? 'Unassigned'}</p>
+        <p className="truncate text-xs text-muted">
+          {email ?? agent.ownerId ?? t('team.unassigned')}
+        </p>
       </div>
       {agent.ticketId && (
         <span className="shrink-0 rounded bg-accent/10 px-2 py-0.5 text-[11px] text-accent">{agent.ticketId}</span>
       )}
-      {agent.status && <Badge tone={STATUS_TONES[agent.status] ?? 'neutral'}>{agent.status}</Badge>}
+      {agent.status && (
+        <Badge tone={STATUS_TONES[agent.status] ?? 'neutral'}>
+          {STATUS_LABELS[agent.status] ? t(STATUS_LABELS[agent.status]) : agent.status}
+        </Badge>
+      )}
       {agent.prUrl && (
         <a
           href={agent.prUrl}
           target="_blank"
           rel="noreferrer"
-          title="Open the pull request"
+          title={t('team.openPr')}
           className="flex shrink-0 items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-black/[0.03] hover:text-ink"
         >
           <ExternalLink className="h-3.5 w-3.5" />
-          <span>View PR</span>
+          <span>{t('team.viewPr')}</span>
         </a>
       )}
     </div>
@@ -62,6 +92,7 @@ function RepoCard({
   row: TeamRepoRow
   emailByOwner: Record<string, string>
 }) {
+  const { t } = useT()
   const [expanded, setExpanded] = useState(false)
   const hasAgents = row.agents.length > 0
   const Chevron = expanded ? ChevronDown : ChevronRight
@@ -78,8 +109,8 @@ function RepoCard({
         <Chevron className={`h-4 w-4 shrink-0 text-muted ${hasAgents ? '' : 'opacity-0'}`} />
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{row.name}</span>
-        <span className="shrink-0 text-xs text-muted">{agentCountLabel(row.agents.length)}</span>
-        {row.prCount > 0 && <Badge tone="purple">{row.prCount} on a PR</Badge>}
+        <span className="shrink-0 text-xs text-muted">{agentCountLabel(row.agents.length, t)}</span>
+        {row.prCount > 0 && <Badge tone="purple">{t('team.onPr', { count: row.prCount })}</Badge>}
       </button>
       {expanded &&
         row.agents.map((agent) => (
@@ -96,6 +127,7 @@ function RepoCard({
  * active organization to set.
  */
 export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
+  const { t } = useT()
   const [scope, setScope] = useState<RepoScope | undefined>(undefined)
 
   const tabs = useMemo(() => {
@@ -107,9 +139,9 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
     // Only offer the personal tab when there is something in it.
     const hasPersonal =
       overview.repos.some((r) => !r.orgId) || overview.agents.some((a) => !a.orgId)
-    if (hasPersonal) list.push({ scope: null, label: 'Personal' })
+    if (hasPersonal) list.push({ scope: null, label: t('team.personal') })
     return list
-  }, [overview])
+  }, [overview, t])
 
   // Default to the first tab with agents in it, so a busy org is not hidden
   // behind a click just because it sorts second.
@@ -127,8 +159,8 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
   if (!overview) {
     return (
       <>
-        <SectionHeader icon={FolderGit2} title="Repositories" />
-        <Card className="p-8 text-center text-sm text-muted">Loading…</Card>
+        <SectionHeader icon={FolderGit2} title={t('team.repositories')} />
+        <Card className="p-8 text-center text-sm text-muted">{t('common.loading')}</Card>
       </>
     )
   }
@@ -167,11 +199,11 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
 
       <SectionHeader
         icon={FolderGit2}
-        title="Repositories"
+        title={t('team.repositories')}
         action={
           rows.length > 0 ? (
             <span className="text-xs text-muted">
-              {agentCountLabel(totalAgents)} · {totalPr} on a PR
+              {agentCountLabel(totalAgents, t)} · {t('team.onPr', { count: totalPr })}
             </span>
           ) : undefined
         }
@@ -183,13 +215,9 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
           {/* An empty tab is a different situation from having no repo at all,
               and only the latter deserves the "go share one" nudge. */}
           <p className="text-sm text-muted">
-            {tabs.length > 1 ? 'No repository here yet.' : 'No repository shared with your team yet.'}
+            {tabs.length > 1 ? t('team.emptyScope') : t('team.empty')}
           </p>
-          {tabs.length <= 1 && (
-            <p className="mt-1 text-xs text-muted">
-              Repos shared to an org from the desktop app appear here, with everyone working on them.
-            </p>
-          )}
+          {tabs.length <= 1 && <p className="mt-1 text-xs text-muted">{t('team.emptyHint')}</p>}
         </Card>
       ) : (
         <div className="flex flex-col gap-2">
@@ -202,8 +230,8 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
       {unmatched > 0 && (
         <p className="mt-3 text-xs text-muted">
           {unmatched === 1
-            ? '1 agent on a repository this view cannot resolve'
-            : `${unmatched} agents on repositories this view cannot resolve`}
+            ? t('team.unmatched.one')
+            : t('team.unmatched.many', { count: unmatched })}
         </p>
       )}
     </>

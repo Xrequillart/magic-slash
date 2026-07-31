@@ -1,4 +1,6 @@
 import { getSupabase } from './supabase'
+import { t } from './i18n'
+import { DEFAULT_LANGUAGE, type LanguageId } from './i18n/languages'
 
 export type Role = 'user' | 'admin'
 
@@ -62,9 +64,12 @@ export async function fetchOrgs(): Promise<Org[]> {
  * `create_organization` RPC is the only path — `organizations` has no INSERT
  * policy, because the org row and the creator's membership must land together.
  */
-export async function createOrg(name: string): Promise<string> {
+export async function createOrg(
+  name: string,
+  lang: LanguageId = DEFAULT_LANGUAGE,
+): Promise<string> {
   const orgName = name.trim()
-  if (!orgName) throw new Error('An organization needs a name')
+  if (!orgName) throw new Error(t('org.error.nameRequired', lang))
 
   const { data, error } = await getSupabase().rpc('create_organization', { org_name: orgName })
   if (error) throw new Error(error.message)

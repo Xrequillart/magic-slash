@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Building2,
   GitBranch,
@@ -24,6 +24,8 @@ import {
   type Repository,
   type RepositoryPatch,
 } from '@/lib/repositories'
+import type { Translate } from '@/lib/i18n'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * Every repository setting the desktop app exposes, minus the ones that need a
@@ -35,33 +37,46 @@ import {
  * Changes save immediately, one setting at a time, the way the desktop does.
  */
 
+/**
+ * Autonyms, untranslated: these pick the language CLAUDE writes a commit or a PR in,
+ * so the choice has to read the same whatever language the form is in.
+ */
 const LANGUAGE_OPTIONS: DropdownOption<string>[] = [
   { value: 'en', label: 'English' },
   { value: 'fr', label: 'Français' },
 ]
 
-const STYLE_OPTIONS: DropdownOption<string>[] = [
-  { value: 'single-line', label: 'Single line' },
-  { value: 'multi-line', label: 'Multi-line (with body)' },
-]
+/**
+ * The option lists, built once per language. The format descriptions are message-free
+ * shapes (`type(scope): description`) and stay as they are — they illustrate the
+ * syntax rather than describe it.
+ */
+function buildOptions(t: Translate) {
+  const style: DropdownOption<string>[] = [
+    { value: 'single-line', label: t('repo.commit.styleSingle') },
+    { value: 'multi-line', label: t('repo.commit.styleMulti') },
+  ]
 
-const FORMAT_OPTIONS: DropdownOption<string>[] = [
-  { value: 'conventional', label: 'Conventional', description: 'type: description' },
-  { value: 'angular', label: 'Angular', description: 'type(scope): description' },
-  { value: 'gitmoji', label: 'Gitmoji', description: 'emoji + description' },
-  { value: 'none', label: 'None', description: 'Free form' },
-]
+  const format: DropdownOption<string>[] = [
+    { value: 'conventional', label: t('repo.commit.formatConventional'), description: 'type: description' },
+    { value: 'angular', label: t('repo.commit.formatAngular'), description: 'type(scope): description' },
+    { value: 'gitmoji', label: t('repo.commit.formatGitmoji'), description: 'emoji + description' },
+    { value: 'none', label: t('repo.commit.formatNone'), description: t('repo.commit.formatNoneHelp') },
+  ]
 
-const COMMIT_MODE_OPTIONS: DropdownOption<string>[] = [
-  { value: 'new', label: 'New commit', description: 'Add a commit for the fixes' },
-  { value: 'amend', label: 'Amend last commit', description: 'Rewrites history, pushes with force' },
-  { value: 'ask', label: 'Ask', description: 'Choose at runtime, on each resolve' },
-]
+  const commitMode: DropdownOption<string>[] = [
+    { value: 'new', label: t('repo.resolve.modeNew'), description: t('repo.resolve.modeNewHelp') },
+    { value: 'amend', label: t('repo.resolve.modeAmend'), description: t('repo.resolve.modeAmendHelp') },
+    { value: 'ask', label: t('repo.resolve.modeAsk'), description: t('repo.resolve.modeAskHelp') },
+  ]
 
-const FORMAT_SOURCE_OPTIONS: DropdownOption<string>[] = [
-  { value: 'commit', label: 'Use commit settings' },
-  { value: 'custom', label: 'Custom' },
-]
+  const formatSource: DropdownOption<string>[] = [
+    { value: 'commit', label: t('repo.resolve.useCommitConfig') },
+    { value: 'custom', label: t('repo.resolve.customConfig') },
+  ]
+
+  return { style, format, commitMode, formatSource }
+}
 
 /**
  * Text setting that holds a draft until you save it, with Enter as a shortcut.
@@ -88,6 +103,7 @@ function DraftField({
   /** Refuses to save an empty value — for settings that must have one. */
   required?: boolean
 }) {
+  const { t } = useT()
   const [draft, setDraft] = useState(persisted)
   useEffect(() => setDraft(persisted), [persisted])
 
@@ -110,7 +126,7 @@ function DraftField({
       />
       {savable && (
         <Button onClick={() => onSave(draft)} className="shrink-0">
-          Save
+          {t('common.save')}
         </Button>
       )}
     </div>
@@ -140,6 +156,9 @@ export function RepositoryForm({
    */
   readOnly?: boolean
 }) {
+  const { t } = useT()
+  const options = useMemo(() => buildOptions(t), [t])
+
   // Resolved values: absent means "use the default", same as the desktop.
   const lang = (key: keyof Repository['languages']) => repo.languages[key] ?? DEFAULTS.language
   const commitStyle = repo.commit.style ?? DEFAULTS.commitStyle
@@ -184,37 +203,41 @@ export function RepositoryForm({
       )}
 
       {/* ── Scope ─────────────────────────────────────────────────────────── */}
-      <SettingsCard icon={Users} title="Scope">
+      <SettingsCard icon={Users} title={t('repo.scope.section')}>
         <SettingRow
-          label={repo.orgId ? `Team${scopeOrg ? ` — ${scopeOrg.name}` : ''}` : 'Personal'}
-          description={
+          label={
             repo.orgId
-              ? 'Shared with the organization — every member sees it and binds their own local folder.'
-              : 'Only you can see this repository. Share it with an organization to make it a team repo.'
+              ? scopeOrg
+                ? t('repo.scope.teamNamed', { name: scopeOrg.name })
+                : t('repo.scope.team')
+              : t('repo.scope.personal')
+          }
+          description={
+            repo.orgId ? t('repo.scope.teamHelp') : t('repo.scope.personalHelp')
           }
         >
           {repo.orgId ? (
             <Button variant="ghost" onClick={() => onPatch({ orgId: null })} className="border border-black/10">
               <Lock className="h-4 w-4" />
-              Make personal
+              {t('repo.scope.makePersonal')}
             </Button>
           ) : orgs.length > 0 ? (
             <Dropdown
               value=""
               options={shareOptions}
               onChange={(orgId) => onPatch({ orgId })}
-              placeholder="Share with organization…"
+              placeholder={t('repo.scope.sharePlaceholder')}
               className="w-64"
             />
           ) : (
-            <p className="text-xs text-muted">Join an organization to share repos.</p>
+            <p className="text-xs text-muted">{t('repo.scope.joinOrg')}</p>
           )}
         </SettingRow>
       </SettingsCard>
 
       {/* ── General ───────────────────────────────────────────────────────── */}
-      <SettingsCard icon={Settings2} title="General">
-        <SettingRow label="Name" description="Repository display name">
+      <SettingsCard icon={Settings2} title={t('repo.general.section')}>
+        <SettingRow label={t('repo.general.name')} description={t('repo.general.nameHelp')}>
           <DraftField
             persisted={repo.name}
             onSave={(name) => onPatch({ name })}
@@ -222,7 +245,10 @@ export function RepositoryForm({
           />
         </SettingRow>
 
-        <SettingRow label="Keywords" description="Auto-detection keywords (comma-separated)">
+        <SettingRow
+          label={t('repo.general.keywords')}
+          description={t('repo.general.keywordsHelp')}
+        >
           <DraftField
             persisted={repo.keywords.join(', ')}
             onSave={(value) =>
@@ -236,7 +262,10 @@ export function RepositoryForm({
           />
         </SettingRow>
 
-        <SettingRow label="Discussion language" description="Language Claude uses when talking with you">
+        <SettingRow
+          label={t('repo.general.discussionLang')}
+          description={t('repo.general.discussionLangHelp')}
+        >
           <Dropdown
             value={lang('discussion')}
             options={LANGUAGE_OPTIONS}
@@ -246,7 +275,7 @@ export function RepositoryForm({
           />
         </SettingRow>
 
-        <SettingRow label="Color" description="Project color in the app sidebar">
+        <SettingRow label={t('repo.general.color')} description={t('repo.general.colorHelp')}>
           <div className="flex flex-wrap gap-2">
             {REPO_COLORS.map((color) => (
               <button
@@ -254,7 +283,7 @@ export function RepositoryForm({
                 type="button"
                 onClick={() => onPatch({ color })}
                 title={color}
-                aria-label={`Set color ${color}`}
+                aria-label={t('repo.general.setColor', { color })}
                 className={`h-6 w-6 rounded-full transition-transform ${
                   repo.color === color
                     ? 'ring-2 ring-ink ring-offset-2'
@@ -268,10 +297,10 @@ export function RepositoryForm({
       </SettingsCard>
 
       {/* ── Branches ──────────────────────────────────────────────────────── */}
-      <SettingsCard icon={GitBranch} title="Branches">
+      <SettingsCard icon={GitBranch} title={t('repo.branches.section')}>
         <SettingRow
-          label="Development branch"
-          description="Base branch for comparing commits. Typed by hand here — the web app can't list the repo's branches."
+          label={t('repo.branches.development')}
+          description={t('repo.branches.developmentHelp')}
         >
           <DraftField
             persisted={repo.branches.development ?? ''}
@@ -283,10 +312,10 @@ export function RepositoryForm({
       </SettingsCard>
 
       {/* ── Worktree ──────────────────────────────────────────────────────── */}
-      <SettingsCard icon={GitBranch} title="Worktree">
+      <SettingsCard icon={GitBranch} title={t('repo.worktree.section')}>
         <SettingRow
-          label="Files to copy"
-          description="Files copied from the main repo into new worktrees (e.g. .env, .env.local)"
+          label={t('repo.worktree.files')}
+          description={t('repo.worktree.filesHelp')}
           stacked
         >
           <ChipList
@@ -299,8 +328,8 @@ export function RepositoryForm({
       </SettingsCard>
 
       {/* ── Commit ────────────────────────────────────────────────────────── */}
-      <SettingsCard icon={GitCommitHorizontal} title="Commit">
-        <SettingRow label="Language" description="Language used for commit messages">
+      <SettingsCard icon={GitCommitHorizontal} title={t('repo.commit.section')}>
+        <SettingRow label={t('repo.commit.language')} description={t('repo.commit.languageHelp')}>
           <Dropdown
             value={lang('commit')}
             options={LANGUAGE_OPTIONS}
@@ -310,38 +339,42 @@ export function RepositoryForm({
           />
         </SettingRow>
 
-        <SettingRow label="Style" description="Single line, or multi-line with a body">
+        <SettingRow label={t('repo.commit.style')} description={t('repo.commit.styleHelp')}>
           <Dropdown
             value={commitStyle}
-            options={STYLE_OPTIONS}
+            options={options.style}
             onChange={(style) => setCommit({ style })}
             width={240}
             className="w-52"
           />
         </SettingRow>
 
-        <SettingRow label="Format" description="Commit message convention">
+        <SettingRow label={t('repo.commit.format')} description={t('repo.commit.formatHelp')}>
           <Dropdown
             value={commitFormat}
-            options={FORMAT_OPTIONS}
+            options={options.format}
             onChange={(format) => setCommit({ format })}
             className="w-52"
           />
         </SettingRow>
 
-        <SettingRow label="Co-author" description="Add Claude as co-author in commits">
-          <Toggle label="Co-author" checked={coAuthor} onChange={(coAuthor) => setCommit({ coAuthor })} />
+        <SettingRow label={t('repo.commit.coAuthor')} description={t('repo.commit.coAuthorHelp')}>
+          <Toggle
+            label={t('repo.commit.coAuthor')}
+            checked={coAuthor}
+            onChange={(coAuthor) => setCommit({ coAuthor })}
+          />
         </SettingRow>
 
-        <SettingRow label="Include ticket ID" description="Add the ticket ID from the branch name">
+        <SettingRow label={t('repo.commit.ticketId')} description={t('repo.commit.ticketIdHelp')}>
           <Toggle
-            label="Include ticket ID"
+            label={t('repo.commit.ticketId')}
             checked={includeTicketId}
             onChange={(includeTicketId) => setCommit({ includeTicketId })}
           />
         </SettingRow>
 
-        <ExamplePanel title="Example">
+        <ExamplePanel title={t('repo.example')}>
           <pre className="whitespace-pre-wrap font-mono text-xs text-ink">
             {commitExample(commitFormat, commitStyle, includeTicketId)}
           </pre>
@@ -349,11 +382,14 @@ export function RepositoryForm({
       </SettingsCard>
 
       {/* ── Resolve ───────────────────────────────────────────────────────── */}
-      <SettingsCard icon={MessageSquare} title="Resolve">
-        <SettingRow label="Commit mode" description="How review fixes are committed">
+      <SettingsCard icon={MessageSquare} title={t('repo.resolve.section')}>
+        <SettingRow
+          label={t('repo.resolve.commitMode')}
+          description={t('repo.resolve.commitModeHelp')}
+        >
           <Dropdown
             value={commitMode}
-            options={COMMIT_MODE_OPTIONS}
+            options={options.commitMode}
             onChange={(commitMode) => setResolve({ commitMode })}
             className="w-52"
           />
@@ -361,10 +397,13 @@ export function RepositoryForm({
 
         {/* Only meaningful when a new commit can happen (new or ask). */}
         {commitMode !== 'amend' && (
-          <SettingRow label="Commit format" description="Where resolve commit messages take their format from">
+          <SettingRow
+            label={t('repo.resolve.commitFormat')}
+            description={t('repo.resolve.commitFormatHelp')}
+          >
             <Dropdown
               value={useCommitConfig ? 'commit' : 'custom'}
-              options={FORMAT_SOURCE_OPTIONS}
+              options={options.formatSource}
               onChange={(v) => setResolve({ useCommitConfig: v === 'commit' })}
               width={240}
               className="w-52"
@@ -374,19 +413,19 @@ export function RepositoryForm({
 
         {commitMode !== 'amend' && !useCommitConfig && (
           <>
-            <SettingRow label="Style" description="Single line, or multi-line with a body">
+            <SettingRow label={t('repo.commit.style')} description={t('repo.commit.styleHelp')}>
               <Dropdown
                 value={resolveStyle}
-                options={STYLE_OPTIONS}
+                options={options.style}
                 onChange={(style) => setResolve({ style })}
                 width={240}
                 className="w-52"
               />
             </SettingRow>
-            <SettingRow label="Format" description="Commit message convention">
+            <SettingRow label={t('repo.commit.format')} description={t('repo.commit.formatHelp')}>
               <Dropdown
                 value={resolveFormat}
-                options={FORMAT_OPTIONS}
+                options={options.format}
                 onChange={(format) => setResolve({ format })}
                 className="w-52"
               />
@@ -394,16 +433,19 @@ export function RepositoryForm({
           </>
         )}
 
-        <SettingRow label="Reply to comments" description="Reply in-thread on resolved GitHub comments">
+        <SettingRow label={t('repo.resolve.reply')} description={t('repo.resolve.replyHelp')}>
           <Toggle
-            label="Reply to comments"
+            label={t('repo.resolve.reply')}
             checked={replyToComments}
             onChange={(replyToComments) => setResolve({ replyToComments })}
           />
         </SettingRow>
 
         {replyToComments && (
-          <SettingRow label="Reply language" description="Language for replies posted on GitHub">
+          <SettingRow
+            label={t('repo.resolve.replyLang')}
+            description={t('repo.resolve.replyLangHelp')}
+          >
             <Dropdown
               value={replyLanguage}
               options={LANGUAGE_OPTIONS}
@@ -415,22 +457,24 @@ export function RepositoryForm({
         )}
 
         {commitMode === 'new' && (
-          <ExamplePanel title="Example">
+          <ExamplePanel title={t('repo.example')}>
             <pre className="whitespace-pre-wrap font-mono text-xs text-ink">{resolvePreview}</pre>
           </ExamplePanel>
         )}
         {commitMode === 'amend' && (
           <ExamplePanel tone="warning">
             <p className="text-xs text-ink">
-              Push will use <code className="rounded bg-black/[0.06] px-1.5 py-0.5 font-mono">--force-with-lease</code>.
+              {t('repo.resolve.amendNotice')}{' '}
+              <code className="rounded bg-black/[0.06] px-1.5 py-0.5 font-mono">--force-with-lease</code>.
             </p>
           </ExamplePanel>
         )}
         {commitMode === 'ask' && (
           <ExamplePanel tone="warning">
             <p className="text-xs text-ink">
-              You&apos;ll be asked to choose <strong>new commit</strong> or <strong>amend</strong> on each
-              resolve. Amending pushes with{' '}
+              {t('repo.resolve.askNoticeBefore')} <strong>{t('repo.resolve.askNoticeNew')}</strong>{' '}
+              {t('repo.resolve.askNoticeOr')} <strong>{t('repo.resolve.askNoticeAmend')}</strong>{' '}
+              {t('repo.resolve.askNoticeAfter')}{' '}
               <code className="rounded bg-black/[0.06] px-1.5 py-0.5 font-mono">--force-with-lease</code>.
             </p>
           </ExamplePanel>
@@ -438,8 +482,8 @@ export function RepositoryForm({
       </SettingsCard>
 
       {/* ── Pull request ──────────────────────────────────────────────────── */}
-      <SettingsCard icon={GitPullRequest} title="Pull request">
-        <SettingRow label="Language" description="Language used for PR titles and descriptions">
+      <SettingsCard icon={GitPullRequest} title={t('repo.pr.section')}>
+        <SettingRow label={t('repo.pr.language')} description={t('repo.pr.languageHelp')}>
           <Dropdown
             value={lang('pullRequest')}
             options={LANGUAGE_OPTIONS}
@@ -449,34 +493,31 @@ export function RepositoryForm({
           />
         </SettingRow>
 
-        <SettingRow label="Auto-link tickets" description="Add Jira / GitHub ticket links in the PR description">
+        <SettingRow label={t('repo.pr.autoLink')} description={t('repo.pr.autoLinkHelp')}>
           <Toggle
-            label="Auto-link tickets"
+            label={t('repo.pr.autoLink')}
             checked={autoLinkTickets}
             onChange={(autoLinkTickets) => onPatch({ pullRequest: { autoLinkTickets } })}
           />
         </SettingRow>
 
-        <SettingRow
-          label="Watch CI & review"
-          description="After creating the PR, wait for the checks, fix failures automatically, and address review feedback"
-        >
+        <SettingRow label={t('repo.pr.watchCI')} description={t('repo.pr.watchCIHelp')}>
           <Toggle
-            label="Watch CI & review"
+            label={t('repo.pr.watchCI')}
             checked={watchCI}
             onChange={(watchCI) => onPatch({ pullRequest: { watchCI } })}
           />
         </SettingRow>
 
-        <SettingRow
-          label="PR template"
-          description="Edited in the desktop app — the template is a file in the repository (.github/pull_request_template.md), not a setting."
-        />
+        <SettingRow label={t('repo.pr.template')} description={t('repo.pr.templateHelp')} />
       </SettingsCard>
 
       {/* ── Jira / GitHub issues ──────────────────────────────────────────── */}
-      <SettingsCard icon={Ticket} title="Jira / GitHub issues">
-        <SettingRow label="Comment language" description="Language used for Jira and GitHub issue comments">
+      <SettingsCard icon={Ticket} title={t('repo.issues.section')}>
+        <SettingRow
+          label={t('repo.issues.commentLang')}
+          description={t('repo.issues.commentLangHelp')}
+        >
           <Dropdown
             value={lang('jiraComment')}
             options={LANGUAGE_OPTIONS}
@@ -486,15 +527,18 @@ export function RepositoryForm({
           />
         </SettingRow>
 
-        <SettingRow label="Comment on PR creation" description="Post a comment with the PR link on the ticket">
+        <SettingRow
+          label={t('repo.issues.commentOnPR')}
+          description={t('repo.issues.commentOnPRHelp')}
+        >
           <Toggle
-            label="Comment on PR creation"
+            label={t('repo.issues.commentOnPR')}
             checked={commentOnPR}
             onChange={(commentOnPR) => setIssues({ commentOnPR })}
           />
         </SettingRow>
 
-        <SettingRow label="Jira URL" description="Base URL for Jira tickets (e.g. PROJ-123)">
+        <SettingRow label={t('repo.issues.jiraUrl')} description={t('repo.issues.jiraUrlHelp')}>
           <DraftField
             persisted={repo.issues.jiraUrl ?? ''}
             onSave={(jiraUrl) => setIssues({ jiraUrl })}
@@ -503,7 +547,10 @@ export function RepositoryForm({
           />
         </SettingRow>
 
-        <SettingRow label="GitHub issues URL" description="Base URL for GitHub issues (e.g. #456)">
+        <SettingRow
+          label={t('repo.issues.githubUrl')}
+          description={t('repo.issues.githubUrlHelp')}
+        >
           <DraftField
             persisted={repo.issues.githubIssuesUrl ?? ''}
             onSave={(githubIssuesUrl) => setIssues({ githubIssuesUrl })}
@@ -514,13 +561,11 @@ export function RepositoryForm({
       </SettingsCard>
 
       {/* ── Danger zone ───────────────────────────────────────────────────── */}
-      <SettingsCard icon={Trash2} title="Danger zone" tone="danger">
+      <SettingsCard icon={Trash2} title={t('repo.danger.section')} tone="danger">
         <SettingRow
-          label="Delete this repository"
+          label={t('repo.danger.delete')}
           description={
-            repo.orgId
-              ? 'Removes it for every member of the organization.'
-              : 'Removes it from your Magic Slash configuration.'
+            repo.orgId ? t('repo.danger.deleteTeamHelp') : t('repo.danger.deletePersonalHelp')
           }
         >
           <button
@@ -528,7 +573,7 @@ export function RepositoryForm({
             className="flex items-center gap-2 rounded-full border border-red/25 px-4 py-2 font-display text-xs font-medium text-red transition-colors hover:bg-red/[0.06]"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            Delete repository
+            {t('repo.danger.deleteAction')}
           </button>
         </SettingRow>
       </SettingsCard>
@@ -537,7 +582,7 @@ export function RepositoryForm({
       {repo.orgId && !readOnly && (
         <p className="flex items-center gap-2 text-xs text-muted">
           <Building2 className="h-3.5 w-3.5 shrink-0" />
-          Changes here apply for every member of {scopeOrg?.name ?? 'the organization'}.
+          {t('repo.teamNote', { org: scopeOrg?.name ?? t('repo.readOnly.theOrganization') })}
         </p>
       )}
     </fieldset>

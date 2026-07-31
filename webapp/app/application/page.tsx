@@ -8,6 +8,7 @@ import {
   type UserSettings,
   type UserSettingsPatch,
 } from '@/lib/settings'
+import { useT } from '@/lib/i18n/useLanguage'
 import { AppShell } from '@/components/AppShell'
 import { AppSettings } from '@/components/AppSettings'
 import { AppStatusSection } from '@/components/AppStatusSection'
@@ -19,12 +20,14 @@ import { Card, FullPageLoader } from '@/components/ui'
  * `user_settings`, the same per-user row the desktop reads at launch.
  *
  * The settings on this page are the *app's*, not the website's: the webapp is a
- * fixed light theme in English, so picking a theme or a language here changes
- * the desktop and nothing on screen. Repository settings live on
+ * fixed light theme, so picking a theme here changes the desktop and nothing on
+ * screen — and the language row below sets the DESKTOP's language, not this page's,
+ * which is the account menu's switcher. Repository settings live on
  * /repository/[id]; who you are lives on /account.
  */
 export default function Application() {
   const { session, pending } = useRequireSession()
+  const { t, lang } = useT()
   const userId = session?.user.id
 
   const [settings, setSettings] = useState<UserSettings | null>(null)
@@ -73,10 +76,10 @@ export default function Application() {
       queue.current = queue.current
         .then(async () => {
           try {
-            const saved = await updateUserSettings(userId, p)
+            const saved = await updateUserSettings(userId, p, lang)
             if (saved) store(saved)
           } catch (err) {
-            setSaveError(err instanceof Error ? err.message : 'Failed to save.')
+            setSaveError(err instanceof Error ? err.message : t('common.saveFailed'))
             // Re-read rather than un-apply the patch: an earlier queued write
             // may have landed since, so the stored row is the only sound state
             // to fall back to.
@@ -87,20 +90,22 @@ export default function Application() {
         // onto it, so one unexpected rejection would silently stop all of them.
         .catch(() => {})
     },
-    [userId, store],
+    [userId, store, lang, t],
   )
 
   if (pending || !session) return <FullPageLoader />
 
   return (
     <AppShell email={session.user.email ?? undefined}>
-      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">Application</h1>
+      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">
+        {t('application.title')}
+      </h1>
 
       <div className="mt-10 space-y-8">
         <AppStatusSection />
 
         {settings === null ? (
-          <Card className="p-8 text-center text-sm text-muted">Loading…</Card>
+          <Card className="p-8 text-center text-sm text-muted">{t('common.loading')}</Card>
         ) : (
           <>
             {saveError && (
@@ -109,10 +114,7 @@ export default function Application() {
               </p>
             )}
             <AppSettings settings={settings} onPatch={patch} />
-            <p className="text-xs text-muted">
-              These settings belong to the desktop app and follow your account onto every machine you sign
-              in on. An app that is already running picks them up right away.
-            </p>
+            <p className="text-xs text-muted">{t('application.footnote')}</p>
           </>
         )}
       </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   AlertTriangle,
@@ -16,12 +16,15 @@ import { Dropdown } from '@/components/Dropdown'
 import { ExamplePanel, SettingRow, SettingsCard, Toggle } from '@/components/SettingRow'
 import { Modal } from '@/components/Modal'
 import { Button } from '@/components/ui'
+import type { MessageKey, Translate } from '@/lib/i18n'
+import { useT } from '@/lib/i18n/useLanguage'
 import {
   DEFAULTS,
   LANGUAGE_OPTIONS,
   LAUNCH_MODE_OPTIONS,
   POLL_INTERVAL_OPTIONS,
   THEME_OPTIONS,
+  type KeyedOption,
   type ThemeSwatch,
   type UserSettings,
   type UserSettingsPatch,
@@ -37,6 +40,15 @@ import {
  */
 
 const BYPASS = 'bypassPermissions'
+
+/** Turns the keyed option lists in `lib/settings` into what Dropdown renders. */
+function translateOptions(options: KeyedOption[], t: Translate) {
+  return options.map(({ value, labelKey, descriptionKey }) => ({
+    value,
+    label: t(labelKey),
+    description: descriptionKey ? t(descriptionKey) : undefined,
+  }))
+}
 
 /**
  * Miniature of a theme, painted with that theme's own colours rather than the
@@ -71,30 +83,29 @@ function ThemePreview({ swatch }: { swatch: ThemeSwatch }) {
  * What activity recording does and does not send, side by side. Mirrors
  * `UsageLogsBreakdown` in `desktop/src/renderer/pages/Config/index.tsx` — same
  * items, same order — so the two surfaces cannot drift into telling users
- * different things. The desktop reads its strings from the message catalogue;
- * here they are literals, like every other string on this page.
+ * different things. Both read the same four-and-four list of message keys.
  *
  * Shown whatever the toggle's state: someone who turned it off is exactly the
  * person who wants to know what they turned off.
  */
-const COLLECTED = [
-  'Agent activity: tickets, commits, PRs, reviews',
-  'The skills you run (/magic:start, /magic:pr, …)',
-  'End-of-session summary: estimated cost, lines added/removed, duration, model',
-  'Ticket id and title, and the repositories you work in',
+const COLLECTED: MessageKey[] = [
+  'settings.usageLogs.collected.activity',
+  'settings.usageLogs.collected.skills',
+  'settings.usageLogs.collected.session',
+  'settings.usageLogs.collected.context',
 ]
 
-const NEVER_COLLECTED = [
-  'Your prompts and Claude’s answers',
-  'Your code, your diffs, your file contents',
-  'Terminal output and command history',
-  'Your tokens, keys and credentials',
+const NEVER_COLLECTED: MessageKey[] = [
+  'settings.usageLogs.excluded.prompts',
+  'settings.usageLogs.excluded.code',
+  'settings.usageLogs.excluded.terminal',
+  'settings.usageLogs.excluded.secrets',
 ]
 
-function UsageLogsBreakdown() {
+function UsageLogsBreakdown({ t }: { t: Translate }) {
   const columns = [
-    { title: 'Collected', items: COLLECTED, Icon: Check, tone: 'text-green' },
-    { title: 'Never collected', items: NEVER_COLLECTED, Icon: X, tone: 'text-red' },
+    { title: t('settings.usageLogs.collected'), items: COLLECTED, Icon: Check, tone: 'text-green' },
+    { title: t('settings.usageLogs.excluded'), items: NEVER_COLLECTED, Icon: X, tone: 'text-red' },
   ]
 
   return (
@@ -106,7 +117,7 @@ function UsageLogsBreakdown() {
             {items.map((item) => (
               <li key={item} className="flex items-start gap-2 text-xs leading-snug text-ink/70">
                 <Icon className={`mt-px h-3.5 w-3.5 shrink-0 ${tone}`} />
-                <span>{item}</span>
+                <span>{t(item)}</span>
               </li>
             ))}
           </ul>
@@ -123,8 +134,12 @@ export function AppSettings({
   settings: UserSettings
   onPatch: (patch: UserSettingsPatch) => void
 }) {
+  const { t } = useT()
   /** Held until confirmed: bypass mode is not something to enable by a stray click. */
   const [confirmBypass, setConfirmBypass] = useState(false)
+
+  const launchModeOptions = useMemo(() => translateOptions(LAUNCH_MODE_OPTIONS, t), [t])
+  const pollIntervalOptions = useMemo(() => translateOptions(POLL_INTERVAL_OPTIONS, t), [t])
 
   // A null column means the user never chose, so the desktop applies its own
   // default — show that, never a normalised value.
@@ -138,7 +153,7 @@ export function AppSettings({
   return (
     <>
       {/* ── Appearance ──────────────────────────────────────────────────────── */}
-      <SettingsCard icon={Palette} title="Appearance">
+      <SettingsCard icon={Palette} title={t('settings.appearance')}>
         <div className="py-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {THEME_OPTIONS.map((option) => {
@@ -156,29 +171,26 @@ export function AppSettings({
                   <ThemePreview swatch={option.swatch} />
                   <span className="mt-2 flex items-center gap-1.5">
                     <span className="min-w-0 truncate font-display text-xs font-bold text-ink">
-                      {option.label}
+                      {t(option.labelKey)}
                     </span>
                     {active && <Check className="h-3 w-3 shrink-0 text-accent" />}
                   </span>
                   <span className="mt-0.5 block text-[11px] leading-snug text-muted">
-                    {option.description}
+                    {t(option.descriptionKey)}
                   </span>
                 </button>
               )
             })}
           </div>
-          <p className="mt-3 text-xs text-muted">
-            The theme follows your account — every machine you sign in on uses it. Interface scale stays
-            on each machine, since it compensates for that screen.
-          </p>
+          <p className="mt-3 text-xs text-muted">{t('settings.appearance.note')}</p>
         </div>
       </SettingsCard>
 
       {/* ── Language & Region ───────────────────────────────────────────────── */}
-      <SettingsCard icon={Languages} title="Language & Region">
+      <SettingsCard icon={Languages} title={t('settings.language.section')}>
         <SettingRow
-          label="Interface language"
-          description="The language of the app itself — menus, settings, notifications, and how dates and numbers are written."
+          label={t('settings.language.label')}
+          description={t('settings.language.help')}
         >
           <Dropdown
             value={language}
@@ -189,25 +201,25 @@ export function AppSettings({
         </SettingRow>
         <div className="pb-5">
           <p className="text-xs text-muted">
-            It is not what Claude writes in: commit messages, pull requests and Jira comments follow each{' '}
+            {t('settings.language.noteBefore')}{' '}
             <Link href="/organization" className="text-accent hover:underline">
-              repository&rsquo;s own language settings
+              {t('settings.language.noteLink')}
             </Link>
-            , and your profile&rsquo;s languages decide how Claude talks to you.
+            {t('settings.language.noteAfter')}
           </p>
         </div>
       </SettingsCard>
 
       {/* ── Features ────────────────────────────────────────────────────────── */}
-      <SettingsCard icon={Sparkles} title="Features">
+      <SettingsCard icon={Sparkles} title={t('settings.features')}>
         <SettingRow
-          label="Show usage card in sidebar"
-          description="Display the connected account and the Session (5h) / Weekly (7d) gauges at the bottom of the sidebar."
+          label={t('settings.usageCard.label')}
+          description={t('settings.usageCard.help')}
         >
           <Toggle
             checked={settings.usageCardEnabled ?? DEFAULTS.usageCardEnabled}
             onChange={(usageCardEnabled) => onPatch({ usageCardEnabled })}
-            label="Show usage card in sidebar"
+            label={t('settings.usageCard.label')}
           />
         </SettingRow>
         {/*
@@ -218,18 +230,16 @@ export function AppSettings({
         <div className="border-b border-black/5 py-4 last:border-b-0">
           <div className="flex flex-col gap-x-6 gap-y-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
-              <p className="font-display text-sm font-bold text-ink">Share my activity with my team</p>
-              <p className="mt-0.5 text-xs text-muted">
-                On by default, and yours to turn off at any time. What you do with your agents is sent to
-                Magic Slash Cloud so your team&rsquo;s dashboard reflects your work. Turning it off stops new
-                records; what was already sent is kept.
+              <p className="font-display text-sm font-bold text-ink">
+                {t('settings.usageLogs.label')}
               </p>
+              <p className="mt-0.5 text-xs text-muted">{t('settings.usageLogs.help')}</p>
             </div>
             <div className="shrink-0">
               <Toggle
                 checked={usageLogs}
                 onChange={(usageLogsEnabled) => onPatch({ usageLogsEnabled })}
-                label="Share my activity with my team"
+                label={t('settings.usageLogs.label')}
               />
             </div>
           </div>
@@ -241,66 +251,65 @@ export function AppSettings({
           */}
           {usageLogs && (
             <>
-              <UsageLogsBreakdown />
+              <UsageLogsBreakdown t={t} />
               <p className="mt-3 text-[11px] leading-snug text-muted">
-                Every member of your organization can see these figures per person on the Team page.
+                {t('settings.usageLogs.footnote')}
               </p>
             </>
           )}
           <p className="mt-3 text-[11px] leading-snug text-muted">
-            Whatever this setting says, your agents (name, branch, ticket, repositories) sync to your team
-            — that is what powers the live view.
+            {t('settings.usageLogs.footnoteAgents')}
           </p>
         </div>
-        <SettingRow
-          label="Daily team digest"
-          description="Off by default. When enabled, you get one notification at 9:00 AM summarizing your team’s activity from the last 24 hours (PRs shipped, tickets moved to Done). Nothing is sent when there was no activity."
-        >
+        <SettingRow label={t('settings.digest.label')} description={t('settings.digest.help')}>
           <Toggle
             checked={settings.dailyDigestEnabled ?? DEFAULTS.dailyDigestEnabled}
             onChange={(dailyDigestEnabled) => onPatch({ dailyDigestEnabled })}
-            label="Daily team digest"
+            label={t('settings.digest.label')}
           />
         </SettingRow>
-        <SettingRow label="Enable split view" description="Display two agents side by side on wide screens.">
+        <SettingRow label={t('settings.split.label')} description={t('settings.split.help')}>
           <Toggle
             checked={settings.splitEnabled ?? DEFAULTS.splitEnabled}
             onChange={(splitEnabled) => onPatch({ splitEnabled })}
-            label="Enable split view"
+            label={t('settings.split.label')}
           />
         </SettingRow>
       </SettingsCard>
 
       {/* ── PR Review Watcher ───────────────────────────────────────────────── */}
-      <SettingsCard icon={GitPullRequest} title="PR Review Watcher">
+      <SettingsCard icon={GitPullRequest} title={t('settings.prWatcher.section')}>
         <SettingRow
-          label="Watch PR reviews"
-          description="Poll GitHub to track review status on agents’ pull requests."
+          label={t('settings.prWatcher.label')}
+          description={t('settings.prWatcher.help')}
         >
           <Toggle
             checked={prReviews}
             onChange={(prReviewsEnabled) => onPatch({ prReviewsEnabled })}
-            label="Watch PR reviews"
+            label={t('settings.prWatcher.label')}
           />
         </SettingRow>
         {prReviews && (
           <>
-            <SettingRow label="Polling interval" description="How often the GitHub API is polled.">
+            <SettingRow
+              label={t('settings.prWatcher.intervalLabel')}
+              description={t('settings.prWatcher.intervalHelp')}
+            >
               <Dropdown
                 value={String(pollInterval)}
-                options={POLL_INTERVAL_OPTIONS}
+                options={pollIntervalOptions}
                 onChange={(next) => onPatch({ prReviewsPollIntervalMs: Number(next) })}
                 className="w-52"
               />
             </SettingRow>
             <SettingRow
-              label="Auto-launch skills"
-              description="Send /magic:resolve or /magic:done directly to the agent’s terminal. Disabled by default for safety."
+              label={t('settings.prWatcher.autoLaunchLabel')}
+              description={t('settings.prWatcher.autoLaunchHelp')}
             >
               <Toggle
                 checked={settings.prReviewsAutoLaunchSkills ?? DEFAULTS.prReviewsAutoLaunchSkills}
                 onChange={(prReviewsAutoLaunchSkills) => onPatch({ prReviewsAutoLaunchSkills })}
-                label="Auto-launch skills"
+                label={t('settings.prWatcher.autoLaunchLabel')}
               />
             </SettingRow>
           </>
@@ -308,24 +317,21 @@ export function AppSettings({
       </SettingsCard>
 
       {/* ── Claude Code ─────────────────────────────────────────────────────── */}
-      <SettingsCard icon={SquareTerminal} title="Claude Code">
+      <SettingsCard icon={SquareTerminal} title={t('settings.claudeCode')}>
         <SettingRow
-          label="Permission mode"
-          description="Controls the level of autonomy for all Claude Code agents."
+          label={t('settings.launchMode.label')}
+          description={t('settings.launchMode.help')}
         >
           <Dropdown
             value={launchMode}
-            options={LAUNCH_MODE_OPTIONS}
+            options={launchModeOptions}
             onChange={(next) => (next === BYPASS ? setConfirmBypass(true) : onPatch({ launchMode: next }))}
             className="w-52"
           />
         </SettingRow>
         {launchMode === BYPASS && (
           <ExamplePanel tone="warning">
-            <p className="text-xs text-ink">
-              Bypass mode disables all permission checks. Only use it in sandboxed environments with no
-              internet access.
-            </p>
+            <p className="text-xs text-ink">{t('settings.launchMode.bypassInline')}</p>
           </ExamplePanel>
         )}
       </SettingsCard>
@@ -334,12 +340,12 @@ export function AppSettings({
         open={confirmBypass}
         onClose={() => setConfirmBypass(false)}
         icon={AlertTriangle}
-        title="Enable Bypass mode?"
+        title={t('settings.launchMode.bypassTitle')}
         tone="danger"
         footer={
           <>
             <Button variant="ghost" className="ml-auto" onClick={() => setConfirmBypass(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               variant="danger"
@@ -348,16 +354,12 @@ export function AppSettings({
                 setConfirmBypass(false)
               }}
             >
-              I understand, enable Bypass
+              {t('settings.launchMode.bypassConfirm')}
             </Button>
           </>
         }
       >
-        <p className="text-sm text-muted">
-          Security warning: Bypass mode disables all permission checks. Every agent on every machine you
-          sign in on will run commands and edit files without ever asking. Only use in sandboxed
-          environments with no internet access.
-        </p>
+        <p className="text-sm text-muted">{t('settings.launchMode.bypassWarning')}</p>
       </Modal>
     </>
   )

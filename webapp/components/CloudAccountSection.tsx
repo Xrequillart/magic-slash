@@ -13,6 +13,7 @@ import {
   signOut,
   updatePassword,
 } from '@/lib/account'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * Cloud identity card: who you're signed in as, and the four things you can do
@@ -59,6 +60,7 @@ function CardAction({
 
 export function CloudAccountSection({ email }: { email: string }) {
   const router = useRouter()
+  const { t, lang } = useT()
 
   const [showPassword, setShowPassword] = useState(false)
   const [password, setPassword] = useState('')
@@ -93,11 +95,11 @@ export function CloudAccountSection({ email }: { email: string }) {
     e.preventDefault()
     if (pwBusy) return
     if (password.length < 8) {
-      setPwStatus({ kind: 'err', msg: 'Use at least 8 characters.' })
+      setPwStatus({ kind: 'err', msg: t('cloud.password.tooShort') })
       return
     }
     if (password !== confirm) {
-      setPwStatus({ kind: 'err', msg: 'Passwords do not match.' })
+      setPwStatus({ kind: 'err', msg: t('cloud.password.mismatch') })
       return
     }
     setPwBusy(true)
@@ -106,7 +108,10 @@ export function CloudAccountSection({ email }: { email: string }) {
       await updatePassword(password)
       closePassword()
     } catch (err) {
-      setPwStatus({ kind: 'err', msg: err instanceof Error ? err.message : 'Failed to update password.' })
+      setPwStatus({
+        kind: 'err',
+        msg: err instanceof Error ? err.message : t('cloud.password.failed'),
+      })
     } finally {
       setPwBusy(false)
     }
@@ -129,15 +134,18 @@ export function CloudAccountSection({ email }: { email: string }) {
       if (emailStep === 'request') {
         await requestEmailChange(newEmail)
         setEmailStep('confirm')
-        setEmailStatus({ kind: 'ok', msg: 'Code sent. Check your new inbox.' })
+        setEmailStatus({ kind: 'ok', msg: t('cloud.email.codeSent') })
       } else {
-        await confirmEmailChange(newEmail, code)
+        await confirmEmailChange(newEmail, code, lang)
         closeEmail()
         // The session carries the old address until it is re-read.
         router.refresh()
       }
     } catch (err) {
-      setEmailStatus({ kind: 'err', msg: err instanceof Error ? err.message : 'Failed to change email.' })
+      setEmailStatus({
+        kind: 'err',
+        msg: err instanceof Error ? err.message : t('cloud.email.failed'),
+      })
     } finally {
       setEmailBusy(false)
     }
@@ -151,30 +159,37 @@ export function CloudAccountSection({ email }: { email: string }) {
       await deleteAccount()
       router.replace('/')
     } catch (err) {
-      setDeleteStatus({ kind: 'err', msg: err instanceof Error ? err.message : 'Failed to delete account.' })
+      setDeleteStatus({
+        kind: 'err',
+        msg: err instanceof Error ? err.message : t('cloud.delete.failed'),
+      })
       setDeleting(false)
     }
   }
 
   return (
     <section>
-      <SectionHeader icon={Cloud} title="Cloud account" />
+      <SectionHeader icon={Cloud} title={t('cloud.title')} />
 
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="truncate font-display text-sm font-bold text-ink">{email}</p>
-            <p className="mt-0.5 text-xs text-muted">Signed in to Magic Slash cloud</p>
+            <p className="mt-0.5 text-xs text-muted">{t('cloud.signedIn')}</p>
           </div>
-          <CardAction icon={LogOut} label="Sign out" onClick={leave} />
+          <CardAction icon={LogOut} label={t('cloud.signOut')} onClick={leave} />
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-black/5 pt-4">
-          <CardAction icon={KeyRound} label="Change password" onClick={() => setShowPassword(true)} />
-          <CardAction icon={AtSign} label="Change email" onClick={() => setShowEmail(true)} />
+          <CardAction
+            icon={KeyRound}
+            label={t('cloud.changePassword')}
+            onClick={() => setShowPassword(true)}
+          />
+          <CardAction icon={AtSign} label={t('cloud.changeEmail')} onClick={() => setShowEmail(true)} />
           <CardAction
             icon={Trash2}
-            label="Delete my account"
+            label={t('cloud.deleteAccount')}
             tone="danger"
             onClick={() => setShowDelete(true)}
             className="sm:ml-auto"
@@ -182,73 +197,76 @@ export function CloudAccountSection({ email }: { email: string }) {
         </div>
       </Card>
 
-      <Modal open={showPassword} onClose={closePassword} icon={KeyRound} title="Change password">
+      <Modal open={showPassword} onClose={closePassword} icon={KeyRound} title={t('cloud.changePassword')}>
         <form onSubmit={submitPassword} className="space-y-2 pb-1">
           <Input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="New password"
+            placeholder={t('cloud.password.newPlaceholder')}
             autoFocus
           />
           <Input
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            placeholder="Confirm new password"
+            placeholder={t('cloud.password.confirmPlaceholder')}
           />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="ghost" type="button" onClick={closePassword} className="mr-auto">
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={pwBusy || !password || !confirm}>
-              {pwBusy ? 'Saving…' : 'Update password'}
+              {pwBusy ? t('common.saving') : t('cloud.password.submit')}
             </Button>
           </div>
           <Note status={pwStatus} />
         </form>
       </Modal>
 
-      <Modal open={showEmail} onClose={closeEmail} icon={AtSign} title="Change email">
+      <Modal open={showEmail} onClose={closeEmail} icon={AtSign} title={t('cloud.changeEmail')}>
         <form onSubmit={submitEmail} className="space-y-2 pb-1">
           {emailStep === 'request' ? (
             <>
-              <p className="text-xs text-muted">
-                We&apos;ll email a 6-digit confirmation code to your new address.
-              </p>
+              <p className="text-xs text-muted">{t('cloud.email.requestHint')}</p>
               <Input
                 type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
-                placeholder="New email"
+                placeholder={t('cloud.email.newPlaceholder')}
                 autoFocus
               />
             </>
           ) : (
             <>
               <p className="text-xs text-muted">
-                Check <span className="font-medium text-ink">{newEmail}</span> for the confirmation code and enter
-                it below.
+                {t('cloud.email.confirmBefore')}{' '}
+                <span className="font-medium text-ink">{newEmail}</span>
+                {t('cloud.email.confirmAfter')}
               </p>
               <Input
                 type="text"
                 inputMode="numeric"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="6-digit code"
+                placeholder={t('cloud.email.codePlaceholder')}
                 autoFocus
               />
             </>
           )}
           <div className="flex items-center gap-2 pt-2">
             <Button variant="ghost" type="button" onClick={closeEmail} className="mr-auto">
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               type="submit"
               disabled={emailBusy || (emailStep === 'request' ? !newEmail.trim() : !code.trim())}
             >
-              {emailBusy ? 'Working…' : emailStep === 'request' ? 'Send code' : 'Confirm change'}
+              {emailBusy
+                ? t('cloud.email.working')
+                : emailStep === 'request'
+                  ? t('cloud.email.sendCode')
+                  : t('cloud.email.confirmChange')}
             </Button>
           </div>
           <Note status={emailStatus} />
@@ -259,15 +277,15 @@ export function CloudAccountSection({ email }: { email: string }) {
         open={showDelete}
         onClose={() => setShowDelete(false)}
         icon={Trash2}
-        title="Delete my account"
+        title={t('cloud.deleteAccount')}
         tone="danger"
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowDelete(false)} className="mr-auto">
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button variant="danger" onClick={confirmDelete} disabled={deleting}>
-              {deleting ? 'Deleting…' : 'Delete permanently'}
+              {deleting ? t('common.deleting') : t('cloud.delete.submit')}
             </Button>
           </>
         }
@@ -277,11 +295,8 @@ export function CloudAccountSection({ email }: { email: string }) {
             <AlertTriangle className="h-4 w-4 text-red" />
           </span>
           <div>
-            <p className="text-sm text-ink">This permanently deletes your account and personal data.</p>
-            <p className="mt-1 text-xs text-muted">
-              Organizations you created will be removed along with their data. This cannot be undone. Magic Slash
-              keeps working locally without an account.
-            </p>
+            <p className="text-sm text-ink">{t('cloud.delete.warning')}</p>
+            <p className="mt-1 text-xs text-muted">{t('cloud.delete.body')}</p>
           </div>
         </div>
         <Note status={deleteStatus} />

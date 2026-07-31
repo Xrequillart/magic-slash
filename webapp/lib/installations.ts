@@ -1,4 +1,6 @@
 import { getSupabase } from './supabase'
+import { localeOf, t } from './i18n'
+import { DEFAULT_LANGUAGE, type LanguageId } from './i18n/languages'
 
 /** Where the desktop app is downloaded from. */
 export const DOWNLOAD_URL = 'https://github.com/xrequillart/magic-slash/releases/latest'
@@ -63,32 +65,45 @@ const DAY = 24 * HOUR
  *
  * `formatRelative` falls through to this once a date is too old for a relative
  * label, so the app has one absolute date format rather than one per caller.
+ *
+ * `lang` defaults to English rather than being required, because the back-office
+ * calls this from a dozen table cells and is not translated — the user-space callers
+ * pass the language they got from `useT()`.
  */
-export function formatAbsoluteDate(iso: string | null): string {
-  const t = iso === null ? NaN : new Date(iso).getTime()
-  if (Number.isNaN(t)) return '—'
-  return new Date(t).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+export function formatAbsoluteDate(iso: string | null, lang: LanguageId = DEFAULT_LANGUAGE): string {
+  const at = iso === null ? NaN : new Date(iso).getTime()
+  if (Number.isNaN(at)) return '—'
+  return new Date(at).toLocaleDateString(localeOf(lang), {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
-/** Coarse "time ago" label. Precision beyond a day is not useful here. */
-export function formatRelative(iso: string): string {
+/**
+ * Coarse "time ago" label. Precision beyond a day is not useful here.
+ *
+ * One entry per plural form rather than a suffix appended to a number: "1 minute ago"
+ * and "il y a 1 minute" put the count in different places, so a template with an `s`
+ * glued on the end cannot produce both.
+ */
+export function formatRelative(iso: string, lang: LanguageId = DEFAULT_LANGUAGE): string {
   const then = new Date(iso).getTime()
-  if (Number.isNaN(then)) return 'unknown'
+  if (Number.isNaN(then)) return t('time.unknown', lang)
 
   const diff = Date.now() - then
-  if (diff < 0) return 'just now'
-  if (diff < MINUTE) return 'just now'
+  if (diff < MINUTE) return t('time.justNow', lang)
   if (diff < HOUR) {
-    const m = Math.floor(diff / MINUTE)
-    return `${m} minute${m === 1 ? '' : 's'} ago`
+    const count = Math.floor(diff / MINUTE)
+    return t(count === 1 ? 'time.minutes.one' : 'time.minutes.many', lang, { count })
   }
   if (diff < DAY) {
-    const h = Math.floor(diff / HOUR)
-    return `${h} hour${h === 1 ? '' : 's'} ago`
+    const count = Math.floor(diff / HOUR)
+    return t(count === 1 ? 'time.hours.one' : 'time.hours.many', lang, { count })
   }
-  const d = Math.floor(diff / DAY)
-  if (d < 30) return `${d} day${d === 1 ? '' : 's'} ago`
-  return formatAbsoluteDate(iso)
+  const count = Math.floor(diff / DAY)
+  if (count < 30) return t(count === 1 ? 'time.days.one' : 'time.days.many', lang, { count })
+  return formatAbsoluteDate(iso, lang)
 }
 
 /**

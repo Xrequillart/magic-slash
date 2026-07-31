@@ -21,6 +21,7 @@ import {
 } from '@/lib/admin'
 import { formatAbsoluteDate, formatDevicePlatform, formatRelative } from '@/lib/installations'
 import { THEME_OPTIONS } from '@/lib/settings'
+import { t } from '@/lib/i18n'
 import { LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
 import { versionStanding } from '@/lib/versions'
 import { PageHead } from '@/components/regie/ConsoleShell'
@@ -96,7 +97,9 @@ function ThemeChip({ themeId }: { themeId: string }) {
   return (
     <span
       aria-hidden
-      title={option.label}
+      // The console is French and has no language switcher, so it names the theme in
+      // French rather than following the visitor's website preference.
+      title={t(option.labelKey, 'fr')}
       className="inline-flex h-5 w-8 shrink-0 flex-col overflow-hidden rounded border"
       style={{ backgroundColor: `rgb(${swatch.bgRgb})`, borderColor: swatch.lineStrong }}
     >

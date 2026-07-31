@@ -1,6 +1,7 @@
 'use client'
 
 import { useRequireSession } from '@/lib/session'
+import { useT } from '@/lib/i18n/useLanguage'
 import { AppShell } from '@/components/AppShell'
 import { CloudAccountSection } from '@/components/CloudAccountSection'
 import { DevicesSection } from '@/components/DevicesSection'
@@ -15,12 +16,15 @@ import { FullPageLoader } from '@/components/ui'
  */
 export default function Account() {
   const { session, pending } = useRequireSession()
+  const { t } = useT()
 
   if (pending || !session) return <FullPageLoader />
 
   return (
     <AppShell email={session.user.email ?? undefined}>
-      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">Account</h1>
+      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">
+        {t('account.title')}
+      </h1>
 
       <div className="mt-10 space-y-8">
         <CloudAccountSection email={session.user.email ?? ''} />

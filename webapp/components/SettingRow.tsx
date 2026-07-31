@@ -1,6 +1,7 @@
 'use client'
 
 import type { LucideIcon } from 'lucide-react'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * The settings vocabulary shared by the repository page: a labelled row with its
@@ -124,15 +125,18 @@ export function ChipList({
   items,
   onChange,
   placeholder,
-  addLabel = 'Add',
+  addLabel,
   inputId,
 }: {
   items: string[]
   onChange: (items: string[]) => void
   placeholder: string
+  /** Defaults to a translated "Add". */
   addLabel?: string
   inputId: string
 }) {
+  const { t } = useT()
+
   const add = (raw: string, clear: () => void) => {
     const value = raw.trim()
     if (!value || items.includes(value)) return
@@ -153,7 +157,7 @@ export function ChipList({
               <button
                 type="button"
                 onClick={() => onChange(items.filter((i) => i !== item))}
-                aria-label={`Remove ${item}`}
+                aria-label={t('common.remove', { item })}
                 className="text-muted transition-colors hover:text-red"
               >
                 &times;
@@ -185,7 +189,7 @@ export function ChipList({
           }}
           className="shrink-0 rounded-xl border border-black/10 px-3.5 py-2 font-display text-xs font-medium text-muted transition-colors hover:bg-black/[0.04] hover:text-ink"
         >
-          {addLabel}
+          {addLabel ?? t('common.add')}
         </button>
       </div>
     </div>

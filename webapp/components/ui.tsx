@@ -1,4 +1,7 @@
+'use client'
+
 import type { LucideIcon } from 'lucide-react'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * The shared visual vocabulary. These classes were duplicated across every page;
@@ -139,11 +142,12 @@ export function Badge({
  * session doesn't flash a different colour.
  */
 export function FullPageLoader({ tone = 'app' }: { tone?: 'app' | 'login' }) {
+  const { t } = useT()
   return (
     <div
       className={`flex min-h-screen items-center justify-center text-muted ${tone === 'login' ? 'bg-softblue' : 'bg-canvas'}`}
     >
-      Loading…
+      {t('common.loading')}
     </div>
   )
 }

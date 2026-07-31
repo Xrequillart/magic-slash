@@ -9,6 +9,7 @@ import { INSTALL_COMMAND, type Installation } from '@/lib/installations'
 import { doneCount, isOnboarded, TOTAL_STEPS, type OnboardingState } from '@/lib/onboarding'
 import { createOrg, type Org } from '@/lib/orgs'
 import { type UserProfile } from '@/lib/profile'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * Onboarding checklist: join an organization, fill in your profile, install the
@@ -86,6 +87,7 @@ export function GettingStarted({
   onProfileSaved: (profile: UserProfile) => void
   onOrgCreated: () => void
 }) {
+  const { t, lang } = useT()
   const [wizardOpen, setWizardOpen] = useState(false)
   const [showOrgForm, setShowOrgForm] = useState(false)
   const [orgName, setOrgName] = useState('')
@@ -100,12 +102,12 @@ export function GettingStarted({
     setCreating(true)
     setOrgError(null)
     try {
-      await createOrg(orgName)
+      await createOrg(orgName, lang)
       setOrgName('')
       setShowOrgForm(false)
       onOrgCreated()
     } catch (err) {
-      setOrgError(err instanceof Error ? err.message : 'Failed to create the organization.')
+      setOrgError(err instanceof Error ? err.message : t('onboarding.org.failed'))
     } finally {
       setCreating(false)
     }
@@ -127,7 +129,7 @@ export function GettingStarted({
     <>
       <div className="overflow-hidden rounded-2xl border border-black/5 bg-white">
         <div className="flex items-center justify-between px-5 pb-3 pt-4">
-          <h2 className="font-display text-sm font-bold text-ink">Get started</h2>
+          <h2 className="font-display text-sm font-bold text-ink">{t('onboarding.title')}</h2>
           <span className="text-xs text-muted">
             {doneCount(state)}/{TOTAL_STEPS}
           </span>
@@ -140,8 +142,12 @@ export function GettingStarted({
                 <ItemBody
                   done
                   icon={Building2}
-                  title="Join an organization"
-                  hint={orgs.length === 1 ? orgs[0].name : `${orgs.length} organizations`}
+                  title={t('onboarding.org.title')}
+                  hint={
+                    orgs.length === 1
+                      ? orgs[0].name
+                      : t('onboarding.org.hintCount', { count: orgs.length })
+                  }
                 />
               </div>
             ) : (
@@ -154,8 +160,8 @@ export function GettingStarted({
                   <ItemBody
                     done={false}
                     icon={Building2}
-                    title="Join an organization"
-                    hint="Create your own, or open the invite link a teammate sent you"
+                    title={t('onboarding.org.title')}
+                    hint={t('onboarding.org.hintPending')}
                   />
                   <ChevronDown
                     className={`h-5 w-5 shrink-0 text-black/20 transition-all group-hover:text-brand ${showOrgForm ? 'rotate-180' : ''}`}
@@ -164,19 +170,17 @@ export function GettingStarted({
 
                 {showOrgForm && (
                   <div className={EXPANSION}>
-                    <p className="mb-2 text-xs text-muted">
-                      Create an organization — or just open the invite link a teammate sent you.
-                    </p>
+                    <p className="mb-2 text-xs text-muted">{t('onboarding.org.expand')}</p>
                     <form onSubmit={submitOrg} className="flex flex-col gap-2 sm:flex-row">
                       <Input
                         type="text"
                         value={orgName}
                         onChange={(e) => setOrgName(e.target.value)}
-                        placeholder="Organization name"
+                        placeholder={t('onboarding.org.namePlaceholder')}
                         autoFocus
                       />
                       <Button type="submit" disabled={creating || !orgName.trim()} className="shrink-0">
-                        {creating ? 'Creating…' : 'Create'}
+                        {creating ? t('common.creating') : t('common.create')}
                       </Button>
                     </form>
                     {orgError && <p className="mt-2 text-xs text-red">{orgError}</p>}
@@ -192,8 +196,8 @@ export function GettingStarted({
                 <ItemBody
                   done
                   icon={UserRound}
-                  title="Fill in your profile"
-                  hint="Claude tailors its tone and depth to you"
+                  title={t('onboarding.profile.title')}
+                  hint={t('onboarding.profile.hintDone')}
                 />
               </div>
             ) : (
@@ -201,8 +205,8 @@ export function GettingStarted({
                 <ItemBody
                   done={false}
                   icon={UserRound}
-                  title="Fill in your profile"
-                  hint="A few questions so Claude adapts to how you work"
+                  title={t('onboarding.profile.title')}
+                  hint={t('onboarding.profile.hintPending')}
                 />
                 <ChevronRight className="h-5 w-5 shrink-0 text-black/20 transition-all group-hover:translate-x-0.5 group-hover:text-brand" />
               </button>
@@ -215,8 +219,13 @@ export function GettingStarted({
                 <ItemBody
                   done
                   icon={Terminal}
-                  title="Install the desktop app"
-                  hint={`Running on ${installs.length === 1 ? '1 device' : `${installs.length} devices`}`}
+                  title={t('onboarding.install.title')}
+                  hint={t('onboarding.install.hintDone', {
+                    devices:
+                      installs.length === 1
+                        ? t('onboarding.install.device.one')
+                        : t('onboarding.install.device.many', { count: installs.length }),
+                  })}
                 />
               </div>
             ) : (
@@ -229,8 +238,8 @@ export function GettingStarted({
                   <ItemBody
                     done={false}
                     icon={Terminal}
-                    title="Install the desktop app"
-                    hint="One command in your terminal — Magic Slash runs on your machine"
+                    title={t('onboarding.install.title')}
+                    hint={t('onboarding.install.hintPending')}
                   />
                   <ChevronDown
                     className={`h-5 w-5 shrink-0 text-black/20 transition-all group-hover:text-brand ${showCommand ? 'rotate-180' : ''}`}
@@ -239,7 +248,7 @@ export function GettingStarted({
 
                 {showCommand && (
                   <div className={EXPANSION}>
-                    <p className="mb-2 text-xs text-muted">Run this in your terminal:</p>
+                    <p className="mb-2 text-xs text-muted">{t('onboarding.install.runThis')}</p>
                     <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-canvas p-1 pl-3.5">
                       <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap py-2 font-mono text-xs text-ink">
                         {INSTALL_COMMAND}
@@ -249,7 +258,7 @@ export function GettingStarted({
                         className="flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-3 py-2 font-display text-xs font-medium text-muted transition-colors hover:text-ink"
                       >
                         {copied ? <Check className="h-3.5 w-3.5 text-green" /> : <Copy className="h-3.5 w-3.5" />}
-                        {copied ? 'Copied' : 'Copy'}
+                        {copied ? t('common.copied') : t('common.copy')}
                       </button>
                     </div>
                   </div>

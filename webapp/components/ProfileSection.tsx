@@ -7,11 +7,12 @@ import { Badge, Card, SectionHeader } from '@/components/ui'
 import {
   fetchProfile,
   isProfileComplete,
-  LEVEL_LABELS,
-  ROLE_LABELS,
-  STYLE_LABELS,
+  LEVEL_LABEL_KEYS,
+  ROLE_LABEL_KEYS,
+  STYLE_LABEL_KEYS,
   type UserProfile,
 } from '@/lib/profile'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * Profile card: a read-only summary of what Claude knows about you. The whole
@@ -19,6 +20,7 @@ import {
  * checklist uses, so there is only one place the profile is ever edited.
  */
 export function ProfileSection() {
+  const { t } = useT()
   const [profile, setProfile] = useState<UserProfile | null | undefined>(undefined)
   const [wizardOpen, setWizardOpen] = useState(false)
 
@@ -35,12 +37,12 @@ export function ProfileSection() {
     <section>
       <SectionHeader
         icon={UserRound}
-        title="Profile"
+        title={t('profile.title')}
         action={
           filled ? (
             <span className="flex items-center gap-1.5 text-xs text-muted">
               <Pencil className="h-3 w-3" />
-              Click to edit
+              {t('profile.clickToEdit')}
             </span>
           ) : null
         }
@@ -49,21 +51,19 @@ export function ProfileSection() {
       <button
         onClick={() => setWizardOpen(true)}
         className="block w-full text-left"
-        aria-label={filled ? 'Edit your profile' : 'Fill in your profile'}
+        aria-label={filled ? t('profile.editAria') : t('profile.fillAria')}
       >
         <Card className="p-5 transition-colors hover:border-black/10 hover:bg-canvas">
           {profile === undefined ? (
-            <p className="text-sm text-muted">Loading…</p>
+            <p className="text-sm text-muted">{t('common.loading')}</p>
           ) : !filled || p === null ? (
             <div className="flex items-center gap-4">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/10">
                 <UserRound className="h-4 w-4 text-brand" />
               </span>
               <div className="min-w-0">
-                <p className="font-display text-sm font-bold text-ink">Fill in your profile</p>
-                <p className="mt-0.5 text-xs text-muted">
-                  A few questions so Claude adapts its tone and depth to how you work.
-                </p>
+                <p className="font-display text-sm font-bold text-ink">{t('profile.fillTitle')}</p>
+                <p className="mt-0.5 text-xs text-muted">{t('profile.fillHint')}</p>
               </div>
             </div>
           ) : (
@@ -74,15 +74,15 @@ export function ProfileSection() {
                 </span>
                 <div className="min-w-0">
                   <p className="truncate font-display text-sm font-bold text-ink">{p.name}</p>
-                  <p className="mt-0.5 text-xs text-muted">{LEVEL_LABELS[p.technicalLevel]}</p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {t(LEVEL_LABEL_KEYS[p.technicalLevel])}
+                  </p>
                 </div>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-1.5">
-                <Badge tone="accent">{ROLE_LABELS[p.role]}</Badge>
-                {p.communicationStyle && (
-                  <Badge>{STYLE_LABELS[p.communicationStyle]}</Badge>
-                )}
+                <Badge tone="accent">{t(ROLE_LABEL_KEYS[p.role])}</Badge>
+                {p.communicationStyle && <Badge>{t(STYLE_LABEL_KEYS[p.communicationStyle])}</Badge>}
                 {p.languages.map((lang) => (
                   <Badge key={lang}>{lang}</Badge>
                 ))}

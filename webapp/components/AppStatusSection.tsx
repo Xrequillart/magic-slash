@@ -13,6 +13,7 @@ import {
 } from '@/lib/installations'
 import { LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
 import { compareVersions } from '@/lib/versions'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * Whether the desktop app is actually being used on this account, and on which
@@ -30,6 +31,7 @@ import { compareVersions } from '@/lib/versions'
  * for most people.
  */
 export function AppStatusSection() {
+  const { t, lang } = useT()
   const [installs, setInstalls] = useState<Installation[] | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -54,21 +56,19 @@ export function AppStatusSection() {
 
   return (
     <section>
-      <SectionHeader icon={MonitorSmartphone} title="Desktop app" />
+      <SectionHeader icon={MonitorSmartphone} title={t('appStatus.title')} />
       <Card className="p-5">
         {installs === null ? (
-          <p className="text-sm text-muted">Loading…</p>
+          <p className="text-sm text-muted">{t('common.loading')}</p>
         ) : !current ? (
           <div className="space-y-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <p className="font-display text-sm font-bold text-ink">Not in use yet</p>
-                <p className="mt-0.5 text-xs text-muted">
-                  Install the desktop app and sign in — it will show up here on its first launch.
-                </p>
+                <p className="font-display text-sm font-bold text-ink">{t('appStatus.notInUse')}</p>
+                <p className="mt-0.5 text-xs text-muted">{t('appStatus.notInUseHint')}</p>
               </div>
               <ButtonLink href={DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" className="shrink-0">
-                Download
+                {t('common.download')}
               </ButtonLink>
             </div>
             <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-canvas p-1 pl-3.5">
@@ -80,7 +80,7 @@ export function AppStatusSection() {
                 className="flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-3 py-2 font-display text-xs font-medium text-muted transition-colors hover:text-ink"
               >
                 {copied ? <Check className="h-3.5 w-3.5 text-green" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? 'Copied' : 'Copy'}
+                {copied ? t('common.copied') : t('common.copy')}
               </button>
             </div>
           </div>
@@ -90,13 +90,18 @@ export function AppStatusSection() {
               <span className="font-display text-3xl font-black leading-none tracking-tight text-ink">
                 v{current.appVersion}
               </span>
-              <Badge tone="green">In use</Badge>
+              <Badge tone="green">{t('appStatus.inUse')}</Badge>
               {isBehind(current.appVersion) && (
-                <Badge tone="yellow">v{LATEST_DESKTOP_VERSION} available</Badge>
+                <Badge tone="yellow">
+                  {t('appStatus.updateAvailable', { version: LATEST_DESKTOP_VERSION })}
+                </Badge>
               )}
             </div>
             <p className="mt-2 text-xs text-muted">
-              {[current.deviceName, `last active ${formatRelative(current.lastSeenAt)}`]
+              {[
+                current.deviceName,
+                t('appStatus.lastActive', { when: formatRelative(current.lastSeenAt, lang) }),
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
@@ -107,9 +112,14 @@ export function AppStatusSection() {
                   <li key={d.deviceId} className="flex items-center gap-3 py-3 last:pb-0">
                     <Laptop className="h-3.5 w-3.5 shrink-0 text-muted" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-ink">{d.deviceName ?? 'Unknown device'}</p>
+                      <p className="truncate text-sm text-ink">
+                        {d.deviceName ?? t('devices.unknown')}
+                      </p>
                       <p className="mt-0.5 truncate text-xs text-muted">
-                        {[formatDevicePlatform(d), `last active ${formatRelative(d.lastSeenAt)}`]
+                        {[
+                          formatDevicePlatform(d),
+                          t('appStatus.lastActive', { when: formatRelative(d.lastSeenAt, lang) }),
+                        ]
                           .filter(Boolean)
                           .join(' · ')}
                       </p>

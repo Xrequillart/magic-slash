@@ -5,6 +5,7 @@ import { Zap } from 'lucide-react'
 import { fetchOrgSkillCounts, fetchPersonalSkillCounts, TRACKED_SKILLS, totalTrackedRuns } from '@/lib/skills'
 import type { RepoScope } from '@/lib/teamRows'
 import { Card, SectionHeader } from '@/components/ui'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * How much the tab on screen has actually RUN, beside the roster of what it HAS.
@@ -25,6 +26,7 @@ import { Card, SectionHeader } from '@/components/ui'
  * Counts are all-time and arrive pre-aggregated.
  */
 export function SkillStats({ scope }: { scope: RepoScope | undefined }) {
+  const { t } = useT()
   // undefined = not fetched yet, so the tiles hold their place with a dash instead of
   // flashing zeros and then filling in.
   const [counts, setCounts] = useState<Map<string, number> | undefined>(undefined)
@@ -58,10 +60,12 @@ export function SkillStats({ scope }: { scope: RepoScope | undefined }) {
     <div className="mb-8">
       <SectionHeader
         icon={Zap}
-        title={personal ? 'Your skills run' : 'Skills run'}
+        title={personal ? t('skills.titlePersonal') : t('skills.title')}
         action={
           counts ? (
-            <span className="text-xs text-muted">{total === 1 ? '1 run' : `${total} runs`}</span>
+            <span className="text-xs text-muted">
+              {total === 1 ? t('skills.runs.one') : t('skills.runs.many', { count: total })}
+            </span>
           ) : undefined
         }
       />
@@ -103,9 +107,7 @@ export function SkillStats({ scope }: { scope: RepoScope | undefined }) {
           // reads as a broken page rather than as data. The two scopes lose runs in
           // opposite directions, so each explains its own.
           <p className="mt-3 text-xs text-muted">
-            {personal
-              ? 'No run recorded outside an organization yet. A run lands here only when the agent that launched it works on personal repositories alone — one started in a terminal the desktop app did not open is attributed to your organization instead.'
-              : 'No run recorded for this organization yet. Runs are attributed through the repositories of the agent that launches them, so work on a personal repository is not counted here.'}
+            {personal ? t('skills.emptyPersonal') : t('skills.empty')}
           </p>
         )}
       </Card>

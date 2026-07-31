@@ -14,6 +14,7 @@ import {
   type Repository,
   type RepositoryPatch,
 } from '@/lib/repositories'
+import { useT } from '@/lib/i18n/useLanguage'
 import { AppShell } from '@/components/AppShell'
 import { Modal } from '@/components/Modal'
 import { RepositoryForm } from '@/components/RepositoryForm'
@@ -29,6 +30,7 @@ export default function RepositoryPage() {
   const params = useParams<{ id: string }>()
   const id = params.id
   const { session, pending } = useRequireSession()
+  const { t, lang } = useT()
 
   const [repo, setRepo] = useState<Repository | null | undefined>(undefined)
   const [orgs, setOrgs] = useState<Org[]>([])
@@ -97,7 +99,7 @@ export default function RepositoryPage() {
           try {
             // Re-expand against the freshest row: an earlier queued write may have
             // landed, or a rollback may have moved the base, since this was called.
-            const saved = await updateRepository(id, expandPatch(latest.current ?? base, p))
+            const saved = await updateRepository(id, expandPatch(latest.current ?? base, p), lang)
             if (saved) {
               // The stored row supersedes any optimistic guess, including one an
               // earlier failure was about to roll back.
@@ -105,7 +107,7 @@ export default function RepositoryPage() {
               resyncNeeded.current = false
             }
           } catch (err) {
-            setSaveError(err instanceof Error ? err.message : 'Failed to save.')
+            setSaveError(err instanceof Error ? err.message : t('common.saveFailed'))
             resyncNeeded.current = true
           } finally {
             inFlight.current -= 1
@@ -127,7 +129,7 @@ export default function RepositoryPage() {
         // onto it, so one unexpected rejection would silently stop all of them.
         .catch(() => {})
     },
-    [id, store],
+    [id, store, lang, t],
   )
 
   const remove = async () => {
@@ -135,10 +137,10 @@ export default function RepositoryPage() {
     setDeleting(true)
     setDeleteError(null)
     try {
-      await deleteRepository(id)
+      await deleteRepository(id, lang)
       router.replace('/organization')
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Failed to delete repository.')
+      setDeleteError(err instanceof Error ? err.message : t('repo.delete.failed'))
       setDeleting(false)
     }
   }
@@ -165,18 +167,16 @@ export default function RepositoryPage() {
         className="mb-6 inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to organizations
+        {t('repo.back')}
       </Link>
 
       {repo === undefined ? (
-        <Card className="p-8 text-center text-sm text-muted">Loading…</Card>
+        <Card className="p-8 text-center text-sm text-muted">{t('common.loading')}</Card>
       ) : repo === null ? (
         <Card className="p-8 text-center">
           <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-black/15" />
-          <p className="text-sm text-muted">This repository doesn&apos;t exist, or you don&apos;t have access.</p>
-          <p className="mt-1 text-xs text-muted">
-            Team repos are only visible to members of the organization they belong to.
-          </p>
+          <p className="text-sm text-muted">{t('repo.notFound')}</p>
+          <p className="mt-1 text-xs text-muted">{t('repo.notFoundHint')}</p>
         </Card>
       ) : (
         <>
@@ -202,11 +202,11 @@ export default function RepositoryPage() {
                 <Lock className="h-4 w-4 text-muted" />
               </span>
               <div>
-                <p className="text-sm text-ink">Read-only</p>
+                <p className="text-sm text-ink">{t('repo.readOnly.title')}</p>
                 <p className="mt-1 text-xs text-muted">
-                  These settings are shared by everyone in {scopeOrg?.name ?? 'the organization'}, so only
-                  its admins change them. Your own local folder is set in the desktop app — it stays on your
-                  machine and is never shared.
+                  {t('repo.readOnly.body', {
+                    org: scopeOrg?.name ?? t('repo.readOnly.theOrganization'),
+                  })}
                 </p>
               </div>
             </Card>
@@ -230,15 +230,15 @@ export default function RepositoryPage() {
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         icon={Trash2}
-        title="Delete repository"
+        title={t('repo.delete.title')}
         tone="danger"
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirmDelete(false)} className="mr-auto">
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button variant="danger" onClick={remove} disabled={deleting}>
-              {deleting ? 'Deleting…' : 'Delete repository'}
+              {deleting ? t('common.deleting') : t('repo.delete.title')}
             </Button>
           </>
         }
@@ -249,12 +249,12 @@ export default function RepositoryPage() {
           </span>
           <div>
             <p className="text-sm text-ink">
-              Delete <strong>{repo?.name ?? 'this repository'}</strong>?
+              {t('repo.delete.confirmBefore')}{' '}
+              <strong>{repo?.name ?? t('repo.delete.thisRepository')}</strong>
+              {t('repo.delete.confirmAfter')}
             </p>
             <p className="mt-1 text-xs text-muted">
-              {repo?.orgId
-                ? 'It disappears for every member of the organization. This cannot be undone.'
-                : 'This cannot be undone.'}
+              {repo?.orgId ? t('repo.delete.teamBody') : t('repo.delete.personalBody')}
             </p>
           </div>
         </div>

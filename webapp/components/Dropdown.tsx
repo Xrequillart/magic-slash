@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * Custom select. Replaces the native <select>, which the OS renders with its own
@@ -114,7 +115,7 @@ export function Dropdown<T extends string>({
   options,
   onChange,
   disabled,
-  placeholder = 'Select…',
+  placeholder,
   width = 260,
   size = 'md',
   className = '',
@@ -123,11 +124,13 @@ export function Dropdown<T extends string>({
   options: DropdownOption<T>[]
   onChange: (value: T) => void
   disabled?: boolean
+  /** Shown when nothing is selected. Defaults to a translated "Select…". */
   placeholder?: string
   width?: number
   size?: keyof typeof TRIGGER_SIZES
   className?: string
 }) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const { triggerRef, panelRef, position } = useAnchoredPanel(open, close, width)
@@ -148,7 +151,7 @@ export function Dropdown<T extends string>({
       >
         <span className={`flex min-w-0 items-center gap-2 ${selected ? 'text-ink' : 'text-muted'}`}>
           {TriggerIcon && <TriggerIcon className="h-3.5 w-3.5 shrink-0" />}
-          <span className="truncate">{selected?.label ?? placeholder}</span>
+          <span className="truncate">{selected?.label ?? placeholder ?? t('common.select')}</span>
         </span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`}

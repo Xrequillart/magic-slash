@@ -7,21 +7,27 @@ import { doneCount, isOnboarded, onboardingState } from '@/lib/onboarding'
 import { fetchOrgs, type Org } from '@/lib/orgs'
 import { fetchProfile, type UserProfile } from '@/lib/profile'
 import { fetchTeamOverview, type TeamOverview } from '@/lib/team'
+import { useT } from '@/lib/i18n/useLanguage'
 import { AppShell } from '@/components/AppShell'
 import { Confetti } from '@/components/Confetti'
 import { GettingStarted } from '@/components/GettingStarted'
 import { TeamRepos } from '@/components/TeamRepos'
 import { FullPageLoader } from '@/components/ui'
 
-/** Fallback greeting name, from the local part of the email. */
-function nameFromEmail(email?: string): string {
-  if (!email) return 'there'
+/**
+ * Fallback greeting name, from the local part of the email. `fallback` is the
+ * translated stand-in for an address this cannot make a name out of — "Hey there."
+ * and "Salut à vous." need different words in that slot.
+ */
+function nameFromEmail(email: string | undefined, fallback: string): string {
+  if (!email) return fallback
   const first = email.split('@')[0].split(/[._+-]/)[0]
-  return first ? first.charAt(0).toUpperCase() + first.slice(1) : 'there'
+  return first ? first.charAt(0).toUpperCase() + first.slice(1) : fallback
 }
 
 export default function Dashboard() {
   const { session, pending } = useRequireSession()
+  const { t } = useT()
   const [orgs, setOrgs] = useState<Org[] | null>(null)
   // undefined = not fetched yet, null = fetched and there is no profile row.
   const [profile, setProfile] = useState<UserProfile | null | undefined>(undefined)
@@ -57,14 +63,18 @@ export default function Dashboard() {
   if (pending || !session) return <FullPageLoader />
 
   // The profile name is what the user asked to be called; the email is a guess.
-  const greeting = profile?.name.trim() || nameFromEmail(session.user.email ?? undefined)
+  const greeting =
+    profile?.name.trim() ||
+    nameFromEmail(session.user.email ?? undefined, t('dashboard.greetingFallback'))
 
   return (
     <AppShell email={session.user.email ?? undefined}>
       {/* Outside the checklist, which unmounts the moment the last step lands. */}
       <Confetti fireKey={bursts} />
 
-      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">Hey {greeting}.</h1>
+      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">
+        {t('dashboard.greeting', { name: greeting })}
+      </h1>
 
       <div className="mt-10">
         {/* The team view is meaningless before the app has run, and it competes with

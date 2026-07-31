@@ -20,6 +20,8 @@ import { RoleSelect } from '@/components/RoleSelect'
 import { inviteLink, type Invitation } from '@/lib/invitations'
 import { fetchOrgRepositories, type Repository } from '@/lib/repositories'
 import type { Member, Org, Role } from '@/lib/orgs'
+import type { MessageKey } from '@/lib/i18n'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * One organization, self-contained: identity, members, invitations, the repos
@@ -36,6 +38,14 @@ const STATUS_TONE: Record<Invitation['status'], BadgeTone> = {
   accepted: 'green',
   expired: 'neutral',
   revoked: 'neutral',
+}
+
+/** The stored status is an enum, so it is named rather than printed. */
+const STATUS_LABEL: Record<Invitation['status'], MessageKey> = {
+  pending: 'org.inviteStatus.pending',
+  accepted: 'org.inviteStatus.accepted',
+  expired: 'org.inviteStatus.expired',
+  revoked: 'org.inviteStatus.revoked',
 }
 
 /** Sub-heading inside the card, one per block. */
@@ -120,6 +130,7 @@ export function OrganizationCard({
   onLeave: (orgId: string) => void
   onArchive: (org: Org) => void
 }) {
+  const { t } = useT()
   const [repos, setRepos] = useState<Repository[] | null>(null)
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
 
@@ -155,16 +166,18 @@ export function OrganizationCard({
           <Building2 className="h-4 w-4 text-brand" />
         </span>
         <p className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink">{org.name}</p>
-        <Badge tone={isAdmin ? 'accent' : 'neutral'}>{isAdmin ? 'Admin' : 'Member'}</Badge>
+        <Badge tone={isAdmin ? 'accent' : 'neutral'}>
+          {isAdmin ? t('org.role.admin') : t('org.role.member')}
+        </Badge>
       </div>
 
       {/* Members */}
       <div className={BLOCK}>
-        <CardSection label="Members" count={members?.length} />
+        <CardSection label={t('org.members')} count={members?.length} />
         {members === null ? (
-          <p className="py-1 text-xs text-muted">Loading…</p>
+          <p className="py-1 text-xs text-muted">{t('common.loading')}</p>
         ) : members.length === 0 ? (
-          <p className="py-1 text-xs text-muted">No members yet.</p>
+          <p className="py-1 text-xs text-muted">{t('org.membersEmpty')}</p>
         ) : (
           <div className="-mx-1 overflow-x-auto">
             <table className="w-full min-w-[22rem] border-collapse text-left">
@@ -172,9 +185,9 @@ export function OrganizationCard({
                   but a screen reader still needs the columns named. */}
               <thead className="sr-only">
                 <tr>
-                  <th scope="col">Member</th>
-                  <th scope="col">Role</th>
-                  {isAdmin && <th scope="col">Actions</th>}
+                  <th scope="col">{t('org.colMember')}</th>
+                  <th scope="col">{t('org.colRole')}</th>
+                  {isAdmin && <th scope="col">{t('org.colActions')}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5">
@@ -186,7 +199,7 @@ export function OrganizationCard({
                       <td className="max-w-0 px-1 py-2">
                         <span className="block truncate text-sm text-ink">
                           {m.email ?? m.userId}
-                          {isSelf && <span className="text-muted"> (you)</span>}
+                          {isSelf && <span className="text-muted">{t('org.you')}</span>}
                         </span>
                       </td>
                       <td className="w-px whitespace-nowrap px-1 py-2">
@@ -199,7 +212,7 @@ export function OrganizationCard({
                           />
                         ) : (
                           <Badge tone={m.role === 'admin' ? 'accent' : 'neutral'}>
-                            {m.role === 'admin' ? 'Admin' : 'Member'}
+                            {m.role === 'admin' ? t('org.role.admin') : t('org.role.member')}
                           </Badge>
                         )}
                       </td>
@@ -209,7 +222,7 @@ export function OrganizationCard({
                           {!isSelf && !rowBusy && (
                             <MiniButton
                               onClick={() => onRemoveMember(org.id, m.userId)}
-                              title="Remove member"
+                              title={t('org.removeMember')}
                               tone="danger"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -228,13 +241,11 @@ export function OrganizationCard({
 
       {/* Repositories shared with this org */}
       <div className={BLOCK}>
-        <CardSection label="Repositories" count={repos?.length} />
+        <CardSection label={t('org.repositories')} count={repos?.length} />
         {repos === null ? (
-          <p className="py-1 text-xs text-muted">Loading…</p>
+          <p className="py-1 text-xs text-muted">{t('common.loading')}</p>
         ) : repos.length === 0 ? (
-          <p className="py-1 text-xs text-muted">
-            No shared repository. Repos shared to this org from the desktop app appear here.
-          </p>
+          <p className="py-1 text-xs text-muted">{t('org.reposEmpty')}</p>
         ) : (
           <ul className="-mx-2 space-y-0.5">
             {repos.map((repo) => (
@@ -273,39 +284,39 @@ export function OrganizationCard({
       {isAdmin && (
         <div className={BLOCK}>
           <CardSection
-            label="Invitations"
+            label={t('org.invitations')}
             count={invitations === null ? undefined : openInvitations.length}
             action={
               <MiniButton onClick={() => onInvite(org)}>
                 <UserPlus className="h-3 w-3" />
-                Invite
+                {t('org.invite')}
               </MiniButton>
             }
           />
           {invitations === null ? (
-            <p className="py-1 text-xs text-muted">Loading…</p>
+            <p className="py-1 text-xs text-muted">{t('common.loading')}</p>
           ) : openInvitations.length === 0 ? (
-            <p className="py-1 text-xs text-muted">No pending invitation.</p>
+            <p className="py-1 text-xs text-muted">{t('org.invitationsEmpty')}</p>
           ) : (
             <ul className="space-y-1">
               {openInvitations.map((inv) => (
                 <li key={inv.id} className="flex items-center gap-2 py-0.5">
                   <span className="min-w-0 flex-1 truncate text-sm text-ink">{inv.email}</span>
-                  <Badge tone={STATUS_TONE[inv.status]}>{inv.status}</Badge>
+                  <Badge tone={STATUS_TONE[inv.status]}>{t(STATUS_LABEL[inv.status])}</Badge>
                   {inv.status === 'pending' && (
-                    <MiniButton onClick={() => copyToken(inv.token)} title="Copy invitation link">
+                    <MiniButton onClick={() => copyToken(inv.token)} title={t('org.copyInviteLink')}>
                       {copiedToken === inv.token ? (
                         <Check className="h-3 w-3 text-green" />
                       ) : (
                         <Copy className="h-3 w-3" />
                       )}
-                      {copiedToken === inv.token ? 'Copied' : 'Invite link'}
+                      {copiedToken === inv.token ? t('common.copied') : t('org.inviteLink')}
                     </MiniButton>
                   )}
                   <MiniButton
                     onClick={() => onDeleteInvitation(inv.id)}
                     disabled={deletingInvite === inv.id}
-                    title="Delete invitation"
+                    title={t('org.deleteInvitation')}
                     tone="danger"
                   >
                     {deletingInvite === inv.id ? (
@@ -324,13 +335,11 @@ export function OrganizationCard({
       {/* Danger zone */}
       <div className={`${BLOCK} flex flex-wrap items-center gap-3`}>
         {isSoleAdmin ? (
-          <p className="text-xs text-muted">
-            You are the last admin. Promote another member before leaving, or archive the organization.
-          </p>
+          <p className="text-xs text-muted">{t('org.soleAdmin')}</p>
         ) : (
           <Button variant="ghost" onClick={() => onLeave(org.id)} disabled={leaving}>
             {leaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-            Leave organization
+            {t('org.leave')}
           </Button>
         )}
         {isAdmin && (
@@ -339,7 +348,7 @@ export function OrganizationCard({
             className="ml-auto flex items-center gap-2 rounded-full border border-red/25 px-4 py-2 font-display text-xs font-medium text-red transition-colors hover:bg-red/[0.06]"
           >
             <Archive className="h-3.5 w-3.5" />
-            Archive organization
+            {t('org.archive')}
           </button>
         )}
       </div>

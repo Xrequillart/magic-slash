@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * Centered modal shell: backdrop click and Escape both close, and the footer is
@@ -29,6 +30,8 @@ export function Modal({
   footer?: React.ReactNode
   children: React.ReactNode
 }) {
+  const { t } = useT()
+
   useEffect(() => {
     if (!open) return
     const onKeyDown = (e: KeyboardEvent) => {
@@ -66,7 +69,7 @@ export function Modal({
           </div>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="rounded-lg p-1 text-muted transition-colors hover:bg-black/[0.04] hover:text-ink"
           >
             <X className="h-4 w-4" />

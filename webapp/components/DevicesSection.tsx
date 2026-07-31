@@ -10,6 +10,7 @@ import {
   formatRelative,
   type Installation,
 } from '@/lib/installations'
+import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * Machines this account has signed in to the desktop app from.
@@ -19,6 +20,7 @@ import {
  * not a managed device registry.
  */
 export function DevicesSection() {
+  const { t, lang } = useT()
   const [installs, setInstalls] = useState<Installation[] | null>(null)
 
   useEffect(() => {
@@ -29,17 +31,17 @@ export function DevicesSection() {
     <section>
       <SectionHeader
         icon={MonitorSmartphone}
-        title="Devices"
+        title={t('devices.title')}
         action={installs?.length ? <span className="text-xs text-muted">{installs.length}</span> : null}
       />
       <Card className="p-5">
         {installs === null ? (
-          <p className="text-sm text-muted">Loading…</p>
+          <p className="text-sm text-muted">{t('common.loading')}</p>
         ) : installs.length === 0 ? (
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted">No device yet. Install the app and sign in to see it here.</p>
+            <p className="text-sm text-muted">{t('devices.empty')}</p>
             <ButtonLink href={DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" className="shrink-0">
-              Download
+              {t('common.download')}
             </ButtonLink>
           </div>
         ) : (
@@ -50,9 +52,14 @@ export function DevicesSection() {
                   <Laptop className="h-4 w-4 text-muted" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink">{d.deviceName ?? 'Unknown device'}</p>
+                  <p className="truncate text-sm font-medium text-ink">
+                    {d.deviceName ?? t('devices.unknown')}
+                  </p>
                   <p className="mt-0.5 truncate text-xs text-muted">
-                    {[formatDevicePlatform(d), `last seen ${formatRelative(d.lastSeenAt)}`]
+                    {[
+                      formatDevicePlatform(d),
+                      t('devices.lastSeen', { when: formatRelative(d.lastSeenAt, lang) }),
+                    ]
                       .filter(Boolean)
                       .join(' · ')}
                   </p>

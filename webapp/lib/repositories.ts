@@ -1,4 +1,6 @@
 import { getSupabase } from './supabase'
+import { t } from './i18n'
+import { DEFAULT_LANGUAGE, type LanguageId } from './i18n/languages'
 
 /**
  * Repositories: the shared identity of a repo (name, keywords, conventions)
@@ -205,6 +207,7 @@ export function expandPatch(repo: Repository, patch: RepositoryPatch): Repositor
 export async function updateRepository(
   id: string,
   patch: RepositoryPatch,
+  lang: LanguageId = DEFAULT_LANGUAGE,
 ): Promise<Repository | null> {
   const row: Record<string, unknown> = {}
   if (patch.name !== undefined) row.name = patch.name.trim()
@@ -227,7 +230,7 @@ export async function updateRepository(
     .select(COLUMNS)
   if (error) throw new Error(error.message)
   if (!data || data.length === 0) {
-    throw new Error('This repository could not be updated — you may not have permission to change it.')
+    throw new Error(t('repo.updateFailed', lang))
   }
   return toRepository(data[0] as RepositoryRow)
 }
@@ -240,7 +243,10 @@ export async function updateRepository(
  * DELETE that RLS filtered out returns no error and zero rows, which would
  * otherwise read as "deleted" and send the caller off to a success screen.
  */
-export async function deleteRepository(id: string): Promise<void> {
+export async function deleteRepository(
+  id: string,
+  lang: LanguageId = DEFAULT_LANGUAGE,
+): Promise<void> {
   const { data, error } = await getSupabase()
     .from('repositories')
     .delete()
@@ -248,7 +254,7 @@ export async function deleteRepository(id: string): Promise<void> {
     .select('id')
   if (error) throw new Error(error.message)
   if (!data || data.length === 0) {
-    throw new Error('This repository could not be deleted — only its owner or an org admin can remove it.')
+    throw new Error(t('repo.deleteForbidden', lang))
   }
 }
 

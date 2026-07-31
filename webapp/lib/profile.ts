@@ -1,4 +1,6 @@
 import { getSupabase } from './supabase'
+import { t, type MessageKey } from './i18n'
+import { DEFAULT_LANGUAGE, type LanguageId } from './i18n/languages'
 
 export type ProfileRole = 'product' | 'dev' | 'design' | 'qa' | 'ops' | 'manager' | 'other'
 export type ProfileLevel = 'beginner' | 'intermediate' | 'expert'
@@ -22,26 +24,34 @@ interface ProfileRow {
   free_text: string | null
 }
 
-export const ROLE_LABELS: Record<ProfileRole, string> = {
-  product: 'Product',
-  dev: 'Dev',
-  design: 'Design',
-  qa: 'QA',
-  ops: 'Ops',
-  manager: 'Manager',
-  other: 'Other',
+/**
+ * How each stored profile value is named on screen — as message KEYS, not as text,
+ * because these labels are rendered in whatever language the visitor picked while the
+ * values themselves are what sits in the database.
+ *
+ * The maps are total, so adding a role without naming it is a tsc error. Mirrors
+ * `desktop/src/i18n/profileLabels.ts`, which does the same thing for the same reason.
+ */
+export const ROLE_LABEL_KEYS: Record<ProfileRole, MessageKey> = {
+  product: 'profile.role.product',
+  dev: 'profile.role.dev',
+  design: 'profile.role.design',
+  qa: 'profile.role.qa',
+  ops: 'profile.role.ops',
+  manager: 'profile.role.manager',
+  other: 'profile.role.other',
 }
 
-export const LEVEL_LABELS: Record<ProfileLevel, string> = {
-  beginner: 'Beginner',
-  intermediate: 'Intermediate',
-  expert: 'Expert',
+export const LEVEL_LABEL_KEYS: Record<ProfileLevel, MessageKey> = {
+  beginner: 'profile.level.beginner',
+  intermediate: 'profile.level.intermediate',
+  expert: 'profile.level.expert',
 }
 
-export const STYLE_LABELS: Record<ProfileStyle, string> = {
-  simple: 'Simple',
-  technical: 'Technical',
-  detailed: 'Detailed',
+export const STYLE_LABEL_KEYS: Record<ProfileStyle, MessageKey> = {
+  simple: 'profile.style.simple',
+  technical: 'profile.style.technical',
+  detailed: 'profile.style.detailed',
 }
 
 export const EMPTY_PROFILE: UserProfile = {
@@ -85,11 +95,14 @@ export async function fetchProfile(): Promise<UserProfile | null> {
   }
 }
 
-export async function saveProfile(p: UserProfile): Promise<void> {
+export async function saveProfile(
+  p: UserProfile,
+  lang: LanguageId = DEFAULT_LANGUAGE,
+): Promise<void> {
   const supabase = getSupabase()
   const { data: userData } = await supabase.auth.getUser()
   const uid = userData.user?.id
-  if (!uid) throw new Error('Not signed in')
+  if (!uid) throw new Error(t('common.notSignedIn', lang))
 
   const { error } = await supabase.from('profiles').upsert(
     {

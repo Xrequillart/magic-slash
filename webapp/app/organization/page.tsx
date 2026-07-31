@@ -17,6 +17,7 @@ import {
   type Role,
 } from '@/lib/orgs'
 import { createInvitation, deleteInvitation, fetchInvitations, type Invitation } from '@/lib/invitations'
+import { useT } from '@/lib/i18n/useLanguage'
 import { AppShell } from '@/components/AppShell'
 import { Modal } from '@/components/Modal'
 import { OrganizationCard } from '@/components/OrganizationCard'
@@ -42,6 +43,7 @@ function Panel({ icon: Icon, title, hint }: { icon: typeof Users; title: string;
 
 export default function OrganizationPage() {
   const { session, pending } = useRequireSession()
+  const { t, lang } = useT()
 
   const [orgs, setOrgs] = useState<Org[] | null>(null)
   const [membersByOrg, setMembersByOrg] = useState<Record<string, Member[]>>({})
@@ -112,25 +114,25 @@ export default function OrganizationPage() {
 
   const changeRole = async (orgId: string, userId: string, role: Role) => {
     setBusyMember(userId)
-    await run(() => updateMemberRole(orgId, userId, role), 'Failed to update role.', setPageStatus)
+    await run(() => updateMemberRole(orgId, userId, role), t('org.error.role'), setPageStatus)
     setBusyMember(null)
   }
 
   const kickMember = async (orgId: string, userId: string) => {
     setBusyMember(userId)
-    await run(() => removeMember(orgId, userId), 'Failed to remove member.', setPageStatus)
+    await run(() => removeMember(orgId, userId), t('org.error.removeMember'), setPageStatus)
     setBusyMember(null)
   }
 
   const leave = async (orgId: string) => {
     setLeavingOrgId(orgId)
-    await run(() => leaveOrg(orgId), 'Failed to leave organization.', setPageStatus)
+    await run(() => leaveOrg(orgId), t('org.error.leave'), setPageStatus)
     setLeavingOrgId(null)
   }
 
   const removeInvite = async (id: string) => {
     setDeletingInvite(id)
-    await run(() => deleteInvitation(id), 'Failed to delete invitation.', setPageStatus)
+    await run(() => deleteInvitation(id), t('org.error.deleteInvitation'), setPageStatus)
     setDeletingInvite(null)
   }
 
@@ -140,7 +142,7 @@ export default function OrganizationPage() {
     setInviting(true)
     const ok = await run(
       () => createInvitation(inviteOrg.id, inviteEmail, inviteRole),
-      'Failed to create invitation.',
+      t('org.error.createInvitation'),
       setInviteStatus,
     )
     setInviting(false)
@@ -151,7 +153,11 @@ export default function OrganizationPage() {
     e.preventDefault()
     if (creating || !createName.trim()) return
     setCreating(true)
-    const ok = await run(() => createOrg(createName), 'Failed to create organization.', setCreateStatus)
+    const ok = await run(
+      () => createOrg(createName, lang),
+      t('org.error.createOrg'),
+      setCreateStatus,
+    )
     setCreating(false)
     if (ok) {
       setShowCreate(false)
@@ -163,7 +169,7 @@ export default function OrganizationPage() {
     e.preventDefault()
     if (joining || !joinToken.trim()) return
     setJoining(true)
-    const ok = await run(() => acceptInvitation(joinToken), 'Failed to join organization.', setJoinStatus)
+    const ok = await run(() => acceptInvitation(joinToken), t('org.error.join'), setJoinStatus)
     setJoining(false)
     if (ok) {
       setShowJoin(false)
@@ -174,7 +180,11 @@ export default function OrganizationPage() {
   const submitArchive = async () => {
     if (!archiveTarget || archiving) return
     setArchiving(true)
-    const ok = await run(() => archiveOrg(archiveTarget.id), 'Failed to archive organization.', setArchiveStatus)
+    const ok = await run(
+      () => archiveOrg(archiveTarget.id),
+      t('org.error.archive'),
+      setArchiveStatus,
+    )
     setArchiving(false)
     if (ok) setArchiveTarget(null)
   }
@@ -183,12 +193,16 @@ export default function OrganizationPage() {
 
   return (
     <AppShell email={session.user.email ?? undefined}>
-      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">Organizations</h1>
+      <h1 className="font-display text-5xl font-black leading-none tracking-tight text-ink">
+        {t('org.title')}
+      </h1>
 
       <div className="mt-10">
         <SectionHeader
           icon={Building2}
-          title={orgs ? `Your organizations (${orgs.length})` : 'Your organizations'}
+          title={
+            orgs ? t('org.yourOrgsCount', { count: orgs.length }) : t('org.yourOrgs')
+          }
         />
 
         {orgs === null ? (
@@ -198,8 +212,8 @@ export default function OrganizationPage() {
         ) : orgs.length === 0 ? (
           <Panel
             icon={Users}
-            title="You do not belong to any organization."
-            hint="Create one, or join with an invitation."
+            title={t('org.emptyTitle')}
+            hint={t('org.emptyHint')}
           />
         ) : (
           <div className="space-y-4">
@@ -245,7 +259,7 @@ export default function OrganizationPage() {
             className="border border-black/10"
           >
             <Plus className="h-4 w-4" />
-            Create an organization
+            {t('org.create')}
           </Button>
           <Button
             variant="ghost"
@@ -257,7 +271,7 @@ export default function OrganizationPage() {
             className="border border-black/10"
           >
             <UserPlus className="h-4 w-4" />
-            Join an organization
+            {t('org.join')}
           </Button>
         </div>
       </div>
@@ -267,36 +281,38 @@ export default function OrganizationPage() {
         open={inviteOrg !== null}
         onClose={() => setInviteOrg(null)}
         icon={Mail}
-        title={inviteOrg ? `Invite to ${inviteOrg.name}` : 'Invite'}
+        title={
+          inviteOrg
+            ? t('org.inviteModal.title', { name: inviteOrg.name })
+            : t('org.inviteModal.titleFallback')
+        }
       >
         <form onSubmit={submitInvite} className="space-y-3 pb-1">
-          <p className="text-xs text-muted">
-            An invitation link is generated — copy it from the list and send it to your colleague.
-          </p>
+          <p className="text-xs text-muted">{t('org.inviteModal.help')}</p>
           <Input
             type="email"
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
-            placeholder="colleague@example.com"
+            placeholder={t('org.inviteModal.emailPlaceholder')}
             autoFocus
           />
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-muted">Role</span>
+            <span className="text-xs text-muted">{t('org.inviteModal.role')}</span>
             <Select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value as Role)}
               className="w-auto"
             >
-              <option value="user">Member</option>
-              <option value="admin">Admin</option>
+              <option value="user">{t('org.role.member')}</option>
+              <option value="admin">{t('org.role.admin')}</option>
             </Select>
           </div>
           <div className="flex items-center gap-2 pt-2">
             <Button variant="ghost" type="button" onClick={() => setInviteOrg(null)} className="mr-auto">
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={inviting || !inviteEmail.trim()}>
-              {inviting ? 'Sending…' : 'Send invitation'}
+              {inviting ? t('org.inviteModal.sending') : t('org.inviteModal.send')}
             </Button>
           </div>
           <Note status={inviteStatus} />
@@ -304,22 +320,27 @@ export default function OrganizationPage() {
       </Modal>
 
       {/* Create an organization */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} icon={Plus} title="Create an organization">
+      <Modal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        icon={Plus}
+        title={t('org.create')}
+      >
         <form onSubmit={submitCreate} className="space-y-2 pb-1">
-          <p className="text-xs text-muted">You become its admin and can invite members right away.</p>
+          <p className="text-xs text-muted">{t('org.createModal.help')}</p>
           <Input
             type="text"
             value={createName}
             onChange={(e) => setCreateName(e.target.value)}
-            placeholder="Organization name"
+            placeholder={t('org.createModal.namePlaceholder')}
             autoFocus
           />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="ghost" type="button" onClick={() => setShowCreate(false)} className="mr-auto">
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={creating || !createName.trim()}>
-              {creating ? 'Creating…' : 'Create'}
+              {creating ? t('common.creating') : t('common.create')}
             </Button>
           </div>
           <Note status={createStatus} />
@@ -327,22 +348,27 @@ export default function OrganizationPage() {
       </Modal>
 
       {/* Join an organization */}
-      <Modal open={showJoin} onClose={() => setShowJoin(false)} icon={UserPlus} title="Join an organization">
+      <Modal
+        open={showJoin}
+        onClose={() => setShowJoin(false)}
+        icon={UserPlus}
+        title={t('org.join')}
+      >
         <form onSubmit={submitJoin} className="space-y-2 pb-1">
-          <p className="text-xs text-muted">Paste the invitation link you received, or just its token.</p>
+          <p className="text-xs text-muted">{t('org.joinModal.help')}</p>
           <Input
             type="text"
             value={joinToken}
             onChange={(e) => setJoinToken(e.target.value)}
-            placeholder="https://app.magic-slash.io/invite/…"
+            placeholder={t('org.joinModal.placeholder')}
             autoFocus
           />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="ghost" type="button" onClick={() => setShowJoin(false)} className="mr-auto">
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={joining || !joinToken.trim()}>
-              {joining ? 'Joining…' : 'Join'}
+              {joining ? t('org.joinModal.submitting') : t('org.join')}
             </Button>
           </div>
           <Note status={joinStatus} />
@@ -354,15 +380,15 @@ export default function OrganizationPage() {
         open={archiveTarget !== null}
         onClose={() => setArchiveTarget(null)}
         icon={Archive}
-        title="Archive organization"
+        title={t('org.archiveModal.title')}
         tone="danger"
         footer={
           <>
             <Button variant="ghost" onClick={() => setArchiveTarget(null)} className="mr-auto">
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button variant="danger" onClick={submitArchive} disabled={archiving}>
-              {archiving ? 'Archiving…' : 'Archive organization'}
+              {archiving ? t('org.archiveModal.archiving') : t('org.archive')}
             </Button>
           </>
         }
@@ -372,11 +398,12 @@ export default function OrganizationPage() {
             <AlertTriangle className="h-4 w-4 text-red" />
           </span>
           <div>
-            <p className="text-sm text-ink">Archive {archiveTarget?.name ?? 'this organization'}?</p>
-            <p className="mt-1 text-xs text-muted">
-              The organization and its members lose access — it disappears for everyone. Its data is retained,
-              not deleted, but this cannot be undone from the app.
+            <p className="text-sm text-ink">
+              {t('org.archiveModal.confirm', {
+                name: archiveTarget?.name ?? t('org.archiveModal.thisOrganization'),
+              })}
             </p>
+            <p className="mt-1 text-xs text-muted">{t('org.archiveModal.body')}</p>
           </div>
         </div>
         <Note status={archiveStatus} />

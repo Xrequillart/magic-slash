@@ -1,4 +1,6 @@
 import { getSupabase } from './supabase'
+import { t, type MessageKey } from './i18n'
+import { DEFAULT_LANGUAGE, type LanguageId } from './i18n/languages'
 
 // The defaults live in the catalog, which has no I/O and can therefore be unit
 // tested — see the note there. Re-exported so every caller keeps importing them from
@@ -8,9 +10,11 @@ export { DEFAULTS } from './settingsCatalog'
 /**
  * Application-level preferences, one row per user in `user_settings`.
  *
- * These are the DESKTOP app's settings. The webapp only edits them: it is a
- * fixed light theme in English, so choosing "dark" or "Français" here changes
- * what the desktop paints and speaks, not this page.
+ * These are the DESKTOP app's settings. The webapp only edits them: it is a fixed
+ * light theme, so choosing "dark" here changes what the desktop paints, not this
+ * page — and `language` is the language the DESKTOP speaks. The website's own
+ * language is a browser preference and lives in `lib/i18n/useLanguage.ts`, which is
+ * why picking "Français" in this form does not translate the form.
  *
  * Every column is nullable on purpose and NULL is a third state, distinct from
  * false: it means the user never chose, and the app applies its own default.
@@ -129,6 +133,7 @@ export async function fetchUserSettings(): Promise<UserSettings> {
 export async function updateUserSettings(
   userId: string,
   patch: UserSettingsPatch,
+  lang: LanguageId = DEFAULT_LANGUAGE,
 ): Promise<UserSettings | null> {
   const row: Record<string, unknown> = {}
   for (const [field, column] of Object.entries(FIELD_TO_COLUMN)) {
@@ -143,7 +148,7 @@ export async function updateUserSettings(
     .select(COLUMNS)
   if (error) throw new Error(error.message)
   if (!data || data.length === 0) {
-    throw new Error('Your settings could not be saved — please sign in again and retry.')
+    throw new Error(t('settings.saveFailed', lang))
   }
   return toSettings(data[0] as UserSettingsRow)
 }
@@ -157,6 +162,10 @@ export async function updateUserSettings(
 //   labels  → the `theme.*`, `settings.launchMode.*` keys in desktop/src/i18n/en.ts
 //   modes   → LaunchMode in desktop/src/types.ts (mirrored by a CHECK constraint
 //             on user_settings.launch_mode)
+//
+// The lists carry message KEYS, not text: they are DATA shared by the settings page
+// and the back-office, and only one of the two is translated. Whoever renders an
+// option decides which language to render it in.
 
 /**
  * The five colours a theme miniature needs. Bare `R G B` channels where the
@@ -173,16 +182,16 @@ export interface ThemeSwatch {
 
 export interface ThemeOption {
   id: string
-  label: string
-  description: string
+  labelKey: MessageKey
+  descriptionKey: MessageKey
   swatch: ThemeSwatch
 }
 
 export const THEME_OPTIONS: ThemeOption[] = [
   {
     id: 'dark',
-    label: 'Dark',
-    description: 'The original, near-black.',
+    labelKey: 'theme.dark',
+    descriptionKey: 'theme.dark.help',
     swatch: {
       bgRgb: '10 10 11',
       surface: 'rgba(255, 255, 255, 0.06)',
@@ -193,8 +202,8 @@ export const THEME_OPTIONS: ThemeOption[] = [
   },
   {
     id: 'midnight',
-    label: 'Midnight',
-    description: 'Dark, in deep blue.',
+    labelKey: 'theme.midnight',
+    descriptionKey: 'theme.midnight.help',
     swatch: {
       bgRgb: '11 16 32',
       surface: 'rgba(255, 255, 255, 0.07)',
@@ -205,8 +214,8 @@ export const THEME_OPTIONS: ThemeOption[] = [
   },
   {
     id: 'espresso',
-    label: 'Espresso',
-    description: 'Warm brown-black.',
+    labelKey: 'theme.espresso',
+    descriptionKey: 'theme.espresso.help',
     swatch: {
       bgRgb: '26 21 18',
       surface: 'rgba(255, 245, 230, 0.07)',
@@ -217,8 +226,8 @@ export const THEME_OPTIONS: ThemeOption[] = [
   },
   {
     id: 'high-contrast',
-    label: 'High contrast',
-    description: 'White on black, hard edges.',
+    labelKey: 'theme.highContrast',
+    descriptionKey: 'theme.highContrast.help',
     swatch: {
       bgRgb: '0 0 0',
       surface: 'rgba(255, 255, 255, 0.12)',
@@ -229,8 +238,8 @@ export const THEME_OPTIONS: ThemeOption[] = [
   },
   {
     id: 'light',
-    label: 'Light',
-    description: 'Bright and neutral.',
+    labelKey: 'theme.light',
+    descriptionKey: 'theme.light.help',
     swatch: {
       bgRgb: '255 255 255',
       surface: 'rgba(0, 0, 0, 0.045)',
@@ -241,8 +250,8 @@ export const THEME_OPTIONS: ThemeOption[] = [
   },
   {
     id: 'mist',
-    label: 'Mist',
-    description: 'Cool blue-grey daylight.',
+    labelKey: 'theme.mist',
+    descriptionKey: 'theme.mist.help',
     swatch: {
       bgRgb: '244 247 251',
       surface: 'rgba(15, 23, 42, 0.05)',
@@ -253,8 +262,8 @@ export const THEME_OPTIONS: ThemeOption[] = [
   },
   {
     id: 'sepia',
-    label: 'Sepia',
-    description: 'A warm ivory page.',
+    labelKey: 'theme.sepia',
+    descriptionKey: 'theme.sepia.help',
     swatch: {
       bgRgb: '250 246 238',
       surface: 'rgba(74, 54, 28, 0.05)',
@@ -265,8 +274,8 @@ export const THEME_OPTIONS: ThemeOption[] = [
   },
   {
     id: 'daylight',
-    label: 'Daylight',
-    description: 'Black on white, hard edges.',
+    labelKey: 'theme.daylight',
+    descriptionKey: 'theme.daylight.help',
     swatch: {
       bgRgb: '255 255 255',
       surface: 'rgba(0, 0, 0, 0.09)',
@@ -283,38 +292,45 @@ export const LANGUAGE_OPTIONS = [
   { value: 'fr', label: 'Français' },
 ]
 
+/** An option whose label and help text are named, not written. */
+export interface KeyedOption {
+  value: string
+  labelKey: MessageKey
+  descriptionKey?: MessageKey
+}
+
 /** The mode Claude Code agents launch in. `bypassPermissions` is gated in the UI. */
-export const LAUNCH_MODE_OPTIONS = [
+export const LAUNCH_MODE_OPTIONS: KeyedOption[] = [
   {
     value: 'plan',
-    label: 'Plan',
-    description: 'Read-only — Claude explores and analyzes but never modifies anything',
+    labelKey: 'settings.launchMode.plan',
+    descriptionKey: 'settings.launchMode.plan.help',
   },
   {
     value: 'default',
-    label: 'Standard',
-    description: 'Claude asks permission for every sensitive action',
+    labelKey: 'settings.launchMode.default',
+    descriptionKey: 'settings.launchMode.default.help',
   },
   {
     value: 'acceptEdits',
-    label: 'Accept Edits',
-    description: 'Auto-accepts file edits, still asks for bash commands',
+    labelKey: 'settings.launchMode.acceptEdits',
+    descriptionKey: 'settings.launchMode.acceptEdits.help',
   },
   {
     value: 'auto',
-    label: 'Auto',
-    description: 'Auto-approves most actions based on configured allowlists',
+    labelKey: 'settings.launchMode.auto',
+    descriptionKey: 'settings.launchMode.auto.help',
   },
   {
     value: 'bypassPermissions',
-    label: 'Bypass',
-    description: 'No permission checks — for sandboxed environments only',
+    labelKey: 'settings.launchMode.bypass',
+    descriptionKey: 'settings.launchMode.bypass.help',
   },
 ]
 
-export const POLL_INTERVAL_OPTIONS = [
-  { value: '30000', label: '30 seconds' },
-  { value: '60000', label: '1 minute' },
-  { value: '120000', label: '2 minutes' },
-  { value: '300000', label: '5 minutes' },
+export const POLL_INTERVAL_OPTIONS: KeyedOption[] = [
+  { value: '30000', labelKey: 'settings.prWatcher.interval30s' },
+  { value: '60000', labelKey: 'settings.prWatcher.interval1m' },
+  { value: '120000', labelKey: 'settings.prWatcher.interval2m' },
+  { value: '300000', labelKey: 'settings.prWatcher.interval5m' },
 ]

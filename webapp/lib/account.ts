@@ -1,4 +1,6 @@
 import { getSupabase } from './supabase'
+import { t } from './i18n'
+import { DEFAULT_LANGUAGE, type LanguageId } from './i18n/languages'
 
 /**
  * Identity operations, matching the desktop app's account flows one for one so
@@ -22,14 +24,18 @@ export async function requestEmailChange(newEmail: string): Promise<void> {
 }
 
 /** Step 2: verify the code sent to the new address, which applies the change. */
-export async function confirmEmailChange(newEmail: string, code: string): Promise<void> {
+export async function confirmEmailChange(
+  newEmail: string,
+  code: string,
+  lang: LanguageId = DEFAULT_LANGUAGE,
+): Promise<void> {
   const { data, error } = await getSupabase().auth.verifyOtp({
     email: newEmail.trim(),
     token: code.trim(),
     type: 'email_change',
   })
   if (error) throw new Error(error.message)
-  if (!data.session) throw new Error('Email change did not return a session')
+  if (!data.session) throw new Error(t('cloud.email.noSession', lang))
 }
 
 /**
