@@ -117,7 +117,9 @@ The brief is a working artefact: it must never be committed.
 
 ### 4.2 Format — frozen
 
-Write `.magic/design-brief.md` at the root of the worktree, with exactly these sections:
+Write `.magic/design-brief.md` at the root of the worktree, with exactly these sections.
+Overwrite it wholesale rather than appending: a worktree reused via Step 4.0 may still hold a brief from an earlier
+ticket, and a merged brief would mix two mockups.
 
 ```text
 # Design brief — {TICKET_ID}

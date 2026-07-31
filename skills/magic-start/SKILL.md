@@ -374,7 +374,15 @@ Check the ticket (title, description, labels, components, attachment metadata, r
 
 **If a signal is detected**: Read `references/design-context.md` to resolve the references and write `.magic/design-brief.md` in each worktree. The brief must exist before the plan is written in Step 5.2.
 
-**If no signal is detected** (e.g. backend-only labels `backend`, `api`, `db`, `infra`, `ci` with no Tier 1 or Tier 2 hit): skip this step entirely. Do not read `references/design-context.md`, do not write a brief, and leave the `Design fidelity` axis of Step 5.5.2 at `N/A`.
+**If no signal is detected** (e.g. backend-only labels `backend`, `api`, `db`, `infra`, `ci` with no Tier 1 or Tier 2 hit): do not read `references/design-context.md`, do not write a brief, and leave the `Design fidelity` axis of Step 5.5.2 at `N/A`.
+
+One thing still has to happen on this path. A worktree reused via Step 4.0 may already hold a brief from an earlier ticket, and every downstream prompt keys off "when `.magic/design-brief.md` exists" — so a leftover file would make sub-agents follow a mockup that has nothing to do with this task, and make the critic grade against it. Delete it before continuing:
+
+```bash
+rm -f .magic/design-brief.md
+```
+
+Run it in each worktree, and mention the deletion to the user if the file was there — a brief disappearing is worth one line, not silence.
 
 ### 5.1: Codebase exploration (conditional)
 
