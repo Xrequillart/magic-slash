@@ -19,9 +19,10 @@ import { PageHead } from '@/components/regie/ConsoleShell'
 import { DataTable, Mono, NoValue, type Column } from '@/components/regie/DataTable'
 import {
   ConfirmAction,
+  CopyButton,
   Empty,
   ErrorNote,
-  Field,
+  InlineField,
   Panel,
   Pill,
   SectionLabel,
@@ -261,6 +262,18 @@ export default function AdminOrgRecord() {
       <div className="mt-3">
         <PageHead
           title={org.name}
+          // The uuid under the name, exactly as the user record carries it under the
+          // email: the title is what a human calls this tenant, this is what a log
+          // line and a SQL query call it. Copyable rather than selectable because a
+          // double-click on a uuid takes one hyphen-separated group and leaves the
+          // rest. It used to be the last cell of the Tenant card below, where it read
+          // as a property of the org among others rather than as its identifier.
+          meta={
+            <span className="inline-flex items-center gap-1.5">
+              <span className="break-all font-mono text-[12px] text-regie-dim">{org.orgId}</span>
+              <CopyButton value={org.orgId} label="l'identifiant" />
+            </span>
+          }
           action={
             <ConfirmAction
               label={archived ? 'Restaurer' : 'Archiver'}
@@ -281,24 +294,56 @@ export default function AdminOrgRecord() {
         )}
 
         <div className="space-y-6">
+          {/* The same identity card the user record opens with, one fact per column:
+              five facts is too many to read as a sentence and too few to stack down a
+              card, and on a row they answer "what is this tenant, and how big" without
+              pushing the members table below the fold.
+              A column below lg, where five cells in a row would truncate the only value
+              anyone came here to read — the creator's email. */}
           <Panel label="Tenant">
-            <dl className="grid sm:grid-cols-2">
-              <Field
-                label="État"
-                value={
-                  archived ? (
-                    <span className="text-red">archivée le {formatAbsoluteDate(org.archivedAt)}</span>
-                  ) : (
-                    <span className="text-green">active</span>
-                  )
-                }
-              />
-              <Field
-                label="Créée par"
-                value={org.createdByEmail ?? <span className="text-regie-dim">créateur supprimé</span>}
-              />
-              <Field label="Créée le" value={formatAbsoluteDate(org.createdAt)} />
-              <Field label="Org id" value={org.orgId} />
+            <dl className="flex flex-col divide-y divide-regie-rule-soft lg:flex-row lg:divide-x lg:divide-y-0">
+              <InlineField label="État">
+                {archived ? (
+                  <span className="text-red">archivée le {formatAbsoluteDate(org.archivedAt)}</span>
+                ) : (
+                  <span className="text-green">active</span>
+                )}
+              </InlineField>
+              {/* Widest of the five, and copyable, for the same reason the user
+                  record's email cell is: it is the one value here that gets pasted
+                  somewhere else — into a support thread, or into the console's own
+                  user search. `createdByEmail` is null once the creator's account is
+                  deleted, which the org survives. */}
+              <InlineField label="Créée par" className="lg:flex-[1.75]">
+                {org.createdByEmail ? (
+                  <>
+                    <span className="min-w-0">{org.createdByEmail}</span>
+                    <CopyButton value={org.createdByEmail} label="l'email du créateur" />
+                  </>
+                ) : (
+                  <span className="text-regie-dim">créateur supprimé</span>
+                )}
+              </InlineField>
+              <InlineField label="Créée le">{formatAbsoluteDate(org.createdAt)}</InlineField>
+              {/* How big the tenant is, the two counts read side by side. Both come
+                  from the console-wide list (`admin_list_orgs` computes them per row),
+                  so they cost no fetch here and are refreshed with everything else
+                  after a write.
+                  Members repeats what the table below counts, deliberately: the card
+                  exists so the shape of the org is one glance, without scrolling to a
+                  table to learn it has four people in it. Repositories is the opposite
+                  case — the one number on this page with no table to read it off.
+                  Both narrower than the rest: a count is two characters, and at an
+                  equal share they would take the width the email needs. */}
+              <InlineField label="Membres" className="lg:flex-[0.8]">
+                {org.memberCount}
+                {org.adminCount > 0 && (
+                  <span className="text-regie-dim">· {org.adminCount} admin</span>
+                )}
+              </InlineField>
+              <InlineField label="Repositories" className="lg:flex-[0.6]">
+                {org.repoCount}
+              </InlineField>
             </dl>
             {archived && (
               // Said here because it is the fact that makes "Restaurer" worth

@@ -67,14 +67,34 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * A label/value pair. The value is monospace and `break-all`: these are emails,
- * uuids, branch names and versions — strings with no word boundaries to wrap on.
+ * One cell of an identity card: a micro-label over its value. The value is monospace
+ * and `break-all` — these are emails, uuids, branch names and versions, strings with
+ * no word boundaries to wrap on.
+ *
+ * Draws no rule of its own: the RULES BELONG TO THE PARENT `dl`, which is what lets
+ * the same cell read as a stacked list or as one row. The identity cards both use the
+ * row form (`flex flex-col divide-y … lg:flex-row lg:divide-x lg:divide-y-0`), so a
+ * handful of facts answer "who is this" in a glance instead of down a column.
+ *
+ * `min-w-0` on a flex child is not optional — without it a long email refuses to
+ * shrink below its content and pushes the cells to its right off the card.
  */
-export function Field({ label, value }: { label: string; value: React.ReactNode }) {
+export function InlineField({
+  label,
+  className = 'lg:flex-1',
+  children,
+}: {
+  label: string
+  /** Flex weight at lg and up, where the card becomes one row. */
+  className?: string
+  children: React.ReactNode
+}) {
   return (
-    <div className="border-b border-regie-rule-soft px-4 py-3 last:border-b-0">
+    <div className={`min-w-0 px-4 py-3 ${className}`}>
       <dt className="text-[11px] uppercase tracking-[0.08em] text-regie-dim">{label}</dt>
-      <dd className="mt-1 break-all font-mono text-[13px] text-ink">{value}</dd>
+      <dd className="mt-1 flex items-start gap-1.5 break-all font-mono text-[13px] text-ink">
+        {children}
+      </dd>
     </div>
   )
 }

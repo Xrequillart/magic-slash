@@ -29,6 +29,7 @@ import {
   Collapsible,
   CopyButton,
   Empty,
+  InlineField,
   Panel,
   Pill,
   SectionLabel,
@@ -114,33 +115,6 @@ function ThemeChip({ themeId }: { themeId: string }) {
         </span>
       </span>
     </span>
-  )
-}
-
-/**
- * One cell of the identity card: a micro-label over its value, sized to sit in a row
- * with the others.
- *
- * `min-w-0` on a flex child is not optional — without it a long email refuses to
- * shrink below its content and pushes the cells to its right off the card.
- */
-function InlineField({
-  label,
-  className = 'lg:flex-1',
-  children,
-}: {
-  label: string
-  /** Flex weight at lg and up, where the card becomes one row. */
-  className?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className={`min-w-0 px-4 py-3 ${className}`}>
-      <dt className="text-[11px] uppercase tracking-[0.08em] text-regie-dim">{label}</dt>
-      <dd className="mt-1 flex items-start gap-1.5 break-all font-mono text-[13px] text-ink">
-        {children}
-      </dd>
-    </div>
   )
 }
 
