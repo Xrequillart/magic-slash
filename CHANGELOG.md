@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.60.0] - 2026-07-31
+
+### Added
+
+- **Desktop**: Show per-skill run counts on the Team page, for an organization and for your own work
+- **Webapp**: Show the same per-skill run counts on the dashboard
+- **Webapp**: Count each magic skill's runs on the admin org record
+- **Webapp**: Rework the admin org record header with a copyable id and member/repo counts
+- **Start**: Detect and follow a ticket's UI/UX design references
+
+### Changed
+
+- **Supabase**: Assert that a skill run follows its agent's derived organization
+- **Install**: Allowlist the Jira remote issue links call
+
+### Fixed
+
+- **Start**: Report the task branch once the worktree exists, so the agent's branch name is recorded
+- **Continue**: Report the resumed branch from inside the worktree, for the same reason
+- **Start**: Clear a stale design brief when a ticket has no mockup, and sync the desktop permissions
+- **Desktop**: Stop attributing skill runs with no agent to the user's first organization
+- **Desktop**: Centre the modals on the window rather than on the content pane
+- **Webapp**: Compare app versions to the shipped release rather than to the fleet
+
 ## [0.59.3] - 2026-07-30
 
 ### Added
@@ -1775,6 +1799,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.60.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.60.0
 [0.59.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.59.3
 [0.59.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.59.2
 [0.59.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.59.1
