@@ -47,8 +47,12 @@ const TRACKED_SKILLS: { skill: string; label: string }[] = [
  * Counts are all-time and arrive pre-aggregated from the database.
  */
 /**
- * The full breakdown, on hover. Only the started count and the abandoned warning fit
- * on a tile this size; the rest is worth having but not worth crowding it.
+ * The full breakdown, on hover. Only the started count fits on a tile this size; the
+ * rest is worth having but not worth crowding it.
+ *
+ * The abandoned count is deliberately absent, here and on the tile: a run only closes
+ * on a voluntary signal, so "abandoned" counts interruptions as failures and reads as
+ * an alarm about nothing.
  *
  * Not translated, and consistent with the tile labels for the same reason: these are
  * the command names the user types.
@@ -56,7 +60,6 @@ const TRACKED_SKILLS: { skill: string; label: string }[] = [
 function tileTitle(label: string, stats: SkillRunCounts | undefined): string {
   if (!stats) return `/magic:${label}`
   const parts = [`${stats.total} started`, `${stats.completed} completed`]
-  if (stats.abandoned > 0) parts.push(`${stats.abandoned} abandoned`)
   if (stats.medianDurationMs !== null) parts.push(`median ${formatDuration(stats.medianDurationMs)}`)
   return `/magic:${label} — ${parts.join(', ')}`
 }
@@ -143,15 +146,6 @@ export function SkillStats({ scope }: { scope: RepoScope | undefined }) {
               >
                 {counts ? runs : '—'}
               </p>
-              {/* Shown only when there is something to see. A skill that is started
-                  and not finished is a BROKEN skill, and before the runs carried an
-                  end it was indistinguishable from a popular one — so the moment that
-                  happens it has to be on the tile, not buried in a tooltip. */}
-              {stats && stats.abandoned > 0 && (
-                <p className="mt-0.5 text-[10px] leading-none text-yellow/80 truncate">
-                  {t('dashboard.skills.abandoned', { count: String(stats.abandoned) })}
-                </p>
-              )}
             </div>
           )
         })}

@@ -772,7 +772,6 @@ export const fr: Record<keyof typeof en, string> = {
   'dashboard.skills.sectionPersonal': 'Tes skills exécutés',
   'dashboard.skills.runs.one': '{count} exécution',
   'dashboard.skills.runs.other': '{count} exécutions',
-  'dashboard.skills.abandoned': '{count} abandonnée(s)',
   'dashboard.skills.empty':
     'Aucune exécution enregistrée pour cette organisation. Les exécutions sont rattachées via les dépôts de l’agent qui les lance : le travail sur un dépôt personnel n’est donc pas compté ici.',
   'dashboard.skills.emptyPersonal':

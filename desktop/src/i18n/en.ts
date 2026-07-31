@@ -765,7 +765,6 @@ export const en = {
   'dashboard.skills.sectionPersonal': 'Your skills run',
   'dashboard.skills.runs.one': '{count} run',
   'dashboard.skills.runs.other': '{count} runs',
-  'dashboard.skills.abandoned': '{count} abandoned',
   'dashboard.skills.empty':
     'No run recorded for this organization yet. Runs are attributed through the repositories of the agent that launches them, so work on a personal repository is not counted here.',
   'dashboard.skills.emptyPersonal':
