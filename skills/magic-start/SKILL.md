@@ -277,6 +277,16 @@ cd ../${REPO_NAME}-$TICKET_ID
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(echo -n '["'$(pwd)'"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
+**Report the branch** — a second metadata call rather than a parameter on the one in step 2.5, because that one runs before the branch exists: the slug is only generated in step 2.7 and `$BRANCH_NAME` only composed above. Without this the agent's `branch_name` stays null for its whole life, and every reader (the Desktop sidebar, the back-office agent list) has to fall back to the ticket id.
+
+Read from `git branch --show-current` rather than echoing `$BRANCH_NAME` back: that reports what git actually checked out, so it stays correct on the "branch already exists" path where the user chose to reuse it.
+
+```bash
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&branchName=$(echo -n "$(git branch --show-current)" | jq -sRr @uri)" > /dev/null 2>&1 || true
+```
+
+In a multi-repo start this runs once per worktree and the agent keeps the last one, since `branch_name` is a single column. For Jira that is the same name in every repo; for GitHub, where the name is prefixed per repo, the last repo processed wins.
+
 ### 4.2: Copy worktree files
 
 Check if the repo has `worktreeFiles` configured (`.repositories.<name>.worktreeFiles`).

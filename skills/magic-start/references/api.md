@@ -57,6 +57,7 @@ Updates the agent metadata in the sidebar.
 | `ticketId` | string | No | Ticket ID (e.g.: `PROJ-123`, `#456`) |
 | `description` | string | No | Short description (URL-encoded) |
 | `status` | string | No | `"in progress"`, `"committed"`, `"PR created"` |
+| `branchName` | string | No | Task branch actually checked out. Report it only from inside the worktree, once the branch exists — see the note below |
 | `baseBranch` | string | No | Dev branch (e.g.: `main`, `develop`) |
 | `fullStackTaskId` | string | No | Links multiple worktrees |
 | `relatedWorktrees` | JSON array | No | Absolute paths (URL-encoded) |
@@ -67,6 +68,17 @@ Updates the agent metadata in the sidebar.
 ```bash
 curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=PROJ-123%3A%20Add%20login&status=in%20progress"
 ```
+
+**Note on `branchName`** — every parameter is optional and the server MERGES what it
+receives into the existing metadata, so a call may carry this one alone. Two traps:
+
+* Send it only once the task branch is checked out and from inside the worktree.
+  Both `/start` and `/continue` send their main metadata block before that point, so a
+  `git branch --show-current` there returns the development branch and stores a
+  plausible wrong value. A null branch is recoverable; a wrong one is not.
+* Strip the trailing newline: `git branch --show-current | jq -sRr @uri` slurps it and
+  encodes it as `%0A`, which lands in the database as part of the name. Use
+  `echo -n "$(git branch --show-current)" | jq -sRr @uri`.
 
 ## Endpoint `/repositories`
 
