@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ArchiveRestore, Archive, ShieldMinus, ShieldPlus, XCircle } from 'lucide-react'
 import {
+  getOrgSkillCounts,
   listOrgInvitations,
   listOrgMembers,
   revokeInvitation,
@@ -49,6 +50,31 @@ import {
  * the counts in the nav and the org table describe what was just changed.
  */
 
+/**
+ * The skills the stats card reports, in the order the development cycle runs them —
+ * start, pick back up, commit, ship, review, fix the review, close.
+ *
+ * A FIXED list, though `admin_org_skill_counts` returns every skill the org has ever
+ * run. The point of the card is that the same seven tiles sit in the same seven
+ * places on every org, so two tenants can be compared at a glance and a hole in the
+ * cycle ("plenty of commits, no PRs") is visible as a shape. Sorting by count, or
+ * rendering whatever came back, would make every card a different card.
+ *
+ * `skill` is what the desktop's PreToolUse hook logs, `label` is what a human calls
+ * it. They differ because the log records the SKILL name Claude Code reports while
+ * an operator recognises the slash command — and the mapping is mechanical enough
+ * that deriving it would cost more than writing it down.
+ */
+const TRACKED_SKILLS: { skill: string; label: string }[] = [
+  { skill: 'magic-start', label: '/magic:start' },
+  { skill: 'magic-continue', label: '/magic:continue' },
+  { skill: 'magic-commit', label: '/magic:commit' },
+  { skill: 'magic-pr', label: '/magic:pr' },
+  { skill: 'magic-review', label: '/magic:review' },
+  { skill: 'magic-resolve', label: '/magic:resolve' },
+  { skill: 'magic-done', label: '/magic:done' },
+]
+
 export default function AdminOrgRecord() {
   const params = useParams<{ orgId: string }>()
   const router = useRouter()
@@ -61,6 +87,10 @@ export default function AdminOrgRecord() {
 
   const [members, setMembers] = useState<AdminOrgMember[] | null>(null)
   const [invitations, setInvitations] = useState<AdminOrgInvitation[] | null>(null)
+  // Run counts per skill. Not part of `load()` below: none of this page's three
+  // writes can change how many times the org has run magic-commit, so refetching
+  // them after a role change would be a query for an answer that cannot have moved.
+  const [skills, setSkills] = useState<Map<string, number> | null>(null)
   const [error, setError] = useState<string | null>(null)
   /** The id of the row whose write is in flight, so only its own button waits. */
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -80,14 +110,18 @@ export default function AdminOrgRecord() {
     // another must not render one tenant's members under another's name.
     setMembers(null)
     setInvitations(null)
+    setSkills(null)
     setError(null)
 
     let cancelled = false
-    Promise.all([listOrgMembers(orgId), listOrgInvitations(orgId)]).then(([nextMembers, nextInvites]) => {
-      if (cancelled) return
-      setMembers(nextMembers)
-      setInvitations(nextInvites)
-    })
+    Promise.all([listOrgMembers(orgId), listOrgInvitations(orgId), getOrgSkillCounts(orgId)]).then(
+      ([nextMembers, nextInvites, nextSkills]) => {
+        if (cancelled) return
+        setMembers(nextMembers)
+        setInvitations(nextInvites)
+        setSkills(nextSkills)
+      },
+    )
 
     return () => {
       cancelled = true
@@ -352,6 +386,86 @@ export default function AdminOrgRecord() {
                 Une organisation archivée disparaît de toutes les lectures de ses membres, mais ses
                 données sont conservées. La restaurer la remet dans l&apos;état où ils l&apos;ont laissée.
               </p>
+            )}
+          </Panel>
+
+          {/* WHAT THEY ACTUALLY RUN, between the identity card and the members.
+              Deliberately above the tables: every count above this says how BIG the
+              tenant is, and none of them says whether it is used. An org with nine
+              members and four commits between them is a failed rollout that reads as
+              healthy from member and repo counts alone, and that is the single most
+              useful thing this page can tell an operator.
+              One tile per stage of the cycle, so a gap in it is a shape rather than a
+              number to compare by hand. */}
+          <Panel
+            label="Skills"
+            action={
+              skills && (
+                // The sum of the SEVEN shown, not of every skill logged: it is the
+                // total of what is on screen, so it always adds up to the tiles
+                // below it. An org running /magic:plan heavily is not counted here.
+                <SectionLabel>
+                  {`${TRACKED_SKILLS.reduce((sum, { skill }) => sum + (skills.get(skill) ?? 0), 0)} runs`}
+                </SectionLabel>
+              )
+            }
+          >
+            {skills === null ? (
+              <Empty>Chargement…</Empty>
+            ) : (
+              <>
+                {/* Boxed tiles rather than cells divided by rules: seven items over a
+                    grid that is 2, 4 then 7 columns wide leaves a partly filled last
+                    row at two of those three widths, and a gap-px separator grid draws
+                    those empty cells as solid blocks. Tiles carry their own border and
+                    an empty grid area is simply panel background.
+                    Same box as the feature groups on the user record — the console's
+                    established "section inside a card" shape. */}
+                <dl className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-4 lg:grid-cols-7">
+                  {TRACKED_SKILLS.map(({ skill, label }) => {
+                    // Absent from the map means never run. `?? 0` is where absence
+                    // becomes the number to print — the RPC returns no row at all
+                    // rather than a zero, so this is the only place it is decided.
+                    const total = skills.get(skill) ?? 0
+                    return (
+                      <div
+                        key={skill}
+                        className="rounded-xl border border-regie-rule-soft bg-regie-ground/40 px-3 py-2.5"
+                      >
+                        <dt className="truncate text-[11px] uppercase tracking-[0.08em] text-regie-dim">
+                          {label}
+                        </dt>
+                        {/* Monospace and large: it is a count, which the console sets
+                            in mono everywhere because these are read by scanning ACROSS
+                            the row and compared. A zero is dimmed rather than hidden —
+                            the tile has to stay in its place for the row to be
+                            comparable, but the eye should skip it. */}
+                        <dd
+                          className={`mt-1.5 font-mono text-[22px] leading-none ${
+                            total === 0 ? 'text-regie-dim/70' : 'text-ink'
+                          }`}
+                        >
+                          {total}
+                        </dd>
+                      </div>
+                    )
+                  })}
+                </dl>
+
+                {skills.size === 0 && (
+                  // Said only when the org has run NOTHING, which is the one state an
+                  // operator is likely to read as a broken page rather than as data.
+                  // Both halves matter: the hook has to be installed for anything to
+                  // be logged at all, and a run is attributed through its agent's
+                  // repositories — so a team whose members work on personal repos
+                  // shows zeros here while being perfectly active.
+                  <p className="border-t border-regie-rule-soft px-4 py-2.5 text-[12px] text-regie-dim">
+                    Aucun run enregistré pour cette organisation. Les runs sont rattachés à
+                    l&apos;organisation via les repositories de l&apos;agent qui les lance : le travail
+                    fait sur un repository personnel n&apos;apparaît donc ici pour personne.
+                  </p>
+                )}
+              </>
             )}
           </Panel>
 

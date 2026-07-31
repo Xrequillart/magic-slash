@@ -298,6 +298,19 @@ interface AdminOrgInvitationRpcRow {
   created_at: string | null
 }
 
+interface AdminSkillCountRpcRow {
+  /**
+   * Free text — third-party and plugin skills have names we cannot enumerate — with
+   * any plugin prefix already folded away by the RPC, so "magic-slash:magic-pr" and
+   * "magic-pr" arrive as one row.
+   */
+  skill: string
+  // `count(*)` is a bigint, which PostgREST serialises as a JSON number. Typed as
+  // number rather than string for that reason — the other counts in this file take
+  // the same shape from the same source.
+  total: number
+}
+
 interface AdminAgentRpcRow {
   id: string
   name: string
@@ -577,6 +590,30 @@ export async function listOrgInvitations(orgId: string): Promise<AdminOrgInvitat
   const { data, error } = await getSupabase().rpc('admin_list_org_invitations', { p_org_id: orgId })
   if (error || !data) return []
   return (data as AdminOrgInvitationRpcRow[]).map(toOrgInvitation)
+}
+
+/**
+ * How many times one org has run each skill, all time, commonest first.
+ *
+ * Counts only runs attributed to the org through their agent, which is to say the
+ * TEAM's work: a run on a member's personal repo carries no org and is counted for
+ * nobody. See 20260731090000_admin_org_skill_counts.sql for why that is the right
+ * answer rather than a gap.
+ *
+ * Returned as a Map rather than the RPC's array: every caller looks a skill up by
+ * name to draw its tile, and `.find()` per tile over a list whose length is however
+ * many skills the tenant has ever touched is the wrong shape for that. A skill the
+ * org has never run is ABSENT from the map, not zero — `?? 0` at the read site is
+ * what turns absence into the number to print, and it keeps "never ran it"
+ * distinguishable here for any caller that cares.
+ *
+ * Insertion order is the RPC's order, so iterating the map still gives commonest
+ * first for a caller that wants the whole tail rather than a fixed set.
+ */
+export async function getOrgSkillCounts(orgId: string): Promise<Map<string, number>> {
+  const { data, error } = await getSupabase().rpc('admin_org_skill_counts', { p_org_id: orgId })
+  if (error || !data) return new Map()
+  return new Map((data as AdminSkillCountRpcRow[]).map((row) => [row.skill, row.total]))
 }
 
 // ── Writes ───────────────────────────────────────────────────────────────────
