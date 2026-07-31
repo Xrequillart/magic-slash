@@ -22,7 +22,7 @@ vi.mock('./skill-invocations', () => ({
   closeSkillRun: vi.fn(async () => {}),
 }))
 import { closeSkillRun, recordSkillInvocation } from './skill-invocations'
-import { drainSkillSpool, spooledSkillRunCount } from './skill-spool'
+import { drainSkillSpool, resetPromptStartMemory, spooledSkillRunCount } from './skill-spool'
 
 const CONFIG_DIR = path.join(TMP_HOME, '.config', 'magic-slash')
 const SPOOL_FILE = path.join(CONFIG_DIR, 'pending-skills.ndjson')
@@ -34,6 +34,11 @@ function spool(...records: object[]): void {
 }
 
 const start = (skill: string, agentId = 'claude-1') => ({ type: 'start', skill, agentId, occurredAt: 1000 })
+/** A start as each hook writes it, with the `source` tag the dedupe reads. */
+const typed = (skill: string, occurredAt = 1000, agentId = 'claude-1') =>
+  ({ type: 'start', skill, agentId, occurredAt, source: 'prompt' })
+const viaTool = (skill: string, occurredAt = 1000, agentId = 'claude-1') =>
+  ({ type: 'start', skill, agentId, occurredAt, source: 'tool' })
 const end = (skill: string, outcome = 'success', occurredAt = 9000) =>
   ({ type: 'end', skill, agentId: 'claude-1', outcome, occurredAt })
 
@@ -50,6 +55,7 @@ beforeEach(() => {
   vi.mocked(recordSkillInvocation).mockImplementation(async () => {})
   vi.mocked(closeSkillRun).mockClear()
   vi.mocked(closeSkillRun).mockImplementation(async () => {})
+  resetPromptStartMemory()
 })
 
 describe('drainSkillSpool', () => {
@@ -186,6 +192,79 @@ describe('closing records', () => {
     spool({ type: 'end', skill: 'magic-start', agentId: '', outcome: 'success', occurredAt: 9000 })
     await drainSkillSpool()
     expect(closed()[0].agentId).toBeUndefined()
+  })
+})
+
+/**
+ * A skill can be started two ways, and each has its own hook: typing `/magic-commit`
+ * (UserPromptSubmit) and the model invoking the Skill tool (PreToolUse). If Claude
+ * Code ever does both for one typed command, the run must still count once.
+ */
+describe('a run seen by both hooks', () => {
+  it('counts a typed command once, even when the tool hook also fires', async () => {
+    spool(typed('magic-commit', 1000), viaTool('magic-commit', 3000))
+
+    await drainSkillSpool()
+    expect(recorded()).toHaveLength(1)
+    // The typed record wins: it is the one the user actually produced, and it carries
+    // the moment they hit enter rather than the moment the model got around to it.
+    expect(recorded()[0].occurredAt).toBe(1000)
+  })
+
+  it('deduplicates across drains, not just within one batch', async () => {
+    // The drain ticks every 20 seconds and can easily land between the two hooks.
+    spool(typed('magic-pr', 1000))
+    await drainSkillSpool()
+    spool(viaTool('magic-pr', 2000))
+    await drainSkillSpool()
+
+    expect(recorded()).toHaveLength(1)
+  })
+
+  it('counts a tool run that no typed command explains', async () => {
+    // The natural-language path: the user said "commit my changes" and the model
+    // chose the skill. Nothing typed, so nothing to collapse into.
+    spool(viaTool('magic-commit', 1000))
+    await drainSkillSpool()
+    expect(recorded()).toHaveLength(1)
+  })
+
+  it('counts the same skill typed twice as two runs', async () => {
+    // Two `prompt` records are two real runs. Collapsing them would under-report the
+    // most ordinary thing a user does: run a skill, then run it again.
+    spool(typed('magic-commit', 1000), typed('magic-commit', 2000))
+    await drainSkillSpool()
+    expect(recorded()).toHaveLength(2)
+  })
+
+  it('stops suppressing once the run is old enough to be a different one', async () => {
+    spool(typed('magic-commit', 1000), viaTool('magic-commit', 1000 + 120_001))
+    await drainSkillSpool()
+    expect(recorded()).toHaveLength(2)
+  })
+
+  it('keeps runs in different terminals apart', async () => {
+    // Two agents can run the same skill at the same moment; neither explains the other.
+    spool(typed('magic-commit', 1000, 'claude-1'), viaTool('magic-commit', 1000, 'claude-2'))
+    await drainSkillSpool()
+    expect(recorded()).toHaveLength(2)
+  })
+
+  it('matches the two hooks despite their different prefix handling', async () => {
+    // The prompt hook folds `magic-slash:magic-pr` to `magic-pr`; the tool hook keeps
+    // the prefix. Comparing them raw would never match, and every plugin install
+    // would double-count.
+    spool(typed('magic-pr', 1000), viaTool('magic-slash:magic-pr', 2000))
+    await drainSkillSpool()
+    expect(recorded()).toHaveLength(1)
+  })
+
+  it('counts a start spooled by an older app, which has no source', async () => {
+    // Records written before the field existed are all tool starts, and nothing was
+    // producing prompt starts then — so there is nothing they could collide with.
+    spool(start('magic-done'))
+    await drainSkillSpool()
+    expect(recorded()).toHaveLength(1)
   })
 })
 

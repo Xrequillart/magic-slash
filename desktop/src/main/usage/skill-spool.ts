@@ -5,7 +5,8 @@ import type { SkillRunOutcome } from '../../types'
 import { closeSkillRun, recordSkillInvocation } from './skill-invocations'
 
 /**
- * Drains the skill-invocation spool written by the PreToolUse hook.
+ * Drains the skill-invocation spool written by the two hooks that can see a skill
+ * start — the Skill-scoped PreToolUse one and the UserPromptSubmit one.
  *
  * WHY A SPOOL AT ALL
  * ---------------------------------------------------------------------------
@@ -15,10 +16,11 @@ import { closeSkillRun, recordSkillInvocation } from './skill-invocations'
  * absence of work rather than an absence of listening. Writing to a file removes the
  * precondition: the hook always succeeds, and the count is settled later.
  *
- * The hook already filters to magic-* skills, so nothing else is ever written here
+ * Both hooks already filter to magic-* skills, so nothing else is ever written here
  * (see claude-hooks-config.ts). This module re-checks nothing: recordSkillInvocation
  * applies the same filter and the recording opt-in on the way out, which is where
- * both belong.
+ * both belong. What it DOES own is telling one run seen twice from two runs — see
+ * isDuplicateStart.
  *
  * WHY IT READS THE FILE BEFORE DELETING IT
  * ---------------------------------------------------------------------------
@@ -40,8 +42,12 @@ const MAX_SPOOL_BYTES = 8 * 1024 * 1024
 /**
  * One spooled record.
  *
- * Two producers write here, both without needing the app to be running:
- *  - `start`, from the PreToolUse hook (claude-hooks-config.ts) — guaranteed;
+ * Three producers write here, none of which needs the app to be running:
+ *  - `start` / `source: 'tool'`, from the PreToolUse hook scoped to the Skill tool —
+ *    fires when the MODEL invoked the skill (a natural-language request);
+ *  - `start` / `source: 'prompt'`, from the UserPromptSubmit hook — fires when the
+ *    user TYPED the slash command, which never reaches a tool call and was therefore
+ *    counted by nothing at all before;
  *  - `end`, from the last step of each SKILL.md — voluntary, and legitimately absent
  *    when a run is interrupted, which is what makes a run read as abandoned.
  */
@@ -57,9 +63,85 @@ interface SpooledRun {
   occurredAt?: number
   /** Present on `end` only. An unrecognised value is rejected rather than guessed. */
   outcome?: SkillRunOutcome
+  /**
+   * Which hook wrote this start. Absent in records spooled by an older app, which
+   * are all `tool` — and which therefore never collide with a `prompt` record,
+   * because nothing was producing those yet.
+   */
+  source?: 'prompt' | 'tool'
 }
 
 const OUTCOMES: readonly string[] = ['success', 'failed', 'cancelled']
+
+/**
+ * How long a `prompt` start keeps a matching `tool` start from being counted again.
+ *
+ * The two would arrive within the same second — the tool call, if it happens at all,
+ * is the model's first act on the expanded command. The window is generous because
+ * the cost of the two errors is not symmetric: too short and one typed command is
+ * counted twice, which silently inflates every dashboard; too long and a SECOND
+ * genuine run of the SAME skill, in the SAME terminal, started from natural language
+ * within two minutes of the first one having been typed, is missed. The second is
+ * both rarer and self-correcting on the next run.
+ *
+ * Only ever collapses `tool` into `prompt`. Two typed commands are two `prompt`
+ * records and both count, which is what makes running the same skill twice in a row
+ * report as twice.
+ */
+const PROMPT_START_WINDOW_MS = 120_000
+
+/**
+ * When each (skill, agent) pair last had a `prompt` start recorded.
+ *
+ * Module state rather than a per-drain local, because the pair does not have to land
+ * in the same batch: the drain ticks every 20 seconds and can easily run between the
+ * prompt and the tool call. Lost on restart, which reopens a two-minute window for a
+ * double count — acceptable against persisting a cache to guard the tail of a case
+ * that may not even occur (see getPromptSkillHookConfig: whether Claude Code routes a
+ * slash command through the Skill tool at all is the open question this guards).
+ */
+const recentPromptStarts = new Map<string, number>()
+
+/**
+ * Forget every remembered `prompt` start.
+ *
+ * Exists for tests, which reuse skill names across cases and would otherwise have one
+ * case suppress the next one's start. The app never calls it — a restart is the only
+ * thing that clears this in production, which is the behaviour documented above.
+ */
+export function resetPromptStartMemory(): void {
+  recentPromptStarts.clear()
+}
+
+function runKey(skill: string, agentId: string | undefined): string {
+  // The rollups fold the plugin prefix, so `magic-slash:magic-pr` and `magic-pr` are
+  // one skill here too — otherwise the two hooks, which normalise differently, would
+  // never match each other.
+  return `${skill.replace(/^.*:/, '')}\u0000${agentId ?? ''}`
+}
+
+/**
+ * Whether this `start` is a second sighting of a run already accounted for.
+ *
+ * Also prunes what has aged out, so the map cannot grow without bound in a session
+ * that runs skills all day.
+ */
+function isDuplicateStart(run: SpooledRun, at: number): boolean {
+  for (const [key, seenAt] of recentPromptStarts) {
+    if (at - seenAt > PROMPT_START_WINDOW_MS) recentPromptStarts.delete(key)
+  }
+
+  const key = runKey(run.skill, run.agentId)
+
+  // A `prompt` start is always authoritative: it is the one the user actually typed.
+  if (run.source === 'prompt') {
+    recentPromptStarts.set(key, at)
+    return false
+  }
+
+  const seenAt = recentPromptStarts.get(key)
+  return seenAt !== undefined && at - seenAt <= PROMPT_START_WINDOW_MS
+}
 
 function parse(line: string): SpooledRun | null {
   try {
@@ -163,6 +245,11 @@ export function drainSkillSpool(): Promise<number> {
           occurredAt: run.occurredAt!,
         })
       } else {
+        // Two hooks can see one typed command. Skipped BEFORE the write, not
+        // deduplicated after: the alternative is a row in the database that the
+        // rollups would count, and there is nothing downstream that could tell it
+        // apart from a real second run.
+        if (isDuplicateStart(run, run.occurredAt ?? Date.now())) continue
         await recordSkillInvocation({ skill: run.skill, agentId, occurredAt: run.occurredAt })
       }
     }

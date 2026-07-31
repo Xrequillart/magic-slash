@@ -213,11 +213,70 @@ function getSkillHookConfig(): HookConfig {
   const filter =
     'fromjson? | .tool_input.skill // empty ' +
     '| select((sub("^.*:";"")) | startswith("magic-")) ' +
-    '| {type: "start", skill: ., agentId: $id, occurredAt: ($ts | tonumber * 1000)} | tojson'
+    '| {type: "start", skill: ., agentId: $id, occurredAt: ($ts | tonumber * 1000), source: "tool"} | tojson'
   const command = `mkdir -p ${dir} 2>/dev/null; jq -rR --slurp --arg id "$MAGIC_SLASH_TERMINAL_ID" --arg ts "$(date +%s)" ${shSingleQuote(filter)} 2>/dev/null >> ${spool} || true # ${MAGIC_SLASH_HOOK_MARKER}`
 
   return {
     matcher: 'Skill',
+    hooks: [{
+      type: 'command',
+      command
+    }]
+  }
+}
+
+/**
+ * Records a skill invoked by TYPING ITS SLASH COMMAND, which the hook above cannot see.
+ *
+ * WHY A SECOND PRODUCER EXISTS AT ALL
+ * ---------------------------------------------------------------------------
+ * `getSkillHookConfig` is a PreToolUse hook scoped to the `Skill` TOOL, so it only
+ * fires when the MODEL decides to invoke a skill — which is what happens when a user
+ * asks in natural language ("commit my changes"). Typing `/magic-commit` is a
+ * different path entirely: Claude Code expands the command itself and hands the model
+ * the instructions directly, so no tool call happens and no PreToolUse fires. Every
+ * run started the way the product documents starting them was therefore invisible to
+ * the counters, while the dashboards reported an absence of work.
+ *
+ * UserPromptSubmit is the only event that sees the typed command, so it is where the
+ * other half of the truth has to come from.
+ *
+ * WHY IT IS SAFE TO HAVE TWO
+ * ---------------------------------------------------------------------------
+ * If Claude Code ever ALSO routes a slash command through the Skill tool, both hooks
+ * fire for one run. That would double-count, so the records carry `source` and the
+ * drain drops a `tool` start that a `prompt` start already accounts for — see
+ * usage/skill-spool.ts. Neither hook has to know what the other did.
+ *
+ * WHAT COUNTS AS AN INVOCATION
+ * ---------------------------------------------------------------------------
+ * The command must be at the START of the prompt: a message that merely mentions
+ * `/magic-start` is discussing it, not running it. Three spellings reach the same
+ * skill and are normalised to the name the rollups group on — `/magic-start`,
+ * `/magic:start`, and the plugin form `/magic-slash:magic-start`.
+ *
+ * Same privacy filter as the tool hook, and for the same reason: a slash command the
+ * user typed is their own text, and only the magic ones are ever written down.
+ */
+function getPromptSkillHookConfig(): HookConfig {
+  const dir = `"$HOME/${SPOOL_DIR_RELATIVE}"`
+  const spool = `"$HOME/${SKILL_SPOOL_RELATIVE}"`
+  // `capture` emits nothing when the prompt does not open with a slash command, so
+  // the whole pipeline is a no-op for ordinary messages — no blank line appended.
+  const filter =
+    'fromjson? | .prompt // empty ' +
+    '| select(type == "string") ' +
+    '| capture("^[[:space:]]*/(?<cmd>[A-Za-z0-9:_-]+)") ' +
+    '| .cmd ' +
+    // `/magic:start` is the documented spelling; the skill is named `magic-start`.
+    '| (if startswith("magic:") then "magic-" + .[6:] else . end) ' +
+    // `/magic-slash:magic-pr` — drop the plugin prefix, as the rollup RPCs do.
+    '| sub("^.*:"; "") ' +
+    '| select(startswith("magic-")) ' +
+    '| {type: "start", skill: ., agentId: $id, occurredAt: ($ts | tonumber * 1000), source: "prompt"} | tojson'
+  const command = `mkdir -p ${dir} 2>/dev/null; jq -rR --slurp --arg id "$MAGIC_SLASH_TERMINAL_ID" --arg ts "$(date +%s)" ${shSingleQuote(filter)} 2>/dev/null >> ${spool} || true # ${MAGIC_SLASH_HOOK_MARKER}`
+
+  return {
     hooks: [{
       type: 'command',
       command
@@ -279,9 +338,13 @@ export function configureClaudeHooks(): void {
       settings.hooks[event]!.push(getHookConfig(event))
     }
 
-    // Skill-invocation telemetry: a second, tool-scoped PreToolUse entry. The
-    // filter above already stripped it (same marker), so this stays idempotent.
+    // Skill-invocation telemetry, from the two places a skill can start. Both are
+    // second entries on events already hooked above, and the filter there already
+    // stripped them (same marker), so this stays idempotent.
+    //   - the Skill TOOL, when the model chose to run a skill;
+    //   - the typed slash command, which never reaches a tool call.
     settings.hooks.PreToolUse!.push(getSkillHookConfig())
+    settings.hooks.UserPromptSubmit!.push(getPromptSkillHookConfig())
 
     // Configure permissions for magic-slash skills (MCP tools + common commands)
     if (!settings.permissions) {

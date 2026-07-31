@@ -24,14 +24,30 @@ interface Hook { matcher?: string; hooks?: { command?: string }[] }
 const readSettings = () => JSON.parse(fs.readFileSync(SETTINGS, 'utf-8'))
 const skillHooks = (): Hook[] =>
   (readSettings().hooks.PreToolUse as Hook[]).filter((h) => h.matcher === 'Skill')
+/** The UserPromptSubmit entry that spools a start; the other one only pings status. */
+const promptSkillHooks = (): Hook[] =>
+  (readSettings().hooks.UserPromptSubmit as Hook[]).filter((h) =>
+    h.hooks!.some((x) => x.command!.includes('pending-skills.ndjson')),
+  )
 
-/** Run the generated hook the way Claude Code does: payload on stdin. */
-function fireHook(payload: string, terminalId = 'claude-1'): void {
-  const command = skillHooks()[0].hooks![0].command!
+/** Run a generated hook the way Claude Code does: payload on stdin. */
+function run(command: string, payload: string, terminalId: string): void {
   execFileSync('/bin/sh', ['-c', command], {
     input: payload,
     env: { ...process.env, HOME: TMP_HOME, MAGIC_SLASH_TERMINAL_ID: terminalId },
   })
+}
+
+function fireHook(payload: string, terminalId = 'claude-1'): void {
+  run(skillHooks()[0].hooks![0].command!, payload, terminalId)
+}
+
+/** Fire the UserPromptSubmit hook with the text the user submitted. */
+function firePrompt(prompt: string, terminalId = 'claude-1'): void {
+  run(promptSkillHooks()[0].hooks![0].command!, JSON.stringify({
+    hook_event_name: 'UserPromptSubmit',
+    prompt,
+  }), terminalId)
 }
 
 const spooled = (): Record<string, unknown>[] =>
@@ -81,7 +97,15 @@ describe('the skill telemetry hook', () => {
     fireHook('{"hook_event_name":"PreToolUse","tool_name":"Skill","tool_input":{"skill":"magic-commit"}}')
 
     expect(spooled()).toEqual([
-      { type: 'start', skill: 'magic-commit', agentId: 'claude-1', occurredAt: expect.any(Number) },
+      {
+        type: 'start',
+        skill: 'magic-commit',
+        agentId: 'claude-1',
+        occurredAt: expect.any(Number),
+        // Tagged so the drain can tell it apart from the same run seen by the
+        // UserPromptSubmit hook — see usage/skill-spool.ts.
+        source: 'tool',
+      },
     ])
   })
 
@@ -120,5 +144,96 @@ describe('the skill telemetry hook', () => {
     configureClaudeHooks()
     fireHook('{"tool_input":{"skill":"magic-x\\"y"}}')
     expect(spooled()[0]).toMatchObject({ skill: 'magic-x"y' })
+  })
+})
+
+/**
+ * Typing `/magic-commit` never reaches a tool call: Claude Code expands the command
+ * itself and hands the model the instructions. The Skill-scoped PreToolUse hook above
+ * therefore cannot see it, and every run started the documented way went uncounted.
+ */
+describe('the typed slash-command hook', () => {
+  it('is installed once, on UserPromptSubmit', () => {
+    configureClaudeHooks()
+    expect(promptSkillHooks()).toHaveLength(1)
+  })
+
+  it('stays a single entry across repeated configuration', () => {
+    configureClaudeHooks()
+    configureClaudeHooks()
+    expect(promptSkillHooks()).toHaveLength(1)
+  })
+
+  it('leaves the status ping on UserPromptSubmit alone', () => {
+    // Two entries share the event: this one spools, the original reports "working".
+    configureClaudeHooks()
+    const commands = (readSettings().hooks.UserPromptSubmit as Hook[])
+      .flatMap((h) => h.hooks!.map((x) => x.command!))
+    expect(commands.some((c) => c.includes('state=working'))).toBe(true)
+  })
+
+  it('records a skill the user typed as a slash command', () => {
+    configureClaudeHooks()
+    firePrompt('/magic-start PROJ-123')
+
+    expect(spooled()).toEqual([
+      {
+        type: 'start',
+        skill: 'magic-start',
+        agentId: 'claude-1',
+        occurredAt: expect.any(Number),
+        source: 'prompt',
+      },
+    ])
+  })
+
+  it('accepts the documented colon spelling', () => {
+    // The README and the whole product say `/magic:start`; the skill is `magic-start`.
+    configureClaudeHooks()
+    firePrompt('/magic:start')
+    expect(spooled()[0]).toMatchObject({ skill: 'magic-start' })
+  })
+
+  it('folds the plugin prefix, as the rollups do', () => {
+    configureClaudeHooks()
+    firePrompt('/magic-slash:magic-pr')
+    expect(spooled()[0]).toMatchObject({ skill: 'magic-pr' })
+  })
+
+  it('records a run typed outside the app, without an agent', () => {
+    configureClaudeHooks()
+    firePrompt('/magic-commit', '')
+    expect(spooled()[0]).toMatchObject({ skill: 'magic-commit', agentId: '' })
+  })
+
+  it('ignores a prompt that only mentions a skill', () => {
+    // Discussing `/magic-start` is not running it. The command has to open the prompt.
+    configureClaudeHooks()
+    firePrompt('remind me what /magic-start does')
+    expect(spooled()).toEqual([])
+  })
+
+  // Same privacy rule as the tool hook: a prompt is the user's own words, and only
+  // the magic commands are ever written to disk.
+  it('writes nothing for a command that is not ours', () => {
+    configureClaudeHooks()
+    firePrompt('/clear')
+    firePrompt('/acme:deploy-prod')
+    firePrompt('/black-magic')
+    expect(spooled()).toEqual([])
+  })
+
+  it('writes nothing for an ordinary message', () => {
+    configureClaudeHooks()
+    firePrompt('commit my changes please')
+    expect(spooled()).toEqual([])
+  })
+
+  it('survives a payload it cannot parse', () => {
+    configureClaudeHooks()
+    const command = promptSkillHooks()[0].hooks![0].command!
+    expect(() => run(command, 'not json at all', 'claude-1')).not.toThrow()
+    expect(() => run(command, '{"prompt":null}', 'claude-1')).not.toThrow()
+    expect(spooled()).toEqual([])
   })
 })
