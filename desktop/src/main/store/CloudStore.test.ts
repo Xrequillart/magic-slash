@@ -1441,7 +1441,7 @@ describe('user settings', () => {
 // ── skill invocations (one row per run) ─────────────────────────────────────
 
 describe('recordSkillInvocation', () => {
-  it('inserts a skill_invocations row scoped to org/user', async () => {
+  it('sends no org for an unmapped app id, so the run is not attributed to a team', async () => {
     const { client, inserts, from } = makeClient({
       memberships: membershipsOk,
       skill_invocations: { error: null },
@@ -1457,15 +1457,20 @@ describe('recordSkillInvocation', () => {
     expect(from).toHaveBeenCalledWith('skill_invocations')
     expect(inserts.skill_invocations).toHaveLength(1)
     expect(inserts.skill_invocations[0]).toMatchObject({
-      org_id: ORG,
+      // No agents loaded, so the app id maps to nothing — and with no agent_id the
+      // stamp_event_org trigger keeps what arrives, which makes this value the
+      // attribution rather than an FK placeholder. The resolved org would be the
+      // user's first membership: an arbitrary pick nothing can ever correct, since
+      // sync_event_orgs follows an agent and this row has none.
+      org_id: null,
       user_id: UID,
-      agent_id: null, // no agents loaded → unmapped app id resolves to null
+      agent_id: null,
       skill: 'magic-commit',
       occurred_at: new Date(1000).toISOString(),
     })
   })
 
-  it('logs a run with no agent (session started outside the app)', async () => {
+  it('logs a run with no agent at all (session started outside the app) as personal', async () => {
     const { client, inserts } = makeClient({
       memberships: membershipsOk,
       skill_invocations: { error: null },
@@ -1476,9 +1481,46 @@ describe('recordSkillInvocation', () => {
 
     expect(inserts.skill_invocations).toHaveLength(1)
     expect(inserts.skill_invocations[0]).toMatchObject({
-      org_id: ORG,
+      org_id: null,
       user_id: UID,
       agent_id: null,
+      skill: 'magic-commit',
+    })
+  })
+
+  it('still sends the org alongside a mapped agent, so the composite FK stays checkable', async () => {
+    const agentRow = {
+      id: 'uuid-agent-1',
+      org_id: ORG,
+      owner_id: UID,
+      name: 'Agent A',
+      ticket_id: null,
+      description: null,
+      branch_name: null,
+      base_branch: null,
+      status: null,
+      repositories: [],
+      metadata: { __app: { id: 'claude-1' } },
+    }
+    const { client, inserts } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [agentRow], error: null },
+      skill_invocations: { error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents() // populates agentIdMap with claude-1 → uuid-agent-1
+    await store.recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-commit' })
+
+    // The trigger overwrites this org from the agent's own, so it is not an
+    // attribution — it is what keeps (org_id, agent_id) CHECKABLE. A null here would
+    // put a NULL in a referencing column, and MATCH SIMPLE skips the check on a NULL,
+    // so a stale map entry pointing at a deleted agent would insert a dangling
+    // reference instead of being rejected.
+    expect(inserts.skill_invocations[0]).toMatchObject({
+      org_id: ORG,
+      agent_id: 'uuid-agent-1',
       skill: 'magic-commit',
     })
   })

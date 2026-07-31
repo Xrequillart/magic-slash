@@ -928,11 +928,33 @@ export class CloudStore implements Store {
   }
 
   /**
-   * Append ONE skill invocation. Same agent-id mapping as appendUsage; an absent
-   * or unknown agent yields a null agent_id rather than dropping the row — runs
-   * from a terminal the app did not spawn have no agent, and still count. Those are
-   * also the only rows whose `org_id` survives as sent: with no agent, the trigger
-   * has nothing to derive an organization from.
+   * Append ONE skill invocation. Same agent-id mapping as appendUsage; an absent or
+   * unknown agent yields a null agent_id rather than dropping the row — runs from a
+   * terminal the app did not spawn have no agent, and still count.
+   *
+   * WHY `org_id` DEPENDS ON WHETHER THERE IS AN AGENT
+   * ---------------------------------------------------------------------------
+   * With an agent, the value sent here is overwritten by the stamp_event_org trigger
+   * from the agent's own org, so it is not an attribution — it is what makes the
+   * composite FK (org_id, agent_id) CHECKABLE. Sending null there would leave a NULL
+   * in a referencing column, and MATCH SIMPLE skips the check entirely on a NULL, so
+   * a stale agentIdMap entry pointing at a deleted agent would insert a dangling
+   * reference instead of being rejected. See 20260727180000, which spells out that
+   * trade.
+   *
+   * With NO agent the trigger returns early and keeps whatever arrived, so this IS
+   * the attribution — and the resolved org is the wrong one to give it. There is no
+   * agent, therefore no repository, therefore nothing that says this run belongs to a
+   * team: `resolveOrgId` would hand over the user's FIRST MEMBERSHIP, which is an
+   * arbitrary pick for anyone in more than one org. Worse, nothing can ever correct
+   * it — sync_event_orgs follows an agent, and these rows have none, so the guess is
+   * permanent.
+   *
+   * `null` is the honest answer: the run counts as the author's own work, outside any
+   * org. It under-reports a team whose member ran a skill in a terminal the app did
+   * not open, and that is the direction to err in — an org's number is read by other
+   * people to judge adoption, where invented activity is invisible and missing
+   * activity is not.
    */
   async recordSkillInvocation(input: SkillInvocationInput): Promise<void> {
     const ctx = await this.eventContext()
@@ -941,7 +963,7 @@ export class CloudStore implements Store {
     const agentUuid = (input.agentId && this.agentIdMap.get(input.agentId)) ?? null
 
     const { error } = await ctx.client.from('skill_invocations').insert({
-      org_id: ctx.orgId,
+      org_id: agentUuid ? ctx.orgId : null,
       user_id: ctx.uid,
       agent_id: agentUuid,
       skill: input.skill,
