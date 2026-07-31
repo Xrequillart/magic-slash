@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.62.0] - 2026-07-31
+
+### Added
+
+- **Webapp**: Translate every user page into French, switchable from the login page
+- **Pr**: Surface the project's test accounts, configurable per repo
+
+### Fixed
+
+- **Desktop**: Count skills launched from their slash command
+- **Pr**: Reject a symlinked test-account source
+- **Pr**: Redact credentials from the reference-mode account line
+- **Pr**: Reject test-account sources outside the worktree
+
 ## [0.61.0] - 2026-07-31
 
 ### Added
@@ -1808,6 +1822,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.62.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.62.0
 [0.61.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.61.0
 [0.60.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.60.0
 [0.59.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.59.3
