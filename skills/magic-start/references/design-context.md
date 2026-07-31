@@ -198,8 +198,13 @@ three options that message lists — same convention as `MSG_WORKTREE_EXISTS`, w
 `references/messages.md`:
 
 - Option 1 → the user supplies a path or a URL; resolve it via §3, then write the brief.
-- Option 2 → write no brief; the `Design fidelity` critic axis stays `N/A`.
+- Option 2 → write no brief, and `rm -f .magic/design-brief.md` in each worktree so a brief left by an earlier
+  ticket in a reused worktree cannot stay active; the `Design fidelity` critic axis stays `N/A`.
 - Option 3 → stop the skill.
+
+The deletion in option 2 is the same guard as the no-signal path of Step 5.0, for the same reason: every downstream
+prompt keys off "when `.magic/design-brief.md` exists", so *not writing* a brief is not the same as there being none.
+Only option 1 and §4 ever create one; every other outcome must leave no brief behind.
 
 Never start a UI task silently when no design reference was found.
 
