@@ -402,6 +402,7 @@ export function setupSkillsHandlers() {
       isRepoSkill: true,
       repoName,
       repoColor,
+      filePath,
       hasImage: false,
       imagePath: undefined,
     }

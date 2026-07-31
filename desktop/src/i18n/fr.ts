@@ -802,8 +802,6 @@ export const fr: Record<keyof typeof en, string> = {
 
   'skills.editor.newTitle': 'Nouveau skill',
   'skills.editor.editTitle': 'Modifier {name}',
-  'skills.editor.repoTitle': '{name} (dépôt : {repo}, lecture seule)',
-  'skills.editor.readOnlyTitle': '{name} (lecture seule)',
   'skills.editor.share': 'Partager',
   'skills.editor.sharing': 'Partage…',
   'skills.editor.name': 'Nom',
@@ -817,6 +815,12 @@ export const fr: Record<keyof typeof en, string> = {
   'skills.editor.content': 'Contenu (Markdown)',
   'skills.editor.contentPlaceholder': 'Rédigez les instructions du skill en markdown…',
   'skills.editor.deleting': 'Suppression…',
+  'skills.doc.readOnly': 'Lecture seule',
+  'skills.doc.rendered': 'Rendu',
+  'skills.doc.raw': 'Brut',
+  'skills.doc.argumentHint': 'Argument :',
+  'skills.doc.empty': 'Ce skill ne contient aucune instruction.',
+
   'skills.error.nameRequired': 'Le nom du skill est obligatoire',
   'skills.error.nameFormat':
     'Le nom du skill ne peut contenir que des minuscules, des chiffres et des tirets',

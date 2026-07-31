@@ -16,6 +16,8 @@ export interface SkillDetail extends SkillInfo {
   isRepoSkill?: boolean
   repoName?: string
   repoColor?: string
+  /** Where the file lives. Only repo skills carry it — user skills are under ~/.claude/skills. */
+  filePath?: string
 }
 
 export interface RepoSkillInfo {

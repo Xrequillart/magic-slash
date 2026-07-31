@@ -798,8 +798,6 @@ export const en = {
 
   'skills.editor.newTitle': 'New Skill',
   'skills.editor.editTitle': 'Edit {name}',
-  'skills.editor.repoTitle': '{name} (repo: {repo}, read-only)',
-  'skills.editor.readOnlyTitle': '{name} (read-only)',
   'skills.editor.share': 'Share',
   'skills.editor.sharing': 'Sharing…',
   'skills.editor.name': 'Name',
@@ -813,6 +811,12 @@ export const en = {
   'skills.editor.content': 'Content (Markdown)',
   'skills.editor.contentPlaceholder': 'Write the skill instructions in markdown…',
   'skills.editor.deleting': 'Deleting…',
+  'skills.doc.readOnly': 'Read-only',
+  'skills.doc.rendered': 'Rendered',
+  'skills.doc.raw': 'Raw',
+  'skills.doc.argumentHint': 'Argument:',
+  'skills.doc.empty': 'This skill has no instructions.',
+
   'skills.error.nameRequired': 'Skill name is required',
   'skills.error.nameFormat': 'Skill name must contain only lowercase letters, numbers, and hyphens',
 

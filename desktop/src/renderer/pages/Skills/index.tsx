@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid } from 'lucide-react'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
+import SkillDocument from './SkillDocument'
 import { VSCodeIcon } from '../../components/agent-info-sidebar/icons'
 import { SweepPane } from '../../components/SweepPane'
 import { useTerminals } from '../../hooks/useTerminals'
@@ -480,8 +481,6 @@ function SkillEditor({
   const [sharing, setSharing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isReadOnly = skill?.isBuiltIn || skill?.isRepoSkill || false
-
   // Initialize body from skill content (strip frontmatter)
   useEffect(() => {
     if (skill?.content) {
@@ -492,7 +491,7 @@ function SkillEditor({
 
   // Load existing image
   useEffect(() => {
-    if (skill?.hasImage && skill.dirName && !skill.isRepoSkill) {
+    if (skill?.hasImage && skill.dirName) {
       window.electronAPI.skills.getImage(skill.dirName).then((url) => {
         if (url) setImagePreview(url)
       })
@@ -563,12 +562,9 @@ function SkillEditor({
     }
   }
 
-  const headerTitle = (() => {
-    if (skill?.isRepoSkill) return t('skills.editor.repoTitle', { name: skill.name, repo: skill.repoName ?? '' })
-    if (isReadOnly) return t('skills.editor.readOnlyTitle', { name: skill?.name ?? '' })
-    if (isNew) return t('skills.editor.newTitle')
-    return t('skills.editor.editTitle', { name: skill?.name ?? '' })
-  })()
+  const headerTitle = isNew
+    ? t('skills.editor.newTitle')
+    : t('skills.editor.editTitle', { name: skill?.name ?? '' })
 
   return (
     <div className="flex flex-col gap-6 max-w-[62rem] w-full">
@@ -577,7 +573,7 @@ function SkillEditor({
         <h2 className="text-xl font-semibold capitalize flex-1">
           {headerTitle}
         </h2>
-        {!isNew && !isReadOnly && onShare && (
+        {!isNew && onShare && (
           <button
             onClick={handleShare}
             disabled={sharing}
@@ -604,7 +600,7 @@ function SkillEditor({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            disabled={isReadOnly || !isNew}
+            disabled={!isNew}
             placeholder="my-skill"
             className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50"
           />
@@ -619,7 +615,6 @@ function SkillEditor({
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            disabled={isReadOnly}
             placeholder={t('skills.editor.descriptionPlaceholder')}
             rows={3}
             className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50 resize-none"
@@ -633,46 +628,43 @@ function SkillEditor({
             type="text"
             value={allowedTools}
             onChange={(e) => setAllowedTools(e.target.value)}
-            disabled={isReadOnly}
             placeholder="Bash(*), Read, Edit, Write, Glob, Grep"
             className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50"
           />
         </div>
 
         {/* Image */}
-        {!isReadOnly && (
-          <div>
-            <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.image')}</label>
-            <div className="flex items-center gap-3">
-              {imagePreview ? (
-                <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-line">
-                  <img src={imagePreview} alt="Skill" className="w-full h-full object-cover" />
-                  <button
-                    onClick={handleRemoveImage}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red rounded-full flex items-center justify-center"
-                  >
-                    <X className="w-3 h-3 text-ink" />
-                  </button>
-                </div>
-              ) : imagePath ? (
-                <div className="flex items-center gap-2 px-3 py-2 bg-surface border border-line rounded-lg">
-                  <ImagePlus className="w-4 h-4 text-accent" />
-                  <span className="text-xs text-text-secondary truncate max-w-[200px]">{imagePath.split('/').pop()}</span>
-                  <button onClick={handleRemoveImage} className="text-text-secondary hover:text-red">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : null}
-              <button
-                onClick={handlePickImage}
-                className="px-3 py-2 text-sm font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-all flex items-center gap-2"
-              >
-                <ImagePlus className="w-4 h-4" />
-                {imagePreview || imagePath ? t('skills.editor.change') : t('skills.editor.upload')}
-              </button>
-            </div>
+        <div>
+          <label className="block text-base font-medium text-text-secondary mb-1.5">{t('skills.editor.image')}</label>
+          <div className="flex items-center gap-3">
+            {imagePreview ? (
+              <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-line">
+                <img src={imagePreview} alt="Skill" className="w-full h-full object-cover" />
+                <button
+                  onClick={handleRemoveImage}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-red rounded-full flex items-center justify-center"
+                >
+                  <X className="w-3 h-3 text-ink" />
+                </button>
+              </div>
+            ) : imagePath ? (
+              <div className="flex items-center gap-2 px-3 py-2 bg-surface border border-line rounded-lg">
+                <ImagePlus className="w-4 h-4 text-accent" />
+                <span className="text-xs text-text-secondary truncate max-w-[200px]">{imagePath.split('/').pop()}</span>
+                <button onClick={handleRemoveImage} className="text-text-secondary hover:text-red">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : null}
+            <button
+              onClick={handlePickImage}
+              className="px-3 py-2 text-sm font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-all flex items-center gap-2"
+            >
+              <ImagePlus className="w-4 h-4" />
+              {imagePreview || imagePath ? t('skills.editor.change') : t('skills.editor.upload')}
+            </button>
           </div>
-        )}
+        </div>
 
         {/* Content (markdown body) */}
         <div>
@@ -682,7 +674,6 @@ function SkillEditor({
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            disabled={isReadOnly}
             placeholder={t('skills.editor.contentPlaceholder')}
             rows={16}
             className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink font-mono placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50 resize-y"
@@ -691,30 +682,27 @@ function SkillEditor({
       </div>
 
       {/* Actions */}
-      {!isReadOnly && (
-        <div className="flex items-center gap-3 pb-6">
+      <div className="flex items-center gap-3 pb-6">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent hover:bg-accent-hover text-on-brand rounded-lg transition-colors disabled:opacity-50"
+        >
+          <Save className="w-4 h-4" />
+          {saving ? t('common.saving') : t('common.save')}
+        </button>
+
+        {!isNew && onDelete && (
           <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent hover:bg-accent-hover text-on-brand rounded-lg transition-colors disabled:opacity-50"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-colors disabled:opacity-50"
           >
-            <Save className="w-4 h-4" />
-            {saving ? t('common.saving') : t('common.save')}
+            <Trash2 className="w-4 h-4" />
+            {deleting ? t('skills.editor.deleting') : t('common.remove')}
           </button>
-
-          {!isNew && onDelete && (
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-colors disabled:opacity-50"
-            >
-              <Trash2 className="w-4 h-4" />
-              {deleting ? t('skills.editor.deleting') : t('common.remove')}
-            </button>
-          )}
-
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
@@ -930,18 +918,20 @@ export function SkillsPage() {
       return <SkillEditor skill={null} isNew onSave={handleCreateSave} />
     }
 
-    if (route.page === 'repo-skill' && editSkill) {
-      return <SkillEditor skill={editSkill} isNew={false} onSave={async () => {}} />
-    }
+    // Built-ins and repo skills are not editable from here, so they are not shown
+    // as a form: the whole SKILL.md reads as a document instead.
+    if ((route.page === 'repo-skill' || route.page === 'skill') && editSkill) {
+      if (editSkill.isBuiltIn || editSkill.isRepoSkill) {
+        return <SkillDocument skill={editSkill} />
+      }
 
-    if (route.page === 'skill' && editSkill) {
       return (
         <SkillEditor
           skill={editSkill}
           isNew={false}
           onSave={handleUpdateSave}
-          onDelete={editSkill.isBuiltIn ? undefined : handleDelete}
-          onShare={editSkill.isBuiltIn ? undefined : () => downloadSkill(editSkill.dirName)}
+          onDelete={handleDelete}
+          onShare={() => downloadSkill(editSkill.dirName)}
         />
       )
     }
