@@ -201,6 +201,13 @@
             },
             "watchCI": {
               "type": "boolean"
+            },
+            "testAccounts": {
+              "type": "string",
+              "enum": ["off", "reference", "inline"]
+            },
+            "testAccountsSource": {
+              "type": "string"
             }
           },
           "additionalProperties": false,

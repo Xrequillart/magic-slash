@@ -74,6 +74,29 @@ describe('mergeOrgSharedConfig', () => {
     expect(result.repositories.api.pullRequest).toEqual({ autoLinkTickets: true })
   })
 
+  it('inherits the shared test-account settings, letting a locally-set mode win', async () => {
+    const config = baseConfig()
+    config.repositories = {
+      api: repo('api', { keywords: ['api'], pullRequest: { testAccounts: 'reference' } }),
+      web: repo('web', { keywords: ['web'] }),
+    }
+    await seed(config)
+
+    const shared: OrgSharedConfig = {
+      pullRequest: { testAccounts: 'inline', testAccountsSource: 'docs/test-accounts.md' },
+    }
+    const result = mergeOrgSharedConfig(shared, ORG)
+
+    expect(result.repositories.api.pullRequest).toEqual({
+      testAccounts: 'reference', // local wins
+      testAccountsSource: 'docs/test-accounts.md', // inherited
+    })
+    expect(result.repositories.web.pullRequest).toEqual({
+      testAccounts: 'inline',
+      testAccountsSource: 'docs/test-accounts.md',
+    })
+  })
+
   it('applies shared keywords only to repos with defaulted keywords', async () => {
     const config = baseConfig()
     config.repositories = {

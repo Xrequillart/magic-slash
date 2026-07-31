@@ -19,6 +19,7 @@ Follow each step in order. Each step builds on the previous one.
 - `references/design-context.md` — Design reference detection, resolution and the `.magic/design-brief.md` artifact. Read in Step 5.0, only when a UI signal is detected.
 - `references/glossary.md` — EN/FR terminology for git concepts. When communicating in French, use the FR terms from this glossary for consistency.
 - `references/api.md` — Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`).
+- `references/test-accounts.md` — Test-account modes, discovery cascade, and the credential guardrails. Read in Step 5.5.1, only when `pullRequest.testAccounts` is not `off`.
 
 ## Step 0: Configuration
 
@@ -63,6 +64,14 @@ Read `.repositories.<name>.branches.development` from config.
 - **If not configured**: Use `AskUserQuestion` to ask. Display `MSG_BRANCH_ASK` as the question text.
 
 Store the result as `$DEV_BRANCH`.
+
+### 0.5: Determine the test-account mode (execute after repo is identified in step 3)
+
+Read `.repositories.<name>.pullRequest.testAccounts` from config. Default: `"off"`. Read `.repositories.<name>.pullRequest.testAccountsSource` the same way. Default: `""`. These are the first `pullRequest.*` values this skill reads.
+
+`<name>` is the **config key** of the repo selected in step 3 — the key it is stored under in `.repositories`, which is not always the repo directory name (two orgs can share a repo name, so keys are disambiguated). Use the key from the entry step 3 already resolved; do not re-derive it from `basename "$PWD"`, and do not read this before step 3 has picked a repo.
+
+Keep the mode and source **per repo**, keyed by config key (e.g. `api → reference`, `web → off`) — a fullstack ticket resolves them once per repo, never once for the ticket. Do not collapse them into a single `$TA_MODE` / `$TA_SOURCE` pair: on a multi-repo start the second repo would overwrite the first. Step 5.5.1 re-reads the pair for the repo it is currently describing. If a repo's mode is `off` (the default) or any value other than `reference` / `inline`, Step 5.5.1 skips test-account resolution for that repo entirely. Otherwise it reads `references/test-accounts.md`.
 
 ## Step 1: Detect ticket type
 
@@ -522,6 +531,15 @@ Generate 2-5 concrete manual testing steps based on:
 - Any setup required (env vars, seed data, running a specific service)
 
 Each step must be actionable: describe what the user should do and what they should expect to see. Include specific URLs, commands, or UI paths when possible.
+
+**Test account.** Run this paragraph **once per worktree, from inside that worktree**, using that repo's own mode and source (Step 0.5) — look them up by that repo's config key, never reuse a sibling's. If a repo's mode is `off` — the default — or any value other than `reference` / `inline`: skip this paragraph for that repo entirely. Do not run the cascade, do not call `gh`, and do not mention its test accounts anywhere in `{test_steps}` or in the chat.
+
+Otherwise, read `references/test-accounts.md` (the copy inside **this** skill's `references/` directory) and follow it: modes, the four-tier discovery cascade seeded with that repo's source, the source guardrails (`.env*` / `secrets/` / keychain / git-ignored blacklist plus the `git check-ignore` check), the public-repo guard, and the exact shape of the line. Then prefix that repo's `{test_steps}` with the resulting single line, as (or folded into) the setup line that already carries env vars, seed data and services.
+
+- If nothing was resolved, write the one-line "no test account documented" statement (`No test account documented for this project` / `Aucun compte de test documenté pour ce projet`), display `MSG_TEST_ACCOUNTS_NOT_FOUND`, and continue. Never invent an account.
+- If the public-repo guard downgrades `inline` to `reference`, display `MSG_TEST_ACCOUNTS_PUBLIC_REPO_GUARD` and continue.
+- If `references/test-accounts.md` is missing on disk, treat the mode as `off`, say so in one line, and continue. `/magic:pr` Step 6.1.1 degrades identically, so the two skills never disagree about the same repo.
+- **Multi-repo (fullstack)**: `{test_steps}` covers several worktrees, so each account line must be attributed to the repo it came from (e.g. `api — Test account: …`, `web — Test account: …`). A repo's accounts may appear **only** under that repo: a repo at `off` contributes nothing even when its sibling is at `inline`, and an unattributed shared line is forbidden. Never let one repo's mode or login govern another's — that is exactly the bleeding this feature must not cause.
 
 #### 5.5.2: Confidence evaluation loop
 

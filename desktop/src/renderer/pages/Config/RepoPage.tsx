@@ -275,9 +275,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
     }
   }
 
-  const handlePRSettingChange = async (key: string, value: boolean) => {
+  const handlePRSettingChange = async (key: string, value: boolean | string) => {
     try {
-      await updateRepositoryPullRequestSettings(repoName, { [key]: value ? null : false })
+      if (typeof value === 'boolean') {
+        await updateRepositoryPullRequestSettings(repoName, { [key]: value ? null : false })
+      } else {
+        await updateRepositoryPullRequestSettings(repoName, { [key]: value })
+      }
       showToast(t('toast.settingUpdated'))
     } catch (error) {
       showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
@@ -409,6 +413,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const resolveReplyLangVal = resolveSettings.replyLanguage || repoLangs.discussion || 'en'
   const autoLinkTicketsVal = prSettings.autoLinkTickets !== undefined ? prSettings.autoLinkTickets : true
   const watchCIVal = prSettings.watchCI !== undefined ? prSettings.watchCI : true
+  const testAccountsVal = prSettings.testAccounts || 'off'
+  const testAccountsSourceVal = prSettings.testAccountsSource || ''
   const commentOnPRVal = issuesSettings.commentOnPR !== undefined ? issuesSettings.commentOnPR : true
 
   const LangSelect = ({ langKey, label, description }: { langKey: string; label: string; description?: string }) => {
@@ -1069,6 +1075,48 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
             </label>
           </div>
+
+          {/* Test Accounts */}
+          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-0.5">{t('repo.pr.testAccounts')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.pr.testAccountsHelp')}</p>
+              {testAccountsVal === 'inline' && (
+                <p className="text-xs text-yellow mt-1">{t('repo.pr.testAccountsPublicWarn')}</p>
+              )}
+            </div>
+            <div className="relative">
+              <select
+                value={testAccountsVal}
+                onChange={(e) => handlePRSettingChange('testAccounts', e.target.value)}
+                className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+              >
+                <option value="off">{t('repo.pr.testAccountsOff')}</option>
+                <option value="reference">{t('repo.pr.testAccountsReference')}</option>
+                <option value="inline">{t('repo.pr.testAccountsInline')}</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Test Accounts Source - only when test accounts are surfaced */}
+          {testAccountsVal !== 'off' && (
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.pr.testAccountsSource')}</label>
+                <p className="text-xs text-text-secondary/50">
+                  {t('repo.pr.testAccountsSourceHelp')}
+                </p>
+              </div>
+              <input
+                type="text"
+                value={testAccountsSourceVal}
+                onChange={(e) => handlePRSettingChange('testAccountsSource', e.target.value)}
+                placeholder="docs/test-accounts.md"
+                className="w-72 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              />
+            </div>
+          )}
 
           {/* PR Template */}
           <div className="py-3">

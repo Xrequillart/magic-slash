@@ -545,6 +545,20 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.watchCI': 'Surveiller la CI et la review',
   'repo.pr.watchCIHelp':
     'Après création de la PR, attendre les checks, corriger les échecs automatiquement et traiter les retours de review',
+  'repo.pr.testAccounts': 'Comptes de test',
+  'repo.pr.testAccountsHelp':
+    'Indique si la description de la PR précise avec quel compte se connecter. Le mode référence est sans risque sur n’importe quel dépôt ; le mode en clair copie les identifiants dans le corps de la PR et est ignoré sur les dépôts publics.',
+  'repo.pr.testAccountsOff': 'Désactivé',
+  'repo.pr.testAccountsOffHelp': 'Ne jamais mentionner de compte de test',
+  'repo.pr.testAccountsReference': 'Référence',
+  'repo.pr.testAccountsReferenceHelp': 'Dire où ils sont documentés, sans identifiants',
+  'repo.pr.testAccountsInline': 'En clair',
+  'repo.pr.testAccountsInlineHelp': 'Copier les identifiants dans le corps de la PR',
+  'repo.pr.testAccountsSource': 'Source des comptes de test',
+  'repo.pr.testAccountsSourceHelp':
+    'Chemin de fichier ou nom de skill projet contenant les comptes — détecté automatiquement si vide',
+  'repo.pr.testAccountsPublicWarn':
+    'Les identifiants ne sont jamais copiés sur un dépôt public : le mode en clair y retombe sur le mode référence.',
   'repo.pr.template': 'Modèle de PR',
   'repo.pr.templateHelp':
     'Modifié dans l’application desktop — le modèle est un fichier du dépôt (.github/pull_request_template.md), pas un réglage.',

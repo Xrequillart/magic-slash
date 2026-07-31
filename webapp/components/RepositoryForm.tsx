@@ -75,7 +75,13 @@ function buildOptions(t: Translate) {
     { value: 'custom', label: t('repo.resolve.customConfig') },
   ]
 
-  return { style, format, commitMode, formatSource }
+  const testAccounts: DropdownOption<string>[] = [
+    { value: 'off', label: t('repo.pr.testAccountsOff'), description: t('repo.pr.testAccountsOffHelp') },
+    { value: 'reference', label: t('repo.pr.testAccountsReference'), description: t('repo.pr.testAccountsReferenceHelp') },
+    { value: 'inline', label: t('repo.pr.testAccountsInline'), description: t('repo.pr.testAccountsInlineHelp') },
+  ]
+
+  return { style, format, commitMode, formatSource, testAccounts }
 }
 
 /**
@@ -175,6 +181,7 @@ export function RepositoryForm({
 
   const autoLinkTickets = repo.pullRequest.autoLinkTickets ?? DEFAULTS.autoLinkTickets
   const watchCI = repo.pullRequest.watchCI ?? DEFAULTS.watchCI
+  const testAccounts = repo.pullRequest.testAccounts ?? DEFAULTS.testAccounts
   const commentOnPR = repo.issues.commentOnPR ?? DEFAULTS.commentOnPR
 
   // Patch helpers send only the key that changed. The page merges it into the
@@ -508,6 +515,36 @@ export function RepositoryForm({
             onChange={(watchCI) => onPatch({ pullRequest: { watchCI } })}
           />
         </SettingRow>
+
+        <SettingRow label={t('repo.pr.testAccounts')} description={t('repo.pr.testAccountsHelp')}>
+          <Dropdown
+            value={testAccounts}
+            options={options.testAccounts}
+            onChange={(testAccounts) => onPatch({ pullRequest: { testAccounts } })}
+            width={200}
+            className="w-52"
+          />
+        </SettingRow>
+
+        {testAccounts !== 'off' && (
+          <SettingRow
+            label={t('repo.pr.testAccountsSource')}
+            description={t('repo.pr.testAccountsSourceHelp')}
+          >
+            <DraftField
+              persisted={repo.pullRequest.testAccountsSource ?? ''}
+              onSave={(testAccountsSource) => onPatch({ pullRequest: { testAccountsSource } })}
+              placeholder="docs/test-accounts.md"
+              className="w-72"
+            />
+          </SettingRow>
+        )}
+
+        {testAccounts === 'inline' && (
+          <ExamplePanel tone="warning">
+            <p className="text-xs text-ink">{t('repo.pr.testAccountsPublicWarn')}</p>
+          </ExamplePanel>
+        )}
 
         <SettingRow label={t('repo.pr.template')} description={t('repo.pr.templateHelp')} />
       </SettingsCard>

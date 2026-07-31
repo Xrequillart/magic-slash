@@ -295,7 +295,9 @@ npm run desktop:package
       },
       "pullRequest": {
         "autoLinkTickets": true,
-        "watchCI": true
+        "watchCI": true,
+        "testAccounts": "off",
+        "testAccountsSource": ""
       },
       "issues": {
         "commentOnPR": true,
@@ -352,10 +354,16 @@ Each repository can be independently configured:
 
 #### Pull Request settings
 
-| Setting           | Description                                                                      | Default |
-| ----------------- | -------------------------------------------------------------------------------- | ------- |
-| `autoLinkTickets` | Add Jira/GitHub ticket links in PR description                                    | `true`  |
-| `watchCI`         | After creating the PR, watch the checks, auto-fix failures, address review feedback | `true`  |
+| Setting              | Description                                                                                             | Default |
+| -------------------- | ------------------------------------------------------------------------------------------------------- | ------- |
+| `autoLinkTickets`    | Add Jira/GitHub ticket links in PR description                                                          | `true`  |
+| `watchCI`            | After creating the PR, watch the checks, auto-fix failures, address review feedback                     | `true`  |
+| `testAccounts`       | `off` (never mention), `reference` (state where the accounts live), or `inline` (paste the credentials) | `off`   |
+| `testAccountsSource` | Explicit file path or project skill name holding the accounts (auto-detected when empty)                | `""`    |
+
+When `testAccounts` is not `off`, `/magic:pr` adds the account a reviewer should log in with to the "How to test" prerequisites of the PR body, and `/magic:start` reports it in its final summary. The accounts are looked up in this order, stopping at the first hit: `testAccountsSource`, a project-local skill under the project's `.claude/skills/`, then documented files (`TESTING.md`, `docs/test*account*`, the test section of `CONTRIBUTING.md`). If nothing is found, the PR says so — no account is ever invented.
+
+> A PR description is readable by anyone with access to the repository, and by everyone on a public one. `reference` is therefore safe everywhere, while `inline` is ignored on public repos and falls back to `reference`. No mode ever reads `.env*` files, `secrets/`, keychains, or git-ignored files as a source.
 
 #### Issues settings
 

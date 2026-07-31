@@ -59,7 +59,9 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
   },
   pullRequest: {
     autoLinkTickets: true,
-    watchCI: true
+    watchCI: true,
+    testAccounts: 'off',
+    testAccountsSource: ''
   },
   issues: {
     commentOnPR: true,

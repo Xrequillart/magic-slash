@@ -323,10 +323,15 @@ Créer cette PR ? (O/n/edit)
 
 [Write concrete MANUAL test scenarios from the user's point of view, grounded in the actual diff from Step 4.1 (the user-visible surfaces and test environment identified there):
 - If setup is needed, start with a single prerequisites line (env vars, seed data, a service to run).
+  - Test account — write a line about accounts ONLY if `pullRequest.testAccounts` is `reference` or `inline`. If the mode is `off` (the default), write NOTHING about accounts here: no line, no mention, no placeholder, no "TBD".
+    - `reference` shape: point at the documented source and name the role, never a secret — e.g. "Test account: documented in `TESTING.md` ("Test accounts") — role: admin".
+    - `inline` shape: the identifier and password exactly as the source documents them, keeping the source path — e.g. "Test account: `admin@acme.test` / `Passw0rd!` (role: admin, source: `TESTING.md`)".
+    - Nothing resolved, mode still `reference` or `inline`: say so in exactly one line — "No test account documented for this project" — and write no credential of any kind.
+    - Never invent, complete or guess a credential. See `references/test-accounts.md`.
 - Then list 2-5 numbered actions. Each step pairs a concrete action (open a URL/page, click a UI element, run a CLI command, call an endpoint) with its observable expected result — action → expected result.
 - Do NOT write "run the automated tests" (npm test, etc.) as the only instruction. A single automated-test line is allowed ONLY as an optional last line AFTER the manual steps.
 - If the PR has no manually testable surface (docs-only, CI, pure refactor), do NOT invent a scenario: state it plainly instead, e.g. "No manual test surface — docs-only change; verify rendering / links".
-Every step must be specific to the actual changes — no generic placeholders.]
+Every step must be specific to the actual changes — no generic placeholders, and no invented test account.]
 ```
 
 ## MSG_PR_TEMPLATE_FR
@@ -346,10 +351,53 @@ Every step must be specific to the actual changes — no generic placeholders.]
 
 [Rédiger des scénarios de test MANUELS concrets du point de vue de l'utilisateur, ancrés dans le diff réel du Step 4.1 (les surfaces visibles par l'utilisateur et l'environnement de test identifiés à cette étape) :
 - Si une préparation est nécessaire, commencer par une seule ligne de prérequis (variables d'environnement, données de départ, un service à lancer).
+  - Compte de test — n'écrire une ligne au sujet des comptes QUE si `pullRequest.testAccounts` vaut `reference` ou `inline`. Si le mode est `off` (la valeur par défaut), n'écrire RIEN au sujet des comptes ici : aucune ligne, aucune mention, aucun placeholder, aucun « à définir ».
+    - Forme `reference` : pointer vers la source documentée et nommer le rôle, jamais un secret — ex. « Compte de test : documenté dans `TESTING.md` (« Comptes de test ») — rôle : admin ».
+    - Forme `inline` : l'identifiant et le mot de passe exactement tels que la source les documente, en conservant le chemin de la source — ex. « Compte de test : `admin@acme.test` / `Passw0rd!` (rôle : admin, source : `TESTING.md`) ».
+    - Rien de résolu, alors que le mode vaut `reference` ou `inline` : le dire en une seule ligne — « Aucun compte de test documenté pour ce projet » — et n'écrire aucun identifiant.
+    - Ne jamais inventer, compléter ni deviner un identifiant. Voir `references/test-accounts.md`.
 - Puis lister 2 à 5 actions numérotées. Chaque étape associe une action concrète (ouvrir une URL/page, cliquer sur un élément d'UI, lancer une commande CLI, appeler un endpoint) à son résultat attendu observable — action → résultat attendu.
 - Ne PAS écrire « lancer les tests automatisés » (npm test, etc.) comme seule instruction. Une unique ligne de tests automatisés n'est autorisée QU'EN dernière ligne optionnelle, APRÈS les étapes manuelles.
 - Si la PR n'a aucune surface testable manuellement (docs uniquement, CI, refactoring pur), ne PAS inventer de scénario : le dire clairement à la place, ex. « Aucune surface de test manuel — changement docs uniquement ; vérifier le rendu / les liens ».
-Chaque étape doit être spécifique aux changements réels — pas de placeholders génériques.]
+Chaque étape doit être spécifique aux changements réels — pas de placeholders génériques, et aucun compte de test inventé.]
+```
+
+## MSG_TEST_ACCOUNTS_NOT_FOUND
+
+Displayed in Step 6.1.1 when the mode is `reference` or `inline` and the cascade found nothing. Never displayed when the mode is `off`.
+
+### en
+
+```text
+ℹ️ No test account found for this repo — checked `testAccountsSource`, `.claude/skills/`, `TESTING.md`, `docs/test*account*`, `CONTRIBUTING.md`.
+The testing section will say so in one line instead of naming one. Nothing was invented.
+```
+
+### fr
+
+```text
+ℹ️ Aucun compte de test trouvé pour ce repo — vérifiés : `testAccountsSource`, `.claude/skills/`, `TESTING.md`, `docs/test*account*`, `CONTRIBUTING.md`.
+La section de test le dira en une ligne au lieu d'en nommer un. Rien n'a été inventé.
+```
+
+## MSG_TEST_ACCOUNTS_PUBLIC_REPO_GUARD
+
+Displayed in Step 6.1.1 when `inline` mode is refused by the public-repo guard. The workflow continues in `reference` mode — this is a warning, not an error.
+
+### en
+
+```text
+⚠️ Test accounts: `inline` mode refused — this repository is public, or its visibility could not be determined.
+A PR body is world-readable and permanently archived, so no credential will be written into it.
+Falling back to `reference` mode: the PR will point at the documented source instead.
+```
+
+### fr
+
+```text
+⚠️ Comptes de test : mode `inline` refusé — ce repository est public, ou sa visibilité n'a pas pu être déterminée.
+Le corps d'une PR est lisible par tous et archivé définitivement : aucun identifiant n'y sera écrit.
+Repli en mode `reference` : la PR pointera vers la source documentée à la place.
 ```
 
 ## MSG_JIRA_COMMENT

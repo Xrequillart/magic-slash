@@ -449,6 +449,17 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.autoLinkHelp': 'Ajouter les liens des tickets Jira/GitHub dans la description de la PR',
   'repo.pr.watchCI': 'Surveiller la CI et la review',
   'repo.pr.watchCIHelp': 'Après création de la PR, attendre les checks, corriger les échecs automatiquement et traiter les retours de review',
+  'repo.pr.testAccounts': 'Comptes de test',
+  'repo.pr.testAccountsHelp':
+    'Si la description de la PR mentionne les comptes de test utilisables par les relecteurs. La référence est sans risque sur n’importe quel dépôt ; le mode intégré colle les identifiants dans le corps de la PR',
+  'repo.pr.testAccountsOff': 'Désactivé (ne jamais mentionner)',
+  'repo.pr.testAccountsReference': 'Référence (indiquer où ils se trouvent)',
+  'repo.pr.testAccountsInline': 'Intégré (coller les identifiants)',
+  'repo.pr.testAccountsPublicWarn':
+    'Les identifiants ne sont jamais collés sur un dépôt public : le mode intégré y repasse en référence',
+  'repo.pr.testAccountsSource': 'Source des comptes de test',
+  'repo.pr.testAccountsSourceHelp':
+    'Chemin de fichier ou nom de skill projet contenant les comptes (détection automatique si vide)',
   'repo.pr.template': 'Modèle de PR',
   'repo.pr.templateHelp': 'Modèle utilisé à la création des pull requests',
   'repo.pr.templateChecking': 'Vérification…',

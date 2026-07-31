@@ -18,7 +18,7 @@ function validConfig() {
           commitMode: 'new', format: 'angular', style: 'single-line',
           useCommitConfig: true, replyToComments: true, replyLanguage: 'en'
         },
-        pullRequest: { autoLinkTickets: true },
+        pullRequest: { autoLinkTickets: true, testAccounts: 'off', testAccountsSource: '' },
         issues: { commentOnPR: true, jiraUrl: '', githubIssuesUrl: '' },
         branches: { development: 'develop' },
         worktreeFiles: ['.env']
@@ -83,6 +83,18 @@ describe('validateConfig', () => {
     expect(result.errors).toHaveLength(0)
   })
 
+  it('should pass for the reference and inline testAccounts modes', () => {
+    for (const mode of ['reference', 'inline']) {
+      const config = validConfig() as Record<string, unknown>
+      ;(config.repositories as Record<string, Record<string, unknown>>)['my-app'].pullRequest = {
+        autoLinkTickets: true, testAccounts: mode, testAccountsSource: 'TESTING.md'
+      }
+      const result = validateConfig(config)
+      expect(result.valid, `mode ${mode} should validate`).toBe(true)
+      expect(result.errors).toHaveLength(0)
+    }
+  })
+
   // --- Invalid field tests ---
 
   it('should fail for a relative path (not starting with / or ~)', () => {
@@ -139,6 +151,22 @@ describe('validateConfig', () => {
     const result = validateConfig(config)
     expect(result.valid).toBe(false)
     expect(result.errors.some(e => e.includes('commitMode') && e.includes('new'))).toBe(true)
+  })
+
+  it('should fail for an invalid testAccounts mode', () => {
+    const config = validConfig() as Record<string, unknown>
+    ;(config.repositories as Record<string, Record<string, unknown>>)['my-app'].pullRequest = { testAccounts: 'always' }
+    const result = validateConfig(config)
+    expect(result.valid).toBe(false)
+    expect(result.errors.some(e => e.includes('testAccounts') && e.includes('reference'))).toBe(true)
+  })
+
+  it('should fail for an unknown property inside pullRequest', () => {
+    const config = validConfig() as Record<string, unknown>
+    ;(config.repositories as Record<string, Record<string, unknown>>)['my-app'].pullRequest = { bogusKey: true }
+    const result = validateConfig(config)
+    expect(result.valid).toBe(false)
+    expect(result.errors.some(e => e.includes('pullRequest') && e.includes('bogusKey'))).toBe(true)
   })
 
   it('should fail for an invalid replyLanguage', () => {
@@ -326,7 +354,7 @@ describe('migration backup', () => {
             commitMode: 'new', format: 'angular', style: 'single-line',
             useCommitConfig: true, replyToComments: true, replyLanguage: 'en'
           },
-          pullRequest: { autoLinkTickets: true },
+          pullRequest: { autoLinkTickets: true, testAccounts: 'off', testAccountsSource: '' },
           issues: { commentOnPR: true, jiraUrl: '', githubIssuesUrl: '' },
           branches: { development: '' },
           worktreeFiles: []

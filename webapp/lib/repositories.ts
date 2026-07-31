@@ -53,6 +53,9 @@ export interface RepoResolve {
 export interface RepoPullRequest {
   autoLinkTickets?: boolean
   watchCI?: boolean
+  /** 'off' | 'reference' | 'inline' */
+  testAccounts?: string
+  testAccountsSource?: string
 }
 
 export interface RepoIssues {
@@ -276,6 +279,7 @@ export const DEFAULTS = {
   replyToComments: true,
   autoLinkTickets: true,
   watchCI: true,
+  testAccounts: 'off',
   commentOnPR: true,
 } as const
 
