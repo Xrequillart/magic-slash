@@ -234,9 +234,41 @@ export class CloudStore implements Store {
   private agentIdMap = new Map<string, string>()
   /** app agent id → digest of its last-synced repository ids (see syncRepoLinks). */
   private agentRepoKey = new Map<string, string>()
+  /**
+   * Tail of the agent-write chain — see queueAgentWrite.
+   */
+  private agentWrites: Promise<unknown> = Promise.resolve()
 
   setActiveOrgId(orgId: string | undefined): void {
     this.activeOrgId = orgId
+  }
+
+  /**
+   * Run an agent write once every one queued before it has settled.
+   *
+   * saveAgents and archiveAgent are read-modify-writes over state this instance
+   * caches (agentIdMap, agentRepoKey) and over rows another one of them may be
+   * mid-way through changing: saveAgents diffs the DB's link rows against the
+   * digest, then inserts and deletes to close the gap, and only THEN updates the
+   * digest. Nothing serialized them — writeAgents() fires and forgets
+   * (config/agents.ts) and the metadata hooks call it on every agent mutation —
+   * so two overlapping writes both diffed against the same pre-write state and
+   * both tried to create the link rows the other was already creating. That
+   * surfaced as a "failed to save your agents" toast for a change that was in
+   * fact fine, most reliably when a /magic:start on two agents at once produced
+   * two bursts of writes over freshly created agents (every new agent has no
+   * digest yet, so its links are always in the diff).
+   *
+   * A chain, not a lock: the writes must also stay in the order they were made,
+   * since an archive following a save means something different than the reverse.
+   */
+  private queueAgentWrite<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.agentWrites.then(task, task)
+    // The chain waits on outcomes, not successes: one failed write must not
+    // reject every later one. The caller still gets the real rejection — it
+    // awaits `run`, not the swallowed copy the chain holds.
+    this.agentWrites = run.catch(() => {})
+    return run
   }
 
   private async context(): Promise<CloudContext | null> {
@@ -860,7 +892,20 @@ export class CloudStore implements Store {
     }
 
     if (toInsert.length > 0) {
-      const { error } = await ctx.client.from('agent_repositories').insert(toInsert)
+      // Idempotent on purpose. (agent_id, repo_id) is the primary key, so a link
+      // that is already there comes back as a unique violation — the database
+      // saying the row is recorded, not that the write went wrong. Reporting that
+      // to the user asks them to retry a change that already landed, and a
+      // rehydrate cannot fix what is not broken. queueAgentWrite closes the race
+      // that used to produce these; this keeps the outcome harmless if any other
+      // path (a retry, a link created from another machine) recreates one.
+      //
+      // ignoreDuplicates, not a merge: the table grants no UPDATE — both columns
+      // are the key, so a link is created or removed, never edited — and this
+      // resolution compiles to ON CONFLICT DO NOTHING, which needs INSERT alone.
+      const { error } = await ctx.client
+        .from('agent_repositories')
+        .upsert(toInsert, { onConflict: 'agent_id,repo_id', ignoreDuplicates: true })
       if (error) throw new Error(`syncRepoLinks (insert) failed: ${error.message}`)
     }
 
@@ -880,8 +925,16 @@ export class CloudStore implements Store {
    * agentIdMap), and reconciling on it would silently destroy a member's whole
    * roster. The DB is the source of truth: a row that vanishes from the local
    * cache for any other reason simply comes back at the next hydration.
+   *
+   * Serialized against every other agent write (see queueAgentWrite): the repo-link
+   * reconciliation it ends with is a diff, and a diff computed while another one is
+   * being applied is a diff against a state that no longer exists.
    */
   async saveAgents(agents: Agent[]): Promise<void> {
+    return this.queueAgentWrite(() => this.writeAgentRows(agents))
+  }
+
+  private async writeAgentRows(agents: Agent[]): Promise<void> {
     const ctx = await this.context()
     if (!ctx) return
 
@@ -904,8 +957,16 @@ export class CloudStore implements Store {
    * usage and skill-invocation rows that reference it keep their link (a delete
    * would null those FKs — see the migration). Scoped by owner_id like every
    * agent write: closing an agent must never reach a teammate's row.
+   *
+   * Queued behind the pending agent writes (see queueAgentWrite) so it cannot drop
+   * the id→uuid binding from under a save that is still using it, and so a save
+   * that was already in flight cannot re-upsert the row it just stamped archived.
    */
   async archiveAgent(appId: string): Promise<void> {
+    return this.queueAgentWrite(() => this.archiveAgentRow(appId))
+  }
+
+  private async archiveAgentRow(appId: string): Promise<void> {
     // Read the uuid before any await: a concurrent write must not observe a
     // half-updated map, and callers flush usage right before closing.
     const uuid = this.agentIdMap.get(appId)
