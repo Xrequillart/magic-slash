@@ -17,6 +17,7 @@ Reaching this file means a signal already fired — do not re-run the detection.
 | Source | How to read it |
 | --- | --- |
 | Jira description | `fields.description` from Step 2A |
+| Jira custom fields | the text kept by `references/jira-custom-fields.md` — only present when Step 2A's discovery pass ran |
 | Jira attachments | `fields.attachment[]` from Step 2A — use `filename`, `mimeType`, `content` |
 | Jira remote links | `getJiraIssueRemoteIssueLinks`, called in Step 2A — extract `object.url` and `object.title` |
 | Jira comments | fetch now: `mcp__atlassian__getJiraIssue` with `fields: ["comment"]` → `fields.comment.comments` |
@@ -31,6 +32,12 @@ A `gh` failure is non-blocking — if `gh` fails or is unavailable, continue wit
 comment still fires Tier 2. There is no equivalent for Jira: an MCP response cannot be filtered before it enters the
 context, so Jira comments are read only after a signal has fired. A design reference that exists *solely* in a Jira
 comment, on a ticket with no Tier 1 label and no Tier 3 keyword, is therefore missed. Say so rather than guessing.
+
+**Known limitation, custom fields.** Step 2A fires discovery on a description that is too short *or* that carries no
+spec, so the boilerplate-description-plus-custom-field ticket is covered. It stays gated, though: a ticket whose
+description does state what to build never triggers it, so a Figma link living only in an unrelated custom field is
+never seen — same failure mode as the Jira comment above. This is a rescue path for under-specified tickets, not
+general custom-field support: do not present it as such to the user.
 
 Scan each source **only** to extract design references.
 Never inline a whole comment thread into your context: keep the references, drop everything else.

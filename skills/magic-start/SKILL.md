@@ -20,6 +20,7 @@ Follow each step in order. Each step builds on the previous one.
 - `references/glossary.md` — EN/FR terminology for git concepts. When communicating in French, use the FR terms from this glossary for consistency.
 - `references/api.md` — Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`).
 - `references/test-accounts.md` — Test-account modes, discovery cascade, and the credential guardrails. Read in Step 5.5.1, only when `pullRequest.testAccounts` is not `off`.
+- `references/jira-custom-fields.md` — Jira custom-field discovery: the `*all` re-read, its volume guards, and the empty-ticket options. Read in Step 2A, only when the ticket description carries no usable spec.
 
 ## Step 0: Configuration
 
@@ -102,6 +103,8 @@ In parallel, also call `mcp__atlassian__getJiraIssueRemoteIssueLinks` for the sa
 
 If the MCP call fails (timeout, auth error), retry once. If it fails again, ask the user to provide the ticket title and description manually so the workflow can continue. A failure on the remote links call is never blocking: continue without them.
 
+**Completeness check.** The ticket's real spec may sit in a custom field. Read `references/jira-custom-fields.md` and follow it whenever `fields.description` does not state what to build: it is absent or null; or under **80 characters** of useful text once markup is stripped and not a complete one-liner ("Bump the Stripe SDK to v14" is a spec); or longer, yet stating neither what to build nor any acceptance criterion (every heading present with an empty or placeholder body, pure boilerplate, a deferral to another field, a bare link with no prose). A description that does say what to build never triggers it, however short — in doubt, skip, so this does not become a second full-issue call on every ticket. That file owns the discovery call, the volume guards, what the discovered text feeds into, and the handling of a ticket still empty afterwards. If it is missing on disk, skip discovery and degrade to the warning alone: say in one line that the ticket looks underspecified, ask the user for the missing context, and never fill the gap from the title alone.
+
 → Continue to Step 2.5, then Step 2.6, then Step 2.7.
 
 ## Step 2B: Retrieve the GitHub issue
@@ -152,6 +155,8 @@ This step updates the Magic Slash Desktop sidebar so the user sees their task co
 
 Generate a concise description (2-3 sentences max) in the configured language, based on the ticket title, description, and acceptance criteria.
 
+Custom-field text discovered in Step 2A feeds this summarisation but must never reach `/metadata` raw: the description is URL-encoded into a `curl` query string (Step 2.5.2).
+
 ### 2.5.2: Send metadata
 
 ```bash
@@ -201,6 +206,8 @@ If `$SLUG` is empty after processing (e.g., title with only special characters),
 
 **Jira**: labels, components, title, description.
 **GitHub**: labels, title, description.
+
+Custom-field text discovered in Step 2A folds into the `description` source and scores **+2 once**, not +2 per field. Eight discovered fields would otherwise outweigh a +10 label match and silently change which repo gets selected.
 
 ### 3.3: Calculate relevance score for each repo
 
@@ -385,7 +392,7 @@ Display `MSG_TASK_SUMMARY` (or `MSG_TASK_SUMMARY_FULLSTACK` for multi-repo).
 
 ### 5.0: Design context (conditional)
 
-Check the ticket (title, description, labels, components, attachment metadata, remote links, and the filtered comment matches from Step 2B.5) for a UI signal. Full comment threads are not available yet: they are fetched in `references/design-context.md` §2.1 once a signal has fired.
+Check the ticket (title, description, custom-field text discovered in Step 2A, labels, components, attachment metadata, remote links, and the filtered comment matches from Step 2B.5) for a UI signal — a mockup link often lives in a custom field. Full comment threads are not available yet: they are fetched in `references/design-context.md` §2.1 once a signal has fired.
 
 - **Tier 1** — a label or component in {`frontend`, `front`, `ui`, `ux`, `design`, `css`, `web`}: sufficient alone.
 - **Tier 2** — a resolvable reference: repo-relative path to `.html`/`.css`/a spec `.md`/a `*.styles.ts`, a `figma.com` URL, an image attachment, a `design/` or `mockups/` folder, a `.fig` file: sufficient alone.
