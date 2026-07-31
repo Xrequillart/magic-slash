@@ -616,6 +616,40 @@ Choix (1/2/3) :
 ⏳ En attente de la complétion de tous les agents...
 ```
 
+## MSG_TEST_ACCOUNTS_NOT_FOUND
+
+### en
+
+```text
+ℹ️ No test account found for this repo — checked `testAccountsSource`, `.claude/skills/`, `TESTING.md`, `docs/test*account*`, `CONTRIBUTING.md`.
+The "How to test" section will say so in one line instead of naming one. Nothing was invented.
+```
+
+### fr
+
+```text
+ℹ️ Aucun compte de test trouvé pour ce repo — vérifiés : `testAccountsSource`, `.claude/skills/`, `TESTING.md`, `docs/test*account*`, `CONTRIBUTING.md`.
+La section « Comment tester » le dira en une ligne au lieu d'en nommer un. Rien n'a été inventé.
+```
+
+## MSG_TEST_ACCOUNTS_PUBLIC_REPO_GUARD
+
+### en
+
+```text
+⚠️ Test accounts: `inline` mode refused — this repository is public, or its visibility could not be determined.
+The credential would end up in a world-readable PR body later, so it will not be written down.
+Falling back to `reference` mode: the summary will point at the documented source instead.
+```
+
+### fr
+
+```text
+⚠️ Comptes de test : mode `inline` refusé — ce repository est public, ou sa visibilité n'a pas pu être déterminée.
+L'identifiant finirait dans une PR lisible par tous, il ne sera donc pas écrit.
+Repli en mode `reference` : le résumé pointera vers la source documentée à la place.
+```
+
 ## MSG_FINAL_SUMMARY
 
 ### en

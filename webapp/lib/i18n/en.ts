@@ -529,6 +529,20 @@ export const en = {
   'repo.pr.watchCI': 'Watch CI & review',
   'repo.pr.watchCIHelp':
     'After creating the PR, wait for the checks, fix failures automatically, and address review feedback',
+  'repo.pr.testAccounts': 'Test accounts',
+  'repo.pr.testAccountsHelp':
+    'Whether the PR description tells reviewers which account to log in with. Reference is safe on any repository; inline pastes the credentials into the PR body and is ignored on public repositories.',
+  'repo.pr.testAccountsOff': 'Off',
+  'repo.pr.testAccountsOffHelp': 'Never mention test accounts',
+  'repo.pr.testAccountsReference': 'Reference',
+  'repo.pr.testAccountsReferenceHelp': 'Say where they live, no credentials',
+  'repo.pr.testAccountsInline': 'Inline',
+  'repo.pr.testAccountsInlineHelp': 'Paste the credentials in the PR body',
+  'repo.pr.testAccountsSource': 'Test accounts source',
+  'repo.pr.testAccountsSourceHelp':
+    'Optional file path or project skill name holding the accounts — auto-detected when empty',
+  'repo.pr.testAccountsPublicWarn':
+    'Credentials are never pasted on a public repository: inline falls back to reference there.',
   'repo.pr.template': 'PR template',
   'repo.pr.templateHelp':
     'Edited in the desktop app — the template is a file in the repository (.github/pull_request_template.md), not a setting.',

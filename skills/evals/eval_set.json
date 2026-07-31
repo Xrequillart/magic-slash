@@ -278,5 +278,12 @@
     "expected_skill": null,
     "notes": "Design vocabulary with no ticket ID and no start intent — UI keywords alone must not fire magic:start",
     "difficulty": "hard"
+  },
+  {
+    "id": 41,
+    "query": "j'ai fini la page de login, la PR doit dire au reviewer avec quel compte de test se connecter",
+    "expected_skill": "magic:pr",
+    "notes": "Completion intent on a frontend change that mentions test accounts — the credentials vocabulary must not deflect routing away from magic:pr. Covers routing only: this eval set matches a skill against an utterance, so it cannot check that the PR body actually surfaced the right test account (pullRequest.testAccounts behaviour is not observable here)",
+    "difficulty": "medium"
   }
 ]

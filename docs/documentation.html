@@ -1104,6 +1104,8 @@ Ready to continue. What would you like to do?</code></pre>
                                     <li><code>languages.pullRequest</code> &mdash; PR language (en / fr)</li>
                                     <li><code>languages.jiraComment</code> &mdash; Jira comment language</li>
                                     <li><code>pullRequest.autoLinkTickets</code> &mdash; add ticket links</li>
+                                    <li><code>pullRequest.testAccounts</code> &mdash; mention the test accounts in "How to test"</li>
+                                    <li><code>pullRequest.testAccountsSource</code> &mdash; where those accounts are documented</li>
                                     <li><code>issues.commentOnPR</code> &mdash; comment on the ticket</li>
                                 </ul>
                                 <h4>Multi-repo</h4>
@@ -1693,12 +1695,15 @@ Ready to continue. What would you like to do?</code></pre>
                     </div>
 
                     <h3>Pull request &amp; issue settings</h3>
+                    <p>These keys control what <code>/magic:pr</code> writes into the pull request body and how the linked ticket is updated. A PR description is readable by anyone who can see the repository &mdash; and by everyone on a public repository &mdash; so the test account keys are opt-in: they default to <code>"off"</code>, they never read <code>.env*</code> files, <code>secrets/</code>, keychains or git-ignored files as a source, and <code>"inline"</code> falls back to <code>"reference"</code> on a public repo.</p>
                     <div class="doc-skill">
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
                                 <h4>Pull request</h4>
                                 <ul>
                                     <li><code>pullRequest.autoLinkTickets</code> &mdash; Add a "Linked Issues" section with the Jira/GitHub URL (<code>true</code> by default)</li>
+                                    <li><code>pullRequest.testAccounts</code> &mdash; Mention the accounts a reviewer can log in with in the "How to test" prerequisites: <code>"off"</code> (default) never mentions them, <code>"reference"</code> states where they live without pasting credentials, <code>"inline"</code> pastes the credentials (ignored on a public repo)</li>
+                                    <li><code>pullRequest.testAccountsSource</code> &mdash; Explicit file path or project skill name holding the accounts (<code>""</code> by default &mdash; auto-detected from the project's <code>.claude/skills/</code>, then <code>TESTING.md</code>, <code>docs/test*account*</code> or the test section of <code>CONTRIBUTING.md</code>)</li>
                                 </ul>
                             </div>
                             <div class="doc-skill-col">

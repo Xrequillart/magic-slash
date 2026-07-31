@@ -13,6 +13,7 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, Skill, mcp__github
 > - **Step 2**: Pre-push validation — catches lint/type errors before they block the push
 > - **Step 3**: Push to remote — the PR needs code on the remote
 > - **Step 6**: Create the Pull Request — the core deliverable of this skill
+> - **Step 6.1.1**: Resolve the test accounts — the reviewer cannot test what they cannot log into (skipped entirely by default)
 > - **Step 6.4**: Update Magic Slash metadata — keeps the Desktop app UI in sync
 > - **Step 6.5**: Announce the PR to the user — they need the link before anything long-running starts
 > - **Step 7**: Update the Jira/GitHub ticket — closes the feedback loop with the team
@@ -61,10 +62,12 @@ Use `AskUserQuestion` with the text from **`MSG_BRANCH_ASK`**.
 
 ### Pull Request parameters
 
-| Parameter         | Repo path                                          | Default | Description                                    |
-| ----------------- | -------------------------------------------------- | ------- | ---------------------------------------------- |
-| Auto-link tickets | `.repositories.<name>.pullRequest.autoLinkTickets` | `true`  | Add Jira/GitHub links in the PR                |
-| Watch CI          | `.repositories.<name>.pullRequest.watchCI`         | `true`  | Watch checks and review feedback after Step 7  |
+| Parameter            | Repo path                                             | Default | Description                                       |
+| -------------------- | ----------------------------------------------------- | ------- | ------------------------------------------------- |
+| Auto-link tickets    | `.repositories.<name>.pullRequest.autoLinkTickets`    | `true`  | Add Jira/GitHub links in the PR                   |
+| Watch CI             | `.repositories.<name>.pullRequest.watchCI`            | `true`  | Watch checks and review feedback after Step 7     |
+| Test accounts        | `.repositories.<name>.pullRequest.testAccounts`       | `'off'` | Test-account mode: `off` / `reference` / `inline` |
+| Test accounts source | `.repositories.<name>.pullRequest.testAccountsSource` | `''`    | Explicit source file path or project-skill name   |
 
 ### Issues parameters
 
@@ -316,7 +319,7 @@ Then selectively read the **key files** (business logic, API routes, components)
 
 1. From the `--stat` output, identify key files vs secondary files (tests, config, types, lock files)
 2. Read key modified files individually using `Read` to understand the changes in context
-3. While reading, note the user-visible surfaces touched (routes/pages, UI components, API endpoints, CLI commands) and the test environment needed (env vars, seed data, a service to run) — this is the raw material for the manual test scenarios in Step 6
+3. While reading, note the user-visible surfaces touched (routes/pages, UI components, API endpoints, CLI commands), the test environment needed (env vars, seed data, a service to run) and — when a touched surface is behind a login — which test account a reviewer would need (which role/persona, not the credential itself: that is resolved in Step 6.1.1) — this is the raw material for the manual test scenarios in Step 6
 4. Use this understanding to write a meaningful summary and concrete testing instructions in Step 6
 
 Only use `git diff origin/$DEV_BRANCH..HEAD` for small changes (< 10 files, < 200 lines total). For anything larger, the selective approach above produces better PR descriptions while consuming far less context.
@@ -330,6 +333,8 @@ cat .github/PULL_REQUEST_TEMPLATE.md 2>/dev/null || cat .github/pull_request_tem
 ```
 
 If a template exists, you must **strictly follow it** and fill in its sections. For any section related to testing (e.g., "Testing", "How to test", "Test Steps", "Comment tester", "Vérification"), you must **analyze the diff from Step 4.1** to fill it with concrete, specific testing steps based on the actual code changes. Do NOT use generic placeholders. The same rules as the default template apply: write numbered manual scenarios from the user's point of view (each pairing an action with its observable expected result), never "run the automated tests" as the sole content, and — if the PR has no manually testable surface (docs-only, CI, pure refactor) — state that plainly instead of inventing a scenario.
+
+**Record the exact heading of the testing section you filled** (e.g. `## Testing`, `### Test Steps`, `## Vérification`, `## QA`). Step 6.1.1 needs it: a project template replaces `MSG_PR_TEMPLATE_EN`/`MSG_PR_TEMPLATE_FR` entirely, so that heading is the only place the test-account line can be injected. If the template has no testing section at all, note that too — Step 6.1.1 then has nowhere to inject and emits nothing.
 
 ## Step 5.1: Check for conflicts with base branch
 
@@ -381,6 +386,27 @@ Prepare the PR content:
 
 > **CRITICAL — Markdown formatting**: The `body` parameter MUST contain actual line break characters, NOT the two-character literal sequence `\n`. This is verified automatically in Step 6.2.1.
 
+### 6.1.1: Resolve the test accounts for the testing section
+
+Read `pullRequest.testAccounts` from the config already loaded in the Configuration step. Default: `'off'`. Read `pullRequest.testAccountsSource` the same way. Default: `''`.
+
+**If `testAccounts` is `off`** (the default), or is any value other than `reference` / `inline`: **skip this sub-step entirely**. Do not run the cascade, do not call `gh`, do not add a line, and do not mention test accounts anywhere — not in the PR body, not in the chat. A PR built with `off` must be byte-for-byte what it would have been without this sub-step.
+
+**Otherwise**, read `references/test-accounts.md` and follow it: it holds the mode definitions, the four-tier discovery cascade, the source guardrails (`.env*` / `secrets/` / keychain / git-ignored blacklist and the `git check-ignore` check), the public-repo guard, and the exact shape of the line to emit. Do not improvise the resolution — in particular, never read a git-ignored file and never invent an account.
+
+If `references/test-accounts.md` is missing on disk, treat the mode as `off`, say so in one line, and continue. `/magic:start` degrades identically, so the two skills never disagree about the same repo.
+
+**Where the line goes** — the injection target is *whichever testing section the PR body actually has*, using the same "either header" logic as self-check item 5:
+
+1. Locate the testing section under EITHER the default headers (`## How to test` / `## Comment tester`) when `MSG_PR_TEMPLATE_EN`/`MSG_PR_TEMPLATE_FR` was used, OR the project-template heading recorded in Step 5 (any testing-related heading such as `## Testing`, `### Test Steps`, `## Vérification`, `## QA`) when a project template was used.
+2. Fold the resolved account into that section's prerequisites line — the single setup line that already carries env vars, seed data and services. Create that line if the section has none.
+3. **If the cascade resolved nothing** (tier 4), the section still gets exactly one line stating that — `No test account documented for this project` in EN, `Aucun compte de test documenté pour ce projet` in FR, written in `languages.pullRequest`. This is what the ticket requires: the reviewer must be told that no account exists rather than left guessing whether one was omitted. Display **`MSG_TEST_ACCOUNTS_NOT_FOUND`** in the chat as well, and never add a credential — an empty section is not an acceptable substitute, and neither is an invented account.
+4. If neither header form is present (a project template with no testing section at all), emit nothing into the body and say so in one line. Never add a heading the template does not have.
+
+This step **must not** be implemented by editing the two default templates only: a repo with its own `.github/PULL_REQUEST_TEMPLATE.md` never renders `MSG_PR_TEMPLATE_EN`/`MSG_PR_TEMPLATE_FR` at all (Step 6.1), so template-only injection would make `reference` and `inline` silently no-ops on exactly the repos most likely to use them.
+
+**For multi-repo**: re-execute this sub-step in each worktree cycle. `testAccounts` is per-repo config and two repos rarely share a login — see the multi-repo section of `references/test-accounts.md`.
+
 ### Linked Issues section (by default, unless autoLinkTickets: false)
 
 Add this section at the end of the PR description.
@@ -423,6 +449,12 @@ After the user confirms, verify the PR body before passing it to the MCP tool. I
 5. **Testing section is a real manual scenario**: locate the testing section under EITHER the default headers (`## How to test` / `## Comment tester`) OR any testing-related project-template heading (e.g. `## Testing`, `### Test Steps`, `## Vérification`, `## QA`) — whichever is present. The section PASSES if it meets EITHER of these conditions:
    - **Manual scenario**: contains at least one numbered step (a line starting with `1.`) and does NOT consist solely of a test command (e.g. only "run npm test" / "lancer npm test"). A single automated-test line is acceptable only as an optional last line after the manual steps.
    - **No-surface declaration**: explicitly states there is no manual test surface (docs-only/CI/pure refactor), e.g. "No manual test surface — docs-only change; verify rendering / links". In this case a numbered step is NOT required.
+
+   **Test accounts** — every check below is scoped to the **located testing section only**, never to the whole body. A PR whose own subject is test accounts (this feature, a login page, a seed script) legitimately names accounts and credentials in its Summary or Changes sections, and must not fail its own self-check for doing so.
+   - **(a)** If `pullRequest.testAccounts` is not `off`, that section MUST carry the outcome of Step 6.1.1 — either the resolved account line, or the "No test account documented for this project" / "Aucun compte de test documenté pour ce projet" line when the cascade found nothing. Both are valid outcomes; a section that says nothing about accounts at all means the injection failed and this check fails. (Exception: a project template with no testing section, where Step 6.1.1 has nowhere to inject.)
+   - **(b)** If `pullRequest.testAccounts` IS `off`, that section must carry **no test-account output of this feature** — no resolved account line, no "no test account documented" note, no "log in with…" placeholder. What it must NOT do is fail a PR whose own subject is test accounts: a manual step like "set `testAccounts` to `reference` and check the body points at `TESTING.md`" is a legitimate test instruction, not a leak. Fail only when the section carries the *output* of Step 6.1.1, which at `off` never ran.
+   - **(c)** No invented or placeholder credential ever ships, in any mode: that section must not contain a credential the resolved source did not actually document. Reject on sight anything of the form `test@example.com`, `user@test.com`, `admin/admin`, `password123`, `changeme`, `<your-password>`, or a made-up token — even when it "looks plausible". If Step 6.1.1 found nothing, the correct section carries the "no test account documented" line and no credential at all.
+   - **(d)** In `reference` mode (including a `reference` reached by the public-repo downgrade), that section must contain no password, token or API key — only a pointer plus the role to use.
 
 **If any check fails:**
 - Log which check(s) failed
@@ -659,3 +691,4 @@ printf '{"type":"end","skill":"magic-pr","agentId":"%s","outcome":"success","occ
 - `references/messages.md` — All bilingual message templates (EN/FR). Read relevant sections as needed (not the whole file at once).
 - `references/node-setup.md` — Node.js version manager detection. Read before any Node.js-dependent command (Step 0.6).
 - `references/ci-watch.md` — Watcher contract, `gh` commands, time budget, and report schema. Read before Step 7.4.
+- `references/test-accounts.md` — Test-account modes, discovery cascade, and the credential guardrails. Read before Step 6.1.1, only when `pullRequest.testAccounts` is not `off`.

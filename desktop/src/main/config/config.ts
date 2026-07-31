@@ -32,6 +32,7 @@ function applySetting<T extends Record<string, unknown>>(
 
 const isOneOf = (allowed: string[]) => (v: unknown) => typeof v === 'string' && allowed.includes(v)
 const isBool = (v: unknown) => typeof v === 'boolean'
+const isString = (v: unknown) => typeof v === 'string'
 
 const CONFIG_DIR = path.join(os.homedir(), '.config', 'magic-slash')
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
@@ -400,6 +401,8 @@ export function updateRepositoryPullRequestSettings(name: string, settings: Sett
 
   applySetting(pullRequest, 'autoLinkTickets', settings.autoLinkTickets, isBool)
   applySetting(pullRequest, 'watchCI', settings.watchCI, isBool)
+  applySetting(pullRequest, 'testAccounts', settings.testAccounts, isOneOf(['off', 'reference', 'inline']))
+  applySetting(pullRequest, 'testAccountsSource', settings.testAccountsSource, isString, ['', null])
 
   if (Object.keys(pullRequest).length === 0) {
     delete config.repositories[name].pullRequest
@@ -417,7 +420,6 @@ export function updateRepositoryIssuesSettings(name: string, settings: SettingsI
   }
 
   const issues = config.repositories[name].issues = config.repositories[name].issues || {}
-  const isString = (v: unknown) => typeof v === 'string'
 
   applySetting(issues, 'commentOnPR', settings.commentOnPR, isBool)
   applySetting(issues, 'jiraUrl', settings.jiraUrl, isString, ['', null])

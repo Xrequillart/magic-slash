@@ -125,7 +125,9 @@ export interface RepositoryConfig {
   }
   pullRequest?: {
     autoLinkTickets?: boolean
-    watchCI?: boolean          // true = watch checks + review feedback after creating the PR
+    watchCI?: boolean            // true = watch checks + review feedback after creating the PR
+    testAccounts?: string        // 'off' | 'reference' | 'inline'
+    testAccountsSource?: string  // explicit file path or project-skill name holding the accounts
   }
   issues?: {
     commentOnPR?: boolean
@@ -668,6 +670,8 @@ export interface OrgSharedConfig {
   pullRequest?: {
     autoLinkTickets?: boolean
     watchCI?: boolean
+    testAccounts?: string        // 'off' | 'reference' | 'inline'
+    testAccountsSource?: string
   }
   repoKeywords?: Record<string, string[]>
 }
