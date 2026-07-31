@@ -535,8 +535,8 @@ describe('agents', () => {
     expect(agent.metadata?.branchName).toBe('feature/real')
   })
 
-  it('saveAgents links the agent to the repositories it resolved', async () => {
-    const { client, inserts } = makeClient({
+  it('saveAgents links the agent to the repositories it resolved, tolerating a link already there', async () => {
+    const { client, calls, upserts } = makeClient({
       memberships: membershipsOk,
       agents: { data: [], error: null },
       agent_repositories: { data: [], error: null },
@@ -547,8 +547,33 @@ describe('agents', () => {
       { id: 'claude-1', name: 'A', repositories: ['/repo'], repositoryIds: ['r1', 'r2'] } as Agent,
     ])
 
-    const rows = inserts.agent_repositories[0] as Array<Record<string, unknown>>
+    const rows = upserts.agent_repositories[0] as Array<Record<string, unknown>>
     expect(rows.map((r) => r.repo_id)).toEqual(['r1', 'r2'])
+    // (agent_id, repo_id) is the primary key, so re-creating a link that exists
+    // must be a no-op and not a "failed to save your agents" the user cannot act
+    // on. ignoreDuplicates and not a merge: the table grants no UPDATE.
+    const upsert = calls.find((c) => c.table === 'agent_repositories' && c.method === 'upsert')
+    expect(upsert?.args[1]).toEqual({ onConflict: 'agent_id,repo_id', ignoreDuplicates: true })
+  })
+
+  it('saveAgents serializes concurrent writes instead of diffing the links twice', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [], error: null },
+      agent_repositories: { data: [], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    const agent = { id: 'claude-1', name: 'A', repositories: ['/repo'], repositoryIds: ['r1'] } as Agent
+
+    // What a /magic:start does: a burst of writes over a brand-new agent, fired
+    // and forgotten by config/agents.ts. Unserialized, both would compute their
+    // link diff against the same empty state (the digest is only set once a write
+    // completes) and both would create the same row.
+    await Promise.all([store.saveAgents([agent]), store.saveAgents([agent])])
+
+    expect(calls.filter((c) => c.table === 'agent_repositories' && c.method === 'upsert')).toHaveLength(1)
   })
 
   it('saveAgents skips the round-trip when the links did not change', async () => {
