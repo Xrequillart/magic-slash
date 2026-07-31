@@ -1,5 +1,6 @@
 import { readConfig, writeConfig } from './config'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig, isValidLaunchMode } from './defaults'
+import { normalizeLegacyPullRequest } from './normalize'
 import type { RepositoryConfig } from '../../types'
 
 // NOTE: There is deliberately NO data migration from the legacy local JSON files
@@ -52,6 +53,15 @@ export function migrateConfig(appVersion?: string): boolean {
         changed = true
       }
     }
+
+    // Issue #161. The load path (withDefaults) already ran this, so for a config
+    // that came from hydrateConfig this is a no-op — which is the point: it means
+    // migrateConfig no longer reports a change, and no longer triggers a
+    // writeConfig → `configs` upsert, on every single launch of an existing
+    // install. It stays here for configs that reached the cache another way, and
+    // AFTER the merge above so a block the merge re-filled is caught in the same
+    // pass.
+    if (normalizeLegacyPullRequest(config)) changed = true
   }
 
   if (!config.integrations) {

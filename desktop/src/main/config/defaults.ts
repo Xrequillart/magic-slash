@@ -57,12 +57,15 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
     replyToComments: true,
     replyLanguage: 'en'
   },
-  pullRequest: {
-    autoLinkTickets: true,
-    watchCI: true,
-    testAccounts: 'off',
-    testAccountsSource: ''
-  },
+  // KNOWN DEFECT (issue #161): a key an org can share — the SHARED_KEYS of
+  // store/CloudStore.ts — can never be inherited from the organization once it
+  // carries a concrete default HERE, because the default is already set locally by
+  // the time mergeOrgSharedConfig runs (see config-merge.test.ts for the mechanism).
+  // `pullRequest` was therefore dropped: the renderer already falls back to exactly
+  // these values (RepoPage: autoLinkTickets/watchCI true, testAccounts 'off'), so
+  // removing them changes nothing a user sees while making inheritance possible.
+  // `languages` and `commit` above still carry defaults and still have the bug —
+  // known follow-ups, not an exception to the rule.
   issues: {
     commentOnPR: true,
     jiraUrl: '',

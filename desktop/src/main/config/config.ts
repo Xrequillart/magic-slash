@@ -3,6 +3,7 @@ import * as os from 'os'
 import { randomUUID } from 'crypto'
 import type { Config, RepositoryConfig, LanguageId, LaunchMode, OrgSharedConfig, ThemeId } from '../../types'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
+import { normalizeLegacyPullRequest } from './normalize'
 import { expandPath } from './validation'
 import { getStore, reportWriteError } from '../store/Store'
 
@@ -77,9 +78,16 @@ function defaultConfig(): Config {
 /**
  * Fill in missing default fields on a config loaded from the store. Mirrors the
  * defaulting the old file-based reader performed on first load.
+ *
+ * Runs on EVERY install into the cache — hydrateConfig (the initial load AND
+ * remote-sync's mid-session refresh) and installRemoteConfig — which is exactly
+ * why the issue #161 normalization lives here rather than in migrateConfig
+ * alone: migrateConfig runs once per process, while the legacy `pullRequest`
+ * block is still in the database and comes back with every reload.
  */
 function withDefaults(config: Config): Config {
   config.repositories = config.repositories || {}
+  normalizeLegacyPullRequest(config)
   if (config.splitEnabled === undefined) config.splitEnabled = false
   if (config.splitActive === undefined) config.splitActive = false
   if (!config.integrations) config.integrations = { github: true, atlassian: true }

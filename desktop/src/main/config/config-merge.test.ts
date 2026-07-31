@@ -3,6 +3,8 @@ import type { Config, OrgSharedConfig } from '../../types'
 import type { Store } from '../store/Store'
 import { setStore, NOOP_STORE } from '../store/Store'
 import { mergeOrgSharedConfig, hydrateConfig } from './config'
+import { DEFAULT_REPOSITORY_FIELDS } from './defaults'
+import { migrateConfig } from './migrate'
 
 // The DB is the single source of truth: config lives behind the Store. These
 // tests seed a fake in-memory store, hydrate the config cache from it, then
@@ -35,14 +37,15 @@ function baseConfig(): Config {
   }
 }
 
-describe('mergeOrgSharedConfig', () => {
-  const ORG = 'org-1'
-  const OTHER = 'org-2'
+const ORG = 'org-1'
 
-  /** A repo of ORG. `name` is the real cloud name; the record key may differ. */
-  function repo(name: string, extra: Partial<Config['repositories'][string]> = {}) {
-    return { name, orgId: ORG, path: `/local/${name}`, keywords: [], ...extra }
-  }
+/** A repo of ORG. `name` is the real cloud name; the record key may differ. */
+function repo(name: string, extra: Partial<Config['repositories'][string]> = {}) {
+  return { name, orgId: ORG, path: `/local/${name}`, keywords: [], ...extra }
+}
+
+describe('mergeOrgSharedConfig', () => {
+  const OTHER = 'org-2'
 
   it('fills unset language fields but never overrides existing local ones', async () => {
     const config = baseConfig()
@@ -184,5 +187,106 @@ describe('mergeOrgSharedConfig', () => {
     }, ORG)
     expect(result.repositories.web.languages).toEqual({ commit: 'fr' })
     expect(result.repositories.web.keywords).toEqual(['web'])
+  })
+})
+
+/**
+ * Regression cover for issue #161.
+ *
+ * The `repo()` helper above builds repositories BY HAND, without the fields the
+ * app actually stamps on every repo — which is why the tests above kept passing
+ * while no user ever inherited anything. These build a repository the way
+ * production does: DEFAULT_REPOSITORY_FIELDS spread on creation (addRepository),
+ * then the deep merge migrateConfig runs at every launch. A key with a concrete
+ * default there is set locally by the time the merge runs, and the merge only
+ * fills keys that are `undefined` — so the org's value is skipped forever.
+ */
+describe('mergeOrgSharedConfig — repositories carrying the app defaults', () => {
+  /**
+   * A repo shaped like one addRepository just created: the shared `repo()` above
+   * (which carries the orgId the merge's scoping filter needs — without it the
+   * assertions below would pass for the wrong reason), plus the defaults the app
+   * stamps on every repo at creation.
+   */
+  function defaultedRepo(name: string, extra: Partial<Config['repositories'][string]> = {}) {
+    return {
+      ...repo(name, { keywords: [name] }),
+      ...structuredClone(DEFAULT_REPOSITORY_FIELDS),
+      ...extra,
+    }
+  }
+
+  it("inherits the org's pullRequest settings on a repo built the production way", async () => {
+    const config = baseConfig()
+    config.repositories = { web: defaultedRepo('web') }
+    await seed(config)
+    migrateConfig()
+
+    const shared: OrgSharedConfig = {
+      pullRequest: { watchCI: false, testAccounts: 'inline', testAccountsSource: 'docs/test-accounts.md' },
+    }
+    const result = mergeOrgSharedConfig(shared, ORG)
+
+    expect(result.repositories.web.pullRequest).toEqual({
+      watchCI: false,
+      testAccounts: 'inline',
+      testAccountsSource: 'docs/test-accounts.md',
+    })
+  })
+
+  it('still lets a value the user set locally win over the org value', async () => {
+    const config = baseConfig()
+    config.repositories = {
+      web: defaultedRepo('web', { pullRequest: { testAccounts: 'reference' } }),
+    }
+    await seed(config)
+    migrateConfig()
+
+    const shared: OrgSharedConfig = {
+      pullRequest: { watchCI: false, testAccounts: 'inline' },
+    }
+    const result = mergeOrgSharedConfig(shared, ORG)
+
+    expect(result.repositories.web.pullRequest).toEqual({
+      testAccounts: 'reference', // local wins
+      watchCI: false, // inherited
+    })
+  })
+
+  /**
+   * The existing-install half of #161: dropping the default only helps repos
+   * created from now on, so a repo whose `pullRequest` column still holds the
+   * historical default comes back "already set" and inherits nothing. migrateConfig
+   * normalizes that block away in memory, which is what makes the merge below
+   * possible at all.
+   */
+  it("lets a repo carrying the legacy persisted defaults inherit the org's pullRequest", async () => {
+    const config = baseConfig()
+    config.repositories = {
+      web: {
+        ...repo('web', { keywords: ['web'] }),
+        // Exactly what an existing install has in repositories.pull_request.
+        pullRequest: { autoLinkTickets: true, watchCI: true, testAccounts: 'off', testAccountsSource: '' },
+      },
+    }
+    await seed(config)
+    migrateConfig()
+
+    const shared: OrgSharedConfig = {
+      pullRequest: { watchCI: false, testAccounts: 'inline', testAccountsSource: 'docs/test-accounts.md' },
+    }
+    const result = mergeOrgSharedConfig(shared, ORG)
+
+    expect(result.repositories.web.pullRequest).toEqual({
+      watchCI: false,
+      testAccounts: 'inline',
+      testAccountsSource: 'docs/test-accounts.md',
+    })
+  })
+
+  // The direct statement of the defect, so re-adding a default here fails loudly
+  // rather than quietly restoring "nothing is ever inherited".
+  it('carries no pullRequest default at all', () => {
+    expect(DEFAULT_REPOSITORY_FIELDS).not.toHaveProperty('pullRequest')
   })
 })
