@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.61.0] - 2026-07-31
+
+### Added
+
+- **Desktop**: Render read-only skills as a readable document rather than a locked form
+- **Desktop**: Record skill runs end to end and stop dropping telemetry
+- **Desktop**: Audit settings changes with a database trigger
+- Close the skill run from each skill's final step
+
 ## [0.60.0] - 2026-07-31
 
 ### Added
@@ -1799,6 +1808,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.61.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.61.0
 [0.60.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.60.0
 [0.59.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.59.3
 [0.59.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.59.2
