@@ -15,6 +15,10 @@ import {
   type AdminOrgMember,
 } from '@/lib/admin'
 import { formatAbsoluteDate } from '@/lib/installations'
+// The list itself is shared with the user-space Organizations page: the console
+// shares DATA with the user space and never components, and two copies of these
+// seven rows would eventually disagree about what a team is shown.
+import { TRACKED_SKILLS, totalTrackedRuns } from '@/lib/skills'
 import { useConsoleData } from '@/components/regie/ConsoleData'
 import { PageHead } from '@/components/regie/ConsoleShell'
 import { DataTable, Mono, NoValue, type Column } from '@/components/regie/DataTable'
@@ -49,31 +53,6 @@ import {
  * After a write, both this page's lists AND the console-wide lists are refetched —
  * the counts in the nav and the org table describe what was just changed.
  */
-
-/**
- * The skills the stats card reports, in the order the development cycle runs them —
- * start, pick back up, commit, ship, review, fix the review, close.
- *
- * A FIXED list, though `admin_org_skill_counts` returns every skill the org has ever
- * run. The point of the card is that the same seven tiles sit in the same seven
- * places on every org, so two tenants can be compared at a glance and a hole in the
- * cycle ("plenty of commits, no PRs") is visible as a shape. Sorting by count, or
- * rendering whatever came back, would make every card a different card.
- *
- * `skill` is what the desktop's PreToolUse hook logs, `label` is what a human calls
- * it. They differ because the log records the SKILL name Claude Code reports while
- * an operator recognises the slash command — and the mapping is mechanical enough
- * that deriving it would cost more than writing it down.
- */
-const TRACKED_SKILLS: { skill: string; label: string }[] = [
-  { skill: 'magic-start', label: '/magic:start' },
-  { skill: 'magic-continue', label: '/magic:continue' },
-  { skill: 'magic-commit', label: '/magic:commit' },
-  { skill: 'magic-pr', label: '/magic:pr' },
-  { skill: 'magic-review', label: '/magic:review' },
-  { skill: 'magic-resolve', label: '/magic:resolve' },
-  { skill: 'magic-done', label: '/magic:done' },
-]
 
 export default function AdminOrgRecord() {
   const params = useParams<{ orgId: string }>()
@@ -404,9 +383,7 @@ export default function AdminOrgRecord() {
                 // The sum of the SEVEN shown, not of every skill logged: it is the
                 // total of what is on screen, so it always adds up to the tiles
                 // below it. An org running /magic:plan heavily is not counted here.
-                <SectionLabel>
-                  {`${TRACKED_SKILLS.reduce((sum, { skill }) => sum + (skills.get(skill) ?? 0), 0)} runs`}
-                </SectionLabel>
+                <SectionLabel>{`${totalTrackedRuns(skills)} runs`}</SectionLabel>
               )
             }
           >

@@ -1,4 +1,4 @@
-import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, SkillInvocationInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
+import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, SkillCounts, SkillInvocationInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -79,6 +79,30 @@ export interface Store {
   loadOrgUsageStats(): Promise<UsageStats>
 
   /**
+   * Run count per skill for ONE org, for the Team page. Read-only, open to any member
+   * of that org.
+   *
+   * Aggregated by the DATABASE, unlike loadOrgUsageStats which pulls raw rows and sums
+   * them here: skill_invocations gets one row per skill run and an active team reaches
+   * thousands, of which the page needs seven numbers. The org is an explicit argument
+   * rather than the resolved active one, because the Team page has a tab per org and
+   * asks for whichever is open.
+   */
+  loadOrgSkillCounts(orgId: string): Promise<SkillCounts>
+
+  /**
+   * Run count per skill for the CALLER's own work outside any organization — the
+   * Team page's Personal tab.
+   *
+   * Takes no org, and must not: these are the rows with a null org_id, readable by
+   * their author alone. A separate method from loadOrgSkillCounts rather than a
+   * nullable argument, because the two answer questions of different KINDS (a whole
+   * team's work versus one person's) and a lost id would otherwise silently swap one
+   * for the other.
+   */
+  loadPersonalSkillCounts(): Promise<SkillCounts>
+
+  /**
    * Org-wide activity events (all members). Read-only, and open to any org
    * member — the RLS select policy is scoped by org, not by user. The only read
    * of activity_events left: nothing reads back the caller's own events.
@@ -133,6 +157,8 @@ export const NOOP_STORE: Store = {
   async appendUsage() { /* no-op */ },
   async recordSkillInvocation() { /* no-op */ },
   async loadOrgUsageStats() { return { rows: [], capped: false } },
+  async loadOrgSkillCounts() { return {} },
+  async loadPersonalSkillCounts() { return {} },
   async loadOrgActivity() { return { events: [], capped: false, since: new Date(0).toISOString() } },
   async setOrgSharedConfig() { /* no-op */ },
   async loadProfile() { return null },

@@ -739,6 +739,14 @@ export const en = {
     'Share a repository with your organization in Settings → Repositories, and every teammate’s agents on it show up here.',
   'dashboard.repos.unmatched.one': '1 agent on a personal or unlinked repository',
   'dashboard.repos.unmatched.other': '{count} agents on personal or unlinked repositories',
+  'dashboard.skills.section': 'Skills run',
+  'dashboard.skills.sectionPersonal': 'Your skills run',
+  'dashboard.skills.runs.one': '{count} run',
+  'dashboard.skills.runs.other': '{count} runs',
+  'dashboard.skills.empty':
+    'No run recorded for this organization yet. Runs are attributed through the repositories of the agent that launches them, so work on a personal repository is not counted here.',
+  'dashboard.skills.emptyPersonal':
+    'No run recorded outside an organization yet. A run lands here only when the agent that launched it works on personal repositories alone — one started in a terminal the app did not open is attributed to your organization instead.',
 
   // ── Skills ───────────────────────────────────────────────────────────────
   'skills.budget.section': 'Skills Budget',

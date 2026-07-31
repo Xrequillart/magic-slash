@@ -7,6 +7,7 @@ import { useOrgAgents } from '../../hooks/useOrgAgents'
 import { buildRepoRows, type RepoRow, type RepoScope } from '../../utils/repoRows'
 import { useT, type Translate } from '../../i18n'
 import { OwnerLabel, StatusPill, TicketBadge } from './parts'
+import { SkillStats } from './SkillStats'
 
 /** The live PR of an agent, if it has one that is neither merged nor closed. */
 function livePrUrl(agent: OrgAgent): string | undefined {
@@ -156,19 +157,11 @@ export function RepoSection() {
     })
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 text-sm text-text-secondary">
-        <FolderGit2 className="w-4 h-4" />
-        <span>{t('dashboard.repos.section')}</span>
-        {rows.length > 0 && (
-          <span className="text-xs text-text-secondary/50 ml-auto">
-            {agentCountLabel(totals.agents, t)} · {t('dashboard.repos.onPr', { count: totals.pr })}
-          </span>
-        )}
-      </div>
-
-      {/* One tab per organization. Purely a view: switching tabs changes nothing
-          but what is listed — there is no active organization to set. */}
+    <div className="flex flex-col gap-5">
+      {/* One tab per organization, above everything: it scopes BOTH sections below,
+          so it cannot sit under the one it happens to precede.
+          Purely a view — switching tabs changes nothing but what is listed, there is
+          no active organization to set. */}
       {tabs.length > 1 && (
         <div className="flex items-center gap-1 flex-wrap">
           {tabs.map((tab) => (
@@ -187,37 +180,57 @@ export function RepoSection() {
         </div>
       )}
 
-      {rows.length === 0 ? (
-        <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
-          <FolderGit2 className="w-8 h-8 opacity-30" />
-          {/* An empty TAB is a different situation from having no team repo at
-              all, and only the latter deserves the "go share one" nudge. */}
-          <p>{tabs.length > 1 ? t('dashboard.repos.noReposInScope') : t('dashboard.repos.noRepos')}</p>
-          {tabs.length <= 1 && (
-            <p className="text-xs text-text-secondary/60 max-w-sm text-center">{t('dashboard.repos.noReposHint')}</p>
+      {/* What this tab RUNS, before what it HAS. Every count below says how much work
+          is in flight; this one says whether the cycle is being used at all.
+          `activeScope` is passed WHOLE rather than coerced: null is the personal tab
+          and undefined is "no tab resolved yet", and the two must not collapse. */}
+      <SkillStats scope={activeScope} />
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-sm text-text-secondary">
+          <FolderGit2 className="w-4 h-4" />
+          <span>{t('dashboard.repos.section')}</span>
+          {rows.length > 0 && (
+            <span className="text-xs text-text-secondary/50 ml-auto">
+              {agentCountLabel(totals.agents, t)} · {t('dashboard.repos.onPr', { count: totals.pr })}
+            </span>
           )}
         </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {rows.map((row) => (
-            <RepoCard
-              key={row.name}
-              row={row}
-              expanded={expanded.has(row.name)}
-              onToggle={() => toggle(row.name)}
-              emailByOwner={emailByOwner}
-            />
-          ))}
-        </div>
-      )}
 
-      {unmatched > 0 && (
-        <p className="text-xs text-text-secondary/50">
-          {t(unmatched === 1 ? 'dashboard.repos.unmatched.one' : 'dashboard.repos.unmatched.other', {
-            count: unmatched,
-          })}
-        </p>
-      )}
+        {rows.length === 0 ? (
+          <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
+            <FolderGit2 className="w-8 h-8 opacity-30" />
+            {/* An empty TAB is a different situation from having no team repo at
+                all, and only the latter deserves the "go share one" nudge. */}
+            <p>{tabs.length > 1 ? t('dashboard.repos.noReposInScope') : t('dashboard.repos.noRepos')}</p>
+            {tabs.length <= 1 && (
+              <p className="text-xs text-text-secondary/60 max-w-sm text-center">
+                {t('dashboard.repos.noReposHint')}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {rows.map((row) => (
+              <RepoCard
+                key={row.name}
+                row={row}
+                expanded={expanded.has(row.name)}
+                onToggle={() => toggle(row.name)}
+                emailByOwner={emailByOwner}
+              />
+            ))}
+          </div>
+        )}
+
+        {unmatched > 0 && (
+          <p className="text-xs text-text-secondary/50">
+            {t(unmatched === 1 ? 'dashboard.repos.unmatched.one' : 'dashboard.repos.unmatched.other', {
+              count: unmatched,
+            })}
+          </p>
+        )}
+      </div>
     </div>
   )
 }

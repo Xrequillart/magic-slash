@@ -743,6 +743,14 @@ export const fr: Record<keyof typeof en, string> = {
     'Partage un dépôt avec ton organisation dans Réglages → Dépôts, et les agents de toute l’équipe dessus apparaîtront ici.',
   'dashboard.repos.unmatched.one': '1 agent sur un dépôt personnel ou non rattaché',
   'dashboard.repos.unmatched.other': '{count} agents sur des dépôts personnels ou non rattachés',
+  'dashboard.skills.section': 'Skills exécutés',
+  'dashboard.skills.sectionPersonal': 'Tes skills exécutés',
+  'dashboard.skills.runs.one': '{count} exécution',
+  'dashboard.skills.runs.other': '{count} exécutions',
+  'dashboard.skills.empty':
+    'Aucune exécution enregistrée pour cette organisation. Les exécutions sont rattachées via les dépôts de l’agent qui les lance : le travail sur un dépôt personnel n’est donc pas compté ici.',
+  'dashboard.skills.emptyPersonal':
+    'Aucune exécution enregistrée hors organisation. Une exécution n’arrive ici que si l’agent qui l’a lancée travaille uniquement sur des dépôts personnels : celle démarrée dans un terminal que l’app n’a pas ouvert est rattachée à ton organisation.',
 
   // ── Skills ───────────────────────────────────────────────────────────────
   'skills.budget.section': 'Budget des skills',

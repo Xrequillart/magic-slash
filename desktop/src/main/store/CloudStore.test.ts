@@ -52,7 +52,13 @@ interface RecordedCall {
   args: unknown[]
 }
 
-function makeClient(resultsByTable: Record<string, QueryResult>) {
+function makeClient(
+  resultsByTable: Record<string, QueryResult>,
+  // Keyed by function name. Separate from the table map because an RPC is not a
+  // table and shares no builder chain with one: `client.rpc()` resolves straight
+  // to { data, error }.
+  resultsByRpc: Record<string, QueryResult> = {},
+) {
   const calls: RecordedCall[] = []
   const inserts: Record<string, unknown[]> = {}
   const updates: Record<string, unknown[]> = {}
@@ -94,7 +100,11 @@ function makeClient(resultsByTable: Record<string, QueryResult>) {
   }
 
   const from = vi.fn((table: string) => builder(table))
-  return { client: { from }, calls, inserts, updates, upserts, from }
+  const rpc = vi.fn((fn: string, args?: unknown) => {
+    calls.push({ table: `rpc:${fn}`, method: 'rpc', args: [args] })
+    return Promise.resolve(resultsByRpc[fn] ?? { data: [], error: null })
+  })
+  return { client: { from, rpc }, calls, inserts, updates, upserts, from, rpc }
 }
 
 const UID = 'user-1'
@@ -543,6 +553,137 @@ describe('agents', () => {
     // The org is derived by the backend from agent_repositories; sending one
     // would fight the trigger, and on an upsert it would overwrite the truth.
     expect(rows[0]).not.toHaveProperty('org_id')
+  })
+})
+
+// ── loadOrgSkillCounts (per-org, DB-aggregated) ─────────────────────────────
+
+describe('loadOrgSkillCounts', () => {
+  /** The org the Team page's open tab asks about — deliberately NOT `ORG`. */
+  const OTHER_ORG = 'org-2'
+
+  it('asks about the org it was given, not the resolved active one', async () => {
+    const { client, calls } = makeClient(
+      { memberships: membershipsOk },
+      { org_skill_counts: { data: [], error: null } },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadOrgSkillCounts(OTHER_ORG)
+
+    // The whole reason the org is a parameter: the Team page has a tab per
+    // organization, and answering about the first membership instead would print one
+    // org's numbers under another's name.
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        { table: 'rpc:org_skill_counts', method: 'rpc', args: [{ p_org_id: OTHER_ORG }] },
+      ]),
+    )
+  })
+
+  it('keys the counts by skill and coerces a bigint returned as a string', async () => {
+    const { client } = makeClient(
+      { memberships: membershipsOk },
+      {
+        org_skill_counts: {
+          // `count(*)` is a bigint, which PostgREST may serialise either way.
+          data: [
+            { skill: 'magic-commit', total: 12 },
+            { skill: 'magic-pr', total: '4' },
+          ],
+          error: null,
+        },
+      },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    const counts = await store.loadOrgSkillCounts(ORG)
+
+    expect(counts).toEqual({ 'magic-commit': 12, 'magic-pr': 4 })
+  })
+
+  it('leaves a never-run skill absent rather than zero', async () => {
+    const { client } = makeClient(
+      { memberships: membershipsOk },
+      { org_skill_counts: { data: [{ skill: 'magic-commit', total: 1 }], error: null } },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    const counts = await store.loadOrgSkillCounts(ORG)
+
+    // Absence is the RPC's own shape and the renderer's `?? 0` depends on it: a zero
+    // written here would claim the row was read back as 0.
+    expect('magic-done' in counts).toBe(false)
+  })
+
+  it('degrades to no counts when the RPC errors', async () => {
+    const { client } = makeClient(
+      { memberships: membershipsOk },
+      { org_skill_counts: { data: null, error: { message: 'boom' } } },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    // A non-member gets an empty result rather than an error (the RPC is SECURITY
+    // INVOKER and RLS filters), so a genuine failure must not be louder: the Team
+    // page shows zeros either way instead of breaking.
+    expect(await store.loadOrgSkillCounts(ORG)).toEqual({})
+  })
+})
+
+// ── loadPersonalSkillCounts (own out-of-org runs) ───────────────────────────
+
+describe('loadPersonalSkillCounts', () => {
+  it('calls the personal RPC with no argument at all', async () => {
+    const { client, calls } = makeClient(
+      { memberships: membershipsOk },
+      { personal_skill_counts: { data: [], error: null } },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadPersonalSkillCounts()
+
+    // No org id anywhere: these are the rows that HAVE none, and RLS restricts them
+    // to their author. An org filter here could only ever exclude the right rows.
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        { table: 'rpc:personal_skill_counts', method: 'rpc', args: [undefined] },
+      ]),
+    )
+  })
+
+  it('keys the counts by skill and coerces a bigint returned as a string', async () => {
+    const { client } = makeClient(
+      { memberships: membershipsOk },
+      {
+        personal_skill_counts: {
+          data: [
+            { skill: 'magic-commit', total: 7 },
+            { skill: 'magic-start', total: '2' },
+          ],
+          error: null,
+        },
+      },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    expect(await store.loadPersonalSkillCounts()).toEqual({ 'magic-commit': 7, 'magic-start': 2 })
+  })
+
+  it('degrades to no counts when the RPC errors', async () => {
+    const { client } = makeClient(
+      { memberships: membershipsOk },
+      { personal_skill_counts: { data: null, error: { message: 'boom' } } },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    expect(await store.loadPersonalSkillCounts()).toEqual({})
   })
 })
 

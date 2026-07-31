@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, UsageStats, ThemeId, LanguageId } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, UsageStats, ThemeId, LanguageId } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -474,6 +474,16 @@ const orgApi = {
   listAgents: (): Promise<OrgAgent[]> => ipcRenderer.invoke('org:listAgents'),
   // Team dashboard: org-wide usage stats (read is open to any member).
   getUsageStats: (): Promise<UsageStats> => ipcRenderer.invoke('org:getUsageStats'),
+  // Team dashboard: run count per skill for ONE org. orgId is required — the page
+  // has a tab per org, and the active-org default every other call uses would
+  // answer about a different one than the tab on screen.
+  getSkillCounts: (orgId: string): Promise<SkillCounts> =>
+    ipcRenderer.invoke('org:getSkillCounts', { orgId }),
+  // Team dashboard, Personal tab: the caller's OWN runs outside any org. Takes no
+  // org id because there is none to take — see the RPC for why that is a separate
+  // question rather than a null argument.
+  getPersonalSkillCounts: (): Promise<SkillCounts> =>
+    ipcRenderer.invoke('org:getPersonalSkillCounts'),
   // Team dashboard: org-wide activity events driving the flow metrics. sinceMs is
   // clamped to 90 days in the main process; the renderer narrows further itself.
   getActivity: (sinceMs?: number): Promise<OrgActivity> => ipcRenderer.invoke('org:getActivity', { sinceMs }),

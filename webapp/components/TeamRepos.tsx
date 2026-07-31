@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, ExternalLink, FolderGit2 } from 'lucide-reac
 import type { TeamOverview } from '@/lib/team'
 import { buildTeamRows, type RepoScope, type TeamAgent, type TeamRepoRow } from '@/lib/teamRows'
 import { Badge, Card, SectionHeader, type BadgeTone } from '@/components/ui'
+import { SkillStats } from '@/components/SkillStats'
 
 /**
  * Workflow status → badge tone. Mirrors STATUS_CONFIG in the desktop's Team page
@@ -137,20 +138,11 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
 
   return (
     <>
-      <SectionHeader
-        icon={FolderGit2}
-        title="Repositories"
-        action={
-          rows.length > 0 ? (
-            <span className="text-xs text-muted">
-              {agentCountLabel(totalAgents)} · {totalPr} on a PR
-            </span>
-          ) : undefined
-        }
-      />
-
+      {/* The tabs moved ABOVE both sections: they scope the skill stats as well as
+          the repository list now, so they can no longer sit under the one section
+          they happened to precede. */}
       {tabs.length > 1 && (
-        <div className="mb-3 flex flex-wrap items-center gap-1">
+        <div className="mb-4 flex flex-wrap items-center gap-1">
           {tabs.map((tab) => (
             <button
               key={tab.scope ?? 'personal'}
@@ -166,6 +158,24 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
           ))}
         </div>
       )}
+
+      {/* What this tab RUNS, before what it HAS. Every count below says how much work
+          is in flight; this one says whether the cycle is being used at all.
+          `activeScope` is passed WHOLE rather than coerced: null is the personal tab
+          and undefined is "no tab resolved yet", and the two must not collapse. */}
+      <SkillStats scope={activeScope} />
+
+      <SectionHeader
+        icon={FolderGit2}
+        title="Repositories"
+        action={
+          rows.length > 0 ? (
+            <span className="text-xs text-muted">
+              {agentCountLabel(totalAgents)} · {totalPr} on a PR
+            </span>
+          ) : undefined
+        }
+      />
 
       {rows.length === 0 ? (
         <Card className="p-8 text-center">

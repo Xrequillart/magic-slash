@@ -1,6 +1,6 @@
 import * as path from 'path'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Config, Invitation, InvitationStatus, Member, MembershipRole, Org, OrgActivity, OrgAgent, OrgSharedConfig, UsageStats } from '../../types'
+import type { Config, Invitation, InvitationStatus, Member, MembershipRole, Org, OrgActivity, OrgAgent, OrgSharedConfig, SkillCounts, UsageStats } from '../../types'
 import { getAuthedClient } from './auth'
 import { loadSession } from './session-store'
 import { readConfig, mergeOrgSharedConfig } from '../config/config'
@@ -115,6 +115,29 @@ export async function listOrgAgents(): Promise<OrgAgent[]> {
  */
 export async function listOrgUsageStats(): Promise<UsageStats> {
   return getStore().loadOrgUsageStats()
+}
+
+/**
+ * Run count per skill for one org, for the Team page's stats row. Delegates to the
+ * store, which reaches the `org_skill_counts` RPC — SECURITY INVOKER, so RLS scopes
+ * it and asking about an org the user has left simply yields no counts.
+ *
+ * The org id is required rather than defaulted to the current one: the Team page has
+ * a tab per organization and asks for whichever is open, so silently answering about
+ * a different org than the one on screen is the one failure to avoid here.
+ */
+export async function listOrgSkillCounts(orgId: string): Promise<SkillCounts> {
+  if (typeof orgId !== 'string' || orgId.trim().length === 0) return {}
+  return getStore().loadOrgSkillCounts(orgId)
+}
+
+/**
+ * Run count per skill for the caller's own out-of-org work — the Team page's Personal
+ * tab. No argument, and no org to get wrong: these are the rows with a null org_id,
+ * which RLS makes readable by their author alone.
+ */
+export async function listPersonalSkillCounts(): Promise<SkillCounts> {
+  return getStore().loadPersonalSkillCounts()
 }
 
 /** How far back the Team page may look, and how many rows it may pull. */

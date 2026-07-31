@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SkillInvocationInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillInvocationInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
@@ -983,6 +983,59 @@ export class CloudStore implements Store {
       occurredAt: r.occurred_at,
     }))
     return { rows, capped }
+  }
+
+  /**
+   * Run count per skill for ONE org, for the Team page's stats row.
+   *
+   * Three things worth naming:
+   *
+   * 1. THE DATABASE AGGREGATES. `org_skill_counts` groups and counts server-side, so
+   *    this pulls seven-ish rows instead of the thousands loadOrgUsageStats has to
+   *    pull and sum here. There is no row cap for the same reason — the count is
+   *    exact however long the team has been running, where a capped raw read would
+   *    silently start under-reporting.
+   * 2. `userContext()`, not `context()`. The org comes from the CALLER (the Team page
+   *    has a tab per org), so requiring a resolved active org would be asking for a
+   *    value this read does not use.
+   * 3. The RPC is SECURITY INVOKER: RLS on skill_invocations is what scopes it, so a
+   *    request for an org the user is not in returns no rows rather than an error.
+   *    That is why a non-member's answer here is `{}` and not a thrown failure.
+   */
+  async loadOrgSkillCounts(orgId: string): Promise<SkillCounts> {
+    const ctx = await this.userContext()
+    if (!ctx) return {}
+
+    const { data, error } = await ctx.client.rpc('org_skill_counts', { p_org_id: orgId })
+    if (error || !data) return {}
+
+    const counts: SkillCounts = {}
+    for (const row of data as Array<{ skill: string; total: number }>) {
+      counts[row.skill] = toNumber(row.total)
+    }
+    return counts
+  }
+
+  /**
+   * Run count per skill for the caller's own out-of-org work — the Personal tab.
+   *
+   * `userContext()` and no org at all: the rows this counts are precisely the ones
+   * with none. The RPC is SECURITY INVOKER and the RLS policy's own-rows arm is the
+   * only one matching a null org, so the database itself guarantees this returns
+   * nobody else's history — there is no org id here that could be got wrong.
+   */
+  async loadPersonalSkillCounts(): Promise<SkillCounts> {
+    const ctx = await this.userContext()
+    if (!ctx) return {}
+
+    const { data, error } = await ctx.client.rpc('personal_skill_counts')
+    if (error || !data) return {}
+
+    const counts: SkillCounts = {}
+    for (const row of data as Array<{ skill: string; total: number }>) {
+      counts[row.skill] = toNumber(row.total)
+    }
+    return counts
   }
 
   /**

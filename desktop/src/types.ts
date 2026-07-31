@@ -519,6 +519,23 @@ export interface SkillInvocationInput {
   occurredAt?: number
 }
 
+/**
+ * How many times one organization has run each skill, all time — keyed by the skill
+ * name with any plugin prefix already folded away by the RPC, so "magic-commit" and
+ * never "magic-slash:magic-commit".
+ *
+ * A plain record rather than a Map because this crosses the contextBridge, whose
+ * serialisation is narrower than the structured-clone algorithm the raw IPC channel
+ * uses. A skill the org has never run is ABSENT rather than 0, which is the RPC's own
+ * shape: it returns no row at all, and `?? 0` at the read site is where absence
+ * becomes the number to print.
+ *
+ * These are the TEAM's totals. A run is attributed to an org through its agent, whose
+ * org comes from the agent's repositories, so work on a personal repository belongs
+ * to no organization and appears in nobody's counts.
+ */
+export type SkillCounts = Record<string, number>
+
 /** A single usage_events row, normalized for client-side aggregation. */
 export interface UsageStatRow {
   userId: string | null

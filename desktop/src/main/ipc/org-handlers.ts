@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import type { AcceptInvitationResult, PickUpTaskResult } from '../cloud/org'
-import type { Config, Invitation, Member, MembershipRole, Org, OrgActivity, OrgAgent, OrgSharedConfig, RealtimeStatus, UsageStats } from '../../types'
+import type { Config, Invitation, Member, MembershipRole, Org, OrgActivity, OrgAgent, OrgSharedConfig, RealtimeStatus, SkillCounts, UsageStats } from '../../types'
 import { getRealtimeStatus } from '../cloud/realtime'
 import {
   getCurrentOrg,
@@ -15,6 +15,8 @@ import {
   createOrganization,
   listOrgAgents,
   listOrgActivity,
+  listOrgSkillCounts,
+  listPersonalSkillCounts,
   listOrgUsageStats,
   pickUpTask,
   removeMember,
@@ -48,6 +50,20 @@ export function setupOrgHandlers(): void {
   ipcMain.handle('org:listAgents', async (): Promise<OrgAgent[]> => listOrgAgents())
 
   ipcMain.handle('org:getUsageStats', async (): Promise<UsageStats> => listOrgUsageStats())
+
+  // orgId is REQUIRED here, unlike org:members: the Team page has a tab per
+  // organization, so defaulting to the active one would answer about an org other
+  // than the one on screen. An absent id yields no counts rather than the wrong ones.
+  ipcMain.handle('org:getSkillCounts', async (_event, args?: OptionalOrgIdArgs): Promise<SkillCounts> =>
+    args?.orgId ? listOrgSkillCounts(args.orgId) : {},
+  )
+
+  // A channel of its own rather than org:getSkillCounts with no id: an absent orgId
+  // above means "the renderer lost it", and answering that with one person's counts
+  // would turn a bug into a plausible-looking wrong number.
+  ipcMain.handle('org:getPersonalSkillCounts', async (): Promise<SkillCounts> =>
+    listPersonalSkillCounts(),
+  )
 
   // sinceMs is advisory: listOrgActivity clamps it to the 90-day window, so a
   // bogus or absent value degrades to the full window rather than throwing.
