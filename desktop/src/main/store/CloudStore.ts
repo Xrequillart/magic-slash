@@ -168,14 +168,39 @@ function mapSkillCountRows(data: unknown): SkillCounts {
   return counts
 }
 
+/**
+ * Whether a settings block carries nothing, i.e. is `{}`.
+ *
+ * The repositories table's jsonb columns are `not null default '{}'` (migration
+ * 20260724110000), so a repo that has no block at all round-trips as an EMPTY
+ * OBJECT rather than as null — and an empty object is both `!== undefined` and
+ * truthy. Every place that asks "does this repo configure X?" therefore has to
+ * ask this instead of a bare truthiness test. See issue #161.
+ */
+function isEmptyBlock(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && Object.keys(value).length === 0
+}
+
+/**
+ * A SHAREABLE jsonb settings column as the app sees it: the `{}` the column
+ * defaults to reads as an absent block rather than a configured one.
+ * Applied to the SHARED_KEYS blocks only — see mapRepositoryRow.
+ */
+function toBlock<T>(value: T | null): T | undefined {
+  return value === null || isEmptyBlock(value) ? undefined : value
+}
+
 /** The four shareable keys, projected to the TOP LEVEL of the config blob so the
  *  get_org_shared_config SECURITY DEFINER function keeps returning them. */
 function projectSharedFields(config: Config): Record<string, unknown> {
   const repos = Object.values(config.repositories ?? {})
   const named = Object.entries(config.repositories ?? {})
 
+  // An EMPTY block is not a configured one: taking it would let the first repo
+  // in the record — which may have nothing set — shadow the repo that actually
+  // carries the org's conventions, and publish `{}` as the org's shared config.
   const firstWith = <K extends keyof (typeof repos)[number]>(key: K) =>
-    repos.find((r) => r[key] !== undefined)?.[key]
+    repos.find((r) => r[key] !== undefined && !isEmptyBlock(r[key]))?.[key]
 
   const repoKeywords: Record<string, string[]> = {}
   for (const [name, repo] of named) {
@@ -234,6 +259,20 @@ export class CloudStore implements Store {
   private agentIdMap = new Map<string, string>()
   /** app agent id → digest of its last-synced repository ids (see syncRepoLinks). */
   private agentRepoKey = new Map<string, string>()
+  /**
+   * The top-level shared projection as found in the config blob at load, keyed by
+   * `org_id|user_id` — the `configs` primary key, so one account's mirror is never
+   * written into another's row (a CloudStore outlives a sign-out).
+   *
+   * Exists because saveConfig upserts the WHOLE `data` blob: a key that
+   * projectSharedFields cannot source from any repo would disappear on the next
+   * save. For an org admin that row IS the organization's shared config
+   * (get_org_shared_config reads it — migration 20260723100000), so the save would
+   * erase what set_org_shared_config wrote. Best-effort by construction: it only
+   * protects rows this process actually loaded, so a failed loadConfig leaves the
+   * mirror empty. The durable fix is a jsonb-merging save (see issue #161).
+   */
+  private sharedMirror = new Map<string, Record<string, unknown>>()
 
   setActiveOrgId(orgId: string | undefined): void {
     this.activeOrgId = orgId
@@ -396,7 +435,14 @@ export class CloudStore implements Store {
 
     const blob = { ...((data as ConfigRow | null)?.data ?? {}) } as Record<string, unknown>
     // Drop the top-level shared projection — it is a mirror, not part of Config.
-    for (const key of SHARED_KEYS) delete blob[key]
+    // Remember it first: saveConfig rewrites the entire blob and would otherwise
+    // delete any shared key the local repos cannot re-derive. See sharedMirror.
+    const mirror: Record<string, unknown> = {}
+    for (const key of SHARED_KEYS) {
+      if (blob[key] !== undefined) mirror[key] = blob[key]
+      delete blob[key]
+    }
+    this.sharedMirror.set(this.sharedMirrorKey(ctx), mirror)
 
     // One-shot migration: repos used to live inside the config blob. Move any
     // that remain into the repositories table (as personal repos) + bind the
@@ -439,7 +485,16 @@ export class CloudStore implements Store {
     // working for org admins. Two families of keys are stripped: `repositories`
     // (persisted in repositories/repository_paths) and every settings key (now
     // owned by user_settings), so the blob holds only org-scoped state.
-    const data: Record<string, unknown> = { ...config, ...projectSharedFields(config) }
+    //
+    // The projection is layered OVER what the row already held (sharedMirror):
+    // this upsert replaces `data` wholesale, so a key no repo can source — an
+    // org whose `pullRequest` conventions no member has overridden locally, or
+    // anything written straight into the row by set_org_shared_config — would be
+    // dropped by the very next save. A derived value still wins over the mirror;
+    // the mirror only fills what would otherwise be lost.
+    const mirrorKey = this.sharedMirrorKey(ctx)
+    const projected = { ...(this.sharedMirror.get(mirrorKey) ?? {}), ...projectSharedFields(config) }
+    const data: Record<string, unknown> = { ...config, ...projected }
     delete data.repositories
     for (const key of SETTINGS_KEYS) delete data[key]
 
@@ -447,6 +502,15 @@ export class CloudStore implements Store {
       .from('configs')
       .upsert({ org_id: ctx.orgId, user_id: ctx.uid, data }, { onConflict: 'org_id,user_id' })
     if (error) throw new Error(`saveConfig failed: ${error.message}`)
+
+    // The row now holds exactly this; keep the mirror in step so a second save
+    // in the same session does not fall back to a staler snapshot.
+    this.sharedMirror.set(mirrorKey, projected)
+  }
+
+  /** `configs` primary key as a map key: the mirror is per row, never per process. */
+  private sharedMirrorKey(ctx: { orgId: string; uid: string }): string {
+    return `${ctx.orgId}|${ctx.uid}`
   }
 
   // -------------------------------------------------------------------------
@@ -454,6 +518,11 @@ export class CloudStore implements Store {
   // path in `repository_paths`.
   // -------------------------------------------------------------------------
 
+  /**
+   * PATCH → column map. An ABSENT key is a no-op (the column keeps its value);
+   * only a key explicitly present writes. A cleared block is stored as `{}`, not
+   * null — the columns are `not null`, and `mapRepositoryRow` maps it back.
+   */
   private repoIdentityToRow(patch: Partial<RepositoryIdentity>): Record<string, unknown> {
     const row: Record<string, unknown> = {}
     if (patch.name !== undefined) row.name = patch.name
@@ -470,6 +539,29 @@ export class CloudStore implements Store {
     return row
   }
 
+  /**
+   * Row → app shape. The three SHAREABLE blocks come back through `toBlock`, so
+   * the columns' `{}` default reads as an absent block rather than a configured
+   * one.
+   *
+   * NORMALIZATION, not the issue #161 fix. An empty block does not block
+   * inheritance on its own: mergeOrgSharedConfig does `repo.pullRequest =
+   * repo.pullRequest || {}` and applyValues fills PER KEY (`if (target[key] ===
+   * undefined)`), so a `{}` block still inherits every key the org shares. What
+   * `toBlock` buys is a single shape for "nothing configured" — `undefined`,
+   * as for a repo that never round-tripped through the database.
+   *
+   * The guard that IS load-bearing for #161 is the `isEmptyBlock` test in
+   * `projectSharedFields`: without it a repo carrying `{}` is picked as the
+   * first repo "with" a block and `{}` gets published as the organization's
+   * shared config.
+   *
+   * Deliberately NOT applied to `resolve`/`issues`/`branches`: they are not in
+   * SHARED_KEYS, nothing merges an org's value into them, and mapping their `{}`
+   * to `undefined` would silently change how migrate.ts's deepMergeDefaults
+   * treats them (`if (!(key in result))` fills a missing key wholesale instead
+   * of recursing into it). They keep the plain `?? undefined` mapping.
+   */
   private mapRepositoryRow(row: RepositoryRow, path: string | null): StoredRepository {
     return {
       id: row.id,
@@ -478,9 +570,9 @@ export class CloudStore implements Store {
       name: row.name,
       keywords: row.keywords ?? [],
       color: row.color ?? undefined,
-      languages: row.languages ?? undefined,
-      commit: row.commit ?? undefined,
-      pullRequest: row.pull_request ?? undefined,
+      languages: toBlock(row.languages),
+      commit: toBlock(row.commit),
+      pullRequest: toBlock(row.pull_request),
       resolve: row.resolve ?? undefined,
       issues: row.issues ?? undefined,
       branches: row.branches ?? undefined,
@@ -1213,6 +1305,34 @@ export class CloudStore implements Store {
     if (!client) throw new Error('Cloud features are not available')
     const { error } = await client.rpc('set_org_shared_config', { p_org_id: orgId, p_shared: shared })
     if (error) throw new Error(error.message)
+
+    // Bring sharedMirror back in step with the row that was just written.
+    //
+    // UPDATE, not clear. Clearing would leave the next saveConfig with no fallback
+    // at all, and `pullRequest` is precisely the key no repo can re-derive since
+    // issue #161 — so the full-blob upsert would erase the config that was just
+    // published, which is the exact failure the mirror exists to prevent. Leaving
+    // the mirror alone is just as bad the other way: the next save would republish
+    // the PRE-RPC snapshot and silently revert the admin's change.
+    //
+    // The applied value mirrors what the RPC does (migration 20260724090000): the
+    // shared subset of `p_shared`, nulls dropped, merged over the row's existing
+    // data — so a key absent from `shared` keeps its mirrored value rather than
+    // being dropped.
+    //
+    // Applied to every mirrored row of this org rather than to one computed key:
+    // the RPC targets the ORG CREATOR's row, whose uid is not known here, and the
+    // case that actually goes stale — the admin IS the creator — is exactly the row
+    // this process loaded. Rows this process never loaded have no mirror entry, and
+    // no entry is created here: the mirror only ever protects what it has seen.
+    const subset: Record<string, unknown> = {}
+    for (const key of SHARED_KEYS) {
+      const value = (shared as Record<string, unknown>)[key]
+      if (value !== undefined && value !== null) subset[key] = value
+    }
+    for (const [key, mirrored] of this.sharedMirror) {
+      if (key.startsWith(`${orgId}|`)) this.sharedMirror.set(key, { ...mirrored, ...subset })
+    }
   }
 
   // -------------------------------------------------------------------------

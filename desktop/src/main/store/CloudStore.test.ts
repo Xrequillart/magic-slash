@@ -1174,6 +1174,92 @@ describe('listRepositories', () => {
   })
 })
 
+/**
+ * Issue #161. The repositories table's jsonb blocks are `not null default '{}'`,
+ * so a repo that configures nothing round-trips as `{}` rather than as null.
+ * mapRepositoryRow maps the three SHAREABLE blocks back to `undefined` (toBlock);
+ * the rest keep the plain `?? undefined` mapping.
+ *
+ * NORMALIZATION, not the fix: a `{}` block would inherit from the organization
+ * anyway, because mergeOrgSharedConfig fills PER KEY over a `repo.pullRequest ||
+ * {}`. The guard that #161 actually needs is `isEmptyBlock` in
+ * projectSharedFields — covered by the saveConfig tests further down, which pin
+ * that an empty block is never published as the org's shared config.
+ *
+ * Exercised through listRepositories, the thinnest caller of mapRepositoryRow.
+ */
+describe('mapRepositoryRow — empty jsonb blocks (toBlock)', () => {
+  const rowWith = (blocks: Record<string, unknown>) => ({
+    id: 'r1', owner_id: UID, org_id: ORG, name: 'api', keywords: ['api'], color: null,
+    languages: null, commit: null, pull_request: null,
+    resolve: null, issues: null, branches: null, worktree_files: null,
+    ...blocks,
+  })
+
+  async function loadOne(blocks: Record<string, unknown>) {
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      repositories: { data: [rowWith(blocks)], error: null },
+      repository_paths: { data: [], error: null },
+    })
+    h.state.client = client
+    return (await new CloudStore().listRepositories())[0]
+  }
+
+  it('reads an empty shareable block as absent', async () => {
+    const repo = await loadOne({ languages: {}, commit: {}, pull_request: {} })
+    expect(repo.languages).toBeUndefined()
+    expect(repo.commit).toBeUndefined()
+    expect(repo.pullRequest).toBeUndefined()
+  })
+
+  it('preserves a populated shareable block untouched', async () => {
+    const repo = await loadOne({
+      languages: { commit: 'fr' },
+      commit: { format: 'gitmoji' },
+      pull_request: { watchCI: false },
+    })
+    expect(repo.languages).toEqual({ commit: 'fr' })
+    expect(repo.commit).toEqual({ format: 'gitmoji' })
+    expect(repo.pullRequest).toEqual({ watchCI: false })
+  })
+
+  // A block holding an explicit falsy value is configured, not empty: only `{}`
+  // (and null) read as absent.
+  it('keeps a block whose only value is falsy', async () => {
+    const repo = await loadOne({ pull_request: { autoLinkTickets: false } })
+    expect(repo.pullRequest).toEqual({ autoLinkTickets: false })
+  })
+
+  it('maps a null shareable block to undefined, as before', async () => {
+    const repo = await loadOne({})
+    expect(repo.languages).toBeUndefined()
+    expect(repo.commit).toBeUndefined()
+    expect(repo.pullRequest).toBeUndefined()
+  })
+
+  // resolve/issues/branches are NOT shareable: nothing merges an org value into
+  // them, so they keep their previous mapping. Collapsing their `{}` to undefined
+  // would change how migrate.ts's deepMergeDefaults treats them (a missing key is
+  // filled wholesale instead of recursed into) for no reason tied to this issue.
+  it('leaves the non-shareable blocks on their previous mapping', async () => {
+    const empty = await loadOne({ resolve: {}, issues: {}, branches: {} })
+    expect(empty.resolve).toEqual({})
+    expect(empty.issues).toEqual({})
+    expect(empty.branches).toEqual({})
+
+    const nulled = await loadOne({})
+    expect(nulled.resolve).toBeUndefined()
+    expect(nulled.issues).toBeUndefined()
+    expect(nulled.branches).toBeUndefined()
+
+    const set = await loadOne({ resolve: { commitMode: 'amend' }, issues: { commentOnPR: false }, branches: { development: 'dev' } })
+    expect(set.resolve).toEqual({ commitMode: 'amend' })
+    expect(set.issues).toEqual({ commentOnPR: false })
+    expect(set.branches).toEqual({ development: 'dev' })
+  })
+})
+
 describe('createRepository', () => {
   it('inserts an identity row owned by the caller and binds the local path', async () => {
     const { client, inserts, upserts } = makeClient({
@@ -1821,5 +1907,110 @@ describe('saveConfig', () => {
     // Shared projection derived from the in-memory repos is still mirrored top-level.
     expect(savedBlob.repoKeywords).toEqual({ demo: ['kw'] })
     expect(savedBlob.commit).toEqual({ format: 'angular' })
+  })
+
+  // Issue #161. The repositories table's jsonb columns are NOT NULL DEFAULT '{}',
+  // so a repo that configures nothing comes back with an empty block — truthy,
+  // and enough to be picked as "the" shared value if nothing checks.
+  it('never lets a repo with an empty block shadow one that is actually configured', async () => {
+    const { client, upserts } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: null, error: null },
+      user_settings: { data: null, error: null },
+    })
+    h.state.client = client
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const config: any = {
+      version: '1',
+      repositories: {
+        // First in the record, and carrying nothing.
+        blank: { id: 'r1', path: '/a', keywords: ['blank'], languages: {}, commit: {}, pullRequest: {} },
+        web: {
+          id: 'r2', path: '/b', keywords: ['web'],
+          languages: { commit: 'fr' }, commit: { format: 'gitmoji' }, pullRequest: { watchCI: false },
+        },
+      },
+    }
+    await new CloudStore().saveConfig(config)
+
+    const savedBlob = (upserts.configs[0] as { data: Record<string, unknown> }).data
+    expect(savedBlob.languages).toEqual({ commit: 'fr' })
+    expect(savedBlob.commit).toEqual({ format: 'gitmoji' })
+    expect(savedBlob.pullRequest).toEqual({ watchCI: false })
+  })
+
+  /**
+   * Load an existing `configs` row, then save a config with no repositories — so
+   * nothing local can re-derive the shared keys and only the mirror can supply
+   * them. `beforeSave` runs between the two, to change the session mid-flight.
+   * Returns the row the save upserted.
+   */
+  async function loadThenSaveEmpty(
+    blob: Record<string, unknown>,
+    beforeSave?: (store: CloudStore) => void | Promise<void>,
+  ): Promise<{ user_id: string; data: Record<string, unknown> }> {
+    const { client, upserts } = makeClient({
+      memberships: membershipsOk,
+      configs: { data: { data: blob }, error: null },
+      user_settings: { data: null, error: null },
+      organizations: { data: [], error: null },
+      repositories: { data: [], error: null },
+      repository_paths: { data: [], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadConfig()
+    await beforeSave?.(store)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await store.saveConfig({ version: '1', repositories: {} } as any)
+
+    return upserts.configs.at(-1) as { user_id: string; data: Record<string, unknown> }
+  }
+
+  // Issue #161. For an org admin this row IS the organization's shared config
+  // (get_org_shared_config reads it), and this upsert replaces `data` wholesale.
+  // Now that repositories carry no pullRequest default, nothing local can
+  // re-derive the key the admin wrote through set_org_shared_config.
+  it("keeps a shared key no repo can source, so a save never erases the org's config", async () => {
+    const saved = await loadThenSaveEmpty({
+      version: '1',
+      pullRequest: { watchCI: false, testAccounts: 'inline' },
+    })
+
+    expect(saved.data.pullRequest).toEqual({ watchCI: false, testAccounts: 'inline' })
+  })
+
+  /**
+   * Issue #161. set_org_shared_config writes into the ORG CREATOR's config row, so
+   * for the common case where the admin is the creator, the row the mirror is
+   * holding a snapshot of has just changed underneath it. A mirror left at its
+   * pre-RPC value makes the very next save republish the OLD shared config and
+   * silently revert what the admin published — and since no repo carries a
+   * pullRequest default any more, nothing local can correct it.
+   */
+  it('does not revert a shared config published earlier in the same session', async () => {
+    const saved = await loadThenSaveEmpty(
+      { version: '1', commit: { format: 'angular' }, pullRequest: { watchCI: true, testAccounts: 'off' } },
+      (store) => store.setOrgSharedConfig(ORG, { pullRequest: { watchCI: false, testAccounts: 'inline' } }),
+    )
+
+    expect(saved.data.pullRequest).toEqual({ watchCI: false, testAccounts: 'inline' })
+    // Keys the admin did not publish keep the value the row already had, exactly
+    // as the RPC's `data || subset` merge leaves them.
+    expect(saved.data.commit).toEqual({ format: 'angular' })
+  })
+
+  it("never writes one account's remembered shared keys into another account's row", async () => {
+    // The same store instance outlives a sign-out; the next user must not
+    // inherit the previous one's mirror.
+    const saved = await loadThenSaveEmpty(
+      { pullRequest: { watchCI: false } },
+      () => { h.state.session = { user: { id: 'user-2' } } },
+    )
+
+    expect(saved.user_id).toBe('user-2')
+    expect(saved.data).not.toHaveProperty('pullRequest')
   })
 })
