@@ -186,12 +186,29 @@ insensitively, any of: `test account`, `test-account`, `compte de test`,
 account`.
 
 Invoke the winner through the `Skill` tool when it is registered under that
-name; otherwise read its `SKILL.md` and follow its instructions. Then use what
-it returns, verbatim and unfiltered by us.
+name; otherwise read its `SKILL.md` and follow its instructions.
 
 This tier is the ideal path and the reason the whole design works: such a skill
 can pull from a vault, a seed script or a back-office, and it — not us — decides
-what is safe to expose. Our job is to relay its answer, not to second-guess it.
+**what may be exposed at all**. We never second-guess that judgement, and we
+never go looking for more than it returned.
+
+But its answer is still subject to the current mode, and that is a separate
+question from whether the data is legitimate. A project skill answers "here is
+the account"; the mode answers "how much of it may be archived in this PR". So:
+
+- **`inline`** (on a private repo, guard passed): relay what it returned as is.
+- **`reference`** — including a `reference` reached by the public-repo
+  downgrade: emit only the pointer and the role. Drop every password, token,
+  API key and one-time code from what the skill returned, even though the skill
+  itself deemed them safe to hand to *us*. It answered the question it was
+  asked; it does not know where its answer is about to be written.
+
+Passing a secret straight through in `reference` mode would defeat the guard
+that made the mode `reference` in the first place — the downgrade path is
+exactly the case where a credential is most likely to reach a public,
+permanently archived body. Self-check item 5(d) catches this as a last resort;
+it must never be the thing that catches it.
 
 ### Tier 3 — Documented files
 
@@ -260,6 +277,11 @@ use. Never a new heading, never a table, never a `<details>` block.
   the source for the rest.
 - Keep the source path in the line even in `inline` mode: it is what lets the
   reviewer self-serve when the credential has rotated.
+- **The mode filters the line, whatever the tier produced it.** In `reference`,
+  the line carries a pointer and a role and nothing that could authenticate —
+  no password, token, API key or one-time code — even when the source (a tier-2
+  skill especially) handed one over. Apply this last, on the assembled line, so
+  no tier can bypass it.
 - Write the line in `languages.pullRequest` (magic-pr) or
   `languages.discussion` (magic-start), matching the surrounding section.
 
