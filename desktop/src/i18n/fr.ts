@@ -294,6 +294,20 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.about.changelog': 'Journal des versions',
   'settings.about.whatsNew': 'Nouveautés',
 
+  // ── Réglages → À propos → Santé de l'enregistrement ──────────────────────
+  'settings.about.telemetry.title': 'Enregistrement de l’activité',
+  'settings.about.telemetry.healthy': 'Vos exécutions sont bien enregistrées.',
+  'settings.about.telemetry.off': 'L’enregistrement est désactivé, rien n’est comptabilisé. Vous pouvez le réactiver dans Fonctionnalités.',
+  'settings.about.telemetry.degraded': 'Les exécutions ne sont pas enregistrées :',
+  'settings.about.telemetry.issue.hook-missing':
+    'Le hook Claude Code est absent. Magic Slash n’a pas pu écrire dans ~/.claude/settings.json — vérifiez que le fichier est accessible en écriture, puis redémarrez l’application.',
+  'settings.about.telemetry.issue.jq-missing':
+    '`jq` n’est pas installé. Le hook en a besoin pour lire ce que Claude Code lui envoie, et échoue sans rien signaler. Installez-le avec `brew install jq`.',
+  'settings.about.telemetry.issue.signed-out': 'Vous êtes déconnecté, il n’y a donc nulle part où enregistrer.',
+  'settings.about.telemetry.issue.queue-overflowed':
+    'La file d’attente a saturé et les événements les plus anciens ont été supprimés. Ces exécutions sont définitivement perdues.',
+  'settings.about.telemetry.pending': '{count} événement(s) en attente d’envoi. Ils partiront d’eux-mêmes.',
+
   // ── Notifications éphémères ──────────────────────────────────────────────
   'toast.launchModeUpdated': 'Mode de lancement mis à jour',
   'toast.releaseNotesFailed': 'Impossible de charger les notes de version',
@@ -747,10 +761,11 @@ export const fr: Record<keyof typeof en, string> = {
   'dashboard.skills.sectionPersonal': 'Tes skills exécutés',
   'dashboard.skills.runs.one': '{count} exécution',
   'dashboard.skills.runs.other': '{count} exécutions',
+  'dashboard.skills.abandoned': '{count} abandonnée(s)',
   'dashboard.skills.empty':
     'Aucune exécution enregistrée pour cette organisation. Les exécutions sont rattachées via les dépôts de l’agent qui les lance : le travail sur un dépôt personnel n’est donc pas compté ici.',
   'dashboard.skills.emptyPersonal':
-    'Aucune exécution enregistrée hors organisation. Une exécution n’arrive ici que si l’agent qui l’a lancée travaille uniquement sur des dépôts personnels : celle démarrée dans un terminal que l’app n’a pas ouvert est rattachée à ton organisation.',
+    'Aucune exécution enregistrée hors organisation. Une exécution arrive ici quand l’agent qui l’a lancée travaille uniquement sur des dépôts personnels, et quand elle a été démarrée dans un terminal que l’app n’a pas ouvert : sans agent, elle n’appartient à aucune organisation.',
 
   // ── Skills ───────────────────────────────────────────────────────────────
   'skills.budget.section': 'Budget des skills',

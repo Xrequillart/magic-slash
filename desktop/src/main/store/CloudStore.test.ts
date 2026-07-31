@@ -122,7 +122,7 @@ beforeEach(() => {
 // ── appendUsage ─────────────────────────────────────────────────────────────
 
 describe('appendUsage', () => {
-  it('inserts a usage_events row scoped to org/user with mapped fields and null tokens', async () => {
+  it('maps every field, nulls tokens, and attributes no org when the agent is unmapped', async () => {
     const { client, inserts, from } = makeClient({
       memberships: membershipsOk,
       usage_events: { error: null },
@@ -144,9 +144,12 @@ describe('appendUsage', () => {
     expect(inserts.usage_events).toHaveLength(1)
     const row = inserts.usage_events[0] as Record<string, unknown>
     expect(row).toMatchObject({
-      org_id: ORG,
+      // No agents loaded → the app id maps to nothing, so there is no agent to
+      // derive an org from and the resolved membership must NOT stand in for one.
+      // Same rule as skill_invocations; see CloudStore.eventOrgId.
+      org_id: null,
       user_id: UID,
-      agent_id: null, // no agents loaded → unmapped app id resolves to null
+      agent_id: null,
       model: 'Claude Opus',
       cost_usd: 1.23,
       tokens: null,
@@ -186,6 +189,11 @@ describe('appendUsage', () => {
 
     const row = inserts.usage_events[0] as Record<string, unknown>
     expect(row.agent_id).toBe('uuid-agent-1')
+    // With an agent the org IS sent — not as an attribution (the stamp_event_org
+    // trigger overwrites it from the agent) but so the composite FK
+    // (org_id, agent_id) is checkable. A null there would make MATCH SIMPLE skip
+    // the check and let a stale map entry insert a dangling reference.
+    expect(row.org_id).toBe(ORG)
   })
 
   it('leaves optional fields null when omitted', async () => {
@@ -244,6 +252,52 @@ describe('appendUsage', () => {
 
     expect(inserts.usage_events).toHaveLength(1)
     expect(inserts.usage_events[0]).toMatchObject({ org_id: null, user_id: UID })
+  })
+})
+
+// ── appendHistory ───────────────────────────────────────────────────────────
+//
+// The org rule, not the field mapping. activity_events used to send the resolved
+// membership for an agentless row while skill_invocations sent null, so ONE run
+// counted as the team's in the activity feed and as personal in the skills
+// dashboard. These two tests are what keep the three writers agreeing.
+
+describe('appendHistory', () => {
+  const entry = { agentId: 'claude-1', agentName: 'Agent A', action: 'started' as const, repositories: [], timestamp: 1000 }
+
+  it('attributes no org when the agent is unmapped, rather than the first membership', async () => {
+    const { client, inserts } = makeClient({
+      memberships: membershipsOk,
+      activity_events: { error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().appendHistory(entry)
+
+    expect(inserts.activity_events).toHaveLength(1)
+    expect(inserts.activity_events[0]).toMatchObject({ org_id: null, user_id: UID, agent_id: null })
+  })
+
+  it('sends the org once the agent maps, keeping the composite FK checkable', async () => {
+    const { client, inserts } = makeClient({
+      memberships: membershipsOk,
+      agents: {
+        data: [{
+          id: 'uuid-agent-1', org_id: ORG, owner_id: UID, name: 'Agent A', ticket_id: null,
+          description: null, branch_name: null, base_branch: null, status: null,
+          repositories: [], metadata: { __app: { id: 'claude-1' } },
+        }],
+        error: null,
+      },
+      activity_events: { error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents()
+    await store.appendHistory(entry)
+
+    expect(inserts.activity_events[0]).toMatchObject({ org_id: ORG, agent_id: 'uuid-agent-1' })
   })
 })
 
@@ -589,8 +643,8 @@ describe('loadOrgSkillCounts', () => {
         org_skill_counts: {
           // `count(*)` is a bigint, which PostgREST may serialise either way.
           data: [
-            { skill: 'magic-commit', total: 12 },
-            { skill: 'magic-pr', total: '4' },
+            { skill: 'magic-commit', total: 12, completed: 10, abandoned: 2, median_duration_ms: 45000 },
+            { skill: 'magic-pr', total: '4', completed: '3', abandoned: '1', median_duration_ms: '120000' },
           ],
           error: null,
         },
@@ -601,13 +655,61 @@ describe('loadOrgSkillCounts', () => {
     const store = new CloudStore()
     const counts = await store.loadOrgSkillCounts(ORG)
 
-    expect(counts).toEqual({ 'magic-commit': 12, 'magic-pr': 4 })
+    expect(counts).toEqual({
+      'magic-commit': { total: 12, completed: 10, abandoned: 2, medianDurationMs: 45000 },
+      'magic-pr': { total: 4, completed: 3, abandoned: 1, medianDurationMs: 120000 },
+    })
+  })
+
+  it('keeps a null median null rather than folding it to zero', async () => {
+    // No run has finished yet. "Half of them took no time at all" is a different
+    // claim from "there is nothing to take a median of", and only one is true.
+    const { client } = makeClient(
+      { memberships: membershipsOk },
+      {
+        org_skill_counts: {
+          data: [{ skill: 'magic-commit', total: 3, completed: 0, abandoned: 0, median_duration_ms: null }],
+          error: null,
+        },
+      },
+    )
+    h.state.client = client
+
+    const counts = await new CloudStore().loadOrgSkillCounts(ORG)
+
+    expect(counts['magic-commit'].medianDurationMs).toBeNull()
+  })
+
+  it('does not treat every started run as a finished one', async () => {
+    // The counter fires BEFORE the skill body runs, so `total` is what was STARTED.
+    // Reporting it as completed is the exact over-count this breakdown exists to end.
+    const { client } = makeClient(
+      { memberships: membershipsOk },
+      {
+        org_skill_counts: {
+          data: [{ skill: 'magic-pr', total: 10, completed: 6, abandoned: 3, median_duration_ms: 1000 }],
+          error: null,
+        },
+      },
+    )
+    h.state.client = client
+
+    const counts = await new CloudStore().loadOrgSkillCounts(ORG)
+
+    // 10 started, 6 done, 3 given up, 1 still going — the three do not have to sum
+    // to the total, and forcing them to would misreport whichever is in flight.
+    expect(counts['magic-pr']).toEqual({ total: 10, completed: 6, abandoned: 3, medianDurationMs: 1000 })
   })
 
   it('leaves a never-run skill absent rather than zero', async () => {
     const { client } = makeClient(
       { memberships: membershipsOk },
-      { org_skill_counts: { data: [{ skill: 'magic-commit', total: 1 }], error: null } },
+      {
+        org_skill_counts: {
+          data: [{ skill: 'magic-commit', total: 1, completed: 1, abandoned: 0, median_duration_ms: 500 }],
+          error: null,
+        },
+      },
     )
     h.state.client = client
 
@@ -662,8 +764,8 @@ describe('loadPersonalSkillCounts', () => {
       {
         personal_skill_counts: {
           data: [
-            { skill: 'magic-commit', total: 7 },
-            { skill: 'magic-start', total: '2' },
+            { skill: 'magic-commit', total: 7, completed: 7, abandoned: 0, median_duration_ms: 30000 },
+            { skill: 'magic-start', total: '2', completed: '1', abandoned: '1', median_duration_ms: null },
           ],
           error: null,
         },
@@ -672,7 +774,10 @@ describe('loadPersonalSkillCounts', () => {
     h.state.client = client
 
     const store = new CloudStore()
-    expect(await store.loadPersonalSkillCounts()).toEqual({ 'magic-commit': 7, 'magic-start': 2 })
+    expect(await store.loadPersonalSkillCounts()).toEqual({
+      'magic-commit': { total: 7, completed: 7, abandoned: 0, medianDurationMs: 30000 },
+      'magic-start': { total: 2, completed: 1, abandoned: 1, medianDurationMs: null },
+    })
   })
 
   it('degrades to no counts when the RPC errors', async () => {

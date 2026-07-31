@@ -294,6 +294,20 @@ export const en = {
   'settings.about.changelog': 'Changelog',
   'settings.about.whatsNew': 'What’s New',
 
+  // ── Settings → About → Usage recording health ────────────────────────────
+  'settings.about.telemetry.title': 'Usage recording',
+  'settings.about.telemetry.healthy': 'Your runs are being recorded.',
+  'settings.about.telemetry.off': 'Recording is turned off, so nothing is counted. Turn it back on under Features.',
+  'settings.about.telemetry.degraded': 'Runs are not being recorded:',
+  'settings.about.telemetry.issue.hook-missing':
+    'The Claude Code hook is missing. Magic Slash could not write to ~/.claude/settings.json — check that the file is writable, then restart the app.',
+  'settings.about.telemetry.issue.jq-missing':
+    '`jq` is not installed. The hook needs it to read what Claude Code sends, and fails without a word. Install it with `brew install jq`.',
+  'settings.about.telemetry.issue.signed-out': 'You are signed out, so there is nowhere to record to.',
+  'settings.about.telemetry.issue.queue-overflowed':
+    'The retry queue filled up and the oldest events were discarded. Those runs are gone for good.',
+  'settings.about.telemetry.pending': '{count} event(s) waiting to be sent. They will go out on their own.',
+
   // ── Toasts ───────────────────────────────────────────────────────────────
   'toast.launchModeUpdated': 'Launch mode updated',
   'toast.releaseNotesFailed': 'Could not load release notes',
@@ -743,10 +757,11 @@ export const en = {
   'dashboard.skills.sectionPersonal': 'Your skills run',
   'dashboard.skills.runs.one': '{count} run',
   'dashboard.skills.runs.other': '{count} runs',
+  'dashboard.skills.abandoned': '{count} abandoned',
   'dashboard.skills.empty':
     'No run recorded for this organization yet. Runs are attributed through the repositories of the agent that launches them, so work on a personal repository is not counted here.',
   'dashboard.skills.emptyPersonal':
-    'No run recorded outside an organization yet. A run lands here only when the agent that launched it works on personal repositories alone — one started in a terminal the app did not open is attributed to your organization instead.',
+    'No run recorded outside an organization yet. A run lands here when the agent that launched it works on personal repositories alone, and when it was started in a terminal the app did not open — one with no agent belongs to no organization.',
 
   // ── Skills ───────────────────────────────────────────────────────────────
   'skills.budget.section': 'Skills Budget',

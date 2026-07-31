@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, UsageStats, ThemeId, LanguageId } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, UsageStats, TelemetryHealth, ThemeId, LanguageId } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -436,6 +436,7 @@ const profileApi = {
 const usageApi = {
   getAccount: (): Promise<ClaudeAccount | null> => ipcRenderer.invoke('usage:getAccount'),
   getSpend: (): Promise<SpendSummary> => ipcRenderer.invoke('usage:getSpend'),
+  getTelemetryHealth: (): Promise<TelemetryHealth> => ipcRenderer.invoke('usage:getTelemetryHealth'),
 }
 
 // Auth API (optional cloud auth via Supabase — never required for the app to run)

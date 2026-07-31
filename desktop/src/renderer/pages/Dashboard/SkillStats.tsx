@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Zap } from 'lucide-react'
-import type { SkillCounts } from '../../../types'
+import type { SkillCounts, SkillRunCounts } from '../../../types'
 import type { RepoScope } from '../../utils/repoRows'
 import { useT } from '../../i18n'
 
@@ -46,6 +46,31 @@ const TRACKED_SKILLS: { skill: string; label: string }[] = [
  *
  * Counts are all-time and arrive pre-aggregated from the database.
  */
+/**
+ * The full breakdown, on hover. Only the started count and the abandoned warning fit
+ * on a tile this size; the rest is worth having but not worth crowding it.
+ *
+ * Not translated, and consistent with the tile labels for the same reason: these are
+ * the command names the user types.
+ */
+function tileTitle(label: string, stats: SkillRunCounts | undefined): string {
+  if (!stats) return `/magic:${label}`
+  const parts = [`${stats.total} started`, `${stats.completed} completed`]
+  if (stats.abandoned > 0) parts.push(`${stats.abandoned} abandoned`)
+  if (stats.medianDurationMs !== null) parts.push(`median ${formatDuration(stats.medianDurationMs)}`)
+  return `/magic:${label} — ${parts.join(', ')}`
+}
+
+/** Coarse on purpose: a median run is minutes, and seconds of precision suggest a
+ *  confidence a median over a handful of runs does not have. */
+function formatDuration(ms: number): string {
+  const seconds = Math.round(ms / 1000)
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes}m`
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+}
+
 export function SkillStats({ scope }: { scope: RepoScope | undefined }) {
   const t = useT()
   // undefined = not fetched yet, so the tiles can hold their place with a dash
@@ -82,7 +107,7 @@ export function SkillStats({ scope }: { scope: RepoScope | undefined }) {
 
   if (scope === undefined) return null
 
-  const total = counts ? TRACKED_SKILLS.reduce((sum, { skill }) => sum + (counts[skill] ?? 0), 0) : 0
+  const total = counts ? TRACKED_SKILLS.reduce((sum, { skill }) => sum + (counts[skill]?.total ?? 0), 0) : 0
 
   return (
     <div className="flex flex-col gap-2">
@@ -100,11 +125,12 @@ export function SkillStats({ scope }: { scope: RepoScope | undefined }) {
         {TRACKED_SKILLS.map(({ skill, label }) => {
           // Absent means never run: the RPC returns no row rather than a zero, so
           // this is where absence becomes the number to print.
-          const runs = counts?.[skill] ?? 0
+          const stats = counts?.[skill]
+          const runs = stats?.total ?? 0
           return (
             <div
               key={skill}
-              title={`/magic:${label}`}
+              title={tileTitle(label, stats)}
               className="rounded-lg bg-surface-subtle border border-line-field px-2.5 py-2 min-w-0"
             >
               <p className="text-[10px] uppercase tracking-wider text-text-secondary truncate">{label}</p>
@@ -117,6 +143,15 @@ export function SkillStats({ scope }: { scope: RepoScope | undefined }) {
               >
                 {counts ? runs : '—'}
               </p>
+              {/* Shown only when there is something to see. A skill that is started
+                  and not finished is a BROKEN skill, and before the runs carried an
+                  end it was indistinguishable from a popular one — so the moment that
+                  happens it has to be on the tile, not buried in a tooltip. */}
+              {stats && stats.abandoned > 0 && (
+                <p className="mt-0.5 text-[10px] leading-none text-yellow/80 truncate">
+                  {t('dashboard.skills.abandoned', { count: String(stats.abandoned) })}
+                </p>
+              )}
             </div>
           )
         })}

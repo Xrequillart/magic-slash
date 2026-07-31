@@ -83,7 +83,8 @@ Org-scoped tables (isolation keyed on `org_id`):
 | `configs`         | Per-user configuration blob, scoped to a single org.                |
 | `usage_events`    | Append-only usage/billing telemetry (cost, tokens, lines, timing).  |
 | `activity_events` | Append-only audit/activity feed of actions taken in the org.        |
-| `skill_invocations` | Append-only log of skill runs — one row per invocation.           |
+| `skill_invocations` | One row per skill RUN: opened when it starts, closed when it ends. |
+| `settings_events` | Append-only audit of settings changes, written only by a trigger.   |
 | `repositories`    | Shared repo identity; `org_id` NULL = personal, set = team repo.    |
 
 User-scoped tables (own-rows-only RLS, independent of any org):
@@ -119,20 +120,38 @@ history and the sidebar usage card are both ON when unset, while
 Defaults live in the app, not the schema.
 
 `skill_invocations` and `activity_events` answer different questions and are both
-needed. `activity_events` records status **transitions** (the app only writes when
-an agent's status actually changes), so re-running the same skill logs nothing the
-second time, and several skills share one action — `start`/`continue` both emit
-`started`. `skill_invocations` records **runs**: one row every time a skill fires,
-fed by the desktop's `PreToolUse` hook rather than by the skills themselves, so it
-also captures natural-language triggers and third-party skills. The skill's `args`
-are deliberately not collected — free text, and this table is org-readable.
+needed. `activity_events` is a log of **states**: it records status transitions, so
+re-running the same skill logs nothing the second time — which is correct for a state
+and wrong for an action. `skill_invocations` is the log of **actions**: three
+`/magic:commit` runs are three rows.
 
-That hook lives in the user-global `~/.claude/settings.json`, so it also fires in
-Claude Code sessions the app did not spawn. Those sessions have no
-`MAGIC_SLASH_PORT` in their environment, so the hook falls back to the port the
-running app publishes at `~/.config/magic-slash/port`. They also have no agent, so
-`agent_id` is NULL for them — hence the nullable column. Nothing is captured while
-the app is not running at all: there is no local listener to receive the call.
+A run has two halves, because no single signal can give both. The `PreToolUse` hook
+opens the row and is guaranteed, but fires BEFORE the skill body — on its own it
+counts intentions, so an interrupted run looked identical to a finished one. The last
+step of each `SKILL.md` closes the row with an outcome, which is the only thing that
+knows the workflow finished, and is therefore voluntary. `close_skill_run` is the
+single permitted mutation on this otherwise append-only table.
+
+A row left open past four hours reads as **abandoned** — but only if its author has
+closed a run at some point. That condition is the whole point: a client that cannot
+report endings (an older copy of the skills, or history from before the columns
+existed) emits starts and never ends, and judging it by a rule it cannot satisfy
+would have reclassified every run ever recorded as given-up work the day the feature
+shipped. Without that evidence the outcome is *unknown*, counted in `total` and in
+neither `completed` nor `abandoned`. It corrects itself per user the moment they
+update.
+
+Neither half calls the app. The hook appends to `~/.config/magic-slash/pending-skills.ndjson`
+and the app drains it at launch and on every connectivity tick, so a run with the app
+closed — the normal way many people use Claude Code — is still counted, where it used
+to be discarded silently. The hook filters to `magic-*` as it writes: it fires on every
+skill Claude Code runs, and the names of unrelated or employer-internal skills have no
+business on disk or in a table the user's org can read. The skill's `args` are not
+collected either.
+
+Sessions the app did not spawn have no `MAGIC_SLASH_TERMINAL_ID`, so they have no
+agent — hence the nullable `agent_id`, and a NULL `org_id` that attributes the run to
+its author rather than guessing at a team.
 
 `app_installations` is upserted by the desktop app on every launch (from the
 connectivity gate, once authed), so the version is refreshed at each start and
@@ -175,7 +194,12 @@ the world when it ran.)
 - **Admin-gated** writes: `memberships`, `invitations`, and `skills` mutations
   require the `admin` role. `configs` are private to their owning user.
   `usage_events`, `activity_events` and `skill_invocations` are append-only
-  (select + insert, no update/delete).
+  (select + insert, no update/delete). The one exception is `close_skill_run`, a
+  `SECURITY DEFINER` function guarded on `auth.uid()`: it can only ever set an end on
+  a run that has none, which is why it exists instead of a blanket `UPDATE` grant.
+  `settings_events` is stricter still — `select` only, written exclusively by the
+  `log_settings_change` trigger, so the audit trail is not forgeable by the clients
+  it audits.
 - `agents` are **org-readable but owner-writable**: any member may `SELECT` every
   agent of the org (the team dashboard's "who is working on what" and the
   Realtime feed depend on it), while `INSERT`/`UPDATE`/`DELETE` are gated to

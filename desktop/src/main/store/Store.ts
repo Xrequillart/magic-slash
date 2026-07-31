@@ -1,4 +1,4 @@
-import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, SkillCounts, SkillInvocationInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
+import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, SkillCounts, SkillInvocationInput, SkillRunEndInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -69,11 +69,22 @@ export interface Store {
   appendUsage(event: UsageEventInput): Promise<void>
 
   /**
-   * Append ONE skill invocation (append-only, fire-and-forget). Driven by the
-   * PreToolUse hook, so it fires on every run — including repeats that leave the
-   * agent's status unchanged and therefore write nothing to the activity feed.
+   * OPEN ONE skill run (append-only, fire-and-forget). Driven by the PreToolUse
+   * hook, so it fires on every run — including repeats that leave the agent's
+   * status unchanged and therefore write nothing to the activity feed.
    */
   recordSkillInvocation(input: SkillInvocationInput): Promise<void>
+
+  /**
+   * CLOSE the most recent open run of a skill, recording when and how it ended.
+   *
+   * The other half of recordSkillInvocation. Sent by the skill's own final step,
+   * which is the only thing that knows the workflow finished — so it can legitimately
+   * never arrive, and a run left open reads as abandoned rather than as missing.
+   * Returns whether a matching open run was found; false is a normal outcome (a run
+   * started before this existed, or one whose start was never recorded), not an error.
+   */
+  closeSkillRun(input: SkillRunEndInput): Promise<boolean>
 
   /** Org-wide usage rows (all members) for the dashboard, aggregated client-side. Read-only. */
   loadOrgUsageStats(): Promise<UsageStats>
@@ -156,6 +167,7 @@ export const NOOP_STORE: Store = {
   async appendHistory() { /* no-op */ },
   async appendUsage() { /* no-op */ },
   async recordSkillInvocation() { /* no-op */ },
+  async closeSkillRun() { return false },
   async loadOrgUsageStats() { return { rows: [], capped: false } },
   async loadOrgSkillCounts() { return {} },
   async loadPersonalSkillCounts() { return {} },

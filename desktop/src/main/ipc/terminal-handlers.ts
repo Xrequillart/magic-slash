@@ -60,8 +60,57 @@ let onAgentChange: (() => void) | null = null
 
 // Track last notification time per terminal to avoid spam
 const lastNotificationTime = new Map<string, number>()
-// Track previous metadata status per terminal for history entries
+// Track previous metadata status per terminal for history entries. SEEDED from the
+// persisted agents.status in restoreAgents — see seedStatusBaseline.
 const previousStatus = new Map<string, string>()
+
+/**
+ * The activity event each workflow status produces, or null for statuses that record
+ * nothing.
+ *
+ * EXHAUSTIVE BY TYPE, and that is the point. Keying on
+ * `NonNullable<TerminalMetadata['status']>` makes tsc reject a new status that has no
+ * entry here. `CI green` had none for months — magic-pr sent it, it was stored as an
+ * off-enum value in agents.status, and it produced no event, so a fact the product
+ * knew was never recorded. The map cannot fall out of step with the union again; a
+ * test covers the other direction, that no SKILL.md sends a status outside it.
+ *
+ * `in review` and `Review addressed` stay separate actions: they are opposite
+ * meanings — a reviewer picking the PR up versus the author re-pushing fixes — and
+ * the flow metrics need them apart to measure time-to-first-review honestly.
+ */
+export const STATUS_TO_ACTION: Record<NonNullable<TerminalMetadata['status']>, HistoryAction | null> = {
+  '': null, // cleared status: an absence, not an event
+  'in progress': 'started',
+  'committed': 'committed',
+  'ready for PR': 'ready_for_pr',
+  'PR created': 'pr_created',
+  'CI green': 'ci_green',
+  'in review': 'review',
+  'changes requested': 'review_changes_requested',
+  'Review addressed': 'review_addressed',
+  'PR merged': 'merged',
+}
+
+/**
+ * Prime the status baseline from what the database already holds.
+ *
+ * Without this the map starts empty on every launch, so the first status a restored
+ * agent reported was compared against "" and logged again — a duplicate `committed`
+ * every time the app restarted mid-task. The persisted status is exactly the last
+ * value that WAS logged, so seeding from it makes the dedupe survive a restart.
+ */
+function seedStatusBaseline(agents: { id: string; metadata?: TerminalMetadata; name?: string }[]): void {
+  for (const agent of agents) {
+    previousStatus.set(agent.id, agent.metadata?.status || '')
+    previousTitle.set(agent.id, agent.metadata?.title || agent.name || '')
+  }
+}
+
+// Track the previous title per terminal, for the rename event. Seeded from the
+// persisted metadata for the same reason as previousStatus: a cold map would report
+// every restored agent as renamed on the first metadata push after a launch.
+const previousTitle = new Map<string, string>()
 // Terminals whose end-of-session usage snapshot has already been flushed, so the
 // kill path and the natural-exit path never write two rows for one session.
 const usageFlushed = new Set<string>()
@@ -180,6 +229,22 @@ function createTerminalCallbacks(id: string, name: string) {
         })
       }
 
+      // An agent that died is a fact the activity feed never carried: the terminal
+      // painted a red banner and the row went quiet, which reads exactly like an
+      // agent nobody touched again. Both error paths in terminal-manager (a failed
+      // spawn and exhausted restarts) funnel through this transition, so recording
+      // it here covers them without duplicating the call at each site.
+      if (state === 'error' && previousState !== 'error') {
+        addHistoryEntry({
+          agentId: id,
+          agentName: displayName,
+          action: 'agent_errored',
+          ticketId: t?.metadata?.ticketId,
+          description: t?.metadata?.description,
+          repositories: t?.repositories || [],
+        })
+      }
+
       if (state === 'completed' && previousState !== 'completed') {
         maybeShowNotification(
           id,
@@ -207,29 +272,38 @@ function createTerminalCallbacks(id: string, name: string) {
       flushUsageSnapshot(id)
       base.onExit(exitCode)
       previousStatus.delete(id)
+      previousTitle.delete(id)
     },
     onBranchChange: base.onBranchChange,
     onMetadataChange: (metadata: TerminalMetadata) => {
       base.onMetadataChange(metadata)
 
+      // A rename is how an agent stops being "Agent 3" and becomes the ticket it is
+      // working on, which is the moment its whole history becomes attributable to a
+      // piece of work. Guarded on a non-empty previous title so the first naming of a
+      // brand-new agent reads as its creation, not as a rename.
+      const newTitle = metadata.title
+      if (newTitle !== undefined) {
+        const oldTitle = previousTitle.get(id) ?? ''
+        if (oldTitle && newTitle && newTitle !== oldTitle) {
+          const t = getTerminal(id)
+          addHistoryEntry({
+            agentId: id,
+            agentName: newTitle,
+            action: 'agent_renamed',
+            ticketId: t?.metadata?.ticketId,
+            description: t?.metadata?.description,
+            repositories: t?.repositories || [],
+          })
+        }
+        previousTitle.set(id, newTitle)
+      }
+
       // Track status changes and create history entries
       const newStatus = metadata.status || ''
       const oldStatus = previousStatus.get(id) || ''
       if (newStatus && newStatus !== oldStatus) {
-        // 'in review' and 'Review addressed' used to collapse into one `review`
-        // action, which made the two opposite meanings indistinguishable — a
-        // reviewer picking the PR up vs. the author re-pushing their fixes. The
-        // flow metrics need them apart to measure time-to-first-review honestly.
-        const statusToAction: Record<string, HistoryAction> = {
-          'in progress': 'started',
-          'committed': 'committed',
-          'PR created': 'pr_created',
-          'in review': 'review',
-          'Review addressed': 'review_addressed',
-          'changes requested': 'review_changes_requested',
-          'PR merged': 'merged',
-        }
-        const action = statusToAction[newStatus]
+        const action = STATUS_TO_ACTION[newStatus as NonNullable<TerminalMetadata['status']>]
         if (action) {
           const t = getTerminal(id)
           addHistoryEntry({
@@ -260,6 +334,11 @@ export function restoreAgents() {
       const legacySchedule = (a as { schedule?: { enabled?: boolean } }).schedule
       return !legacySchedule?.enabled
     })
+
+    // Before the early returns below: the baseline must be primed even when nothing
+    // is relaunched, because a status can still arrive for an agent from a Claude
+    // Code the app did not spawn.
+    seedStatusBaseline(agents as { id: string; metadata?: TerminalMetadata }[])
 
     // Only restore if there are no running terminals yet
     const existingTerminals = getAllTerminals()

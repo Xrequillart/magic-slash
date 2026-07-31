@@ -64,7 +64,9 @@ vi.mock('../config/validation', () => ({ expandPath: (p: string) => p }))
 vi.mock('../config/repo-validation', () => ({ checkRepoPath: vi.fn(() => ({ valid: true })) }))
 vi.mock('../store/hydrate', () => ({ ensureHydrated: vi.fn(async () => {}) }))
 
-import { setupTerminalHandlers } from './terminal-handlers'
+import { existsSync, readFileSync, readdirSync } from 'fs'
+import { join } from 'path'
+import { setupTerminalHandlers, STATUS_TO_ACTION } from './terminal-handlers'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function invoke(channel: string, arg: unknown): any {
@@ -147,5 +149,56 @@ describe('session-end usage flush (terminal:kill)', () => {
     await invoke('terminal:kill', { id })
 
     expect(recordUsageSnapshot).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ── The status → action contract ────────────────────────────────────────────
+//
+// Two halves, and both have been broken in production. `CI green` was sent by
+// magic-pr for months while being absent from both the TerminalMetadata['status']
+// union and the action map: it was written into agents.status as an off-enum value
+// and produced no activity event at all, so "the CI went green" was a fact the
+// product knew and never recorded.
+//
+// tsc now enforces one half — STATUS_TO_ACTION is keyed on the union, so a new
+// status without an entry does not compile. This test enforces the other half, which
+// types cannot see: that no SKILL.md sends a status the union has never heard of.
+
+describe('the status contract with the skills', () => {
+  /** Every `status=` value the seven SKILL.md files actually send. */
+  function statusesSentBySkills(): { skill: string; status: string }[] {
+    const skillsDir = join(__dirname, '..', '..', '..', '..', 'skills')
+    return readdirSync(skillsDir)
+      .filter((entry) => entry.startsWith('magic-'))
+      .flatMap((entry) => {
+        const file = join(skillsDir, entry, 'SKILL.md')
+        if (!existsSync(file)) return []
+        const body = readFileSync(file, 'utf-8')
+        // The skills send the status URL-encoded inside a curl query string.
+        return [...body.matchAll(/[?&]status=([^"'&\s]+)/g)].map((m) => ({
+          skill: entry,
+          status: decodeURIComponent(m[1]),
+        }))
+      })
+  }
+
+  it('finds the statuses the skills send, so an empty scan cannot pass silently', () => {
+    expect(statusesSentBySkills().length).toBeGreaterThan(5)
+  })
+
+  it('maps every status a skill sends to an activity event', () => {
+    const unmapped = statusesSentBySkills().filter(({ status }) => !STATUS_TO_ACTION[status as never])
+    // A status missing here is silently dropped: agents.status keeps a value nothing
+    // can read, and the flow metrics never see the transition.
+    expect(unmapped).toEqual([])
+  })
+
+  it('leaves no action in the map that nothing can produce', () => {
+    // `done` sat in HistoryAction with zero producers. A value in the union that no
+    // status maps to is a metric someone will one day try to chart and find empty.
+    const produced = new Set(Object.values(STATUS_TO_ACTION).filter(Boolean))
+    const fromStatuses: string[] = ['started', 'committed', 'ready_for_pr', 'pr_created',
+      'ci_green', 'review', 'review_changes_requested', 'review_addressed', 'merged']
+    expect([...produced].sort()).toEqual([...fromStatuses].sort())
   })
 })

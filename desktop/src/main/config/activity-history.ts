@@ -1,5 +1,6 @@
 import type { HistoryEntry, HistoryAction } from '../../types'
 import { getStore } from '../store/Store'
+import { enqueue, newClientEventId } from '../store/outbox'
 import { readConfig } from './config'
 
 /**
@@ -11,9 +12,11 @@ import { readConfig } from './config'
  * activity feed riding a preference of its own. Reading the org aggregate (the
  * Team page) is unaffected, exactly like usage.
  *
- * Fire-and-forget, like the two other event tables: there is no in-memory cache
- * to keep consistent (the personal History page that read one is gone) and hence
- * no reportWriteError wiring — a failed write is simply lost.
+ * Synchronous and non-blocking, like the two other event tables: there is no
+ * in-memory cache to keep consistent (the personal History page that read one is
+ * gone) and hence no reportWriteError wiring. A failed write is not lost, though —
+ * it goes to the on-disk outbox and is replayed when the backend is reachable,
+ * under the clientEventId minted here so the replay cannot double-count.
  */
 export function addHistoryEntry(params: {
   agentId: string
@@ -33,11 +36,13 @@ export function addHistoryEntry(params: {
     description: params.description,
     repositories: params.repositories,
     timestamp: Date.now(),
+    clientEventId: newClientEventId(),
   }
 
   void getStore()
     .appendHistory(entry)
     .catch((error) => {
-      console.error('Error recording activity event:', error)
+      console.error('Queued an activity event after a failed write:', error)
+      enqueue({ kind: 'history', payload: entry })
     })
 }

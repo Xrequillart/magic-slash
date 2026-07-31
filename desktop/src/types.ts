@@ -55,7 +55,16 @@ export interface TerminalMetadata {
   branchName?: string
   ticketId?: string
   description?: string
-  status?: '' | 'in progress' | 'committed' | 'ready for PR' | 'PR created' | 'in review' | 'changes requested' | 'Review addressed' | 'PR merged'
+  /**
+   * The workflow status the skills report as they go.
+   *
+   * Every member MUST have an entry in `statusToAction` (terminal-handlers.ts), and
+   * every status a SKILL.md sends MUST be a member here. `CI green` was neither for
+   * months: magic-pr sent it, it landed in agents.status as an off-enum value, and it
+   * produced no activity event at all — so "the CI went green" was a thing the product
+   * knew and never recorded. A test now locks both directions of that contract.
+   */
+  status?: '' | 'in progress' | 'committed' | 'ready for PR' | 'PR created' | 'CI green' | 'in review' | 'changes requested' | 'Review addressed' | 'PR merged'
   baseBranch?: string
   fullStackTaskId?: string
   relatedWorktrees?: string[]
@@ -496,6 +505,8 @@ export interface UsageEventInput {
   durationMs?: number
   /** epoch ms; defaults to now when omitted. */
   occurredAt?: number
+  /** Idempotence key, minted at emission. See main/store/outbox.ts. */
+  clientEventId?: string
 }
 
 /**
@@ -517,6 +528,32 @@ export interface SkillInvocationInput {
   skill: string
   /** epoch ms; defaults to now when omitted. */
   occurredAt?: number
+  /** Idempotence key, minted at emission. See main/store/outbox.ts. */
+  clientEventId?: string
+}
+
+/** How a skill run ended, as the skill itself reported it. */
+export type SkillRunOutcome = 'success' | 'failed' | 'cancelled'
+
+/**
+ * The closing half of a skill run, reported by the skill's own final step.
+ *
+ * There is no "skill finished" hook to derive this from — PostToolUse on the Skill
+ * tool fires when the instructions load, not when the workflow ends — so this is a
+ * voluntary signal, and a run that never sends it reads as abandoned rather than
+ * missing. See supabase/migrations/20260801090000_skill_runs.sql.
+ */
+export interface SkillRunEndInput {
+  /** app agent id ("claude-…"); undefined for a Claude Code the app did not spawn. */
+  agentId?: string
+  /** Skill name; the plugin prefix is folded on both sides when matching. */
+  skill: string
+  outcome: SkillRunOutcome
+  /**
+   * epoch ms of when the skill FINISHED — not of when this was sent. A close queued
+   * offline for an hour must not add an hour to the run's duration.
+   */
+  occurredAt: number
 }
 
 /**
@@ -534,7 +571,27 @@ export interface SkillInvocationInput {
  * org comes from the agent's repositories, so work on a personal repository belongs
  * to no organization and appears in nobody's counts.
  */
-export type SkillCounts = Record<string, number>
+/**
+ * What happened across every run of ONE skill, all time.
+ *
+ * `total` is runs STARTED, which is the only figure the guaranteed signal can give:
+ * the counter fires before the skill body does. `completed` is those that reported
+ * finishing, and their difference — once old enough to have stopped being in flight —
+ * is `abandoned`. Reading the three together is the point: a skill people start and
+ * do not finish used to be indistinguishable from a popular one.
+ *
+ * `total` is deliberately NOT completed + abandoned: a run started ten minutes ago is
+ * neither, it is still going.
+ */
+export interface SkillRunCounts {
+  total: number
+  completed: number
+  abandoned: number
+  /** Median of the completed runs, in ms. Null until at least one has finished. */
+  medianDurationMs: number | null
+}
+
+export type SkillCounts = Record<string, SkillRunCounts>
 
 /** A single usage_events row, normalized for client-side aggregation. */
 export interface UsageStatRow {
@@ -654,13 +711,20 @@ export type HistoryAction =
   /** The author pushed fixes answering a review (status 'Review addressed'). */
   | 'review_addressed'
   | 'merged'
-  | 'done'
   | 'review_approved'
   | 'review_changes_requested'
+  /** The PR's CI went green (status 'CI green'), reported by magic-pr's watcher. */
+  | 'ci_green'
+  /** The work is finished and waiting for a PR (status 'ready for PR'). */
+  | 'ready_for_pr'
   | 'waiting'
   | 'completed'
   | 'agent_created'
   | 'agent_closed'
+  | 'agent_renamed'
+  | 'agent_errored'
+  // `done` was removed: nothing ever emitted it. magic-done reports 'PR merged',
+  // which maps to `merged`, so the value only ever widened the type.
 
 /**
  * One activity event on its way to `activity_events`. Write-only: nothing reads
@@ -674,6 +738,44 @@ export interface HistoryEntry {
   description?: string
   repositories: string[]
   timestamp: number
+  /** Idempotence key, minted at emission. See main/store/outbox.ts. */
+  clientEventId?: string
+}
+
+/**
+ * A named reason nothing is reaching the event tables. Codes rather than sentences,
+ * so the renderer can translate them and the main process stays language-free.
+ */
+export type TelemetryHealthIssue =
+  /** The PreToolUse hook is absent from ~/.claude/settings.json — no run is counted. */
+  | 'hook-missing'
+  /** `jq` is not on PATH; the hook parses Claude Code's payload with it and silently emits nothing. */
+  | 'jq-missing'
+  /** No Supabase session, so every write is a no-op. */
+  | 'signed-out'
+  /** The retry queue hit its cap and dropped its oldest events; some activity is permanently lost. */
+  | 'queue-overflowed'
+
+/**
+ * Whether telemetry is actually being recorded, and what is holding it up.
+ *
+ * Exists because every link in the chain fails quietly (see main/usage/telemetry-health.ts):
+ * without this, an empty dashboard and a broken pipeline are indistinguishable.
+ */
+export interface TelemetryHealth {
+  /** The user's recording opt-in. False is a CHOICE, never an issue. */
+  recordingEnabled: boolean
+  signedIn: boolean
+  hookInstalled: boolean
+  jqInstalled: boolean
+  /** Events written but not yet accepted by the backend; they retry on their own. */
+  queuedEvents: number
+  /** Skill runs the hook recorded that the app has not yet read. Drains on its own. */
+  spooledSkillRuns: number
+  /** Events lost to queue overflow since launch. Never recoverable. */
+  droppedEvents: number
+  /** Empty when everything that should be recording is. */
+  issues: TelemetryHealthIssue[]
 }
 
 export type ScriptCategory = 'dev' | 'build' | 'test' | 'lint' | 'other'

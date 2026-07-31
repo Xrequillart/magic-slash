@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillInvocationInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
@@ -56,13 +56,21 @@ interface OrgActivityEventRow {
 }
 
 /**
- * Actions the flow metrics can actually use. `completed` (every Claude-Code turn)
- * and `committed` (every commit) are excluded on purpose: they dwarf these in
- * volume and would eat the row budget without informing a single metric.
+ * Actions the flow metrics can actually use.
+ *
+ * `completed` (every Claude-Code turn), `committed` (every commit) and
+ * `agent_renamed` are excluded on purpose: they dwarf these in volume, or in the
+ * rename's case describe metadata rather than progress, and would eat the row budget
+ * without informing a single metric. They are still WRITTEN — the criterion here is
+ * what a reader can measure, not what is worth recording.
  */
 const FLOW_ACTIONS: readonly HistoryAction[] = [
   'started',
+  'ready_for_pr',
   'pr_created',
+  // Once per PR, and the far end of a real interval: how long a branch waits for its
+  // pipeline is a flow question, and until now nothing recorded that it ever passed.
+  'ci_green',
   'review',
   'review_addressed',
   'review_approved',
@@ -70,6 +78,9 @@ const FLOW_ACTIONS: readonly HistoryAction[] = [
   'merged',
   'agent_created',
   'agent_closed',
+  // Rare, and the one event that explains a gap in all the others: an agent that died
+  // stops producing them, which otherwise reads as a person who simply stopped.
+  'agent_errored',
 ]
 
 interface RepositoryRow {
@@ -126,6 +137,37 @@ function toNumber(value: string | number | null): number {
   return 0
 }
 
+/** One row of any of the three skill rollups; they return an identical shape. */
+interface SkillCountRow {
+  skill: string
+  total: string | number | null
+  completed: string | number | null
+  abandoned: string | number | null
+  median_duration_ms: string | number | null
+}
+
+/**
+ * Shape the rollup rows the two readers share.
+ *
+ * `median_duration_ms` stays NULL rather than becoming 0: no run has finished yet, and
+ * "half of them took no time at all" is a different claim from "there is nothing to
+ * average". toNumber would flatten the two.
+ */
+function mapSkillCountRows(data: unknown): SkillCounts {
+  const counts: SkillCounts = {}
+  for (const row of data as SkillCountRow[]) {
+    counts[row.skill] = {
+      total: toNumber(row.total),
+      completed: toNumber(row.completed),
+      abandoned: toNumber(row.abandoned),
+      medianDurationMs: row.median_duration_ms === null || row.median_duration_ms === undefined
+        ? null
+        : toNumber(row.median_duration_ms),
+    }
+  }
+  return counts
+}
+
 /** The four shareable keys, projected to the TOP LEVEL of the config blob so the
  *  get_org_shared_config SECURITY DEFINER function keeps returning them. */
 function projectSharedFields(config: Config): Record<string, unknown> {
@@ -162,6 +204,23 @@ const SHARED_KEYS = ['languages', 'commit', 'pullRequest', 'repoKeywords'] as co
  * span members. The event tables are append-only and write-only from here, save
  * for those org-wide readers.
  */
+/**
+ * Whether an event insert failed because that exact event is ALREADY in the table.
+ *
+ * The three event tables carry a unique `client_event_id`, minted once when the event
+ * happens (store/outbox.ts). A retry of a write whose commit landed but whose response
+ * was lost therefore comes back as a unique violation — which is the database telling
+ * us the row is safely recorded, not that anything went wrong. Treating it as success
+ * is what lets the outbox retry freely without inventing duplicate activity.
+ *
+ * 23505 is Postgres' unique_violation. Narrowed to that code on purpose: any OTHER
+ * constraint failure (a dangling agent reference, a violated check) is a real error
+ * that must keep the event in the queue and stay loud.
+ */
+function isAlreadyRecorded(error: { code?: string } | null): boolean {
+  return error?.code === '23505'
+}
+
 /** Everything a query needs: an authed client, the caller, and the active org. */
 interface CloudContext {
   client: SupabaseClient
@@ -211,14 +270,50 @@ export class CloudStore implements Store {
    * a user who works on personal repositories alone.
    *
    * `orgId` therefore is NOT the row's organization. It is the fallback
-   * attribution for a row carrying no agent at all — a skill run in a terminal the
+   * attribution for a row carrying no agent at all — an event from a terminal the
    * app never spawned — which is the one case the trigger has nothing to derive
-   * from. Null when the user belongs to no organization.
+   * from. Null when the user belongs to no organization. See eventOrgId, which
+   * decides whether that fallback is used at all.
    */
   private async eventContext(): Promise<{ client: SupabaseClient; uid: string; orgId: string | null } | null> {
     const user = await this.userContext()
     if (!user) return null
     return { ...user, orgId: await this.resolveOrgId(user.client, user.uid) }
+  }
+
+  /**
+   * The `org_id` to send with an event row, given the agent it resolved to.
+   *
+   * WITH AN AGENT the value sent is overwritten by the stamp_event_org trigger from
+   * the agent's own org, so it is not an attribution — it is what makes the
+   * composite FK (org_id, agent_id) CHECKABLE. Sending null there would leave a NULL
+   * in a referencing column, and MATCH SIMPLE skips the check entirely on a NULL, so
+   * a stale agentIdMap entry pointing at a deleted agent would insert a dangling
+   * reference instead of being rejected. See 20260727180000, which spells out that
+   * trade.
+   *
+   * WITH NO AGENT the trigger returns early and keeps whatever arrived, so this IS
+   * the attribution — and the resolved org is the wrong one to give it. There is no
+   * agent, therefore no repository, therefore nothing that says this event belongs
+   * to a team: `resolveOrgId` would hand over the user's FIRST MEMBERSHIP, which is
+   * an arbitrary pick for anyone in more than one org. Worse, nothing can ever
+   * correct it — sync_event_orgs follows an agent, and these rows have none, so the
+   * guess is permanent.
+   *
+   * `null` is the honest answer: the event counts as the author's own work, outside
+   * any org. It under-reports a team whose member worked in a terminal the app did
+   * not open, and that is the direction to err in — an org's numbers are read by
+   * other people to judge adoption, where invented activity is invisible and missing
+   * activity is not.
+   *
+   * ALL THREE event writers share this rule, and they did not always: only
+   * skill_invocations applied it, while activity_events and usage_events sent the
+   * resolved org unconditionally. The same agentless run was therefore personal in
+   * the skills dashboard and the team's in the activity feed — two surfaces that
+   * cannot both be right, reported as data loss whichever one a reader trusted.
+   */
+  private eventOrgId(orgId: string | null, agentUuid: string | null): string | null {
+    return agentUuid ? orgId : null
   }
 
   private async resolveOrgId(client: SupabaseClient, uid: string): Promise<string | null> {
@@ -871,10 +966,10 @@ export class CloudStore implements Store {
   // -------------------------------------------------------------------------
 
   /**
-   * Append ONE activity event. `org_id` is sent for the agent-less case only — the
-   * BEFORE INSERT trigger overrides it from the agent whenever agent_id resolves,
-   * because an event belongs where its agent belongs and not where the user
-   * happens to be looking. See eventContext().
+   * Append ONE activity event. The BEFORE INSERT trigger overrides `org_id` from the
+   * agent whenever agent_id resolves, because an event belongs where its agent
+   * belongs and not where the user happens to be looking; an event with no agent
+   * keeps what is sent here. See eventOrgId() for why that is null.
    */
   async appendHistory(entry: HistoryEntry): Promise<void> {
     const ctx = await this.eventContext()
@@ -883,7 +978,7 @@ export class CloudStore implements Store {
     const agentUuid = this.agentIdMap.get(entry.agentId) ?? null
 
     const { error } = await ctx.client.from('activity_events').insert({
-      org_id: ctx.orgId,
+      org_id: this.eventOrgId(ctx.orgId, agentUuid),
       user_id: ctx.uid,
       agent_id: agentUuid,
       action: entry.action,
@@ -891,7 +986,9 @@ export class CloudStore implements Store {
       description: entry.description ?? null,
       repositories: entry.repositories ?? [],
       occurred_at: new Date(entry.timestamp).toISOString(),
+      client_event_id: entry.clientEventId ?? null,
     })
+    if (isAlreadyRecorded(error)) return
     if (error) throw new Error(`appendHistory failed: ${error.message}`)
   }
 
@@ -901,10 +998,10 @@ export class CloudStore implements Store {
 
   /**
    * Append ONE aggregated usage snapshot at session end. Maps the app agent id to
-   * the agents.id uuid via agentIdMap, and leaves `org_id` to the trigger, exactly
-   * like appendHistory. tokens is left null on purpose: TerminalUsage.contextTokens
-   * is a point-in-time context gauge, not a cumulative session-token count, so it
-   * must not be mapped into this row.
+   * the agents.id uuid via agentIdMap, and attributes the org exactly like
+   * appendHistory (see eventOrgId). tokens is left null on purpose:
+   * TerminalUsage.contextTokens is a point-in-time context gauge, not a cumulative
+   * session-token count, so it must not be mapped into this row.
    */
   async appendUsage(event: UsageEventInput): Promise<void> {
     const ctx = await this.eventContext()
@@ -913,7 +1010,7 @@ export class CloudStore implements Store {
     const agentUuid = this.agentIdMap.get(event.agentId) ?? null
 
     const { error } = await ctx.client.from('usage_events').insert({
-      org_id: ctx.orgId,
+      org_id: this.eventOrgId(ctx.orgId, agentUuid),
       user_id: ctx.uid,
       agent_id: agentUuid,
       model: event.model ?? null,
@@ -923,38 +1020,18 @@ export class CloudStore implements Store {
       lines_removed: event.linesRemoved ?? null,
       duration_ms: event.durationMs ?? null,
       occurred_at: new Date(event.occurredAt ?? Date.now()).toISOString(),
+      client_event_id: event.clientEventId ?? null,
     })
+    if (isAlreadyRecorded(error)) return
     if (error) throw new Error(`appendUsage failed: ${error.message}`)
   }
 
   /**
-   * Append ONE skill invocation. Same agent-id mapping as appendUsage; an absent or
-   * unknown agent yields a null agent_id rather than dropping the row — runs from a
-   * terminal the app did not spawn have no agent, and still count.
-   *
-   * WHY `org_id` DEPENDS ON WHETHER THERE IS AN AGENT
-   * ---------------------------------------------------------------------------
-   * With an agent, the value sent here is overwritten by the stamp_event_org trigger
-   * from the agent's own org, so it is not an attribution — it is what makes the
-   * composite FK (org_id, agent_id) CHECKABLE. Sending null there would leave a NULL
-   * in a referencing column, and MATCH SIMPLE skips the check entirely on a NULL, so
-   * a stale agentIdMap entry pointing at a deleted agent would insert a dangling
-   * reference instead of being rejected. See 20260727180000, which spells out that
-   * trade.
-   *
-   * With NO agent the trigger returns early and keeps whatever arrived, so this IS
-   * the attribution — and the resolved org is the wrong one to give it. There is no
-   * agent, therefore no repository, therefore nothing that says this run belongs to a
-   * team: `resolveOrgId` would hand over the user's FIRST MEMBERSHIP, which is an
-   * arbitrary pick for anyone in more than one org. Worse, nothing can ever correct
-   * it — sync_event_orgs follows an agent, and these rows have none, so the guess is
-   * permanent.
-   *
-   * `null` is the honest answer: the run counts as the author's own work, outside any
-   * org. It under-reports a team whose member ran a skill in a terminal the app did
-   * not open, and that is the direction to err in — an org's number is read by other
-   * people to judge adoption, where invented activity is invisible and missing
-   * activity is not.
+   * Append ONE skill invocation, OPEN — `ended_at` stays null until the skill's own
+   * closing ping reaches closeSkillRun. Same agent-id mapping and same org rule as
+   * appendUsage (see eventOrgId); an absent or unknown agent yields a null agent_id
+   * rather than dropping the row, because runs from a terminal the app did not spawn
+   * have no agent and still count.
    */
   async recordSkillInvocation(input: SkillInvocationInput): Promise<void> {
     const ctx = await this.eventContext()
@@ -963,13 +1040,40 @@ export class CloudStore implements Store {
     const agentUuid = (input.agentId && this.agentIdMap.get(input.agentId)) ?? null
 
     const { error } = await ctx.client.from('skill_invocations').insert({
-      org_id: agentUuid ? ctx.orgId : null,
+      org_id: this.eventOrgId(ctx.orgId, agentUuid),
       user_id: ctx.uid,
       agent_id: agentUuid,
       skill: input.skill,
       occurred_at: new Date(input.occurredAt ?? Date.now()).toISOString(),
+      client_event_id: input.clientEventId ?? null,
     })
+    if (isAlreadyRecorded(error)) return
     if (error) throw new Error(`recordSkillInvocation failed: ${error.message}`)
+  }
+
+  /**
+   * Close the most recent open run of a skill. The matching rule lives in the RPC
+   * (20260801090000), not here — it needs the rows to pick among.
+   *
+   * No idempotence key: closing is naturally idempotent, because the RPC only ever
+   * matches a run that is still OPEN. A replay finds nothing the second time and
+   * reports false. `occurred_at` is the end moment the skill reported, which is what
+   * keeps a close that sat in the outbox from inflating the duration.
+   */
+  async closeSkillRun(input: SkillRunEndInput): Promise<boolean> {
+    const ctx = await this.eventContext()
+    if (!ctx) return false
+
+    const agentUuid = (input.agentId && this.agentIdMap.get(input.agentId)) ?? null
+
+    const { data, error } = await ctx.client.rpc('close_skill_run', {
+      p_agent_id: agentUuid,
+      p_skill: input.skill,
+      p_outcome: input.outcome,
+      p_occurred_at: new Date(input.occurredAt).toISOString(),
+    })
+    if (error) throw new Error(`closeSkillRun failed: ${error.message}`)
+    return data === true
   }
 
   /**
@@ -1030,12 +1134,7 @@ export class CloudStore implements Store {
 
     const { data, error } = await ctx.client.rpc('org_skill_counts', { p_org_id: orgId })
     if (error || !data) return {}
-
-    const counts: SkillCounts = {}
-    for (const row of data as Array<{ skill: string; total: number }>) {
-      counts[row.skill] = toNumber(row.total)
-    }
-    return counts
+    return mapSkillCountRows(data)
   }
 
   /**
@@ -1052,12 +1151,7 @@ export class CloudStore implements Store {
 
     const { data, error } = await ctx.client.rpc('personal_skill_counts')
     if (error || !data) return {}
-
-    const counts: SkillCounts = {}
-    for (const row of data as Array<{ skill: string; total: number }>) {
-      counts[row.skill] = toNumber(row.total)
-    }
-    return counts
+    return mapSkillCountRows(data)
   }
 
   /**

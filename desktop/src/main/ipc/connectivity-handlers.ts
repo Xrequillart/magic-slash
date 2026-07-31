@@ -2,6 +2,8 @@ import { app, ipcMain, type BrowserWindow } from 'electron'
 import type { ConnectivityStatus, StoreWriteKind } from '../store/Store'
 import { getStore, setWriteErrorHandler } from '../store/Store'
 import { ensureHydrated, rehydrate, resetHydration } from '../store/hydrate'
+import { flushOutbox } from '../store/outbox'
+import { drainSkillSpool } from '../usage/skill-spool'
 import { migrateConfig } from '../config/migrate'
 import { applyRemoteSettingsRow, scheduleRemoteRefresh, setRemoteSyncEmitters } from '../config/remote-sync'
 import { recordAppInstallation } from '../app-installation'
@@ -104,6 +106,15 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
           void recordAppInstallation(app.getVersion())
         }
         emitInvalidRepos()
+        // The backend is reachable and authed — the one condition under which
+        // queued events can land. Fire-and-forget for the same reason as the
+        // installation record: a backlog must never delay or break the gate. The
+        // flush self-guards on an empty queue, so the common case costs nothing.
+        //
+        // Ordered: the spool hands its runs to recordSkillInvocation, which queues
+        // them in the outbox if the write fails, so draining first gives them a
+        // chance to go out in this same tick rather than waiting for the next.
+        void drainSkillSpool().then(() => flushOutbox())
         // Start the agents realtime subscription once the backend is reachable
         // + authed. It spans every org the user belongs to (RLS scopes the
         // socket), so there is no org to resolve first.

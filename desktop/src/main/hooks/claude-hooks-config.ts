@@ -13,10 +13,11 @@ const STATUSLINE_SCRIPT_PATH = path.join(MAGIC_SLASH_CONFIG_DIR, 'statusline.sh'
 const STATUSLINE_BACKUP_PATH = path.join(MAGIC_SLASH_CONFIG_DIR, 'statusline-original.json')
 const STATUSLINE_MARKER = 'magic-slash/statusline.sh'
 
-// Where the status server publishes its port (see hooks/status-server.ts). Kept
-// relative so the generated hook expands $HOME at run time rather than baking in
-// the path of whoever installed the app.
-const PORT_FILE_RELATIVE = '.config/magic-slash/port'
+// Where the skill-telemetry hook spools its records, for the app to drain later (see
+// usage/skill-spool.ts). Kept relative so the generated hook expands $HOME at run
+// time rather than baking in the path of whoever installed the app.
+const SPOOL_DIR_RELATIVE = '.config/magic-slash'
+const SKILL_SPOOL_RELATIVE = `${SPOOL_DIR_RELATIVE}/pending-skills.ndjson`
 
 // Wrap a string as a safe single-quoted POSIX shell literal.
 function shSingleQuote(s: string): string {
@@ -176,16 +177,44 @@ function getHookConfig(event: string): HookConfig {
  * `{ hook_event_name, tool_name, tool_input, tool_use_id }`; the skill name lives
  * in `tool_input.skill`.
  *
- * Kept separate from the state hook above so the activity indicator never depends
- * on jq being present or on this parsing succeeding.
+ * WHY THIS APPENDS TO A FILE INSTEAD OF CALLING THE STATUS SERVER
+ * ---------------------------------------------------------------------------
+ * It used to curl 127.0.0.1/skill like every other hook, which meant a run only
+ * counted while the desktop app happened to be listening: the port file is deleted
+ * on shutdown, so a skill run with the app closed — the normal way many people use
+ * Claude Code — was dropped on the floor with no trace. It looked like nobody had
+ * used the product.
+ *
+ * A file has no such precondition. Nothing in the UI reacts to a skill invocation
+ * (see the callback wiring in main/index.ts: telemetry only, no IPC broadcast), so
+ * there was never anything real time to preserve — the app drains this spool at
+ * launch and on every connectivity tick, and the run is counted either way.
+ *
+ * FILTERED HERE, NOT LATER
+ * ---------------------------------------------------------------------------
+ * `select(... startswith("magic-"))` mirrors the main-process filter, and has to:
+ * without it the spool would hold the names of every unrelated skill the user runs,
+ * including their employer's private ones, sitting in plain text on disk until a
+ * drain discarded them. Not writing them at all is the only version of that filter
+ * that is actually a privacy guarantee.
+ *
+ * `sub("^.*:";"")` folds the plugin prefix the same way the rollup RPCs do, so a
+ * plugin install reporting "magic-slash:magic-pr" is recognised.
+ *
+ * MAGIC_SLASH_TERMINAL_ID is empty in a terminal the app did not spawn; the run is
+ * then recorded without an agent, which is accurate rather than lossy.
  */
 function getSkillHookConfig(): HookConfig {
-  // Falls back to the port file so this also fires in terminals the app did not
-  // spawn (where MAGIC_SLASH_PORT is unset). MAGIC_SLASH_TERMINAL_ID is likewise
-  // absent there, so `id` goes over empty and the run is logged without an agent.
-  const port = `\${MAGIC_SLASH_PORT:-$(cat "$HOME/${PORT_FILE_RELATIVE}" 2>/dev/null)}`
-  const url = 'http://127.0.0.1:$port/skill?id=$MAGIC_SLASH_TERMINAL_ID&name=$skill'
-  const command = `port=${port}; [ -n "$port" ] && skill=$(jq -rR --slurp 'fromjson? | .tool_input.skill // empty | @uri' 2>/dev/null) && [ -n "$skill" ] && curl -s "${url}" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
+  const dir = `"$HOME/${SPOOL_DIR_RELATIVE}"`
+  const spool = `"$HOME/${SKILL_SPOOL_RELATIVE}"`
+  // One jq pass parses stdin, extracts the skill, drops what is not ours, and emits
+  // the record. It prints nothing at all for a non-magic skill, so the append is a
+  // no-op rather than a blank line.
+  const filter =
+    'fromjson? | .tool_input.skill // empty ' +
+    '| select((sub("^.*:";"")) | startswith("magic-")) ' +
+    '| {type: "start", skill: ., agentId: $id, occurredAt: ($ts | tonumber * 1000)} | tojson'
+  const command = `mkdir -p ${dir} 2>/dev/null; jq -rR --slurp --arg id "$MAGIC_SLASH_TERMINAL_ID" --arg ts "$(date +%s)" ${shSingleQuote(filter)} 2>/dev/null >> ${spool} || true # ${MAGIC_SLASH_HOOK_MARKER}`
 
   return {
     matcher: 'Skill',
