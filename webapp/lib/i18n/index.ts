@@ -1,6 +1,10 @@
 import { DEFAULT_LANGUAGE, LANGUAGE_LOCALE, type LanguageId } from './languages'
 import { en } from './en'
 import { fr } from './fr'
+import { marketingEn } from './marketing/en'
+import { marketingFr } from './marketing/fr'
+import { docEn } from './marketing/doc-en'
+import { docFr } from './marketing/doc-fr'
 
 /**
  * Translation, as a plain function of (key, language).
@@ -11,7 +15,20 @@ import { fr } from './fr'
  * The React binding lives next door in `./useLanguage.ts`.
  */
 
-export type MessageKey = keyof typeof en
+/**
+ * Three catalogues, one namespace.
+ *
+ * `en`/`fr` are the signed-in app's copy. `marketingEn`/`marketingFr` are the public
+ * site's. `docEn`/`docFr` are the Documentation page, which is on its own because it
+ * is 675 keys of prose — an order of magnitude more than the rest of the site, and
+ * edited as a document rather than as UI copy.
+ *
+ * Every key outside the app catalogue is prefixed `site.`, so they can never collide;
+ * `i18n.test.ts` enforces that rather than trusting it. They merge here, so `useT()`
+ * is the SAME hook on a landing page, in the docs and on the dashboard — which is why
+ * the language switcher works everywhere without knowing where it is.
+ */
+export type MessageKey = keyof typeof en | keyof typeof marketingEn | keyof typeof docEn
 
 /**
  * A translate function with the language already bound — what `useT()` returns.
@@ -20,9 +37,12 @@ export type MessageKey = keyof typeof en
  */
 export type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string
 
-const CATALOGUES: Record<LanguageId, Record<MessageKey, string>> = { en, fr }
+const CATALOGUES: Record<LanguageId, Record<MessageKey, string>> = {
+  en: { ...en, ...marketingEn, ...docEn },
+  fr: { ...fr, ...marketingFr, ...docFr },
+}
 
-export { en, fr }
+export { en, fr, marketingEn, marketingFr, docEn, docFr }
 
 /**
  * Translate `key` into `lang`, substituting `{name}` placeholders from `vars`.

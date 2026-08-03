@@ -10,6 +10,10 @@ import {
 } from './languages'
 import { en } from './en'
 import { fr } from './fr'
+import { marketingEn } from './marketing/en'
+import { marketingFr } from './marketing/fr'
+import { docEn } from './marketing/doc-en'
+import { docFr } from './marketing/doc-fr'
 import { localeOf, t } from '.'
 
 /**
@@ -18,14 +22,32 @@ import { localeOf, t } from '.'
  * which is the constraint stated on `./languages.ts`.
  */
 
-const CATALOGUES: Record<LanguageId, Record<string, string>> = { en, fr }
+const CATALOGUES: Record<LanguageId, Record<string, string>> = {
+  en: { ...en, ...marketingEn, ...docEn },
+  fr: { ...fr, ...marketingFr, ...docFr },
+}
+
+/**
+ * The app catalogue and the public site's are checked with the same three rules but
+ * SEPARATE allow-lists for "legitimately identical in both languages". Merging the
+ * lists would mean a marketing rewrite could silently mask an untranslated string in
+ * the product copy, and the two files are edited by different people.
+ */
+const PAIRS = [
+  { name: 'app', en: en as Record<string, string>, fr: fr as Record<string, string> },
+  {
+    name: 'site',
+    en: marketingEn as Record<string, string>,
+    fr: marketingFr as Record<string, string>,
+  },
+] as const
 
 describe('message catalogues', () => {
   it('translates every key into every language', () => {
     // `Record<keyof typeof en, string>` in fr.ts already makes a MISSING key a tsc
     // error. This catches what types cannot: a key present but empty, or left as the
     // English string by a copy-paste.
-    const keys = Object.keys(en) as (keyof typeof en)[]
+    const keys = Object.keys(CATALOGUES.en)
     expect(keys.length).toBeGreaterThan(0)
 
     for (const lang of LANGUAGE_IDS) {
@@ -38,16 +60,112 @@ describe('message catalogues', () => {
     }
   })
 
+  it('namespaces the two catalogues apart', () => {
+    // They are merged into one flat lookup, so a key defined in both would resolve to
+    // whichever spreads last — silently, and differently per language if only one side
+    // has the clash. The `site.` prefix is what prevents it; this is what enforces it.
+    const appKeys = Object.keys(en)
+    const siteKeys = Object.keys(marketingEn)
+    const docKeys = Object.keys(docEn)
+
+    for (const [name, keys] of [
+      ['site', siteKeys],
+      ['doc', docKeys],
+    ] as const) {
+      expect(keys.filter((key) => !key.startsWith('site.')), `unprefixed ${name} keys`).toEqual([])
+    }
+    expect(appKeys.filter((key) => key.startsWith('site.')), 'app keys in the site namespace').toEqual([])
+    expect(Object.keys(CATALOGUES.en)).toHaveLength(
+      appKeys.length + siteKeys.length + docKeys.length,
+    )
+  })
+
+  it('translates the documentation prose, not just its headings', () => {
+    // The doc catalogue is 675 entries of prose — an exact allow-list of "legitimately
+    // identical" would be unmaintainable and would stop being read. So the rule is
+    // about LENGTH instead: a short entry may match (a filename, a config value, a
+    // status name), but five words of English on a French page is a hole, and the few
+    // long entries that genuinely must not be translated are named here.
+    const LITERAL = new Set([
+      // Trigger phrases are typed verbatim; translating them names a phrase that does
+      // not trigger anything. Both the English and the French ones are literal.
+      'site.doc.skills.13',
+      'site.doc.skills.27',
+      'site.doc.skills.28',
+      'site.doc.skills.68',
+      'site.doc.skills.69',
+      'site.doc.skills.79',
+      'site.doc.skills.80',
+      'site.doc.skills.90',
+      'site.doc.skills.91',
+      // Config values, commit-format examples and API field values.
+      'site.doc.skills.38',
+      'site.doc.configuration.22',
+      'site.doc.configuration.23',
+      'site.doc.configuration.24',
+      'site.doc.desktop.37',
+      'site.doc.hooks.27',
+      'site.doc.environments.36',
+      // Lists of MCP tool names.
+      'site.doc.hooks.33',
+      'site.doc.hooks.34',
+      // Jira status names, which are the literal strings on the board.
+      'site.doc.troubleshooting.34',
+      'site.doc.troubleshooting.35',
+      // "Via WSL 2 (Windows Subsystem for Linux)" is the same sentence in French.
+      'site.doc.environments.8',
+    ])
+
+    const words = (message: string) => message.replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean)
+
+    const untranslated = (Object.keys(docEn) as (keyof typeof docEn)[]).filter(
+      (key) => docEn[key] === docFr[key] && words(docEn[key]).length >= 5 && !LITERAL.has(key),
+    )
+    expect(untranslated).toEqual([])
+  })
+
   it('keeps the same placeholders in every language', () => {
     // A translation that drops `{name}` renders a sentence with a hole in it, and one
     // that invents `{nom}` renders the braces literally.
     const placeholders = (message: string) => (message.match(/\{\w+\}/g) ?? []).sort()
 
     for (const lang of LANGUAGE_IDS) {
-      for (const key of Object.keys(en) as (keyof typeof en)[]) {
+      for (const key of Object.keys(CATALOGUES.en)) {
         expect(placeholders(CATALOGUES[lang][key]), `${lang}.${key} placeholders`).toEqual(
-          placeholders(en[key]),
+          placeholders(CATALOGUES.en[key]),
         )
+      }
+    }
+  })
+
+  it('keeps the same inline markup in every language', () => {
+    // The site and doc copy carries `<br>`, `<strong>`, `<code>` and `<em>`, rendered
+    // by `RichText` via dangerouslySetInnerHTML. A translation that drops a
+    // `</strong>` does not just lose bold — it leaks the tag into the rest of the page.
+    const tags = (message: string) => (message.match(/<\/?[a-z]+>/g) ?? []).sort()
+
+    for (const [source, target] of [
+      [marketingEn as Record<string, string>, marketingFr as Record<string, string>],
+      [docEn as Record<string, string>, docFr as Record<string, string>],
+    ] as const) {
+      for (const key of Object.keys(source)) {
+        expect(tags(target[key]), `fr.${key} markup`).toEqual(tags(source[key]))
+      }
+    }
+  })
+
+  it('allows only <br>, <strong>, <code> and <em> in the site copy', () => {
+    // `RichText` hands these strings to dangerouslySetInnerHTML. That is safe because
+    // this repo is the only author — but only as long as the markup stays this small,
+    // so anything richer has to become JSX rather than a bigger string. An `<a>` here
+    // would put a URL in a translator's hands, and a `<script>` would end the argument.
+    const ALLOWED = /^<\/?(br|strong|code|em)>$/
+
+    for (const catalogue of [marketingEn, marketingFr, docEn, docFr]) {
+      for (const [key, message] of Object.entries(catalogue)) {
+        for (const tag of message.match(/<[^>]+>/g) ?? []) {
+          expect(ALLOWED.test(tag), `${key} contains ${tag}`).toBe(true)
+        }
       }
     }
   })
@@ -58,7 +176,8 @@ describe('message catalogues', () => {
     // key that starts matching English fails here and has to be justified by adding
     // it. That is the point: an untranslated string is invisible on a French screen
     // to anyone who also reads English, and this is the only thing that notices.
-    const SAME_IN_BOTH: (keyof typeof en)[] = [
+    const SAME_IN_BOTH: Record<(typeof PAIRS)[number]['name'], string[]> = {
+      app: [
       'nav.application',
       'nav.admin',
       'team.agents.one',
@@ -96,12 +215,47 @@ describe('message catalogues', () => {
       'repo.resolve.askNoticeAmend',
       'repo.pr.section',
       'repo.issues.section',
-    ]
+      ],
+      // The site's list is mostly product vocabulary French borrowed whole — the
+      // skill names ARE the commands (`/magic:start`), so "Start" is a proper noun
+      // here and translating it would name a command that does not exist.
+      site: [
+        'site.nav.skills',
+        'site.nav.configuration',
+        'site.nav.documentationCategory',
+        'site.nav.faq',
+        'site.nav.changelog',
+        'site.desktop.skills',
+        'site.desktop.agents',
+        'site.section2.skillsTitle',
+        'site.section4.agents',
+        'site.desktopApp.feat4Title',
+        'site.desktopApp.feat6Title',
+        'site.desktopApp.feat10Title',
+        'site.skills.label',
+        'site.skills.overviewStartTitle',
+        'site.skills.overviewContinueTitle',
+        'site.skills.overviewCommitTitle',
+        'site.skills.overviewPrTitle',
+        'site.skills.overviewReviewTitle',
+        'site.skills.overviewResolveTitle',
+        'site.skills.overviewDoneTitle',
+        'site.faq.title',
+        'site.story.tl9Date',
+        'site.footer.skills',
+        'site.footer.configuration',
+        'site.footer.changelog',
+        'site.footer.documentation',
+        'site.footer.faq',
+      ],
+    }
 
-    const identical = (Object.keys(en) as (keyof typeof en)[]).filter(
-      (key) => en[key] === fr[key],
-    )
-    expect([...identical].sort()).toEqual([...SAME_IN_BOTH].sort())
+    for (const pair of PAIRS) {
+      const identical = Object.keys(pair.en).filter((key) => pair.en[key] === pair.fr[key])
+      expect([...identical].sort(), `${pair.name} catalogue`).toEqual(
+        [...SAME_IN_BOTH[pair.name]].sort(),
+      )
+    }
   })
 })
 
