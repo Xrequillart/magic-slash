@@ -126,16 +126,56 @@ in §3.1, in parallel:
 
 ```bash
 gh pr list --repo {owner}/{repo} --search "{BLOCKER_ID}" --state all \
-  --json number,title,state,mergedAt,headRefName,url 2>/dev/null
+  --json number,title,state,mergedAt,headRefName,baseRefName,url 2>/dev/null
 ```
 
-Keep the most advanced match per blocker: `merged` beats `open`, `open` beats `closed`. `state` is
-`MERGED` / `OPEN` / `CLOSED`; a draft reports as `OPEN` and is treated as open. `headRefName` comes back on that
-same response, so the branch the 🟡 offer needs requires no second call, and `title` is requested for the same
-reason — it fills `{pr_title}` in `MSG_BLOCKER_IN_FLIGHT` without a `gh pr view` round-trip.
+`headRefName` comes back on that same response, so the branch the 🟡 offer needs requires no second call, and
+`title` is requested for the same reason — it fills `{pr_title}` in `MSG_BLOCKER_IN_FLIGHT` without a
+`gh pr view` round-trip. `baseRefName` is what §3.5 needs.
 
-Empty output across all repos means **no PR found** — a different verdict from a closed unmerged PR, and §4
-keeps them apart.
+**Every result must then be validated — `--search` is full-text, and it is not a filter.** It matches the
+blocker ID anywhere in the title, body or comments, so a PR that merely *mentions* the blocker comes back
+alongside the one that implements it, and `PROJ-1` also matches `PROJ-15` and `PROJ-158`. Ranking an unvalidated
+result would let an unrelated merged PR clear a dependency that has not landed — a false 🟢, the worst outcome
+this gate can produce, since it starts the ticket silently.
+
+Keep a result only when the blocker ID appears in its `title` or `headRefName` as a **whole token**: the
+character before it must not be alphanumeric, and the character after must be neither a digit nor a hyphen
+followed by a digit. `PROJ-1` therefore matches `PROJ-1`, `[PROJ-1]` and `feature/PROJ-1-refactor`, but not
+`PROJ-15`, `PROJ-158` or `PROJ-1-2`. For a GitHub `#N` blocker, require `#N` on the same boundary rule — `#15`
+must not satisfy `#1`. Discard everything else silently: a PR that only mentions the blocker in its body is not
+evidence the blocker landed.
+
+Then keep the most advanced surviving match per blocker: `merged` beats `open`, `open` beats `closed`. `state` is
+`MERGED` / `OPEN` / `CLOSED`; a draft reports as `OPEN` and is treated as open.
+
+No surviving match across all repos means **no PR found** — a different verdict from a closed unmerged PR, and
+§4 keeps them apart. A search that returned rows which all failed validation is *also* "no PR found", not a
+weaker form of evidence.
+
+### 3.5 A merged PR only counts if it merged into the base the worktree will use
+
+`MERGED` alone is not "the code has landed". A PR merged into a release branch, a stacked feature branch or
+another team's integration branch is merged, yet its commits are absent from `$DEV_BRANCH` — which is exactly
+where the new worktree starts. Accepting it would produce a 🟢, start the ticket, and leave the user building on
+code that is not in their tree: silent, and harder to diagnose than a 🔴.
+
+So compare `baseRefName` against the development branch configured for the repo that hosts the PR
+(`.repositories.<config key>.branches.development`), not against the scoped repo's — a cross-repo match (§3.1)
+is resolved against its own repo's config:
+
+| `baseRefName` | Treated as |
+| --- | --- |
+| the hosting repo's development branch | **merged** — the code is on the branch the worktree starts from |
+| anything else | **open**, with the target branch named in the line shown to the user |
+
+Downgrading to `open` rather than to "no PR" is deliberate: the work demonstrably exists and has a head branch,
+so the 🟡 path can still offer `headRefName` as the worktree base. That is the useful outcome here — it is how
+the user builds on a dependency that landed somewhere they do not branch from.
+
+When the hosting repo has no `branches.development` configured, fall back to its remote default branch
+(`gh repo view --repo {owner}/{repo} --json defaultBranchRef -q .defaultBranchRef.name`) and say in one line
+which branch the comparison used, so a 🟡 caused by configuration rather than by the PR is legible.
 
 ## 4. The decision matrix
 
@@ -150,6 +190,12 @@ Blocker status (§3.2, from `status.statusCategory.key`) crossed with the state 
 **Master rule: a merged PR, or a blocker whose status category is `done`, is green — regardless of what the
 tracker says.** The code is on the development branch, and that is the only thing that actually matters to the
 ticket being started. A backlog ticket with a merged PR is a stale ticket, not a blocked start.
+
+"Merged" in that rule means merged **as §3.4 and §3.5 define it**: a PR whose ID validated as a whole token, and
+whose `baseRefName` is the development branch of the repo hosting it. The rule's own justification is what
+forces both conditions — it is green *because* the code is on the branch the worktree starts from, so a PR that
+merged elsewhere, or one that merely mentions the blocker, does not satisfy it and never reaches the `merged`
+column.
 
 Two distinctions the matrix exists to preserve:
 

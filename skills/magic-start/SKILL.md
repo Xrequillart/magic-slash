@@ -304,11 +304,18 @@ git pull --rebase origin $DEV_BRANCH
 This pair always targets `$DEV_BRANCH`, never `$BASE_BRANCH`: pulling a remote feature branch into the local dev branch would rewrite the dev branch with the blocker's commits, in the user's main checkout, for every later ticket. Refresh the dev branch here, and get the blocker's branch as a ref instead — it may not exist locally at all, so fetch it before using it as a base:
 
 ```bash
+BASE_REF="$DEV_BRANCH"
 if [ "$BASE_BRANCH" != "$DEV_BRANCH" ]; then
   git fetch origin "$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" 2>/dev/null || true
-  git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null || BASE_BRANCH="$DEV_BRANCH"
+  if git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
+    BASE_REF="origin/$BASE_BRANCH"
+  else
+    BASE_BRANCH="$DEV_BRANCH"
+  fi
 fi
 ```
+
+`$BASE_REF`, not `$BASE_BRANCH`, is what the worktree is created from. The distinction matters: the blocker's branch is fetched into `refs/remotes/origin/`, so a **local** branch of that name usually does not exist, and `git worktree add … "$BASE_BRANCH"` would fail with `invalid reference` on exactly the 🟡 path this feature exists to serve. `$DEV_BRANCH` is safe bare because the checkout above created it locally; a remote-only base is not. Keeping `$BASE_BRANCH` as the plain name is still useful — it is what the messages and the `baseBranch` metadata report.
 
 If the fetch leaves the ref unresolvable, fall back to `$DEV_BRANCH` for that repo and say so in one line — never let a missing base branch abort the start.
 
@@ -319,7 +326,7 @@ If `git pull --rebase` fails with conflicts, use `AskUserQuestion` with `MSG_REB
 ```bash
 BRANCH_NAME="feature/$TICKET_ID"
 [ -n "$SLUG" ] && BRANCH_NAME="feature/$TICKET_ID-$SLUG"
-git worktree add -b "$BRANCH_NAME" ../${REPO_NAME}-$TICKET_ID "$BASE_BRANCH"
+git worktree add -b "$BRANCH_NAME" ../${REPO_NAME}-$TICKET_ID "$BASE_REF"
 ```
 
 If this fails because the branch already exists, use `AskUserQuestion` with `MSG_BRANCH_ALREADY_EXISTS` options:
