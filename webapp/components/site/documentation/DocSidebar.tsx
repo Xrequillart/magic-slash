@@ -112,9 +112,15 @@ export function DocSidebar() {
     <aside className="doc-sidebar">
       <div className="doc-sidebar-logo">
         <Link href="/">
-          <svg className="doc-sidebar-logo-svg" viewBox="0 0 583 105">
-            <use href="#magic-slash-logo" />
-          </svg>
+          {/* Both variants ship, and `doc.css` shows whichever matches `data-theme`.
+              That attribute is set on <html> before the first paint by the boot script,
+              so the right logo is correct from the very first frame — picking the file
+              from the `theme` state instead would render light, then swap on hydration
+              for a reader who chose dark. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="doc-sidebar-logo-img on-light" src="/img/logo-readme-light.svg" alt="Magic slash" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="doc-sidebar-logo-img on-dark" src="/img/logo-readme-dark.svg" alt="Magic slash" />
         </Link>
         <span className="doc-sidebar-logo-label">{t('site.doc.nav.docs')}</span>
       </div>

@@ -87,9 +87,11 @@ export function SiteHeader() {
     <header className={headerClass}>
       <div className="header-inner">
         <Link href="/" className="header-logo-link" aria-label="magic-slash">
-          <svg className="header-logo" viewBox="0 0 583 105">
-            <use href="#magic-slash-logo" />
-          </svg>
+          {/* The bar is light in every state — softblue, then translucent white on
+              scroll — so it always wants the dark-ink variant. `alt` is empty because
+              the link above it is already labelled. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="header-logo" src="/img/logo-readme-light.svg" alt="" />
         </Link>
 
         <nav className="header-nav" ref={nav}>

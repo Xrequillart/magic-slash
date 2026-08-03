@@ -34,9 +34,8 @@ export function SiteFooter({ serverYear }: { serverYear: number }) {
       <div className="footer-inner">
         <div className="footer-top">
           <div className="footer-brand">
-            <svg className="footer-logo" viewBox="0 0 583 105">
-              <use href="#magic-slash-logo" />
-            </svg>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="footer-logo" src="/img/logo-readme-dark.svg" alt="Magic slash" />
             <p className="footer-tagline">{t('site.footer.tagline')}</p>
             <div className="footer-social">
               <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" aria-label="GitHub">

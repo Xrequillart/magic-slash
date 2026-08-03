@@ -24,7 +24,6 @@
             --sidebar-hover: rgba(0, 0, 0, 0.04);
             --sidebar-active: rgba(57, 59, 255, 0.08);
             --sidebar-active-text: #393BFF;
-            --logo-color: #000;
             --toggle-bg: rgba(0, 0, 0, 0.06);
             --toggle-hover: rgba(0, 0, 0, 0.1);
         }
@@ -45,7 +44,6 @@
             --sidebar-hover: rgba(255, 255, 255, 0.05);
             --sidebar-active: rgba(99, 102, 241, 0.15);
             --sidebar-active-text: #818cf8;
-            --logo-color: #fff;
             --toggle-bg: rgba(255, 255, 255, 0.06);
             --toggle-hover: rgba(255, 255, 255, 0.1);
         }
@@ -89,10 +87,20 @@
             display: flex;
             flex-shrink: 0;
         }
-        .doc-sidebar-logo svg {
-            height: 22px;
-            color: var(--logo-color);
-            transition: color 0.3s;
+        .doc-sidebar-logo-img {
+            height: 30px;
+        }
+        /* The logo is artwork with a light and a dark cut, not a tintable glyph, so the
+           theme picks a file rather than a colour. Keyed off `data-theme` — which the
+           boot script sets before the first paint — so neither variant flashes. */
+        .doc-sidebar-logo-img.on-dark {
+            display: none;
+        }
+        [data-theme="dark"] .doc-sidebar-logo-img.on-light {
+            display: none;
+        }
+        [data-theme="dark"] .doc-sidebar-logo-img.on-dark {
+            display: block;
         }
         .doc-sidebar-logo-label {
             font-family: "Cera Pro", system-ui, sans-serif;

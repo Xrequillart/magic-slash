@@ -1580,9 +1580,8 @@ h1 {
     min-width: 200px;
 }
 .footer-logo {
-    width: 180px;
+    width: 200px;
     margin-bottom: 1rem;
-    color: #fff;
 }
 .footer-tagline {
     color: rgba(255, 255, 255, 0.35);
@@ -1785,15 +1784,17 @@ h1 {
     gap: 2rem;
     height: 100%;
 }
+/* 30px, not more: the lockup is ~5.3:1, so every extra pixel of height costs five of
+   width, and at 32px the bar overflows at 768px — the narrowest viewport that still
+   shows the nav. */
 .header-logo-link {
     display: flex;
-    height: 24px;
+    height: 30px;
     flex-shrink: 0;
     margin-left: 1rem;
 }
 .header-logo {
     height: 100%;
-    color: #000;
 }
 .header-nav {
     display: flex;
@@ -3626,7 +3627,7 @@ h1 {
         gap: 1rem;
     }
     .footer-logo {
-        width: 140px;
+        width: 160px;
     }
     .desktop-body {
         flex-direction: column;

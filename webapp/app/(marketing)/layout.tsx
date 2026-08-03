@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { LogoSprite } from '@/components/site/LogoSprite'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteFooter } from '@/components/site/SiteFooter'
 import './marketing.css'
@@ -24,8 +23,6 @@ export const metadata: Metadata = {
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      {/* Once per document, so the header and the footer can each `<use>` it. */}
-      <LogoSprite />
       <SiteHeader />
       {children}
       {/* The year is read on the server so the first paint has one, then corrected in

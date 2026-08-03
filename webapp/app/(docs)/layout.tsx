@@ -1,5 +1,4 @@
 import { BOOT_DOC_THEME } from '@/components/site/documentation/useDocTheme'
-import { LogoSprite } from '@/components/site/LogoSprite'
 import '../(marketing)/marketing.css'
 
 /**
@@ -20,7 +19,6 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
       {/* Sets `data-theme` before the first paint, so a reader who chose dark never
           gets a white flash. See useDocTheme for why the rule is duplicated as ES5. */}
       <script dangerouslySetInnerHTML={{ __html: BOOT_DOC_THEME }} />
-      <LogoSprite />
       {children}
     </>
   )

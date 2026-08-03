@@ -39,7 +39,7 @@ export default function Login() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="h-8" />
+          <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="h-11" />
           <h1 className="mt-8 font-display text-3xl font-black text-ink">{t('login.title')}</h1>
           <p className="mt-2 text-sm text-muted">{t('login.subtitle')}</p>
         </div>
