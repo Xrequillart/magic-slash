@@ -43,7 +43,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: BOOT_LANGUAGE }} />
       </head>
-      <body className="min-h-screen bg-white font-sans text-ink antialiased">{children}</body>
+      {/* No `bg-white` here, deliberately. The white page background is set on
+          `html, body` in globals.css, which is where a route-level stylesheet can
+          still override it: `marketing.css` paints the public site's canvas with
+          `html body`. As a UTILITY CLASS the same colour would win on specificity
+          (0,1,0 beats 0,0,2) and the landing page's hero would render white — which
+          is only visible in the hero, because every section below it paints its own
+          background. */}
+      <body className="min-h-screen font-sans text-ink antialiased">{children}</body>
     </html>
   )
 }
