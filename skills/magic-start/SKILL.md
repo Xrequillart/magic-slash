@@ -21,6 +21,7 @@ Follow each step in order. Each step builds on the previous one.
 - `references/api.md` — Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`).
 - `references/test-accounts.md` — Test-account modes, discovery cascade, and the credential guardrails. Read in Step 5.5.1, only when `pullRequest.testAccounts` is not `off`.
 - `references/jira-custom-fields.md` — Jira custom-field discovery: the `*all` re-read, its volume guards, and the empty-ticket options. Read in Step 2A, only when the ticket description carries no usable spec.
+- `references/dependencies.md` — Dependency detection, blocker resolution, the decision matrix and the per-verdict behaviour. Read in Step 2.4, only when the ticket declares at least one blocker.
 
 ## Step 0: Configuration
 
@@ -94,10 +95,11 @@ Use `mcp__atlassian__getJiraIssue` to retrieve ticket details. If you don't know
 Pass an explicit `fields` array so design references are never dropped:
 
 ```json
-["summary","description","issuetype","status","labels","components","attachment"]
+["summary","description","issuetype","status","labels","components","attachment","issuelinks"]
 ```
 
 `attachment` is metadata only (`filename`, `mimeType`, `content`) and is what Step 5.0 needs to spot an image attachment. Comments are **not** requested here: they are retrieved later, and only if Step 5.0 detects a UI signal (see `references/design-context.md` §2.1), so a backend ticket never pays for its comment thread.
+`issuelinks` rides along with the retrieval already performed, which is what makes Jira "is blocked by" links visible to Step 2.4 — they are absent from the MCP default field set — and what makes the dependency gate free when no blocker is declared.
 
 In parallel, also call `mcp__atlassian__getJiraIssueRemoteIssueLinks` for the same issue: a Figma file is very often attached as a remote link rather than pasted in the description. Extract `object.url` and `object.title` from each entry and keep them for Step 5.0.
 
@@ -105,7 +107,7 @@ If the MCP call fails (timeout, auth error), retry once. If it fails again, ask 
 
 **Completeness check.** The ticket's real spec may sit in a custom field. Read `references/jira-custom-fields.md` and follow it whenever `fields.description` does not state what to build: it is absent or null; or under **80 characters** of useful text once markup is stripped and not a complete one-liner ("Bump the Stripe SDK to v14" is a spec); or longer, yet stating neither what to build nor any acceptance criterion (every heading present with an empty or placeholder body, pure boilerplate, a deferral to another field, a bare link with no prose). A description that does say what to build never triggers it, however short — in doubt, skip, so this does not become a second full-issue call on every ticket. That file owns the discovery call, the volume guards, what the discovered text feeds into, and the handling of a ticket still empty afterwards. If it is missing on disk, skip discovery and degrade to the warning alone: say in one line that the ticket looks underspecified, ask the user for the missing context, and never fill the gap from the title alone.
 
-→ Continue to Step 2.5, then Step 2.6, then Step 2.7.
+→ Continue to Step 2.4, then Step 2.5, then Step 2.6, then Step 2.7.
 
 ## Step 2B: Retrieve the GitHub issue
 
@@ -127,6 +129,8 @@ Parse `owner/repo` from either `git@github.com:owner/repo.git` or `https://githu
 
 Use `mcp__github__get_issue` for each repo — launch all calls in parallel for speed. Collect all found issues. If an MCP call fails, retry once; if still failing, skip that repo and continue with the others.
 
+Keep the `issue_dependencies_summary` object this call already returns (`blocked_by`, `total_blocked_by`, `blocking`, `total_blocking`): it carries counts only, no IDs, but that is enough for Step 2.4 to short-circuit at zero cost when `blocked_by == 0`. Only a non-zero count justifies resolving the actual blocker IDs.
+
 ### 2B.4: Resolution
 
 - **No issue found**: Display `MSG_NO_ISSUE_FOUND`.
@@ -145,7 +149,38 @@ gh issue view {number} --repo {owner}/{repo} --comments 2>/dev/null \
 
 On a ticket with no design reference this prints nothing, so it costs nothing — and empty output is the nominal backend case, not a failure. (`grep` exits 1 when it matches nothing, but the pipeline's status is `head`'s, so the command still succeeds.) If `gh` is unavailable or fails, continue with the issue body alone. The full thread is never retrieved here: `references/design-context.md` §2.1 reads it later, once a signal has actually fired.
 
-→ Continue to Step 2.5, then Step 2.6, then Step 2.7.
+→ Continue to Step 2.4, then Step 2.5, then Step 2.6, then Step 2.7.
+
+## Step 2.4: Dependency gate
+
+A ticket that depends on unlanded work is not ready to start. This step resolves that dependency against reality — and a **merged PR carrying the blocker's ID means the dependency has landed, whatever the tracker says**.
+
+**Position.** The gate sits here because everything before it is read-only and everything after it mutates something — so it runs on the ticket already retrieved in Step 2A/2B, before any of it.
+
+**Early exit — the zero-blocker case.** First decide, from data already in hand, whether the ticket declares a dependency at all. It does when either tracker signal fires:
+
+- Jira: `fields.issuelinks` (requested in Step 2A) holds a link whose type is inward "is blocked by" / "depends on".
+- GitHub: `issue_dependencies_summary.blocked_by > 0` (returned by Step 2B.3).
+
+…or when the description — including any custom-field text discovered in Step 2A — carries a dependency keyword that is **not** preceded by a negation (`not`, `no longer`, `pas`, `plus`). The keyword list is the one in `references/dependencies.md` §2.3, in full and verbatim — EN `blocked by`, `depends on`, `dependent on`, `needs`, `requires`, `waiting on`, `waiting for`, `after`; FR `bloqué par`, `bloque par`, `dépend de`, `depend de`, `nécessite`, `en attente de`, `après`. That is a string scan, not an API call, so it stays free.
+
+This pre-filter must never be narrower than §2.3, only looser: it skips the adjacency window and the full negation skip-list, both of which §2.3 applies afterwards and which can still conclude that nothing is declared — a `none` verdict, handled exactly like this early exit. Dropping a keyword here instead early-exits a ticket that §2.3 would have matched, and the reference file is never read to catch it. `after PROJ-4` is the case that makes this concrete: it is a detection case the ticket names explicitly, and it fires on `after` alone.
+
+If nothing is declared, the gate ends here: do not read `references/dependencies.md`, make **no** extra API call, say nothing, and continue.
+
+**Otherwise, read `references/dependencies.md`** and follow it. That file owns detection, the blocker resolution calls, the `owner/repo` derivation, the decision matrix, the worst-verdict aggregation, every message key, and the values this gate returns to its callers (its `## Usage` section). Do not restate its rules here.
+
+**If `references/dependencies.md` is missing on disk**: skip the gate, say in one line that the dependency check could not run because its reference file is absent, and continue to Step 2.5 — never fabricate a verdict from the blocker's tracker status alone. The same applies to any degradation the file itself defines (`gh` absent or unauthenticated, `$ATLASSIAN_ENABLED` false with a Jira-shaped blocker): report `MSG_BLOCKER_CHECK_UNAVAILABLE` and continue.
+
+**The 🔴 question is asked here**, before anything is created. Use `AskUserQuestion` with `MSG_BLOCKER_HARD` (no PR found) or `MSG_BLOCKER_ABANDONED_PR` (closed unmerged PR — a distinct outcome, never folded into the first) and exactly three options:
+
+1. **Start this ticket anyway** → continue to Step 2.5 as usual, carrying the blocker into `{attention_points}` of the final summary.
+2. **Start the blocker instead** → re-enter this skill at Step 1 with the blocker's ID as `$ARGUMENTS`. The guard is a **note carried in the conversation** — state that the gate has already run this session, and the second pass skips Step 2.4 on seeing it. The gate is depth 1 by design: direct blockers only, never the blockers of blockers, so without that note the blocker's own blockers would ask the same question one level down.
+3. **Stop here** → the skill stops. Step 6 still runs, with `outcome` `failed` since the workflow did not complete — an unclosed run record is counted as abandoned and the run disappears from the statistics.
+
+Nothing is created before the answer: no `/metadata` POST, no Jira transition, no GitHub label, no worktree, no branch. "Stop here" is never inferred from silence, a timeout or an unparseable answer; those go back to the question.
+
+**The 🟡 branch question is asked in Step 4.1**, not here — only the verdict is computed at this step.
 
 ## Step 2.5: Update Magic Slash Desktop metadata
 
@@ -246,11 +281,16 @@ If it exists, use `AskUserQuestion` with `MSG_WORKTREE_EXISTS` options:
 
 ### 4.1: Create the worktree
 
-For each selected repo:
+**Resolve the base branch, per repo.** If Step 2.4 returned a 🟡 verdict with a candidate base branch, ask the question **now** — this is the earliest point where it can be asked, because `$DEV_BRANCH` is only resolved in Step 0.4 ("execute after repo is identified in step 3") and the repo set is only known after Step 3. Asking at Step 2.4 would name a default that does not exist yet, and Step 0.4 would then ask about the dev branch anyway. The verdict is computed at 2.4; only the question moves here.
+
+Use `AskUserQuestion` with `MSG_BLOCKER_IN_FLIGHT`, offering the blocker's PR head branch and `$DEV_BRANCH` (the default). Keep the answer **per repo, keyed by config key**, the way Step 0.5 keeps the test-account pair: the blocker's PR head branch exists in exactly **one** repo, so a single `$BASE_BRANCH` scalar would send that ref to repos where it does not exist and fail `git worktree add` in all of them. Every other repo keeps `$DEV_BRANCH`.
+
+For each selected repo, resolve that repo's own value once, up front — so every use below reads a variable that is always set:
 
 ```bash
 cd {REPO_PATH}
 REPO_NAME=$(basename "$PWD")
+BASE_BRANCH="${BASE_BRANCH:-$DEV_BRANCH}"
 git fetch origin
 ```
 
@@ -261,6 +301,17 @@ git checkout $DEV_BRANCH
 git pull --rebase origin $DEV_BRANCH
 ```
 
+This pair always targets `$DEV_BRANCH`, never `$BASE_BRANCH`: pulling a remote feature branch into the local dev branch would rewrite the dev branch with the blocker's commits, in the user's main checkout, for every later ticket. Refresh the dev branch here, and get the blocker's branch as a ref instead — it may not exist locally at all, so fetch it before using it as a base:
+
+```bash
+if [ "$BASE_BRANCH" != "$DEV_BRANCH" ]; then
+  git fetch origin "$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" 2>/dev/null || true
+  git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null || BASE_BRANCH="$DEV_BRANCH"
+fi
+```
+
+If the fetch leaves the ref unresolvable, fall back to `$DEV_BRANCH` for that repo and say so in one line — never let a missing base branch abort the start.
+
 If `git pull --rebase` fails with conflicts, use `AskUserQuestion` with `MSG_REBASE_CONFLICT` options.
 
 **Create the worktree:**
@@ -268,7 +319,7 @@ If `git pull --rebase` fails with conflicts, use `AskUserQuestion` with `MSG_REB
 ```bash
 BRANCH_NAME="feature/$TICKET_ID"
 [ -n "$SLUG" ] && BRANCH_NAME="feature/$TICKET_ID-$SLUG"
-git worktree add -b "$BRANCH_NAME" ../${REPO_NAME}-$TICKET_ID $DEV_BRANCH
+git worktree add -b "$BRANCH_NAME" ../${REPO_NAME}-$TICKET_ID "$BASE_BRANCH"
 ```
 
 If this fails because the branch already exists, use `AskUserQuestion` with `MSG_BRANCH_ALREADY_EXISTS` options:
@@ -297,8 +348,10 @@ cd ../${REPO_NAME}-$TICKET_ID
 
 Read from `git branch --show-current` rather than echoing `$BRANCH_NAME` back: that reports what git actually checked out, so it stays correct on the "branch already exists" path where the user chose to reuse it.
 
+`baseBranch` rides along to **overwrite** the value Step 2.5.2 already sent. That earlier call reports `$DEV_BRANCH` because it runs before the 🟡 question is answered; on the 🟡 path the real base is the blocker's branch, and only this call knows it. Sending it unconditionally keeps the two paths identical: on a nominal start the value is `$DEV_BRANCH` either way.
+
 ```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&branchName=$(echo -n "$(git branch --show-current)" | jq -sRr @uri)" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&branchName=$(echo -n "$(git branch --show-current)" | jq -sRr @uri)&baseBranch=$(echo -n "$BASE_BRANCH" | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
 In a multi-repo start this runs once per worktree and the agent keeps the last one, since `branch_name` is a single column. For Jira that is the same name in every repo; for GitHub, where the name is prefixed per repo, the last repo processed wins.
@@ -389,6 +442,8 @@ Create a `CLAUDE.local.md` in each worktree using `MSG_MULTI_REPO_CONTEXT` from 
 ## Step 5: Planning and implementation
 
 Display `MSG_TASK_SUMMARY` (or `MSG_TASK_SUMMARY_FULLSTACK` for multi-repo).
+
+`{blocker_line}` carries the one line Step 2.4 produced; `references/messages.md` documents the placeholder and how it renders when no dependency was declared.
 
 ### 5.0: Design context (conditional)
 
@@ -707,7 +762,7 @@ Display `MSG_FINAL_SUMMARY` (or `MSG_FINAL_SUMMARY_FULLSTACK` for multi-repo). P
 - `{confidence_score}` — final score from the evaluation loop (5.5.2)
 - `{test_steps}` — manual testing steps generated in 5.5.1
 - `{positive_points}` — strengths identified during confidence evaluation (5.5.2)
-- `{attention_points}` — remaining concerns after auto-fix iterations (5.5.2)
+- `{attention_points}` — remaining concerns after auto-fix iterations (5.5.2). When Step 2.4 ended on a blocker the user chose to start anyway, or on an unresolvable one, prepend that blocker (id, title, PR state) here: the critic never saw it, so nothing else would carry it into the summary.
 
 **Data available from prior steps / context:**
 - `{TICKET-ID}` — ticket identifier (available since step 1)

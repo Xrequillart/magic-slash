@@ -192,6 +192,153 @@ Options :
 Choix (1/2/3) :
 ```
 
+## MSG_BLOCKER_CLEAR
+
+### en
+
+```text
+🟢 Dependency checked: {blocker_id} — {evidence}. Nothing holds {ticket_id}.
+```
+
+### fr
+
+```text
+🟢 Dépendance vérifiée : {blocker_id} — {evidence}. Rien ne retient {ticket_id}.
+```
+
+> `{evidence}`: what made the verdict green, in a few words — `PR #91 merged`, `ticket done`
+> (`PR #91 mergée`, `ticket terminé`). Never a status name alone: the verdict comes from
+> `status.statusCategory.key`, per `references/dependencies.md` §3.2.
+
+## MSG_BLOCKER_STALE_TICKET
+
+### en
+
+```text
+🟢 Dependency checked: {blocker_id} has landed (PR #{pr_number} merged), but its ticket is still {blocker_status} — the tracker is behind, the code is not.
+```
+
+### fr
+
+```text
+🟢 Dépendance vérifiée : {blocker_id} est livré (PR #{pr_number} mergée), mais son ticket est encore {blocker_status} — c'est le tracker qui est en retard, pas le code.
+```
+
+## MSG_BLOCKER_IN_FLIGHT
+
+### en
+
+```text
+⏳ {ticket_id} depends on {blocker_id} (in flight)
+
+  PR #{pr_number}  "{pr_title}"  {pr_state}
+  branch  {blocker_branch}
+
+  Base the new worktree on:
+  > {blocker_branch}
+    {dev_branch}  (default)
+
+A force-push or a rebase on that PR propagates straight into your worktree.
+```
+
+### fr
+
+```text
+⏳ {ticket_id} dépend de {blocker_id} (en cours)
+
+  PR #{pr_number}  "{pr_title}"  {pr_state}
+  branche  {blocker_branch}
+
+  Baser le nouveau worktree sur :
+  > {blocker_branch}
+    {dev_branch}  (défaut)
+
+Un force-push ou un rebase sur cette PR se propage directement dans ton worktree.
+```
+
+> `{dev_branch}`: the repo's dev branch, resolved in Step 0.4 — which is why Step 4.1 asks this, not Step 2.4.
+
+## MSG_BLOCKER_HARD
+
+### en
+
+```text
+⚠ {ticket_id} is blocked by {blocker_id}
+
+  {blocker_id}  "{blocker_title}"
+  status    {blocker_status}
+  PR        none found
+
+  > Start {ticket_id} anyway
+    Start {blocker_id} instead
+    Stop here
+```
+
+### fr
+
+```text
+⚠ {ticket_id} est bloqué par {blocker_id}
+
+  {blocker_id}  "{blocker_title}"
+  statut    {blocker_status}
+  PR        aucune trouvée
+
+  > Démarrer {ticket_id} quand même
+    Démarrer {blocker_id} à la place
+    Arrêter ici
+```
+
+## MSG_BLOCKER_ABANDONED_PR
+
+### en
+
+```text
+⚠ {ticket_id} depends on {blocker_id}, whose work looks abandoned
+
+  {blocker_id}  "{blocker_title}"
+  status    {blocker_status}
+  PR        #{pr_number} closed, never merged — {pr_url}
+
+  A closed unmerged PR is not the same as no PR: someone started this and stopped.
+
+  > Start {ticket_id} anyway
+    Start {blocker_id} instead
+    Stop here
+```
+
+### fr
+
+```text
+⚠ {ticket_id} dépend de {blocker_id}, dont le travail semble abandonné
+
+  {blocker_id}  "{blocker_title}"
+  statut    {blocker_status}
+  PR        #{pr_number} fermée, jamais mergée — {pr_url}
+
+  Une PR fermée sans merge n'est pas une absence de PR : quelqu'un a commencé, puis arrêté.
+
+  > Démarrer {ticket_id} quand même
+    Démarrer {blocker_id} à la place
+    Arrêter ici
+```
+
+## MSG_BLOCKER_CHECK_UNAVAILABLE
+
+### en
+
+```text
+⚪ {ticket_id} declares a dependency on {blocker_id}, but it could not be checked: {reason}. No verdict is assumed — carried forward as an attention point.
+```
+
+### fr
+
+```text
+⚪ {ticket_id} déclare une dépendance sur {blocker_id}, mais elle n'a pas pu être vérifiée : {reason}. Aucun verdict n'est supposé — repris en point d'attention.
+```
+
+> `{reason}`: `gh` missing, `gh` not authenticated, Atlassian integration disabled, or the blocker
+> could not be resolved (`references/dependencies.md` §6). Never leave it vague.
+
 ## MSG_SCOPE_MULTIPLE
 
 ### en
@@ -413,6 +560,7 @@ Sauvegarder dans la config pour les prochains worktrees ? (o/n)
 🎫 Ticket    : {ticket_id} - {title}
 📋 Type      : {type_or_labels}
 📁 Worktree  : {worktree_path}
+{blocker_line}
 
 🔍 Exploring codebase...
 
@@ -428,11 +576,20 @@ Sauvegarder dans la config pour les prochains worktrees ? (o/n)
 🎫 Ticket    : {ticket_id} - {title}
 📋 Type      : {type_or_labels}
 📁 Worktree  : {worktree_path}
+{blocker_line}
 
 🔍 Exploration du codebase...
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+> `{blocker_line}`: the single line produced by the Step 2.4 dependency gate — `MSG_BLOCKER_CLEAR`,
+> `MSG_BLOCKER_STALE_TICKET` or `MSG_BLOCKER_CHECK_UNAVAILABLE`. Those three are the only one-line keys;
+> `MSG_BLOCKER_IN_FLIGHT`, `MSG_BLOCKER_HARD` and `MSG_BLOCKER_ABANDONED_PR` are multi-line question blocks
+> shown at their own moment and **never** folded in here — on those paths `{blocker_line}` is empty and the
+> blocker reaches the user through `{attention_points}` instead. When no dependency was declared it is likewise
+> **empty and the line is omitted entirely**, so the box renders exactly as it did before the gate existed. The
+> same placeholder and rule apply to `MSG_TASK_SUMMARY_FULLSTACK` below.
 
 ## MSG_TASK_SUMMARY_FULLSTACK
 
@@ -446,6 +603,7 @@ Sauvegarder dans la config pour les prochains worktrees ? (o/n)
 📋 Type      : {type_or_labels}
 🔀 Full-Stack Task:
 {worktree_list}
+{blocker_line}
 
 🔍 Exploring codebase...
 
@@ -462,6 +620,7 @@ Sauvegarder dans la config pour les prochains worktrees ? (o/n)
 📋 Type      : {type_or_labels}
 🔀 Tâche Full-Stack :
 {worktree_list}
+{blocker_line}
 
 🔍 Exploration du codebase...
 

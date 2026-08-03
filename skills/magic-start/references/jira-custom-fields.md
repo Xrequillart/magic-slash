@@ -141,5 +141,8 @@ never inferred from silence, a timeout or an unparseable answer; those go back t
 ## Usage
 
 Step 2A of `SKILL.md` evaluates the trigger inline and reads this file **only** when it fires. Once read,
-execute §2, then §3, then §4, then return to Step 2A's continuation (`/magic:start`: Step 2.5, then 2.6, then
-2.7; `/magic:continue`: Step 2.5, then 2.6) — except on option 3 of §4.2, which stops the skill.
+execute §2, then §3, then §4, then return to Step 2A's continuation (`/magic:start`: Step 2.4, then 2.5, then
+2.6, then 2.7; `/magic:continue`: Step 2.5, then 2.6) — except on option 3 of §4.2, which stops the skill.
+The `/magic:start` continuation goes through the dependency gate like any other: a thin ticket is exactly the
+kind that carries a dependency link, so skipping 2.4 here would transition it and create its worktree with no
+verdict.
