@@ -1,41 +1,28 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { resolveRewrite } from '@/lib/hostRouting'
 
 /**
- * One Next.js deployment, two sites.
+ * One Next.js deployment, four sites — the apex plus the app, admin and invite
+ * subdomains. Which host serves which route, and why each rule exists, is in
+ * `lib/hostRouting.ts`; this is the framework wiring around it.
  *
- * `magic-slash.io` is the public site — the pages under `app/(marketing)`, with `/`
- * as its landing page. `app.magic-slash.io` is the product — the signed-in pages,
- * with the login form as ITS front door. Both want to be at `/`, and only one route
- * can be, so the app subdomain gets its root REWRITTEN to `/login`.
- *
- * A rewrite rather than a redirect, deliberately: `app.magic-slash.io/` has been the
- * login URL since the app shipped, it is what is bookmarked and what password
- * managers have stored, and a redirect would rewrite that URL in the address bar of
- * everyone who has it saved. The rewrite serves the form and leaves the URL alone.
- *
- * Anything OTHER than `/` is left untouched on both hosts. The marketing pages
- * resolving on the app subdomain too is harmless — same content, no duplicate-content
- * risk worth a redirect chain, since only the apex domain is in the sitemap.
+ * The split is not decoration: the suite runs on the root node_modules and never
+ * installs the webapp's own, so nothing importing `next/server` can be tested (see
+ * vitest.config.ts). Keeping the decision pure is what makes it testable.
  */
-
-/** The product's host. Any subdomain of it (previews, staging) counts as the app. */
-const APP_HOST_PREFIX = 'app.'
-
 export function middleware(request: NextRequest) {
-  const host = request.headers.get('host') ?? ''
-
-  if (host.startsWith(APP_HOST_PREFIX) && request.nextUrl.pathname === '/') {
-    return NextResponse.rewrite(new URL('/login', request.url))
-  }
-
-  return NextResponse.next()
+  const target = resolveRewrite(request.headers.get('host') ?? '', request.nextUrl.pathname)
+  return target ? NextResponse.rewrite(new URL(target, request.url)) : NextResponse.next()
 }
 
 /**
- * Only the root path can ever be rewritten, so only the root path needs to reach
- * this. Matching everything would run a header read on every asset request for a
- * decision that is `NextResponse.next()` in all but one case.
+ * Everything except Next's own assets and the static files in `public/`.
+ *
+ * Wider than it used to be — it matched `/` alone back when the root was the only
+ * path that could be rewritten, and the invite host broke that assumption. The
+ * exclusions matter at this width: without them every font and image request would
+ * pay for a header read to reach a `next()` that was never in doubt.
  */
 export const config = {
-  matcher: '/',
+  matcher: ['/((?!_next/|favicon\\.ico|fonts/|img/|.*\\.[a-zA-Z0-9]+$).*)'],
 }
