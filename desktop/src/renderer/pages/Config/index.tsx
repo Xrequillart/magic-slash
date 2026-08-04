@@ -18,6 +18,7 @@ import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 import { formatUsd } from '../../utils/usageStats'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
+import { CHANGELOG_URL } from '../../../urls'
 
 const SPOTLIGHT_OPTIONS: { label: string; value: string }[] = [
   { label: '\u2303 Space', value: 'Control+Space' },
@@ -1238,7 +1239,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           </div>
           <div className="flex items-center gap-2">
             <a
-              href="https://xrequillart.github.io/magic-slash/documentation.html#changelog"
+              href={CHANGELOG_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-colors"
