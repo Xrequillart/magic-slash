@@ -26,7 +26,7 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                     <div className="doc-section" id="quick-start">
                         <h2>{t('site.doc.quickStart.1')}</h2>
                         <p>{t('site.doc.quickStart.2')}</p>
-                        <pre><code>curl -fsSL https://magic-slash.io/install.sh | bash</code></pre>
+                        <p><a href="https://github.com/xrequillart/magic-slash/releases/latest" target="_blank" rel="noopener noreferrer">{t('site.doc.quickStart.download')}</a></p>
                         <RichText k="site.doc.quickStart.3" as="p" />
 
                         <h3>{t('site.doc.quickStart.4')}</h3>
@@ -1391,7 +1391,6 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                                 <div className="doc-skill-col">
                                     <h4>{t('site.doc.updates.28')}</h4>
                                     <p>{t('site.doc.updates.29')}</p>
-                                    <pre style={{ margin: '0' }}><code>curl -fsSL https://magic-slash.io/install.sh | bash</code></pre>
                                 </div>
                             </div>
                         </div>
@@ -1763,7 +1762,7 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                             <div className="doc-skill-details">
                                 <div className="doc-skill-col">
                                     <h4>{t('site.doc.troubleshooting.96')}</h4>
-                                    <pre style={{ margin: '0' }}><code>curl -fsSL https://magic-slash.io/install.sh | bash</code></pre>
+                                    <p>{t('site.doc.troubleshooting.96b')}</p>
                                 </div>
                                 <div className="doc-skill-col">
                                     <h4>{t('site.doc.troubleshooting.97')}</h4>

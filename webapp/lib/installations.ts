@@ -2,11 +2,17 @@ import { getSupabase } from './supabase'
 import { localeOf, t } from './i18n'
 import { DEFAULT_LANGUAGE, type LanguageId } from './i18n/languages'
 
-/** Where the desktop app is downloaded from. */
+/**
+ * Where the desktop app is downloaded from — the only entry point there is.
+ *
+ * There used to be an INSTALL_COMMAND here too (`curl … install.sh | bash`), shown
+ * next to this link on every install surface. It is gone: the app configures the
+ * machine itself on first launch — skills, Claude Code hooks, permissions, MCP
+ * servers, prerequisite checks (see desktop/src/main/setup/). Offering a script
+ * alongside the download meant maintaining two installers that could disagree, and
+ * asking people to pipe a remote script into a shell to get a GUI app.
+ */
 export const DOWNLOAD_URL = 'https://github.com/xrequillart/magic-slash/releases/latest'
-
-/** One-liner that installs the app — same command as the landing page. */
-export const INSTALL_COMMAND = 'curl -fsSL https://magic-slash.io/install.sh | bash'
 
 export interface Installation {
   deviceId: string

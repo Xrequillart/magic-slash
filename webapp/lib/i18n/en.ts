@@ -111,8 +111,9 @@ export const en = {
   'onboarding.install.device.one': '1 device',
   'onboarding.install.device.many': '{count} devices',
   'onboarding.install.hintPending':
-    'One command in your terminal — Magic Slash runs on your machine',
-  'onboarding.install.runThis': 'Run this in your terminal:',
+    'Magic Slash runs on your machine — download it and sign in',
+  'onboarding.install.downloadHint':
+    'Drag it into Applications and open it. It installs the skills and configures Claude Code on first launch.',
 
   // ── Team repositories ──────────────────────────────────────────────────────
   'team.repositories': 'Repositories',

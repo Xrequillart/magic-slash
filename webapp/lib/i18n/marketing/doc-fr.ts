@@ -23,8 +23,9 @@ export const docFr: Record<keyof typeof docEn, string> = {
 
   // ── Quick Start ─────────────────────────────────────────────────────────
   'site.doc.quickStart.1': 'Démarrage rapide',
-  'site.doc.quickStart.2': 'Installez magic-slash en une seule commande :',
-  'site.doc.quickStart.3': 'L\'installeur vérifie les prérequis, configure les serveurs MCP (Jira &amp; GitHub) et installe les sept skills de base dans <code>~/.claude/skills/</code>.',
+  'site.doc.quickStart.2': 'Téléchargez l\'application, glissez-la dans Applications et ouvrez-la :',
+  'site.doc.quickStart.download': 'Télécharger Magic Slash pour macOS',
+  'site.doc.quickStart.3': 'Au premier lancement, l\'application vérifie les prérequis, configure les serveurs MCP (Jira &amp; GitHub) et installe les sept skills de base dans <code>~/.claude/skills/</code>. Aucun script à lancer.',
   'site.doc.quickStart.4': 'Prérequis',
   'site.doc.quickStart.5': 'Claude Code',
   'site.doc.quickStart.6': 'Le CLI d\'Anthropic doit être installé et authentifié.',
@@ -500,8 +501,8 @@ export const docFr: Record<keyof typeof docEn, string> = {
   'site.doc.updates.25': 'Vous pouvez déclencher une vérification à tout moment depuis l\'application desktop.',
   'site.doc.updates.26': 'Depuis l\'application',
   'site.doc.updates.27': 'Ouvrez les <strong>Paramètres</strong> et cliquez sur <strong>Vérifier les mises à jour</strong>. La version courante est affichée dans la barre latérale et sur la page des paramètres.',
-  'site.doc.updates.28': 'Réinstallation',
-  'site.doc.updates.29': 'Vous pouvez aussi relancer l\'installeur à tout moment pour mettre à jour les skills et reconfigurer les serveurs MCP :',
+  'site.doc.updates.28': 'Réparer une installation',
+  'site.doc.updates.29': 'Rien à relancer : l\'application revérifie les skills, les serveurs MCP et les permissions à chaque lancement. Réglages &rarr; À propos &rarr; Configuration de la machine en affiche le résultat et les répare à la demande.',
 
   // ── Environments ────────────────────────────────────────────────────────
   'site.doc.environments.1': 'Environnements pris en charge',
@@ -646,8 +647,9 @@ export const docFr: Record<keyof typeof docEn, string> = {
   'site.doc.troubleshooting.92': 'La configuration, dans <code>~/.config/magic-slash/</code>',
   'site.doc.troubleshooting.93': 'L\'application desktop, dans <code>/Applications/</code>',
   'site.doc.troubleshooting.94': 'Skills introuvables après une mise à jour ?',
-  'site.doc.troubleshooting.95': 'Les skills sont stockés dans <code>~/.claude/skills/</code>. La mise à jour automatique les rafraîchit à chaque démarrage. S\'ils manquent, redémarrez l\'application desktop. Vous pouvez aussi relancer l\'installeur pour forcer une réinstallation complète :',
-  'site.doc.troubleshooting.96': 'Réinstaller les skills',
+  'site.doc.troubleshooting.95': 'Les skills sont stockés dans <code>~/.claude/skills/</code>. L\'application les rafraîchit à chaque démarrage : un redémarrage règle la plupart des cas.',
+  'site.doc.troubleshooting.96': 'Forcer une réinstallation',
+  'site.doc.troubleshooting.96b': 'Réglages &rarr; À propos &rarr; Configuration de la machine &rarr; Réinstaller.',
   'site.doc.troubleshooting.97': 'Vérifier les skills',
   'site.doc.troubleshooting.98': 'Vous devriez voir 7 fichiers SKILL.md, un par skill.',
   'site.doc.troubleshooting.99': 'Puis-je utiliser magic-slash avec GitHub Issues plutôt que Jira ?',

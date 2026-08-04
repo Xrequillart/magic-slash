@@ -110,8 +110,9 @@ export const fr: Record<keyof typeof en, string> = {
   'onboarding.install.device.one': '1 appareil',
   'onboarding.install.device.many': '{count} appareils',
   'onboarding.install.hintPending':
-    'Une commande dans votre terminal — Magic Slash tourne sur votre machine',
-  'onboarding.install.runThis': 'Lancez ceci dans votre terminal :',
+    'Magic Slash tourne sur votre machine — téléchargez-le et connectez-vous',
+  'onboarding.install.downloadHint':
+    'Glissez-le dans Applications et ouvrez-le. Il installe les skills et configure Claude Code au premier lancement.',
 
   // ── Dépôts de l’équipe ─────────────────────────────────────────────────────
   'team.repositories': 'Dépôts',

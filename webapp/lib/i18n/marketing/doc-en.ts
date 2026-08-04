@@ -26,8 +26,9 @@ export const docEn = {
 
   // ── Quick Start ─────────────────────────────────────────────────────────
   'site.doc.quickStart.1': 'Quick Start',
-  'site.doc.quickStart.2': 'Install magic-slash with a single command:',
-  'site.doc.quickStart.3': 'The installer checks prerequisites, configures MCP servers (Jira &amp; GitHub), and installs the seven core skills into <code>~/.claude/skills/</code>.',
+  'site.doc.quickStart.2': 'Download the desktop app, drag it into Applications, and open it:',
+  'site.doc.quickStart.download': 'Download Magic Slash for macOS',
+  'site.doc.quickStart.3': 'On first launch the app checks your prerequisites, configures the MCP servers (Jira &amp; GitHub) and installs the seven core skills into <code>~/.claude/skills/</code>. There is no script to run.',
   'site.doc.quickStart.4': 'Prerequisites',
   'site.doc.quickStart.5': 'Claude Code',
   'site.doc.quickStart.6': 'The Anthropic CLI must be installed and authenticated.',
@@ -503,8 +504,8 @@ export const docEn = {
   'site.doc.updates.25': 'You can trigger an update check at any time from the Desktop app.',
   'site.doc.updates.26': 'From the app',
   'site.doc.updates.27': 'Open <strong>Settings</strong> and click <strong>Check for updates</strong>. The current version is displayed in the sidebar and on the Settings page.',
-  'site.doc.updates.28': 'Re-install',
-  'site.doc.updates.29': 'You can also re-run the installer at any time to update skills and reconfigure MCP servers:',
+  'site.doc.updates.28': 'Repairing a setup',
+  'site.doc.updates.29': 'Nothing to re-run: the app re-checks the skills, the MCP servers and the permissions at every launch. Settings &rarr; About &rarr; Machine setup shows the result and repairs it on demand.',
 
   // ── Environments ────────────────────────────────────────────────────────
   'site.doc.environments.1': 'Supported Environments',
@@ -649,8 +650,9 @@ export const docEn = {
   'site.doc.troubleshooting.92': 'Configuration from <code>~/.config/magic-slash/</code>',
   'site.doc.troubleshooting.93': 'Desktop app from <code>/Applications/</code>',
   'site.doc.troubleshooting.94': 'Skills not found after update?',
-  'site.doc.troubleshooting.95': 'Skills are stored in <code>~/.claude/skills/</code>. The auto-updater refreshes them on each startup. If skills are missing, try restarting the Desktop app. You can also re-run the installer to force a fresh install of all skills:',
-  'site.doc.troubleshooting.96': 'Re-install skills',
+  'site.doc.troubleshooting.95': 'Skills are stored in <code>~/.claude/skills/</code>. The app refreshes them on each startup, so restarting it fixes most cases.',
+  'site.doc.troubleshooting.96': 'Force a reinstall',
+  'site.doc.troubleshooting.96b': 'Settings &rarr; About &rarr; Machine setup &rarr; Reinstall.',
   'site.doc.troubleshooting.97': 'Verify skills',
   'site.doc.troubleshooting.98': 'You should see 7 SKILL.md files, one per skill.',
   'site.doc.troubleshooting.99': 'Can I use magic-slash with GitHub Issues instead of Jira?',
