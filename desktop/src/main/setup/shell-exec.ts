@@ -18,9 +18,37 @@ import { execFile, execFileSync } from 'child_process'
  * is wrong. Running through `$SHELL -l -c` sources the profile first and sees the
  * same PATH the user does.
  *
- * The same trick is already how the app spawns agents (see pty/terminal-manager.ts,
- * which passes `-l`), so a tool visible to the setup is a tool the skills can run.
+ * WHY A LOGIN SHELL IS NOT ENOUGH
+ * ---------------------------------------------------------------------------
+ * `-l` alone reads the LOGIN files and stops there: for zsh that is .zshenv,
+ * .zprofile and .zlogin — NOT .zshrc, which zsh reserves for interactive shells
+ * (bash draws the same line between .bash_profile and .bashrc). And .zshrc is
+ * precisely where people put `export PATH="$HOME/.local/bin:$PATH"` and the nvm
+ * loader, because that is what every install guide tells them to paste. So the
+ * exact tools this module cares about are the ones a login-only shell cannot see,
+ * and `claude` reported itself missing on machines whose terminal ran it fine.
+ *
+ * Hence the two-step below: try the quiet login shell, and only when that fails
+ * retry with `-i` so the interactive files are sourced too. Failure-only, because
+ * an interactive shell is the slower and noisier of the two (a profile may print a
+ * banner or a prompt), and there is no reason to pay for it on the happy path.
+ *
+ * This finally matches how the app SPAWNS agents — pty/terminal-manager.ts passes
+ * `-li` — so a tool visible to the setup is a tool the skills can actually run.
  */
+
+/**
+ * Env for the interactive attempt: keep a shell that thinks it has a user from
+ * blocking on one. Without a tty, zsh may complain about the terminal definition,
+ * and oh-my-zsh is happy to ask about an update — on a pipe, that question is a
+ * 15-second timeout instead of a prompt.
+ */
+const INTERACTIVE_ENV = {
+  TERM: process.env.TERM || 'dumb',
+  DISABLE_AUTO_UPDATE: 'true',
+  DISABLE_UPDATE_PROMPT: 'true',
+  ZSH_DISABLE_COMPFIX: 'true',
+}
 
 /** The user's shell, falling back through the usual suspects. Mirrors terminal-manager. */
 export function resolveShell(): string {
@@ -47,11 +75,27 @@ export interface ShellResult {
  * would otherwise hang the setup check, and with it the launch path that awaits it.
  */
 export async function runInLoginShell(command: string, timeoutMs = 15_000): Promise<ShellResult> {
+  const login = await runOnce(['-l', '-c', command], timeoutMs)
+  if (login.ok) return login
+  // Not found by the login shell — it may simply never have read .zshrc. Ask again
+  // as an interactive shell before believing the tool is absent.
+  const interactive = await runOnce(['-i', '-l', '-c', command], timeoutMs, INTERACTIVE_ENV)
+  // The login shell's stderr is the honest error to report when BOTH fail: the
+  // interactive one is the noisier of the two and may bury it under profile output.
+  return interactive.ok ? interactive : login
+}
+
+/** One `$SHELL <args>` run. Never throws — a non-zero exit is an answer, not a fault. */
+function runOnce(args: string[], timeoutMs: number, extraEnv?: Record<string, string>): Promise<ShellResult> {
   return new Promise((resolve) => {
     execFile(
       resolveShell(),
-      ['-l', '-c', command],
-      { timeout: timeoutMs, encoding: 'utf-8' },
+      args,
+      {
+        timeout: timeoutMs,
+        encoding: 'utf-8',
+        env: extraEnv ? { ...process.env, ...extraEnv } : process.env,
+      },
       (error, stdout, stderr) => {
         resolve({ ok: !error, stdout: (stdout || '').trim(), stderr: (stderr || '').trim() })
       },
@@ -64,11 +108,19 @@ export async function runInLoginShell(command: string, timeoutMs = 15_000): Prom
  * sync IPC handler and already probes jq this way.
  */
 export function runInLoginShellSync(command: string, timeoutMs = 15_000): ShellResult {
+  const login = runOnceSync(['-l', '-c', command], timeoutMs)
+  if (login.ok) return login
+  const interactive = runOnceSync(['-i', '-l', '-c', command], timeoutMs, INTERACTIVE_ENV)
+  return interactive.ok ? interactive : login
+}
+
+function runOnceSync(args: string[], timeoutMs: number, extraEnv?: Record<string, string>): ShellResult {
   try {
-    const stdout = execFileSync(resolveShell(), ['-l', '-c', command], {
+    const stdout = execFileSync(resolveShell(), args, {
       timeout: timeoutMs,
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: extraEnv ? { ...process.env, ...extraEnv } : process.env,
     })
     return { ok: true, stdout: (stdout || '').trim(), stderr: '' }
   } catch (error) {
