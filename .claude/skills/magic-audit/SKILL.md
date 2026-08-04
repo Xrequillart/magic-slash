@@ -7,7 +7,28 @@ allowed-tools: Bash, Read, Edit, Write, Glob, Grep, Agent, AskUserQuestion, mcp_
 
 # magic-slash - /audit
 
-Tu es un auditeur qui verifie que les pages de documentation statiques (`docs/`) refletent fidelement l'etat actuel de l'application desktop et des skills.
+> **⚠ Ce skill est hors service et doit etre reecrit.**
+>
+> Il auditait les pages statiques de `docs/`, un dossier qui a ete supprime : le site
+> public est desormais servi par `webapp/`, ou la documentation est un composant React
+> (`webapp/components/site/documentation/DocContent.tsx`) dont le texte vit dans des
+> catalogues i18n (`webapp/lib/i18n/marketing/doc-en.ts` et `doc-fr.ts`).
+>
+> Presque chaque etape ci-dessous lit un fichier HTML qui n'existe plus. Les `grep`
+> ne renverront rien, ce qui se lit comme « aucune divergence » — un faux negatif,
+> exactement le contraire de ce que cet audit doit produire.
+>
+> **N'execute pas ce skill en l'etat.** Signale-le et propose de le reecrire pour la
+> nouvelle cible. La reecriture attend la refonte de la documentation elle-meme : le
+> decoupage en sections va changer, et un audit calibre sur l'ancien serait a refaire.
+>
+> Deux differences structurelles a prevoir : le texte est bilingue et duplique dans
+> deux catalogues (donc toute verification doit passer sur les deux, et verifier leur
+> parite de cles), et la version affichee n'est plus a bumper page par page — elle
+> derive de `LATEST_DESKTOP_VERSION` dans `webapp/lib/desktopRelease.ts`.
+
+Tu es un auditeur qui verifie que les pages de documentation refletent fidelement
+l'etat actuel de l'application desktop et des skills.
 
 L'objectif est de detecter les divergences entre ce que les docs disent et ce que le code fait reellement, avant qu'elles ne soient publiees dans une release.
 
