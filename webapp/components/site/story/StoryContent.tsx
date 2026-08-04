@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { BookOpen, Edit3, GitBranch, GitCommit, MessageCircle, Trash2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
 import { RichText } from '@/components/site/RichText'
@@ -148,9 +147,10 @@ export function StoryContent() {
             <div className="cta-content">
                 <h2 className="cta-title">{t('site.cta.title')}</h2>
                 <p className="cta-subtitle">{t('site.cta.subtitle')}</p>
-                <Link href={LOGIN_PATH} className="btn-get-started cta-btn">
+                {/* A plain anchor: this leaves for the app host — see `lib/routes.ts`. */}
+                <a href={LOGIN_PATH} className="btn-get-started cta-btn">
                     {t('site.cta.button')}
-                </Link>
+                </a>
             </div>
         </div>
     </section>

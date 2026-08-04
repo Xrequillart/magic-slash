@@ -148,19 +148,21 @@ export function SiteHeader() {
               a personal login. Until the session resolves it renders the signed-out
               label — that is the correct answer for almost every visitor to a public
               page, and it is also what the server renders, so hydration matches. */}
+          {/* Plain anchors, both of them: these two leave for the app host, and there
+              is no client-side navigation across origins — see `lib/routes.ts`. */}
           {session ? (
-            <Link
+            <a
               href={HOME_PATH}
               className="header-cta-btn header-account-btn"
               title={session.user.email ?? undefined}
               aria-label={t('site.nav.account')}
             >
               <span className="header-account-email">{session.user.email}</span>
-            </Link>
+            </a>
           ) : (
-            <Link href={LOGIN_PATH} className="header-cta-btn">
+            <a href={LOGIN_PATH} className="header-cta-btn">
               {t('site.nav.signIn')}
-            </Link>
+            </a>
           )}
         </div>
       </div>

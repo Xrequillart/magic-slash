@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useT } from '@/lib/i18n/useLanguage'
 import { LOGIN_PATH } from '@/lib/routes'
 import { Fade } from '../Fade'
@@ -39,9 +38,10 @@ export function Hero() {
               it scrolls to the section that explains the thing, which is a better next
               step for a cold visitor than dropping them into the docs. */}
           <Fade order={3} className="hero-cta">
-            <Link href={LOGIN_PATH} className="btn-get-started">
+            {/* A plain anchor: this leaves for the app host — see `lib/routes.ts`. */}
+            <a href={LOGIN_PATH} className="btn-get-started">
               {t('site.hero.cta')}
-            </Link>
+            </a>
             <a href="#how" className="btn-secondary">
               {t('site.hero.howCta')}
             </a>

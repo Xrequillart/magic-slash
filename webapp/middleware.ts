@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { resolveRewrite } from '@/lib/hostRouting'
+import { canonicalHost, resolveRewrite } from '@/lib/hostRouting'
 
 /**
  * One Next.js deployment, four sites — the apex plus the app, admin and invite
@@ -11,7 +11,23 @@ import { resolveRewrite } from '@/lib/hostRouting'
  * vitest.config.ts). Keeping the decision pure is what makes it testable.
  */
 export function middleware(request: NextRequest) {
-  const target = resolveRewrite(request.headers.get('host') ?? '', request.nextUrl.pathname)
+  const host = request.headers.get('host') ?? ''
+  const { pathname, search } = request.nextUrl
+
+  // Wrong host first: a rewrite would render the page right here, which is the thing
+  // being corrected. `search` is carried by hand — the target is built from a bare host
+  // and path, so anything not named is dropped, and `?lang=` or a future `?next=` on the
+  // login route is what that loses. The fragment needs no help: it never leaves the
+  // browser, which reapplies it to whatever it lands on.
+  const elsewhere = canonicalHost(host, pathname)
+  if (elsewhere) {
+    // 307, not 308: this is a hosting decision taken the same week the hosts moved, and
+    // a permanent redirect would sit in browser caches long after anyone remembered
+    // asking for it. These are signed-in pages — no crawler has a ranking to preserve.
+    return NextResponse.redirect(`https://${elsewhere}${pathname}${search}`, 307)
+  }
+
+  const target = resolveRewrite(host, pathname)
   return target ? NextResponse.rewrite(new URL(target, request.url)) : NextResponse.next()
 }
 

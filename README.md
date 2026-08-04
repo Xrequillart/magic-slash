@@ -460,7 +460,7 @@ magic-slash/
 │   ├── app/(marketing)/   # magic-slash.io — landing page, story
 │   ├── app/(docs)/        # /documentation — linked from the desktop app only
 │   ├── app/dashboard/     # app.magic-slash.io
-│   ├── app/admin/         # admin.magic-slash.io — back-office
+│   ├── app/admin/         # app.magic-slash.io/admin — back-office
 │   ├── app/invite/        # invite.magic-slash.io — invitation funnel
 │   ├── middleware.ts      # Maps each host to its front door (lib/hostRouting.ts)
 │   ├── components/        # Shared UI and the public site's sections

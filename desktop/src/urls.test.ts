@@ -20,7 +20,9 @@ describe('inviteLink', () => {
   it('uses the short host from any production origin', () => {
     // This is the fix for the webapp: it used to build the link from
     // window.location.origin, so an admin working in the back-office handed the
-    // invitee `admin.magic-slash.io` — a hostname they have no business seeing.
+    // invitee `admin.magic-slash.io` — a hostname they had no business seeing. That
+    // sub-domain is retired; the case stays because the rule is about ANY host the
+    // sender is on, not about a list of the ones we happen to run today.
     expect(inviteLink(TOKEN, 'https://admin.magic-slash.io')).toBe(`${INVITE_URL}/${TOKEN}`)
     expect(inviteLink(TOKEN, 'https://app.magic-slash.io')).toBe(`${INVITE_URL}/${TOKEN}`)
     expect(inviteLink(TOKEN, 'https://magic-slash.io')).toBe(`${INVITE_URL}/${TOKEN}`)
@@ -49,7 +51,9 @@ describe('extractInviteToken', () => {
 
   it('reads the long form, whatever the host', () => {
     // Every invitation sent before the short host existed looks like one of these,
-    // and none of them expired because a URL changed.
+    // and none of them expired because a URL changed. The `admin.` one matters MORE now
+    // that the sub-domain is retired, not less: that link no longer opens in a browser,
+    // so pasting it into the join field is the only way its token can be reached.
     expect(extractInviteToken(`https://app.magic-slash.io/invite/${TOKEN}`)).toBe(TOKEN)
     expect(extractInviteToken(`https://magic-slash.io/invite/${TOKEN}`)).toBe(TOKEN)
     expect(extractInviteToken(`https://admin.magic-slash.io/invite/${TOKEN}`)).toBe(TOKEN)
