@@ -336,8 +336,14 @@ Un force-push ou un rebase sur cette PR se propage directement dans ton worktree
 ⚪ {ticket_id} déclare une dépendance sur {blocker_id}, mais elle n'a pas pu être vérifiée : {reason}. Aucun verdict n'est supposé — repris en point d'attention.
 ```
 
-> `{reason}`: `gh` missing, `gh` not authenticated, Atlassian integration disabled, or the blocker
-> could not be resolved (`references/dependencies.md` §6). Never leave it vague.
+> `{reason}`: `gh` missing, `gh` not authenticated, Atlassian integration disabled, the blocker
+> could not be resolved (`references/dependencies.md` §6), or — on Step 4.1's 🟢 → 🟡 downgrade — the
+> blocker's base ref could not be fetched. Never leave it vague.
+>
+> This message **reports**, it does not ask: it states that no verdict was assumed and the workflow
+> continues. On the one path that must not continue (Step 4.1's downgrade, where falling back to
+> `$DEV_BRANCH` would undo the finding), display this line for the reason and then ask separately with
+> `MSG_BLOCKER_HARD`'s three options. Do not reword this text into a question.
 
 ## MSG_SCOPE_MULTIPLE
 

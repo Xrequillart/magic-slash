@@ -126,12 +126,18 @@ in §3.1, in parallel:
 
 ```bash
 gh pr list --repo {owner}/{repo} --search "{BLOCKER_ID}" --state all \
-  --json number,title,state,mergedAt,headRefName,baseRefName,url 2>/dev/null
+  --json number,title,state,mergedAt,headRefName,baseRefName,mergeCommit,url 2>/dev/null
 ```
 
 `headRefName` comes back on that same response, so the branch the 🟡 offer needs requires no second call, and
 `title` is requested for the same reason — it fills `{pr_title}` in `MSG_BLOCKER_IN_FLIGHT` without a
 `gh pr view` round-trip. `baseRefName` is what §3.5 needs.
+
+`mergeCommit.oid` is requested because **`headRefName` is not a durable ref on a merged PR**: GitHub deletes the
+head branch on merge by default, so the branch named there frequently no longer exists. The merge commit always
+does. On an `open` PR the head branch is live and `headRefName` is the right thing to offer as a base; on a
+`merged` one it usually is not, and `mergeCommit.oid` is the only ref still checkoutable. §3.5 relies on that
+distinction, so both fields travel together — a 🟡 that can name no usable ref is a 🟡 that cannot be acted on.
 
 **Every result must then be validated — `--search` is full-text, and it is not a filter.** It matches the
 blocker ID anywhere in the title, body or comments, so a PR that merely *mentions* the blocker comes back
