@@ -23,6 +23,7 @@ var i18n = {
         'hero.title': 'The boring parts,<br>automated.',
         'hero.subtitle': 'From ticket to merge — without the busywork.',
         'hero.cta': 'Get started',
+        'hero.download': 'Download for macOS',
         // Desktop mockup
         'desktop.newAgent': 'New agent',
         'desktop.skills': 'Skills',
@@ -302,6 +303,7 @@ var i18n = {
         'hero.title': 'Les tâches ingrates,<br>automatisées.',
         'hero.subtitle': 'Du ticket au merge — sans la corvée.',
         'hero.cta': 'Commencer',
+        'hero.download': 'Télécharger pour macOS',
         // Desktop mockup
         'desktop.newAgent': 'Nouvel agent',
         'desktop.skills': 'Skills',
@@ -727,23 +729,6 @@ function setLanguage(lang) {
     });
 })();
 
-
-function copyCommand(btn) {
-    var codeEl = btn.parentElement.querySelector('code');
-    navigator.clipboard.writeText(codeEl.textContent);
-    btn.innerHTML = '';
-    var icon = document.createElement('i');
-    icon.setAttribute('data-feather', 'check');
-    btn.appendChild(icon);
-    feather.replace();
-    setTimeout(function() {
-        btn.innerHTML = '';
-        var copyIcon = document.createElement('i');
-        copyIcon.setAttribute('data-feather', 'copy');
-        btn.appendChild(copyIcon);
-        feather.replace();
-    }, 2000);
-}
 
 // ── Desktop terminal animation ──
 (function() {

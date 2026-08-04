@@ -886,9 +886,9 @@
 
                 <div class="doc-section" id="quick-start">
                     <h2>Quick Start</h2>
-                    <p>Install magic-slash with a single command:</p>
-                    <pre><code>curl -fsSL https://magic-slash.io/install.sh | bash</code></pre>
-                    <p>The installer checks prerequisites, configures MCP servers (Jira &amp; GitHub), and installs the seven core skills into <code>~/.claude/skills/</code>.</p>
+                    <p>Download the desktop app, drag it into Applications, and open it:</p>
+                    <p><a href="https://github.com/xrequillart/magic-slash/releases/latest" target="_blank" rel="noopener noreferrer" class="btn-get-started">Download for macOS</a></p>
+                    <p>On first launch the app checks your prerequisites, configures the MCP servers (Jira &amp; GitHub) and installs the seven core skills into <code>~/.claude/skills/</code>. There is no script to run.</p>
 
                     <h3>Prerequisites</h3>
                     <div class="doc-card-grid">
@@ -2240,9 +2240,8 @@ You are working on ticket **PROJ-200** which spans multiple repos.
                                 <p>Open <strong>Settings</strong> and click <strong>Check for updates</strong>. The current version is displayed in the sidebar and on the Settings page.</p>
                             </div>
                             <div class="doc-skill-col">
-                                <h4>Re-install</h4>
-                                <p>You can also re-run the installer at any time to update skills and reconfigure MCP servers:</p>
-                                <pre style="margin:0"><code>curl -fsSL https://magic-slash.io/install.sh | bash</code></pre>
+                                <h4>Repairing a setup</h4>
+                                <p>Nothing to re-run: the app re-checks the skills, the MCP servers and the permissions at every launch. Settings &rarr; About &rarr; Machine setup shows the result and repairs it on demand.</p>
                             </div>
                         </div>
                     </div>
@@ -2613,8 +2612,8 @@ gh pr list --head $(git branch --show-current)</code></pre>
                         <p class="doc-skill-desc">Skills are stored in <code>~/.claude/skills/</code>. The auto-updater refreshes them on each startup. If skills are missing, try restarting the Desktop app. You can also re-run the installer to force a fresh install of all skills:</p>
                         <div class="doc-skill-details">
                             <div class="doc-skill-col">
-                                <h4>Re-install skills</h4>
-                                <pre style="margin:0"><code>curl -fsSL https://magic-slash.io/install.sh | bash</code></pre>
+                                <h4>Force a reinstall</h4>
+                                <p>Settings &rarr; About &rarr; Machine setup &rarr; Reinstall.</p>
                             </div>
                             <div class="doc-skill-col">
                                 <h4>Verify skills</h4>
