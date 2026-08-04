@@ -143,6 +143,38 @@ export const marketingEn = {
   'site.cta.subtitle': 'Free, and about a minute to set up.',
   'site.cta.button': 'Start free',
 
+  // ── Hero mockup ────────────────────────────────────────────────────────────
+  // The window CHROME of the animated app mockup, and only that. The terminal's own
+  // lines are not here: they are the log the real product prints, and it prints English,
+  // so they live as literals in `AppMockup.tsx` beside the run they belong to. `{n}` is
+  // substituted by the animation, which reads these off `data-` attributes so it never
+  // has to know a user-facing string itself.
+  'site.mockup.menuNewAgent': 'New agent',
+  'site.mockup.menuSkills': 'Skills',
+  'site.mockup.menuTeam': 'Team',
+  'site.mockup.agentsLabel': 'AGENTS',
+  'site.mockup.needsAttention': 'Needs attention',
+  'site.mockup.usageSession': 'Session (5h)',
+  'site.mockup.usageWeekly': 'Weekly (7d)',
+  // The scripted run: an earlier job that finished, then the one being built now.
+  'site.mockup.autoMode': 'auto mode on (shift+tab to cycle)',
+  'site.mockup.replay': 'Replay',
+  'site.mockup.session': 'SESSION',
+  'site.mockup.context': 'Context',
+  'site.mockup.commits': 'Commits',
+  'site.mockup.aheadOfMain': '{n} ahead of main',
+  'site.mockup.addRepo': 'Add a repository',
+  'site.mockup.scripts': 'Scripts',
+  'site.mockup.open': 'Open',
+
+  'site.mockup.ticketDone': 'done',
+  'site.mockup.inProgress': 'in progress',
+  'site.mockup.uncommitted': 'Uncommitted',
+  'site.mockup.oneFile': '{n} file changed',
+  'site.mockup.manyFiles': '{n} files changed',
+  'site.mockup.inReview': 'in review',
+  'site.mockup.merged': 'merged',
+
   // ── Story page ─────────────────────────────────────────────────────────────
   'site.story.label': 'Our Story',
   'site.story.heroTitle': 'We got tired of<br>the copy-paste.',

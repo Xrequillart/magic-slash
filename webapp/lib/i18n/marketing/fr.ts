@@ -122,6 +122,35 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.cta.subtitle': 'Gratuit, et une minute suffit pour l’installer.',
   'site.cta.button': 'Commencer gratuitement',
 
+  // ── Maquette du hero ───────────────────────────────────────────────────────
+  // Uniquement le chrome de la fenêtre. Les lignes du terminal ne sont PAS ici : c'est
+  // le log que le vrai produit imprime, et il l'imprime en anglais — elles vivent en dur
+  // dans `AppMockup.tsx`. `{n}` est remplacé par l'animation.
+  'site.mockup.menuNewAgent': 'Nouvel agent',
+  'site.mockup.menuSkills': 'Skills',
+  'site.mockup.menuTeam': 'Équipe',
+  'site.mockup.agentsLabel': 'AGENTS',
+  'site.mockup.needsAttention': 'Demande une action',
+  'site.mockup.usageSession': 'Session (5 h)',
+  'site.mockup.usageWeekly': 'Semaine (7 j)',
+  'site.mockup.autoMode': 'mode auto activé (shift+tab pour changer)',
+  'site.mockup.replay': 'Rejouer',
+  'site.mockup.session': 'SESSION',
+  'site.mockup.context': 'Contexte',
+  'site.mockup.commits': 'Commits',
+  'site.mockup.aheadOfMain': '{n} en avance sur main',
+  'site.mockup.addRepo': 'Ajouter un dépôt',
+  'site.mockup.scripts': 'Scripts',
+  'site.mockup.open': 'Ouvrir',
+
+  'site.mockup.ticketDone': 'terminé',
+  'site.mockup.inProgress': 'en cours',
+  'site.mockup.uncommitted': 'Non committé',
+  'site.mockup.oneFile': '{n} fichier modifié',
+  'site.mockup.manyFiles': '{n} fichiers modifiés',
+  'site.mockup.inReview': 'en review',
+  'site.mockup.merged': 'mergée',
+
   // ── Page histoire ──────────────────────────────────────────────────────────
   'site.story.label': 'Notre histoire',
   'site.story.heroTitle': 'On en avait marre<br>du copier-coller.',

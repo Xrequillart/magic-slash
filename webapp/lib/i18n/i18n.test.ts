@@ -226,6 +226,14 @@ describe('message catalogues', () => {
         'site.nav.faq',
         'site.nav.changelog',
         'site.faq.title',
+        // The hero mockup mirrors the app's own chrome, and these four labels are the
+        // same word in French — "Skills" is the product's name for them, and AGENTS /
+        // SESSION / Commits are borrowed whole, exactly as they are in the app.
+        'site.mockup.menuSkills',
+        'site.mockup.agentsLabel',
+        'site.mockup.session',
+        'site.mockup.commits',
+        'site.mockup.scripts',
         'site.story.tl9Date',
         'site.footer.configuration',
         'site.footer.changelog',

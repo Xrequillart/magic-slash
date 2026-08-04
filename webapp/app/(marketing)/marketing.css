@@ -3868,7 +3868,6 @@ h1 {
    and muted, it reads as a hole to fill while still holding the right amount of
    space so the page's proportions can be judged. Delete these two rules when the
    real images land. */
-.hero-visual-placeholder,
 .site-visual-placeholder {
     display: grid;
     place-items: center;
@@ -3881,11 +3880,6 @@ h1 {
     color: rgba(0, 0, 0, 0.32);
     text-align: center;
     padding: 1rem;
-}
-.hero-visual-placeholder {
-    width: 100%;
-    max-width: 900px;
-    aspect-ratio: 16 / 10;
 }
 .site-visual-placeholder {
     width: 460px;
@@ -4141,3 +4135,484 @@ h1 {
         text-align: left;
     }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Hero mockup — the animated app window
+
+   Reproduces the desktop app's "midnight" theme. Every colour here was sampled
+   from a screenshot of the running app rather than eyeballed, which is why they
+   are odd values: #1D192E, #443633, #866629 are what the app actually paints.
+
+   Animation contract with `mockupAnimation.ts`: it only ever toggles `is-in`,
+   `is-done` and `is-out`. Everything about HOW a beat looks lives here, so
+   retiming is a JS edit and restyling is a CSS edit — never both.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.mk {
+    --mk-base: #131030;
+    --mk-chrome: rgba(29, 25, 46, 0.72);
+    --mk-panel: rgba(28, 22, 46, 0.72);
+    --mk-card: rgba(44, 39, 61, 0.9);
+    --mk-hair: rgba(255, 255, 255, 0.07);
+    --mk-text: #EEF0FB;
+    --mk-muted: #969EBB;
+    --mk-dim: #767A95;
+    --mk-dimmer: #5F607C;
+    --mk-teal: #52B3D0;
+    --mk-cyan: #65D0EA;
+    --mk-green: #6AD09D;
+    --mk-amber: #F4BF4F;
+    --mk-orange: #ED974F;
+    --mk-red: #F87171;
+    --mk-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    position: relative;
+    width: 100%;
+    max-width: 1180px;
+    aspect-ratio: 1512 / 909;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--mk-base);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 30px 90px rgba(19, 16, 48, 0.45);
+    font-family: "Cera Pro", system-ui, sans-serif;
+    color: var(--mk-muted);
+    text-align: left;
+    container-type: inline-size;
+}
+
+/* Blurred blooms rather than one gradient: the real canvas is violet at the edges
+   and desaturated teal through the middle, which a single fill cannot describe. */
+.mk-glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+}
+.mk-glow--teal {
+    width: 60%; height: 68%; left: 28%; top: 18%;
+    background: rgba(27, 74, 69, 0.55);
+}
+.mk-glow--violet-a {
+    width: 52%; height: 62%; left: -11%; top: -16%;
+    background: rgba(56, 37, 112, 0.6);
+}
+.mk-glow--violet-b {
+    width: 48%; height: 58%; left: 65%; top: 56%;
+    background: rgba(56, 37, 112, 0.45);
+}
+
+/* ── Titlebar ── */
+.mk-titlebar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 5.1%;
+    min-height: 34px;
+    padding: 0 14px;
+    background: var(--mk-chrome);
+    border-bottom: 1px solid var(--mk-hair);
+    flex-shrink: 0;
+}
+.mk-lights { display: flex; gap: 6px; }
+.mk-lights i {
+    width: 11px; height: 11px; border-radius: 50%;
+}
+.mk-lights i:nth-child(1) { background: #EC6A5E; }
+.mk-lights i:nth-child(2) { background: #F4BF4F; }
+.mk-lights i:nth-child(3) { background: #61C554; }
+.mk-panel-btn { display: flex; color: var(--mk-dimmer); }
+.mk-panel-btn--right { transform: scaleX(-1); margin-left: auto; }
+.mk-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--mk-text);
+    white-space: nowrap;
+}
+.mk-title-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--mk-green); }
+
+/* ── Body ── */
+.mk-body { display: flex; flex: 1; min-height: 0; position: relative; }
+.mk-grow { flex: 1; min-height: 0; }
+
+.mk-sidebar {
+    width: 19.8%;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 11px 9px 9px;
+    background: var(--mk-chrome);
+    border-right: 1px solid var(--mk-hair);
+}
+.mk-menu-item, .mk-attention, .mk-agent {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 7px;
+    border-radius: 7px;
+    font-size: 0.76rem;
+    line-height: 1;
+}
+.mk-menu-item { color: var(--mk-muted); }
+.mk-menu-item em, .mk-attention em, .mk-agent em { font-style: normal; }
+.mk-menu-item kbd {
+    margin-left: auto;
+    font-family: inherit;
+    font-size: 0.7rem;
+    color: var(--mk-dimmer);
+}
+.mk-section {
+    padding: 14px 7px 4px;
+    font-size: 0.6rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: var(--mk-dimmer);
+}
+.mk-attention { color: var(--mk-amber); font-weight: 500; }
+.mk-attention b { margin-left: auto; font-weight: 500; }
+.mk-agent { color: var(--mk-muted); }
+.mk-agent.is-active { background: rgba(68, 54, 51, 0.92); color: var(--mk-text); font-weight: 500; }
+.mk-agent em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-agent-state { position: relative; display: flex; width: 13px; flex-shrink: 0; }
+.mk-agent-meta { margin-left: auto; display: flex; align-items: center; gap: 6px; color: var(--mk-amber); }
+.mk-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.mk-dot--teal { background: var(--mk-teal); }
+.mk-dot--green { background: var(--mk-green); }
+
+/* Working -> done. The bars pulse while the build runs, then hand over to the check. */
+.mk-bars { display: flex; align-items: center; gap: 2px; opacity: 0; transition: opacity 0.25s; }
+.mk[data-ready] .mk-bars { opacity: 1; }
+.mk-bars i {
+    width: 2px; border-radius: 1px; background: var(--mk-teal);
+    animation: mk-pulse 1s ease-in-out infinite;
+}
+.mk-bars i:nth-child(1) { height: 6px; animation-delay: 0s; }
+.mk-bars i:nth-child(2) { height: 10px; animation-delay: 0.15s; }
+.mk-bars i:nth-child(3) { height: 7px; animation-delay: 0.3s; }
+.mk[data-ready] .mk-bars.is-out { opacity: 0; }
+@keyframes mk-pulse { 0%, 100% { transform: scaleY(0.6); opacity: 0.6; } 50% { transform: scaleY(1); opacity: 1; } }
+.mk-agent-check {
+    position: absolute; left: 0; top: 50%; margin-top: -6px;
+    color: var(--mk-green); transition: opacity 0.3s;
+}
+.mk[data-ready] .mk-agent-check { opacity: 0; }
+.mk[data-ready] .mk-agent-check.is-in { opacity: 1; }
+
+.mk-usage {
+    display: flex; flex-direction: column; gap: 7px;
+    padding: 9px;
+    border-radius: 8px;
+    background: rgba(32, 41, 49, 0.85);
+    border: 1px solid var(--mk-hair);
+}
+.mk-usage-head { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--mk-muted); }
+.mk-usage-head em { font-style: normal; font-weight: 500; }
+.mk-usage-head b { margin-left: auto; font-weight: 400; color: var(--mk-dimmer); }
+.mk-meter { display: flex; flex-direction: column; gap: 4px; }
+.mk-meter-row { display: flex; align-items: center; gap: 6px; font-size: 0.68rem; color: var(--mk-dim); }
+.mk-meter-row em { font-style: normal; }
+.mk-meter-row i { margin-left: auto; font-style: normal; }
+.mk-meter-row b { font-weight: 500; color: var(--mk-green); }
+.mk-track { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.mk-fill { display: block; height: 100%; border-radius: 2px; background: var(--mk-green); }
+.mk-track--ctx { height: 5px; }
+.mk-fill--ctx { background: var(--mk-orange); transition: width 0.5s ease-out; }
+
+.mk-foot {
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 3px 0;
+    font-size: 0.66rem; color: var(--mk-dim);
+}
+.mk-foot em { font-style: normal; }
+.mk-foot em:first-child { color: var(--mk-dimmer); }
+.mk-foot i { width: 3px; height: 3px; border-radius: 50%; background: var(--mk-dimmer); }
+
+/* ── Terminal ── */
+.mk-term {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 14px 16px 10px;
+    position: relative;
+}
+.mk-convo {
+    display: flex; flex-direction: column; gap: 9px;
+    overflow: hidden;
+    font-family: var(--mk-mono);
+    font-size: 0.74rem;
+    line-height: 1.55;
+}
+.mk-phase { display: flex; flex-direction: column; gap: 5px; }
+
+/* A prompt line, and the command that types itself into it. */
+.mk-line, .mk-run {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0;
+    transition: opacity 0.28s ease-out, transform 0.28s ease-out;
+}
+/* The DEFAULT state is the finished one, so the mockup reads correctly in the served
+   HTML, before hydration, and for anyone without JavaScript. `[data-ready]` is set by
+   mockupAnimation once it has taken control — only then do the pieces start hidden. */
+.mk[data-ready] .mk-line,
+.mk[data-ready] .mk-run { opacity: 0; transform: translateY(3px); }
+.mk[data-ready] .mk-line.is-in,
+.mk[data-ready] .mk-run.is-in { opacity: 1; transform: none; }
+
+.mk-line--cmd { color: var(--mk-text); font-weight: 500; margin-top: 9px; }
+.mk-line--cmd > span:first-child { color: #83899C; flex-shrink: 0; }
+.mk-line--cmd em { font-style: normal; color: var(--mk-cyan); }
+.mk-caret--inline { width: 6px; height: 12px; margin-top: 2px; }
+.mk[data-ready] .mk-caret--inline { display: none; }
+.mk[data-ready] .mk-caret--inline.is-in { display: block; }
+
+/* A status line: a mark that spins then settles, a label, and an optional result chip. */
+.mk-run { padding-left: 17px; color: var(--mk-muted); }
+.mk-run em { font-style: normal; }
+.mk-run-mark { position: relative; width: 12px; height: 12px; margin-top: 3px; flex-shrink: 0; }
+.mk-spin {
+    position: absolute; inset: 1px;
+    border-radius: 50%;
+    border: 1.4px solid var(--mk-dimmer);
+    opacity: 0;
+}
+.mk[data-ready] .mk-run:not(.is-done) .mk-spin {
+    opacity: 1;
+    border-color: var(--mk-teal);
+    border-top-color: transparent;
+    animation: mk-spin 0.65s linear infinite;
+}
+@keyframes mk-spin { to { transform: rotate(360deg); } }
+.mk-run-check { position: absolute; left: 0; top: 0; color: var(--mk-green); }
+.mk[data-ready] .mk-run:not(.is-done) .mk-run-check { opacity: 0; }
+.mk-result {
+    margin-left: auto;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.07);
+    font-family: var(--mk-mono);
+    font-size: 0.64rem;
+    font-weight: 400;
+    color: var(--mk-cyan);
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: opacity 0.25s;
+}
+.mk[data-ready] .mk-run:not(.is-done) .mk-result { opacity: 0; }
+.mk-add { color: var(--mk-green); }
+.mk-del { color: var(--mk-red); }
+
+.mk-composer {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 0 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    font-family: var(--mk-mono);
+    font-size: 0.74rem;
+    color: var(--mk-text);
+}
+.mk-composer > span:first-child { color: #83899C; }
+.mk-composer em { font-style: normal; }
+.mk-caret {
+    width: 6px; height: 13px; background: var(--mk-text);
+    animation: mk-blink 1.1s step-end infinite;
+}
+@keyframes mk-blink { 50% { opacity: 0; } }
+
+.mk-status { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mk-pill {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--mk-mono);
+    font-size: 0.64rem;
+    font-weight: 500;
+    color: var(--mk-text);
+    white-space: nowrap;
+}
+.mk-pill--pwd { background: #304E75; }
+.mk-pill--branch { background: #866629; }
+.mk-pill--grey { background: #4B4B4B; }
+.mk-pill--cost { background: #336333; }
+.mk-mode {
+    display: flex; align-items: center; gap: 6px;
+    padding-top: 7px;
+    font-family: var(--mk-mono);
+    font-size: 0.64rem;
+    color: var(--mk-dimmer);
+}
+.mk-mode em, .mk-mode i, .mk-mode b { font-style: normal; font-weight: 400; }
+.mk-mode > svg { color: var(--mk-green); }
+.mk-mode b { color: var(--mk-teal); }
+
+.mk-replay {
+    position: absolute;
+    right: 16px; top: 12px;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 11px;
+    border: 1px solid var(--mk-hair);
+    border-radius: 999px;
+    background: rgba(28, 22, 46, 0.9);
+    color: var(--mk-muted);
+    font-family: inherit;
+    font-size: 0.7rem;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s, color 0.15s, border-color 0.15s;
+}
+.mk-replay.is-in { opacity: 1; pointer-events: auto; }
+.mk-replay:hover { color: var(--mk-text); border-color: rgba(255, 255, 255, 0.18); }
+
+/* ── Info panel ── */
+.mk-info {
+    width: 31%;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding: 12px;
+    background: var(--mk-panel);
+    border-left: 1px solid var(--mk-hair);
+    overflow: hidden;
+}
+.mk-info-head { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--mk-text); }
+.mk-info-head em { font-style: normal; font-weight: 500; }
+.mk-info-head > svg:last-child { margin-left: auto; color: var(--mk-dim); }
+.mk-info-badge {
+    width: 14px; height: 14px; border-radius: 4px;
+    border: 1.3px solid var(--mk-dim);
+}
+.mk-card {
+    display: flex; flex-direction: column; gap: 7px;
+    padding: 10px 11px;
+    border-radius: 9px;
+    background: var(--mk-card);
+    border: 1px solid var(--mk-hair);
+}
+.mk-card-row { display: flex; align-items: center; gap: 7px; font-size: 0.72rem; }
+.mk-card-row em, .mk-card-row i, .mk-card-row b { font-style: normal; }
+.mk-label { font-size: 0.62rem; font-weight: 500; letter-spacing: 0.06em; color: var(--mk-dimmer); }
+.mk-strong { font-weight: 500; color: var(--mk-text); }
+.mk-faint { color: var(--mk-dimmer); }
+.mk-mono { font-family: var(--mk-mono); font-size: 0.68rem; color: var(--mk-dim); }
+.mk-ctx-pct { font-weight: 500; color: var(--mk-orange); }
+.mk-pill--model { background: #403658; color: var(--mk-cyan); border-radius: 999px; padding: 2px 7px; font-family: inherit; }
+.mk-open { color: var(--mk-teal); font-weight: 500; }
+.mk-branches {
+    display: flex; align-items: center; gap: 7px;
+    padding: 7px 9px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 0.68rem;
+    color: var(--mk-dim);
+}
+.mk-branches > svg { color: var(--mk-dimmer); }
+.mk-branches i { font-style: normal; }
+.mk-branches b { font-weight: 500; color: var(--mk-cyan); }
+.mk-arrow { color: var(--mk-dimmer); }
+.mk-commit {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 0.68rem; color: var(--mk-dim);
+}
+.mk-commit em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-commit i { font-style: normal; color: var(--mk-dimmer); flex-shrink: 0; }
+.mk-hash {
+    font-family: var(--mk-mono); font-size: 0.62rem; font-weight: 400;
+    padding: 1px 5px; border-radius: 4px;
+    background: rgba(255, 255, 255, 0.07); color: var(--mk-muted);
+    flex-shrink: 0;
+}
+.mk-add-repo {
+    padding: 13px;
+    text-align: center;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 9px;
+    font-size: 0.7rem;
+    color: var(--mk-dimmer);
+}
+
+/* ── Narrow screens ──
+   Below the tablet breakpoint the three columns stop being readable at this scale,
+   so the side panels go and the terminal — the part that tells the story — keeps the
+   full width. */
+@container (max-width: 720px) {
+    .mk-sidebar, .mk-info { display: none; }
+    .mk { aspect-ratio: 4 / 3; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mk-bars i, .mk-caret, .mk-spin, .mk-block, .mk-file { animation: none; }
+    .mk-line, .mk-run, .mk-pr { transition: none; }
+}
+
+/* ── Info panel: the pieces the run fills in ── */
+/* A block the run opens and closes — uncommitted work, then commits. `display` rather
+   than opacity: an invisible-but-present row still reserves its height, which left a
+   void in the card and stranded the gauge below it. */
+.mk-block { display: flex; flex-direction: column; gap: 7px; }
+.mk[data-ready] .mk-block { display: none; }
+.mk[data-ready] .mk-block.is-in { display: flex; animation: mk-rise 0.34s ease-out; }
+
+.mk-file {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--mk-mono);
+    font-size: 0.64rem;
+    color: var(--mk-dim);
+}
+.mk-file em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-file b { font-weight: 500; flex-shrink: 0; }
+.mk[data-ready] .mk-file { display: none; }
+.mk[data-ready] .mk-file.is-in { display: flex; animation: mk-rise 0.3s ease-out; }
+
+@keyframes mk-rise { from { opacity: 0; transform: translateY(4px); } }
+
+/* Six slots, coloured by the add/remove ratio of the files that have landed. */
+.mk-gauge { display: flex; gap: 3px; height: 5px; }
+.mk-gauge-slot {
+    flex: 1;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.08);
+    transition: background 0.3s;
+}
+.mk-gauge-slot.is-add { background: var(--mk-green); }
+.mk-gauge-slot.is-del { background: var(--mk-red); }
+
+.mk-pr {
+    display: flex; align-items: center; gap: 7px;
+    padding: 7px 9px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 0.68rem;
+    color: var(--mk-dim);
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+.mk-pr > svg { color: var(--mk-teal); flex-shrink: 0; }
+.mk-pr em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-pr b { font-weight: 500; color: var(--mk-text); flex-shrink: 0; }
+.mk-pr-state { font-style: normal; color: var(--mk-green); flex-shrink: 0; }
+.mk[data-ready] .mk-pr { opacity: 0; transform: translateY(4px); }
+.mk[data-ready] .mk-pr.is-in { opacity: 1; transform: none; }
+
+.mk-pill--ticket {
+    background: rgba(57, 59, 255, 0.22); color: var(--mk-cyan);
+    border-radius: 999px; padding: 2px 8px; font-family: var(--mk-mono);
+    font-size: 0.62rem;
+}
+/* The ticket state: amber while the run is going, teal once `/magic:done` lands. */
+.mk-pill--state {
+    background: rgba(244, 191, 79, 0.18); color: var(--mk-amber);
+    border-radius: 999px; padding: 2px 8px; font-family: inherit;
+    font-size: 0.64rem; font-weight: 500;
+    transition: background 0.3s, color 0.3s;
+}
+.mk-pill--state.is-done { background: #344660; color: var(--mk-cyan); }

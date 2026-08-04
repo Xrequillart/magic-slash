@@ -6,6 +6,7 @@ import { LOGIN_PATH } from '@/lib/routes'
 import { Fade } from '../Fade'
 import { GithubIcon } from '../icons'
 import { GITHUB_REPO_URL } from '../links'
+import { AppMockup } from './AppMockup'
 
 /**
  * The landing page's first screen: headline, the two calls to action, and the visual.
@@ -63,9 +64,7 @@ export function Hero() {
       </div>
 
       <Fade order={5} className="desktop-mockup-section">
-        <div className="hero-visual-placeholder" aria-hidden="true">
-          <span>Hero illustration</span>
-        </div>
+        <AppMockup />
       </Fade>
     </div>
   )
