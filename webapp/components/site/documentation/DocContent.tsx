@@ -218,6 +218,7 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                                         <RichText k="site.doc.skills.40" as="li" />
                                         <RichText k="site.doc.skills.41" as="li" />
                                         <RichText k="site.doc.skills.42" as="li" />
+                                        <RichText k="site.doc.skills.42b" as="li" />
                                     </ul>
                                 </div>
                             </div>
@@ -790,6 +791,7 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                                         <RichText k="site.doc.configuration.18" as="li" />
                                         <RichText k="site.doc.configuration.19" as="li" />
                                         <RichText k="site.doc.configuration.20" as="li" />
+                                        <RichText k="site.doc.configuration.20b" as="li" />
                                     </ul>
                                 </div>
                                 <div className="doc-skill-col">
