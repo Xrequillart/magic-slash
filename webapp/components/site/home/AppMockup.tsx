@@ -180,7 +180,7 @@ export function AppMockup() {
             <span className="mk-agent-meta">
               <span className="mk-dot mk-dot--teal" />
               <span className="mk-agent-state">
-                <span className="mk-loader" data-mk="agent-loader" />
+                <span className="mk-loader is-out" data-mk="agent-loader" />
                 <Check size={13} className="mk-agent-check" data-mk="agent-check" />
               </span>
             </span>

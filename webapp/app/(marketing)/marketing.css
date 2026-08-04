@@ -3886,10 +3886,6 @@ h1 {
     flex-shrink: 0;
     aspect-ratio: 4 / 3;
 }
-/* Matches the width the app mockup used to occupy in this slot. */
-.site-visual-placeholder--wide {
-    width: 580px;
-}
 
 /* ── ② How it works ──
    Keeps the gradient the seven-step section used, so the hand-off from the hero is
@@ -4105,8 +4101,10 @@ h1 {
         flex-direction: column;
         gap: 3rem;
     }
-    .site-visual-placeholder,
-    .site-visual-placeholder--wide {
+    .site-visual-placeholder {
+        width: 100%;
+    }
+    .pj {
         width: 100%;
     }
 }
@@ -4137,18 +4135,24 @@ h1 {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
-   Hero mockup — the animated app window
+   App illustrations — the hero's animated window, and the tilted sidebar in ④
 
    Reproduces the desktop app's "midnight" theme. Every colour here was sampled
    from a screenshot of the running app rather than eyeballed, which is why they
    are odd values: #1D192E, #443633, #866629 are what the app actually paints.
+
+   The row-level rules (`.mk-menu-item`, `.mk-agent`, `.mk-loader`, `.mk-usage`…)
+   are shared by BOTH illustrations on purpose: there is one real sidebar, so
+   there is one set of rules describing it, and the two cannot drift into showing
+   the app differently. Only the frames around them differ.
 
    Animation contract with `mockupAnimation.ts`: it only ever toggles `is-in`,
    `is-done` and `is-out`. Everything about HOW a beat looks lives here, so
    retiming is a JS edit and restyling is a CSS edit — never both.
    ════════════════════════════════════════════════════════════════════════════ */
 
-.mk {
+/* The palette, on its own selector so anything else drawing the app can opt in. */
+.mk, .pj {
     --mk-base: #131030;
     --mk-chrome: rgba(29, 25, 46, 0.72);
     --mk-panel: rgba(28, 22, 46, 0.72);
@@ -4168,7 +4172,9 @@ h1 {
     --mk-orange: #ED974F;
     --mk-red: #F87171;
     --mk-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 
+.mk {
     position: relative;
     width: 100%;
     max-width: 1180px;
@@ -4305,18 +4311,22 @@ h1 {
 
    The spinner is the app's own `loader-spinner-md`, scaled to the mockup: a full ring in
    the border colour with the top arc in the accent, turning once every 0.8s. It is NOT
-   the terminal's `.mk-spin`, which leaves the top transparent instead. */
+   the terminal's `.mk-spin`, which leaves the top transparent instead.
+
+   It is visible unless it carries `is-out`, so a row that is not working says so in its
+   own markup rather than depending on whether a script has taken over — which is what
+   lets the tilted sidebar in ④ reuse these rows with no script at all. */
 .mk-loader {
     width: 13px; height: 13px;
     border: 1.6px solid rgba(255, 255, 255, 0.14);
     border-top-color: var(--mk-indigo);
     border-radius: 50%;
-    opacity: 0;
     transition: opacity 0.25s;
     animation: mk-spin 0.8s linear infinite;
 }
-.mk[data-ready] .mk-loader { opacity: 1; }
-.mk[data-ready] .mk-loader.is-out { opacity: 0; }
+.mk-loader.is-out { opacity: 0; }
+/* `waiting`: the row is blocked on the person, not on the agent. */
+.mk-agent-clock { color: var(--mk-amber); }
 .mk-agent-check {
     position: absolute;
     color: var(--mk-green); transition: opacity 0.3s;
@@ -4598,6 +4608,64 @@ h1 {
     border-radius: 9px;
     font-size: 0.7rem;
     color: var(--mk-dimmer);
+}
+
+/* ── Section ④: the agent list, on its own, leaning back ──
+   The perspective lives on the wrapper and the rotation on the child, which is what keeps
+   the vanishing point fixed while the angles move. */
+.pj {
+    position: relative;
+    width: 580px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem 0;
+    /* A long focal length on purpose. Closer in, the radial magnification pushes anything
+       in the upper right up and out, and a row's keyboard shortcut stops looking like it
+       belongs to the label beside it. This keeps the lean and loses the fisheye. */
+    perspective: 2000px;
+}
+/* `Ellipse 5.svg` from design, inlined in the component. Held to exactly the slot width:
+   still wider than the panel, so it reads as a backdrop, but it can never reach across the
+   gap into the text column — pale blue under body copy costs too much contrast. */
+.pj-blob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: auto;
+    transform: translate(-50%, -50%);
+    fill: #96B3DE;
+    pointer-events: none;
+}
+.pj-tilt {
+    /* -20° is the resting lean; the pointer handler only ever writes the two offsets, so
+       retuning the base angle never means touching the script. The transition is what
+       smooths the follow — each pointer move re-targets an easing already in flight. */
+    transform: rotateY(calc(-20deg + var(--pj-ry, 0deg))) rotateX(var(--pj-rx, 0deg));
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.pj-sidebar {
+    /* Tall enough that the eight rows, the usage card and the footer all fit with a little
+       slack for `.mk-grow` to push the card to the bottom, the way the real panel sits. */
+    width: 300px;
+    height: 566px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 11px 9px 9px;
+    border-radius: 12px;
+    /* The hero's sidebar is translucent over the window's own dark base. Here there is no
+       window behind it and the section is pale blue, so the two layers are composited into
+       one opaque stack — derived from the same tokens rather than a hand-mixed hex. */
+    background-color: var(--mk-base);
+    background-image: linear-gradient(var(--mk-chrome), var(--mk-chrome));
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: -28px 34px 70px rgba(19, 16, 48, 0.32);
+    font-family: "Cera Pro", system-ui, sans-serif;
+    color: var(--mk-muted);
+    text-align: left;
+    overflow: hidden;
 }
 
 /* ── Narrow screens ──

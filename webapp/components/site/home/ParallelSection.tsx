@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
+import { ParallelSidebar } from './ParallelSidebar'
 
 /**
  * Section ④: several jobs at once.
@@ -11,7 +12,8 @@ import { useT } from '@/lib/i18n/useLanguage'
  * Two things left with the rewrite: the miniature app mockup, which was a terminal
  * printing `claude-opus-4` (see `Hero` for why that image is gone from the page), and
  * the four-feature grid, whose copy belonged to the `/desktop` page that no longer
- * exists. A placeholder holds the visual slot until the Figma illustration lands.
+ * exists. The visual slot now holds `ParallelSidebar` — the agent list and nothing else,
+ * since the list IS the claim this section makes.
  *
  * With `/desktop` gone this is the ONLY place on the site that sells the app, which is
  * the thing people actually download. Worth watching whether it needs to grow once the
@@ -33,9 +35,7 @@ export function ParallelSection() {
           </Link>
         </div>
 
-        <div className="site-visual-placeholder site-visual-placeholder--wide" aria-hidden="true">
-          <span>Parallel jobs illustration</span>
-        </div>
+        <ParallelSidebar />
       </div>
     </section>
   )
