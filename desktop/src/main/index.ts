@@ -12,6 +12,7 @@ import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpd
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
+import { setupSetupHandlers } from './ipc/setup-handlers'
 import { setupConnectivityHandlers } from './ipc/connectivity-handlers'
 import { setupAppearanceHandlers } from './ipc/appearance-handlers'
 import { setStore } from './store/Store'
@@ -210,6 +211,10 @@ function setupHandlers() {
   setupAppearanceHandlers()
   setupSkillsHandlers()
   setupScriptHandlers(() => mainWindow)
+  // Machine setup (prerequisites, MCP servers, integrations) — what the install
+  // script used to do. The automatic half runs from the connectivity gate, which is
+  // where the hydrated config is available; these handlers serve the UI.
+  setupSetupHandlers(() => mainWindow)
   setupProfileHandlers()
   setupUsageHandlers()
   // Cloud is MANDATORY: auth + organization + connectivity gate. The renderer

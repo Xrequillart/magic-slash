@@ -782,6 +782,70 @@ export interface TelemetryHealth {
   issues: TelemetryHealthIssue[]
 }
 
+/**
+ * Machine setup — what the `curl | bash` install script used to check and configure,
+ * now owned by the app (see main/setup/).
+ *
+ * Codes and booleans only, no sentences: the main process stays language-free and the
+ * renderer translates, same contract as TelemetryHealth above.
+ */
+export type PrerequisiteId = 'claude' | 'node' | 'git' | 'jq' | 'gh'
+
+export interface PrerequisiteStatus {
+  id: PrerequisiteId
+  installed: boolean
+  /** Installed, but below the minimum major version. Treated like missing. */
+  outdated: boolean
+  /** Detected version for display, e.g. "20.11.0". Null when absent or unparseable. */
+  version: string | null
+  /** Minimum major version, when one is enforced. */
+  minVersion: string | null
+  /** False for tools whose absence only degrades a feature (`gh`). */
+  required: boolean
+  /** Command that installs it, to show or to copy. Null when we can only link to docs. */
+  installCommand: string | null
+  /** True when the app can run installCommand itself — macOS with Homebrew present. */
+  installable: boolean
+  /** Where to send someone Homebrew cannot help (Claude Code's own installer). */
+  docsUrl: string | null
+}
+
+export type McpServerId = 'atlassian' | 'github'
+
+export interface McpServerStatus {
+  id: McpServerId
+  /**
+   * - `configured` — registered at the URL this version provisions.
+   * - `missing`    — absent; the app adds it on its own.
+   * - `legacy`     — registered differently (the deprecated stdio GitHub package, or a
+   *                  URL the user chose). Never rewritten without asking; see main/setup/mcp.ts.
+   */
+  state: 'configured' | 'missing' | 'legacy'
+  url: string | null
+  /** Set for a stdio server: the command it spawns. */
+  command?: string | null
+}
+
+export interface SetupStatus {
+  prerequisites: PrerequisiteStatus[]
+  /** Whether Homebrew is available, i.e. whether one-click installs are offered. */
+  homebrew: boolean
+  mcpServers: McpServerStatus[]
+  integrations: { github: boolean; atlassian: boolean }
+  /** False until the user has been asked once — drives the first-run wizard. */
+  integrationsChosen: boolean
+  installedSkills: string[]
+  missingSkills: string[]
+  /** A required prerequisite is missing or too old: no skill can run. */
+  blocked: boolean
+  /**
+   * Whether to open the first-run wizard. Decided in the main process (see
+   * main/setup/status.ts) so the rule for "is this machine ready" lives in one place
+   * rather than being restated by every surface that asks.
+   */
+  needsSetup: boolean
+}
+
 export type ScriptCategory = 'dev' | 'build' | 'test' | 'lint' | 'other'
 export type PackageManager = 'npm' | 'yarn' | 'pnpm' | 'bun'
 
