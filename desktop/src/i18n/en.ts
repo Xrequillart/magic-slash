@@ -311,6 +311,52 @@ export const en = {
     'The retry queue filled up and the oldest events were discarded. Those runs are gone for good.',
   'settings.about.telemetry.pending': '{count} event(s) waiting to be sent. They will go out on their own.',
 
+  // ── First-run setup wizard ───────────────────────────────────────────────
+  'setup.wizard.title': 'Set up Magic Slash',
+  'setup.wizard.checking': 'Checking your machine…',
+  'setup.wizard.applying': 'Applying…',
+  'setup.wizard.finish': 'Start using Magic Slash',
+  'setup.wizard.integrations.question': 'Where do your tickets live?',
+  'setup.wizard.integrations.help': 'This decides which tools the skills are allowed to use.',
+  'setup.wizard.integrations.both': 'Jira and GitHub',
+  'setup.wizard.integrations.bothHelp': 'Jira tickets, Confluence pages, pull requests, issues and reviews.',
+  'setup.wizard.integrations.githubOnly': 'GitHub only',
+  'setup.wizard.integrations.githubOnlyHelp': 'Issues, pull requests and reviews. No Jira access is requested.',
+  'setup.wizard.integrations.changeable': 'You can change this later in Settings.',
+  'setup.wizard.done.skills': 'The seven /magic: skills are installed',
+  'setup.wizard.done.mcp': 'Jira and GitHub access is configured',
+  'setup.wizard.done.permissions': 'Permissions and hooks are configured',
+  'setup.wizard.allSet': 'Nothing else to do — sign in to Jira and GitHub happens in your browser the first time a skill needs it.',
+  'setup.wizard.prerequisites.title': 'Tools to install',
+  'setup.wizard.prerequisites.blocked': 'The skills cannot run until the tools marked in red are installed.',
+  'setup.wizard.prerequisite.required': '— required',
+  'setup.wizard.prerequisite.optional': '— optional',
+  'setup.wizard.prerequisite.outdated': '— v{version}, needs v{min}+',
+
+  // ── Settings → About → Machine setup ─────────────────────────────────────
+  'settings.about.setup.title': 'Machine setup',
+  'settings.about.setup.healthy': 'Everything the skills need is in place.',
+  'settings.about.setup.degraded': 'Some things need your attention:',
+  'settings.about.setup.recheck': 'Check again',
+  'settings.about.setup.install': 'Install',
+  'settings.about.setup.installing': 'Installing…',
+  'settings.about.setup.getIt': 'Get it',
+  'settings.about.setup.prerequisite.missing': '`{name}` is not installed. The skills cannot run without it.',
+  'settings.about.setup.prerequisite.outdated': '`{name}` is v{version}, but v{min} or later is required.',
+  'settings.about.setup.prerequisite.optional':
+    '`{name}` is not installed. Everything works, but /magic:resolve will reply without threading.',
+  'settings.about.setup.mcp.missing': 'The {name} MCP server is not configured, so those tools are unavailable.',
+  'settings.about.setup.mcp.legacy':
+    'The {name} MCP server is configured differently than this version expects. Migrating switches it to browser sign-in, with no token to store.',
+  'settings.about.setup.mcp.configure': 'Configure',
+  'settings.about.setup.mcp.migrate': 'Migrate',
+  'settings.about.setup.skills.missing': 'Missing skills: {names}.',
+  'settings.about.setup.skills.reinstall': 'Reinstall',
+  'settings.about.setup.integrations.title': 'Integrations',
+  'settings.about.setup.integrations.confirmOff': 'Turn Jira off?',
+  'settings.about.setup.integrations.offWarning':
+    'This unregisters the Jira server and withdraws its permissions. Turning it back on takes one click.',
+
   // ── Toasts ───────────────────────────────────────────────────────────────
   'toast.launchModeUpdated': 'Launch mode updated',
   'toast.releaseNotesFailed': 'Could not load release notes',
@@ -425,6 +471,11 @@ export const en = {
   'repo.commit.coAuthorHelp': 'Add Claude as co-author in commits',
   'repo.commit.ticketId': 'Include Ticket ID',
   'repo.commit.ticketIdHelp': 'Add ticket ID from branch name in commit message',
+  'repo.commit.protectedBranch': 'Commits on main branches',
+  'repo.commit.protectedBranchHelpOn':
+    'Allowed on main, master, develop and this repo’s development branch — /magic:commit asks first',
+  'repo.commit.protectedBranchHelpOff':
+    'Blocked on main, master, develop and this repo’s development branch — /magic:commit moves the work to a new branch',
   'repo.example': 'Example',
 
   'repo.resolve.section': 'Resolve',
@@ -537,7 +588,7 @@ export const en = {
   'org.createModal.submit': 'Create',
 
   'org.joinModal.help': 'Paste the invitation link you received, or just its token.',
-  'org.joinModal.tokenPlaceholder': 'https://app.magic-slash.io/invite/…',
+  'org.joinModal.tokenPlaceholder': 'https://invite.magic-slash.io/…',
   'org.joinModal.submit': 'Join',
 
   'org.archiveModal.confirm': 'Archive {name}?',

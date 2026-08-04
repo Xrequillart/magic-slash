@@ -88,16 +88,19 @@ Slash commands execute shell commands. Be cautious when:
 
 ### Verification
 
-Always verify you're installing from the official repository:
+Always verify you're installing from the official repository. Releases are published at
+[github.com/xrequillart/magic-slash/releases](https://github.com/xrequillart/magic-slash/releases),
+and the macOS builds are signed and notarized by Apple — Gatekeeper refuses a tampered
+copy. To check what you downloaded:
 
 ```bash
-# Verify the install script before running
-curl -fsSL https://magic-slash.io/install.sh | less
-
-# Or clone and inspect first
-git clone https://github.com/xrequillart/magic-slash.git
-less magic-slash/install/install.sh
+# Verify the signature and the notarization ticket
+codesign --verify --deep --strict --verbose=2 "/Applications/Magic Slash.app"
+spctl --assess --type execute --verbose "/Applications/Magic Slash.app"
 ```
+
+Nothing is piped into a shell to install Magic Slash: the app configures the machine
+itself on first launch, and the code that does it is in `desktop/src/main/setup/`.
 
 ## Known Security Limitations
 

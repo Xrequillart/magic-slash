@@ -82,7 +82,7 @@ Analyze `$ARGUMENTS`:
 - **Jira**: Alphabetic prefix + hyphen + digits (regex: `^[A-Za-z]+-\d+$`, normalize to uppercase) → Step 2A
   - **If `$ATLASSIAN_ENABLED` is `false`**: Do not match Jira format. If the user provides a Jira ID (e.g., `PROJ-123`), display:
     > ⚠️ Atlassian integration is not configured. Only GitHub issues (#123) are supported.
-    > To enable Atlassian, re-run the installer: `curl -fsSL https://magic-slash.io/install.sh | bash`
+    > To enable Atlassian, open the Magic Slash app → Settings → Integrations.
     
     Then stop.
 - **GitHub**: Number with optional `#` (regex: `^#?\d+$`) → Step 2B

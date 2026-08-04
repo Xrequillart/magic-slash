@@ -119,7 +119,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
       {/* Left — illustration */}
       <aside className="hidden w-1/2 flex-col items-center justify-center bg-softblue px-12 lg:flex">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="absolute left-10 top-8 h-7" />
+        <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="absolute left-10 top-8 h-9" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/img/mascot-peace.png" alt="" className="w-64 drop-shadow-xl" />
         <h2 className="mt-10 max-w-sm text-center font-display text-3xl font-black leading-tight text-ink">
@@ -138,7 +138,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
 
         {/* mobile logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="mb-10 mt-12 h-7 lg:hidden" />
+        <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="mb-10 mt-12 h-9 lg:hidden" />
 
         <div className="w-full max-w-sm">
           {phase === 'loading' && <p className="text-center text-muted">{t('invite.loading')}</p>}

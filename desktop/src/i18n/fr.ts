@@ -311,6 +311,52 @@ export const fr: Record<keyof typeof en, string> = {
     'La file d’attente a saturé et les événements les plus anciens ont été supprimés. Ces exécutions sont définitivement perdues.',
   'settings.about.telemetry.pending': '{count} événement(s) en attente d’envoi. Ils partiront d’eux-mêmes.',
 
+  // ── Assistant de configuration au premier lancement ──────────────────────
+  'setup.wizard.title': 'Configurer Magic Slash',
+  'setup.wizard.checking': 'Vérification de votre machine…',
+  'setup.wizard.applying': 'Application…',
+  'setup.wizard.finish': 'Commencer à utiliser Magic Slash',
+  'setup.wizard.integrations.question': 'Où vivent vos tickets ?',
+  'setup.wizard.integrations.help': 'Ce choix détermine les outils que les skills sont autorisés à utiliser.',
+  'setup.wizard.integrations.both': 'Jira et GitHub',
+  'setup.wizard.integrations.bothHelp': 'Tickets Jira, pages Confluence, pull requests, issues et revues.',
+  'setup.wizard.integrations.githubOnly': 'GitHub uniquement',
+  'setup.wizard.integrations.githubOnlyHelp': 'Issues, pull requests et revues. Aucun accès à Jira n’est demandé.',
+  'setup.wizard.integrations.changeable': 'Vous pourrez changer d’avis dans les réglages.',
+  'setup.wizard.done.skills': 'Les sept skills /magic: sont installés',
+  'setup.wizard.done.mcp': 'Les accès Jira et GitHub sont configurés',
+  'setup.wizard.done.permissions': 'Les permissions et les hooks sont configurés',
+  'setup.wizard.allSet': 'Rien d’autre à faire — la connexion à Jira et GitHub se fera dans votre navigateur la première fois qu’un skill en aura besoin.',
+  'setup.wizard.prerequisites.title': 'Outils à installer',
+  'setup.wizard.prerequisites.blocked': 'Les skills ne pourront pas fonctionner tant que les outils en rouge ne sont pas installés.',
+  'setup.wizard.prerequisite.required': '— requis',
+  'setup.wizard.prerequisite.optional': '— optionnel',
+  'setup.wizard.prerequisite.outdated': '— v{version}, v{min}+ requise',
+
+  // ── Réglages → À propos → Configuration de la machine ────────────────────
+  'settings.about.setup.title': 'Configuration de la machine',
+  'settings.about.setup.healthy': 'Tout ce dont les skills ont besoin est en place.',
+  'settings.about.setup.degraded': 'Quelques points demandent votre attention :',
+  'settings.about.setup.recheck': 'Revérifier',
+  'settings.about.setup.install': 'Installer',
+  'settings.about.setup.installing': 'Installation…',
+  'settings.about.setup.getIt': 'Obtenir',
+  'settings.about.setup.prerequisite.missing': '`{name}` n’est pas installé. Les skills ne peuvent pas fonctionner sans.',
+  'settings.about.setup.prerequisite.outdated': '`{name}` est en v{version}, mais la v{min} ou plus récente est requise.',
+  'settings.about.setup.prerequisite.optional':
+    '`{name}` n’est pas installé. Tout fonctionne, mais /magic:resolve répondra sans fil de discussion.',
+  'settings.about.setup.mcp.missing': 'Le serveur MCP {name} n’est pas configuré, ses outils sont donc indisponibles.',
+  'settings.about.setup.mcp.legacy':
+    'Le serveur MCP {name} est configuré autrement que ce que cette version attend. La migration le bascule sur une connexion via le navigateur, sans jeton à stocker.',
+  'settings.about.setup.mcp.configure': 'Configurer',
+  'settings.about.setup.mcp.migrate': 'Migrer',
+  'settings.about.setup.skills.missing': 'Skills manquants : {names}.',
+  'settings.about.setup.skills.reinstall': 'Réinstaller',
+  'settings.about.setup.integrations.title': 'Intégrations',
+  'settings.about.setup.integrations.confirmOff': 'Désactiver Jira ?',
+  'settings.about.setup.integrations.offWarning':
+    'Le serveur Jira sera retiré et ses permissions révoquées. Le réactiver ne demande qu’un clic.',
+
   // ── Notifications éphémères ──────────────────────────────────────────────
   'toast.launchModeUpdated': 'Mode de lancement mis à jour',
   'toast.releaseNotesFailed': 'Impossible de charger les notes de version',
@@ -426,6 +472,11 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.commit.ticketId': 'Inclure l’ID du ticket',
   'repo.commit.ticketIdHelp':
     'Ajouter au message de commit l’ID du ticket lu dans le nom de la branche',
+  'repo.commit.protectedBranch': 'Commits sur les branches principales',
+  'repo.commit.protectedBranchHelpOn':
+    'Autorisés sur main, master, develop et la branche de dev de ce dépôt — /magic:commit demande confirmation',
+  'repo.commit.protectedBranchHelpOff':
+    'Bloqués sur main, master, develop et la branche de dev de ce dépôt — /magic:commit déplace le travail sur une nouvelle branche',
   'repo.example': 'Exemple',
 
   'repo.resolve.section': 'Resolve',
@@ -541,7 +592,7 @@ export const fr: Record<keyof typeof en, string> = {
   'org.createModal.submit': 'Créer',
 
   'org.joinModal.help': 'Collez le lien d’invitation reçu, ou seulement son token.',
-  'org.joinModal.tokenPlaceholder': 'https://app.magic-slash.io/invite/…',
+  'org.joinModal.tokenPlaceholder': 'https://invite.magic-slash.io/…',
   'org.joinModal.submit': 'Rejoindre',
 
   'org.archiveModal.confirm': 'Archiver {name} ?',

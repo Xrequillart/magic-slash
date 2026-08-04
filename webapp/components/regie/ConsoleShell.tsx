@@ -149,7 +149,7 @@ export function ConsoleShell({
             console could pass for a user page at a glance. */}
         <Link href="/dashboard" className="shrink-0" title="Retour à l'application">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="h-5" />
+          <img src="/img/logo-readme-light.svg" alt="Magic Slash" className="h-7" />
         </Link>
         <span className="hidden shrink-0 rounded-full bg-brand/10 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-[0.12em] text-brand sm:inline-block">
           Back-office

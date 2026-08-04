@@ -73,40 +73,9 @@ Mets a jour la version dans `/desktop/package.json` :
 
 Affiche une confirmation pour chaque fichier mis a jour.
 
-## Etape 3 : Mettre a jour les landing pages (docs/)
+## Etape 3 : Mettre a jour la documentation
 
-### 3.1 : docs/script.js — chaines i18n (EN + FR)
-
-Dans `docs/script.js`, remplace les 2 occurrences de la chaine i18n `nav.changelog` (une pour EN, une pour FR) :
-
-Pattern a chercher (regex generique) :
-```
-Changelog <span class="version-badge" id="latestVersion">v[0-9]+\.[0-9]+\.[0-9]+</span>
-```
-
-Remplace le contenu du span par `vX.Y.Z` dans les 2 occurrences.
-
-### 3.2 : docs/*.html — badge version dans le header
-
-Dans chacun des 5 fichiers HTML (`docs/index.html`, `docs/desktop.html`, `docs/skills.html`, `docs/story.html`, `docs/documentation.html`) :
-
-**latestVersion** (span dans le dropdown) — pattern a chercher :
-```
-id="latestVersion">v[0-9]+\.[0-9]+\.[0-9]+</span>
-```
-Remplace le contenu par `vX.Y.Z`.
-
-**headerVersion** (lien dans le header) — pattern a chercher :
-```
-href="https://github.com/xrequillart/magic-slash/releases/tag/v[0-9]+\.[0-9]+\.[0-9]+"[^>]*>v[0-9]+\.[0-9]+\.[0-9]+</a>
-```
-Remplace `tag/vOLD_VERSION` par `tag/vX.Y.Z` et le texte du lien par `vX.Y.Z`.
-
-Affiche une confirmation pour chaque fichier mis a jour.
-
-## Etape 4 : Mettre a jour la documentation
-
-### 4.1 : README.md
+### 3.1 : README.md
 
 Cherche la ligne contenant `"version":` dans le bloc de configuration JSON du README et mets-la a jour :
 
@@ -114,19 +83,9 @@ Cherche la ligne contenant `"version":` dans le bloc de configuration JSON du RE
 "version": "X.Y.Z"
 ```
 
-### 4.2 : docs/documentation.html
+## Etape 4 : Mettre a jour les skills et l'interface desktop
 
-Cherche les 2 occurrences de `"version":` dans les blocs `<pre>` de la documentation et mets-les a jour :
-
-```json
-"version": "X.Y.Z"
-```
-
-Affiche une confirmation pour chaque fichier mis a jour.
-
-## Etape 5 : Mettre a jour les skills et l'interface desktop
-
-### 5.1 : Fichiers SKILL.md (7 fichiers)
+### 4.1 : Fichiers SKILL.md (7 fichiers)
 
 Mets a jour le titre de version dans les 7 fichiers de skills :
 
@@ -152,9 +111,9 @@ Remplace par :
 
 **IMPORTANT** : Ne cherche PAS la version actuelle (`VERSION_ACTUELLE`) dans ces fichiers. Utilise toujours le pattern regex generique ci-dessus pour trouver la ligne, car un fichier peut avoir rate une mise a jour precedente et contenir une version differente.
 
-### 5.2 : desktop/src/renderer/components/Sidebar.tsx
+### 4.2 : desktop/src/renderer/components/Sidebar.tsx
 
-Cherche la version affichee dans le footer de la sidebar en utilisant un pattern regex generique (meme approche que l'etape 4.1) :
+Cherche la version affichee dans le footer de la sidebar en utilisant un pattern regex generique (meme approche que l'etape 3.1) :
 
 **Pattern principal** : Cherche `v[0-9]+\.[0-9]+\.[0-9]+` dans la zone footer du fichier (pres des liens Docs/Changelog/GitHub).
 
@@ -172,7 +131,7 @@ Pouvez-vous indiquer la ligne ou se trouve la version a mettre a jour dans deskt
 
 **IMPORTANT** : Ne cherche PAS un className exact comme `opacity-60` — le style CSS peut changer a tout moment. Utilise uniquement le pattern de version et le contexte structurel (footer).
 
-### 5.3 : webapp/lib/desktopRelease.ts
+### 4.3 : webapp/lib/desktopRelease.ts
 
 C'est la reference contre laquelle la webapp decide si une machine est a jour : le
 back-office (liste Users, fiche user, page Fleet) et la page `/application` la
@@ -198,28 +157,13 @@ tout le parc en « en retard ».
 Un test verifie cette egalite (`webapp/lib/desktopRelease.test.ts` compare le const a
 `desktop/package.json`), donc un oubli fait echouer la CI au push suivant plutot que
 d'induire un operateur en erreur pendant un cycle de release. La verification de
-l'etape 8.1 l'attrape avant, en local.
+l'etape 6.1 l'attrape avant, en local.
 
 Affiche une confirmation pour chaque fichier mis a jour.
 
-## Etape 6 : Mettre a jour le script d'installation
+## Etape 5 : Mettre a jour le CHANGELOG.md
 
-### 6.1 : install/install.sh
-
-Cherche la ligne contenant le fallback de version dans la commande curl/jq (pattern `.tag_name // "v`) et remplace la valeur par defaut.
-
-La ligne ressemble a :
-```bash
-CURRENT_VERSION=$(curl -s ... | jq -r '.tag_name // "v0.X.Y"' | sed 's/^v//')
-```
-
-Remplace `"v0.X.Y"` par `"v{NOUVELLE_VERSION}"`.
-
-Affiche une confirmation.
-
-## Etape 7 : Mettre a jour le CHANGELOG.md
-
-### 7.0 : Collecter les commits depuis la derniere release
+### 5.0 : Collecter les commits depuis la derniere release
 
 Detecte le dernier tag de release :
 
@@ -248,9 +192,9 @@ Pour chaque entree, formate le bullet en utilisant le scope comme prefixe en gra
 - Si le commit a un scope : `- **Scope**: sujet` (premiere lettre du scope en majuscule)
 - Si le commit n'a pas de scope : `- sujet` (premiere lettre en majuscule)
 
-### 7.1 : Creer une nouvelle section pre-remplie
+### 5.1 : Creer une nouvelle section pre-remplie
 
-Ajoute une nouvelle section en haut du changelog (apres l'entete), avec les entrees categorisees collectees a l'etape 6.0 :
+Ajoute une nouvelle section en haut du changelog (apres l'entete), avec les entrees categorisees collectees a l'etape 5.0 :
 
 ```markdown
 ## [X.Y.Z] - YYYY-MM-DD
@@ -275,7 +219,7 @@ Utilise la date du jour au format `YYYY-MM-DD`.
 - Omets les categories vides (pas de section `### Added` si aucun `feat` n'a ete trouve).
 - Si aucun commit n'est trouve (cas rare), cree les 3 sections avec des placeholders `-`.
 
-### 7.2 : Ajouter le lien de release
+### 5.2 : Ajouter le lien de release
 
 Ajoute un nouveau lien en bas du fichier, juste apres les autres liens :
 
@@ -285,7 +229,7 @@ Ajoute un nouveau lien en bas du fichier, juste apres les autres liens :
 
 Assure-toi que le nouveau lien est ajoute AVANT les liens existants (le plus recent en premier dans la liste).
 
-### 7.3 : Presenter le CHANGELOG pour validation
+### 5.3 : Presenter le CHANGELOG pour validation
 
 Utilise `AskUserQuestion` pour presenter le CHANGELOG pre-rempli et demander validation :
 
@@ -311,9 +255,9 @@ Voulez-vous :
 
 Si l'utilisateur repond 'edit', utilise `AskUserQuestion` pour lui demander de decrire ses modifications. Applique-les au CHANGELOG puis continue.
 
-## Etape 8 : Verification et resume
+## Etape 6 : Verification et resume
 
-### 8.1 : Verifier les modifications avec grep
+### 6.1 : Verifier les modifications avec grep
 
 **CRITIQUE** : Cette etape est obligatoire. Tu dois verifier que CHAQUE fichier contient bien la nouvelle version.
 
@@ -332,13 +276,6 @@ for f in package.json desktop/package.json README.md; do
     ERRORS=$((ERRORS+1))
   fi
 done && \
-if grep -c "\"version\": \"X.Y.Z\"" docs/documentation.html | grep -q "^2$"; then
-  echo "  OK  docs/documentation.html (2 occurrences)"
-else
-  COUNT=$(grep -c "\"version\": \"X.Y.Z\"" docs/documentation.html 2>/dev/null || echo "0")
-  echo "  ERREUR  docs/documentation.html - attendu 2 occurrences, trouve $COUNT"
-  ERRORS=$((ERRORS+1))
-fi && \
 for f in skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md skills/magic-pr/SKILL.md skills/magic-review/SKILL.md skills/magic-resolve/SKILL.md skills/magic-done/SKILL.md; do
   if grep -q "magic-slash vX.Y.Z" "$f"; then
     echo "  OK  $f"
@@ -353,31 +290,10 @@ else
   echo "  ERREUR  desktop/src/renderer/components/Sidebar.tsx - version X.Y.Z NON trouvee"
   ERRORS=$((ERRORS+1))
 fi && \
-if grep -q "vX.Y.Z" install/install.sh; then
-  echo "  OK  install/install.sh"
-else
-  echo "  ERREUR  install/install.sh - version X.Y.Z NON trouvee"
-  ERRORS=$((ERRORS+1))
-fi && \
 if grep -q "LATEST_DESKTOP_VERSION = 'X.Y.Z'" webapp/lib/desktopRelease.ts; then
   echo "  OK  webapp/lib/desktopRelease.ts"
 else
   echo "  ERREUR  webapp/lib/desktopRelease.ts - version X.Y.Z NON trouvee"
-  ERRORS=$((ERRORS+1))
-fi && \
-for f in docs/index.html docs/desktop.html docs/skills.html docs/story.html; do
-  if grep -q "vX.Y.Z" "$f"; then
-    echo "  OK  $f"
-  else
-    echo "  ERREUR  $f - version X.Y.Z NON trouvee"
-    ERRORS=$((ERRORS+1))
-  fi
-done && \
-if grep -c "vX.Y.Z" docs/script.js | grep -q "^2$"; then
-  echo "  OK  docs/script.js (2 occurrences i18n)"
-else
-  COUNT=$(grep -c "vX.Y.Z" docs/script.js 2>/dev/null || echo "0")
-  echo "  ERREUR  docs/script.js - attendu 2 occurrences i18n, trouve $COUNT"
   ERRORS=$((ERRORS+1))
 fi && \
 echo "=== $ERRORS erreur(s) detectee(s) ==="
@@ -385,7 +301,7 @@ echo "=== $ERRORS erreur(s) detectee(s) ==="
 
 **Si des erreurs sont detectees** : corrige immediatement les fichiers concernes et relance la verification jusqu'a ce que toutes les verifications passent (0 erreurs).
 
-### 8.2 : Afficher le resume
+### 6.2 : Afficher le resume
 
 Affiche un resume de tous les fichiers modifies :
 
@@ -395,12 +311,6 @@ Resume des modifications pour la version X.Y.Z :
   package.json                                  {VERSION_ACTUELLE} -> X.Y.Z
   desktop/package.json                          {VERSION_ACTUELLE} -> X.Y.Z
   README.md                                     {VERSION_ACTUELLE} -> X.Y.Z
-  docs/documentation.html                       {VERSION_ACTUELLE} -> X.Y.Z (2 occurrences)
-  docs/index.html                               v{VERSION_ACTUELLE} -> vX.Y.Z
-  docs/desktop.html                             v{VERSION_ACTUELLE} -> vX.Y.Z
-  docs/skills.html                              v{VERSION_ACTUELLE} -> vX.Y.Z
-  docs/story.html                               v{VERSION_ACTUELLE} -> vX.Y.Z
-  docs/script.js                                v{VERSION_ACTUELLE} -> vX.Y.Z (2 occurrences i18n)
   skills/magic-start/SKILL.md                   v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-continue/SKILL.md                v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-commit/SKILL.md                  v{VERSION_ACTUELLE} -> vX.Y.Z
@@ -409,16 +319,15 @@ Resume des modifications pour la version X.Y.Z :
   skills/magic-resolve/SKILL.md                 v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-done/SKILL.md                    v{VERSION_ACTUELLE} -> vX.Y.Z
   desktop/src/renderer/components/Sidebar.tsx    v{VERSION_ACTUELLE} -> vX.Y.Z
-  install/install.sh                            v{VERSION_ACTUELLE} -> vX.Y.Z
   webapp/lib/desktopRelease.ts                  {VERSION_ACTUELLE} -> X.Y.Z
   CHANGELOG.md                                  Nouvelle section ajoutee
 ```
 
-### 8.3 : Commit, tag et push de release
+### 6.3 : Commit, tag et push de release
 
 Cette etape execute toutes les operations git en une seule interaction. L'utilisateur confirme une seule fois, puis le commit, le tag et le push s'enchainent automatiquement.
 
-#### 8.3.1 : Pre-vol et confirmation unique
+#### 6.3.1 : Pre-vol et confirmation unique
 
 Execute `git diff --stat` via `Bash` pour afficher un apercu de tous les fichiers modifies.
 
@@ -439,7 +348,7 @@ Voulez-vous lancer la release ? Cela va :
 
 Si l'utilisateur refuse, arrete le processus de release ici.
 
-#### 8.3.2 : Execution automatique (commit + tag + push)
+#### 6.3.2 : Execution automatique (commit + tag + push)
 
 Si l'utilisateur a confirme, enchaine les 3 operations sans poser de questions supplementaires.
 
@@ -448,12 +357,11 @@ Si l'utilisateur a confirme, enchaine les 3 operations sans poser de questions s
 **IMPORTANT** : Ne fais PAS `git add -A`. Stage uniquement les fichiers specifiques que le skill a modifies pour eviter de contaminer le commit de release avec des fichiers non lies :
 
 ```bash
-git add package.json desktop/package.json README.md docs/documentation.html \
-  docs/index.html docs/desktop.html docs/skills.html docs/story.html docs/script.js \
+git add package.json desktop/package.json README.md \
   skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md \
   skills/magic-pr/SKILL.md skills/magic-review/SKILL.md skills/magic-resolve/SKILL.md \
   skills/magic-done/SKILL.md desktop/src/renderer/components/Sidebar.tsx \
-  webapp/lib/desktopRelease.ts install/install.sh CHANGELOG.md
+  webapp/lib/desktopRelease.ts CHANGELOG.md
 ```
 
 Puis execute le commit :
@@ -490,7 +398,7 @@ Voulez-vous :
 
 Si 'retry' et que c'est le push qui a echoue, tente d'abord `git pull --rebase origin main` avant de relancer le push.
 
-#### 8.3.3 : Message de succes
+#### 6.3.3 : Message de succes
 
 Une fois les 3 operations reussies, affiche le message de succes suivant :
 

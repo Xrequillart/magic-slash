@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, UsageStats, TelemetryHealth, ThemeId, LanguageId } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, UsageStats, TelemetryHealth, ThemeId, LanguageId, SetupStatus, McpServerId, PrerequisiteId } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -432,6 +432,28 @@ const profileApi = {
   save: (data: UserProfile) => ipcRenderer.invoke('profile:save', data),
 }
 
+// Setup API — machine prerequisites, MCP servers and integrations. Replaces what the
+// install script used to do; see main/setup/.
+const setupApi = {
+  getStatus: (): Promise<SetupStatus> => ipcRenderer.invoke('setup:getStatus'),
+  provisionMcp: (id: McpServerId): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('setup:provisionMcp', { id }),
+  removeMcp: (id: McpServerId): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('setup:removeMcp', { id }),
+  installPrerequisite: (id: PrerequisiteId): Promise<{ ok: boolean; output: string; error?: string }> =>
+    ipcRenderer.invoke('setup:installPrerequisite', { id }),
+  reinstallSkills: (): Promise<{ updated: string[]; errors: string[] }> =>
+    ipcRenderer.invoke('setup:reinstallSkills'),
+  setIntegrations: (atlassian: boolean): Promise<SetupStatus> =>
+    ipcRenderer.invoke('setup:setIntegrations', { atlassian }),
+  // Homebrew output, line by line, while an install runs.
+  onInstallProgress: (callback: (data: { id: PrerequisiteId; chunk: string }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: PrerequisiteId; chunk: string }) => callback(data)
+    ipcRenderer.on('setup:installProgress', listener)
+    return () => ipcRenderer.removeListener('setup:installProgress', listener)
+  },
+}
+
 // Usage API (Claude account + estimated spend)
 const usageApi = {
   getAccount: (): Promise<ClaudeAccount | null> => ipcRenderer.invoke('usage:getAccount'),
@@ -596,6 +618,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   prWatcher: prWatcherApi,
   profile: profileApi,
   usage: usageApi,
+  setup: setupApi,
   auth: authApi,
   org: orgApi,
   connectivity: connectivityApi,
@@ -622,6 +645,7 @@ declare global {
       prWatcher: typeof prWatcherApi
       profile: typeof profileApi
       usage: typeof usageApi
+      setup: typeof setupApi
       auth: typeof authApi
       org: typeof orgApi
       connectivity: typeof connectivityApi

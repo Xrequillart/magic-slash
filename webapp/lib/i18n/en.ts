@@ -111,8 +111,9 @@ export const en = {
   'onboarding.install.device.one': '1 device',
   'onboarding.install.device.many': '{count} devices',
   'onboarding.install.hintPending':
-    'One command in your terminal — Magic Slash runs on your machine',
-  'onboarding.install.runThis': 'Run this in your terminal:',
+    'Magic Slash runs on your machine — download it and sign in',
+  'onboarding.install.downloadHint':
+    'Drag it into Applications and open it. It installs the skills and configures Claude Code on first launch.',
 
   // ── Team repositories ──────────────────────────────────────────────────────
   'team.repositories': 'Repositories',
@@ -382,7 +383,7 @@ export const en = {
   'org.createModal.help': 'You become its admin and can invite members right away.',
   'org.createModal.namePlaceholder': 'Organization name',
   'org.joinModal.help': 'Paste the invitation link you received, or just its token.',
-  'org.joinModal.placeholder': 'https://app.magic-slash.io/invite/…',
+  'org.joinModal.placeholder': 'https://invite.magic-slash.io/…',
   'org.joinModal.submitting': 'Joining…',
   'org.archiveModal.title': 'Archive organization',
   'org.archiveModal.confirm': 'Archive {name}?',
@@ -500,6 +501,11 @@ export const en = {
   'repo.commit.coAuthorHelp': 'Add Claude as co-author in commits',
   'repo.commit.ticketId': 'Include ticket ID',
   'repo.commit.ticketIdHelp': 'Add the ticket ID from the branch name',
+  'repo.commit.protectedBranch': 'Commits on main branches',
+  'repo.commit.protectedBranchHelpOn':
+    'Allowed on main, master, develop and this repo’s development branch — /magic:commit asks first',
+  'repo.commit.protectedBranchHelpOff':
+    'Blocked on main, master, develop and this repo’s development branch — /magic:commit moves the work to a new branch',
   'repo.example': 'Example',
   'repo.resolve.section': 'Resolve',
   'repo.resolve.commitMode': 'Commit mode',

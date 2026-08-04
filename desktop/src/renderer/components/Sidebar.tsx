@@ -10,6 +10,7 @@ import { SidebarAccount } from './SidebarAccount'
 import { stateColors, stateBgColors, stateHoverBgColors } from '../utils/stateColors'
 import { useT } from '../i18n'
 import type { TerminalState, ScriptTerminalInfo } from '../../types'
+import { CHANGELOG_URL, DOCUMENTATION_URL } from '../../urls'
 
 const SIDEBAR_MIN_WIDTH = 200
 const SIDEBAR_DEFAULT_WIDTH = 300
@@ -575,7 +576,7 @@ export function Sidebar() {
         <span className="opacity-60">v0.63.1</span>
         <span className="opacity-30">&bull;</span>
         <a
-          href="https://xrequillart.github.io/magic-slash/"
+          href={DOCUMENTATION_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-ink transition-colors"
@@ -584,7 +585,7 @@ export function Sidebar() {
         </a>
         <span className="opacity-30">&bull;</span>
         <a
-          href="https://xrequillart.github.io/magic-slash/documentation.html#changelog"
+          href={CHANGELOG_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-ink transition-colors"

@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Building2, Check, ChevronDown, ChevronRight, Circle, Copy, Terminal, UserRound } from 'lucide-react'
+import { Building2, Check, ChevronDown, ChevronRight, Circle, Download, UserRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ProfileWizard } from '@/components/ProfileWizard'
-import { Button, Input } from '@/components/ui'
-import { INSTALL_COMMAND, type Installation } from '@/lib/installations'
+import { Button, ButtonLink, Input } from '@/components/ui'
+import { DOWNLOAD_URL, type Installation } from '@/lib/installations'
 import { doneCount, isOnboarded, TOTAL_STEPS, type OnboardingState } from '@/lib/onboarding'
 import { createOrg, type Org } from '@/lib/orgs'
 import { type UserProfile } from '@/lib/profile'
@@ -93,8 +93,7 @@ export function GettingStarted({
   const [orgName, setOrgName] = useState('')
   const [creating, setCreating] = useState(false)
   const [orgError, setOrgError] = useState<string | null>(null)
-  const [showCommand, setShowCommand] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [showDownload, setShowDownload] = useState(false)
 
   const submitOrg = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -110,16 +109,6 @@ export function GettingStarted({
       setOrgError(err instanceof Error ? err.message : t('onboarding.org.failed'))
     } finally {
       setCreating(false)
-    }
-  }
-
-  const copyCommand = async () => {
-    try {
-      await navigator.clipboard.writeText(INSTALL_COMMAND)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Clipboard denied — the command stays selectable on screen.
     }
   }
 
@@ -218,7 +207,7 @@ export function GettingStarted({
               <div className={ROW_DONE}>
                 <ItemBody
                   done
-                  icon={Terminal}
+                  icon={Download}
                   title={t('onboarding.install.title')}
                   hint={t('onboarding.install.hintDone', {
                     devices:
@@ -231,36 +220,27 @@ export function GettingStarted({
             ) : (
               <>
                 <button
-                  onClick={() => setShowCommand((v) => !v)}
-                  aria-expanded={showCommand}
+                  onClick={() => setShowDownload((v) => !v)}
+                  aria-expanded={showDownload}
                   className={ROW_PENDING}
                 >
                   <ItemBody
                     done={false}
-                    icon={Terminal}
+                    icon={Download}
                     title={t('onboarding.install.title')}
                     hint={t('onboarding.install.hintPending')}
                   />
                   <ChevronDown
-                    className={`h-5 w-5 shrink-0 text-black/20 transition-all group-hover:text-brand ${showCommand ? 'rotate-180' : ''}`}
+                    className={`h-5 w-5 shrink-0 text-black/20 transition-all group-hover:text-brand ${showDownload ? 'rotate-180' : ''}`}
                   />
                 </button>
 
-                {showCommand && (
+                {showDownload && (
                   <div className={EXPANSION}>
-                    <p className="mb-2 text-xs text-muted">{t('onboarding.install.runThis')}</p>
-                    <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-canvas p-1 pl-3.5">
-                      <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap py-2 font-mono text-xs text-ink">
-                        {INSTALL_COMMAND}
-                      </code>
-                      <button
-                        onClick={copyCommand}
-                        className="flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-3 py-2 font-display text-xs font-medium text-muted transition-colors hover:text-ink"
-                      >
-                        {copied ? <Check className="h-3.5 w-3.5 text-green" /> : <Copy className="h-3.5 w-3.5" />}
-                        {copied ? t('common.copied') : t('common.copy')}
-                      </button>
-                    </div>
+                    <p className="mb-3 text-xs text-muted">{t('onboarding.install.downloadHint')}</p>
+                    <ButtonLink href={DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
+                      {t('common.download')}
+                    </ButtonLink>
                   </div>
                 )}
               </>

@@ -49,6 +49,24 @@
   font-style: normal;
   font-display: swap;
 }
+/* The two italics only the public site uses. Declared here with the rest of the
+   family rather than in `(marketing)/marketing.css`, so there is ONE place that
+   says what Cera Pro is; without them the browser synthesises an oblique from the
+   upright and the headline it is used on renders visibly wrong. */
+@font-face {
+  font-family: 'Cera Pro';
+  src: url('/fonts/CeraPro/Cera%20Pro%20Regular%20Italic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cera Pro';
+  src: url('/fonts/CeraPro/Cera%20Pro%20Black%20Italic.otf') format('opentype');
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
 
 /* Modal animations — same curves as the desktop app. */
 @keyframes modal-backdrop-in {

@@ -6,9 +6,15 @@ import type { Session } from '@supabase/supabase-js'
 import { isPlatformAdmin } from './admin'
 import { getSupabase } from './supabase'
 
-/** Where each half of the guard sends people. */
-export const LOGIN_PATH = '/'
-export const HOME_PATH = '/dashboard'
+/**
+ * Where each half of the guard sends people. Defined in `./routes` — a module with no
+ * imports — so the marketing pages can link to the login page without pulling this
+ * file's Supabase client into their bundle. Re-exported here because the guards below,
+ * and everything that already imports them, read better naming one module.
+ */
+import { LOGIN_PATH, HOME_PATH } from './routes'
+
+export { LOGIN_PATH, HOME_PATH }
 
 /**
  * Tracks the current Supabase auth session in the browser. `loading` is true

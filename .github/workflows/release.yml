@@ -46,9 +46,9 @@ jobs:
 
             ## Installation
 
-            ```bash
-            curl -fsSL https://magic-slash.io/install.sh | bash
-            ```
+            Download the `.dmg` below, drag Magic Slash into Applications, and open
+            it. The app installs the skills, configures Claude Code and checks your
+            prerequisites on first launch — there is nothing else to run.
 
             ## Full Changelog
 
@@ -101,7 +101,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Verify installation script
+      - name: Verify the download is reachable
         run: |
-          # Verify the installation script is accessible
-          curl -fsSL https://magic-slash.io/install.sh | head -20
+          # There is no install script any more — the app configures the machine
+          # itself on first launch (desktop/src/main/setup/). What has to be reachable
+          # is the download the docs point people at.
+          curl -fsSLI -o /dev/null -w '%{http_code}\n' \
+            https://github.com/xrequillart/magic-slash/releases/latest | grep -q '^200$'

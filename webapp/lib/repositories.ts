@@ -39,6 +39,9 @@ export interface RepoCommit {
   format?: string
   coAuthor?: boolean
   includeTicketId?: boolean
+  /** Allow committing straight onto main/master/develop. True (the default) still
+   *  makes /magic:commit ask; false makes it branch off first. */
+  allowOnProtectedBranch?: boolean
 }
 
 export interface RepoResolve {
@@ -272,6 +275,7 @@ export const DEFAULTS = {
   commitFormat: 'angular',
   coAuthor: true,
   includeTicketId: false,
+  allowOnProtectedBranch: true,
   resolveCommitMode: 'new',
   resolveUseCommitConfig: true,
   resolveStyle: 'single-line',

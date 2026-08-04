@@ -1,10 +1,21 @@
 #!/usr/bin/env node
 /**
- * Generates tray icon PNGs for macOS menu bar.
- * Creates template images (monochrome black on transparent) with optional colored status dots.
+ * Generates tray icon PNGs for the macOS menu bar.
+ * Creates template images (black on transparent) with optional status dots.
  *
  * Template images on macOS: the system automatically inverts them for dark mode.
  * The "Template" suffix in the filename tells macOS to treat them as template images.
+ *
+ * The mark is the rabbit from `assets/rabbit-tray-source.png`, scaled down to menu bar
+ * size. Only that source's ALPHA is read: a template image is tinted by the system from
+ * its coverage alone, so the RGB it ships with is irrelevant and every output pixel is
+ * written black. That is also why the status dot's colour never reaches the screen —
+ * macOS keeps the shape and drops the hue. The dot stays anyway because it is what
+ * distinguishes the four states, and the pulse in tray-manager blinks it on and off.
+ *
+ * No image library: the desktop app has none, so this file carries a small PNG reader
+ * and writer. Run it by hand after changing the source art:
+ *   node scripts/generate-tray-icons.js
  */
 
 const fs = require('fs')
@@ -12,6 +23,19 @@ const path = require('path')
 const zlib = require('zlib')
 
 const OUTPUT_DIR = path.join(__dirname, '..', 'resources', 'tray')
+const SOURCE = path.join(__dirname, 'assets', 'rabbit-tray-source.png')
+
+/**
+ * Menu bar geometry, in 1x pixels. The canvas is wider than it is tall because the
+ * rabbit is a landscape mark (~1.47:1) — squeezing it into a square would waste the
+ * height the menu bar actually gives us and leave the rabbit tiny.
+ */
+const CANVAS_W = 22
+const CANVAS_H = 16
+const PADDING = 1        // clear space around the mark, so it does not touch the edges
+const DOT_RADIUS = 0.15  // as a fraction of canvas height
+
+// ── PNG writing ──────────────────────────────────────────────────────────────
 
 // CRC32 table for PNG chunks
 const crcTable = []
@@ -42,10 +66,8 @@ function createPNGChunk(type, data) {
 }
 
 function createPNG(width, height, pixelData) {
-  // PNG signature
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
 
-  // IHDR
   const ihdr = Buffer.alloc(13)
   ihdr.writeUInt32BE(width, 0)
   ihdr.writeUInt32BE(height, 4)
@@ -55,115 +77,242 @@ function createPNG(width, height, pixelData) {
   ihdr[11] = 0 // filter
   ihdr[12] = 0 // interlace
 
-  // IDAT - raw pixel data with filter bytes
   const rawData = Buffer.alloc(height * (1 + width * 4))
   for (let y = 0; y < height; y++) {
     rawData[y * (1 + width * 4)] = 0 // filter: none
     for (let x = 0; x < width; x++) {
       const srcIdx = (y * width + x) * 4
       const dstIdx = y * (1 + width * 4) + 1 + x * 4
-      rawData[dstIdx] = pixelData[srcIdx]     // R
-      rawData[dstIdx + 1] = pixelData[srcIdx + 1] // G
-      rawData[dstIdx + 2] = pixelData[srcIdx + 2] // B
-      rawData[dstIdx + 3] = pixelData[srcIdx + 3] // A
+      rawData[dstIdx] = pixelData[srcIdx]
+      rawData[dstIdx + 1] = pixelData[srcIdx + 1]
+      rawData[dstIdx + 2] = pixelData[srcIdx + 2]
+      rawData[dstIdx + 3] = pixelData[srcIdx + 3]
     }
   }
   const compressed = zlib.deflateSync(rawData)
-
-  // IEND
-  const iend = Buffer.alloc(0)
 
   return Buffer.concat([
     signature,
     createPNGChunk('IHDR', ihdr),
     createPNGChunk('IDAT', compressed),
-    createPNGChunk('IEND', iend),
+    createPNGChunk('IEND', Buffer.alloc(0)),
   ])
 }
 
-// Draw a slash "/" character on a canvas
-function drawSlash(pixels, width, height, color) {
-  const [r, g, b, a] = color
-  // Draw a diagonal line from bottom-left to top-right
-  // Slash occupies roughly the center area
-  const margin = Math.round(width * 0.2)
-  const lineWidth = Math.max(1, Math.round(width * 0.15))
+// ── PNG reading (alpha channel only) ─────────────────────────────────────────
 
-  for (let y = 0; y < height; y++) {
-    // Map y to x: as y goes from 0 (top) to height-1 (bottom), x goes from right to left
-    const progress = y / (height - 1)
-    const centerX = Math.round(margin + (1 - progress) * (width - 2 * margin))
+/** Bytes per pixel for the colour types that carry an alpha channel. */
+const ALPHA_BPP = { 4: 2, 6: 4 }
 
-    for (let dx = -Math.floor(lineWidth / 2); dx <= Math.floor(lineWidth / 2); dx++) {
-      const x = centerX + dx
-      if (x >= 0 && x < width) {
-        const idx = (y * width + x) * 4
-        pixels[idx] = r
-        pixels[idx + 1] = g
-        pixels[idx + 2] = b
-        pixels[idx + 3] = a
-      }
-    }
-  }
+function paeth(a, b, c) {
+  const p = a + b - c
+  const pa = Math.abs(p - a)
+  const pb = Math.abs(p - b)
+  const pc = Math.abs(p - c)
+  if (pa <= pb && pa <= pc) return a
+  return pb <= pc ? b : c
 }
 
-// Draw a small colored dot in the bottom-right corner
-function drawDot(pixels, width, height, color) {
-  const [r, g, b] = color
-  const dotRadius = Math.max(2, Math.round(width * 0.15))
-  const cx = width - dotRadius - 1
-  const cy = height - dotRadius - 1
+/**
+ * Returns { width, height, alpha } where `alpha` is one byte per pixel.
+ * Deliberately narrow: 8-bit, non-interlaced, and a colour type that has alpha. A
+ * silhouette without an alpha channel would carry no shape, so refusing is better than
+ * silently emitting a filled rectangle.
+ */
+function readAlpha(file) {
+  const buf = fs.readFileSync(file)
+  const sig = [137, 80, 78, 71, 13, 10, 26, 10]
+  for (let i = 0; i < sig.length; i++) {
+    if (buf[i] !== sig[i]) throw new Error(`${file}: not a PNG`)
+  }
 
+  let width = 0
+  let height = 0
+  let bitDepth = 0
+  let colourType = 0
+  const idat = []
+
+  let off = 8
+  while (off < buf.length) {
+    const len = buf.readUInt32BE(off)
+    const type = buf.toString('ascii', off + 4, off + 8)
+    const data = buf.subarray(off + 8, off + 8 + len)
+
+    if (type === 'IHDR') {
+      width = data.readUInt32BE(0)
+      height = data.readUInt32BE(4)
+      bitDepth = data[8]
+      colourType = data[9]
+      if (data[12] !== 0) throw new Error(`${file}: interlaced PNGs are not supported`)
+    } else if (type === 'IDAT') {
+      idat.push(data)
+    } else if (type === 'IEND') {
+      break
+    }
+
+    off += 8 + len + 4 // length + type + data + crc
+  }
+
+  if (bitDepth !== 8) throw new Error(`${file}: expected 8-bit, got ${bitDepth}`)
+  const bpp = ALPHA_BPP[colourType]
+  if (!bpp) {
+    throw new Error(`${file}: colour type ${colourType} has no alpha channel; ` +
+      'export the mark as RGBA (type 6) or grey+alpha (type 4)')
+  }
+
+  const raw = zlib.inflateSync(Buffer.concat(idat))
+  const stride = width * bpp
+  const alpha = Buffer.alloc(width * height)
+  const line = Buffer.alloc(stride)
+  const prev = Buffer.alloc(stride)
+
+  let p = 0
   for (let y = 0; y < height; y++) {
+    const filter = raw[p++]
+    raw.copy(line, 0, p, p + stride)
+    p += stride
+
+    for (let i = 0; i < stride; i++) {
+      const a = i >= bpp ? line[i - bpp] : 0
+      const b = prev[i]
+      const c = i >= bpp ? prev[i - bpp] : 0
+      switch (filter) {
+        case 0: break
+        case 1: line[i] = (line[i] + a) & 0xff; break
+        case 2: line[i] = (line[i] + b) & 0xff; break
+        case 3: line[i] = (line[i] + ((a + b) >> 1)) & 0xff; break
+        case 4: line[i] = (line[i] + paeth(a, b, c)) & 0xff; break
+        default: throw new Error(`${file}: unknown filter ${filter} on row ${y}`)
+      }
+    }
+
+    // Alpha is the last byte of each pixel for both supported colour types.
     for (let x = 0; x < width; x++) {
+      alpha[y * width + x] = line[x * bpp + bpp - 1]
+    }
+    line.copy(prev)
+  }
+
+  return { width, height, alpha }
+}
+
+// ── Drawing ──────────────────────────────────────────────────────────────────
+
+/**
+ * Box-filter the source alpha into a `dw` x `dh` rect at (ox, oy). Averaging over the
+ * whole source rect per output pixel is what keeps the rabbit's thin motion streaks
+ * from breaking up at menu bar size — the scale factor here is ~60x down.
+ */
+function drawMark(pixels, canvasW, canvasH, src, ox, oy, dw, dh) {
+  for (let y = 0; y < dh; y++) {
+    const sy0 = (y / dh) * src.height
+    const sy1 = ((y + 1) / dh) * src.height
+    const y0 = Math.floor(sy0)
+    const y1 = Math.min(src.height, Math.max(y0 + 1, Math.ceil(sy1)))
+
+    for (let x = 0; x < dw; x++) {
+      const sx0 = (x / dw) * src.width
+      const sx1 = ((x + 1) / dw) * src.width
+      const x0 = Math.floor(sx0)
+      const x1 = Math.min(src.width, Math.max(x0 + 1, Math.ceil(sx1)))
+
+      let sum = 0
+      let n = 0
+      for (let sy = y0; sy < y1; sy++) {
+        for (let sx = x0; sx < x1; sx++) {
+          sum += src.alpha[sy * src.width + sx]
+          n++
+        }
+      }
+      const a = n > 0 ? Math.round(sum / n) : 0
+      if (a === 0) continue
+
+      const px = ox + x
+      const py = oy + y
+      if (px < 0 || px >= canvasW || py < 0 || py >= canvasH) continue
+
+      const idx = (py * canvasW + px) * 4
+      // Black, with coverage in alpha: macOS tints template images itself.
+      pixels[idx] = 0
+      pixels[idx + 1] = 0
+      pixels[idx + 2] = 0
+      pixels[idx + 3] = Math.max(pixels[idx + 3], a)
+    }
+  }
+}
+
+/** Draw a status dot in the bottom-right corner. */
+function drawDot(pixels, canvasW, canvasH, radius) {
+  const cx = canvasW - radius - 1
+  const cy = canvasH - radius - 1
+
+  for (let y = 0; y < canvasH; y++) {
+    for (let x = 0; x < canvasW; x++) {
       const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
-      if (dist <= dotRadius) {
-        const idx = (y * width + x) * 4
-        // Anti-aliasing at the edge
-        const alpha = dist > dotRadius - 1 ? Math.round(255 * (dotRadius - dist)) : 255
-        pixels[idx] = r
-        pixels[idx + 1] = g
-        pixels[idx + 2] = b
-        pixels[idx + 3] = Math.max(0, alpha)
+      if (dist <= radius) {
+        const idx = (y * canvasW + x) * 4
+        const alpha = dist > radius - 1 ? Math.round(255 * (radius - dist)) : 255
+        pixels[idx] = 0
+        pixels[idx + 1] = 0
+        pixels[idx + 2] = 0
+        pixels[idx + 3] = Math.max(0, Math.min(255, alpha))
       }
     }
   }
 }
 
-function generateIcon(size, dotColor) {
-  const pixels = Buffer.alloc(size * size * 4, 0) // transparent
+function generateIcon(src, scale, withDot) {
+  const canvasW = CANVAS_W * scale
+  const canvasH = CANVAS_H * scale
+  const pad = PADDING * scale
+  const pixels = Buffer.alloc(canvasW * canvasH * 4, 0) // transparent
 
-  // Draw black slash (template image - macOS will colorize automatically)
-  drawSlash(pixels, size, size, [0, 0, 0, 200])
+  // Fit the mark inside the padded box, preserving its aspect ratio.
+  const boxW = canvasW - 2 * pad
+  const boxH = canvasH - 2 * pad
+  const fit = Math.min(boxW / src.width, boxH / src.height)
+  const dw = Math.max(1, Math.round(src.width * fit))
+  const dh = Math.max(1, Math.round(src.height * fit))
+  const ox = Math.round((canvasW - dw) / 2)
+  const oy = Math.round((canvasH - dh) / 2)
 
-  // Draw colored status dot if specified
-  if (dotColor) {
-    drawDot(pixels, size, size, dotColor)
+  drawMark(pixels, canvasW, canvasH, src, ox, oy, dw, dh)
+
+  if (withDot) {
+    drawDot(pixels, canvasW, canvasH, Math.max(2, DOT_RADIUS * canvasH))
   }
 
-  return createPNG(size, size, pixels)
+  return { png: createPNG(canvasW, canvasH, pixels), canvasW, canvasH, dw, dh }
 }
 
-// Generate all variants
+// ── Main ─────────────────────────────────────────────────────────────────────
+
+// The four states tray-icons.ts maps to: plain, then one per aggregate state. The dot
+// is the only difference — macOS strips the colour these used to carry.
 const variants = [
-  { suffix: '', dot: null },
-  { suffix: '-green', dot: [52, 211, 153] },   // emerald/green
-  { suffix: '-orange', dot: [251, 146, 60] },   // amber/orange
-  { suffix: '-red', dot: [248, 113, 113] },      // red
+  { suffix: '', dot: false },
+  { suffix: '-green', dot: true },
+  { suffix: '-orange', dot: true },
+  { suffix: '-red', dot: true },
 ]
+
+const src = readAlpha(SOURCE)
+console.log(`source ${path.basename(SOURCE)}: ${src.width}x${src.height}` +
+  ` (aspect ${(src.width / src.height).toFixed(3)})`)
 
 if (!fs.existsSync(OUTPUT_DIR)) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 }
 
 for (const variant of variants) {
-  // 16x16 (1x)
-  const png16 = generateIcon(16, variant.dot)
-  fs.writeFileSync(path.join(OUTPUT_DIR, `trayTemplate${variant.suffix}.png`), png16)
-
-  // 32x32 (2x)
-  const png32 = generateIcon(32, variant.dot)
-  fs.writeFileSync(path.join(OUTPUT_DIR, `trayTemplate${variant.suffix}@2x.png`), png32)
+  for (const [scale, suffix2x] of [[1, ''], [2, '@2x']]) {
+    const { png, canvasW, canvasH, dw, dh } = generateIcon(src, scale, variant.dot)
+    const name = `trayTemplate${variant.suffix}${suffix2x}.png`
+    fs.writeFileSync(path.join(OUTPUT_DIR, name), png)
+    if (!variant.suffix) {
+      console.log(`  ${name}: canvas ${canvasW}x${canvasH}, mark ${dw}x${dh}`)
+    }
+  }
 }
 
 console.log('Tray icons generated in', OUTPUT_DIR)

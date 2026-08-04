@@ -8,6 +8,8 @@ import { migrateConfig } from '../config/migrate'
 import { applyRemoteSettingsRow, scheduleRemoteRefresh, setRemoteSyncEmitters } from '../config/remote-sync'
 import { recordAppInstallation } from '../app-installation'
 import { validateAllRepoPaths } from '../config/repo-validation'
+import { readConfig } from '../config/config'
+import { completeMachineSetup } from '../setup/bootstrap'
 import { restoreAgents } from './terminal-handlers'
 import {
   startOrgAgentsRealtime,
@@ -104,6 +106,12 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
           // Record this launch's app version for this machine. Fire-and-forget:
           // it is telemetry and must never delay or break the gate.
           void recordAppInstallation(app.getVersion())
+          // Finish the machine setup the install script used to do. HERE and not on
+          // the launch path because both halves need the hydrated config: the
+          // permission allowlist must reflect the user's real integration choice
+          // (pre-hydration it is still the default), and so must the set of MCP
+          // servers to register. Fire-and-forget, for the same reason as above.
+          void completeMachineSetup(readConfig().integrations)
         }
         emitInvalidRepos()
         // The backend is reachable and authed — the one condition under which

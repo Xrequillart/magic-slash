@@ -110,8 +110,9 @@ export const fr: Record<keyof typeof en, string> = {
   'onboarding.install.device.one': '1 appareil',
   'onboarding.install.device.many': '{count} appareils',
   'onboarding.install.hintPending':
-    'Une commande dans votre terminal — Magic Slash tourne sur votre machine',
-  'onboarding.install.runThis': 'Lancez ceci dans votre terminal :',
+    'Magic Slash tourne sur votre machine — téléchargez-le et connectez-vous',
+  'onboarding.install.downloadHint':
+    'Glissez-le dans Applications et ouvrez-le. Il installe les skills et configure Claude Code au premier lancement.',
 
   // ── Dépôts de l’équipe ─────────────────────────────────────────────────────
   'team.repositories': 'Dépôts',
@@ -396,7 +397,7 @@ export const fr: Record<keyof typeof en, string> = {
     'Vous en devenez l’admin et pouvez inviter des membres immédiatement.',
   'org.createModal.namePlaceholder': 'Nom de l’organisation',
   'org.joinModal.help': 'Collez le lien d’invitation reçu, ou seulement son token.',
-  'org.joinModal.placeholder': 'https://app.magic-slash.io/invite/…',
+  'org.joinModal.placeholder': 'https://invite.magic-slash.io/…',
   'org.joinModal.submitting': 'En cours…',
   'org.archiveModal.title': 'Archiver l’organisation',
   'org.archiveModal.confirm': 'Archiver {name} ?',
@@ -514,6 +515,11 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.commit.coAuthorHelp': 'Ajouter Claude comme co-auteur des commits',
   'repo.commit.ticketId': 'Inclure l’ID du ticket',
   'repo.commit.ticketIdHelp': 'Ajouter l’ID du ticket lu dans le nom de la branche',
+  'repo.commit.protectedBranch': 'Commits sur les branches principales',
+  'repo.commit.protectedBranchHelpOn':
+    'Autorisés sur main, master, develop et la branche de dev de ce dépôt — /magic:commit demande confirmation',
+  'repo.commit.protectedBranchHelpOff':
+    'Bloqués sur main, master, develop et la branche de dev de ce dépôt — /magic:commit déplace le travail sur une nouvelle branche',
   'repo.example': 'Exemple',
   'repo.resolve.section': 'Resolve',
   'repo.resolve.commitMode': 'Mode de commit',

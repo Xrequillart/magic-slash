@@ -1,0 +1,256 @@
+/**
+ * Styles specific to the Story page.
+ *
+ * Lifted from the inline `<style>` block in `docs/story.html`, imported by the route
+ * so it only ships with that page.
+ */
+
+        body {
+            background: #D9E8FF;
+            color: #000;
+        }
+
+        /* Hero */
+        .story-hero {
+            padding: 12rem 0 6rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .story-hero-label {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #393BFF;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+        }
+        .story-hero h1 {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 3.5rem;
+            font-weight: 900;
+            color: #000;
+            line-height: 1.15;
+            margin: 0 0 1.5rem;
+        }
+        .story-hero-intro {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1.2rem;
+            color: rgba(0, 0, 0, 0.55);
+            line-height: 1.7;
+            margin: 0;
+        }
+
+        /* Divider */
+        .story-divider {
+            width: 48px;
+            height: 2px;
+            background: #393BFF;
+            border: none;
+            margin: 0 auto;
+        }
+
+        /* ── Pain Points Section ── */
+        .story-pain {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 10rem 0;
+        }
+        .story-pain-title {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: #000;
+            margin: 0 0 1rem;
+            line-height: 1.2;
+        }
+        .story-pain-subtitle {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1.05rem;
+            color: rgba(0, 0, 0, 0.5);
+            margin: 0 0 3rem;
+            line-height: 1.6;
+        }
+        .story-pain-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        .story-pain-card {
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: 16px;
+            padding: 1.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+        .story-pain-card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.4rem;
+        }
+        .story-pain-card-icon svg {
+            width: 18px;
+            height: 18px;
+            color: #000;
+        }
+        .story-pain-card h3 {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #000;
+            margin: 0;
+        }
+        .story-pain-card p {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 0.92rem;
+            color: rgba(0, 0, 0, 0.5);
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        /* ── Timeline Horizontal Scroll ── */
+        .story-timeline-scroll-container {
+            position: relative;
+            height: 300vh;
+        }
+        .story-timeline-section {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow: hidden;
+            background:
+                linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+                #000;
+            background-size: 48px 48px;
+            display: flex;
+            align-items: center;
+        }
+        .story-timeline-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 0 2rem;
+            box-sizing: border-box;
+        }
+        .story-timeline-title {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: #fff;
+            margin: 0 0 1rem;
+            line-height: 1.2;
+        }
+        .story-timeline-subtitle {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1.05rem;
+            color: rgba(255, 255, 255, 0.45);
+            margin: 0 0 3rem;
+            line-height: 1.6;
+        }
+        .story-timeline {
+            display: flex;
+            width: max-content;
+            gap: 16rem;
+            position: relative;
+            will-change: transform;
+            margin-left: calc(-50vw + 50%);
+            padding: 0 calc(50vw - 347px) 0 calc(50vw - 13px);
+        }
+        /* Track background */
+        .story-timeline::before {
+            content: '';
+            position: absolute;
+            top: calc(1.5rem + 10px);
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 5px;
+        }
+        /* Progress bar */
+        .story-timeline::after {
+            content: '';
+            position: absolute;
+            top: calc(1.5rem + 10px);
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: #393BFF;
+            border-radius: 5px;
+            transform-origin: left;
+            transform: scaleX(var(--tl-bar, 0));
+            box-shadow: 0 0 12px rgba(57, 59, 255, 0.5);
+        }
+        .story-tl-item {
+            width: 360px;
+            flex-shrink: 0;
+            position: relative;
+            padding-top: 4.2rem;
+        }
+        @keyframes dot-pulse {
+            0% { box-shadow: 0 0 0 6px rgba(57, 59, 255, 0.2), 0 0 0 6px rgba(57, 59, 255, 0.5); }
+            100% { box-shadow: 0 0 0 6px rgba(57, 59, 255, 0.2), 0 0 0 24px rgba(57, 59, 255, 0); }
+        }
+        .story-tl-dot {
+            position: absolute;
+            top: 1.5rem;
+            left: 0;
+            width: 26px;
+            height: 26px;
+            box-sizing: border-box;
+            border-radius: 50%;
+            background: #444;
+            border: 3px solid #333;
+            box-shadow: none;
+            z-index: 1;
+            transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+        }
+        .story-tl-dot.active {
+            background: #393BFF;
+            border-color: #000;
+            box-shadow: 0 0 0 6px rgba(57, 59, 255, 0.2);
+            animation: dot-pulse 0.6s ease-out;
+        }
+        .story-tl-date {
+            position: absolute;
+            top: 0;
+            left: 0;
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.9rem;
+            color: #393BFF;
+            letter-spacing: 0.03em;
+        }
+        .story-tl-heading {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 0 0 0.5rem;
+        }
+        .story-tl-desc {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.45);
+            line-height: 1.7;
+            margin: 0;
+        }
+        .story-tl-desc code {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.85em;
+            color: rgba(255, 255, 255, 0.75);
+        }
+
+        .cta-section {
+            padding: 6rem 2rem;
+        }

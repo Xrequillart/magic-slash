@@ -4,9 +4,7 @@ import { AgentStateAggregator } from './agent-state-aggregator'
 import { getUpdateStatus, onUpdateStatusChange, installUpdate, type UpdateStatus } from '../updater'
 import { autoUpdater } from 'electron-updater'
 import { t } from '../i18n'
-
-const GITHUB_URL = 'https://github.com/xrequillart/magic-slash'
-const DOCS_URL = 'https://magic-slash.io'
+import { DOCUMENTATION_URL, GITHUB_URL } from '../../urls'
 
 export class TrayManager {
   private tray: Tray | null = null
@@ -120,7 +118,7 @@ export class TrayManager {
       },
       {
         label: t('tray.documentation'),
-        click: () => shell.openExternal(DOCS_URL),
+        click: () => shell.openExternal(DOCUMENTATION_URL),
       },
       {
         label: t('tray.github'),
