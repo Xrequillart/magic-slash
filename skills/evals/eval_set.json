@@ -285,5 +285,26 @@
     "expected_skill": "magic:pr",
     "notes": "Completion intent on a frontend change that mentions test accounts — the credentials vocabulary must not deflect routing away from magic:pr. Covers routing only: this eval set matches a skill against an utterance, so it cannot check that the PR body actually surfaced the right test account (pullRequest.testAccounts behaviour is not observable here)",
     "difficulty": "medium"
+  },
+  {
+    "id": 42,
+    "query": "start #158, it depends on #156",
+    "expected_skill": "magic:start",
+    "notes": "Start intent carrying an explicit dependency — blocker vocabulary must not deflect routing away from magic:start. Covers routing only: this eval set matches a skill against an utterance, so it cannot check the Step 2.4 verdict, the branch offer, or that nothing was created before the user answered",
+    "difficulty": "easy"
+  },
+  {
+    "id": 43,
+    "query": "je commence PROJ-142, il est bloqué par PROJ-138 je crois",
+    "expected_skill": "magic:start",
+    "notes": "French start intent with an FR blocker phrase — 'bloqué par' must still route to magic:start. Routing only: whether the gate resolved PROJ-138's status or offered its PR head branch is not observable from an utterance",
+    "difficulty": "medium"
+  },
+  {
+    "id": 44,
+    "query": "is #156 merged yet? #158 is waiting on it",
+    "expected_skill": null,
+    "notes": "Pure status question about a dependency, with no intent to start anything — blocker vocabulary plus issue numbers must not fire magic:start. Routing only: nothing here asserts what the dependency gate would have concluded",
+    "difficulty": "hard"
   }
 ]

@@ -639,6 +639,8 @@ else
       'mcp__atlassian__getAccessibleAtlassianResources'
       'mcp__atlassian__getJiraIssue'
       'mcp__atlassian__getJiraIssueRemoteIssueLinks'
+      'mcp__atlassian__getIssueLinkTypes'
+      'mcp__atlassian__searchJiraIssuesUsingJql'
       'mcp__atlassian__getTransitionsForJiraIssue'
       'mcp__atlassian__transitionJiraIssue'
       'mcp__atlassian__addCommentToJiraIssue'
