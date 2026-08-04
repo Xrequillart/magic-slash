@@ -160,9 +160,8 @@ another team's integration branch is merged, yet its commits are absent from `$D
 where the new worktree starts. Accepting it would produce a 🟢, start the ticket, and leave the user building on
 code that is not in their tree: silent, and harder to diagnose than a 🔴.
 
-So compare `baseRefName` against the development branch configured for the repo that hosts the PR
-(`.repositories.<config key>.branches.development`), not against the scoped repo's — a cross-repo match (§3.1)
-is resolved against its own repo's config:
+So compare `baseRefName` against the development branch of the repo that **hosts the PR**, not against the
+scoped repo's — a cross-repo match (§3.1) is resolved against its own repo's config:
 
 | `baseRefName` | Treated as |
 | --- | --- |
@@ -173,9 +172,40 @@ Downgrading to `open` rather than to "no PR" is deliberate: the work demonstrabl
 so the 🟡 path can still offer `headRefName` as the worktree base. That is the useful outcome here — it is how
 the user builds on a dependency that landed somewhere they do not branch from.
 
-When the hosting repo has no `branches.development` configured, fall back to its remote default branch
-(`gh repo view --repo {owner}/{repo} --json defaultBranchRef -q .defaultBranchRef.name`) and say in one line
-which branch the comparison used, so a 🟡 caused by configuration rather than by the PR is legible.
+#### Which branch to compare against, and why it is not simply the configured one
+
+"The hosting repo's development branch" resolves differently depending on whether that repo is the one this
+ticket will actually be worked in, and getting this wrong is how a false 🟢 sneaks back in:
+
+| Hosting repo | Compare `baseRefName` against | Final here? |
+| --- | --- | --- |
+| the repo this ticket is scoped to | `.repositories.<config key>.branches.development` | **No** — provisional |
+| any other configured repo | its own `branches.development`, else its remote default branch | Yes |
+
+The asymmetry is the point: only the scoped repo gets a worktree, so only it has a "branch the worktree will
+start from". A third-party repo is never branched from, so its own configured value — or its remote default when
+unconfigured — is the right and final answer for it.
+
+For the scoped repo the configured value is **provisional, not authoritative**. `$DEV_BRANCH` is resolved in
+Step 0.4, which runs *after* Step 3 and therefore after this gate, and Step 0.4 uses the configured value only
+as the **default of an `AskUserQuestion`** — the user may answer with any other branch. So `$DEV_BRANCH` can
+differ from `branches.development` even when one is configured, and the worktree starts from `$DEV_BRANCH`, not
+from the config. Comparing against the config alone would mark a PR merged into `main` as landed while the user
+starts from `develop`.
+
+Two consequences, both mandatory:
+
+- **Name the branch the comparison used**, every time, in the line shown to the user. A 🟡 caused by
+  configuration rather than by the PR has to be legible, and a 🟢 has to be auditable.
+- **Record that branch alongside the verdict** so Step 4.1 can re-check it. Step 4.1 is where `$DEV_BRANCH` is
+  finally known and where `git worktree add` actually runs: if `$DEV_BRANCH` differs from the branch this section
+  compared against, the "merged" conclusion no longer holds for the scoped repo and the verdict must be
+  downgraded there. `## Usage` carries the field.
+
+When the scoped repo has no `branches.development` configured either, there is nothing provisional to compare
+against at all: do not fall back to the remote default and call it merged — that is precisely the mismatch above,
+with no configured value to even be wrong about. Treat the PR as **open** for now, name the situation in one
+line, and let Step 4.1 settle it once Step 0.4 has produced a real `$DEV_BRANCH`.
 
 ## 4. The decision matrix
 
@@ -274,7 +304,13 @@ dependency is carried into `{attention_points}` of Step 5.5.3 so it is not forgo
 | `verdict` | `none` / `clear` / `in_flight` / `hard_blocked` / `unavailable`, worst (§4) | Step 2.4 |
 | `blocker_line` | `MSG_BLOCKER_CLEAR` / `_STALE_TICKET` / `_CHECK_UNAVAILABLE`, else empty | Step 5 |
 | `base_branch_candidate` | map **keyed by repo config key** → branch; empty unless 🟡 | Step 4.1 |
+| `merge_target_checked_against` | branch §3.5 compared `baseRefName` to; empty if no merged PR | Step 4.1 |
 | `blockers` | id, title and PR state per blocker | `{attention_points}` of Step 5.5.3 |
+
+`merge_target_checked_against` exists so a 🟢 earned on a provisional comparison can be revoked. §3.5 compares
+against the scoped repo's *configured* development branch, but the worktree starts from `$DEV_BRANCH`, which
+Step 0.4 only resolves later and may set to something else entirely. Step 4.1 owns that re-check; without this
+field it would have nothing to compare and the mismatch would pass silently.
 
 `none` is the verdict when §2 finds nothing after all — Step 2.4's cheap pre-filter is deliberately broader than
 §2.3 — and it behaves exactly like Step 2.4's early exit: say nothing, continue.

@@ -285,6 +285,14 @@ If it exists, use `AskUserQuestion` with `MSG_WORKTREE_EXISTS` options:
 
 Use `AskUserQuestion` with `MSG_BLOCKER_IN_FLIGHT`, offering the blocker's PR head branch and `$DEV_BRANCH` (the default). Keep the answer **per repo, keyed by config key**, the way Step 0.5 keeps the test-account pair: the blocker's PR head branch exists in exactly **one** repo, so a single `$BASE_BRANCH` scalar would send that ref to repos where it does not exist and fail `git worktree add` in all of them. Every other repo keeps `$DEV_BRANCH`.
 
+**Re-check any 🟢 that rested on a merged PR, before creating anything.** `references/dependencies.md` §3.5 clears a blocker whose PR merged into the branch the worktree will start from — but at Step 2.4 it could only compare against the *configured* development branch, since `$DEV_BRANCH` is resolved here in Step 0.4 and the user may have answered with a different branch. Compare the gate's `merge_target_checked_against` (its `## Usage` contract) with the `$DEV_BRANCH` now in hand:
+
+- **Same branch** — the 🟢 stands. Continue.
+- **Different, and the PR merged into `$DEV_BRANCH` too** — the 🟢 stands. Continue.
+- **Different, and it did not** — the blocker's code is *not* on the branch this worktree starts from, so the 🟢 was earned against the wrong base. Downgrade to 🟡 and ask the question above, offering the blocker's `headRefName`. Say in one line which two branches diverged, so the user sees this came from their Step 0.4 answer and not from the PR.
+
+This is the only verdict that can move after Step 2.4, and it can only move in the safe direction — 🟢 → 🟡, never the reverse. A 🔴 was already settled with the user before anything was created, and a 🟡 is re-asked here anyway.
+
 For each selected repo, resolve that repo's own value once, up front — so every use below reads a variable that is always set:
 
 ```bash
