@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase'
+import { postAcceptUrl } from '@/lib/inviteLink'
 import { DOWNLOAD_URL } from '@/lib/installations'
 import { useT } from '@/lib/i18n/useLanguage'
 import type { MessageKey } from '@/lib/i18n'
@@ -16,8 +16,9 @@ interface InvitationPreview {
   expires_at: string | null
 }
 
-// No 'done' phase: a successful acceptance redirects straight to the dashboard,
-// where the install banner picks up the "download the app" nudge.
+// No 'done' phase: a successful acceptance leaves for the product, where the install
+// banner picks up the "download the app" nudge. It leaves the HOST too — see
+// `postAcceptUrl`, and `hostRouting.ts` for why a relative path cannot work here.
 type Phase = 'loading' | 'invalid' | 'unavailable' | 'ready'
 
 // Supabase surfaces "already registered" with varying copy across versions;
@@ -35,7 +36,6 @@ const UNAVAILABLE_KEYS: Record<string, MessageKey> = {
 
 export default function InvitePage({ params }: { params: { token: string } }) {
   const token = params.token
-  const router = useRouter()
   const { t } = useT()
   const [phase, setPhase] = useState<Phase>('loading')
   const [preview, setPreview] = useState<InvitationPreview | null>(null)
@@ -105,9 +105,12 @@ export default function InvitePage({ params }: { params: { token: string } }) {
         return
       }
 
-      // Signed in and a member: hand over to the dashboard. Keep `submitting`
-      // true so the button stays disabled while the route transition happens.
-      router.replace('/dashboard')
+      // Signed in and a member: hand over to the product, on its own host. A full
+      // page load rather than a route transition, because this leaves the invite host
+      // entirely — `postAcceptUrl` explains why a client-side `/dashboard` could not
+      // work from here. Keep `submitting` true so the button stays disabled while the
+      // browser navigates away.
+      window.location.replace(postAcceptUrl(window.location.origin))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('invite.error.generic'))
       setSubmitting(false)
