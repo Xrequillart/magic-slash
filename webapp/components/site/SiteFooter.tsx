@@ -45,26 +45,23 @@ export function SiteFooter({ serverYear }: { serverYear: number }) {
           </div>
 
           <div className="footer-columns">
+            {/* Every documentation link is gone from here, and the Updates column
+                with them — its only entry was the changelog. The reference is being
+                reworked and reaches its readers through the desktop app in the
+                meantime. The two columns that remain are kept as columns, rather than
+                collapsed into a list, so putting those links back is an addition
+                rather than another layout change. */}
             <div className="footer-column">
               <h4 className="footer-column-title">{t('site.footer.product')}</h4>
               <Link href="/#how">{t('site.footer.howItWorks')}</Link>
-              <Link href="/documentation#quick-start">{t('site.footer.gettingStarted')}</Link>
               <Link href="/story">{t('site.footer.ourStory')}</Link>
             </div>
 
             <div className="footer-column">
               <h4 className="footer-column-title">{t('site.footer.resources')}</h4>
-              <Link href="/documentation">{t('site.footer.documentation')}</Link>
-              <Link href="/documentation#configuration">{t('site.footer.configuration')}</Link>
-              <Link href="/documentation#troubleshooting">{t('site.footer.faq')}</Link>
               <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer">
                 GitHub
               </a>
-            </div>
-
-            <div className="footer-column">
-              <h4 className="footer-column-title">{t('site.footer.updates')}</h4>
-              <Link href="/documentation#changelog">{t('site.footer.changelog')}</Link>
             </div>
           </div>
         </div>

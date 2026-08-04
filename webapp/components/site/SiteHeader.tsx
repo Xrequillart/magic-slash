@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Book, ChevronDown, Users, Zap } from 'lucide-react'
+import { ChevronDown, Users } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
 import { HOME_PATH, LOGIN_PATH } from '@/lib/routes'
 import { useSession } from '@/lib/session'
@@ -37,7 +37,7 @@ export function SiteHeader() {
 
   // `scrolled` / `past-hero` are what the stylesheet keys the bar's background and
   // wordmark colour off. Read from `scrollY` on a passive listener, and once on
-  // mount — a visitor arriving on a deep link (`/documentation#changelog`) or
+  // mount — a visitor arriving on a deep link (`/#how`) or
   // restoring a scroll position starts mid-page, and a bar that only reacted to the
   // first scroll EVENT would paint transparent over content until they moved.
   const [scroll, setScroll] = useState({ scrolled: false, pastHero: false })
@@ -114,25 +114,12 @@ export function SiteHeader() {
             >
               <span>{t('site.nav.resources')}</span> <ChevronDown size={16} />
             </button>
-            <div className="header-dropdown dropdown-columns">
-              <div className="dropdown-column">
-                <span className="dropdown-category-title">
-                  <Book size={16} /> {t('site.nav.documentationCategory')}
-                </span>
-                <DropdownLink href="/documentation#quick-start">
-                  {t('site.nav.gettingStarted')}
-                </DropdownLink>
-                <DropdownLink href="/documentation#skills">
-                  {t('site.nav.skillsReference')}
-                </DropdownLink>
-                <DropdownLink href="/documentation#configuration">
-                  {t('site.nav.configuration')}
-                </DropdownLink>
-                <Link href="/documentation" className="dropdown-viewall">
-                  {t('site.nav.viewAllDocs')} <ArrowRight size={14} />
-                </Link>
-              </div>
-
+            {/* The documentation and changelog columns lived here and are gone: the
+                reference is being reworked, and until it is, it is reachable from the
+                desktop app only — not advertised on the site. `dropdown-narrow` is the
+                stylesheet's own affordance for a menu this size; the three-column
+                width would leave two thirds of it empty. */}
+            <div className="header-dropdown dropdown-columns dropdown-narrow">
               <div className="dropdown-column">
                 <span className="dropdown-category-title">
                   <Users size={16} /> {t('site.nav.communityCategory')}
@@ -140,19 +127,6 @@ export function SiteHeader() {
                 <DropdownLink href="/story">{t('site.nav.ourStory')}</DropdownLink>
                 <DropdownLink href={GITHUB_REPO_URL} external>
                   GitHub
-                </DropdownLink>
-                <DropdownLink href="/documentation#troubleshooting">
-                  {t('site.nav.faq')}
-                </DropdownLink>
-              </div>
-
-              <div className="dropdown-column">
-                <span className="dropdown-category-title">
-                  <Zap size={16} /> {t('site.nav.updatesCategory')}
-                </span>
-                <DropdownLink href="/documentation#changelog">
-                  {t('site.nav.changelog')}{' '}
-                  <span className="version-badge">v{LATEST_DESKTOP_VERSION}</span>
                 </DropdownLink>
               </div>
             </div>
