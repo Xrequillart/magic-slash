@@ -63,7 +63,7 @@ Each renderer page and key component must have a corresponding section in the do
 
 | ID | Check | Source of truth | Severity |
 |----|-------|----------------|----------|
-| DOC-01 | Prerequisites match install.sh checks | `install/install.sh` prerequisite section | ERROR |
+| DOC-01 | Prerequisites match what the app checks | `desktop/src/main/setup/prerequisites.ts` (PROBES) | ERROR |
 | DOC-02 | All 7 skills documented in reference section | `ls skills/*/SKILL.md` | ERROR |
 | DOC-03 | Version numbers match package.json | `package.json` version field | ERROR |
 
@@ -130,7 +130,6 @@ Each feature documented in the desktop section must still exist in the code.
 | VER-04 | docs/documentation.html matches (2 occurrences) | Root package.json | ERROR |
 | VER-05 | All 7 SKILL.md files match | Root package.json | ERROR |
 | VER-06 | Sidebar.tsx matches | Root package.json | ERROR |
-| VER-07 | install.sh fallback matches | Root package.json | ERROR |
 
 ## Images and assets
 

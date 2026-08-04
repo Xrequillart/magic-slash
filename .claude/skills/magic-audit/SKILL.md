@@ -139,7 +139,7 @@ Store results as `$DESKTOP_TRUTH`.
 echo "=== Version ==="
 jq -r .version package.json
 echo "=== Install prerequisites ==="
-grep -E '(check_|require|command -v)' install/install.sh | head -20
+grep -E "id: '" desktop/src/main/setup/prerequisites.ts
 ```
 
 Store as `$CONFIG_TRUTH`.
@@ -290,8 +290,8 @@ Compare against `package.json`. Flag mismatches as ERROR.
 #### 3.3c: Prerequisites check
 
 ```bash
-# What install.sh actually checks
-grep -E 'check_command' install/install.sh | grep -v '^#' | grep -v 'check_command()'
+# What the app actually checks on launch (PROBES in the setup module)
+grep -E "id: '" desktop/src/main/setup/prerequisites.ts
 # What docs say is required
 grep -Eo '(Claude Code|Node\.js|Git |jq|gh )' docs/documentation.html | sort -u
 ```
@@ -421,7 +421,6 @@ echo "---"
 echo "desktop/package.json: $(jq -r .version desktop/package.json)"
 echo "README.md: $(grep -Eo '"version": *"[^"]+"' README.md | head -1 | sed 's/.*"version": *"//;s/"//')"
 echo "docs/documentation.html count: $(grep -c "\"version\": \"$ROOT_VERSION\"" docs/documentation.html)"
-echo "install.sh: $(grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' install/install.sh | head -1)"
 echo "Sidebar.tsx: $(grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' desktop/src/renderer/components/Sidebar.tsx | head -1)"
 for f in skills/*/SKILL.md; do
   V=$(grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' "$f" | head -1)

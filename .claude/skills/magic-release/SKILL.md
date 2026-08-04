@@ -198,28 +198,13 @@ tout le parc en « en retard ».
 Un test verifie cette egalite (`webapp/lib/desktopRelease.test.ts` compare le const a
 `desktop/package.json`), donc un oubli fait echouer la CI au push suivant plutot que
 d'induire un operateur en erreur pendant un cycle de release. La verification de
-l'etape 8.1 l'attrape avant, en local.
+l'etape 7.1 l'attrape avant, en local.
 
 Affiche une confirmation pour chaque fichier mis a jour.
 
-## Etape 6 : Mettre a jour le script d'installation
+## Etape 6 : Mettre a jour le CHANGELOG.md
 
-### 6.1 : install/install.sh
-
-Cherche la ligne contenant le fallback de version dans la commande curl/jq (pattern `.tag_name // "v`) et remplace la valeur par defaut.
-
-La ligne ressemble a :
-```bash
-CURRENT_VERSION=$(curl -s ... | jq -r '.tag_name // "v0.X.Y"' | sed 's/^v//')
-```
-
-Remplace `"v0.X.Y"` par `"v{NOUVELLE_VERSION}"`.
-
-Affiche une confirmation.
-
-## Etape 7 : Mettre a jour le CHANGELOG.md
-
-### 7.0 : Collecter les commits depuis la derniere release
+### 6.0 : Collecter les commits depuis la derniere release
 
 Detecte le dernier tag de release :
 
@@ -248,7 +233,7 @@ Pour chaque entree, formate le bullet en utilisant le scope comme prefixe en gra
 - Si le commit a un scope : `- **Scope**: sujet` (premiere lettre du scope en majuscule)
 - Si le commit n'a pas de scope : `- sujet` (premiere lettre en majuscule)
 
-### 7.1 : Creer une nouvelle section pre-remplie
+### 6.1 : Creer une nouvelle section pre-remplie
 
 Ajoute une nouvelle section en haut du changelog (apres l'entete), avec les entrees categorisees collectees a l'etape 6.0 :
 
@@ -275,7 +260,7 @@ Utilise la date du jour au format `YYYY-MM-DD`.
 - Omets les categories vides (pas de section `### Added` si aucun `feat` n'a ete trouve).
 - Si aucun commit n'est trouve (cas rare), cree les 3 sections avec des placeholders `-`.
 
-### 7.2 : Ajouter le lien de release
+### 6.2 : Ajouter le lien de release
 
 Ajoute un nouveau lien en bas du fichier, juste apres les autres liens :
 
@@ -285,7 +270,7 @@ Ajoute un nouveau lien en bas du fichier, juste apres les autres liens :
 
 Assure-toi que le nouveau lien est ajoute AVANT les liens existants (le plus recent en premier dans la liste).
 
-### 7.3 : Presenter le CHANGELOG pour validation
+### 6.3 : Presenter le CHANGELOG pour validation
 
 Utilise `AskUserQuestion` pour presenter le CHANGELOG pre-rempli et demander validation :
 
@@ -311,9 +296,9 @@ Voulez-vous :
 
 Si l'utilisateur repond 'edit', utilise `AskUserQuestion` pour lui demander de decrire ses modifications. Applique-les au CHANGELOG puis continue.
 
-## Etape 8 : Verification et resume
+## Etape 7 : Verification et resume
 
-### 8.1 : Verifier les modifications avec grep
+### 7.1 : Verifier les modifications avec grep
 
 **CRITIQUE** : Cette etape est obligatoire. Tu dois verifier que CHAQUE fichier contient bien la nouvelle version.
 
@@ -353,12 +338,6 @@ else
   echo "  ERREUR  desktop/src/renderer/components/Sidebar.tsx - version X.Y.Z NON trouvee"
   ERRORS=$((ERRORS+1))
 fi && \
-if grep -q "vX.Y.Z" install/install.sh; then
-  echo "  OK  install/install.sh"
-else
-  echo "  ERREUR  install/install.sh - version X.Y.Z NON trouvee"
-  ERRORS=$((ERRORS+1))
-fi && \
 if grep -q "LATEST_DESKTOP_VERSION = 'X.Y.Z'" webapp/lib/desktopRelease.ts; then
   echo "  OK  webapp/lib/desktopRelease.ts"
 else
@@ -385,7 +364,7 @@ echo "=== $ERRORS erreur(s) detectee(s) ==="
 
 **Si des erreurs sont detectees** : corrige immediatement les fichiers concernes et relance la verification jusqu'a ce que toutes les verifications passent (0 erreurs).
 
-### 8.2 : Afficher le resume
+### 7.2 : Afficher le resume
 
 Affiche un resume de tous les fichiers modifies :
 
@@ -409,16 +388,15 @@ Resume des modifications pour la version X.Y.Z :
   skills/magic-resolve/SKILL.md                 v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-done/SKILL.md                    v{VERSION_ACTUELLE} -> vX.Y.Z
   desktop/src/renderer/components/Sidebar.tsx    v{VERSION_ACTUELLE} -> vX.Y.Z
-  install/install.sh                            v{VERSION_ACTUELLE} -> vX.Y.Z
   webapp/lib/desktopRelease.ts                  {VERSION_ACTUELLE} -> X.Y.Z
   CHANGELOG.md                                  Nouvelle section ajoutee
 ```
 
-### 8.3 : Commit, tag et push de release
+### 7.3 : Commit, tag et push de release
 
 Cette etape execute toutes les operations git en une seule interaction. L'utilisateur confirme une seule fois, puis le commit, le tag et le push s'enchainent automatiquement.
 
-#### 8.3.1 : Pre-vol et confirmation unique
+#### 7.3.1 : Pre-vol et confirmation unique
 
 Execute `git diff --stat` via `Bash` pour afficher un apercu de tous les fichiers modifies.
 
@@ -439,7 +417,7 @@ Voulez-vous lancer la release ? Cela va :
 
 Si l'utilisateur refuse, arrete le processus de release ici.
 
-#### 8.3.2 : Execution automatique (commit + tag + push)
+#### 7.3.2 : Execution automatique (commit + tag + push)
 
 Si l'utilisateur a confirme, enchaine les 3 operations sans poser de questions supplementaires.
 
@@ -453,7 +431,7 @@ git add package.json desktop/package.json README.md docs/documentation.html \
   skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md \
   skills/magic-pr/SKILL.md skills/magic-review/SKILL.md skills/magic-resolve/SKILL.md \
   skills/magic-done/SKILL.md desktop/src/renderer/components/Sidebar.tsx \
-  webapp/lib/desktopRelease.ts install/install.sh CHANGELOG.md
+  webapp/lib/desktopRelease.ts CHANGELOG.md
 ```
 
 Puis execute le commit :
@@ -490,7 +468,7 @@ Voulez-vous :
 
 Si 'retry' et que c'est le push qui a echoue, tente d'abord `git pull --rebase origin main` avant de relancer le push.
 
-#### 8.3.3 : Message de succes
+#### 7.3.3 : Message de succes
 
 Une fois les 3 operations reussies, affiche le message de succes suivant :
 
