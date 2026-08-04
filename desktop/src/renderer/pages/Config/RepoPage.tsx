@@ -405,6 +405,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const formatVal = commitSettings.format || 'angular'
   const coAuthorVal = commitSettings.coAuthor !== undefined ? commitSettings.coAuthor : true
   const includeTicketIdVal = commitSettings.includeTicketId !== undefined ? commitSettings.includeTicketId : false
+  // Absent means permitted — the same fallback the skill applies, so an untouched
+  // repo reads the same on both sides.
+  const allowOnProtectedBranchVal = commitSettings.allowOnProtectedBranch !== undefined ? commitSettings.allowOnProtectedBranch : true
   const resolveCommitModeVal = resolveSettings.commitMode || 'new'
   const resolveUseCommitConfigVal = resolveSettings.useCommitConfig !== undefined ? resolveSettings.useCommitConfig : true
   const resolveStyleVal = resolveSettings.style || 'single-line'
@@ -860,7 +863,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
           </div>
 
           {/* Include Ticket ID Toggle */}
-          <div className="flex items-center justify-between gap-6 py-3">
+          <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">{t('repo.commit.ticketId')}</label>
               <p className="text-xs text-text-secondary/50">{t('repo.commit.ticketIdHelp')}</p>
@@ -870,6 +873,30 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 type="checkbox"
                 checked={includeTicketIdVal}
                 onChange={(e) => handleCommitSettingChange('includeTicketId', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
+              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
+            </label>
+          </div>
+
+          {/* Direct commits on a protected branch. ON means allowed-but-asked; OFF
+              means /magic:commit branches off first. The help text has to say which
+              way round it is, because both states do something. */}
+          <div className="flex items-center justify-between gap-6 py-3">
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-0.5">{t('repo.commit.protectedBranch')}</label>
+              <p className="text-xs text-text-secondary/50">
+                {allowOnProtectedBranchVal
+                  ? t('repo.commit.protectedBranchHelpOn')
+                  : t('repo.commit.protectedBranchHelpOff')}
+              </p>
+            </div>
+            <label className="relative inline-block w-11 h-6 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allowOnProtectedBranchVal}
+                onChange={(e) => handleCommitSettingChange('allowOnProtectedBranch', e.target.checked)}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />

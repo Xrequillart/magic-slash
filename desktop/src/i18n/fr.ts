@@ -472,6 +472,11 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.commit.ticketId': 'Inclure l’ID du ticket',
   'repo.commit.ticketIdHelp':
     'Ajouter au message de commit l’ID du ticket lu dans le nom de la branche',
+  'repo.commit.protectedBranch': 'Commits sur les branches principales',
+  'repo.commit.protectedBranchHelpOn':
+    'Autorisés sur main, master, develop et la branche de dev de ce dépôt — /magic:commit demande confirmation',
+  'repo.commit.protectedBranchHelpOff':
+    'Bloqués sur main, master, develop et la branche de dev de ce dépôt — /magic:commit déplace le travail sur une nouvelle branche',
   'repo.example': 'Exemple',
 
   'repo.resolve.section': 'Resolve',
