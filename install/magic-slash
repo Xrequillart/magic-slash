@@ -30,7 +30,7 @@ if [ -d "/Applications/Magic Slash.app" ]; then
 else
   echo "Error: Magic Slash Desktop app not found in /Applications."
   echo ""
-  echo "Please reinstall:"
-  echo "  curl -fsSL https://magic-slash.io/install.sh | bash"
+  echo "Download it again:"
+  echo "  https://github.com/xrequillart/magic-slash/releases/latest"
   exit 1
 fi
