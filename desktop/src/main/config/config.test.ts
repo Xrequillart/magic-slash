@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { Config } from '../../types'
 import type { Store } from '../store/Store'
 import { setStore, NOOP_STORE } from '../store/Store'
-import { hydrateConfig, readConfig, resetConfigCache, updateUsageLogsEnabled } from './config'
+import { hydrateConfig, readConfig, resetConfigCache, updateRepositoryCommitSettings, updateUsageLogsEnabled } from './config'
 
 // updateUsageLogsEnabled toggles the GDPR opt-in on the in-memory config cache and
 // writes through to the store (NOOP here). readConfig serves the cache back.
@@ -124,5 +124,41 @@ describe('updateUsageLogsEnabled', () => {
     const config = updateUsageLogsEnabled(false)
     expect(config.usageLogsEnabled).toBe(false)
     expect(readConfig().usageLogsEnabled).toBe(false)
+  })
+})
+
+describe('updateRepositoryCommitSettings', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  // applySetting is a per-key whitelist: a setting absent from it is dropped on the
+  // floor, so the toggle in Settings would appear to work and never persist.
+  it('persists allowOnProtectedBranch in both directions', () => {
+    expect(updateRepositoryCommitSettings('api', { allowOnProtectedBranch: false })
+      .repositories.api.commit?.allowOnProtectedBranch).toBe(false)
+    expect(readConfig().repositories.api.commit?.allowOnProtectedBranch).toBe(false)
+
+    updateRepositoryCommitSettings('api', { allowOnProtectedBranch: true })
+    expect(readConfig().repositories.api.commit?.allowOnProtectedBranch).toBe(true)
+  })
+
+  it('leaves the other commit settings alone', () => {
+    updateRepositoryCommitSettings('api', { format: 'gitmoji', coAuthor: true })
+    updateRepositoryCommitSettings('api', { allowOnProtectedBranch: false })
+
+    const commit = readConfig().repositories.api.commit
+    expect(commit?.format).toBe('gitmoji')
+    expect(commit?.coAuthor).toBe(true)
+  })
+
+  it('ignores a non-boolean, rather than storing it', () => {
+    updateRepositoryCommitSettings('api', { allowOnProtectedBranch: 'yes' as unknown as boolean })
+    expect(readConfig().repositories.api.commit?.allowOnProtectedBranch).toBeUndefined()
   })
 })

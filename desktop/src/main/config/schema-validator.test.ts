@@ -13,7 +13,7 @@ function validConfig() {
         keywords: ['my-app'],
         color: '#3B82F6',
         languages: { commit: 'en', pullRequest: 'en', jiraComment: 'en', discussion: 'en' },
-        commit: { style: 'single-line', format: 'angular', coAuthor: true, includeTicketId: true },
+        commit: { style: 'single-line', format: 'angular', coAuthor: true, includeTicketId: true, allowOnProtectedBranch: false },
         resolve: {
           commitMode: 'new', format: 'angular', style: 'single-line',
           useCommitConfig: true, replyToComments: true, replyLanguage: 'en'
@@ -127,6 +127,15 @@ describe('validateConfig', () => {
     const result = validateConfig(config)
     expect(result.valid).toBe(false)
     expect(result.errors.some(e => e.includes('languages.commit') && e.includes('en') && e.includes('fr'))).toBe(true)
+  })
+
+  it('should accept allowOnProtectedBranch, which the commit object forbids by omission', () => {
+    // `commit` is additionalProperties:false, so a setting the UI writes but the
+    // schema does not declare makes the whole config invalid — a failure that shows
+    // up as "your config is broken", far from the field that caused it.
+    const config = validConfig()
+    config.repositories['my-app'].commit.allowOnProtectedBranch = true
+    expect(validateConfig(config).valid).toBe(true)
   })
 
   it('should fail for an invalid commit format', () => {
@@ -349,7 +358,7 @@ describe('migration backup', () => {
           ...configBefore.repositories['test-repo'],
           color: '#3B82F6',
           languages: { commit: 'en', pullRequest: 'en', jiraComment: 'en', discussion: 'en' },
-          commit: { style: 'single-line', format: 'angular', coAuthor: true, includeTicketId: true },
+          commit: { style: 'single-line', format: 'angular', coAuthor: true, includeTicketId: true, allowOnProtectedBranch: false },
           resolve: {
             commitMode: 'new', format: 'angular', style: 'single-line',
             useCommitConfig: true, replyToComments: true, replyLanguage: 'en'

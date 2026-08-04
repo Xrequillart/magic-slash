@@ -357,6 +357,7 @@ export function updateRepositoryCommitSettings(name: string, settings: SettingsI
   applySetting(commit, 'format', settings.format, isOneOf(['conventional', 'angular', 'gitmoji', 'none']))
   applySetting(commit, 'coAuthor', settings.coAuthor, isBool)
   applySetting(commit, 'includeTicketId', settings.includeTicketId, isBool)
+  applySetting(commit, 'allowOnProtectedBranch', settings.allowOnProtectedBranch, isBool)
 
   if (Object.keys(commit).length === 0) {
     delete config.repositories[name].commit

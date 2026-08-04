@@ -114,6 +114,19 @@ export interface RepositoryConfig {
     format?: string
     coAuthor?: boolean
     includeTicketId?: boolean
+    /**
+     * Whether committing straight onto a protected branch — main, master, develop,
+     * and the repo's own `branches.development` — is permitted.
+     *
+     * Defaults to TRUE, i.e. permitted, because withdrawing a right people already
+     * have is a surprising thing for an update to do. What changes at the default is
+     * that /magic:commit now ASKS when it finds you on such a branch instead of
+     * committing silently.
+     *
+     * False means there is nothing to ask: the skill moves the work onto a new
+     * branch first. See skills/magic-commit/SKILL.md step 4.6.
+     */
+    allowOnProtectedBranch?: boolean
   }
   resolve?: {
     commitMode?: string        // 'new' | 'amend' | 'ask'
@@ -666,6 +679,10 @@ export interface OrgSharedConfig {
     format?: string
     coAuthor?: boolean
     includeTicketId?: boolean
+    /** See RepositoryConfig['commit']. Inherited like every other commit setting:
+     *  the DB function projects the whole `commit` object, so a team's protection
+     *  rule reaches its members rather than being re-decided per machine. */
+    allowOnProtectedBranch?: boolean
   }
   pullRequest?: {
     autoLinkTickets?: boolean

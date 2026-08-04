@@ -47,7 +47,10 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
     style: 'single-line',
     format: 'angular',
     coAuthor: true,
-    includeTicketId: true
+    includeTicketId: true,
+    // Permitted by default: an update must not silently take away the ability to
+    // commit on develop. The guard still speaks up — it asks first (see types.ts).
+    allowOnProtectedBranch: true
   },
   resolve: {
     commitMode: 'new',

@@ -159,6 +159,10 @@
             },
             "includeTicketId": {
               "type": "boolean"
+            },
+            "allowOnProtectedBranch": {
+              "type": "boolean",
+              "description": "Allow committing directly on main/master/develop. Defaults to true; /magic:commit asks first. False makes the skill branch off instead."
             }
           },
           "additionalProperties": false,
