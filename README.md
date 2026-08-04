@@ -55,9 +55,8 @@ You can also invoke skills using natural language:
 
 ## Installation
 
-```bash
-curl -fsSL https://magic-slash.io/install.sh | bash
-```
+[**Download Magic Slash for macOS**](https://github.com/xrequillart/magic-slash/releases/latest) — drag it into
+Applications and open it. There is no install script: the app sets the machine up itself.
 
 ### Prerequisites
 
@@ -65,13 +64,21 @@ curl -fsSL https://magic-slash.io/install.sh | bash
 - Node.js 20+ (see `.nvmrc`)
 - Git
 - jq
+- GitHub CLI (`gh`) — optional; without it `/magic:resolve` replies without threading
 
-### What the script does
+The app checks all of these on first launch and offers to install the ones Homebrew can
+provide. Settings → About → Machine setup reports the same thing at any time.
 
-1. Configures Atlassian MCP (prompts for OAuth authentication)
-2. Configures GitHub MCP (prompts for your token)
-3. Configures your repositories (1 to N repos with optional keywords for smart detection)
-4. Installs the 7 skills
+### What the app does on first launch
+
+1. Asks where your tickets live (Jira + GitHub, or GitHub only)
+2. Configures the MCP servers for that choice — both over OAuth, so there is no token to
+   paste or store
+3. Installs the 7 skills into `~/.claude/skills/`
+4. Configures Claude Code's hooks, statusline and permission allowlist
+5. Checks your prerequisites and reports what is missing
+
+Repositories are configured afterwards, in Settings → Repositories.
 
 ## Usage
 
@@ -455,7 +462,6 @@ magic-slash/
 │   ├── fonts/            # Custom fonts (Avenir, CeraPro)
 │   └── CNAME             # Custom domain config
 ├── install/
-│   ├── install.sh        # Installation script
 │   ├── uninstall.sh      # Uninstallation script
 │   └── magic-slash       # CLI script (launches Desktop app)
 ├── CHANGELOG.md          # Version history

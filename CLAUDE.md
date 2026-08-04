@@ -17,11 +17,11 @@ magic-slash/
 │   └── evals/         #   Trigger evals: eval_set.json (30 queries) + results.json
 ├── desktop/           # Native desktop app (Electron + React + TypeScript)
 │   ├── src/main/      #   Electron main process (config, IPC, PTY, hooks, updater)
+│   │   └── setup/     #     Machine setup on launch: prerequisites, MCP servers
 │   ├── src/preload/   #   Secure bridge main <-> renderer
 │   └── src/renderer/  #   React UI (pages, components, hooks, Zustand store)
 ├── docs/              # Static landing page (GitHub Pages)
-├── install/           # Installation scripts and CLI (bash)
-│   ├── install.sh     #   Setup Atlassian/GitHub MCP, repos, skills, CLI
+├── install/           # Uninstaller and CLI (bash)
 │   ├── uninstall.sh   #   Full uninstallation
 │   └── magic-slash    #   CLI wrapper
 └── .github/           # CI/CD workflows and issue templates

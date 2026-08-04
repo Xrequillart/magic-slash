@@ -61,11 +61,11 @@ Before contributing, make sure you understand:
    npm install
    ```
 
-5. Test the installation script locally:
+5. Run the test suite, which covers the machine setup the app performs on launch
+   (prerequisites, MCP servers, permissions):
 
    ```bash
-   # Run in dry-run mode or test in a sandbox environment
-   bash install/install.sh
+   npm test
    ```
 
 ### Testing Your Changes
