@@ -162,11 +162,14 @@ If a split is needed, proceed directly — this is expected behavior, not someth
 
 1. Announce the split plan (how many commits, what each covers)
 2. Unstage all: `git reset HEAD`
-3. For each logical group:
+3. Compose the FIRST group's message (Step 4), then run the protected branch guard
+   (Step 4.6) — once, here, before any commit exists. Every commit in the loop below
+   then lands on the branch it settled on.
+4. For each logical group:
    - Stage the relevant files: `git add <files>`
    - Create the commit (following Step 4 for the message)
    - Display confirmation
-4. Display a summary of all commits created
+5. Display a summary of all commits created
 
 ---
 
@@ -183,6 +186,8 @@ The config was already loaded in Step 0.2. Extract these parameters (repo config
 | Format | `.repositories.<name>.commit.format` | `"angular"` |
 | Co-Author | `.repositories.<name>.commit.coAuthor` | `false` |
 | Include Ticket ID | `.repositories.<name>.commit.includeTicketId` | `false` |
+| Allow commits on a main branch | `.repositories.<name>.commit.allowOnProtectedBranch` | `true` |
+| Development branch | `.repositories.<name>.branches.development` | *(none)* |
 
 ### 4.2: Apply the style
 
@@ -221,6 +226,61 @@ This config overrides Claude Code's default co-author behavior. The reason: Magi
   Patterns: Jira `[A-Z]+-\d+`, GitHub `#\d+`. Append after an empty line: `[TICKET-ID]`.
 
   If no ticket ID is found in the branch name, skip this.
+
+### 4.6: Protected branch guard
+
+Runs after the message exists and before anything is committed — the branch name is derived from that message, so it cannot run earlier.
+
+**On an atomic split (Step 3.2), this runs ONCE, before the first commit**, using the first group's message for the name. All the commits then land on the same new branch. Do not create a branch per group.
+
+#### Is the current branch protected?
+
+```bash
+git branch --show-current
+```
+
+A branch is protected when its name matches one of `main`, `master`, `develop`, `dev`, `staging`, `production`, `trunk`, or the repo's configured `branches.development` (Step 4.1).
+
+**If it is not protected — the common case — skip the rest of this step and commit.** Empty output means a detached HEAD, which is not a protected branch either: skip too.
+
+#### Case A: `allowOnProtectedBranch` is `true` or absent
+
+Ask with `AskUserQuestion`, using `MSG_PROTECTED_BRANCH_ASK` (branch name interpolated) and two options:
+
+1. **Commit on `{branch}`** — proceed to Step 5 unchanged.
+2. **Create a branch first** — continue with the branch creation below.
+
+Ask ONCE per run, even on a multi-commit split or a multi-repo run: re-asking per commit for a decision the user has already made is noise. In a multi-repo run, apply the answer to every worktree whose current branch is also protected.
+
+#### Case B: `allowOnProtectedBranch` is `false`
+
+No question — the answer is already no. Announce with `MSG_PROTECTED_BRANCH_BLOCKED` and create the branch.
+
+#### Creating the branch
+
+Derive the name from the commit message generated in Step 4:
+
+- `{type}/{slug}` where `type` is the conventional-commit type (`feat`, `fix`, `docs`…) and `slug` is the subject, lower-cased, non-alphanumerics collapsed to single hyphens, trimmed to ~50 characters on a word boundary.
+- For `gitmoji` or `none` formats there is no type to read: use `chore/{slug}`.
+- Example: `fix(desktop): complete the permissions` → `fix/complete-the-permissions`.
+
+Show the proposed name and let the user accept or replace it (`MSG_BRANCH_NAME_CONFIRM`). A name they cannot correct here costs a rename afterwards, which is worse than one keystroke now.
+
+```bash
+git checkout -b "{branch_name}"
+```
+
+`git checkout -b` carries the staged and unstaged changes over to the new branch — do NOT stash, and do not re-stage. The staging built in Step 2 survives intact.
+
+If the branch already exists, git refuses. Ask with `MSG_BRANCH_EXISTS`: switch to it (`git checkout {branch_name}`, which also carries the changes over), or supply another name.
+
+Report the new branch to Magic Slash so the desktop sidebar stops showing the old one:
+
+```bash
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&branchName=$(echo -n "$(git branch --show-current)" | jq -sRr @uri)" > /dev/null 2>&1 || true
+```
+
+Then display `MSG_BRANCH_CREATED` and proceed to Step 5.
 
 ---
 

@@ -155,3 +155,73 @@ Large diff detected ({N} lines). Using --stat summary first for analysis.
 ```text
 Diff volumineux detecte ({N} lignes). Utilisation du resume --stat pour l'analyse.
 ```
+
+## MSG_PROTECTED_BRANCH_ASK
+
+### en
+
+```text
+You are on {branch}, a main branch. Commit here, or move this work to its own branch?
+```
+
+### fr
+
+```text
+Vous etes sur {branch}, une branche principale. Committer ici, ou deplacer ce travail sur sa propre branche ?
+```
+
+## MSG_PROTECTED_BRANCH_BLOCKED
+
+### en
+
+```text
+{branch} is a main branch and direct commits are turned off for this repository. Creating a branch first.
+```
+
+### fr
+
+```text
+{branch} est une branche principale et les commits directs sont desactives pour ce depot. Creation d'une branche.
+```
+
+## MSG_BRANCH_NAME_CONFIRM
+
+### en
+
+```text
+Branch to create: {branch_name}. Use this name, or type another?
+```
+
+### fr
+
+```text
+Branche a creer : {branch_name}. Garder ce nom, ou en saisir un autre ?
+```
+
+## MSG_BRANCH_EXISTS
+
+### en
+
+```text
+Branch {branch_name} already exists. Switch to it, or use another name?
+```
+
+### fr
+
+```text
+La branche {branch_name} existe deja. Basculer dessus, ou utiliser un autre nom ?
+```
+
+## MSG_BRANCH_CREATED
+
+### en
+
+```text
+[ok] Now on {branch_name} - your changes came along, nothing was stashed.
+```
+
+### fr
+
+```text
+[ok] Maintenant sur {branch_name} - vos changements ont suivi, rien n'a ete mis de cote.
+```
