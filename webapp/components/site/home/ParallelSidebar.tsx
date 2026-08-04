@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { AlertTriangle, Bot, Check, Clock, Sparkles, UserRound, Users } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
+import { usePointerTilt } from './usePointerTilt'
 
 /**
  * The illustration for section ④ — the app's agent list, on its own, leaning back.
@@ -19,8 +20,9 @@ import { useT } from '@/lib/i18n/useLanguage'
  * its footprint instead of pushing a tall narrow box diagonally out of the layout.
  *
  * The blob behind it is `Ellipse 5.svg` from design, inlined rather than served: it is one
- * path with one flat fill, so a file would cost a request to save nothing. Its colour
- * moves to the stylesheet with the rest of them.
+ * path with one flat fill, so a file would cost a request to save nothing. Its colour moves
+ * to the stylesheet with the rest of them, and it is no longer the exported one — see
+ * `.pj-blob` for why it was lightened.
  */
 
 /** What the sidebar reports. `waiting` is the state that needs the person, so it is what
@@ -38,66 +40,13 @@ const AGENTS: { name: string; state: 'working' | 'waiting' | 'done' }[] = [
 
 const ATTENTION = AGENTS.filter((a) => a.state === 'waiting').length
 
-/** How far the pointer may push the lean, in degrees. Small on purpose — the panel should
- *  feel like it is tracking you, not like it is being steered. */
-const SWING_Y = 7
-const SWING_X = 4
-
 export function ParallelSidebar() {
   const { t } = useT()
   const root = useRef<HTMLDivElement>(null)
 
-  /**
-   * The pointer nudges the lean, in the direction that turns the panel TOWARDS the cursor.
-   * Only the two offsets go out, as custom properties; the resting -30° is composed in
-   * CSS, so retuning the base angle never means touching this.
-   *
-   * Measured against the viewport rather than against the panel, so it answers to the
-   * cursor anywhere on the page instead of only on hover. The easing that smooths the
-   * follow is the CSS transition, not a loop here.
-   */
-  useEffect(() => {
-    const el = root.current
-    if (!el) return
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
-
-    let visible = false
-    const observer = new IntersectionObserver(
-      (entries) => entries.forEach((e) => { visible = e.isIntersecting }),
-      { threshold: 0 },
-    )
-    observer.observe(el)
-
-    // Coalesced into one frame: the panel's centre moves as the page scrolls, so the rect
-    // has to be re-read, and reading it on every pointer event would mean a layout per
-    // event interleaved with a style write.
-    let pending: { x: number; y: number } | null = null
-    let frame = 0
-    const clamp = (v: number) => Math.max(-1, Math.min(1, v))
-
-    const apply = () => {
-      frame = 0
-      if (!pending) return
-      const box = el.getBoundingClientRect()
-      const dx = clamp((pending.x - (box.left + box.width / 2)) / (window.innerWidth / 2))
-      const dy = clamp((pending.y - (box.top + box.height / 2)) / (window.innerHeight / 2))
-      el.style.setProperty('--pj-ry', `${(dx * SWING_Y).toFixed(2)}deg`)
-      el.style.setProperty('--pj-rx', `${(dy * SWING_X).toFixed(2)}deg`)
-    }
-
-    const onMove = (e: PointerEvent) => {
-      if (!visible) return
-      pending = { x: e.clientX, y: e.clientY }
-      if (!frame) frame = requestAnimationFrame(apply)
-    }
-
-    window.addEventListener('pointermove', onMove, { passive: true })
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('pointermove', onMove)
-      if (frame) cancelAnimationFrame(frame)
-    }
-  }, [])
+  // Small swings on purpose: the panel should feel like it is tracking you, not like it is
+  // being steered.
+  usePointerTilt(root, 7, 4)
 
   const I = 15
 
@@ -109,6 +58,8 @@ export function ParallelSidebar() {
       </svg>
 
       <div className="pj-tilt">
+        {/* The slab's edge, so the panel reads as an object rather than a sheet. */}
+        <span className="mk-slab" />
         <aside className="pj-sidebar">
           <span className="mk-menu-item">
             <Bot size={I} /> <em>{t('site.mockup.menuNewAgent')}</em> <kbd>⌘N</kbd>

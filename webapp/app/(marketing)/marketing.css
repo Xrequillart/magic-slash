@@ -4107,6 +4107,11 @@ h1 {
     .pj {
         width: 100%;
     }
+    /* Stacked, the heading has to come first — the side swap was a desktop-only thing. */
+    .rs {
+        width: 100%;
+        order: 0;
+    }
 }
 
 @media (max-width: 768px) {
@@ -4152,7 +4157,7 @@ h1 {
    ════════════════════════════════════════════════════════════════════════════ */
 
 /* The palette, on its own selector so anything else drawing the app can opt in. */
-.mk, .pj {
+.mk, .pj, .rs {
     --mk-base: #131030;
     --mk-chrome: rgba(29, 25, 46, 0.72);
     --mk-panel: rgba(28, 22, 46, 0.72);
@@ -4625,6 +4630,83 @@ h1 {
        belongs to the label beside it. This keeps the lean and loses the fisheye. */
     perspective: 2000px;
 }
+/* ── The slab's body ──
+   Both tilted illustrations are panels standing in space, and a panel with no thickness
+   reads as a sheet of paper. This is the BACK of the slab: the same rounded rectangle,
+   pushed back in Z. Leaning, its far edge slides out from behind the front face, and that
+   sliver IS the thickness — tapered by the same perspective as everything else.
+
+   It replaced a flat strip hinged along one edge and swung 90°, which was the more literal
+   construction and looked wrong for two reasons a screenshot made obvious: a rectangle has
+   square corners, so it stepped out past the face's rounded ones, and it sat OUTSIDE the
+   face's 1px border, so you read face | light line | strip | light line and the strip
+   became a second sheet stacked behind the panel rather than its edge.
+
+   The back face fixes both by construction: it needs no border, and no per-illustration
+   rule — whichever way a panel leans, its own far side is where the body shows.
+
+   Its radius MATCHES its front face's, which is what a rounded-corner prism actually is.
+   The band therefore runs the full height and tapers away into each corner, and that taper
+   is the thing that makes the whole read as one block.
+
+   Rounding the back MORE was tried, to blunt those tapers, and it is a trap: the corner
+   pulls in far enough that the band stops short of it, so the corners go back to looking
+   like a sheet while the middle looks solid, and the band's blunt end reads as a strip
+   starting partway down the side. The tapers were never the problem — they only LOOKED
+   like crescents while the gradient below was three points off the face's colour and the
+   band was invisible everywhere except its light end. */
+.mk-slab {
+    position: absolute;
+    /* Grown, not flush. Perspective makes the back SMALLER than the front, so at the
+       corners the two silhouettes diverge and neither covers the wedge between them — the
+       background shows through, and the panel reads as two rounded sheets with daylight
+       between their corners. Nothing about colour or shadow fixes that; the back simply has
+       to CONTAIN the front.
+
+       The amount is tied to the depth below and has to be measured, not guessed: it lands
+       in the visible thickness too, so it is most of what the edge ends up being. Measured
+       against the front face's own box, at 13px of depth — 2px of growth gives 5.6px of
+       visible edge with 0.33px poking above the top, where 3px gives 6.6px and 1.4px. Both
+       cover the corners; the smaller one is less likely to read as an outline round all
+       four sides, which is where this stops being thickness. */
+    inset: -2px;
+    border-radius: var(--slab-radius);
+    /* The same material as the face, not a colour of its own: the panel's base with the
+       same chrome layer over it, then a scrim to lift it. Hand-picked violets used to sit
+       here and read as a different substance bolted to the side.
+
+       The scrim is INDIGO — the app's own accent — and NOT white. White raises the lightness
+       but takes the colour out with it: the face carries roughly 36% saturation, and a white
+       scrim bright enough to read dropped that to about 15%, which is grey. Lifting with a
+       colour of the same hue lands near 32%, so the edge stays the panel's purple and only
+       looks like it is catching more light.
+
+       The scrim is also what keeps the edge VISIBLE, and it is not optional. Lighter than
+       the face, never darker: both illustrations stand on a pale background, so a side
+       turned towards all that light catches more of it than the face turned away from it —
+       and the face is already so dark that a darker band has nowhere to go. An earlier
+       attempt graded through a value three points off the face's and the thickness simply
+       vanished down the middle of the panel.
+
+       Strongest at the top, since the light is above. Over the face's #1A162F these
+       composite to about #3D3E73, #343461 and #2A294F down the panel. */
+    background-color: var(--mk-base);
+    background-image:
+        linear-gradient(
+            rgba(129, 140, 248, 0.34),
+            rgba(129, 140, 248, 0.25) 55%,
+            rgba(129, 140, 248, 0.16)
+        ),
+        linear-gradient(var(--mk-chrome), var(--mk-chrome));
+    /* The block's ONE cast shadow, and it lives here rather than on the front face — that
+       is the whole reason the two used to read as two sheets with a gap between them. A
+       70px blur behind a 30px offset spreads ~40px the OTHER way, so a shadow on the front
+       fell across the thickness band and shaded it like a void behind a sheet. Cast from
+       the rearmost surface instead, it reads as the solid throwing one shadow. */
+    box-shadow: var(--slab-shadow-x) 34px 70px rgba(19, 16, 48, 0.3);
+    transform: translateZ(-13px);
+}
+
 /* `Ellipse 5.svg` from design, inlined in the component. Held to exactly the slot width:
    still wider than the panel, so it reads as a backdrop, but it can never reach across the
    gap into the text column — pale blue under body copy costs too much contrast. */
@@ -4635,16 +4717,25 @@ h1 {
     width: 100%;
     height: auto;
     transform: translate(-50%, -50%);
-    fill: #96B3DE;
+    /* Lighter than the #96B3DE the asset was exported with: against this section's #D9E8FF
+       that read as a solid shape competing with the panel rather than as a backdrop. This
+       roughly halves its distance from the background. */
+    fill: #BDD1F0;
     pointer-events: none;
 }
 .pj-tilt {
-    /* -20° is the resting lean; the pointer handler only ever writes the two offsets, so
+    /* -20° is the resting lean; `usePointerTilt` only ever writes the two offsets, so
        retuning the base angle never means touching the script. The transition is what
        smooths the follow — each pointer move re-targets an easing already in flight. */
-    transform: rotateY(calc(-20deg + var(--pj-ry, 0deg))) rotateX(var(--pj-rx, 0deg));
+    position: relative;
+    transform-style: preserve-3d;
+    transform: rotateY(calc(-20deg + var(--tilt-ry, 0deg))) rotateX(var(--tilt-rx, 0deg));
     transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* Its own front face's radius plus the 2px the back is grown by, so the corners keep
+   the same curvature. See `.mk-slab`. The shadow
+   falls away from the lean, so it goes the other way in each illustration. */
+.pj-tilt .mk-slab { --slab-radius: 14px; --slab-shadow-x: -28px; }
 .pj-sidebar {
     /* Tall enough that the eight rows, the usage card and the footer all fit with a little
        slack for `.mk-grow` to push the card to the bottom, the way the real panel sits. */
@@ -4660,12 +4751,267 @@ h1 {
        one opaque stack — derived from the same tokens rather than a hand-mixed hex. */
     background-color: var(--mk-base);
     background-image: linear-gradient(var(--mk-chrome), var(--mk-chrome));
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    box-shadow: -28px 34px 70px rgba(19, 16, 48, 0.32);
+    /* Brighter than the hero's hairline. There, the sidebar sits inside a dark window and
+       0.09 white is enough to separate two dark surfaces; here the panel stands on a pale
+       background, where the only thing that rim can do is read from the INSIDE. */
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    /* NO highlight along the edge that meets the slab's side, and no cast shadow either —
+       the shadow belongs to the whole block, see `.mk-slab`.
+
+       A bright 1px arête was tried there, on the theory that a corner catches light. It is
+       what made the panel read as two sheets with a lit gap between them: measured across
+       that edge, it put (70,67,86) between a face at (26,22,46) and a flank at (43,37,82) —
+       brighter than the flank it was supposed to belong to. Left alone the brightness only
+       ever rises, face to flank to background, which is what a solid turning away from the
+       light does. The border below is enough of a corner. */
+    border-right-color: rgba(255, 255, 255, 0.05);
     font-family: "Cera Pro", system-ui, sans-serif;
     color: var(--mk-muted);
     text-align: left;
     overflow: hidden;
+}
+
+/* ── Section ⑤: one repository's settings, leaning the other way ──
+   +20° rather than -20°, because this illustration sits to the LEFT of its text while ④
+   sits to the right, and each should face the words it belongs to. `order: -1` does the
+   side swap so the heading can stay first in the DOM. */
+.rs {
+    position: relative;
+    order: -1;
+    width: 460px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem 0;
+    perspective: 2000px;
+}
+/* The backdrop triangle, ④'s blob in another shape. A cool grey with a little of the page's
+   blue in it rather than a neutral one, so it belongs to the palette; light enough to stay
+   quiet on white, dark enough not to disappear on it.
+
+   Sized and nudged so its three corners all show. At 132% of the 460px slot it renders
+   607×580, putting each vertex ~291px horizontally and ~278px vertically from its centre —
+   past the leaning panel's ~190px half-width and ~255px half-height, so none of them is
+   swallowed. `left: 47%` shifts it a touch away from the text: the right-hand vertex then
+   reaches 47px past the slot instead of 61px, inside the 5rem gap either way, while the
+   left-hand one runs out into the page margin where there is nothing to disturb. */
+.rs-shape {
+    position: absolute;
+    top: 50%;
+    left: 47%;
+    width: 132%;
+    height: auto;
+    transform: translate(-50%, -50%);
+    fill: #E9ECF3;
+    pointer-events: none;
+}
+.rs-tilt {
+    position: relative;
+    transform-style: preserve-3d;
+    transform: rotateY(calc(20deg + var(--tilt-ry, 0deg))) rotateX(var(--tilt-rx, 0deg));
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rs-tilt .mk-slab { --slab-radius: 16px; --slab-shadow-x: 30px; }
+.rs-window {
+    width: 400px;
+    height: 500px;
+    border-radius: 14px;
+    /* Opaque, like `.pj-sidebar`: there is no dark window behind it to be translucent
+       over, and this section's background is white. */
+    background-color: var(--mk-base);
+    background-image: linear-gradient(var(--mk-chrome), var(--mk-chrome));
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    /* Mirrored from `.pj-sidebar`: this panel leans the other way, so the edge that meets
+       the slab's side — the one kept quiet — is the left one. */
+    border-left-color: rgba(255, 255, 255, 0.05);
+    font-family: "Cera Pro", system-ui, sans-serif;
+    color: var(--mk-muted);
+    text-align: left;
+    overflow: hidden;
+}
+/* Scrolled by the page, never by the visitor: `hidden` rather than `auto`, so there is no
+   scrollbar and no scroll of its own to get stuck in. */
+.rs-pane {
+    height: 100%;
+    overflow: hidden;
+    padding: 16px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.rs-head { display: grid; grid-template-columns: auto 1fr; gap: 2px 9px; align-items: center; }
+.rs-back { display: flex; color: var(--mk-dim); }
+.rs-head b { font-size: 1.05rem; font-weight: 600; color: var(--mk-text); }
+.rs-head em {
+    grid-column: 2;
+    font-style: normal; font-size: 0.72rem; color: var(--mk-dim);
+}
+
+.rs-group { display: flex; flex-direction: column; gap: 8px; }
+.rs-group-title {
+    font-size: 0.6rem; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--mk-dimmer);
+}
+.rs-card {
+    padding: 4px 11px;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+/* A settings row: label and help on the left, control on the right, hairline between —
+   the shape `RepoPage` uses for every one of them. */
+.rs-row {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 14px;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.rs-row:last-child { border-bottom: none; }
+/* WORKTREE's control is a chip list and an add field — too wide to sit beside the labels,
+   so it goes under them, as it does on the real page. */
+.rs-row.is-stacked { flex-direction: column; align-items: stretch; gap: 9px; }
+.rs-labels { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.rs-labels b { font-size: 0.74rem; font-weight: 500; color: var(--mk-text); }
+.rs-labels em {
+    font-style: normal; font-size: 0.64rem; line-height: 1.4;
+    color: var(--mk-dimmer);
+}
+
+/* ── The controls ── */
+.rs-input, .rs-select {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 9px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    font-size: 0.7rem;
+    color: var(--mk-text);
+    white-space: nowrap;
+}
+.rs-input { width: 130px; }
+.rs-input--url { width: 168px; font-size: 0.64rem; overflow: hidden; }
+.rs-select > svg { margin-left: auto; color: var(--mk-dim); }
+.rs-chips { display: flex; gap: 5px; flex-shrink: 0; }
+.rs-chips i {
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(129, 140, 248, 0.18);
+    font-style: normal; font-size: 0.64rem;
+    color: var(--mk-indigo);
+}
+.rs-swatches { display: flex; gap: 5px; flex-shrink: 0; padding-top: 2px; }
+.rs-swatches i {
+    width: 15px; height: 15px;
+    border-radius: 50%;
+}
+.rs-swatches i.is-on { box-shadow: 0 0 0 2px var(--mk-base), 0 0 0 3.5px currentColor; }
+/* Off is the border colour, on is the accent — `bg-border` / `peer-checked:bg-accent`. */
+.rs-toggle {
+    position: relative;
+    flex-shrink: 0;
+    width: 34px; height: 19px;
+    border-radius: 999px;
+    background: #262F4A;
+    transition: background 0.2s;
+}
+.rs-toggle i {
+    position: absolute; left: 2px; top: 2px;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: var(--mk-dim);
+    transition: transform 0.2s, background 0.2s;
+}
+.rs-toggle.is-on { background: var(--mk-indigo); }
+.rs-toggle.is-on i { transform: translateX(15px); background: #fff; }
+
+/* SCOPE leads with a pill rather than a label, and offers a button rather than a field. */
+.rs-badge {
+    align-self: flex-start;
+    display: flex; align-items: center; gap: 5px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    font-size: 0.68rem; font-weight: 500;
+    color: var(--mk-dim);
+}
+.rs-ghost-btn, .rs-danger-btn {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.7rem;
+    color: var(--mk-muted);
+    white-space: nowrap;
+}
+.rs-danger-btn {
+    background: rgba(248, 113, 113, 0.12);
+    border-color: rgba(248, 113, 113, 0.25);
+    color: var(--mk-red);
+}
+/* The danger zone: red header and a red-tinted card, the app's `bg-red/5 border-red/10`. */
+.rs-group-title.is-danger { color: rgba(248, 113, 113, 0.55); }
+.rs-card.is-danger {
+    background: rgba(248, 113, 113, 0.06);
+    border-color: rgba(248, 113, 113, 0.14);
+}
+
+/* WORKTREE's file chips, then the field that adds one. */
+.rs-files { display: flex; flex-wrap: wrap; gap: 6px; }
+.rs-files > i {
+    padding: 3px 8px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-family: var(--mk-mono);
+    font-style: normal; font-size: 0.64rem;
+    color: var(--mk-muted);
+}
+.rs-file-add { display: flex; gap: 6px; width: 100%; }
+.rs-file-add em {
+    flex: 1;
+    padding: 5px 9px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    font-style: normal; font-size: 0.68rem;
+    color: var(--mk-dimmer);
+}
+.rs-file-add b {
+    display: flex; align-items: center; gap: 4px;
+    padding: 5px 9px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 0.66rem; font-weight: 500;
+    color: var(--mk-muted);
+    white-space: nowrap;
+}
+
+.rs-preview {
+    margin: 4px 0 11px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.rs-preview-label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.55rem; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--mk-dimmer);
+}
+.rs-preview pre {
+    margin: 0;
+    font-family: var(--mk-mono);
+    font-size: 0.66rem; line-height: 1.5;
+    white-space: pre-wrap;
+    color: var(--mk-muted);
 }
 
 /* ── Narrow screens ──

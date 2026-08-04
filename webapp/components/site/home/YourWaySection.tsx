@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
+import { RepoSettings } from './RepoSettings'
 
 /**
  * Section ⑤: it works your way.
@@ -19,6 +20,10 @@ import { useT } from '@/lib/i18n/useLanguage'
  *
  * Its own light background rather than the black of ③ or the blue of ④, so three
  * consecutive two-column sections do not read as one long block.
+ *
+ * The illustration sits on the LEFT here, alternating against ④, which put its visual on
+ * the right. The heading still comes FIRST in the DOM — CSS does the swap, so the column
+ * stacking on a narrow screen leads with the words rather than with the picture.
  */
 export function YourWaySection() {
   const { t } = useT()
@@ -36,9 +41,7 @@ export function YourWaySection() {
           </Link>
         </div>
 
-        <div className="site-visual-placeholder" aria-hidden="true">
-          <span>Per-project settings illustration</span>
-        </div>
+        <RepoSettings />
       </div>
     </section>
   )

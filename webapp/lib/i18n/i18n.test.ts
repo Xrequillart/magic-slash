@@ -234,6 +234,17 @@ describe('message catalogues', () => {
         'site.mockup.session',
         'site.mockup.commits',
         'site.mockup.scripts',
+        // The settings illustration borrows the app's labels, and these are the same word
+        // on both screens — git and format vocabulary French took whole, plus the two
+        // product names the app's own section titles use.
+        'site.repoCfg.branches',
+        'site.repoCfg.commit',
+        'site.repoCfg.style',
+        'site.repoCfg.format',
+        'site.repoCfg.worktree',
+        'site.repoCfg.resolve',
+        'site.repoCfg.pr',
+        'site.repoCfg.issues',
         'site.story.tl9Date',
         'site.footer.configuration',
         'site.footer.changelog',
