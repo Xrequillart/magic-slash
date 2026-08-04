@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertTriangle, Archive, Building2, Loader2, Mail, Plus, UserPlus, Users } from 'lucide-react'
 import { useRequireSession } from '@/lib/session'
+import { extractInviteToken } from '@/lib/inviteLink'
 import {
   acceptInvitation,
   archiveOrg,
@@ -169,7 +170,11 @@ export default function OrganizationPage() {
     e.preventDefault()
     if (joining || !joinToken.trim()) return
     setJoining(true)
-    const ok = await run(() => acceptInvitation(joinToken), t('org.error.join'), setJoinStatus)
+    const ok = await run(
+      () => acceptInvitation(extractInviteToken(joinToken)),
+      t('org.error.join'),
+      setJoinStatus,
+    )
     setJoining(false)
     if (ok) {
       setShowJoin(false)

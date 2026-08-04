@@ -383,7 +383,7 @@ export const en = {
   'org.createModal.help': 'You become its admin and can invite members right away.',
   'org.createModal.namePlaceholder': 'Organization name',
   'org.joinModal.help': 'Paste the invitation link you received, or just its token.',
-  'org.joinModal.placeholder': 'https://app.magic-slash.io/invite/…',
+  'org.joinModal.placeholder': 'https://invite.magic-slash.io/…',
   'org.joinModal.submitting': 'Joining…',
   'org.archiveModal.title': 'Archive organization',
   'org.archiveModal.confirm': 'Archive {name}?',

@@ -1,4 +1,5 @@
 import { getSupabase } from './supabase'
+import { inviteLink as buildInviteLink } from './inviteLink'
 import type { Role } from './orgs'
 
 export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
@@ -37,10 +38,17 @@ export function effectiveStatus(status: InvitationStatus, expiresAt: string | nu
   return status
 }
 
-/** The shareable web invite link for a token. */
+/**
+ * The shareable invite link for a token.
+ *
+ * Delegates to `inviteLink.ts`, which is import-free so it can be tested (this module
+ * reaches the Supabase client). Kept exported here so callers keep one import.
+ */
 export function inviteLink(token: string): string {
-  return `${window.location.origin}/invite/${token}`
+  return buildInviteLink(token, window.location.origin)
 }
+
+export { extractInviteToken } from './inviteLink'
 
 /** Invitations for an org. RLS gates SELECT to admins, so members receive []. */
 export async function fetchInvitations(orgId: string): Promise<Invitation[]> {

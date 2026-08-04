@@ -397,7 +397,7 @@ export const fr: Record<keyof typeof en, string> = {
     'Vous en devenez l’admin et pouvez inviter des membres immédiatement.',
   'org.createModal.namePlaceholder': 'Nom de l’organisation',
   'org.joinModal.help': 'Collez le lien d’invitation reçu, ou seulement son token.',
-  'org.joinModal.placeholder': 'https://app.magic-slash.io/invite/…',
+  'org.joinModal.placeholder': 'https://invite.magic-slash.io/…',
   'org.joinModal.submitting': 'En cours…',
   'org.archiveModal.title': 'Archiver l’organisation',
   'org.archiveModal.confirm': 'Archiver {name} ?',
