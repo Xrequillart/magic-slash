@@ -55,7 +55,18 @@ interface StatusLineConfig {
 function isMagicSlashStatusLine(sl: StatusLineConfig | undefined): boolean {
   return typeof sl?.command === 'string' && sl.command.includes(STATUSLINE_MARKER)
 }
-const MAGIC_SLASH_PERMISSIONS = [
+/**
+ * Permissions every install gets, whatever the integrations.
+ *
+ * The two Read() entries are not decoration: the skills read their own reference
+ * files (messages, glossary, plan templates) and the Magic Slash config at run time,
+ * and without these the very first step of every skill stops on a permission prompt.
+ */
+const MAGIC_SLASH_BASE_PERMISSIONS = [
+  // Skill reference files. Absolute, because Claude Code does not expand $HOME here.
+  `Read(${path.join(os.homedir(), '.claude', 'skills', 'magic-*')})`,
+  // Magic Slash config
+  `Read(${path.join(os.homedir(), '.config', 'magic-slash', '*')})`,
   // Desktop communication
   'Bash(*http://127.0.0.1:*)',
   // GitHub MCP tools
@@ -69,13 +80,6 @@ const MAGIC_SLASH_PERMISSIONS = [
   'mcp__github__get_pull_request_reviews',
   'mcp__github__create_pull_request',
   'mcp__github__create_pull_request_review',
-  // Atlassian MCP tools
-  'mcp__atlassian__getAccessibleAtlassianResources',
-  'mcp__atlassian__getJiraIssue',
-  'mcp__atlassian__getJiraIssueRemoteIssueLinks',
-  'mcp__atlassian__getTransitionsForJiraIssue',
-  'mcp__atlassian__transitionJiraIssue',
-  'mcp__atlassian__addCommentToJiraIssue',
   // Common Bash commands used by skills
   'Bash(git *)',
   'Bash(npm *)',
@@ -84,9 +88,30 @@ const MAGIC_SLASH_PERMISSIONS = [
   'Bash(bun *)',
   'Bash(jq *)',
   'Bash(gh *)',
+  // WebFetch is deliberately NOT pre-approved: /magic:start declares it in
+  // allowed-tools to resolve public design URLs, but an unscoped grant would widen
+  // every future session for a rare path. The user is prompted on the first fetch.
+]
+
+/**
+ * Granted only when the Atlassian integration is on.
+ *
+ * Kept separate so turning the integration off actually withdraws them. A blanket
+ * grant for a server the user does not use is a permission they never agreed to, and
+ * it would silently come back to life the day they configured Jira for something else.
+ */
+const MAGIC_SLASH_ATLASSIAN_PERMISSIONS = [
+  'mcp__atlassian__getAccessibleAtlassianResources',
+  'mcp__atlassian__getJiraIssue',
+  'mcp__atlassian__getJiraIssueRemoteIssueLinks',
+  'mcp__atlassian__getTransitionsForJiraIssue',
+  'mcp__atlassian__transitionJiraIssue',
+  'mcp__atlassian__addCommentToJiraIssue',
 ]
 
 const MAGIC_SLASH_PERMISSION_MARKERS = [
+  '.claude/skills/magic-',
+  '.config/magic-slash',
   '127.0.0.1',
   'mcp__github__',
   'mcp__atlassian__',
@@ -288,7 +313,20 @@ function isMagicSlashHook(hookConfig: HookConfig): boolean {
   return hookConfig.hooks?.some(h => h.command?.includes(MAGIC_SLASH_HOOK_MARKER)) ?? false
 }
 
-export function configureClaudeHooks(): void {
+/**
+ * Write the hooks, the statusLine wrapper's permissions and the allowlist.
+ *
+ * `atlassian` decides whether the Jira tools are granted. It is a PARAMETER rather
+ * than a `readConfig()` call because of when this runs: the first call happens on the
+ * launch path, before the cloud store has hydrated, when the config in memory is still
+ * the default (Atlassian on). Reading it there would grant the Jira tools to a
+ * GitHub-only user on every single launch, and quietly undo their choice.
+ *
+ * So the launch call passes nothing (keeping whatever the file already had for
+ * Atlassian), and the connectivity gate calls it again with the hydrated value once it
+ * knows it. Idempotent either way: the marker filter removes our own entries first.
+ */
+export function configureClaudeHooks(options?: { atlassian?: boolean }): void {
   try {
     // Ensure .claude directory exists
     const claudeDir = path.dirname(CLAUDE_SETTINGS_PATH)
@@ -353,11 +391,23 @@ export function configureClaudeHooks(): void {
     if (!settings.permissions.allow) {
       settings.permissions.allow = []
     }
+    // Whether to grant the Jira tools. Unspecified means "don't decide": keep what the
+    // file already says, so the pre-hydration call cannot overwrite a real choice with
+    // a default. First install has neither, and Atlassian defaults on — matching the
+    // config normalizer in config/config.ts.
+    const atlassian =
+      options?.atlassian ??
+      (settings.permissions.allow.some((p: string) => p.startsWith('mcp__atlassian__')) ||
+        !settings.permissions.allow.some((p: string) => isMagicSlashPermission(p)))
+
     // Remove old magic-slash permissions (to update them if list changed)
     settings.permissions.allow = settings.permissions.allow.filter(
       (p: string) => !isMagicSlashPermission(p)
     )
-    settings.permissions.allow.push(...MAGIC_SLASH_PERMISSIONS)
+    settings.permissions.allow.push(...MAGIC_SLASH_BASE_PERMISSIONS)
+    if (atlassian) {
+      settings.permissions.allow.push(...MAGIC_SLASH_ATLASSIAN_PERMISSIONS)
+    }
 
     // Write back settings
     fs.writeFileSync(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2))

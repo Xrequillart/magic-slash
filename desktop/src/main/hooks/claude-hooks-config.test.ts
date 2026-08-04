@@ -237,3 +237,62 @@ describe('the typed slash-command hook', () => {
     expect(spooled()).toEqual([])
   })
 })
+
+/**
+ * The permission allowlist. This is what the install script's section 4b used to
+ * write, and the reason it moved here is that a script cannot re-decide it later —
+ * a user who switches to GitHub-only kept their Jira grants forever.
+ */
+describe('the permission allowlist', () => {
+  const allow = (): string[] => readSettings().permissions.allow
+
+  it('grants the skills read access to their own reference files and config', () => {
+    // Without these, EVERY skill stops on a permission prompt at its first step: they
+    // all read their messages/glossary files and the Magic Slash config.
+    configureClaudeHooks()
+    expect(allow()).toContain(`Read(${path.join(TMP_HOME, '.claude', 'skills', 'magic-*')})`)
+    expect(allow()).toContain(`Read(${path.join(TMP_HOME, '.config', 'magic-slash', '*')})`)
+  })
+
+  it('grants the Jira tools when Atlassian is on', () => {
+    configureClaudeHooks({ atlassian: true })
+    expect(allow()).toContain('mcp__atlassian__getJiraIssue')
+  })
+
+  it('withdraws the Jira tools when Atlassian is off', () => {
+    configureClaudeHooks({ atlassian: true })
+    configureClaudeHooks({ atlassian: false })
+    expect(allow().some((p) => p.startsWith('mcp__atlassian__'))).toBe(false)
+    // The rest of the allowlist survives the switch.
+    expect(allow()).toContain('mcp__github__create_pull_request')
+  })
+
+  it('grants Atlassian on a first install, where nothing has been decided', () => {
+    // Matches the config normalizer, which defaults integrations to Atlassian on.
+    configureClaudeHooks()
+    expect(allow()).toContain('mcp__atlassian__getJiraIssue')
+  })
+
+  it('does not re-grant Jira tools the user turned off, when called without a choice', () => {
+    // The launch-path call runs BEFORE cloud hydration, so it passes no option. If it
+    // fell back to the default it would silently undo a GitHub-only setup at every
+    // single launch — the bug this signature exists to prevent.
+    configureClaudeHooks({ atlassian: false })
+    configureClaudeHooks()
+    expect(allow().some((p) => p.startsWith('mcp__atlassian__'))).toBe(false)
+  })
+
+  it('leaves permissions the user granted themselves alone', () => {
+    fs.mkdirSync(path.join(TMP_HOME, '.claude'), { recursive: true })
+    fs.writeFileSync(SETTINGS, JSON.stringify({ permissions: { allow: ['Bash(terraform *)'] } }))
+    configureClaudeHooks()
+    expect(allow()).toContain('Bash(terraform *)')
+  })
+
+  it('does not duplicate its own entries across repeated configuration', () => {
+    configureClaudeHooks()
+    configureClaudeHooks()
+    configureClaudeHooks()
+    expect(new Set(allow()).size).toBe(allow().length)
+  })
+})
