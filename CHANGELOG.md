@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.64.0] - 2026-08-04
+
+### Added
+
+- **Webapp**: Give every page one host and retire the admin subdomain
+- **Webapp**: Use the invite subdomain and read pasted links
+- **Desktop**: Send invitations to the invite subdomain
+- **Webapp**: Map each host to its own front door
+- **Commit**: Branch off before committing on a main branch
+- **Webapp**: Add the main-branch commit toggle to repository settings
+- **Desktop**: Add the main-branch commit toggle to repository settings
+- **Desktop**: Add a setting to guard commits on main branches
+- **Desktop**: Add the setup wizard and machine setup panel
+- **Desktop**: Set up the machine on launch instead of an install script
+- **Webapp**: Add the settings illustration and give both panels depth
+- **Webapp**: Add the tilted agent list to the parallel jobs section
+- **Webapp**: Slow the hero mockup and follow the app's own states
+- **Webapp**: Animate the hero mockup through the six skills
+- **Webapp**: Reposition the landing page around the product outcome
+- **Desktop**: Use the rabbit mark for the menu bar tray icon
+- **Desktop**: Replace the app icon with the new blue rabbit
+- **Webapp**: Replace the logo and favicon with the new rabbit lockup
+- **Start**: Gate on ticket dependencies before starting
+- **Webapp**: Port the documentation with a build-time changelog
+- **Webapp**: Port the landing, skills, desktop and story pages
+- **Webapp**: Add the public site and documentation catalogues
+- **Webapp**: Move the login form to /login and rewrite by host
+
+### Changed
+
+- **Readme**: Refresh the logo and drop the app screenshot
+- Remove the static github pages site
+- Adapt the release and audit skills to the removed site
+- Keep the shelved v2 vision outside the deleted site
+- **Webapp**: Unlink the reference from the header and footer
+- Document the main-branch commit setting
+- Point the audit and release skills at the setup module
+- Describe the app's own setup instead of the install script
+- **Landing**: Offer the download instead of the install command
+- **Webapp**: Offer the download instead of the install command
+- **Install**: Remove the install script
+- Drop the install script jobs and test on both platforms
+- **Webapp**: Drop the indigo scrim from the tilted panels' edge
+- **Webapp**: Catch a broken comment in marketing.css
+
+### Fixed
+
+- **Webapp**: Keep the session across hosts and land invitees on the app
+- **Desktop**: Point the app's links at magic-slash.io
+- Point users to settings instead of the removed installer
+- **Desktop**: Complete the permissions and scope them to integrations
+- **Start**: Offer the merge commit as base and forbid the unsafe fallback
+- **Start**: Re-check merged blocker against the resolved dev branch
+- **Start**: Validate blocker pr identity, merge target and base ref
+
 ## [0.63.1] - 2026-07-31
 
 ### Fixed
@@ -1842,6 +1897,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.64.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.64.0
 [0.63.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.63.1
 [0.63.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.63.0
 [0.62.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.62.0
