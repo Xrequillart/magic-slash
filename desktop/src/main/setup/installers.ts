@@ -1,28 +1,36 @@
 import { spawn } from 'child_process'
 import type { PrerequisiteId } from '../../types'
+import { CLAUDE_INSTALL_COMMAND } from './prerequisites'
 import { resolveShell } from './shell-exec'
 
 /**
- * One-click repair for the prerequisites Homebrew can install.
+ * One-click repair for the prerequisites we know how to install.
  *
  * The alternative was printing `brew install jq` and trusting the user to open a
  * terminal, which is exactly the manual step this whole change exists to remove. But
  * it stays USER-TRIGGERED: an app that installs software on someone's machine at
  * launch, unprompted, is not something anyone asked for.
+ *
+ * Most entries are Homebrew formulas. Claude Code is not — it ships its own installer
+ * — but it is the one REQUIRED tool with no formula, so leaving it as a link to go
+ * read a docs page made the app's most important prerequisite the only one it could
+ * not actually help with.
  */
 
 /**
- * Formulas this may install, mapped from the prerequisite that needs them.
+ * The commands this may run, keyed by the prerequisite that needs them.
  *
- * An ALLOWLIST, not a parameter, because the formula name arrives over IPC from the
- * renderer and ends up inside a shell command. Anything not in this map is refused,
- * so a compromised renderer cannot turn `brew install` into arbitrary execution.
+ * An ALLOWLIST OF WHOLE COMMANDS, not a parameter, because the id arrives over IPC
+ * from the renderer and what comes back goes to a shell. Nothing here interpolates
+ * anything: a compromised renderer can pick one of these five strings, and cannot
+ * turn any of them into arbitrary execution.
  */
-const INSTALLABLE: Partial<Record<PrerequisiteId, string>> = {
-  jq: 'jq',
-  gh: 'gh',
-  git: 'git',
-  node: 'node',
+export const INSTALL_COMMANDS: Partial<Record<PrerequisiteId, string>> = {
+  jq: 'brew install jq',
+  gh: 'brew install gh',
+  git: 'brew install git',
+  node: 'brew install node',
+  claude: CLAUDE_INSTALL_COMMAND,
 }
 
 export interface InstallResult {
@@ -33,10 +41,11 @@ export interface InstallResult {
 }
 
 /**
- * Install a prerequisite with Homebrew, streaming output as it comes.
+ * Install a prerequisite, streaming output as it comes.
  *
- * Streamed rather than awaited-then-shown because a brew install can spend a minute
- * updating its index with nothing to say, and a spinner that hides that looks stuck.
+ * Streamed rather than awaited-then-shown because an install can spend a minute with
+ * nothing to say (brew updating its index, curl fetching a tarball), and a spinner
+ * that hides that looks stuck.
  *
  * The 10-minute ceiling is for a genuinely slow first install (a `brew update` plus a
  * source build); past that, something is wrong and the promise resolves with what it
@@ -46,18 +55,19 @@ export function installPrerequisite(
   id: PrerequisiteId,
   onOutput?: (chunk: string) => void,
 ): Promise<InstallResult> {
-  const formula = INSTALLABLE[id]
-  if (!formula) {
+  const command = INSTALL_COMMANDS[id]
+  if (!command) {
     return Promise.resolve({ ok: false, output: '', error: `not installable: ${id}` })
   }
 
   return new Promise((resolve) => {
-    // Login shell, like every other command here: brew is not on a GUI app's PATH.
-    const child = spawn(resolveShell(), ['-l', '-c', `brew install ${formula}`], {
+    // Login shell, like every other command here: neither brew nor curl's install
+    // target is on a GUI app's PATH.
+    const child = spawn(resolveShell(), ['-l', '-c', command], {
       env: {
         ...process.env,
         // Keep brew from opening a pager or asking anything — there is no terminal
-        // attached to answer with.
+        // attached to answer with. Harmless for the installer that is not brew.
         HOMEBREW_NO_AUTO_UPDATE: '1',
         HOMEBREW_NO_ENV_HINTS: '1',
       },
@@ -85,7 +95,7 @@ export function installPrerequisite(
 
     child.on('close', (code) => {
       clearTimeout(timeout)
-      resolve({ ok: code === 0, output, error: code === 0 ? undefined : `brew exited ${code}` })
+      resolve({ ok: code === 0, output, error: code === 0 ? undefined : `install exited ${code}` })
     })
   })
 }

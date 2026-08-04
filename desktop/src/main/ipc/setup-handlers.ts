@@ -2,7 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import type { McpServerId, PrerequisiteId, SetupStatus } from '../../types'
 import { getSetupStatus } from '../setup/status'
 import { provisionMcpServer, removeMcpServer } from '../setup/mcp'
-import { installPrerequisite } from '../setup/brew'
+import { installPrerequisite } from '../setup/installers'
 import { updateSkills } from '../skills-updater'
 import { setIntegration } from '../config/config'
 import { configureClaudeHooks } from '../hooks/claude-hooks-config'
@@ -33,7 +33,7 @@ export function setupSetupHandlers(getMainWindow: () => BrowserWindow | null) {
   })
 
   /**
-   * Install a prerequisite with Homebrew, streaming its output to the panel.
+   * Install a prerequisite, streaming its output to the panel.
    *
    * The renderer gets progress on a channel rather than in the return value, so a
    * five-minute install shows what it is doing instead of freezing a button.

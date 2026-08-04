@@ -20,8 +20,8 @@ import { useT } from '../i18n'
  * click "next" four times to be told what it was going to do anyway is just a script
  * with a mouse.
  *
- * Installing software is the exception: brew runs only when the user presses the
- * button. Nothing gets installed on someone's machine because they opened an app.
+ * Installing software is the exception: an installer runs only when the user presses
+ * the button. Nothing gets installed on someone's machine because they opened an app.
  */
 export function SetupWizard({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const t = useT()
@@ -269,8 +269,8 @@ function ReadyRow({ done, label }: { done: boolean; label: string }) {
 }
 
 /**
- * Same three affordances as the settings card: install with brew, copy the command, or
- * follow a link. Kept as its own component here rather than shared with
+ * Same three affordances as the settings card: install it for them, copy the command,
+ * or follow a link. Kept as its own component here rather than shared with
  * SetupHealthCard because the two differ in layout and wording — merging them would
  * mean a props object describing which of the two it is pretending to be.
  */

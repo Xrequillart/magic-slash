@@ -21,7 +21,7 @@ export function SetupHealthCard() {
   const [status, setStatus] = useState<SetupStatus | null>(null)
   /** Which prerequisite is currently being installed, if any. */
   const [installing, setInstalling] = useState<PrerequisiteId | null>(null)
-  /** Live Homebrew output — a brew install can be silent for a minute. */
+  /** Live installer output — an install can be silent for a minute. */
   const [installLog, setInstallLog] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
@@ -173,7 +173,7 @@ export function SetupHealthCard() {
             </ul>
           )}
 
-          {/* Homebrew's own output while it works. Hidden when idle. */}
+          {/* The installer's own output while it works. Hidden when idle. */}
           {installing && installLog && (
             <pre className="mt-2 max-h-24 overflow-y-auto text-[10px] leading-relaxed text-text-secondary/60 bg-bg border border-line rounded-lg p-2 whitespace-pre-wrap">
               {installLog}
@@ -279,10 +279,12 @@ interface PrerequisiteRowProps {
  * One tool, and the shortest path to having it.
  *
  * Three different affordances, because there are three genuinely different cases and
- * collapsing them would strand someone: brew can install it (button), we know the
- * command but cannot run it (copy), or only its own installer can (link). Claude Code
- * is the third — it ships an installer and is a global npm package on many machines,
- * so naming one command would be wrong as often as right.
+ * collapsing them would strand someone: we can install it ourselves (button), we know
+ * the command but cannot run it (copy), or we can only point at a page (link).
+ *
+ * Claude Code takes the first branch like everything else. It has no brew formula, but
+ * it ships an official installer we run for the user — being the one REQUIRED tool the
+ * app could not repair made it the worst possible thing to leave as a link.
  */
 function PrerequisiteRow({ prerequisite, installing, disabled, optional, copied, onInstall, onCopy }: PrerequisiteRowProps) {
   const t = useT()
