@@ -11,10 +11,6 @@
 </p>
 
 <p align="center">
-  <img src=".github/assets/desktop-preview.png" alt="Magic Slash Desktop" width="700">
-</p>
-
-<p align="center">
   <a href="https://github.com/xrequillart/magic-slash/actions/workflows/ci.yml">
     <img src="https://github.com/xrequillart/magic-slash/actions/workflows/ci.yml/badge.svg" alt="CI">
   </a>
