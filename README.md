@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/logo-readme-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/logo-readme-light.svg">
-    <img src="docs/logo-readme-light.svg" alt="Magic Slash" height="80">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-readme-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/logo-readme-light.svg">
+    <img src=".github/assets/logo-readme-light.svg" alt="Magic Slash" height="80">
   </picture>
 </p>
 
@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/desktop-preview.png" alt="Magic Slash Desktop" width="700">
+  <img src=".github/assets/desktop-preview.png" alt="Magic Slash Desktop" width="700">
 </p>
 
 <p align="center">
@@ -425,6 +425,7 @@ Keywords are used for smart repository selection when starting a task:
 ```text
 magic-slash/
 ├── .github/
+│   ├── assets/           # Images this README renders
 │   ├── ISSUE_TEMPLATE/   # Bug report, feature request templates & config
 │   ├── workflows/        # CI and release workflows
 │   ├── PULL_REQUEST_TEMPLATE.md
@@ -455,12 +456,15 @@ magic-slash/
 │   │   └── references/
 │   ├── magic-done/SKILL.md       # Finalize after merge
 │   └── evals/                    # Eval set and results
-├── docs/                 # Landing page (GitHub Pages)
-│   ├── index.html        # Main page
-│   ├── documentation.html # Documentation page
-│   ├── logo.svg          # Logo (vector)
-│   ├── fonts/            # Custom fonts (Avenir, CeraPro)
-│   └── CNAME             # Custom domain config
+├── webapp/                # Next.js app — public site + web product (Vercel)
+│   ├── app/(marketing)/   # magic-slash.io — landing page, story
+│   ├── app/(docs)/        # /documentation — linked from the desktop app only
+│   ├── app/dashboard/     # app.magic-slash.io
+│   ├── app/admin/         # admin.magic-slash.io — back-office
+│   ├── app/invite/        # invite.magic-slash.io — invitation funnel
+│   ├── middleware.ts      # Maps each host to its front door (lib/hostRouting.ts)
+│   ├── components/        # Shared UI and the public site's sections
+│   └── lib/               # Supabase client, i18n catalogues, helpers
 ├── install/
 │   ├── uninstall.sh      # Uninstallation script
 │   └── magic-slash       # CLI script (launches Desktop app)

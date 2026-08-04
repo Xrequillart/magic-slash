@@ -20,7 +20,10 @@ magic-slash/
 │   │   └── setup/     #     Machine setup on launch: prerequisites, MCP servers
 │   ├── src/preload/   #   Secure bridge main <-> renderer
 │   └── src/renderer/  #   React UI (pages, components, hooks, Zustand store)
-├── docs/              # Static landing page (GitHub Pages)
+├── webapp/            # Next.js site + web product, on Vercel (was docs/ on GitHub Pages)
+│   ├── app/           #   Routes: (marketing) at the apex, dashboard, admin, invite
+│   ├── middleware.ts  #   One host per front door — rules in lib/hostRouting.ts
+│   └── lib/           #   Supabase client, i18n catalogues, helpers
 ├── install/           # Uninstaller and CLI (bash)
 │   ├── uninstall.sh   #   Full uninstallation
 │   └── magic-slash    #   CLI wrapper
@@ -34,7 +37,7 @@ magic-slash/
 | Root      | Node.js 20+, ESLint, commitlint, Vitest                                                               |
 | Desktop   | Electron 28, React 18, TypeScript, Tailwind CSS, Zustand, xterm.js + node-pty, Vite, electron-builder |
 | Skills    | Markdown (SKILL.md)                                                                                   |
-| Docs      | Static HTML/CSS/JS, GitHub Pages                                                                      |
+| Webapp    | Next.js (App Router), React, TypeScript, Supabase, Vercel                                             |
 | Install   | Bash                                                                                                  |
 
 ## Useful Commands
