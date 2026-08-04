@@ -1,15 +1,25 @@
 /**
  * The public site's message catalogue — everything under `app/(marketing)`.
  *
- * Lifted from the `i18n` object in `docs/script.js`, which is the wording that has
- * been live on magic-slash.io. Kept SEPARATE from `lib/i18n/en.ts` rather than
- * merged into it: the app catalogue is product copy that mirrors the desktop app
- * word for word, this one is marketing copy that gets rewritten on its own cadence,
- * and one 800-line file with both invites edits to the wrong half. `lib/i18n/index.ts`
- * merges the two into the single flat namespace `t()` reads.
+ * Kept SEPARATE from `lib/i18n/en.ts` rather than merged into it: the app catalogue is
+ * product copy that mirrors the desktop app word for word, this one is marketing copy
+ * that gets rewritten on its own cadence, and one 800-line file with both invites edits
+ * to the wrong half. `lib/i18n/index.ts` merges the two into the single flat namespace
+ * `t()` reads.
  *
  * Every key is prefixed `site.` so the two catalogues can never collide — both have a
  * `nav.` and a `footer.` family meaning entirely different things.
+ *
+ * ── The pitch this catalogue carries ──
+ * The site used to sell the MECHANISM: "7 skills", "from ticket to merge", slash
+ * commands in every headline. It now sells the OUTCOME — you describe what's next, it
+ * gets built — on the product you already have. The seven commands did not go away;
+ * they moved from the headline into `site.how.*`, where they belong as the concrete
+ * "how", with the reference living in the documentation.
+ *
+ * The one thing deliberately NOT promised anywhere: that a non-developer can use this.
+ * `site.faq.q1` says so outright. The page is meant to read wide and stay honest — a
+ * visitor who converts and then cannot onboard costs more than one who never converted.
  *
  * ── Markup in the values ──
  * Some values carry HTML, because the copy needs a line break in a headline or a bold
@@ -17,30 +27,18 @@
  * untranslatable. Only `<br>`, `<strong>` and `<code>` appear, and they are rendered
  * by `RichText` (`components/site/RichText.tsx`) via `dangerouslySetInnerHTML` — safe
  * because this file is the entire input and it is checked into the repo.
- *
- * Two things from the original are deliberately NOT here:
- *   - `<i data-feather="…">` icons. The original ran `feather.replace()` over the
- *     rendered DOM; here the icon is a `lucide-react` element next to the text, so it
- *     is typed, tree-shaken, and cannot be broken by a translator moving a tag.
- *   - The version badge that was inlined in `nav.changelog`. It is a number that
- *     changes every release, not copy — it lives in `lib/siteVersion.ts`.
  */
 
 export const marketingEn = {
   // ── Nav ────────────────────────────────────────────────────────────────────
-  'site.nav.product': 'Product',
-  'site.nav.productCategory': 'Product',
-  // Shortened for the nav row; the footer still says "Desktop App" in full.
-  'site.nav.desktopApp': 'App',
-  'site.nav.skills': 'Skills',
+  'site.nav.howItWorks': 'How it works',
   'site.nav.resources': 'Resources',
-  'site.nav.getStarted': 'Get started',
   /** The header's account control, signed out. Signed in it shows the email instead. */
   'site.nav.signIn': 'Sign in',
   'site.nav.account': 'Your account',
   'site.nav.documentationCategory': 'Documentation',
   'site.nav.gettingStarted': 'Getting Started',
-  'site.nav.skillsReference': 'Skills Reference',
+  'site.nav.skillsReference': 'Commands Reference',
   'site.nav.configuration': 'Configuration',
   'site.nav.viewAllDocs': 'View all docs',
   'site.nav.communityCategory': 'Community',
@@ -50,196 +48,100 @@ export const marketingEn = {
   'site.nav.ourStory': 'Our Story',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
-  'site.hero.title': 'The boring parts,<br>automated.',
-  'site.hero.subtitle': 'From ticket to merge — without the busywork.',
-  'site.hero.cta': 'Get started',
-  /** The hero's secondary action, beside the primary one that opens the app. */
-  'site.hero.docsCta': 'See docs',
+  'site.hero.title': "Describe what's next.<br>It gets built.",
+  'site.hero.subtitle':
+    'Magic Slash works on the product you already have — and takes each job start to finish.',
+  'site.hero.cta': 'Start free',
+  /** Scrolls to the "how it works" section rather than leaving for the docs. */
+  'site.hero.howCta': 'See how it works',
 
-  // ── Desktop mockup (the fake app window in the hero) ───────────────────────
-  'site.desktop.newAgent': 'New agent',
-  'site.desktop.skills': 'Skills',
-  'site.desktop.settings': 'Settings',
-  'site.desktop.agents': 'Agents',
-  'site.desktop.inProgress': 'In Progress',
-  'site.desktop.ticketTitle': 'Add JWT auth middleware',
-  'site.desktop.ticketDesc':
-    'Implement token validation and refresh logic for the API gateway.',
-  'site.desktop.repositories': 'Repositories',
-  'site.desktop.filesChanged': '3 files changed',
-  'site.desktop.aheadOfMain': '2 ahead of main',
-  'site.desktop.heroLabel': 'Desktop App',
-  'site.desktop.heroTitle': 'All your agents,<br>one screen.',
-  'site.desktop.heroIntro':
-    'Track every agent in real time. See tasks, diffs, and Jira context side by side — without juggling terminals. Built for developers who run multiple tasks at once.',
+  // ── ② How it works ─────────────────────────────────────────────────────────
+  'site.how.title': 'How it actually works.',
+  'site.how.subtitle': 'You describe. It builds. You approve.',
+  'site.how.step1Title': 'You describe',
+  'site.how.step1Desc':
+    'Say what you want built: a feature, a fix, a cleanup. In your words, not a spec.',
+  'site.how.step2Title': 'It builds',
+  'site.how.step2Desc':
+    "An agent takes the job and works it start to finish, following your project's conventions.",
+  'site.how.step3Title': 'You approve',
+  'site.how.step3Desc':
+    'You get finished work to review, not a pile of code to sort out.',
+  // The commands, kept on the page on purpose: they are the actual surface a user
+  // types, so hiding them entirely would leave "it gets built" unexplained.
+  'site.how.commandsTitle': 'The seven commands',
+  'site.how.commandsIntro': 'Type <strong>/magic:</strong> to find them all at once.',
+  'site.how.startDesc': '<strong>/magic:start</strong> picks up a task and starts building it.',
+  'site.how.continueDesc': '<strong>/magic:continue</strong> resumes a job you left open.',
+  'site.how.commitDesc': '<strong>/magic:commit</strong> saves the work with a clear message.',
+  'site.how.prDesc': '<strong>/magic:pr</strong> opens the pull request, ready to review.',
+  'site.how.reviewDesc': '<strong>/magic:review</strong> reviews it against your conventions.',
+  'site.how.resolveDesc': '<strong>/magic:resolve</strong> applies the review feedback.',
+  'site.how.doneDesc': '<strong>/magic:done</strong> closes it out and cleans up.',
+  'site.how.seeDocs': 'See the docs',
 
-  // ── Section 1 — Seven skills ───────────────────────────────────────────────
-  'site.section1.title': '7 skills.<br>Entire workflow.',
-  'site.section1.subtitle': 'From ticket to merge in seven slash commands.',
-  'site.section1.startDesc':
-    '<strong>/magic:start</strong> grabs your ticket and creates the branch.',
-  'site.section1.continueDesc':
-    '<strong>/magic:continue</strong> resumes work on an existing ticket.',
-  'site.section1.commitDesc':
-    '<strong>/magic:commit</strong> stages, splits, and writes your commit message.',
-  'site.section1.prDesc': '<strong>/magic:pr</strong> pushes and creates the pull request.',
-  'site.section1.reviewDesc':
-    '<strong>/magic:review</strong> reviews a PR with your team conventions.',
-  'site.section1.resolveDesc':
-    '<strong>/magic:resolve</strong> addresses review comments and pushes fixes.',
-  'site.section1.doneDesc':
-    '<strong>/magic:done</strong> finalizes after merge — cleans up and updates Jira.',
-  'site.section1.prefixHint': 'Type <strong>/magic:</strong> to find all commands at once.',
-  'site.section1.noContext':
-    'No context switching. No copy-pasting ticket IDs. Just flow.',
-  'site.section1.seeDocs': 'See docs',
+  // ── ③ On the product you already have ──────────────────────────────────────
+  'site.yourProduct.title': 'On the product you already have.',
+  'site.yourProduct.subtitle': 'Not a blank page, not a sandbox.',
+  'site.yourProduct.p1':
+    'Connect a repository and it picks up your structure, your conventions, and your history.',
+  'site.yourProduct.p2':
+    'GitHub for pull requests and issues. Jira for tickets. VS Code to jump into any file. Nothing to migrate.',
+  'site.yourProduct.seeDocs': 'See the docs',
 
-  // ── Section 2 — Skills manager ─────────────────────────────────────────────
-  'site.section2.skillsTitle': 'Skills',
-  'site.section2.newSkill': 'New skill',
-  'site.section2.startDesc': 'Fetch ticket and create branch',
-  'site.section2.continueDesc': 'Resume work on existing ticket',
-  'site.section2.commitDesc': 'Smart commit with context',
-  'site.section2.prDesc': 'Push and create pull request',
-  'site.section2.reviewDesc': 'Review PR with team conventions',
-  'site.section2.resolveDesc': 'Address review comments',
-  'site.section2.doneDesc': 'Finalize after merge',
-  'site.section2.deployDesc': 'Build, test and deploy to staging',
-  'site.section2.title': 'Manage Claude Code skills.',
-  'site.section2.p1':
-    'Add, edit and organize your Claude Code skills directly from the desktop app. Each skill is a simple markdown file — no config files to hunt down.',
-  'site.section2.p2':
-    "Built-in skills get you started instantly. Create custom ones for your team's workflows, deploy pipelines, or code standards.",
-  'site.section2.seeDocs': 'See docs',
-
-  // ── Section 3 — Configuration ──────────────────────────────────────────────
-  'site.section3.title': 'One config.<br>Every repo.',
-  'site.section3.p1':
-    'Tailor commit style, PR templates, and language per repository. Choose between Conventional Commits, Angular, Gitmoji, or free-form formats.',
-  'site.section3.p2':
-    'Write commits in English or French. Auto-sync Jira tickets and use your own PR templates with AI-powered summaries.',
-  'site.section3.seeDocs': 'See docs',
-  'site.section3.commitFormat': 'Commit format',
-  'site.section3.language': 'Language',
-  'site.section3.jiraSync': 'Jira sync',
-  'site.section3.prTemplate': 'PR template',
-
-  // ── Section 4 — Multi-agent ────────────────────────────────────────────────
-  'site.section4.agents': 'Agents',
-  'site.section4.title': '12 agents.<br>One window.',
-  'site.section4.p1':
-    'Launch parallel Claude Code instances and see everything at a glance. Visual status per agent, macOS native notifications, and drag-and-drop to reorder.',
-  'site.section4.p2':
-    'Info sidebar with full agent context. Color-coded projects for instant recognition.',
-  'site.section4.seeDocs': 'See docs',
-
-  // ── Section 5 — Integrations ───────────────────────────────────────────────
-  'site.section5.title': 'Plugs into your stack.',
-  'site.section5.p1':
-    'Native integrations with GitHub for PRs, issues, and reviews. Jira for tickets and status sync. VS Code to open files and projects.',
-  'site.section5.p2':
-    'Full Git support with worktrees and branches. Everything connected, nothing manual.',
-  'site.section5.seeDocs': 'See docs',
-
-  // ── Skills banner ──────────────────────────────────────────────────────────
-  'site.skillsBanner.title': '7 skills.<br>Entire workflow.',
-  'site.skillsBanner.subtitle':
-    'From ticket to merge in seven slash commands. Each skill handles one step of your development cycle — grab a ticket, code, commit, open a PR, review, resolve comments, and close. Run multiple tasks in parallel using Git worktrees — each agent works in its own isolated branch, so nothing conflicts. No context switching, no copy-pasting. Just flow.',
-  'site.skillsBanner.cta': 'Discover the skills',
-
-  // ── Section 6 — Ticket context ─────────────────────────────────────────────
-  'site.section6.agentInfo': 'Agent info',
-  'site.section6.inProgress': 'In Progress',
-  'site.section6.ticketTitle': 'Add user authentication flow',
-  'site.section6.ticketDesc':
-    'Implement OAuth 2.0 login with Google and GitHub providers. Add session management and token refresh logic.',
-  'site.section6.filesChanged': '3 files changed',
-  'site.section6.noCommits': 'No committed changes',
-  'site.section6.title': 'Your ticket, always in context.',
-  'site.section6.p1':
-    "When you <strong>/magic:start</strong> a ticket, magic-slash fetches the title, description, and metadata from Jira or GitHub Issues. Every command you run knows what you're working on.",
-  'site.section6.p2':
-    'Commit messages reference the right ticket. PRs include the full context. No more tab-switching to copy-paste issue details.',
-  'site.section6.seeDocs': 'See docs',
-
-  // ── Desktop app ────────────────────────────────────────────────────────────
-  'site.desktopApp.title': 'All your agents, one screen.',
-  'site.desktopApp.p1':
-    'Track every agent in real time. See tasks, diffs, and Jira context side by side — without terminals.',
-  'site.desktopApp.p2':
-    'Jira tickets, Git status, and PR tracking — always visible, always in sync.',
-  'site.desktopApp.cta': 'Explore the app',
-  'site.desktopApp.feat1Title': 'Split view',
-  'site.desktopApp.feat1Desc':
-    'Run two agents side by side. Drag and drop between panes, each scrolling independently.',
-  'site.desktopApp.feat2Title': 'Live agent tracking',
-  'site.desktopApp.feat2Desc':
-    'Real-time status for every agent, grouped by workflow stage. Native notifications when something needs your attention.',
-  'site.desktopApp.feat3Title': 'Context panel',
-  'site.desktopApp.feat3Desc':
-    'A sidebar showing the linked ticket, Git branch, uncommitted changes, commits, and PR status — all updating in real time.',
-  // feat3Desc2/feat3Desc3 and the whole feat13 family were referenced by
-  // `docs/desktop.html` but missing from its catalogue, so they never translated —
-  // the same gap as `site.footer.desktopApp`. English lifted from the page's own
-  // fallback text; the French is new.
-  'site.desktopApp.feat3Desc2':
-    'Below that, the Git state in real time: current branch, uncommitted file changes with per-file addition/deletion counts, and a visual gauge that shows the diff ratio at a glance. You can see exactly what the agent has touched before it even commits.',
-  'site.desktopApp.feat3Desc3':
-    'Further down, the commit history with short hashes and relative timestamps, plus a count of how many commits are ahead of the base branch. And when a PR exists, it appears at the bottom with its review status — open, approved, or changes requested — linked directly to GitHub.',
-  'site.desktopApp.feat4Title': 'Keyboard-first',
-  'site.desktopApp.feat4Desc':
-    'Every action mapped to a shortcut. Navigate, split, toggle sidebars — all without the mouse.',
-  'site.desktopApp.feat5Title': 'Skills budget',
-  'site.desktopApp.feat5Desc':
-    'Token and character usage per skill with weight categories. Create and manage skills with per-repo scoping.',
-  'site.desktopApp.feat6Title': 'Script runner',
-  'site.desktopApp.feat6Desc':
-    'Run your package.json scripts directly from the context panel — dev, build, test, lint — without typing a single command. No more switching to a separate terminal window just to kick off a build or run your test suite.',
-  'site.desktopApp.feat6Desc2':
-    'Test results from Vitest, Jest, and Mocha are automatically parsed and surfaced as toast notifications with pass/fail counts. If a test fails, the agent is flagged immediately so you can jump in and fix it.',
-  'site.desktopApp.feat6Desc3':
-    'Scripts run in the background while your agents keep working. You get real-time output streaming, exit code tracking, and a full log you can scroll through at any time. One click to start, one click to stop — your entire toolchain lives right next to your code.',
-  'site.desktopApp.feat7Title': 'Auto-updates',
-  'site.desktopApp.feat7Desc':
-    'Silent background updates with release notes on restart. Always up to date, zero effort.',
-  'site.desktopApp.feat8Title': 'Per-repo configuration',
-  'site.desktopApp.feat8Desc':
-    'Per-repo commit style, language, PR templates, and worktree config. One team, ten repos, ten conventions.',
-  'site.desktopApp.feat9Title': 'Real-time notifications',
-  'site.desktopApp.feat9Desc':
-    'When an agent finishes a task, hits an error, or needs your input, you get a native macOS notification instantly. No need to watch the screen or poll for updates — just keep working and let the app tell you when something needs your attention.',
-  'site.desktopApp.feat10Title': 'Quick Launch',
-  'site.desktopApp.feat10Desc':
-    "Hit ⌃Space to open a Spotlight-style command palette. Search agents, dispatch skills, or jump to any repository — all without leaving the keyboard. The input resets on each open so you're always starting fresh.",
-  'site.desktopApp.feat11Title': 'Menu bar integration',
-  'site.desktopApp.feat11Desc':
-    'magic-slash lives in your macOS menu bar. A lightweight popover gives you a quick overview of running agents and their status without bringing the full window to the foreground. Click to expand, or let it stay quietly in the tray.',
-  'site.desktopApp.feat13Title': 'Activity history',
-  'site.desktopApp.feat13Desc':
-    'Every action is logged in a chronological timeline: task started, commit created, PR opened, review completed, ticket closed. Entries are grouped by day and color-coded by action type, so you can scan your week at a glance.',
-  'site.desktopApp.feat13Desc2':
-    'Expand any group to drill into individual events, or clear the history when you want a fresh start. It’s your development diary — without writing a word.',
-
-  // ── Parallel agents ────────────────────────────────────────────────────────
-  'site.parallel.title': '12 agents. 12 tasks. Zero wait.',
+  // ── ④ Several jobs at once ─────────────────────────────────────────────────
+  'site.parallel.title': 'Build several things at once.',
+  'site.parallel.subtitle':
+    'Up to 12 jobs in parallel, each in its own isolated copy of your project. Nothing collides.',
   'site.parallel.p1':
-    'Run up to 12 agents in parallel, each working on its own ticket in its own worktree. Start a feature, fix a bug, and refactor an endpoint — all at the same time.',
+    'Start a feature, fix a bug, clean up an old module — at the same time, without them stepping on each other.',
   'site.parallel.p2':
-    'No queuing, no context-switching. Every agent runs independently with full access to your stack.',
-  'site.parallel.seeDocs': 'See docs',
+    'One screen shows every job and where it stands. Your Mac tells you when something needs you.',
+  'site.parallel.cta': 'More about the app',
 
-  // ── Why ────────────────────────────────────────────────────────────────────
-  'site.why.title': "Why we're building this.",
-  'site.why.point1Title': 'Jira meets Claude Code.',
-  'site.why.point1Desc':
-    "Your tickets live in Jira, your code lives in Claude Code. magic-slash bridges the two so every command knows what you're working on, why, and for whom.",
-  'site.why.point2Title': 'Zero context loss.',
-  'site.why.point2Desc':
-    'No more rephrasing ticket specs into prompts. magic-slash feeds the full Jira description, acceptance criteria, and metadata straight to Claude Code. Human prompt meets well-defined specs — nothing gets lost in translation.',
-  'site.why.point3Title': 'One command instead of ten.',
-  'site.why.point3Desc':
-    "We kept typing the same prompts to start a task, create a branch, commit, push, and open a PR. Now it's just /magic:start PROJ-123 — fast, consistent, and done.",
+  // ── ⑤ It works your way ────────────────────────────────────────────────────
+  'site.yourWay.title': 'It works your way.',
+  'site.yourWay.subtitle':
+    'Every project has its habits. Magic Slash learns yours and sticks to them.',
+  'site.yourWay.p1':
+    'Set the conventions once per project — how commits read, which language, which templates. Ten projects, ten sets of habits.',
+  'site.yourWay.p2':
+    'Work arrives finished: nothing half-done, nothing to clean up behind it.',
+  'site.yourWay.seeDocs': 'See the docs',
+
+  // ── ⑥ Why we built this (teaser for /story) ────────────────────────────────
+  'site.why.title': 'Why we built this.',
+  'site.why.p1':
+    'We were using Claude Code every day on real projects. And every time, the same routine: read the ticket, rewrite it as a prompt, set up the branch by hand, write the commit, describe the PR. It worked. It was just slow and boring.',
+  'site.why.p2':
+    'So we automated the boring parts — and kept going until the whole thing built itself.',
   'site.why.cta': 'Read our story',
+
+  // ── ⑦ FAQ ──────────────────────────────────────────────────────────────────
+  'site.faq.title': 'FAQ & Troubleshooting',
+  // First on purpose. The page reads wide; this is where it stays honest about who
+  // the product actually serves today.
+  'site.faq.q1': 'Do I need to be a developer?',
+  'site.faq.a1':
+    "You need a codebase and a little comfort with Git. You don't need to write the code — that's the point — but this isn't a no-code tool: it works on real projects.",
+  'site.faq.q2': 'Is Magic Slash free?',
+  'site.faq.a2':
+    'Yes. Magic Slash is open-source and free to use. You just need a Claude Code subscription.',
+  'site.faq.q3': 'Does it work with GitHub Issues?',
+  'site.faq.a3':
+    'Absolutely. Magic Slash supports both Jira and GitHub Issues out of the box.',
+  'site.faq.q4': 'Can I customize the commit format?',
+  'site.faq.a4':
+    'Yes. Choose between Conventional Commits, Angular, Gitmoji, or define your own format per project.',
+  'site.faq.q5': 'Does it work with any language or framework?',
+  'site.faq.a5':
+    'Yes. Magic Slash is language-agnostic — it works with any codebase Claude Code can handle.',
+  'site.faq.viewAll': 'View all FAQ',
+
+  // ── Closing CTA ────────────────────────────────────────────────────────────
+  'site.cta.title': 'Start building.',
+  'site.cta.subtitle': 'Free, and about a minute to set up.',
+  'site.cta.button': 'Start free',
 
   // ── Story page ─────────────────────────────────────────────────────────────
   'site.story.label': 'Our Story',
@@ -308,110 +210,14 @@ export const marketingEn = {
     'More integrations, smarter reviews, and a lot more. Stay tuned.',
   'site.story.ctaTitle': 'Ready to try?',
   'site.story.ctaDesc': 'Install magic-slash and see the difference.',
-  'site.story.ctaBtn': 'Get started',
-
-  // ── Skills page ────────────────────────────────────────────────────────────
-  'site.skills.label': 'Skills',
-  'site.skills.heroTitle': '7 skills.<br>Entire workflow.',
-  'site.skills.heroSubtitle':
-    'From ticket to merge in seven slash commands. Each skill handles one step of your development cycle. No context switching, no copy-pasting. Just flow.',
-  'site.skills.startTitle': 'Grab your ticket.',
-  'site.skills.startDesc':
-    'Fetches the Jira or GitHub ticket, analyzes the spec, creates a worktree with the right branch name, and launches an agent that codes and implements the ticket spec — all from a single command.',
-  'site.skills.continueTitle': 'Resume where you left off.',
-  'site.skills.continueDesc':
-    "Switches back to an existing worktree and reloads the full ticket context. Pick up where you left off — or take over a colleague's work. No lost threads, no re-reading the spec.",
-  'site.skills.commitTitle': 'Commit with context.',
-  'site.skills.commitDesc':
-    'Stages your changes, generates a conventional commit message from the diff and ticket context, and commits. No more copy-pasting ticket IDs or writing commit messages from scratch.',
-  'site.skills.prTitle': 'Ship the PR.',
-  'site.skills.prDesc':
-    'Pushes to remote, creates the pull request with a complete description, and transitions the Jira ticket to review. One command, zero tab-switching.',
-  'site.skills.reviewTitle': 'Review with standards.',
-  'site.skills.reviewDesc':
-    "Fetches the PR diff and reviews it against your team's conventions. Inline comments, approval — all automated. Works for self-review or external PRs.",
-  'site.skills.resolveTitle': 'Fix review feedback.',
-  'site.skills.resolveDesc':
-    'Reads every review comment, applies the fixes, and force-pushes. All threads resolved, no manual back-and-forth. From feedback to fixed in seconds.',
-  'site.skills.doneTitle': 'Close the loop.',
-  'site.skills.doneDesc':
-    'Merges the PR, deletes the branch and worktree, and transitions the Jira ticket to Done. Clean slate, ready for the next task.',
-  'site.skills.seeDocs': 'See docs',
-  'site.skills.overviewTitle': 'At a glance.',
-  'site.skills.overviewSubtitle': 'Seven commands. One complete development cycle.',
-  'site.skills.overviewStartTitle': 'Start',
-  'site.skills.overviewStartDesc': 'Fetch ticket, create worktree, start coding.',
-  'site.skills.overviewContinueTitle': 'Continue',
-  'site.skills.overviewContinueDesc': 'Resume work on an existing ticket.',
-  'site.skills.overviewCommitTitle': 'Commit',
-  'site.skills.overviewCommitDesc': 'Stage, message, commit — with context.',
-  'site.skills.overviewPrTitle': 'Pull Request',
-  'site.skills.overviewPrDesc': 'Push, create PR, update Jira.',
-  'site.skills.overviewReviewTitle': 'Review',
-  'site.skills.overviewReviewDesc': 'Automated code review with inline comments.',
-  'site.skills.overviewResolveTitle': 'Resolve',
-  'site.skills.overviewResolveDesc': 'Fix review comments, force-push.',
-  'site.skills.overviewDoneTitle': 'Done',
-  'site.skills.overviewDoneDesc':
-    'Merge, clean up, transition Jira to Done. Full circle.',
-
-  // ── FAQ ────────────────────────────────────────────────────────────────────
-  'site.faq.title': 'FAQ & Troubleshooting',
-  'site.faq.q1': 'Is magic-slash free?',
-  'site.faq.a1':
-    'Yes. magic-slash is fully open-source and free to use. You just need a Claude Code subscription.',
-  'site.faq.q2': 'Does it work with GitHub Issues?',
-  'site.faq.a2':
-    'Absolutely. magic-slash supports both Jira and GitHub Issues out of the box.',
-  'site.faq.q3': 'Can I customize the commit format?',
-  'site.faq.a3':
-    'Yes. Choose between Conventional Commits, Angular, Gitmoji, or define your own format per repo.',
-  'site.faq.q4': 'Does it work with any language or framework?',
-  'site.faq.a4':
-    'Yes. magic-slash is language-agnostic — it works with any codebase Claude Code can handle.',
-  'site.faq.viewAll': 'View all FAQ',
-
-  // ── Flow section ───────────────────────────────────────────────────────────
-  'site.flow.title': 'The complete flow.',
-  'site.flow.subtitle': 'Seven steps from ticket to merge. Scroll to see each one in action.',
-  'site.flow.step1Title': 'Grab your ticket.',
-  'site.flow.step1Desc':
-    'Fetches the Jira or GitHub ticket, analyzes the spec, creates a worktree with the right branch name, and launches an agent that codes and implements the ticket spec — all from a single command.',
-  'site.flow.step2Title': 'Resume where you left off.',
-  'site.flow.step2Desc':
-    "Switches back to an existing worktree and reloads the full ticket context. Pick up where you left off — or take over a colleague's work. No lost threads, no re-reading the spec.",
-  'site.flow.step3Title': 'Commit with context.',
-  'site.flow.step3Desc':
-    'Stages your changes, generates a conventional commit message from the diff and ticket context, and commits. No more copy-pasting ticket IDs.',
-  'site.flow.step4Title': 'Ship the PR.',
-  'site.flow.step4Desc':
-    'Pushes to remote, creates the pull request with a complete description, and transitions the Jira ticket to review.',
-  'site.flow.step5Title': 'Review with standards.',
-  'site.flow.step5Desc':
-    "Fetches the PR diff and reviews it against your team's conventions. Inline comments, approval — all automated.",
-  'site.flow.step6Title': 'Fix review feedback.',
-  'site.flow.step6Desc':
-    'Reads every review comment, applies the fixes, and force-pushes. All threads resolved, no manual back-and-forth.',
-  'site.flow.step7Title': 'Close the loop.',
-  'site.flow.step7Desc':
-    'Merges the PR, deletes the branch and worktree, and transitions the Jira ticket to Done. Clean slate.',
-  'site.flow.cta': 'Get started',
-
-  // ── Closing CTA ────────────────────────────────────────────────────────────
-  'site.cta.title': 'Start in 30 seconds.',
-  'site.cta.button': 'Get started',
-  'site.cta.subtitle': 'Install magic-slash and transform your workflow.',
+  'site.story.ctaBtn': 'Start free',
 
   // ── Footer ─────────────────────────────────────────────────────────────────
-  'site.footer.tagline': 'Your workflow, on autopilot.',
+  'site.footer.tagline': 'Your product, built.',
   'site.footer.product': 'Product',
+  'site.footer.howItWorks': 'How it works',
   'site.footer.gettingStarted': 'Getting Started',
-  // The footer markup in docs/index.html referenced `footer.desktopApp` and
-  // `footer.updates`, but neither key existed in the catalogue — so those two links
-  // stayed English on the French site. Added here rather than carried over broken.
-  'site.footer.desktopApp': 'Desktop App',
   'site.footer.updates': 'Updates',
-  'site.footer.skills': 'Skills',
   'site.footer.configuration': 'Configuration',
   'site.footer.changelog': 'Changelog',
   'site.footer.resources': 'Resources',

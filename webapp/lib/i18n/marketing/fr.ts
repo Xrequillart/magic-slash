@@ -5,28 +5,21 @@ import type { marketingEn } from './en'
  * there and forgotten here is a tsc error rather than an English sentence on a French
  * page.
  *
- * Wording is the French copy that has been live on magic-slash.io (the `fr` half of
- * the `i18n` object in `docs/script.js`) — this is a port, not a retranslation, so
- * the site reads exactly as it did.
- *
- * Vouvoiement throughout, matching the app catalogue in `lib/i18n/fr.ts`.
+ * Vouvoiement throughout, matching the app catalogue in `lib/i18n/fr.ts` and the story
+ * page below. The English side of the new home copy is deliberately conversational
+ * ("You describe. It builds."), and the French keeps that rhythm with "vous" rather
+ * than switching the site to "tu" — a visitor who reads the hero and then the story
+ * page would otherwise be addressed two different ways on the same site.
  */
 export const marketingFr: Record<keyof typeof marketingEn, string> = {
   // ── Nav ────────────────────────────────────────────────────────────────────
-  'site.nav.product': 'Produit',
-  'site.nav.productCategory': 'Produit',
-  // Just "Application" in the nav, where it sits between "Skills" and "Ressources"
-  // and the row has to stay short. The footer says "Application Desktop" in full —
-  // that is `site.footer.desktopApp`, a separate key.
-  'site.nav.desktopApp': 'Application',
-  'site.nav.skills': 'Skills',
+  'site.nav.howItWorks': 'Comment ça marche',
   'site.nav.resources': 'Ressources',
-  'site.nav.getStarted': 'Commencer',
   'site.nav.signIn': 'Connexion',
   'site.nav.account': 'Votre compte',
   'site.nav.documentationCategory': 'Documentation',
   'site.nav.gettingStarted': 'Démarrage rapide',
-  'site.nav.skillsReference': 'Référence des skills',
+  'site.nav.skillsReference': 'Référence des commandes',
   'site.nav.configuration': 'Configuration',
   'site.nav.viewAllDocs': 'Voir toute la doc',
   'site.nav.communityCategory': 'Communauté',
@@ -36,192 +29,98 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.nav.ourStory': 'Notre histoire',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
-  'site.hero.title': 'Les tâches ingrates,<br>automatisées.',
-  'site.hero.subtitle': 'Du ticket au merge — sans la corvée.',
-  'site.hero.cta': 'Commencer',
-  'site.hero.docsCta': 'Voir la doc',
+  'site.hero.title': 'Vous décrivez.<br>Ça se construit.',
+  'site.hero.subtitle':
+    'Magic Slash travaille sur le produit que vous avez déjà — et mène chaque chantier jusqu’au bout.',
+  'site.hero.cta': 'Commencer gratuitement',
+  'site.hero.howCta': 'Voir comment ça marche',
 
-  // ── Maquette desktop (la fausse fenêtre de l'app dans le hero) ─────────────
-  'site.desktop.newAgent': 'Nouvel agent',
-  'site.desktop.skills': 'Skills',
-  'site.desktop.settings': 'Paramètres',
-  'site.desktop.agents': 'Agents',
-  'site.desktop.inProgress': 'En cours',
-  'site.desktop.ticketTitle': "Ajouter le middleware d'auth JWT",
-  'site.desktop.ticketDesc':
-    'Implémenter la validation des tokens et la logique de rafraîchissement pour la passerelle API.',
-  'site.desktop.repositories': 'Dépôts',
-  'site.desktop.filesChanged': '3 fichiers modifiés',
-  'site.desktop.aheadOfMain': '2 en avance sur main',
-  'site.desktop.heroLabel': 'Application Desktop',
-  'site.desktop.heroTitle': 'Tous vos agents,<br>un seul écran.',
-  'site.desktop.heroIntro':
-    'Suivez chaque agent en temps réel. Tâches, diffs et contexte Jira côte à côte — sans jongler entre les terminaux. Conçu pour les développeurs qui travaillent sur plusieurs tâches en parallèle.',
+  // ── ② Comment ça marche ────────────────────────────────────────────────────
+  'site.how.title': 'Comment ça marche, vraiment.',
+  'site.how.subtitle': 'Vous décrivez. Ça construit. Vous validez.',
+  'site.how.step1Title': 'Vous décrivez',
+  'site.how.step1Desc':
+    'Dites ce que vous voulez construire : une fonctionnalité, un correctif, un nettoyage. Avec vos mots, pas une spec.',
+  'site.how.step2Title': 'Ça construit',
+  'site.how.step2Desc':
+    'Un agent prend le chantier et le mène jusqu’au bout, en respectant les conventions de votre projet.',
+  'site.how.step3Title': 'Vous validez',
+  'site.how.step3Desc':
+    'Vous recevez du travail fini à relire, pas un tas de code à trier.',
+  'site.how.commandsTitle': 'Les sept commandes',
+  'site.how.commandsIntro':
+    'Tapez <strong>/magic:</strong> pour les retrouver toutes d’un coup.',
+  'site.how.startDesc':
+    '<strong>/magic:start</strong> prend une tâche et commence à la construire.',
+  'site.how.continueDesc':
+    '<strong>/magic:continue</strong> reprend un chantier laissé en cours.',
+  'site.how.commitDesc':
+    '<strong>/magic:commit</strong> enregistre le travail avec un message clair.',
+  'site.how.prDesc': '<strong>/magic:pr</strong> ouvre la pull request, prête à relire.',
+  'site.how.reviewDesc': '<strong>/magic:review</strong> la relit selon vos conventions.',
+  'site.how.resolveDesc': '<strong>/magic:resolve</strong> applique les retours de review.',
+  'site.how.doneDesc': '<strong>/magic:done</strong> clôture et nettoie derrière.',
+  'site.how.seeDocs': 'Voir la doc',
 
-  // ── Section 1 — Sept skills ────────────────────────────────────────────────
-  'site.section1.title': '7 skills.<br>Tout le workflow.',
-  'site.section1.subtitle': 'Du ticket au merge en sept commandes slash.',
-  'site.section1.startDesc':
-    '<strong>/magic:start</strong> récupère votre ticket et crée la branche.',
-  'site.section1.continueDesc':
-    '<strong>/magic:continue</strong> reprend le travail sur un ticket existant.',
-  'site.section1.commitDesc':
-    '<strong>/magic:commit</strong> indexe, découpe et rédige votre message de commit.',
-  'site.section1.prDesc': '<strong>/magic:pr</strong> pousse et crée la pull request.',
-  'site.section1.reviewDesc':
-    "<strong>/magic:review</strong> review une PR selon les conventions d'équipe.",
-  'site.section1.resolveDesc':
-    '<strong>/magic:resolve</strong> traite les commentaires de review et pousse les corrections.',
-  'site.section1.doneDesc':
-    '<strong>/magic:done</strong> finalise après le merge — nettoie et met à jour Jira.',
-  'site.section1.prefixHint':
-    'Tapez <strong>/magic:</strong> pour retrouver toutes les commandes.',
-  'site.section1.noContext':
-    "Pas de changement de contexte. Pas de copier-coller d'identifiants. Juste du flow.",
-  'site.section1.seeDocs': 'Voir la doc',
+  // ── ③ Sur le produit que vous avez déjà ────────────────────────────────────
+  'site.yourProduct.title': 'Sur le produit que vous avez déjà.',
+  'site.yourProduct.subtitle': 'Pas une page blanche, pas un bac à sable.',
+  'site.yourProduct.p1':
+    'Connectez un dépôt : il reprend votre structure, vos conventions et votre historique.',
+  'site.yourProduct.p2':
+    'GitHub pour les pull requests et les issues. Jira pour les tickets. VS Code pour ouvrir n’importe quel fichier. Rien à migrer.',
+  'site.yourProduct.seeDocs': 'Voir la doc',
 
-  // ── Section 2 — Gestionnaire de skills ─────────────────────────────────────
-  'site.section2.skillsTitle': 'Skills',
-  'site.section2.newSkill': 'Nouveau skill',
-  'site.section2.startDesc': 'Récupérer le ticket et créer la branche',
-  'site.section2.continueDesc': 'Reprendre le travail sur un ticket existant',
-  'site.section2.commitDesc': 'Commit intelligent avec contexte',
-  'site.section2.prDesc': 'Pousser et créer la pull request',
-  'site.section2.reviewDesc': "Revue de PR selon les conventions d'équipe",
-  'site.section2.resolveDesc': 'Traiter les commentaires de review',
-  'site.section2.doneDesc': 'Finaliser après le merge',
-  'site.section2.deployDesc': 'Builder, tester et déployer en staging',
-  'site.section2.title': 'Gérez les skills Claude Code.',
-  'site.section2.p1':
-    "Ajoutez, éditez et organisez vos skills Claude Code directement depuis l'application desktop. Chaque skill est un simple fichier markdown — pas de fichiers de config à chercher.",
-  'site.section2.p2':
-    'Les skills intégrés vous lancent immédiatement. Créez-en sur mesure pour les workflows de votre équipe, vos pipelines de déploiement ou vos standards de code.',
-  'site.section2.seeDocs': 'Voir la doc',
-
-  // ── Section 3 — Configuration ──────────────────────────────────────────────
-  'site.section3.title': 'Une config.<br>Chaque repo.',
-  'site.section3.p1':
-    'Adaptez le style de commit, les templates de PR et la langue par dépôt. Choisissez entre Conventional Commits, Angular, Gitmoji ou format libre.',
-  'site.section3.p2':
-    'Rédigez vos commits en anglais ou en français. Synchronisez automatiquement les tickets Jira et utilisez vos propres templates de PR avec des résumés générés par IA.',
-  'site.section3.seeDocs': 'Voir la doc',
-  'site.section3.commitFormat': 'Format de commit',
-  'site.section3.language': 'Langue',
-  'site.section3.jiraSync': 'Sync Jira',
-  'site.section3.prTemplate': 'Template de PR',
-
-  // ── Section 4 — Multi-agent ────────────────────────────────────────────────
-  'site.section4.agents': 'Agents',
-  'site.section4.title': '12 agents.<br>Une fenêtre.',
-  'site.section4.p1':
-    "Lancez des instances Claude Code en parallèle et voyez tout d'un coup d'œil. Statut visuel par agent, notifications natives macOS et glisser-déposer pour réorganiser.",
-  'site.section4.p2':
-    "Barre latérale d'info avec le contexte complet de l'agent. Projets colorés pour une reconnaissance instantanée.",
-  'site.section4.seeDocs': 'Voir la doc',
-
-  // ── Section 5 — Intégrations ───────────────────────────────────────────────
-  'site.section5.title': 'Se branche sur votre stack.',
-  'site.section5.p1':
-    'Intégrations natives avec GitHub pour les PRs, issues et revues. Jira pour les tickets et la synchronisation de statut. VS Code pour ouvrir fichiers et projets.',
-  'site.section5.p2':
-    "Support complet de Git avec worktrees et branches. Tout est connecté, rien n'est manuel.",
-  'site.section5.seeDocs': 'Voir la doc',
-
-  // ── Bandeau skills ─────────────────────────────────────────────────────────
-  'site.skillsBanner.title': '7 skills.<br>Tout le workflow.',
-  'site.skillsBanner.subtitle':
-    'Du ticket au merge en sept commandes slash. Chaque skill gère une étape de votre cycle de développement — récupérer un ticket, coder, committer, ouvrir une PR, reviewer, résoudre les commentaires et clôturer. Lancez plusieurs tâches en parallèle grâce aux worktrees Git — chaque agent travaille dans sa propre branche isolée, sans aucun conflit. Pas de changement de contexte, pas de copier-coller. Juste du flow.',
-  'site.skillsBanner.cta': 'Découvrir les skills',
-
-  // ── Section 6 — Contexte du ticket ─────────────────────────────────────────
-  'site.section6.agentInfo': 'Info agent',
-  'site.section6.inProgress': 'En cours',
-  'site.section6.ticketTitle': "Ajouter le flux d'authentification utilisateur",
-  'site.section6.ticketDesc':
-    'Implémenter la connexion OAuth 2.0 avec Google et GitHub. Ajouter la gestion des sessions et la logique de rafraîchissement des tokens.',
-  'site.section6.filesChanged': '3 fichiers modifiés',
-  'site.section6.noCommits': 'Aucun commit',
-  'site.section6.title': 'Votre ticket, toujours en contexte.',
-  'site.section6.p1':
-    'Quand vous faites <strong>/magic:start</strong> sur un ticket, magic-slash récupère le titre, la description et les métadonnées depuis Jira ou GitHub Issues. Chaque commande que vous lancez sait sur quoi vous travaillez.',
-  'site.section6.p2':
-    'Les messages de commit référencent le bon ticket. Les PRs incluent le contexte complet. Fini les allers-retours entre onglets pour copier-coller les détails des issues.',
-  'site.section6.seeDocs': 'Voir la doc',
-
-  // ── Application desktop ────────────────────────────────────────────────────
-  'site.desktopApp.title': 'Tous vos agents, un seul écran.',
-  'site.desktopApp.p1':
-    'Suivez chaque agent en temps réel. Tâches, diffs et contexte Jira côte à côte — sans jongler entre les terminaux.',
-  'site.desktopApp.p2':
-    'Tickets Jira, statut Git et suivi des PRs — toujours visibles, toujours synchronisés.',
-  'site.desktopApp.cta': 'Explorer l’app',
-  'site.desktopApp.feat1Title': 'Vue split',
-  'site.desktopApp.feat1Desc':
-    'Deux agents côte à côte. Glissez-déposez entre les panneaux, chacun scrolle indépendamment.',
-  'site.desktopApp.feat2Title': 'Suivi en temps réel',
-  'site.desktopApp.feat2Desc':
-    'Statut en direct pour chaque agent, regroupé par étape du workflow. Notifications natives quand quelque chose requiert votre attention.',
-  'site.desktopApp.feat3Title': 'Panneau de contexte',
-  'site.desktopApp.feat3Desc':
-    'Une sidebar avec le ticket lié, la branche Git, les changements, les commits et le statut de la PR — tout en temps réel.',
-  'site.desktopApp.feat3Desc2':
-    "En dessous, l'état Git en temps réel : branche courante, fichiers modifiés non committés avec le nombre d'ajouts et de suppressions par fichier, et une jauge visuelle qui montre le ratio du diff d'un coup d'œil. Vous voyez exactement ce que l'agent a touché avant même qu'il committe.",
-  'site.desktopApp.feat3Desc3':
-    "Plus bas, l'historique des commits avec les hashes courts et les dates relatives, plus le nombre de commits d'avance sur la branche de base. Et quand une PR existe, elle apparaît en bas avec son statut de review — ouverte, approuvée ou changements demandés — liée directement à GitHub.",
-  'site.desktopApp.feat4Title': 'Keyboard-first',
-  'site.desktopApp.feat4Desc':
-    'Chaque action a son raccourci. Naviguer, splitter, toggle les sidebars — tout sans la souris.',
-  'site.desktopApp.feat5Title': 'Budget des skills',
-  'site.desktopApp.feat5Desc':
-    'Consommation tokens et caractères par skill avec catégories de poids. Créez et gérez vos skills avec un scoping par repo.',
-  'site.desktopApp.feat6Title': 'Script runner',
-  'site.desktopApp.feat6Desc':
-    'Lancez vos scripts package.json directement depuis le panneau contextuel — dev, build, test, lint — sans taper une seule commande. Plus besoin de basculer vers un terminal séparé pour lancer un build ou vos tests.',
-  'site.desktopApp.feat6Desc2':
-    "Les résultats de Vitest, Jest et Mocha sont automatiquement parsés et affichés en notifications toast avec le nombre de tests passés/échoués. Si un test échoue, l'agent est signalé immédiatement pour que vous puissiez intervenir.",
-  'site.desktopApp.feat6Desc3':
-    "Les scripts tournent en arrière-plan pendant que vos agents continuent de travailler. Vous avez le streaming de l'output en temps réel, le suivi des codes de sortie, et un log complet consultable à tout moment. Un clic pour lancer, un clic pour stopper — toute votre toolchain à côté de votre code.",
-  'site.desktopApp.feat7Title': 'Mises à jour auto',
-  'site.desktopApp.feat7Desc':
-    'Mises à jour silencieuses en arrière-plan avec notes de version au redémarrage. Toujours à jour, zéro effort.',
-  'site.desktopApp.feat8Title': 'Configuration par repo',
-  'site.desktopApp.feat8Desc':
-    'Style de commit, langue, templates PR et config worktree par repo. Une équipe, dix repos, dix conventions.',
-  'site.desktopApp.feat9Title': 'Notifications en temps réel',
-  'site.desktopApp.feat9Desc':
-    'Quand un agent termine une tâche, rencontre une erreur ou attend votre intervention, vous recevez une notification macOS native instantanément. Pas besoin de surveiller l’écran — continuez à travailler et laissez l’app vous prévenir quand quelque chose requiert votre attention.',
-  'site.desktopApp.feat10Title': 'Quick Launch',
-  'site.desktopApp.feat10Desc':
-    'Appuyez sur ⌃Espace pour ouvrir une palette de commandes style Spotlight. Recherchez des agents, lancez des skills ou naviguez vers n’importe quel repo — sans quitter le clavier. Le champ se réinitialise à chaque ouverture.',
-  'site.desktopApp.feat11Title': 'Intégration barre de menus',
-  'site.desktopApp.feat11Desc':
-    'magic-slash vit dans votre barre de menus macOS. Un popover léger vous donne un aperçu rapide des agents en cours et de leur statut sans afficher la fenêtre principale. Cliquez pour agrandir, ou laissez-le tranquille dans le tray.',
-  'site.desktopApp.feat13Title': 'Historique d’activité',
-  'site.desktopApp.feat13Desc':
-    'Chaque action est consignée dans une frise chronologique : tâche démarrée, commit créé, PR ouverte, review terminée, ticket clôturé. Les entrées sont regroupées par jour et colorées par type d’action, pour parcourir votre semaine d’un coup d’œil.',
-  'site.desktopApp.feat13Desc2':
-    'Dépliez un groupe pour entrer dans le détail des événements, ou videz l’historique pour repartir à zéro. C’est votre journal de développement — sans écrire une ligne.',
-
-  // ── Agents en parallèle ────────────────────────────────────────────────────
-  'site.parallel.title': '12 agents. 12 tâches. Zéro attente.',
+  // ── ④ Plusieurs chantiers à la fois ────────────────────────────────────────
+  'site.parallel.title': 'Plusieurs chantiers à la fois.',
+  'site.parallel.subtitle':
+    'Jusqu’à 12 chantiers en parallèle, chacun dans sa copie isolée de votre projet. Rien ne se télescope.',
   'site.parallel.p1':
-    "Lancez jusqu'à 12 agents en parallèle, chacun sur son propre ticket dans son propre worktree. Démarrez une feature, corrigez un bug et refactorez un endpoint — en même temps.",
+    'Lancez une fonctionnalité, corrigez un bug, nettoyez un vieux module — en même temps, sans qu’ils se gênent.',
   'site.parallel.p2':
-    "Pas de file d'attente, pas de changement de contexte. Chaque agent tourne indépendamment avec un accès complet à votre stack.",
-  'site.parallel.seeDocs': 'Voir la doc',
+    'Un écran montre chaque chantier et où il en est. Votre Mac vous prévient quand quelque chose vous attend.',
+  'site.parallel.cta': 'En savoir plus sur l’app',
 
-  // ── Pourquoi ───────────────────────────────────────────────────────────────
-  'site.why.title': 'Pourquoi on construit ça.',
-  'site.why.point1Title': 'Jira rencontre Claude Code.',
-  'site.why.point1Desc':
-    'Vos tickets vivent dans Jira, votre code vit dans Claude Code. magic-slash fait le pont entre les deux pour que chaque commande sache sur quoi vous travaillez, pourquoi, et pour qui.',
-  'site.why.point2Title': 'Zéro perte de contexte.',
-  'site.why.point2Desc':
-    'Fini de reformuler les specs du ticket en prompts. magic-slash injecte la description Jira complète, les critères d’acceptation et les métadonnées directement dans Claude Code. Le prompt humain rencontre des specs bien définies — rien ne se perd.',
-  'site.why.point3Title': 'Une commande au lieu de dix.',
-  'site.why.point3Desc':
-    'On tapait toujours les mêmes prompts pour démarrer une tâche, créer une branche, committer, pousser et ouvrir une PR. Maintenant c’est juste /magic:start PROJ-123 — rapide, consistant, et terminé.',
+  // ── ⑤ Ça s'adapte à votre façon de travailler ──────────────────────────────
+  'site.yourWay.title': 'Ça s’adapte à votre façon de travailler.',
+  'site.yourWay.subtitle':
+    'Chaque projet a ses habitudes. Magic Slash apprend les vôtres et s’y tient.',
+  'site.yourWay.p1':
+    'Réglez les conventions une fois par projet — la forme des commits, la langue, les modèles. Dix projets, dix jeux d’habitudes.',
+  'site.yourWay.p2':
+    'Le travail arrive fini : rien à moitié fait, rien à nettoyer derrière.',
+  'site.yourWay.seeDocs': 'Voir la doc',
+
+  // ── ⑥ Pourquoi on a construit ça (teaser vers /story) ──────────────────────
+  'site.why.title': 'Pourquoi on a construit ça.',
+  'site.why.p1':
+    'On utilisait Claude Code tous les jours, sur de vrais projets. Et chaque fois, la même routine : lire le ticket, le reformuler en prompt, préparer la branche à la main, écrire le commit, décrire la PR. Ça marchait. C’était juste lent et ennuyeux.',
+  'site.why.p2':
+    'Alors on a automatisé les parties ennuyeuses — et on a continué jusqu’à ce que l’ensemble se construise tout seul.',
   'site.why.cta': 'Lire notre histoire',
+
+  // ── ⑦ FAQ ──────────────────────────────────────────────────────────────────
+  'site.faq.title': 'FAQ & Troubleshooting',
+  'site.faq.q1': 'Faut-il être développeur ?',
+  'site.faq.a1':
+    'Il faut un projet de code et un minimum d’aisance avec Git. Vous n’avez pas besoin d’écrire le code — c’est justement le principe — mais ce n’est pas un outil no-code : il travaille sur de vrais projets.',
+  'site.faq.q2': 'Magic Slash est-il gratuit ?',
+  'site.faq.a2':
+    'Oui. Magic Slash est open-source et gratuit. Il suffit d’un abonnement Claude Code.',
+  'site.faq.q3': 'Est-ce compatible avec GitHub Issues ?',
+  'site.faq.a3': 'Tout à fait. Magic Slash supporte Jira et GitHub Issues nativement.',
+  'site.faq.q4': 'Puis-je personnaliser le format de commit ?',
+  'site.faq.a4':
+    'Oui. Choisissez entre Conventional Commits, Angular, Gitmoji, ou définissez votre propre format par projet.',
+  'site.faq.q5': 'Est-ce compatible avec tous les langages ?',
+  'site.faq.a5':
+    'Oui. Magic Slash est agnostique au langage — il fonctionne avec tout projet que Claude Code peut gérer.',
+  'site.faq.viewAll': 'Voir toute la FAQ',
+
+  // ── CTA de fin ─────────────────────────────────────────────────────────────
+  'site.cta.title': 'Commencez à construire.',
+  'site.cta.subtitle': 'Gratuit, et une minute suffit pour l’installer.',
+  'site.cta.button': 'Commencer gratuitement',
 
   // ── Page histoire ──────────────────────────────────────────────────────────
   'site.story.label': 'Notre histoire',
@@ -290,106 +189,14 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Plus d’intégrations, des reviews plus intelligentes, et bien plus encore. Stay tuned.',
   'site.story.ctaTitle': 'Prêt à essayer ?',
   'site.story.ctaDesc': 'Installez magic-slash et voyez la différence.',
-  'site.story.ctaBtn': 'Commencer',
-
-  // ── Page skills ────────────────────────────────────────────────────────────
-  'site.skills.label': 'Skills',
-  'site.skills.heroTitle': '7 skills.<br>Tout le workflow.',
-  'site.skills.heroSubtitle':
-    'Du ticket au merge en sept commandes slash. Chaque skill gère une étape de votre cycle de développement. Pas de changement de contexte, pas de copier-coller. Juste du flow.',
-  'site.skills.startTitle': 'Récupérez votre ticket.',
-  'site.skills.startDesc':
-    'Récupère le ticket Jira ou GitHub, analyse la spec, crée un worktree avec le bon nom de branche, et lance un agent qui code et implémente la spec du ticket — en une seule commande.',
-  'site.skills.continueTitle': 'Reprenez où vous en étiez.',
-  'site.skills.continueDesc':
-    'Bascule sur un worktree existant et recharge tout le contexte du ticket. Reprenez là où vous en étiez — ou prenez le relais sur le travail d’un collègue. Pas de fil perdu, pas besoin de relire la spec.',
-  'site.skills.commitTitle': 'Committez avec du contexte.',
-  'site.skills.commitDesc':
-    'Indexe vos changements, génère un message de commit conventionnel depuis le diff et le contexte du ticket, et committe. Fini le copier-coller d’identifiants ou la rédaction de messages from scratch.',
-  'site.skills.prTitle': 'Expédiez la PR.',
-  'site.skills.prDesc':
-    'Pousse sur le remote, crée la pull request avec une description complète, et passe le ticket Jira en review. Une commande, zéro changement d’onglet.',
-  'site.skills.reviewTitle': 'Reviewez avec des standards.',
-  'site.skills.reviewDesc':
-    'Récupère le diff de la PR et la review selon les conventions de votre équipe. Commentaires inline, approbation — tout automatisé. Fonctionne en self-review ou sur des PRs externes.',
-  'site.skills.resolveTitle': 'Corrigez les retours de review.',
-  'site.skills.resolveDesc':
-    'Lit chaque commentaire de review, applique les corrections, et force-push. Tous les threads résolus, pas d’allers-retours. Du feedback au fix en quelques secondes.',
-  'site.skills.doneTitle': 'Bouclez la boucle.',
-  'site.skills.doneDesc':
-    'Merge la PR, supprime la branche et le worktree, et passe le ticket Jira en Done. Table rase, prêt pour la prochaine tâche.',
-  'site.skills.seeDocs': 'Voir la doc',
-  'site.skills.overviewTitle': 'En un coup d’œil.',
-  'site.skills.overviewSubtitle': 'Sept commandes. Un cycle de développement complet.',
-  'site.skills.overviewStartTitle': 'Start',
-  'site.skills.overviewStartDesc': 'Récupérer le ticket, créer le worktree, coder.',
-  'site.skills.overviewContinueTitle': 'Continue',
-  'site.skills.overviewContinueDesc': 'Reprendre le travail sur un ticket existant.',
-  'site.skills.overviewCommitTitle': 'Commit',
-  'site.skills.overviewCommitDesc': 'Indexer, message, commit — avec du contexte.',
-  'site.skills.overviewPrTitle': 'Pull Request',
-  'site.skills.overviewPrDesc': 'Pousser, créer la PR, mettre à jour Jira.',
-  'site.skills.overviewReviewTitle': 'Review',
-  'site.skills.overviewReviewDesc': 'Revue de code automatisée avec commentaires inline.',
-  'site.skills.overviewResolveTitle': 'Resolve',
-  'site.skills.overviewResolveDesc': 'Corriger les commentaires de review, force-push.',
-  'site.skills.overviewDoneTitle': 'Done',
-  'site.skills.overviewDoneDesc':
-    'Merge, nettoyage, transition Jira en Done. Boucle bouclée.',
-
-  // ── FAQ ────────────────────────────────────────────────────────────────────
-  'site.faq.title': 'FAQ & Troubleshooting',
-  'site.faq.q1': 'magic-slash est-il gratuit ?',
-  'site.faq.a1':
-    "Oui. magic-slash est entièrement open-source et gratuit. Il suffit d'un abonnement Claude Code.",
-  'site.faq.q2': 'Est-ce compatible avec GitHub Issues ?',
-  'site.faq.a2': 'Tout à fait. magic-slash supporte Jira et GitHub Issues nativement.',
-  'site.faq.q3': 'Puis-je personnaliser le format de commit ?',
-  'site.faq.a3':
-    'Oui. Choisissez entre Conventional Commits, Angular, Gitmoji, ou définissez votre propre format par repo.',
-  'site.faq.q4': 'Est-ce compatible avec tous les langages ?',
-  'site.faq.a4':
-    'Oui. magic-slash est agnostique au langage — il fonctionne avec tout projet que Claude Code peut gérer.',
-  'site.faq.viewAll': 'Voir toute la FAQ',
-
-  // ── Section flow ───────────────────────────────────────────────────────────
-  'site.flow.title': 'Le flow complet.',
-  'site.flow.subtitle': 'Sept étapes du ticket au merge. Scrollez pour les découvrir.',
-  'site.flow.step1Title': 'Récupérez votre ticket.',
-  'site.flow.step1Desc':
-    'Récupère le ticket Jira ou GitHub, analyse la spec, crée un worktree avec le bon nom de branche, et lance un agent qui code et implémente la spec du ticket — en une seule commande.',
-  'site.flow.step2Title': 'Reprenez où vous en étiez.',
-  'site.flow.step2Desc':
-    'Bascule sur un worktree existant et recharge tout le contexte du ticket. Reprenez là où vous en étiez — ou prenez le relais sur le travail d’un collègue. Pas de fil perdu, pas besoin de relire la spec.',
-  'site.flow.step3Title': 'Committez avec du contexte.',
-  'site.flow.step3Desc':
-    'Indexe vos changements, génère un message de commit conventionnel depuis le diff et le contexte du ticket, et committe. Fini le copier-coller d’identifiants.',
-  'site.flow.step4Title': 'Expédiez la PR.',
-  'site.flow.step4Desc':
-    'Pousse sur le remote, crée la pull request avec une description complète, et passe le ticket Jira en review.',
-  'site.flow.step5Title': 'Reviewez avec des standards.',
-  'site.flow.step5Desc':
-    'Récupère le diff de la PR et la review selon les conventions de votre équipe. Commentaires inline, approbation — tout automatisé.',
-  'site.flow.step6Title': 'Corrigez les retours de review.',
-  'site.flow.step6Desc':
-    'Lit chaque commentaire de review, applique les corrections, et force-push. Tous les threads résolus, pas d’allers-retours.',
-  'site.flow.step7Title': 'Bouclez la boucle.',
-  'site.flow.step7Desc':
-    'Merge la PR, supprime la branche et le worktree, et passe le ticket Jira en Done. Table rase.',
-  'site.flow.cta': 'Commencer',
-
-  // ── CTA de fin ─────────────────────────────────────────────────────────────
-  'site.cta.title': 'Lancez-vous en 30 secondes.',
-  'site.cta.button': 'Commencer',
-  'site.cta.subtitle': 'Installez magic-slash et transformez votre workflow.',
+  'site.story.ctaBtn': 'Commencer gratuitement',
 
   // ── Footer ─────────────────────────────────────────────────────────────────
-  'site.footer.tagline': 'Votre workflow, en pilote automatique.',
+  'site.footer.tagline': 'Votre produit, construit.',
   'site.footer.product': 'Produit',
+  'site.footer.howItWorks': 'Comment ça marche',
   'site.footer.gettingStarted': 'Démarrage rapide',
-  'site.footer.desktopApp': 'Application Desktop',
   'site.footer.updates': 'Mises à jour',
-  'site.footer.skills': 'Skills',
   'site.footer.configuration': 'Configuration',
   'site.footer.changelog': 'Changelog',
   'site.footer.resources': 'Ressources',

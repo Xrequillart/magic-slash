@@ -95,15 +95,14 @@ export function SiteHeader() {
         </Link>
 
         <nav className="header-nav" ref={nav}>
-          {/* The two product pages are direct links rather than a "Product" dropdown:
-              there were only two of them plus Our Story, and a menu that costs a click
-              to reveal two destinations is a menu that should be two links. Our Story
-              moved into Resources, which is where the non-product reading lives. */}
-          <Link href="/desktop" className="header-nav-item">
-            {t('site.nav.desktopApp')}
-          </Link>
-          <Link href="/skills" className="header-nav-item">
-            {t('site.nav.skills')}
+          {/* One link left where there were two. `/desktop` and `/skills` are gone —
+              the home page absorbed what they argued — so this points at the section
+              that explains the product rather than at a page. An anchor rather than a
+              route, which also means it works from the home page without a navigation.
+              Removing "Skills" from the primary nav is the most visible half of the
+              repositioning: it was the first word a cold visitor read. */}
+          <Link href="/#how" className="header-nav-item">
+            {t('site.nav.howItWorks')}
           </Link>
 
           <div className={`header-nav-item${openMenu ? ' open' : ''}`}>

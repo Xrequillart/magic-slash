@@ -3851,3 +3851,293 @@ h1 {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Repositioned landing page
+
+   Styles for the sections that replaced the seven-step flow, the skills banner and
+   the desktop-app pitch. They sit at the END of the file on purpose: everything
+   above is the ported stylesheet from the static site, and keeping the new work in
+   one block makes it obvious what belongs to the new page — including the mobile
+   rules, which have to come after the original `@media` blocks to win.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Visual placeholders ──
+   Deliberately unfinished-looking. The Figma illustrations are not drawn yet, and a
+   placeholder that looked designed would get mistaken for the final artwork; dashed
+   and muted, it reads as a hole to fill while still holding the right amount of
+   space so the page's proportions can be judged. Delete these two rules when the
+   real images land. */
+.hero-visual-placeholder,
+.site-visual-placeholder {
+    display: grid;
+    place-items: center;
+    border: 2px dashed rgba(0, 0, 0, 0.16);
+    border-radius: 16px;
+    background: rgba(0, 0, 0, 0.02);
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.32);
+    text-align: center;
+    padding: 1rem;
+}
+.hero-visual-placeholder {
+    width: 100%;
+    max-width: 900px;
+    aspect-ratio: 16 / 10;
+}
+.site-visual-placeholder {
+    width: 460px;
+    flex-shrink: 0;
+    aspect-ratio: 4 / 3;
+}
+/* Matches the width the app mockup used to occupy in this slot. */
+.site-visual-placeholder--wide {
+    width: 580px;
+}
+
+/* ── ② How it works ──
+   Keeps the gradient the seven-step section used, so the hand-off from the hero is
+   the one the page was designed around. */
+.how-section {
+    background: linear-gradient(to bottom, #D9E8FF, #fff 15%);
+    max-width: none;
+    padding: 8rem 2rem;
+}
+.how-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+.how-header {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+.how-title {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #0a0a0a;
+    line-height: 1.2;
+    margin: 0;
+}
+.how-subtitle {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 1.05rem;
+    color: rgba(0, 0, 0, 0.55);
+    line-height: 1.7;
+    margin: 0.75rem 0 0;
+}
+.how-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3rem;
+}
+.how-step {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.how-step-num {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #393BFF;
+}
+.how-step-title {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: #0a0a0a;
+    line-height: 1.3;
+    margin: 0;
+}
+.how-step-desc {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 1rem;
+    color: rgba(0, 0, 0, 0.55);
+    line-height: 1.7;
+    margin: 0;
+}
+
+/* The commands, in a card below the three moments — present because they are what a
+   user types, subordinate because they are no longer the pitch. */
+.how-commands {
+    margin-top: 5rem;
+    padding: 2.5rem;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 16px;
+}
+.how-commands-title {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #0a0a0a;
+    line-height: 1.2;
+    margin: 0;
+}
+.how-commands-intro {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 1rem;
+    color: rgba(0, 0, 0, 0.55);
+    line-height: 1.7;
+    margin: 0.5rem 0 0;
+}
+.how-command-list {
+    list-style: none;
+    margin: 1.75rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem 2.5rem;
+}
+.how-command {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 0.95rem;
+    color: rgba(0, 0, 0, 0.6);
+    line-height: 1.6;
+}
+.how-command strong {
+    font-weight: 600;
+    color: #393BFF;
+}
+.how-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 2rem;
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #fff;
+    background: #0a0a0a;
+    padding: 0.6rem 1.4rem;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: opacity 0.15s;
+}
+.how-cta:hover {
+    opacity: 0.85;
+}
+
+/* ── ⑤ It works your way ──
+   White, between the blue of ④ and the black of ⑥, so three two-column sections in a
+   row do not read as one block. */
+.yourway-section {
+    background: #fff;
+    max-width: none;
+    padding: 10rem 2rem;
+}
+.yourway-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 5rem;
+}
+.yourway-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex: 1;
+}
+.yourway-title {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #0a0a0a;
+    line-height: 1.2;
+    margin: 0;
+}
+.yourway-desc {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 1.05rem;
+    color: rgba(0, 0, 0, 0.55);
+    line-height: 1.7;
+    margin: 0;
+}
+/* The "work arrives finished" line. It carries the whole quality argument, so it is
+   not allowed to look like a third paragraph. */
+.yourway-desc--lead {
+    color: #0a0a0a;
+    font-weight: 600;
+}
+.yourway-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    align-self: flex-start;
+    margin-top: 0.75rem;
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #fff;
+    background: #0a0a0a;
+    padding: 0.6rem 1.4rem;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: opacity 0.15s;
+}
+.yourway-btn:hover {
+    opacity: 0.85;
+}
+
+/* ── ⑥ Why we built this ──
+   The three-point grid became two paragraphs, so the container narrows and centres:
+   this is the breath before the closing ask, not another feature block. */
+.why-inner--prose {
+    max-width: 760px;
+    text-align: center;
+}
+.why-inner--prose .why-title {
+    margin-bottom: 1.5rem;
+}
+.why-prose {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 1.05rem;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.8;
+    margin: 0 0 1.25rem;
+}
+.why-inner--prose .why-btn {
+    margin-top: 1rem;
+}
+
+/* ── Mobile ── */
+@media (max-width: 1024px) {
+    .yourway-inner {
+        flex-direction: column;
+        gap: 3rem;
+    }
+    .site-visual-placeholder,
+    .site-visual-placeholder--wide {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .how-section,
+    .yourway-section {
+        padding: 5rem 1.5rem;
+    }
+    .how-title,
+    .yourway-title {
+        font-size: 1.9rem;
+    }
+    .how-steps {
+        grid-template-columns: 1fr;
+        gap: 2.5rem;
+    }
+    .how-commands {
+        margin-top: 3.5rem;
+        padding: 1.75rem;
+    }
+    .how-command-list {
+        grid-template-columns: 1fr;
+    }
+    .why-inner--prose {
+        text-align: left;
+    }
+}

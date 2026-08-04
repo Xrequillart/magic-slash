@@ -47,9 +47,8 @@ export function SiteFooter({ serverYear }: { serverYear: number }) {
           <div className="footer-columns">
             <div className="footer-column">
               <h4 className="footer-column-title">{t('site.footer.product')}</h4>
+              <Link href="/#how">{t('site.footer.howItWorks')}</Link>
               <Link href="/documentation#quick-start">{t('site.footer.gettingStarted')}</Link>
-              <Link href="/desktop">{t('site.footer.desktopApp')}</Link>
-              <Link href="/skills">{t('site.footer.skills')}</Link>
               <Link href="/story">{t('site.footer.ourStory')}</Link>
             </div>
 

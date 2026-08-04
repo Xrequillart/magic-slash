@@ -216,33 +216,17 @@ describe('message catalogues', () => {
       'repo.pr.section',
       'repo.issues.section',
       ],
-      // The site's list is mostly product vocabulary French borrowed whole — the
-      // skill names ARE the commands (`/magic:start`), so "Start" is a proper noun
-      // here and translating it would name a command that does not exist.
+      // The site's list is product vocabulary French borrowed whole. It shrank a lot
+      // when the landing page stopped selling the seven skills by name: the command
+      // titles ("Start", "Commit", …) were proper nouns that could not be translated,
+      // and they left with the `/skills` page.
       site: [
-        'site.nav.skills',
         'site.nav.configuration',
         'site.nav.documentationCategory',
         'site.nav.faq',
         'site.nav.changelog',
-        'site.desktop.skills',
-        'site.desktop.agents',
-        'site.section2.skillsTitle',
-        'site.section4.agents',
-        'site.desktopApp.feat4Title',
-        'site.desktopApp.feat6Title',
-        'site.desktopApp.feat10Title',
-        'site.skills.label',
-        'site.skills.overviewStartTitle',
-        'site.skills.overviewContinueTitle',
-        'site.skills.overviewCommitTitle',
-        'site.skills.overviewPrTitle',
-        'site.skills.overviewReviewTitle',
-        'site.skills.overviewResolveTitle',
-        'site.skills.overviewDoneTitle',
         'site.faq.title',
         'site.story.tl9Date',
-        'site.footer.skills',
         'site.footer.configuration',
         'site.footer.changelog',
         'site.footer.documentation',
