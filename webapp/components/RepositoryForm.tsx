@@ -171,6 +171,7 @@ export function RepositoryForm({
   const commitFormat = repo.commit.format ?? DEFAULTS.commitFormat
   const coAuthor = repo.commit.coAuthor ?? DEFAULTS.coAuthor
   const includeTicketId = repo.commit.includeTicketId ?? DEFAULTS.includeTicketId
+  const allowOnProtectedBranch = repo.commit.allowOnProtectedBranch ?? DEFAULTS.allowOnProtectedBranch
 
   const commitMode = repo.resolve.commitMode ?? DEFAULTS.resolveCommitMode
   const useCommitConfig = repo.resolve.useCommitConfig ?? DEFAULTS.resolveUseCommitConfig
@@ -378,6 +379,23 @@ export function RepositoryForm({
             label={t('repo.commit.ticketId')}
             checked={includeTicketId}
             onChange={(includeTicketId) => setCommit({ includeTicketId })}
+          />
+        </SettingRow>
+
+        {/* Both positions of this switch do something, so the description says which
+            one you are looking at rather than describing the setting in the abstract. */}
+        <SettingRow
+          label={t('repo.commit.protectedBranch')}
+          description={
+            allowOnProtectedBranch
+              ? t('repo.commit.protectedBranchHelpOn')
+              : t('repo.commit.protectedBranchHelpOff')
+          }
+        >
+          <Toggle
+            label={t('repo.commit.protectedBranch')}
+            checked={allowOnProtectedBranch}
+            onChange={(allowOnProtectedBranch) => setCommit({ allowOnProtectedBranch })}
           />
         </SettingRow>
 

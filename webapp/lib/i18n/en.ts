@@ -501,6 +501,11 @@ export const en = {
   'repo.commit.coAuthorHelp': 'Add Claude as co-author in commits',
   'repo.commit.ticketId': 'Include ticket ID',
   'repo.commit.ticketIdHelp': 'Add the ticket ID from the branch name',
+  'repo.commit.protectedBranch': 'Commits on main branches',
+  'repo.commit.protectedBranchHelpOn':
+    'Allowed on main, master, develop and this repo’s development branch — /magic:commit asks first',
+  'repo.commit.protectedBranchHelpOff':
+    'Blocked on main, master, develop and this repo’s development branch — /magic:commit moves the work to a new branch',
   'repo.example': 'Example',
   'repo.resolve.section': 'Resolve',
   'repo.resolve.commitMode': 'Commit mode',
