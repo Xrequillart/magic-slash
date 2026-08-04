@@ -104,6 +104,12 @@ const MAGIC_SLASH_ATLASSIAN_PERMISSIONS = [
   'mcp__atlassian__getAccessibleAtlassianResources',
   'mcp__atlassian__getJiraIssue',
   'mcp__atlassian__getJiraIssueRemoteIssueLinks',
+  // /magic:start's dependency gate: link type names are configurable per Jira site
+  // ("Blocks" / "Bloque" / "Precedes" all exist), so it resolves them instead of
+  // hardcoding, then reads each blocker's status category by JQL. Both are read-only.
+  // See skills/magic-start/references/dependencies.md §2.1 and §3.2.
+  'mcp__atlassian__getIssueLinkTypes',
+  'mcp__atlassian__searchJiraIssuesUsingJql',
   'mcp__atlassian__getTransitionsForJiraIssue',
   'mcp__atlassian__transitionJiraIssue',
   'mcp__atlassian__addCommentToJiraIssue',

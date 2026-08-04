@@ -259,6 +259,17 @@ describe('the permission allowlist', () => {
     expect(allow()).toContain('mcp__atlassian__getJiraIssue')
   })
 
+  it("grants the dependency gate's two lookup tools", () => {
+    // These were added to install.sh by the ticket-dependency work and reached the app
+    // only when that branch was merged into the one that deleted the script. Nothing
+    // would have failed loudly: /magic:start would just stop on a permission prompt
+    // mid-gate, on someone else's machine. Named here so the app's allowlist is what
+    // keeps them, now that it is the only thing that writes one.
+    configureClaudeHooks({ atlassian: true })
+    expect(allow()).toContain('mcp__atlassian__getIssueLinkTypes')
+    expect(allow()).toContain('mcp__atlassian__searchJiraIssuesUsingJql')
+  })
+
   it('withdraws the Jira tools when Atlassian is off', () => {
     configureClaudeHooks({ atlassian: true })
     configureClaudeHooks({ atlassian: false })
