@@ -143,8 +143,13 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.mockup.scripts': 'Scripts',
   'site.mockup.open': 'Ouvrir',
 
-  'site.mockup.ticketDone': 'terminé',
+  // Le badge d'état du ticket, un libellé par étape que la run lui fait traverser. Ils
+  // reprennent le vocabulaire d'état de l'app (`statusPill.*` dans les catalogues du
+  // desktop), puisqu'il s'agit du même badge montrant le même workflow.
   'site.mockup.inProgress': 'en cours',
+  'site.mockup.ticketInReview': 'en revue',
+  'site.mockup.ticketReviewed': 'revu',
+  'site.mockup.ticketDone': 'terminé',
   'site.mockup.uncommitted': 'Non committé',
   'site.mockup.oneFile': '{n} fichier modifié',
   'site.mockup.manyFiles': '{n} fichiers modifiés',

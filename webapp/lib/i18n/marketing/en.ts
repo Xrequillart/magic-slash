@@ -167,8 +167,13 @@ export const marketingEn = {
   'site.mockup.scripts': 'Scripts',
   'site.mockup.open': 'Open',
 
-  'site.mockup.ticketDone': 'done',
+  // The ticket's status pill, one label per step the run takes it through. These follow
+  // the app's own status vocabulary (`statusPill.*` in the desktop catalogues), because
+  // this is the same pill showing the same workflow.
   'site.mockup.inProgress': 'in progress',
+  'site.mockup.ticketInReview': 'in review',
+  'site.mockup.ticketReviewed': 'reviewed',
+  'site.mockup.ticketDone': 'done',
   'site.mockup.uncommitted': 'Uncommitted',
   'site.mockup.oneFile': '{n} file changed',
   'site.mockup.manyFiles': '{n} files changed',

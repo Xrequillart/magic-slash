@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   Bot,
   Check,
-  Clock,
   GitBranch,
   GitPullRequest,
   PanelLeft,
@@ -45,12 +44,17 @@ import { mountMockup } from './mockupAnimation'
 
 /**
  * The run, as data. Each phase is a typed command and the status lines it produces;
- * `result` is the chip that lands on the right of a line once it completes.
+ * `result` is the chip that lands on the right of a line once it completes. A phase may
+ * also close with a `banner` — the green card that ends the whole run.
  *
  * These lines are NOT translated, on purpose: they are the log the real product prints,
  * and it prints English. The chrome around them is translated — see the `t()` calls.
  */
-const PHASES: { cmd: string; runs: { label: string; result?: string }[] }[] = [
+const PHASES: {
+  cmd: string
+  runs: { label: string; result?: string }[]
+  banner?: string
+}[] = [
   {
     cmd: '/magic:start PROJ-142',
     runs: [
@@ -98,8 +102,9 @@ const PHASES: { cmd: string; runs: { label: string; result?: string }[] }[] = [
       { label: 'Merging PR #87', result: 'merged' },
       { label: 'Cleaning up the branch', result: 'deleted' },
       { label: 'Moving the ticket', result: 'Done' },
-      { label: 'Task complete' },
     ],
+    // The last beat of the run, and the only line that gets a card of its own.
+    banner: 'Task complete!',
   },
 ]
 
@@ -152,7 +157,7 @@ export function AppMockup() {
             <Users size={I} /> <em>{t('site.mockup.menuTeam')}</em> <kbd>⌘T</kbd>
           </span>
           <span className="mk-menu-item">
-            <UserRound size={I} /> <em>Xrequillart</em> <kbd>⌘,</kbd>
+            <UserRound size={I} /> <em>Magic</em> <kbd>⌘,</kbd>
           </span>
 
           <span className="mk-section">{t('site.mockup.agentsLabel')}</span>
@@ -162,24 +167,31 @@ export function AppMockup() {
             <b data-mk="attention-count">2</b>
           </span>
 
-          {/* The active row is what the run flips from working to done, on `/magic:done`. */}
+          {/* An agent row, laid out as the app lays it out: the name takes the width, then
+              a dot per matching repository, then ONE status icon on the right — nothing
+              while idle, a spinner while it works, a green check once it is done. There is
+              no icon on the left and never two states at once, which is why the check sits
+              on top of the spinner in the same slot rather than beside it.
+
+              The active row walks that whole path: empty until the first command is
+              submitted, spinning through the run, checked on `/magic:done`. */}
           <span className="mk-agent is-active">
-            <span className="mk-agent-state">
-              <span className="mk-bars" data-mk="agent-bars"><i /><i /><i /></span>
-              <Check size={13} className="mk-agent-check" data-mk="agent-check" />
-            </span>
             <em>auth-middleware</em>
             <span className="mk-agent-meta">
-              <span className="mk-dot mk-dot--teal" data-mk="agent-dot" />
-              <Clock size={11} />
+              <span className="mk-dot mk-dot--teal" />
+              <span className="mk-agent-state">
+                <span className="mk-loader" data-mk="agent-loader" />
+                <Check size={13} className="mk-agent-check" data-mk="agent-check" />
+              </span>
             </span>
           </span>
           <span className="mk-agent">
-            <span className="mk-agent-state"><Check size={13} className="mk-agent-check is-in" /></span>
             <em>pricing-copy</em>
             <span className="mk-agent-meta">
               <span className="mk-dot mk-dot--teal" />
-              <Clock size={11} />
+              <span className="mk-agent-state">
+                <Check size={13} className="mk-agent-check is-in" />
+              </span>
             </span>
           </span>
 
@@ -187,7 +199,7 @@ export function AppMockup() {
 
           <span className="mk-usage">
             <span className="mk-usage-head">
-              <UserRound size={12} /> <em>Xavier</em> <b>—</b>
+              <UserRound size={12} /> <em>Kiki</em> <b>—</b>
             </span>
             <span className="mk-meter">
               <span className="mk-meter-row">
@@ -216,10 +228,11 @@ export function AppMockup() {
           <div className="mk-convo" data-mk="convo">
             {PHASES.map((phase) => (
               <div className="mk-phase" data-mk="phase" key={phase.cmd}>
+                {/* The command, rendered here so the served HTML reads correctly before
+                    hydration. The animation clears it and re-types it in the composer. */}
                 <div className="mk-line mk-line--cmd" data-mk="prompt">
                   <span>&gt;</span>
-                  <em data-mk="cmd" data-text={phase.cmd} />
-                  <span className="mk-caret mk-caret--inline" data-mk="cmd-caret" />
+                  <em data-mk="cmd" data-text={phase.cmd}>{phase.cmd}</em>
                 </div>
                 {phase.runs.map((run) => (
                   <div className="mk-run" data-mk="run" key={run.label}>
@@ -231,15 +244,23 @@ export function AppMockup() {
                     {run.result ? <b className="mk-result">{run.result}</b> : null}
                   </div>
                 ))}
+                {phase.banner ? (
+                  <div className="mk-banner" data-mk="banner">
+                    <Check size={15} strokeWidth={3} />
+                    <em>{phase.banner}</em>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
 
           <span className="mk-grow" />
 
+          {/* Where each command is typed before it is submitted into the transcript. */}
           <div className="mk-composer">
             <span>&gt;</span>
-            <span className="mk-caret" />
+            <em data-mk="composer-cmd" />
+            <span className="mk-caret" data-mk="composer-caret" />
           </div>
 
           <div className="mk-status">
@@ -265,7 +286,12 @@ export function AppMockup() {
             <span className="mk-info-badge" /> <em>Claude 1 Info</em> <X size={13} />
           </span>
 
-          <span className="mk-card">
+          {/* The panel starts EMPTY — a header and the dashed add-repo box, which is what
+              a fresh agent actually shows — and each card lands when the run earns it: the
+              session as the first command is submitted, the ticket once it has been
+              fetched, the repository once the worktree exists. `display` rather than
+              opacity, so a card that has not arrived yet takes up no height. */}
+          <span className="mk-card mk-card--reveal" data-mk="card-session">
             <span className="mk-card-row">
               <em className="mk-label">{t('site.mockup.session')}</em>
               <i>7min ago</i>
@@ -285,25 +311,38 @@ export function AppMockup() {
             </span>
           </span>
 
-          <span className="mk-card">
+          <span className="mk-card mk-card--reveal" data-mk="card-ticket">
             <span className="mk-card-row">
               <b className="mk-pill mk-pill--ticket">PROJ-142</b>
               <span className="mk-grow" />
+              {/* The status pill, one label and one colour per step the run takes the
+                  ticket through: in progress -> in review on `/magic:pr` -> reviewed once
+                  the review comes back -> done on `/magic:done`. Rendered in its FINAL
+                  state, like the rest of the mockup, so the served HTML reads correctly
+                  before the animation takes over. */}
               <b
-                className="mk-pill mk-pill--state"
+                className="mk-pill mk-pill--state is-done"
                 data-mk="state-pill"
                 data-progress={t('site.mockup.inProgress')}
+                data-review={t('site.mockup.ticketInReview')}
+                data-reviewed={t('site.mockup.ticketReviewed')}
                 data-done={t('site.mockup.ticketDone')}
               >
-                {t('site.mockup.inProgress')}
+                {t('site.mockup.ticketDone')}
               </b>
             </span>
             <span className="mk-card-row">
               <em className="mk-strong">Add JWT auth middleware</em>
             </span>
+            {/* The ticket body, as the panel shows it — clamped, because a real
+                description is longer than the room this card has for it. */}
+            <span className="mk-desc">
+              Protect the private API routes behind a JWT check, and refresh the token when
+              it is close to expiring.
+            </span>
           </span>
 
-          <span className="mk-card">
+          <span className="mk-card mk-card--reveal" data-mk="card-repo">
             <span className="mk-card-row">
               <em className="mk-strong">stellar-api</em>
               <span className="mk-grow" />
@@ -324,6 +363,8 @@ export function AppMockup() {
                 row still reserves its height, and three of them left a void in the card
                 with the gauge stranded underneath. */}
             <span className="mk-block" data-mk="changes">
+              {/* The gauge sits beside the count it summarises, not under the list: it is
+                  a reading of those numbers, so it belongs on the same line as them. */}
               <span className="mk-card-row">
                 <em className="mk-strong">{t('site.mockup.uncommitted')}</em>
                 <span className="mk-grow" />
@@ -332,6 +373,11 @@ export function AppMockup() {
                   data-one={t('site.mockup.oneFile')}
                   data-many={t('site.mockup.manyFiles')}
                 />
+                <span className="mk-gauge" data-mk="gauge">
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <i className="mk-gauge-slot" key={i} />
+                  ))}
+                </span>
               </span>
               {FILES.map((f) => (
                 <span className="mk-file" data-mk="file" key={f.name}>
@@ -341,11 +387,6 @@ export function AppMockup() {
                   {f.removed ? <b className="mk-del">−{f.removed}</b> : null}
                 </span>
               ))}
-              <span className="mk-gauge" data-mk="gauge">
-                {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <i className="mk-gauge-slot" key={i} />
-                ))}
-              </span>
             </span>
 
             {/* Commits. Appears once `/magic:commit` lands. */}
