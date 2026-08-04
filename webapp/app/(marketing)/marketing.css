@@ -4671,33 +4671,16 @@ h1 {
        four sides, which is where this stops being thickness. */
     inset: -2px;
     border-radius: var(--slab-radius);
-    /* The same material as the face, not a colour of its own: the panel's base with the
-       same chrome layer over it, then a scrim to lift it. Hand-picked violets used to sit
-       here and read as a different substance bolted to the side.
+    /* The panel's base colour, flat, with nothing layered over it — one step under the face,
+       which is that same base plus the chrome layer. Hand-picked violets sat here first and
+       read as a different substance bolted to the side; an indigo scrim over the base came
+       next, and it took the band brighter than anything on the front face — a lit rim rather
+       than the panel's own edge.
 
-       The scrim is INDIGO — the app's own accent — and NOT white. White raises the lightness
-       but takes the colour out with it: the face carries roughly 36% saturation, and a white
-       scrim bright enough to read dropped that to about 15%, which is grey. Lifting with a
-       colour of the same hue lands near 32%, so the edge stays the panel's purple and only
-       looks like it is catching more light.
-
-       The scrim is also what keeps the edge VISIBLE, and it is not optional. Lighter than
-       the face, never darker: both illustrations stand on a pale background, so a side
-       turned towards all that light catches more of it than the face turned away from it —
-       and the face is already so dark that a darker band has nowhere to go. An earlier
-       attempt graded through a value three points off the face's and the thickness simply
-       vanished down the middle of the panel.
-
-       Strongest at the top, since the light is above. Over the face's #1A162F these
-       composite to about #3D3E73, #343461 and #2A294F down the panel. */
+       Unlit, the thickness is read from the silhouette rather than from a value change, and
+       the cast shadow below is what separates it from the pale background. So the band
+       sitting DARKER than the face is the point, not a gap to grade away. */
     background-color: var(--mk-base);
-    background-image:
-        linear-gradient(
-            rgba(129, 140, 248, 0.34),
-            rgba(129, 140, 248, 0.25) 55%,
-            rgba(129, 140, 248, 0.16)
-        ),
-        linear-gradient(var(--mk-chrome), var(--mk-chrome));
     /* The block's ONE cast shadow, and it lives here rather than on the front face — that
        is the whole reason the two used to read as two sheets with a gap between them. A
        70px blur behind a 30px offset spreads ~40px the OTHER way, so a shadow on the front
