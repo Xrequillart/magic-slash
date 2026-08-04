@@ -588,7 +588,7 @@ export const en = {
   'org.createModal.submit': 'Create',
 
   'org.joinModal.help': 'Paste the invitation link you received, or just its token.',
-  'org.joinModal.tokenPlaceholder': 'https://app.magic-slash.io/invite/…',
+  'org.joinModal.tokenPlaceholder': 'https://invite.magic-slash.io/…',
   'org.joinModal.submit': 'Join',
 
   'org.archiveModal.confirm': 'Archive {name}?',

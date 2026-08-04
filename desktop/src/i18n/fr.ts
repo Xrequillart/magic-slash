@@ -592,7 +592,7 @@ export const fr: Record<keyof typeof en, string> = {
   'org.createModal.submit': 'Créer',
 
   'org.joinModal.help': 'Collez le lien d’invitation reçu, ou seulement son token.',
-  'org.joinModal.tokenPlaceholder': 'https://app.magic-slash.io/invite/…',
+  'org.joinModal.tokenPlaceholder': 'https://invite.magic-slash.io/…',
   'org.joinModal.submit': 'Rejoindre',
 
   'org.archiveModal.confirm': 'Archiver {name} ?',

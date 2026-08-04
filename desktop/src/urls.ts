@@ -33,3 +33,52 @@ export const DOCUMENTATION_URL = `${SITE_URL}/documentation`
 export const CHANGELOG_URL = `${DOCUMENTATION_URL}#changelog`
 
 export const GITHUB_URL = 'https://github.com/xrequillart/magic-slash'
+
+/** Where an invitation is accepted. Serves `/<token>` directly — no `/invite/` segment. */
+export const INVITE_URL = 'https://invite.magic-slash.io'
+
+/**
+ * The link to hand someone you invited.
+ *
+ * `currentOrigin` exists for the webapp, which builds the same link from a browser and
+ * must keep working on localhost and on Vercel previews — there, the short host does
+ * not resolve, so the long form on the current origin is the only one that works. The
+ * desktop passes nothing: it is not served from a host, so production is the only
+ * sensible answer.
+ */
+export function inviteLink(token: string, currentOrigin?: string): string {
+  if (currentOrigin && !/^https?:\/\/([^/]+\.)?magic-slash\.io(\/|$)/.test(currentOrigin)) {
+    return `${currentOrigin}/invite/${token}`
+  }
+  return `${INVITE_URL}/${token}`
+}
+
+/**
+ * The token out of whatever someone pasted.
+ *
+ * Three shapes have to work, and the third is why this is not a one-liner:
+ *
+ *  - a raw token, typed or pasted on its own;
+ *  - the long form on any host — `app.magic-slash.io/invite/<token>`, the apex, a
+ *    preview, `localhost:3000`. Every invitation sent before the short host existed
+ *    looks like this, and those links do not expire because we changed a URL;
+ *  - the short form, `invite.magic-slash.io/<token>`, which has NO `/invite/` segment
+ *    to anchor on. The previous version matched `/\/invite\/([^/?#\s]+)/` and nothing
+ *    else, so a short link fell through to the raw-input fallback and the whole URL
+ *    was sent as the token — a failed join with a misleading error.
+ *
+ * The short form is anchored on a host whose first label is `invite`, deliberately
+ * narrow: a generic "last path segment" rule would read `/dashboard` out of an app URL
+ * and report an invalid token instead of "that is not an invitation link".
+ */
+export function extractInviteToken(input: string): string {
+  const trimmed = input.trim()
+
+  const long = trimmed.match(/\/invite\/([^/?#\s]+)/)
+  if (long) return long[1]
+
+  const short = trimmed.match(/^https?:\/\/invite\.[^/?#\s]+\/([^/?#\s]+)/)
+  if (short) return short[1]
+
+  return trimmed
+}

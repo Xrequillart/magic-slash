@@ -9,6 +9,7 @@ import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
 import type { MessageKey, Translate } from '../../i18n'
 import type { Invitation, Member, MembershipRole, Org } from '../../../types'
+import { extractInviteToken, inviteLink } from '../../../urls'
 
 /**
  * Enum values from the database, rendered as-is before: `role` and invitation
@@ -264,13 +265,6 @@ function OrganizationCard({
   )
 }
 
-/** Accept both a raw token and a full invite link pasted from an email. */
-function extractInviteToken(input: string): string {
-  const trimmed = input.trim()
-  const match = trimmed.match(/\/invite\/([^/?#\s]+)/)
-  return match ? match[1] : trimmed
-}
-
 export function OrgPage() {
   const { status, loading: authLoading } = useAuth()
   const t = useT()
@@ -414,7 +408,7 @@ export function OrgPage() {
   }, [joining, joinToken, accept])
 
   const handleCopyToken = useCallback((token: string) => {
-    const link = `https://app.magic-slash.io/invite/${token}`
+    const link = inviteLink(token)
     navigator.clipboard.writeText(link).then(() => {
       setCopiedToken(token)
       setTimeout(() => setCopiedToken(null), 1500)
