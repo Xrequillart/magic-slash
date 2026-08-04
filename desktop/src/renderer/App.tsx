@@ -20,6 +20,7 @@ import { PageModal } from './components/PageModal'
 import { LiveIndicator } from './components/LiveIndicator'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProfileOnboardingWizard } from './components/ProfileOnboardingWizard'
+import { SetupWizard } from './components/SetupWizard'
 import { useWindowSplitMode } from './hooks/useWindowSplitMode'
 import FilePreviewPanel from './components/FilePreviewPanel'
 import { useT, type MessageKey } from './i18n'
@@ -63,6 +64,8 @@ export function App() {
   const confirmCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [showNoReposModal, setShowNoReposModal] = useState(false)
   const [showProfileWizard, setShowProfileWizard] = useState(false)
+  const [profileChecked, setProfileChecked] = useState(false)
+  const [setupNeeded, setSetupNeeded] = useState(false)
   const didLandRef = useRef(false)
 
   // Landing page: stay on the agents page and select the topmost agent of the
@@ -89,8 +92,26 @@ export function App() {
       if (!profile) {
         setShowProfileWizard(true)
       }
-    }).catch(() => {})
+      setProfileChecked(true)
+    }).catch(() => setProfileChecked(true))
   }, [configLoading])
+
+  // Machine setup — the integration choice and the prerequisites the install script
+  // used to handle. Asked only when something is genuinely missing or undecided (the
+  // rule lives in main/setup/status.ts, so every surface agrees on it).
+  useEffect(() => {
+    if (configLoading) return
+    window.electronAPI.setup
+      .getStatus()
+      .then((status) => setSetupNeeded(status.needsSetup))
+      .catch(() => { /* the wizard stays closed; Settings still reports the state */ })
+  }, [configLoading])
+
+  // Sequenced behind the profile wizard rather than raced against it: both trigger on
+  // a genuine first launch, and two stacked modals would leave one unreachable under
+  // the other's backdrop. Waiting for the profile check to RESOLVE (not just for the
+  // wizard to be closed) is what makes the order deterministic.
+  const showSetupWizard = profileChecked && !showProfileWizard && setupNeeded
 
   // Check if there are no repos configured
   const hasNoRepos = useMemo(() => {
@@ -449,6 +470,12 @@ export function App() {
       <ProfileOnboardingWizard
         isOpen={showProfileWizard}
         onClose={() => setShowProfileWizard(false)}
+      />
+
+      {/* Machine setup — replaces the install script's prompts */}
+      <SetupWizard
+        isOpen={showSetupWizard}
+        onClose={() => setSetupNeeded(false)}
       />
 
       {/* No Repos Warning Modal */}

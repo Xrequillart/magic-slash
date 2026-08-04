@@ -7,6 +7,7 @@ import { AppearancePage } from './AppearancePage'
 import { LanguagePage } from './LanguagePage'
 import { SectionHeader } from './SectionHeader'
 import { TelemetryHealthCard } from './TelemetryHealthCard'
+import { SetupHealthCard } from './SetupHealthCard'
 import { RateLimitBar } from '../../components/agent-info-sidebar/LimitGauge'
 import { SweepPane } from '../../components/SweepPane'
 import { useStore } from '../../store'
@@ -1255,6 +1256,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             </button>
           </div>
         </div>
+        <SetupHealthCard />
         <TelemetryHealthCard />
       </div>}
         </SweepPane>
