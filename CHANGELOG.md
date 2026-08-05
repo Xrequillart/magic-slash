@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.65.0] - 2026-08-05
+
+### Added
+
+- **Desktop**: Replace the native tray menu with the app's own panel
+- **Webapp**: Add the local path step to the onboarding checklist
+- **Webapp**: Download the app directly instead of via GitHub
+
+### Changed
+
+- **Desktop**: Extract the agent state badge and the display name helper
+- **Webapp**: Match the mockup loader to the app's waving bars
+- **Desktop**: Replace the sidebar spinner with three waving bars
+- **Webapp**: Warn on the theme note and unstick the language note
+- **Webapp**: Say the theme dresses the app, not the site
+
+### Fixed
+
+- **Webapp**: Stop the onboarding test from loading Supabase
+
 ## [0.64.3] - 2026-08-05
 
 ### Changed
@@ -1919,6 +1939,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.65.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.65.0
 [0.64.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.64.3
 [0.64.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.64.2
 [0.64.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.64.1
