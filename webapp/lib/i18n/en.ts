@@ -263,7 +263,7 @@ export const en = {
   // ── Settings · Appearance ──────────────────────────────────────────────────
   'settings.appearance': 'Appearance',
   'settings.appearance.note':
-    'The theme follows your account — every machine you sign in on uses it. Interface scale stays on each machine, since it compensates for that screen.',
+    'The theme styles the Magic Slash desktop app, not this website. It follows your account — every machine you sign in on uses it. Interface scale stays on each machine, since it compensates for that screen.',
   'theme.dark': 'Dark',
   'theme.dark.help': 'The original, near-black.',
   'theme.midnight': 'Midnight',

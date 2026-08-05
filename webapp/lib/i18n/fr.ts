@@ -271,7 +271,7 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Réglages · Apparence ───────────────────────────────────────────────────
   'settings.appearance': 'Apparence',
   'settings.appearance.note':
-    'Le thème suit votre compte — il s’applique sur toutes les machines où vous vous connectez. L’échelle de l’interface reste propre à chaque machine, puisqu’elle compense cet écran-là.',
+    'Le thème habille l’application Magic Slash, pas ce site. Il suit votre compte — il s’applique sur toutes les machines où vous vous connectez. L’échelle de l’interface reste propre à chaque machine, puisqu’elle compense cet écran-là.',
   'theme.dark': 'Sombre',
   'theme.dark.help': 'L’original, presque noir.',
   'theme.midnight': 'Minuit',
