@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, memo } from 'react'
-import { Bot, AlertTriangle, Check, Clock, XCircle, Sparkles, X, Eye, CheckCircle2, Zap, Users } from 'lucide-react'
+import { Bot, AlertTriangle, XCircle, Sparkles, X, Eye, CheckCircle2, Zap, Users } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
@@ -7,40 +7,15 @@ import { useGroupedTerminals, useSplitGroupedTerminals, WORKFLOW_GROUPS, type Wo
 import { getProjectColorMap } from '../utils/projectColors'
 import { SidebarUsageCard } from './SidebarUsageCard'
 import { WaveLoader } from './WaveLoader'
+import { AgentStateBadge } from './AgentStateBadge'
 import { SidebarAccount } from './SidebarAccount'
-import { stateColors, stateBgColors, stateHoverBgColors } from '../utils/stateColors'
+import { stateBgColors, stateHoverBgColors } from '../utils/stateColors'
 import { useT } from '../i18n'
-import type { TerminalState, ScriptTerminalInfo } from '../../types'
+import type { ScriptTerminalInfo } from '../../types'
 import { CHANGELOG_URL, DOCUMENTATION_URL } from '../../urls'
 
 const SIDEBAR_MIN_WIDTH = 200
 const SIDEBAR_DEFAULT_WIDTH = 300
-
-const StatusBadge = memo(function StatusBadge({ state }: { state: TerminalState }) {
-  // Don't render anything for idle state
-  if (state === 'idle') return null
-
-  const renderIcon = () => {
-    switch (state) {
-      case 'working':
-        return <WaveLoader className="flex-shrink-0" />
-      case 'completed':
-        return <Check className="w-4 h-4" />
-      case 'waiting':
-        return <Clock className="w-4 h-4" />
-      case 'error':
-        return <XCircle className="w-4 h-4" />
-      default:
-        return null
-    }
-  }
-
-  return (
-    <span className={`flex items-center ${stateColors[state]}`}>
-      {renderIcon()}
-    </span>
-  )
-})
 
 // Project color dot component
 const ProjectDot = memo(function ProjectDot({ color, title }: { color: string; title: string }) {
@@ -107,7 +82,7 @@ const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, o
           ))}
         </div>
       )}
-      <StatusBadge state={terminal.state} />
+      <AgentStateBadge state={terminal.state} />
     </button>
   )
 })
