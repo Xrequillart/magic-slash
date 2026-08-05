@@ -1,6 +1,9 @@
 import type { Installation } from './installations'
 import type { Org } from './orgs'
-import { isProfileComplete, type UserProfile } from './profile'
+// From the shape module, never from `./profile`: that one opens the Supabase client, and
+// this file is covered by the root vitest suite, which cannot resolve it (see
+// profileShape.ts). A value import here is what made onboarding.test.ts fail in CI.
+import { isProfileComplete, type UserProfile } from './profileShape'
 
 /**
  * The four onboarding steps, derived from real data rather than a stored flag.

@@ -1,19 +1,16 @@
 import { getSupabase } from './supabase'
-import { t, type MessageKey } from './i18n'
+import { t } from './i18n'
 import { DEFAULT_LANGUAGE, type LanguageId } from './i18n/languages'
+import { type ProfileLevel, type ProfileRole, type ProfileStyle, type UserProfile } from './profileShape'
 
-export type ProfileRole = 'product' | 'dev' | 'design' | 'qa' | 'ops' | 'manager' | 'other'
-export type ProfileLevel = 'beginner' | 'intermediate' | 'expert'
-export type ProfileStyle = 'simple' | 'technical' | 'detailed'
+/**
+ * Reading and writing the profile row. The shape itself — types, label keys and what
+ * counts as complete — lives in `profileShape.ts` and is re-exported below, so importing
+ * from here still gets everything while a caller that only needs the RULE can reach for
+ * the pure module instead. See that file for why the two are apart.
+ */
 
-export interface UserProfile {
-  name: string
-  role: ProfileRole
-  technicalLevel: ProfileLevel
-  communicationStyle: ProfileStyle | null
-  languages: string[]
-  freeText: string
-}
+export * from './profileShape'
 
 interface ProfileRow {
   name: string | null
@@ -22,53 +19,6 @@ interface ProfileRow {
   communication_style: string | null
   languages: string[] | null
   free_text: string | null
-}
-
-/**
- * How each stored profile value is named on screen — as message KEYS, not as text,
- * because these labels are rendered in whatever language the visitor picked while the
- * values themselves are what sits in the database.
- *
- * The maps are total, so adding a role without naming it is a tsc error. Mirrors
- * `desktop/src/i18n/profileLabels.ts`, which does the same thing for the same reason.
- */
-export const ROLE_LABEL_KEYS: Record<ProfileRole, MessageKey> = {
-  product: 'profile.role.product',
-  dev: 'profile.role.dev',
-  design: 'profile.role.design',
-  qa: 'profile.role.qa',
-  ops: 'profile.role.ops',
-  manager: 'profile.role.manager',
-  other: 'profile.role.other',
-}
-
-export const LEVEL_LABEL_KEYS: Record<ProfileLevel, MessageKey> = {
-  beginner: 'profile.level.beginner',
-  intermediate: 'profile.level.intermediate',
-  expert: 'profile.level.expert',
-}
-
-export const STYLE_LABEL_KEYS: Record<ProfileStyle, MessageKey> = {
-  simple: 'profile.style.simple',
-  technical: 'profile.style.technical',
-  detailed: 'profile.style.detailed',
-}
-
-export const EMPTY_PROFILE: UserProfile = {
-  name: '',
-  role: 'dev',
-  technicalLevel: 'intermediate',
-  communicationStyle: null,
-  languages: [],
-  freeText: '',
-}
-
-/**
- * Whether the user has actually filled their profile in. A row can exist with
- * only defaults, so the name — the one field the wizard requires — is the test.
- */
-export function isProfileComplete(p: UserProfile | null): boolean {
-  return !!p && p.name.trim().length > 0
 }
 
 export async function fetchProfile(): Promise<UserProfile | null> {

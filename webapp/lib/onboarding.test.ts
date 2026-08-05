@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { doneCount, isOnboarded, onboardingState, TOTAL_STEPS } from './onboarding'
 import type { Installation } from './installations'
 import type { Org } from './orgs'
-import type { UserProfile } from './profile'
+import type { UserProfile } from './profileShape'
 
 /**
  * What breaks when a step is added, and why nothing else would catch it.
