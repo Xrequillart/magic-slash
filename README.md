@@ -63,7 +63,7 @@ Applications and open it. There is no install script: the app sets the machine u
 - GitHub CLI (`gh`) — optional; without it `/magic:resolve` replies without threading
 
 The app checks all of these on first launch and offers to install the ones Homebrew can
-provide. Settings → About → Machine setup reports the same thing at any time.
+provide. Settings → Application → Machine setup reports the same thing at any time.
 
 ### What the app does on first launch
 

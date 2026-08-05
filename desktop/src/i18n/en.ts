@@ -80,7 +80,7 @@ export const en = {
   'settings.tab.claudeCode': 'Claude Code',
   'settings.tab.appearance': 'Appearance',
   'settings.tab.language': 'Language & Region',
-  'settings.tab.features': 'Features',
+  'settings.tab.application': 'Application',
   'settings.tab.shortcuts': 'Shortcuts',
   'settings.tab.about': 'About',
   'settings.language.section': 'Language & Region',
@@ -220,64 +220,64 @@ export const en = {
     'Cost is an estimate (tokens × public API pricing), not billed spend — your plan is a subscription.',
   'settings.spend.empty': 'No usage history found in ~/.claude yet.',
 
-  // ── Settings → Features ──────────────────────────────────────────────────
-  'settings.features.usageCard.section': 'Usage card',
-  'settings.features.usageCard.label': 'Show usage card in sidebar',
-  'settings.features.usageCard.help':
+  // ── Settings → Application ───────────────────────────────────────────────
+  'settings.application.usageCard.section': 'Usage card',
+  'settings.application.usageCard.label': 'Show usage card in sidebar',
+  'settings.application.usageCard.help':
     'Display the connected account and the Session (5h) / Weekly (7d) gauges at the bottom of the sidebar',
-  'settings.features.usageLogs.section': 'Activity recording',
-  'settings.features.usageLogs.label': 'Share my activity with my team',
-  'settings.features.usageLogs.help':
+  'settings.application.usageLogs.section': 'Activity recording',
+  'settings.application.usageLogs.label': 'Share my activity with my team',
+  'settings.application.usageLogs.help':
     'On by default, and yours to turn off at any time. What you do with your agents is sent to Magic Slash Cloud so your team’s dashboard reflects your work. Turning it off stops new records; what was already sent is kept.',
-  'settings.features.usageLogs.collected': 'Collected',
-  'settings.features.usageLogs.excluded': 'Never collected',
-  'settings.features.usageLogs.collected.activity': 'Agent activity: tickets, commits, PRs, reviews',
-  'settings.features.usageLogs.collected.skills':
+  'settings.application.usageLogs.collected': 'Collected',
+  'settings.application.usageLogs.excluded': 'Never collected',
+  'settings.application.usageLogs.collected.activity': 'Agent activity: tickets, commits, PRs, reviews',
+  'settings.application.usageLogs.collected.skills':
     'The skills you run (/magic:start, /magic:pr, …), how long each run takes and how it ended',
-  'settings.features.usageLogs.collected.session':
+  'settings.application.usageLogs.collected.session':
     'End-of-session summary: estimated cost, lines added/removed, duration, model',
-  'settings.features.usageLogs.collected.context': 'Ticket id and title, and the repositories you work in',
-  'settings.features.usageLogs.excluded.prompts': 'Your prompts and Claude’s answers',
-  'settings.features.usageLogs.excluded.code': 'Your code, your diffs, your file contents',
-  'settings.features.usageLogs.excluded.terminal': 'Terminal output and command history',
-  'settings.features.usageLogs.excluded.secrets': 'Your tokens, keys and credentials',
-  'settings.features.usageLogs.excluded.args': 'What you type after a skill’s name',
-  'settings.features.usageLogs.excluded.otherSkills': 'Any skill whose name does not start with “magic-”',
-  'settings.features.usageLogs.footnote':
+  'settings.application.usageLogs.collected.context': 'Ticket id and title, and the repositories you work in',
+  'settings.application.usageLogs.excluded.prompts': 'Your prompts and Claude’s answers',
+  'settings.application.usageLogs.excluded.code': 'Your code, your diffs, your file contents',
+  'settings.application.usageLogs.excluded.terminal': 'Terminal output and command history',
+  'settings.application.usageLogs.excluded.secrets': 'Your tokens, keys and credentials',
+  'settings.application.usageLogs.excluded.args': 'What you type after a skill’s name',
+  'settings.application.usageLogs.excluded.otherSkills': 'Any skill whose name does not start with “magic-”',
+  'settings.application.usageLogs.footnote':
     'Every member of your organization can see these figures per person on the Team page.',
-  'settings.features.usageLogs.footnote.agents':
+  'settings.application.usageLogs.footnote.agents':
     'Whatever this setting says, your agents (name, branch, ticket, repositories) sync to your team — that is what powers the live view.',
-  'settings.features.digest.section': 'Daily digest',
-  'settings.features.digest.label': 'Daily team digest',
-  'settings.features.digest.help':
+  'settings.application.digest.section': 'Daily digest',
+  'settings.application.digest.label': 'Daily team digest',
+  'settings.application.digest.help':
     'Off by default. When enabled, you get one notification at 9:00 AM summarizing your team’s activity from the last 24 hours (PRs shipped, tickets moved to Done). Nothing is sent when there was no activity.',
-  'settings.features.split.section': 'Split View',
-  'settings.features.split.label': 'Enable split view',
-  'settings.features.split.help': 'Display two agents side by side on wide screens',
-  'settings.features.prWatcher.section': 'PR Review Watcher',
-  'settings.features.prWatcher.label': 'Watch PR reviews',
-  'settings.features.prWatcher.help': 'Poll GitHub to track review status on agents’ pull requests',
-  'settings.features.prWatcher.intervalLabel': 'Polling interval',
-  'settings.features.prWatcher.intervalHelp': 'How often the GitHub API is polled',
-  'settings.features.prWatcher.interval30s': '30 seconds',
-  'settings.features.prWatcher.interval1m': '1 minute',
-  'settings.features.prWatcher.interval2m': '2 minutes',
-  'settings.features.prWatcher.interval5m': '5 minutes',
-  'settings.features.prWatcher.autoLaunchLabel': 'Auto-launch skills',
-  'settings.features.prWatcher.autoLaunchHelp':
+  'settings.application.split.section': 'Split View',
+  'settings.application.split.label': 'Enable split view',
+  'settings.application.split.help': 'Display two agents side by side on wide screens',
+  'settings.application.prWatcher.section': 'PR Review Watcher',
+  'settings.application.prWatcher.label': 'Watch PR reviews',
+  'settings.application.prWatcher.help': 'Poll GitHub to track review status on agents’ pull requests',
+  'settings.application.prWatcher.intervalLabel': 'Polling interval',
+  'settings.application.prWatcher.intervalHelp': 'How often the GitHub API is polled',
+  'settings.application.prWatcher.interval30s': '30 seconds',
+  'settings.application.prWatcher.interval1m': '1 minute',
+  'settings.application.prWatcher.interval2m': '2 minutes',
+  'settings.application.prWatcher.interval5m': '5 minutes',
+  'settings.application.prWatcher.autoLaunchLabel': 'Auto-launch skills',
+  'settings.application.prWatcher.autoLaunchHelp':
     'Send /magic:resolve or /magic:done directly to the agent’s terminal. Disabled by default for safety.',
-  'settings.features.spotlight.section': 'Spotlight',
-  'settings.features.spotlight.label': 'Enable global shortcut',
-  'settings.features.spotlight.help': 'Open the Quick Launch panel from anywhere with a keyboard shortcut',
-  'settings.features.spotlight.shortcutLabel': 'Shortcut',
-  'settings.features.spotlight.shortcutHelp': 'Choose the keyboard shortcut to toggle Quick Launch',
-  'settings.features.spotlight.error':
+  'settings.application.spotlight.section': 'Spotlight',
+  'settings.application.spotlight.label': 'Enable global shortcut',
+  'settings.application.spotlight.help': 'Open the Quick Launch panel from anywhere with a keyboard shortcut',
+  'settings.application.spotlight.shortcutLabel': 'Shortcut',
+  'settings.application.spotlight.shortcutHelp': 'Choose the keyboard shortcut to toggle Quick Launch',
+  'settings.application.spotlight.error':
     'Failed to register shortcut. It may be in use by another application. Try a different shortcut.',
-  'settings.features.background.section': 'Background App',
-  'settings.features.background.autoStartLabel': 'Launch at login',
-  'settings.features.background.autoStartHelp': 'Start Magic Slash automatically when you log in',
-  'settings.features.background.menuBarLabel': 'Menu bar',
-  'settings.features.background.menuBarHelp':
+  'settings.application.background.section': 'Background App',
+  'settings.application.background.autoStartLabel': 'Launch at login',
+  'settings.application.background.autoStartHelp': 'Start Magic Slash automatically when you log in',
+  'settings.application.background.menuBarLabel': 'Menu bar',
+  'settings.application.background.menuBarHelp':
     'Magic Slash runs in the menu bar. Click the tray icon to see agent status, or right-click for quick actions. Closing the window hides it to the tray.',
 
   // ── Settings → Shortcuts ─────────────────────────────────────────────────
@@ -300,7 +300,7 @@ export const en = {
   // ── Settings → About → Usage recording health ────────────────────────────
   'settings.about.telemetry.title': 'Usage recording',
   'settings.about.telemetry.healthy': 'Your runs are being recorded.',
-  'settings.about.telemetry.off': 'Recording is turned off, so nothing is counted. Turn it back on under Features.',
+  'settings.about.telemetry.off': 'Recording is turned off, so nothing is counted. Turn it back on under Application.',
   'settings.about.telemetry.degraded': 'Runs are not being recorded:',
   'settings.about.telemetry.issue.hook-missing':
     'The Claude Code hook is missing. Magic Slash could not write to ~/.claude/settings.json — check that the file is writable, then restart the app.',
@@ -333,28 +333,28 @@ export const en = {
   'setup.wizard.prerequisite.optional': '— optional',
   'setup.wizard.prerequisite.outdated': '— v{version}, needs v{min}+',
 
-  // ── Settings → About → Machine setup ─────────────────────────────────────
-  'settings.about.setup.title': 'Machine setup',
-  'settings.about.setup.healthy': 'Everything the skills need is in place.',
-  'settings.about.setup.degraded': 'Some things need your attention:',
-  'settings.about.setup.recheck': 'Check again',
-  'settings.about.setup.install': 'Install',
-  'settings.about.setup.installing': 'Installing…',
-  'settings.about.setup.getIt': 'Get it',
-  'settings.about.setup.prerequisite.missing': '`{name}` is not installed. The skills cannot run without it.',
-  'settings.about.setup.prerequisite.outdated': '`{name}` is v{version}, but v{min} or later is required.',
-  'settings.about.setup.prerequisite.optional':
+  // ── Settings → Application → Machine setup ───────────────────────────────
+  'settings.application.setup.title': 'Machine setup',
+  'settings.application.setup.healthy': 'Everything the skills need is in place.',
+  'settings.application.setup.degraded': 'Some things need your attention:',
+  'settings.application.setup.recheck': 'Check again',
+  'settings.application.setup.install': 'Install',
+  'settings.application.setup.installing': 'Installing…',
+  'settings.application.setup.getIt': 'Get it',
+  'settings.application.setup.prerequisite.missing': '`{name}` is not installed. The skills cannot run without it.',
+  'settings.application.setup.prerequisite.outdated': '`{name}` is v{version}, but v{min} or later is required.',
+  'settings.application.setup.prerequisite.optional':
     '`{name}` is not installed. Everything works, but /magic:resolve will reply without threading.',
-  'settings.about.setup.mcp.missing': 'The {name} MCP server is not configured, so those tools are unavailable.',
-  'settings.about.setup.mcp.legacy':
+  'settings.application.setup.mcp.missing': 'The {name} MCP server is not configured, so those tools are unavailable.',
+  'settings.application.setup.mcp.legacy':
     'The {name} MCP server is configured differently than this version expects. Migrating switches it to browser sign-in, with no token to store.',
-  'settings.about.setup.mcp.configure': 'Configure',
-  'settings.about.setup.mcp.migrate': 'Migrate',
-  'settings.about.setup.skills.missing': 'Missing skills: {names}.',
-  'settings.about.setup.skills.reinstall': 'Reinstall',
-  'settings.about.setup.integrations.title': 'Integrations',
-  'settings.about.setup.integrations.confirmOff': 'Turn Jira off?',
-  'settings.about.setup.integrations.offWarning':
+  'settings.application.setup.mcp.configure': 'Configure',
+  'settings.application.setup.mcp.migrate': 'Migrate',
+  'settings.application.setup.skills.missing': 'Missing skills: {names}.',
+  'settings.application.setup.skills.reinstall': 'Reinstall',
+  'settings.application.setup.integrations.title': 'Integrations',
+  'settings.application.setup.integrations.confirmOff': 'Turn Jira off?',
+  'settings.application.setup.integrations.offWarning':
     'This unregisters the Jira server and withdraws its permissions. Turning it back on takes one click.',
 
   // ── Toasts ───────────────────────────────────────────────────────────────

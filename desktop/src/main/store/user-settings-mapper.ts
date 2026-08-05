@@ -18,7 +18,7 @@ import { isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 
 /**
  * public.user_settings — one row per user, one column per application-level
- * preference (Settings → Features, Launch Mode, Atlassian flag). Every column is
+ * preference (Settings → Application, Launch Mode, Atlassian flag). Every column is
  * nullable and NULL means "the user never chose": the app's withDefaults() owns
  * the defaults, and several settings genuinely treat absent as a third state
  * distinct from false (autoStartAtLogin only touches the macOS login item once

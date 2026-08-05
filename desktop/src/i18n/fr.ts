@@ -73,7 +73,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.tab.claudeCode': 'Claude Code',
   'settings.tab.appearance': 'Apparence',
   'settings.tab.language': 'Langue et région',
-  'settings.tab.features': 'Fonctionnalités',
+  'settings.tab.application': 'Application',
   'settings.tab.shortcuts': 'Raccourcis',
   'settings.tab.about': 'À propos',
   'settings.language.section': 'Langue et région',
@@ -215,69 +215,69 @@ export const fr: Record<keyof typeof en, string> = {
     'Le coût est une estimation (tokens × tarifs publics de l’API), pas un montant facturé — votre forfait est un abonnement.',
   'settings.spend.empty': 'Aucun historique d’usage trouvé dans ~/.claude pour l’instant.',
 
-  // ── Réglages → Fonctionnalités ───────────────────────────────────────────
-  'settings.features.usageCard.section': 'Carte d’usage',
-  'settings.features.usageCard.label': 'Afficher la carte d’usage dans la barre latérale',
-  'settings.features.usageCard.help':
+  // ── Réglages → Application ───────────────────────────────────────────────
+  'settings.application.usageCard.section': 'Carte d’usage',
+  'settings.application.usageCard.label': 'Afficher la carte d’usage dans la barre latérale',
+  'settings.application.usageCard.help':
     'Affiche le compte connecté et les jauges Session (5 h) / Semaine (7 j) en bas de la barre latérale',
-  'settings.features.usageLogs.section': 'Enregistrement de l’activité',
-  'settings.features.usageLogs.label': 'Partager mon activité avec mon équipe',
-  'settings.features.usageLogs.help':
+  'settings.application.usageLogs.section': 'Enregistrement de l’activité',
+  'settings.application.usageLogs.label': 'Partager mon activité avec mon équipe',
+  'settings.application.usageLogs.help':
     'Activé par défaut, et vous pouvez le couper à tout moment. Ce que vous faites avec vos agents est envoyé au cloud Magic Slash pour que le tableau de bord de votre équipe reflète votre travail. Le couper arrête les nouveaux enregistrements ; ce qui a déjà été envoyé est conservé.',
-  'settings.features.usageLogs.collected': 'Collecté',
-  'settings.features.usageLogs.excluded': 'Jamais collecté',
-  'settings.features.usageLogs.collected.activity': 'L’activité des agents : tickets, commits, PR, revues',
-  'settings.features.usageLogs.collected.skills':
+  'settings.application.usageLogs.collected': 'Collecté',
+  'settings.application.usageLogs.excluded': 'Jamais collecté',
+  'settings.application.usageLogs.collected.activity': 'L’activité des agents : tickets, commits, PR, revues',
+  'settings.application.usageLogs.collected.skills':
     'Les skills que vous lancez (/magic:start, /magic:pr, …), la durée de chaque exécution et comment elle s’est terminée',
-  'settings.features.usageLogs.collected.session':
+  'settings.application.usageLogs.collected.session':
     'Le résumé de fin de session : coût estimé, lignes ajoutées/supprimées, durée, modèle',
-  'settings.features.usageLogs.collected.context':
+  'settings.application.usageLogs.collected.context':
     'L’identifiant et le titre du ticket, et les dépôts sur lesquels vous travaillez',
-  'settings.features.usageLogs.excluded.prompts': 'Vos prompts et les réponses de Claude',
-  'settings.features.usageLogs.excluded.code': 'Votre code, vos diffs, le contenu de vos fichiers',
-  'settings.features.usageLogs.excluded.terminal': 'La sortie du terminal et l’historique des commandes',
-  'settings.features.usageLogs.excluded.secrets': 'Vos jetons, vos clés et vos identifiants',
-  'settings.features.usageLogs.excluded.args': 'Ce que vous tapez après le nom d’un skill',
-  'settings.features.usageLogs.excluded.otherSkills': 'Les skills dont le nom ne commence pas par « magic- »',
-  'settings.features.usageLogs.footnote':
+  'settings.application.usageLogs.excluded.prompts': 'Vos prompts et les réponses de Claude',
+  'settings.application.usageLogs.excluded.code': 'Votre code, vos diffs, le contenu de vos fichiers',
+  'settings.application.usageLogs.excluded.terminal': 'La sortie du terminal et l’historique des commandes',
+  'settings.application.usageLogs.excluded.secrets': 'Vos jetons, vos clés et vos identifiants',
+  'settings.application.usageLogs.excluded.args': 'Ce que vous tapez après le nom d’un skill',
+  'settings.application.usageLogs.excluded.otherSkills': 'Les skills dont le nom ne commence pas par « magic- »',
+  'settings.application.usageLogs.footnote':
     'Chaque membre de votre organisation voit ces chiffres par personne sur la page Équipe.',
-  'settings.features.usageLogs.footnote.agents':
+  'settings.application.usageLogs.footnote.agents':
     'Quoi que dise ce réglage, vos agents (nom, branche, ticket, dépôts) se synchronisent avec votre équipe — c’est ce qui alimente la vue temps réel.',
-  'settings.features.digest.section': 'Résumé quotidien',
-  'settings.features.digest.label': 'Résumé quotidien de l’équipe',
-  'settings.features.digest.help':
+  'settings.application.digest.section': 'Résumé quotidien',
+  'settings.application.digest.label': 'Résumé quotidien de l’équipe',
+  'settings.application.digest.help':
     'Désactivé par défaut. Une fois activé, vous recevez une notification à 9 h résumant l’activité de votre équipe sur les dernières 24 heures (PR livrées, tickets passés en Terminé). Rien n’est envoyé s’il n’y a eu aucune activité.',
-  'settings.features.split.section': 'Vue divisée',
-  'settings.features.split.label': 'Activer la vue divisée',
-  'settings.features.split.help': 'Affiche deux agents côte à côte sur les écrans larges',
-  'settings.features.prWatcher.section': 'Surveillance des revues de PR',
-  'settings.features.prWatcher.label': 'Surveiller les revues de PR',
-  'settings.features.prWatcher.help':
+  'settings.application.split.section': 'Vue divisée',
+  'settings.application.split.label': 'Activer la vue divisée',
+  'settings.application.split.help': 'Affiche deux agents côte à côte sur les écrans larges',
+  'settings.application.prWatcher.section': 'Surveillance des revues de PR',
+  'settings.application.prWatcher.label': 'Surveiller les revues de PR',
+  'settings.application.prWatcher.help':
     'Interroge GitHub pour suivre l’état des revues sur les pull requests des agents',
-  'settings.features.prWatcher.intervalLabel': 'Fréquence d’interrogation',
-  'settings.features.prWatcher.intervalHelp': 'Fréquence des appels à l’API GitHub',
-  'settings.features.prWatcher.interval30s': '30 secondes',
-  'settings.features.prWatcher.interval1m': '1 minute',
-  'settings.features.prWatcher.interval2m': '2 minutes',
-  'settings.features.prWatcher.interval5m': '5 minutes',
-  'settings.features.prWatcher.autoLaunchLabel': 'Lancer les skills automatiquement',
-  'settings.features.prWatcher.autoLaunchHelp':
+  'settings.application.prWatcher.intervalLabel': 'Fréquence d’interrogation',
+  'settings.application.prWatcher.intervalHelp': 'Fréquence des appels à l’API GitHub',
+  'settings.application.prWatcher.interval30s': '30 secondes',
+  'settings.application.prWatcher.interval1m': '1 minute',
+  'settings.application.prWatcher.interval2m': '2 minutes',
+  'settings.application.prWatcher.interval5m': '5 minutes',
+  'settings.application.prWatcher.autoLaunchLabel': 'Lancer les skills automatiquement',
+  'settings.application.prWatcher.autoLaunchHelp':
     'Envoie /magic:resolve ou /magic:done directement dans le terminal de l’agent. Désactivé par défaut, par prudence.',
-  'settings.features.spotlight.section': 'Spotlight',
-  'settings.features.spotlight.label': 'Activer le raccourci global',
-  'settings.features.spotlight.help':
+  'settings.application.spotlight.section': 'Spotlight',
+  'settings.application.spotlight.label': 'Activer le raccourci global',
+  'settings.application.spotlight.help':
     'Ouvre le panneau de lancement rapide depuis n’importe où avec un raccourci clavier',
-  'settings.features.spotlight.shortcutLabel': 'Raccourci',
-  'settings.features.spotlight.shortcutHelp':
+  'settings.application.spotlight.shortcutLabel': 'Raccourci',
+  'settings.application.spotlight.shortcutHelp':
     'Choisissez le raccourci clavier qui ouvre et ferme le lancement rapide',
-  'settings.features.spotlight.error':
+  'settings.application.spotlight.error':
     'Impossible d’enregistrer le raccourci. Il est peut-être déjà utilisé par une autre application. Essayez-en un autre.',
-  'settings.features.background.section': 'Application en arrière-plan',
-  'settings.features.background.autoStartLabel': 'Lancer à l’ouverture de session',
-  'settings.features.background.autoStartHelp':
+  'settings.application.background.section': 'Application en arrière-plan',
+  'settings.application.background.autoStartLabel': 'Lancer à l’ouverture de session',
+  'settings.application.background.autoStartHelp':
     'Démarre Magic Slash automatiquement quand vous ouvrez votre session',
-  'settings.features.background.menuBarLabel': 'Barre de menus',
-  'settings.features.background.menuBarHelp':
+  'settings.application.background.menuBarLabel': 'Barre de menus',
+  'settings.application.background.menuBarHelp':
     'Magic Slash vit dans la barre de menus. Cliquez sur l’icône pour voir l’état des agents, ou faites un clic droit pour les actions rapides. Fermer la fenêtre la masque dans la barre de menus.',
 
   // ── Réglages → Raccourcis ────────────────────────────────────────────────
@@ -300,7 +300,7 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Réglages → À propos → Santé de l'enregistrement ──────────────────────
   'settings.about.telemetry.title': 'Enregistrement de l’activité',
   'settings.about.telemetry.healthy': 'Vos exécutions sont bien enregistrées.',
-  'settings.about.telemetry.off': 'L’enregistrement est désactivé, rien n’est comptabilisé. Vous pouvez le réactiver dans Fonctionnalités.',
+  'settings.about.telemetry.off': 'L’enregistrement est désactivé, rien n’est comptabilisé. Vous pouvez le réactiver dans l’onglet Application.',
   'settings.about.telemetry.degraded': 'Les exécutions ne sont pas enregistrées :',
   'settings.about.telemetry.issue.hook-missing':
     'Le hook Claude Code est absent. Magic Slash n’a pas pu écrire dans ~/.claude/settings.json — vérifiez que le fichier est accessible en écriture, puis redémarrez l’application.',
@@ -333,28 +333,28 @@ export const fr: Record<keyof typeof en, string> = {
   'setup.wizard.prerequisite.optional': '— optionnel',
   'setup.wizard.prerequisite.outdated': '— v{version}, v{min}+ requise',
 
-  // ── Réglages → À propos → Configuration de la machine ────────────────────
-  'settings.about.setup.title': 'Configuration de la machine',
-  'settings.about.setup.healthy': 'Tout ce dont les skills ont besoin est en place.',
-  'settings.about.setup.degraded': 'Quelques points demandent votre attention :',
-  'settings.about.setup.recheck': 'Revérifier',
-  'settings.about.setup.install': 'Installer',
-  'settings.about.setup.installing': 'Installation…',
-  'settings.about.setup.getIt': 'Obtenir',
-  'settings.about.setup.prerequisite.missing': '`{name}` n’est pas installé. Les skills ne peuvent pas fonctionner sans.',
-  'settings.about.setup.prerequisite.outdated': '`{name}` est en v{version}, mais la v{min} ou plus récente est requise.',
-  'settings.about.setup.prerequisite.optional':
+  // ── Réglages → Application → Configuration de la machine ─────────────────
+  'settings.application.setup.title': 'Configuration de la machine',
+  'settings.application.setup.healthy': 'Tout ce dont les skills ont besoin est en place.',
+  'settings.application.setup.degraded': 'Quelques points demandent votre attention :',
+  'settings.application.setup.recheck': 'Revérifier',
+  'settings.application.setup.install': 'Installer',
+  'settings.application.setup.installing': 'Installation…',
+  'settings.application.setup.getIt': 'Obtenir',
+  'settings.application.setup.prerequisite.missing': '`{name}` n’est pas installé. Les skills ne peuvent pas fonctionner sans.',
+  'settings.application.setup.prerequisite.outdated': '`{name}` est en v{version}, mais la v{min} ou plus récente est requise.',
+  'settings.application.setup.prerequisite.optional':
     '`{name}` n’est pas installé. Tout fonctionne, mais /magic:resolve répondra sans fil de discussion.',
-  'settings.about.setup.mcp.missing': 'Le serveur MCP {name} n’est pas configuré, ses outils sont donc indisponibles.',
-  'settings.about.setup.mcp.legacy':
+  'settings.application.setup.mcp.missing': 'Le serveur MCP {name} n’est pas configuré, ses outils sont donc indisponibles.',
+  'settings.application.setup.mcp.legacy':
     'Le serveur MCP {name} est configuré autrement que ce que cette version attend. La migration le bascule sur une connexion via le navigateur, sans jeton à stocker.',
-  'settings.about.setup.mcp.configure': 'Configurer',
-  'settings.about.setup.mcp.migrate': 'Migrer',
-  'settings.about.setup.skills.missing': 'Skills manquants : {names}.',
-  'settings.about.setup.skills.reinstall': 'Réinstaller',
-  'settings.about.setup.integrations.title': 'Intégrations',
-  'settings.about.setup.integrations.confirmOff': 'Désactiver Jira ?',
-  'settings.about.setup.integrations.offWarning':
+  'settings.application.setup.mcp.configure': 'Configurer',
+  'settings.application.setup.mcp.migrate': 'Migrer',
+  'settings.application.setup.skills.missing': 'Skills manquants : {names}.',
+  'settings.application.setup.skills.reinstall': 'Réinstaller',
+  'settings.application.setup.integrations.title': 'Intégrations',
+  'settings.application.setup.integrations.confirmOff': 'Désactiver Jira ?',
+  'settings.application.setup.integrations.offWarning':
     'Le serveur Jira sera retiré et ses permissions révoquées. Le réactiver ne demande qu’un clic.',
 
   // ── Notifications éphémères ──────────────────────────────────────────────

@@ -507,7 +507,7 @@ export const docEn = {
   'site.doc.updates.26': 'From the app',
   'site.doc.updates.27': 'Open <strong>Settings</strong> and click <strong>Check for updates</strong>. The current version is displayed in the sidebar and on the Settings page.',
   'site.doc.updates.28': 'Repairing a setup',
-  'site.doc.updates.29': 'Nothing to re-run: the app re-checks the skills, the MCP servers and the permissions at every launch. Settings &rarr; About &rarr; Machine setup shows the result and repairs it on demand.',
+  'site.doc.updates.29': 'Nothing to re-run: the app re-checks the skills, the MCP servers and the permissions at every launch. Settings &rarr; Application &rarr; Machine setup shows the result and repairs it on demand.',
 
   // ── Environments ────────────────────────────────────────────────────────
   'site.doc.environments.1': 'Supported Environments',
@@ -654,7 +654,7 @@ export const docEn = {
   'site.doc.troubleshooting.94': 'Skills not found after update?',
   'site.doc.troubleshooting.95': 'Skills are stored in <code>~/.claude/skills/</code>. The app refreshes them on each startup, so restarting it fixes most cases.',
   'site.doc.troubleshooting.96': 'Force a reinstall',
-  'site.doc.troubleshooting.96b': 'Settings &rarr; About &rarr; Machine setup &rarr; Reinstall.',
+  'site.doc.troubleshooting.96b': 'Settings &rarr; Application &rarr; Machine setup &rarr; Reinstall.',
   'site.doc.troubleshooting.97': 'Verify skills',
   'site.doc.troubleshooting.98': 'You should see 7 SKILL.md files, one per skill.',
   'site.doc.troubleshooting.99': 'Can I use magic-slash with GitHub Issues instead of Jira?',

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
-import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, type LucideIcon } from 'lucide-react'
+import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, AppWindow, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage } from './OrgPage'
@@ -43,8 +43,10 @@ const LAUNCH_MODE_OPTIONS: { value: LaunchMode; labelKey: MessageKey; descriptio
 ]
 
 // Icons mirror each tab's own section header, so the rail and the content agree.
-// Claude Code is the exception: it holds four sections (account, launch mode,
-// rate usage, spend) and gets the CLI's own icon rather than any one of theirs.
+// Claude Code and Application are the exceptions: each holds several sections —
+// the CLI's account/launch mode/usage on one side, the machine's setup and every
+// feature toggle on the other — so each gets an icon for the whole rather than
+// one borrowed from a single section.
 //
 // Message KEYS, not labels: this list is module scope, so a `t()` call here would
 // be evaluated once at import and pin the rail to whatever language the app
@@ -53,10 +55,10 @@ const SETTINGS_TABS: { id: SettingsTab; labelKey: MessageKey; icon: LucideIcon }
   { id: 'account', labelKey: 'settings.tab.account', icon: CircleUserRound },
   { id: 'organization', labelKey: 'settings.tab.organization', icon: Building2 },
   { id: 'repositories', labelKey: 'settings.tab.repositories', icon: FolderGit },
+  { id: 'application', labelKey: 'settings.tab.application', icon: AppWindow },
   { id: 'claude-code', labelKey: 'settings.tab.claudeCode', icon: SquareTerminal },
   { id: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
   { id: 'language', labelKey: 'settings.tab.language', icon: Languages },
-  { id: 'features', labelKey: 'settings.tab.features', icon: Sparkles },
   { id: 'shortcuts', labelKey: 'settings.tab.shortcuts', icon: Keyboard },
   { id: 'about', labelKey: 'settings.tab.about', icon: Info },
 ]
@@ -167,10 +169,10 @@ function SettingsAccountFooter() {
 // labels, for the same reason as SETTINGS_TABS: module scope is evaluated once at
 // import, so a literal would pin the list to the boot language.
 const USAGE_LOGS_COLLECTED: MessageKey[] = [
-  'settings.features.usageLogs.collected.activity',
-  'settings.features.usageLogs.collected.skills',
-  'settings.features.usageLogs.collected.session',
-  'settings.features.usageLogs.collected.context',
+  'settings.application.usageLogs.collected.activity',
+  'settings.application.usageLogs.collected.skills',
+  'settings.application.usageLogs.collected.session',
+  'settings.application.usageLogs.collected.context',
 ]
 
 // The last two are the counterweight to the skills line opposite: now that a run
@@ -184,12 +186,12 @@ const USAGE_LOGS_COLLECTED: MessageKey[] = [
 // ours" would over-claim — a third-party skill called `acme:magic-deploy` clears that
 // filter. The panel states the rule the code actually enforces.
 const USAGE_LOGS_EXCLUDED: MessageKey[] = [
-  'settings.features.usageLogs.excluded.prompts',
-  'settings.features.usageLogs.excluded.code',
-  'settings.features.usageLogs.excluded.terminal',
-  'settings.features.usageLogs.excluded.secrets',
-  'settings.features.usageLogs.excluded.args',
-  'settings.features.usageLogs.excluded.otherSkills',
+  'settings.application.usageLogs.excluded.prompts',
+  'settings.application.usageLogs.excluded.code',
+  'settings.application.usageLogs.excluded.terminal',
+  'settings.application.usageLogs.excluded.secrets',
+  'settings.application.usageLogs.excluded.args',
+  'settings.application.usageLogs.excluded.otherSkills',
 ]
 
 /**
@@ -203,8 +205,8 @@ const USAGE_LOGS_EXCLUDED: MessageKey[] = [
  */
 function UsageLogsBreakdown({ t }: { t: Translate }) {
   const columns = [
-    { titleKey: 'settings.features.usageLogs.collected', keys: USAGE_LOGS_COLLECTED, Icon: Check, tone: 'text-green' },
-    { titleKey: 'settings.features.usageLogs.excluded', keys: USAGE_LOGS_EXCLUDED, Icon: X, tone: 'text-red' },
+    { titleKey: 'settings.application.usageLogs.collected', keys: USAGE_LOGS_COLLECTED, Icon: Check, tone: 'text-green' },
+    { titleKey: 'settings.application.usageLogs.excluded', keys: USAGE_LOGS_EXCLUDED, Icon: X, tone: 'text-red' },
   ] as const
 
   return (
@@ -892,17 +894,23 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       </div>
       </div>}
 
-      {/* Features tab */}
-      {contentTab === 'features' && <div className="flex flex-col gap-8">
+      {/* Application tab — the app itself. Setup comes first: nothing below it
+          matters if the skills cannot run. Then the window you look at every day
+          (usage card, split view, Spotlight, menu bar), and last what the app does
+          on its own in the background (activity recording, digest, PR watcher). */}
+      {contentTab === 'application' && <div className="flex flex-col gap-8">
+
+      {/* Machine setup (prerequisites, MCP servers, integrations) */}
+      <SetupHealthCard />
 
       {/* Usage Card Section */}
       <div>
-        <SectionHeader icon={Gauge} title={t('settings.features.usageCard.section')} />
+        <SectionHeader icon={Gauge} title={t('settings.application.usageCard.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">{t('settings.features.usageCard.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.usageCard.help')}</div>
+              <div className="text-sm font-medium">{t('settings.application.usageCard.label')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.usageCard.help')}</div>
             </div>
             <button
               onClick={async () => {
@@ -923,15 +931,121 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         </div>
       </div>
 
+      {/* Split View Section */}
+      <div>
+        <SectionHeader icon={Columns} title={t('settings.application.split.section')} />
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">{t('settings.application.split.label')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.split.help')}</div>
+            </div>
+            <button
+              onClick={() => { toggleSplitEnabled(); updateSplitEnabled(!splitEnabled) }}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                splitEnabled ? 'bg-accent' : 'bg-ink/20'
+              }`}
+            >
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
+                splitEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Spotlight Section */}
+      <div>
+        <SectionHeader icon={Search} title={t('settings.application.spotlight.section')} />
+        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">{t('settings.application.spotlight.label')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.spotlight.help')}</div>
+            </div>
+            <button
+              onClick={handleSpotlightToggle}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                spotlightEnabled ? 'bg-accent' : 'bg-ink/20'
+              }`}
+            >
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
+                spotlightEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+          <div className="border-t border-line-subtle pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">{t('settings.application.spotlight.shortcutLabel')}</div>
+                <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.spotlight.shortcutHelp')}</div>
+              </div>
+              <div className="relative">
+                <select
+                  value={spotlightShortcut}
+                  onChange={(e) => handleSpotlightShortcutChange(e.target.value as SpotlightShortcut)}
+                  disabled={!spotlightEnabled}
+                  className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
+                >
+                  {SPOTLIGHT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+          {spotlightError && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-red/10 border border-red/20 rounded-lg text-xs text-red">
+              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>{t('settings.application.spotlight.error')}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Background App Section */}
+      <div>
+        <SectionHeader icon={MonitorSmartphone} title={t('settings.application.background.section')} />
+        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">{t('settings.application.background.autoStartLabel')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.background.autoStartHelp')}</div>
+            </div>
+            <button
+              onClick={() => {
+                const newValue = !autoStart
+                setAutoStart(newValue)
+                window.electronAPI.config.setAutoStart(newValue)
+              }}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                autoStart ? 'bg-accent' : 'bg-ink/20'
+              }`}
+            >
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
+                autoStart ? 'translate-x-[18px]' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+          <div className="border-t border-line-subtle pt-4">
+            <div className="text-sm font-medium mb-1">{t('settings.application.background.menuBarLabel')}</div>
+            <div className="text-xs text-text-secondary/50">
+              {t('settings.application.background.menuBarHelp')}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Activity recording (ON by default — an explicit false opts out) */}
       <div>
-        <SectionHeader icon={BarChart3} title={t('settings.features.usageLogs.section')} />
+        <SectionHeader icon={BarChart3} title={t('settings.application.usageLogs.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-medium">{t('settings.features.usageLogs.label')}</div>
+              <div className="text-sm font-medium">{t('settings.application.usageLogs.label')}</div>
               <div className="text-xs text-text-secondary/50 mt-0.5">
-                {t('settings.features.usageLogs.help')}
+                {t('settings.application.usageLogs.help')}
               </div>
             </div>
             <button
@@ -960,25 +1074,25 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             <>
               <UsageLogsBreakdown t={t} />
               <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-                {t('settings.features.usageLogs.footnote')}
+                {t('settings.application.usageLogs.footnote')}
               </div>
             </>
           )}
           <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-            {t('settings.features.usageLogs.footnote.agents')}
+            {t('settings.application.usageLogs.footnote.agents')}
           </div>
         </div>
       </div>
 
       {/* Daily Digest Section (opt-in — off by default) */}
       <div>
-        <SectionHeader icon={Bell} title={t('settings.features.digest.section')} />
+        <SectionHeader icon={Bell} title={t('settings.application.digest.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-medium">{t('settings.features.digest.label')}</div>
+              <div className="text-sm font-medium">{t('settings.application.digest.label')}</div>
               <div className="text-xs text-text-secondary/50 mt-0.5">
-                {t('settings.features.digest.help')}
+                {t('settings.application.digest.help')}
               </div>
             </div>
             <button
@@ -1000,37 +1114,14 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         </div>
       </div>
 
-      {/* Split View Section */}
-      <div>
-        <SectionHeader icon={Columns} title={t('settings.features.split.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.features.split.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.split.help')}</div>
-            </div>
-            <button
-              onClick={() => { toggleSplitEnabled(); updateSplitEnabled(!splitEnabled) }}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                splitEnabled ? 'bg-accent' : 'bg-ink/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                splitEnabled ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* PR Review Watcher Section */}
       <div>
-        <SectionHeader icon={GitPullRequest} title={t('settings.features.prWatcher.section')} />
+        <SectionHeader icon={GitPullRequest} title={t('settings.application.prWatcher.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">{t('settings.features.prWatcher.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.prWatcher.help')}</div>
+              <div className="text-sm font-medium">{t('settings.application.prWatcher.label')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.help')}</div>
             </div>
             <button
               onClick={() => {
@@ -1052,8 +1143,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               <div className="border-t border-line-subtle pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-medium">{t('settings.features.prWatcher.intervalLabel')}</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.prWatcher.intervalHelp')}</div>
+                    <div className="text-sm font-medium">{t('settings.application.prWatcher.intervalLabel')}</div>
+                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.intervalHelp')}</div>
                   </div>
                   <div className="relative">
                     <select
@@ -1065,10 +1156,10 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                       }}
                       className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
                     >
-                      <option value={30_000}>{t('settings.features.prWatcher.interval30s')}</option>
-                      <option value={60_000}>{t('settings.features.prWatcher.interval1m')}</option>
-                      <option value={120_000}>{t('settings.features.prWatcher.interval2m')}</option>
-                      <option value={300_000}>{t('settings.features.prWatcher.interval5m')}</option>
+                      <option value={30_000}>{t('settings.application.prWatcher.interval30s')}</option>
+                      <option value={60_000}>{t('settings.application.prWatcher.interval1m')}</option>
+                      <option value={120_000}>{t('settings.application.prWatcher.interval2m')}</option>
+                      <option value={300_000}>{t('settings.application.prWatcher.interval5m')}</option>
                     </select>
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
                   </div>
@@ -1077,8 +1168,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               <div className="border-t border-line-subtle pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-medium">{t('settings.features.prWatcher.autoLaunchLabel')}</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.prWatcher.autoLaunchHelp')}</div>
+                    <div className="text-sm font-medium">{t('settings.application.prWatcher.autoLaunchLabel')}</div>
+                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.autoLaunchHelp')}</div>
                   </div>
                   <button
                     onClick={() => {
@@ -1098,89 +1189,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               </div>
             </>
           )}
-        </div>
-      </div>
-
-      {/* Spotlight Section */}
-      <div>
-        <SectionHeader icon={Search} title={t('settings.features.spotlight.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.features.spotlight.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.spotlight.help')}</div>
-            </div>
-            <button
-              onClick={handleSpotlightToggle}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                spotlightEnabled ? 'bg-accent' : 'bg-ink/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                spotlightEnabled ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
-          </div>
-          <div className="border-t border-line-subtle pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">{t('settings.features.spotlight.shortcutLabel')}</div>
-                <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.spotlight.shortcutHelp')}</div>
-              </div>
-              <div className="relative">
-                <select
-                  value={spotlightShortcut}
-                  onChange={(e) => handleSpotlightShortcutChange(e.target.value as SpotlightShortcut)}
-                  disabled={!spotlightEnabled}
-                  className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
-                >
-                  {SPOTLIGHT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
-              </div>
-            </div>
-          </div>
-          {spotlightError && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-red/10 border border-red/20 rounded-lg text-xs text-red">
-              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>{t('settings.features.spotlight.error')}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Background App Section */}
-      <div>
-        <SectionHeader icon={MonitorSmartphone} title={t('settings.features.background.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.features.background.autoStartLabel')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.features.background.autoStartHelp')}</div>
-            </div>
-            <button
-              onClick={() => {
-                const newValue = !autoStart
-                setAutoStart(newValue)
-                window.electronAPI.config.setAutoStart(newValue)
-              }}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                autoStart ? 'bg-accent' : 'bg-ink/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                autoStart ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
-          </div>
-          <div className="border-t border-line-subtle pt-4">
-            <div className="text-sm font-medium mb-1">{t('settings.features.background.menuBarLabel')}</div>
-            <div className="text-xs text-text-secondary/50">
-              {t('settings.features.background.menuBarHelp')}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -1257,7 +1265,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             </button>
           </div>
         </div>
-        <SetupHealthCard />
         <TelemetryHealthCard />
       </div>}
         </SweepPane>

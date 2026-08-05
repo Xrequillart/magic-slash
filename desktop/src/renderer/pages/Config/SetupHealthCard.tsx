@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, ExternalLink, Copy } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, ExternalLink, Copy, Wrench } from 'lucide-react'
 import type { McpServerStatus, PrerequisiteId, PrerequisiteStatus, SetupStatus } from '../../../types'
 import { useT } from '../../i18n'
+import { SectionHeader } from './SectionHeader'
 
 /**
  * The machine's setup, stated and repairable — the panel that replaced the install
@@ -121,143 +122,152 @@ export function SetupHealthCard() {
   const tone = missingRequired.length > 0 ? 'text-red' : healthy ? 'text-green' : 'text-yellow'
 
   return (
-    <div className="bg-surface border border-line-strong rounded-xl p-4 mt-3">
-      <div className="flex items-start gap-2.5">
-        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${tone}`} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <div className="font-medium text-sm">{t('settings.about.setup.title')}</div>
-            <button
-              onClick={refresh}
-              className="text-xs text-text-secondary/60 hover:text-ink transition-colors flex items-center gap-1"
-            >
-              <RefreshCw className="w-3 h-3" />
-              {t('settings.about.setup.recheck')}
-            </button>
-          </div>
-          <div className="text-xs text-text-secondary/70 mt-1">
-            {healthy ? t('settings.about.setup.healthy') : t('settings.about.setup.degraded')}
-          </div>
+    <div>
+      {/* Titled like every other section of the Application tab, rather than from
+          inside the card: it sits among the feature toggles now, and a bold title
+          in the box would make it read as a different kind of thing. The status
+          icon stays inside — it belongs to the verdict, not to the heading. */}
+      <SectionHeader
+        icon={Wrench}
+        title={t('settings.application.setup.title')}
+        action={
+          <button
+            onClick={refresh}
+            className="text-xs text-text-secondary/60 hover:text-ink transition-colors flex items-center gap-1"
+          >
+            <RefreshCw className="w-3 h-3" />
+            {t('settings.application.setup.recheck')}
+          </button>
+        }
+      />
+      <div className="bg-surface border border-line-strong rounded-xl p-4">
+        <div className="flex items-start gap-2.5">
+          <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${tone}`} />
+          <div className="min-w-0 flex-1">
+            <div className="text-xs text-text-secondary/70">
+              {healthy ? t('settings.application.setup.healthy') : t('settings.application.setup.degraded')}
+            </div>
 
-          {/* Required tools that are missing or too old: nothing runs until these are fixed. */}
-          {missingRequired.length > 0 && (
-            <ul className="mt-2.5 space-y-2">
-              {missingRequired.map((prerequisite) => (
-                <PrerequisiteRow
-                  key={prerequisite.id}
-                  prerequisite={prerequisite}
-                  installing={installing === prerequisite.id}
-                  disabled={installing !== null}
-                  onInstall={() => install(prerequisite.id)}
-                  onCopy={copy}
-                  copied={copied}
-                />
-              ))}
-            </ul>
-          )}
+            {/* Required tools that are missing or too old: nothing runs until these are fixed. */}
+            {missingRequired.length > 0 && (
+              <ul className="mt-2.5 space-y-2">
+                {missingRequired.map((prerequisite) => (
+                  <PrerequisiteRow
+                    key={prerequisite.id}
+                    prerequisite={prerequisite}
+                    installing={installing === prerequisite.id}
+                    disabled={installing !== null}
+                    onInstall={() => install(prerequisite.id)}
+                    onCopy={copy}
+                    copied={copied}
+                  />
+                ))}
+              </ul>
+            )}
 
-          {missingOptional.length > 0 && (
-            <ul className="mt-2 space-y-2">
-              {missingOptional.map((prerequisite) => (
-                <PrerequisiteRow
-                  key={prerequisite.id}
-                  prerequisite={prerequisite}
-                  installing={installing === prerequisite.id}
-                  disabled={installing !== null}
-                  onInstall={() => install(prerequisite.id)}
-                  onCopy={copy}
-                  copied={copied}
-                  optional
-                />
-              ))}
-            </ul>
-          )}
+            {missingOptional.length > 0 && (
+              <ul className="mt-2 space-y-2">
+                {missingOptional.map((prerequisite) => (
+                  <PrerequisiteRow
+                    key={prerequisite.id}
+                    prerequisite={prerequisite}
+                    installing={installing === prerequisite.id}
+                    disabled={installing !== null}
+                    onInstall={() => install(prerequisite.id)}
+                    onCopy={copy}
+                    copied={copied}
+                    optional
+                  />
+                ))}
+              </ul>
+            )}
 
-          {/* The installer's own output while it works. Hidden when idle. */}
-          {installing && installLog && (
-            <pre className="mt-2 max-h-24 overflow-y-auto text-[10px] leading-relaxed text-text-secondary/60 bg-bg border border-line rounded-lg p-2 whitespace-pre-wrap">
-              {installLog}
-            </pre>
-          )}
+            {/* The installer's own output while it works. Hidden when idle. */}
+            {installing && installLog && (
+              <pre className="mt-2 max-h-24 overflow-y-auto text-[10px] leading-relaxed text-text-secondary/60 bg-bg border border-line rounded-lg p-2 whitespace-pre-wrap">
+                {installLog}
+              </pre>
+            )}
 
-          {mcpToFix.map((server) => (
-            <div key={server.id} className="mt-2 flex items-start justify-between gap-2">
-              <div className="text-xs text-text-secondary/70">
-                {/* `legacy` and `missing` are genuinely different situations: one is an
-                    absence to fill, the other a working config we refuse to overwrite
-                    without asking (see main/setup/mcp.ts). */}
-                {server.state === 'legacy'
-                  ? t('settings.about.setup.mcp.legacy', { name: server.id })
-                  : t('settings.about.setup.mcp.missing', { name: server.id })}
+            {mcpToFix.map((server) => (
+              <div key={server.id} className="mt-2 flex items-start justify-between gap-2">
+                <div className="text-xs text-text-secondary/70">
+                  {/* `legacy` and `missing` are genuinely different situations: one is an
+                      absence to fill, the other a working config we refuse to overwrite
+                      without asking (see main/setup/mcp.ts). */}
+                  {server.state === 'legacy'
+                    ? t('settings.application.setup.mcp.legacy', { name: server.id })
+                    : t('settings.application.setup.mcp.missing', { name: server.id })}
+                </div>
+                <button
+                  onClick={() => provisionMcp(server.id)}
+                  disabled={busy === `mcp:${server.id}`}
+                  className="shrink-0 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
+                >
+                  {server.state === 'legacy'
+                    ? t('settings.application.setup.mcp.migrate')
+                    : t('settings.application.setup.mcp.configure')}
+                </button>
               </div>
-              <button
-                onClick={() => provisionMcp(server.id)}
-                disabled={busy === `mcp:${server.id}`}
-                className="shrink-0 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
-              >
-                {server.state === 'legacy'
-                  ? t('settings.about.setup.mcp.migrate')
-                  : t('settings.about.setup.mcp.configure')}
-              </button>
-            </div>
-          ))}
+            ))}
 
-          {status.missingSkills.length > 0 && (
-            <div className="mt-2 flex items-start justify-between gap-2">
-              <div className="text-xs text-text-secondary/70">
-                {t('settings.about.setup.skills.missing', { names: status.missingSkills.join(', ') })}
-              </div>
-              <button
-                onClick={reinstallSkills}
-                disabled={busy === 'skills'}
-                className="shrink-0 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
-              >
-                {busy === 'skills' ? t('common.loading') : t('settings.about.setup.skills.reinstall')}
-              </button>
-            </div>
-          )}
-
-          {/* Integrations. Lives here rather than in its own section because it is the
-              same decision the first-run wizard makes, reading the same status — and
-              because the wizard promises it can be changed later, which has to be
-              true somewhere. */}
-          <div className="mt-3 pt-3 border-t border-line">
-            <div className="text-xs font-medium text-text-secondary/70">
-              {t('settings.about.setup.integrations.title')}
-            </div>
-            <div className="flex items-center gap-1.5 mt-2">
-              <button
-                onClick={() => setIntegrations(true)}
-                disabled={busy === 'integrations'}
-                className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors disabled:opacity-50 ${
-                  status.integrations.atlassian
-                    ? 'bg-accent/10 border-accent/30 text-accent'
-                    : 'bg-surface border-line text-text-secondary hover:text-ink'
-                }`}
-              >
-                {t('setup.wizard.integrations.both')}
-              </button>
-              <button
-                onClick={() => setIntegrations(false)}
-                disabled={busy === 'integrations'}
-                className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors disabled:opacity-50 ${
-                  !status.integrations.atlassian
-                    ? 'bg-accent/10 border-accent/30 text-accent'
-                    : confirmingOff
-                      ? 'bg-red/10 border-red/30 text-red'
-                      : 'bg-surface border-line text-text-secondary hover:text-ink'
-                }`}
-              >
-                {confirmingOff && status.integrations.atlassian
-                  ? t('settings.about.setup.integrations.confirmOff')
-                  : t('setup.wizard.integrations.githubOnly')}
-              </button>
-            </div>
-            {confirmingOff && status.integrations.atlassian && (
-              <div className="text-[11px] text-text-secondary/50 mt-1.5">
-                {t('settings.about.setup.integrations.offWarning')}
+            {status.missingSkills.length > 0 && (
+              <div className="mt-2 flex items-start justify-between gap-2">
+                <div className="text-xs text-text-secondary/70">
+                  {t('settings.application.setup.skills.missing', { names: status.missingSkills.join(', ') })}
+                </div>
+                <button
+                  onClick={reinstallSkills}
+                  disabled={busy === 'skills'}
+                  className="shrink-0 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
+                >
+                  {busy === 'skills' ? t('common.loading') : t('settings.application.setup.skills.reinstall')}
+                </button>
               </div>
             )}
+
+            {/* Integrations. Lives here rather than in its own section because it is the
+                same decision the first-run wizard makes, reading the same status — and
+                because the wizard promises it can be changed later, which has to be
+                true somewhere. */}
+            <div className="mt-3 pt-3 border-t border-line">
+              <div className="text-xs font-medium text-text-secondary/70">
+                {t('settings.application.setup.integrations.title')}
+              </div>
+              <div className="flex items-center gap-1.5 mt-2">
+                <button
+                  onClick={() => setIntegrations(true)}
+                  disabled={busy === 'integrations'}
+                  className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors disabled:opacity-50 ${
+                    status.integrations.atlassian
+                      ? 'bg-accent/10 border-accent/30 text-accent'
+                      : 'bg-surface border-line text-text-secondary hover:text-ink'
+                  }`}
+                >
+                  {t('setup.wizard.integrations.both')}
+                </button>
+                <button
+                  onClick={() => setIntegrations(false)}
+                  disabled={busy === 'integrations'}
+                  className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors disabled:opacity-50 ${
+                    !status.integrations.atlassian
+                      ? 'bg-accent/10 border-accent/30 text-accent'
+                      : confirmingOff
+                        ? 'bg-red/10 border-red/30 text-red'
+                        : 'bg-surface border-line text-text-secondary hover:text-ink'
+                  }`}
+                >
+                  {confirmingOff && status.integrations.atlassian
+                    ? t('settings.application.setup.integrations.confirmOff')
+                    : t('setup.wizard.integrations.githubOnly')}
+                </button>
+              </div>
+              {confirmingOff && status.integrations.atlassian && (
+                <div className="text-[11px] text-text-secondary/50 mt-1.5">
+                  {t('settings.application.setup.integrations.offWarning')}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -295,14 +305,14 @@ function PrerequisiteRow({ prerequisite, installing, disabled, optional, copied,
         <span aria-hidden className={optional ? 'text-text-secondary/40' : 'text-red'}>•</span>
         <span>
           {prerequisite.outdated
-            ? t('settings.about.setup.prerequisite.outdated', {
+            ? t('settings.application.setup.prerequisite.outdated', {
                 name: prerequisite.id,
                 version: prerequisite.version ?? '?',
                 min: prerequisite.minVersion ?? '?',
               })
             : optional
-              ? t('settings.about.setup.prerequisite.optional', { name: prerequisite.id })
-              : t('settings.about.setup.prerequisite.missing', { name: prerequisite.id })}
+              ? t('settings.application.setup.prerequisite.optional', { name: prerequisite.id })
+              : t('settings.application.setup.prerequisite.missing', { name: prerequisite.id })}
         </span>
       </div>
 
@@ -313,7 +323,7 @@ function PrerequisiteRow({ prerequisite, installing, disabled, optional, copied,
           className="shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
         >
           <Download className="w-3 h-3" />
-          {installing ? t('settings.about.setup.installing') : t('settings.about.setup.install')}
+          {installing ? t('settings.application.setup.installing') : t('settings.application.setup.install')}
         </button>
       ) : prerequisite.installCommand ? (
         <button
@@ -331,7 +341,7 @@ function PrerequisiteRow({ prerequisite, installing, disabled, optional, copied,
           className="shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-text-secondary border border-line rounded-md hover:bg-surface hover:text-ink transition-colors"
         >
           <ExternalLink className="w-3 h-3" />
-          {t('settings.about.setup.getIt')}
+          {t('settings.application.setup.getIt')}
         </a>
       ) : null}
     </li>

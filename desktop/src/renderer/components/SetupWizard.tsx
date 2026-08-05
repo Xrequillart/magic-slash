@@ -305,7 +305,7 @@ function WizardPrerequisiteRow({ prerequisite, installing, disabled, copied, onI
           className="shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
         >
           {installing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-          {installing ? t('settings.about.setup.installing') : t('settings.about.setup.install')}
+          {installing ? t('settings.application.setup.installing') : t('settings.application.setup.install')}
         </button>
       ) : prerequisite.installCommand ? (
         <button
@@ -313,7 +313,7 @@ function WizardPrerequisiteRow({ prerequisite, installing, disabled, copied, onI
           className="shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-mono text-text-secondary border border-line rounded-md hover:bg-surface hover:text-ink transition-colors"
         >
           <Copy className="w-3 h-3" />
-          {copied === prerequisite.installCommand ? t('common.copied') : t('settings.about.setup.install')}
+          {copied === prerequisite.installCommand ? t('common.copied') : t('settings.application.setup.install')}
         </button>
       ) : prerequisite.docsUrl ? (
         <a
@@ -323,7 +323,7 @@ function WizardPrerequisiteRow({ prerequisite, installing, disabled, copied, onI
           className="shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-text-secondary border border-line rounded-md hover:bg-surface hover:text-ink transition-colors"
         >
           <ExternalLink className="w-3 h-3" />
-          {t('settings.about.setup.getIt')}
+          {t('settings.application.setup.getIt')}
         </a>
       ) : null}
     </div>

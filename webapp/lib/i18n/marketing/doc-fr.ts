@@ -504,7 +504,7 @@ export const docFr: Record<keyof typeof docEn, string> = {
   'site.doc.updates.26': 'Depuis l\'application',
   'site.doc.updates.27': 'Ouvrez les <strong>Paramètres</strong> et cliquez sur <strong>Vérifier les mises à jour</strong>. La version courante est affichée dans la barre latérale et sur la page des paramètres.',
   'site.doc.updates.28': 'Réparer une installation',
-  'site.doc.updates.29': 'Rien à relancer : l\'application revérifie les skills, les serveurs MCP et les permissions à chaque lancement. Réglages &rarr; À propos &rarr; Configuration de la machine en affiche le résultat et les répare à la demande.',
+  'site.doc.updates.29': 'Rien à relancer : l\'application revérifie les skills, les serveurs MCP et les permissions à chaque lancement. Réglages &rarr; Application &rarr; Configuration de la machine en affiche le résultat et les répare à la demande.',
 
   // ── Environments ────────────────────────────────────────────────────────
   'site.doc.environments.1': 'Environnements pris en charge',
@@ -651,7 +651,7 @@ export const docFr: Record<keyof typeof docEn, string> = {
   'site.doc.troubleshooting.94': 'Skills introuvables après une mise à jour ?',
   'site.doc.troubleshooting.95': 'Les skills sont stockés dans <code>~/.claude/skills/</code>. L\'application les rafraîchit à chaque démarrage : un redémarrage règle la plupart des cas.',
   'site.doc.troubleshooting.96': 'Forcer une réinstallation',
-  'site.doc.troubleshooting.96b': 'Réglages &rarr; À propos &rarr; Configuration de la machine &rarr; Réinstaller.',
+  'site.doc.troubleshooting.96b': 'Réglages &rarr; Application &rarr; Configuration de la machine &rarr; Réinstaller.',
   'site.doc.troubleshooting.97': 'Vérifier les skills',
   'site.doc.troubleshooting.98': 'Vous devriez voir 7 fichiers SKILL.md, un par skill.',
   'site.doc.troubleshooting.99': 'Puis-je utiliser magic-slash avec GitHub Issues plutôt que Jira ?',

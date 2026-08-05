@@ -21,7 +21,7 @@ import type { UserSettings } from './settings'
  * show the same state the app is actually in.
  *
  * Source of truth: `desktop/src/renderer/pages/Config/index.tsx` (the `??`
- * chain where the Features tab reads the config) and `DEFAULT_THEME` /
+ * chain where the Application tab reads the config) and `DEFAULT_THEME` /
  * `DEFAULT_LANGUAGE` in `desktop/src/types.ts`.
  */
 export const DEFAULTS = {
@@ -76,7 +76,7 @@ export interface AdminUserSettings extends UserSettings {
  *  * splitActive — the store's initial state.
  *    desktop/src/renderer/store/index.ts
  *  * spotlightEnabled / spotlightShortcut — the `?? true` and `?? 'Control+Space'`
- *    the Features tab reads with. desktop/src/renderer/pages/Config/index.tsx
+ *    the Application tab reads with. desktop/src/renderer/pages/Config/index.tsx
  *  * autoStartAtLogin — applied only when set, and the OS default for a freshly
  *    installed app is not to open at login. desktop/src/main/index.ts
  *  * syncClaudeTheme — `?? true`.
@@ -106,10 +106,10 @@ export interface SettingGroup {
  * The seventeen settings, grouped by FEATURE, in reading order. Also the field
  * allowlist — a column absent from here is a column the console does not show.
  *
- * The groups and their titles are the desktop app's own sections, verbatim: "Usage
- * card", "Activity recording", "Split View", "PR Review Watcher", "Spotlight",
- * "Background App" are the SectionHeaders of its Features tab, and Appearance and
- * Launch mode are where the rest live (desktop/src/renderer/pages/Config/index.tsx,
+ * The groups and their titles are the desktop app's own sections, verbatim and in its
+ * own order: "Usage card", "Split View", "Spotlight", "Background App", "Activity
+ * recording", "Daily digest", "PR Review Watcher" are the SectionHeaders of its
+ * Application tab, and Appearance and Launch mode are where the rest live (desktop/src/renderer/pages/Config/index.tsx,
  * titles from desktop/src/i18n/en.ts). That is the point of grouping them this way
  * rather than by a tidier taxonomy invented here: an operator reads this card while
  * someone describes the screen in front of them, and the two now use the same words
@@ -143,29 +143,10 @@ export const SETTING_GROUPS: SettingGroup[] = [
     ],
   },
   {
-    // The "(on by default)" this label used to carry is gone: the value column now
-    // prints the default itself, for every row rather than for the one that was
-    // surprising enough to annotate by hand.
-    title: 'Activity recording',
-    fields: [{ field: 'usageLogsEnabled', label: 'Enabled' }],
-  },
-  {
-    title: 'Daily digest',
-    fields: [{ field: 'dailyDigestEnabled', label: 'Enabled' }],
-  },
-  {
     title: 'Split View',
     fields: [
       { field: 'splitEnabled', label: 'Enabled' },
       { field: 'splitActive', label: 'Currently active' },
-    ],
-  },
-  {
-    title: 'PR Review Watcher',
-    fields: [
-      { field: 'prReviewsEnabled', label: 'Enabled' },
-      { field: 'prReviewsPollIntervalMs', label: 'Poll interval' },
-      { field: 'prReviewsAutoLaunchSkills', label: 'Auto-launch skills' },
     ],
   },
   {
@@ -178,6 +159,25 @@ export const SETTING_GROUPS: SettingGroup[] = [
   {
     title: 'Background App',
     fields: [{ field: 'autoStartAtLogin', label: 'Start at login' }],
+  },
+  {
+    // The "(on by default)" this label used to carry is gone: the value column now
+    // prints the default itself, for every row rather than for the one that was
+    // surprising enough to annotate by hand.
+    title: 'Activity recording',
+    fields: [{ field: 'usageLogsEnabled', label: 'Enabled' }],
+  },
+  {
+    title: 'Daily digest',
+    fields: [{ field: 'dailyDigestEnabled', label: 'Enabled' }],
+  },
+  {
+    title: 'PR Review Watcher',
+    fields: [
+      { field: 'prReviewsEnabled', label: 'Enabled' },
+      { field: 'prReviewsPollIntervalMs', label: 'Poll interval' },
+      { field: 'prReviewsAutoLaunchSkills', label: 'Auto-launch skills' },
+    ],
   },
   {
     title: 'Integrations',
