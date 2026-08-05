@@ -158,12 +158,13 @@ describe('no hardcoded appearance', () => {
     const banned =
       /\b(?:text|bg|border|ring|divide|from|via|to|fill|stroke|caret|placeholder|outline|decoration)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|\d{3})\b/
 
-    // The two standalone windows are not themed yet: both are drawn on a fixed dark
-    // panel of their own (`bg-zinc-900/95`) rather than on the app's surfaces, so
-    // their greys are internally consistent and switching the app to a light theme
-    // leaves them alone. Listed rather than ignored — this is the remaining debt, and
-    // the day either one is themed its entry comes out and the file has to be clean.
-    const UNTHEMED_WINDOWS = ['pages/TrayPopover/index.tsx', 'pages/QuickLaunch/index.tsx']
+    // Quick launch is not themed yet: it is drawn on a fixed dark panel of its own
+    // (`bg-zinc-900/95`) rather than on the app's surfaces, so its greys are
+    // internally consistent and switching the app to a light theme leaves it alone.
+    // Listed rather than ignored — this is the remaining debt, and the day it is
+    // themed its entry comes out and the file has to be clean. The tray popover was
+    // the other entry here, and is now on tokens like the rest of the app.
+    const UNTHEMED_WINDOWS = ['pages/QuickLaunch/index.tsx']
 
     const offenders = walk(RENDERER_DIR)
       .map((file) => file.slice(RENDERER_DIR.length + 1))

@@ -19,15 +19,8 @@ export const fr: Record<keyof typeof en, string> = {
   'menu.zoomIn': 'Agrandir',
   'menu.zoomOut': 'Réduire',
 
-  // ── Menu de la barre de menus ────────────────────────────────────────────
-  'tray.version': 'Magic Slash v{version}',
-  'tray.noAgents': 'Aucun agent actif',
+  // ── Panneau de la barre de menus ─────────────────────────────────────────
   'tray.showWindow': 'Afficher la fenêtre',
-  'tray.settings': 'Réglages',
-  'tray.changelog': 'Nouveautés',
-  'tray.documentation': 'Documentation',
-  'tray.github': 'GitHub',
-  'tray.quit': 'Quitter Magic Slash',
   'tray.update.checking': 'Recherche de mises à jour…',
   'tray.update.downloadingVersion': 'Téléchargement de la v{version}…',
   'tray.update.downloadingProgress': 'Téléchargement de la mise à jour… {percent} %',
@@ -939,6 +932,8 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Popover de la barre de menus ─────────────────────────────────────────
   'tray.popover.empty': 'Aucun agent actif',
+  'tray.popover.account': 'Compte et réglages',
+  'tray.popover.quit': 'Quitter l’application',
 
   // ── Temps relatif compact (barre d'infos de l'agent) ─────────────────────
   'relative.now': 'à l’instant',

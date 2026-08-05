@@ -888,6 +888,39 @@ export interface ScriptTerminalInfo {
   state: 'running' | 'error'
 }
 
+/**
+ * One row of the menu bar panel (renderer/pages/TrayPopover). A flattened
+ * AgentSummary: `createdAt` is a number because it crosses IPC, where a Date
+ * would arrive as a string.
+ */
+export interface TrayAgent {
+  id: string
+  name: string
+  state: TerminalState
+  ticketId: string
+  title: string
+  createdAt: number
+}
+
+/**
+ * The panel's view of the updater — deliberately narrower than main's
+ * `UpdateStatus`, because the panel only has a version chip in its header to say
+ * this with: it either offers a check, reports one in flight, or offers a restart.
+ */
+export type TrayUpdate =
+  | { phase: 'idle' }
+  | { phase: 'checking' }
+  | { phase: 'downloading'; percent: number }
+  | { phase: 'ready'; version: string }
+  | { phase: 'error' }
+
+/** Everything the menu bar panel paints, in one poll (see `tray:getState`). */
+export interface TrayState {
+  version: string
+  update: TrayUpdate
+  agents: TrayAgent[]
+}
+
 export interface BranchCommit {
   hash: string
   shortHash: string

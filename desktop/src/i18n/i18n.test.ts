@@ -63,13 +63,15 @@ describe('message catalogues', () => {
 
 describe('translation', () => {
   it('returns the message for the language asked for', () => {
-    expect(t('tray.settings', 'en')).toBe('Settings')
-    expect(t('tray.settings', 'fr')).toBe('Réglages')
+    expect(t('tray.showWindow', 'en')).toBe('Show Window')
+    expect(t('tray.showWindow', 'fr')).toBe('Afficher la fenêtre')
   })
 
   it('substitutes named placeholders', () => {
     expect(t('notification.completed.body', 'en', { name: 'API refactor' })).toContain('API refactor')
-    expect(t('tray.version', 'fr', { version: '1.2.3' })).toBe('Magic Slash v1.2.3')
+    expect(t('tray.update.downloadingVersion', 'fr', { version: '1.2.3' })).toBe(
+      'Téléchargement de la v1.2.3…',
+    )
   })
 
   it('leaves a placeholder alone when no value is given for it', () => {
@@ -81,7 +83,7 @@ describe('translation', () => {
   it('falls back to English for a language it has never heard of', () => {
     // The stored language is re-validated everywhere, but t() is called from the
     // main process on every menu build and must never throw.
-    expect(t('tray.settings', 'de' as LanguageId)).toBe(en['tray.settings'])
+    expect(t('tray.showWindow', 'de' as LanguageId)).toBe(en['tray.showWindow'])
   })
 })
 

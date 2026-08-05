@@ -7,8 +7,8 @@ import { recordSkillInvocation } from './usage/skill-invocations'
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
 import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook } from './pty/terminal-manager'
-import type { TerminalUsage } from '../types'
-import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpdating } from './updater'
+import type { TerminalUsage, TrayState, TrayUpdate } from '../types'
+import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpdating, getUpdateStatus } from './updater'
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
@@ -23,7 +23,7 @@ import { resolveRepoIds } from '../repoMatch'
 import { readAgents } from './config/agents'
 import { TrayManager } from './tray/tray-manager'
 import { AgentStateAggregator } from './tray/agent-state-aggregator'
-import { destroyPopover } from './windows/popover-window'
+import { destroyPopover, hidePopover, resizePopover } from './windows/popover-window'
 import { hideQuickLaunch, resizeQuickLaunch, destroyQuickLaunch } from './windows/quick-launch-window'
 import { reRegisterSpotlightShortcut } from './spotlight-shortcut'
 import { initAppearance, appearanceArguments, applyZoom, onLanguageChanged, setZoomWindow, stepZoom } from './appearance'
@@ -345,24 +345,57 @@ function focusMainWindow(callback?: (win: BrowserWindow) => void): void {
   callback?.(mainWindow)
 }
 
+/** Collapse the updater's six states onto the three the panel's header can show. */
+function trayUpdate(): TrayUpdate {
+  const status = getUpdateStatus()
+  switch (status.type) {
+    case 'checking': return { phase: 'checking' }
+    // "available" means the download just started — same thing to the user.
+    case 'available': return { phase: 'downloading', percent: 0 }
+    case 'downloading': return { phase: 'downloading', percent: Math.round(status.progress) }
+    case 'downloaded': return { phase: 'ready', version: status.version }
+    case 'error': return { phase: 'error' }
+    default: return { phase: 'idle' }
+  }
+}
+
 function setupTrayHandlers() {
-  ipcMain.handle('tray:getAgents', async () => {
-    if (!aggregator) return []
-    return aggregator.getAgentSummaries().map(a => ({
+  // One call for everything the menu bar panel paints, because it polls: agents,
+  // the version in its header, and the update state that turns that version into
+  // a "restart to update" button. Auth is deliberately NOT in here — getStatus()
+  // can refresh a token over the network, which has no business on a 2s poll; the
+  // panel asks `auth:status` once when it opens.
+  ipcMain.handle('tray:getState', async (): Promise<TrayState> => ({
+    version: app.getVersion(),
+    update: trayUpdate(),
+    agents: (aggregator?.getAgentSummaries() ?? []).map(a => ({
       id: a.id,
       name: a.name,
       state: a.state,
       ticketId: a.ticketId,
       title: a.title,
       createdAt: a.createdAt.getTime(),
-    }))
+    })),
+  }))
+
+  ipcMain.handle('tray:resize', async (_event, { height }: { height: number }) => {
+    resizePopover(height)
+  })
+
+  // Anything that brings the main window forward closes the panel first —
+  // otherwise it lingers over the app until the blur lands.
+  ipcMain.handle('tray:showWindow', async () => {
+    hidePopover()
+    focusMainWindow()
   })
 
   ipcMain.handle('tray:focusAgent', async (_event, id: string) => {
+    hidePopover()
     focusMainWindow(win => win.webContents.send('tray:focusAgent', { id }))
   })
 
   ipcMain.handle('tray:openSettings', async () => {
+    hidePopover()
     focusMainWindow(win => win.webContents.send('tray:openSettings'))
   })
 
@@ -401,12 +434,10 @@ app.whenReady().then(async () => {
   createMenu()
 
   // The native chrome is built from strings, so it has to be rebuilt when the
-  // language changes — whether from Settings or from cloud hydration. Closures,
-  // not direct calls: the tray does not exist yet (it is created below, after the
-  // window), and `trayManager` is still null at this point.
+  // language changes — whether from Settings or from cloud hydration. The tray is
+  // not in here: its panel is a renderer window and re-translates itself.
   onLanguageChanged(() => {
     createMenu()
-    trayManager?.rebuildMenu()
   })
 
   // Setup auto-updater handlers
@@ -425,10 +456,9 @@ app.whenReady().then(async () => {
 
   // Initialize tray icon and agent state aggregator
   aggregator = new AgentStateAggregator()
-  trayManager = new TrayManager(aggregator, () => mainWindow, () => {
-    forceQuit = true
-    app.quit()
-  })
+  // The panel it opens reaches the main window and quits the app through the
+  // `tray:*` handlers above, so the manager itself needs neither.
+  trayManager = new TrayManager(aggregator)
   trayManager.init()
   aggregator.startPolling()
 

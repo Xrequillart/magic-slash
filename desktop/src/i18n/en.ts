@@ -21,15 +21,11 @@ export const en = {
   'menu.zoomIn': 'Zoom In',
   'menu.zoomOut': 'Zoom Out',
 
-  // ── Tray menu ────────────────────────────────────────────────────────────
-  'tray.version': 'Magic Slash v{version}',
-  'tray.noAgents': 'No active agents',
+  // ── Menu bar panel ───────────────────────────────────────────────────────
+  // The tray opens the app's own window (renderer/pages/TrayPopover), not a
+  // native menu — the entries that menu had and this one does not (Changelog,
+  // Documentation, GitHub) took their strings with them.
   'tray.showWindow': 'Show Window',
-  'tray.settings': 'Settings',
-  'tray.changelog': 'Changelog',
-  'tray.documentation': 'Documentation',
-  'tray.github': 'GitHub',
-  'tray.quit': 'Quit Magic Slash',
   'tray.update.checking': 'Checking for updates…',
   'tray.update.downloadingVersion': 'Downloading v{version}…',
   'tray.update.downloadingProgress': 'Downloading update… {percent}%',
@@ -931,6 +927,8 @@ export const en = {
 
   // ── Tray popover ─────────────────────────────────────────────────────────
   'tray.popover.empty': 'No active agents',
+  'tray.popover.account': 'Account and settings',
+  'tray.popover.quit': 'Quit the app',
 
   // ── Compact relative time (agent info sidebar) ───────────────────────────
   // Abbreviations, one key per unit: French shortens a day to "j" and a week to

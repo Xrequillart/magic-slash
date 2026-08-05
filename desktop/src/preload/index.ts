@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, UsageStats, TelemetryHealth, ThemeId, LanguageId, SetupStatus, McpServerId, PrerequisiteId } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, UsageStats, TelemetryHealth, ThemeId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -334,8 +334,10 @@ const scriptsApi = {
 
 // Tray API (for popover window)
 const trayApi = {
-  getAgents: (): Promise<Array<{ id: string; name: string; state: string; ticketId: string; title: string; createdAt: number }>> =>
-    ipcRenderer.invoke('tray:getAgents'),
+  getState: (): Promise<TrayState> => ipcRenderer.invoke('tray:getState'),
+  /** Height in CSS pixels the panel measured for itself; main clamps it. */
+  resize: (height: number) => ipcRenderer.invoke('tray:resize', { height }),
+  showWindow: () => ipcRenderer.invoke('tray:showWindow'),
   focusAgent: (id: string) => ipcRenderer.invoke('tray:focusAgent', id),
   openSettings: () => ipcRenderer.invoke('tray:openSettings'),
   quit: () => ipcRenderer.invoke('tray:quit'),

@@ -4,14 +4,29 @@ import { appearanceArguments } from '../appearance'
 
 let popoverWindow: BrowserWindow | null = null
 
+/** Kept in main rather than read from the window: the renderer lays out to it too. */
+const POPOVER_WIDTH = 320
+
+/**
+ * Bounds on what the renderer may ask for. The floor keeps a measurement taken
+ * mid-paint (a container that is briefly 0px tall) from collapsing the panel; the
+ * ceiling keeps a long agent list from running off the bottom of the screen —
+ * past it the list scrolls inside the panel instead.
+ */
+const MIN_HEIGHT = 120
+const MAX_HEIGHT = 600
+
 export function createPopoverWindow(): BrowserWindow {
   if (popoverWindow && !popoverWindow.isDestroyed()) {
     return popoverWindow
   }
 
   popoverWindow = new BrowserWindow({
-    width: 320,
-    height: 420,
+    width: POPOVER_WIDTH,
+    // A placeholder: the renderer measures its own content and calls
+    // resizePopover as soon as it has painted, so the panel is never letterboxed
+    // by a fixed height. Small enough that the first frame is not a grey slab.
+    height: 160,
     show: false,
     frame: false,
     resizable: false,
@@ -19,6 +34,8 @@ export function createPopoverWindow(): BrowserWindow {
     fullscreenable: false,
     skipTaskbar: true,
     transparent: true,
+    hasShadow: true,
+    roundedCorners: true,
     vibrancy: 'popover',
     visualEffectState: 'active',
     webPreferences: {
@@ -65,6 +82,19 @@ export function showPopoverNearTray(trayBounds: Electron.Rectangle): void {
   win.setPosition(x, y, false)
   win.show()
   win.focus()
+}
+
+/**
+ * Match the window to the height the renderer measured. The panel is anchored
+ * under the menu bar, so only the height moves — x and y stay where
+ * showPopoverNearTray put them.
+ */
+export function resizePopover(height: number): void {
+  if (!popoverWindow || popoverWindow.isDestroyed()) return
+  const clamped = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.round(height)))
+  const bounds = popoverWindow.getBounds()
+  if (bounds.height === clamped) return
+  popoverWindow.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: clamped })
 }
 
 export function hidePopover(): void {
