@@ -114,6 +114,17 @@ export const en = {
     'Magic Slash runs on your machine — download it and sign in',
   'onboarding.install.downloadHint':
     'Drag it into Applications and open it. It installs the skills and configures Claude Code on first launch.',
+  'onboarding.repoPath.title': 'Point a repository at its folder',
+  'onboarding.repoPath.hintDone.one': '1 repository bound to a local folder',
+  'onboarding.repoPath.hintDone.many': '{count} repositories bound to a local folder',
+  'onboarding.repoPath.hintPending':
+    'An agent works in your clone — without its path, /magic:start has nowhere to run',
+  'onboarding.repoPath.step.1': 'Open Magic Slash on your machine',
+  'onboarding.repoPath.step.2': 'Go to the Repositories tab',
+  'onboarding.repoPath.step.3': 'Pick a repository — or add one, if the list is empty',
+  'onboarding.repoPath.step.4': 'Choose the folder you cloned it into',
+  'onboarding.repoPath.note':
+    'It happens in the app rather than here because choosing a folder means browsing your disk. And where each person cloned a repository is their own business, so one shared with your organization still waits for your folder.',
 
   // ── Team repositories ──────────────────────────────────────────────────────
   'team.repositories': 'Repositories',

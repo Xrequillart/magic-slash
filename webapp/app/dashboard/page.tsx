@@ -6,6 +6,7 @@ import { fetchInstallations, type Installation } from '@/lib/installations'
 import { doneCount, isOnboarded, onboardingState } from '@/lib/onboarding'
 import { fetchOrgs, type Org } from '@/lib/orgs'
 import { fetchProfile, type UserProfile } from '@/lib/profile'
+import { countBoundRepositories } from '@/lib/repositories'
 import { fetchTeamOverview, type TeamOverview } from '@/lib/team'
 import { useT } from '@/lib/i18n/useLanguage'
 import { AppShell } from '@/components/AppShell'
@@ -32,6 +33,7 @@ export default function Dashboard() {
   // undefined = not fetched yet, null = fetched and there is no profile row.
   const [profile, setProfile] = useState<UserProfile | null | undefined>(undefined)
   const [installs, setInstalls] = useState<Installation[] | null>(null)
+  const [boundRepos, setBoundRepos] = useState<number | null>(null)
   const [team, setTeam] = useState<TeamOverview | null>(null)
 
   const [bursts, setBursts] = useState(0)
@@ -46,10 +48,14 @@ export default function Dashboard() {
     loadOrgs()
     fetchProfile().then(setProfile)
     fetchInstallations().then(setInstalls)
+    // Its own tiny count rather than a read off the team overview below: that one also
+    // pulls every agent and every org's roster, and the checklist would then wait on all
+    // of it before it could render a single row.
+    countBoundRepositories().then(setBoundRepos)
     fetchTeamOverview().then(setTeam)
   }, [session, loadOrgs])
 
-  const state = onboardingState(orgs, profile, installs)
+  const state = onboardingState(orgs, profile, installs, boundRepos)
   const done = state ? doneCount(state) : null
 
   // Confetti on every step completed during this visit. The first resolved count
@@ -88,6 +94,7 @@ export default function Dashboard() {
               orgs={orgs ?? []}
               profile={profile ?? null}
               installs={installs ?? []}
+              boundRepos={boundRepos ?? 0}
               onProfileSaved={setProfile}
               onOrgCreated={loadOrgs}
             />

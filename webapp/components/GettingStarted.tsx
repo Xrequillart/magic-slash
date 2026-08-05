@@ -1,7 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { Building2, Check, ChevronDown, ChevronRight, Circle, Download, UserRound } from 'lucide-react'
+import {
+  Building2,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  Download,
+  FolderGit2,
+  UserRound,
+} from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ProfileWizard } from '@/components/ProfileWizard'
 import { Button, ButtonLink, Input } from '@/components/ui'
@@ -14,9 +23,10 @@ import { useT } from '@/lib/i18n/useLanguage'
 
 /**
  * Onboarding checklist: join an organization, fill in your profile, install the
- * app. Checked state comes from real data — a membership, a saved profile row,
- * an `app_installations` row the desktop app writes on first launch — so there
- * is nothing to tick off by hand.
+ * app, point a repository at its folder. Checked state comes from real data — a
+ * membership, a saved profile row, an `app_installations` row the desktop app writes
+ * on first launch, a `repository_paths` binding — so there is nothing to tick off by
+ * hand.
  *
  * A completed row is inert: it is tinted green and stops responding to clicks,
  * because there is nothing left to do from it. Renders nothing at all once every
@@ -29,6 +39,30 @@ const ROW_DONE = `${ROW} bg-green/[0.12]`
 const ROW_PENDING = `group ${ROW} text-left transition-colors hover:bg-canvas`
 /** Aligns expanded content with the label column: px-5 (20) + marker (24) + gap-4 (16). */
 const EXPANSION = 'pb-5 pl-[60px] pr-5'
+
+/**
+ * Numbered instructions for a step the webapp can only DESCRIBE — where it cannot put a
+ * form or a button, what is left is telling someone what to do, and an ordered list says
+ * "four things, in this order" at a glance where a paragraph of the same words hides both
+ * the count and the order.
+ *
+ * A real `<ol>`: the numbers are the content here, not decoration, so they belong to the
+ * markup that a screen reader announces rather than to a `::before`.
+ */
+function Steps({ items }: { items: string[] }) {
+  return (
+    <ol className="flex flex-col gap-2">
+      {items.map((item, i) => (
+        <li key={item} className="flex items-start gap-2.5">
+          <span className="mt-px flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-brand/[0.08] font-display text-[10px] font-bold text-brand">
+            {i + 1}
+          </span>
+          <span className="text-xs leading-snug text-muted">{item}</span>
+        </li>
+      ))}
+    </ol>
+  )
+}
 
 /**
  * Left-hand marker: a tinted green disc once done, an empty ring while pending.
@@ -78,6 +112,7 @@ export function GettingStarted({
   orgs,
   profile,
   installs,
+  boundRepos,
   onProfileSaved,
   onOrgCreated,
 }: {
@@ -85,6 +120,8 @@ export function GettingStarted({
   orgs: Org[]
   profile: UserProfile | null
   installs: Installation[]
+  /** Repositories the user has bound to a folder — only ever shown once at least one is. */
+  boundRepos: number
   onProfileSaved: (profile: UserProfile) => void
   onOrgCreated: () => void
 }) {
@@ -95,6 +132,7 @@ export function GettingStarted({
   const [creating, setCreating] = useState(false)
   const [orgError, setOrgError] = useState<string | null>(null)
   const [showDownload, setShowDownload] = useState(false)
+  const [showRepoPath, setShowRepoPath] = useState(false)
 
   const submitOrg = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -242,6 +280,62 @@ export function GettingStarted({
                     <ButtonLink href={DESKTOP_DOWNLOAD_URL}>
                       {t('common.download')}
                     </ButtonLink>
+                  </div>
+                )}
+              </>
+            )}
+          </li>
+
+          {/* Last, because binding a path needs the app that browses for it — and for
+              the same reason this row has no form: the webapp has no filesystem to
+              offer. It explains where to go and counts what came back. */}
+          <li>
+            {state.repoPath ? (
+              <div className={ROW_DONE}>
+                <ItemBody
+                  done
+                  icon={FolderGit2}
+                  title={t('onboarding.repoPath.title')}
+                  hint={
+                    boundRepos === 1
+                      ? t('onboarding.repoPath.hintDone.one')
+                      : t('onboarding.repoPath.hintDone.many', { count: boundRepos })
+                  }
+                />
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowRepoPath((v) => !v)}
+                  aria-expanded={showRepoPath}
+                  className={ROW_PENDING}
+                >
+                  <ItemBody
+                    done={false}
+                    icon={FolderGit2}
+                    title={t('onboarding.repoPath.title')}
+                    hint={t('onboarding.repoPath.hintPending')}
+                  />
+                  <ChevronDown
+                    className={`h-5 w-5 shrink-0 text-black/20 transition-all group-hover:text-brand ${showRepoPath ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {showRepoPath && (
+                  <div className={EXPANSION}>
+                    <Steps
+                      items={[
+                        t('onboarding.repoPath.step.1'),
+                        t('onboarding.repoPath.step.2'),
+                        t('onboarding.repoPath.step.3'),
+                        t('onboarding.repoPath.step.4'),
+                      ]}
+                    />
+                    {/* Under the list, not inside it: it explains why the step exists at
+                        all for a repo someone else added, and is not a fifth thing to do. */}
+                    <p className="mt-3 text-xs leading-snug text-muted">
+                      {t('onboarding.repoPath.note')}
+                    </p>
                   </div>
                 )}
               </>

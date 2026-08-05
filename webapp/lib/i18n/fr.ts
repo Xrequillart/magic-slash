@@ -113,6 +113,17 @@ export const fr: Record<keyof typeof en, string> = {
     'Magic Slash tourne sur votre machine — téléchargez-le et connectez-vous',
   'onboarding.install.downloadHint':
     'Glissez-le dans Applications et ouvrez-le. Il installe les skills et configure Claude Code au premier lancement.',
+  'onboarding.repoPath.title': 'Relier un dépôt à son dossier',
+  'onboarding.repoPath.hintDone.one': '1 dépôt relié à un dossier local',
+  'onboarding.repoPath.hintDone.many': '{count} dépôts reliés à un dossier local',
+  'onboarding.repoPath.hintPending':
+    'Un agent travaille dans votre clone — sans son chemin, /magic:start n’a nulle part où tourner',
+  'onboarding.repoPath.step.1': 'Ouvrez Magic Slash sur votre machine',
+  'onboarding.repoPath.step.2': 'Allez dans l’onglet Dépôts',
+  'onboarding.repoPath.step.3': 'Choisissez un dépôt — ou ajoutez-en un, si la liste est vide',
+  'onboarding.repoPath.step.4': 'Indiquez le dossier dans lequel vous l’avez cloné',
+  'onboarding.repoPath.note':
+    'Cela se passe dans l’application plutôt qu’ici parce que choisir un dossier suppose de parcourir votre disque. Et l’endroit où chacun a cloné un dépôt ne regarde que lui : un dépôt partagé avec votre organisation attend donc quand même votre dossier.',
 
   // ── Dépôts de l’équipe ─────────────────────────────────────────────────────
   'team.repositories': 'Dépôts',
