@@ -6,6 +6,7 @@ import { useScriptRunner } from '../hooks/useScriptRunner'
 import { useGroupedTerminals, useSplitGroupedTerminals, WORKFLOW_GROUPS, type WorkflowGroupKey, type TerminalWithRepos } from '../hooks/useGroupedTerminals'
 import { getProjectColorMap } from '../utils/projectColors'
 import { SidebarUsageCard } from './SidebarUsageCard'
+import { WaveLoader } from './WaveLoader'
 import { SidebarAccount } from './SidebarAccount'
 import { stateColors, stateBgColors, stateHoverBgColors } from '../utils/stateColors'
 import { useT } from '../i18n'
@@ -22,7 +23,7 @@ const StatusBadge = memo(function StatusBadge({ state }: { state: TerminalState 
   const renderIcon = () => {
     switch (state) {
       case 'working':
-        return <span className="loader-spinner-md flex-shrink-0" />
+        return <WaveLoader className="flex-shrink-0" />
       case 'completed':
         return <Check className="w-4 h-4" />
       case 'waiting':
@@ -148,7 +149,7 @@ const WorkflowGroup = memo(function WorkflowGroup({
       <div className={`flex items-center gap-2 px-2 py-1 text-xs w-full ${config.color}`}>
         <span className="flex items-center">
           {config.spinner ? (
-            <span className="loader-spinner-sm flex-shrink-0" />
+            <WaveLoader className="flex-shrink-0" />
           ) : IconComponent ? (
             <IconComponent className="w-3 h-3" />
           ) : null}
@@ -197,7 +198,7 @@ const ScriptItem = memo(function ScriptItem({ script, isActive, onSelect, onStop
       `}
     >
       {script.state === 'running' ? (
-        <span className="loader-spinner-md flex-shrink-0 text-accent" />
+        <WaveLoader className="flex-shrink-0 text-accent" />
       ) : (
         <XCircle className="w-4 h-4 text-red flex-shrink-0" />
       )}

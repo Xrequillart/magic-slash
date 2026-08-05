@@ -196,25 +196,63 @@ fieldset:disabled label:has(> input[type="checkbox"]) {
   }
 }
 
-/* Loader spinner */
-.loader-spinner-small {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border: 1.5px solid rgb(var(--c-border));
-  border-top-color: rgb(var(--c-accent));
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
+/* Working indicator — three parallel bars, the middle one tallest, crossed by a wave
+   that travels from the left bar to the right one. Replaces the rotating ring the
+   sidebar used for an agent at work.
 
-.loader-spinner-md {
-  display: inline-block;
+   The bars keep their ORDER throughout the cycle: the 6/13px rest heights and the 0.15s
+   offsets are picked so the middle bar is still the tallest at the worst instant of the
+   loop — 7.7px against 5.3px, at t=0.655s, its own trough meeting a neighbour's rise.
+   Sides of 7px against a middle of 12px animate the same way but close that gap to
+   0.9px, and a silhouette that flattens twice a second stops reading as one shape.
+
+   `currentColor`, not the accent: the agent badge already colours itself by state
+   (see stateColors), and the ring's hardcoded accent border ignored that. One less
+   thing to keep in step with the eight themes.
+
+   Sized to the ring it replaces — 16px — so no sidebar row shifts.
+
+   Bars scale rather than change height, which keeps the animation off the layout path.
+   It also matters under `prefers-reduced-motion`, where the global rule collapses every
+   duration to 0.01ms: the frozen frame is the 100% keyframe, and that keyframe is the
+   resting silhouette, so the loader stops as three bars rather than as a blank. */
+.loader-wave {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   width: 16px;
   height: 16px;
-  border: 2px solid rgb(var(--c-border));
-  border-top-color: rgb(var(--c-accent));
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+}
+
+.loader-wave > span {
+  width: 2px;
+  height: 6px;
+  border-radius: 1px;
+  background: currentColor;
+  animation: loader-wave-bar 1.2s ease-in-out infinite;
+}
+
+.loader-wave > span:nth-child(2) {
+  height: 13px;
+  animation-delay: 0.15s;
+}
+
+.loader-wave > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes loader-wave-bar {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  35% {
+    transform: scaleY(0.55);
+  }
+  70% {
+    transform: scaleY(1.1);
+  }
 }
 
 /* Modal animations */
