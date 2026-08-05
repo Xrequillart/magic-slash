@@ -193,7 +193,12 @@ export function AppSettings({
               )
             })}
           </div>
-          <p className="mt-3 text-xs text-muted">{t('settings.appearance.note')}</p>
+          {/* Warning-toned: the theme dresses the desktop app, and a plain grey
+              note under the swatches was read as "this page is about to change". */}
+          <p className="mt-3 flex items-start gap-2 rounded-xl border border-yellow/30 bg-yellow/[0.07] px-3 py-2 text-xs text-muted">
+            <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-yellow" />
+            <span>{t('settings.appearance.note')}</span>
+          </p>
         </div>
       </SettingsCard>
 
@@ -210,7 +215,7 @@ export function AppSettings({
             className="w-52"
           />
         </SettingRow>
-        <div className="pb-5">
+        <div className="pb-5 pt-4">
           <p className="text-xs text-muted">
             {t('settings.language.noteBefore')}{' '}
             <Link href="/organization" className="text-accent hover:underline">
