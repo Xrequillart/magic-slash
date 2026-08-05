@@ -27,6 +27,7 @@ export const fr: Record<keyof typeof en, string> = {
   'tray.update.restart': '↻ Redémarrer pour mettre à jour (v{version})',
   'tray.update.checkFailed': 'Rechercher les mises à jour (dernier essai échoué)',
   'tray.update.check': 'Rechercher les mises à jour',
+  'tray.update.checkVersion': 'Rechercher les mises à jour (v{version})',
 
   // ── Notifications système ────────────────────────────────────────────────
   'notification.waiting.title': 'Claude Code a besoin de vous',

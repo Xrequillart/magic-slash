@@ -32,6 +32,7 @@ export const en = {
   'tray.update.restart': '↻ Restart to update (v{version})',
   'tray.update.checkFailed': 'Check for Updates (last check failed)',
   'tray.update.check': 'Check for Updates',
+  'tray.update.checkVersion': 'Check for Updates (v{version})',
 
   // ── OS notifications ─────────────────────────────────────────────────────
   'notification.waiting.title': 'Claude Code needs attention',

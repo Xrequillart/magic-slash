@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { CircleUserRound, Power, RefreshCw, RotateCw } from 'lucide-react'
 import { AgentStateBadge } from '../../components/AgentStateBadge'
+import { stateHoverBgColors } from '../../utils/stateColors'
 import { displayNameFromEmail } from '../../utils/displayName'
 import { useT, type Translate } from '../../i18n'
 import type { TrayAgent, TrayState, TrayUpdate } from '../../../types'
@@ -19,24 +20,25 @@ function stateLabel(state: string, t: Translate): string {
   }
 }
 
-/**
- * The version, which doubles as the app's update control — the menu bar panel
- * replaced a native menu that had a "Check for Updates" entry, and this is where
- * that went. Idle: click to check. Ready: an accent pill that restarts into the
- * new version. In between it only reports.
- */
-function VersionChip({ version, update, t }: { version: string; update: TrayUpdate; t: Translate }) {
-  const label = `v${version}`
+/** Every state of the button shares this, so only the icon and colour differ. */
+const ICON_BUTTON = 'flex items-center justify-center w-6 h-6 rounded-lg transition-colors shrink-0'
 
+/**
+ * The app's update control — the menu bar panel replaced a native menu that had a
+ * "Check for Updates" entry, and this is where that went. Icon only, sitting in
+ * the header: idle, click to check; ready, an accent button that restarts into
+ * the new version. In between it only reports. The version it would otherwise
+ * print lives in the idle tooltip.
+ */
+function UpdateButton({ version, update, t }: { version: string; update: TrayUpdate; t: Translate }) {
   if (update.phase === 'ready') {
     return (
       <button
         onClick={() => window.electronAPI.updater.install()}
         title={t('tray.update.restart', { version: update.version })}
-        className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-accent/15 text-accent text-[11px] font-medium hover:bg-accent/25 transition-colors"
+        className={`${ICON_BUTTON} bg-accent/15 text-accent hover:bg-accent/25`}
       >
-        <RotateCw className="w-3 h-3" />
-        <span>v{update.version}</span>
+        <RotateCw className="w-3.5 h-3.5" />
       </button>
     )
   }
@@ -49,10 +51,9 @@ function VersionChip({ version, update, t }: { version: string; update: TrayUpda
             ? t('tray.update.checking')
             : t('tray.update.downloadingProgress', { percent: update.percent })
         }
-        className="flex items-center gap-1 text-[11px] text-text-secondary"
+        className={`${ICON_BUTTON} text-text-secondary`}
       >
-        <RefreshCw className="w-3 h-3 animate-spin" />
-        <span>{update.phase === 'downloading' ? `${update.percent}%` : label}</span>
+        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
       </span>
     )
   }
@@ -60,25 +61,30 @@ function VersionChip({ version, update, t }: { version: string; update: TrayUpda
   return (
     <button
       onClick={() => window.electronAPI.updater.check()}
-      title={update.phase === 'error' ? t('tray.update.checkFailed') : t('tray.update.check')}
-      className={`text-[11px] rounded px-1 -mx-1 hover:text-ink transition-colors ${
-        update.phase === 'error' ? 'text-red' : 'text-text-secondary'
+      title={
+        update.phase === 'error'
+          ? t('tray.update.checkFailed')
+          : t('tray.update.checkVersion', { version })
+      }
+      className={`${ICON_BUTTON} hover:bg-surface ${
+        update.phase === 'error' ? 'text-red' : 'text-text-secondary hover:text-ink'
       }`}
     >
-      {label}
+      <RefreshCw className="w-3.5 h-3.5" />
     </button>
   )
 }
 
+/** Same shape as the sidebar's agent item: inset, rounded, hover tinted by state. */
 function AgentRow({ agent, t }: { agent: TrayAgent; t: Translate }) {
   return (
     <button
       onClick={() => window.electronAPI.tray.focusAgent(agent.id)}
       title={stateLabel(agent.state, t)}
-      className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-surface transition-colors text-left"
+      className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-text-secondary transition-all text-left hover:text-ink ${stateHoverBgColors[agent.state]}`}
     >
-      <span className="flex-1 min-w-0 text-[13px] text-ink truncate">
-        {agent.ticketId && <span className="text-text-secondary">{agent.ticketId} </span>}
+      <span className="flex-1 min-w-0 truncate font-medium">
+        {agent.ticketId && <span className="text-text-secondary/70">{agent.ticketId} </span>}
         {agent.title || agent.name}
       </span>
       <AgentStateBadge state={agent.state} />
@@ -167,30 +173,30 @@ export function TrayPopover() {
       ref={panelRef}
       className="w-full bg-bg/80 border border-line rounded-xl overflow-hidden select-none"
     >
-      {/* Header — the app and its version on the left, the account on the right */}
+      {/* Header — the app on the left, the account and the update control right */}
       <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 border-b border-line">
-        <div className="flex items-baseline gap-2 min-w-0">
-          {/* The app's name opens the app — the one thing the native menu did that
-              the list below cannot do on its own when there is no agent yet. */}
-          <button
-            onClick={() => window.electronAPI.tray.showWindow()}
-            title={t('tray.showWindow')}
-            className="text-[13px] font-semibold text-ink hover:text-accent transition-colors"
-          >
-            Magic Slash
-          </button>
-          <VersionChip version={version} update={update} t={t} />
-        </div>
+        {/* The app's name opens the app — the one thing the native menu did that
+            the list below cannot do on its own when there is no agent yet. */}
         <button
-          onClick={() => window.electronAPI.tray.openSettings()}
-          title={t('tray.popover.account')}
-          className="flex items-center gap-1.5 px-1.5 py-1 -mr-1 rounded-md text-[12px] text-text-secondary hover:bg-surface hover:text-ink transition-colors"
+          onClick={() => window.electronAPI.tray.showWindow()}
+          title={t('tray.showWindow')}
+          className="text-[13px] font-semibold text-ink hover:text-accent transition-colors truncate"
         >
-          <CircleUserRound className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate max-w-[110px]">
-            {account ?? t('sidebar.accountFallback')}
-          </span>
+          Magic Slash
         </button>
+        <div className="flex items-center gap-1 min-w-0">
+          <button
+            onClick={() => window.electronAPI.tray.openSettings()}
+            title={t('tray.popover.account')}
+            className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg text-[12px] text-text-secondary hover:bg-surface hover:text-ink transition-colors min-w-0"
+          >
+            <CircleUserRound className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate max-w-[110px]">
+              {account ?? t('sidebar.accountFallback')}
+            </span>
+          </button>
+          <UpdateButton version={version} update={update} t={t} />
+        </div>
       </div>
 
       {/* Every agent in the app, whatever it is doing */}
@@ -200,7 +206,9 @@ export function TrayPopover() {
             {t('tray.popover.empty')}
           </div>
         ) : (
-          <div className="py-1">
+          // px-2 like the sidebar's nav: the rounded rows sit inset from the
+          // panel's edge instead of running into its border.
+          <div className="flex flex-col gap-1 px-2 py-2">
             {agents.map(agent => (
               <AgentRow key={agent.id} agent={agent} t={t} />
             ))}
@@ -209,10 +217,10 @@ export function TrayPopover() {
       </div>
 
       {/* Way out */}
-      <div className="border-t border-line">
+      <div className="border-t border-line px-2 py-2">
         <button
           onClick={() => window.electronAPI.tray.quit()}
-          className="w-full flex items-center gap-2 px-3.5 py-2.5 text-[12px] text-text-secondary hover:bg-red/10 hover:text-red transition-colors text-left"
+          className="w-full flex items-center justify-start gap-2 px-2 py-2 rounded-lg text-xs font-medium text-text-secondary hover:bg-red/10 hover:text-red transition-all"
         >
           <Power className="w-3.5 h-3.5 shrink-0" />
           <span>{t('tray.popover.quit')}</span>
