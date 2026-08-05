@@ -5,7 +5,8 @@ import { Building2, Check, ChevronDown, ChevronRight, Circle, Download, UserRoun
 import type { LucideIcon } from 'lucide-react'
 import { ProfileWizard } from '@/components/ProfileWizard'
 import { Button, ButtonLink, Input } from '@/components/ui'
-import { DOWNLOAD_URL, type Installation } from '@/lib/installations'
+import { type Installation } from '@/lib/installations'
+import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktopRelease'
 import { doneCount, isOnboarded, TOTAL_STEPS, type OnboardingState } from '@/lib/onboarding'
 import { createOrg, type Org } from '@/lib/orgs'
 import { type UserProfile } from '@/lib/profile'
@@ -238,7 +239,7 @@ export function GettingStarted({
                 {showDownload && (
                   <div className={EXPANSION}>
                     <p className="mb-3 text-xs text-muted">{t('onboarding.install.downloadHint')}</p>
-                    <ButtonLink href={DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
+                    <ButtonLink href={DESKTOP_DOWNLOAD_URL}>
                       {t('common.download')}
                     </ButtonLink>
                   </div>

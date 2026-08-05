@@ -86,6 +86,7 @@
     "afterSign": "scripts/notarize.js",
     "dmg": {
       "title": "Magic Slash",
+      "artifactName": "Magic-Slash-${version}-${arch}.${ext}",
       "icon": "resources/icon_dmg.png",
       "contents": [
         {

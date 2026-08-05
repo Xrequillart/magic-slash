@@ -4,13 +4,12 @@ import { useEffect, useState } from 'react'
 import { Laptop, MonitorSmartphone } from 'lucide-react'
 import { Badge, ButtonLink, Card, SectionHeader } from '@/components/ui'
 import {
-  DOWNLOAD_URL,
   fetchInstallations,
   formatDevicePlatform,
   formatRelative,
   type Installation,
 } from '@/lib/installations'
-import { LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
+import { DESKTOP_DOWNLOAD_URL, LATEST_DESKTOP_VERSION } from '@/lib/desktopRelease'
 import { compareVersions } from '@/lib/versions'
 import { useT } from '@/lib/i18n/useLanguage'
 
@@ -53,7 +52,7 @@ export function AppStatusSection() {
               <p className="font-display text-sm font-bold text-ink">{t('appStatus.notInUse')}</p>
               <p className="mt-0.5 text-xs text-muted">{t('appStatus.notInUseHint')}</p>
             </div>
-            <ButtonLink href={DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" className="shrink-0">
+            <ButtonLink href={DESKTOP_DOWNLOAD_URL} className="shrink-0">
               {t('common.download')}
             </ButtonLink>
           </div>

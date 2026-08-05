@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { describe, expect, it } from 'vitest'
-import { LATEST_DESKTOP_VERSION } from './desktopRelease'
+import { DESKTOP_DOWNLOAD_URL, LATEST_DESKTOP_VERSION } from './desktopRelease'
 
 /**
  * What makes a hardcoded version safe to rely on.
@@ -28,5 +28,48 @@ describe('LATEST_DESKTOP_VERSION', () => {
     // It is fed to `compareVersions`, which parses each component with parseInt: a
     // stray "v" makes the major component 0 and turns the whole fleet yellow.
     expect(LATEST_DESKTOP_VERSION).toMatch(/^\d+\.\d+\.\d+$/)
+  })
+})
+
+/**
+ * The download URL names a FILE, so it is only right for as long as electron-builder
+ * writes that exact name. Nothing in the app can tell it apart from a working link —
+ * every button renders the same, the 404 arrives on GitHub, after the click.
+ *
+ * So the URL is rebuilt here from the packaging config that produces the file, the way
+ * the version above is compared to the one the app declares. Renaming the artifact
+ * fails CI instead of quietly breaking every download button in the product, the
+ * documentation and the invitation funnel at once.
+ */
+describe('DESKTOP_DOWNLOAD_URL', () => {
+  const dmgTemplate = () => {
+    const manifest = join(__dirname, '..', '..', 'desktop', 'package.json')
+    const pkg = JSON.parse(readFileSync(manifest, 'utf-8')) as {
+      build?: { dmg?: { artifactName?: string } }
+    }
+    return pkg.build?.dmg?.artifactName
+  }
+
+  it('points at the file electron-builder is configured to produce', () => {
+    const template = dmgTemplate()
+    expect(template, 'desktop/package.json → build.dmg.artifactName').toBeDefined()
+
+    // The only build the release workflow publishes. Both substitutions are electron
+    // -builder's own, so this is the filename the release will carry.
+    const expected = template!
+      .replace('${version}', LATEST_DESKTOP_VERSION)
+      .replace('${arch}', 'arm64')
+      .replace('${ext}', 'dmg')
+
+    expect(DESKTOP_DOWNLOAD_URL).toBe(
+      `https://github.com/xrequillart/magic-slash/releases/download/v${LATEST_DESKTOP_VERSION}/${expected}`,
+    )
+  })
+
+  it('carries no space, so no uploader has to sanitise it', () => {
+    // The whole reason artifactName is pinned rather than defaulted: the default
+    // interpolates "Magic Slash", and the space came back as a hyphen on the dmg and
+    // as a dot in its blockmap. A name that needs sanitising cannot be predicted here.
+    expect(DESKTOP_DOWNLOAD_URL).not.toMatch(/[\s%]/)
   })
 })

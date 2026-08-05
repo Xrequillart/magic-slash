@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react'
 import { Laptop, MonitorSmartphone } from 'lucide-react'
 import { Badge, ButtonLink, Card, SectionHeader } from '@/components/ui'
 import {
-  DOWNLOAD_URL,
   fetchInstallations,
   formatDevicePlatform,
   formatRelative,
   type Installation,
 } from '@/lib/installations'
+import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktopRelease'
 import { useT } from '@/lib/i18n/useLanguage'
 
 /**
@@ -40,7 +40,10 @@ export function DevicesSection() {
         ) : installs.length === 0 ? (
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted">{t('devices.empty')}</p>
-            <ButtonLink href={DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" className="shrink-0">
+            {/* No target="_blank": the URL answers with an attachment, so the click
+                starts a download and leaves this page where it is. A new tab would
+                open only to close itself. */}
+            <ButtonLink href={DESKTOP_DOWNLOAD_URL} className="shrink-0">
               {t('common.download')}
             </ButtonLink>
           </div>

@@ -105,6 +105,13 @@ jobs:
         run: |
           # There is no install script any more — the app configures the machine
           # itself on first launch (desktop/src/main/setup/). What has to be reachable
-          # is the download the docs point people at.
-          curl -fsSLI -o /dev/null -w '%{http_code}\n' \
-            https://github.com/xrequillart/magic-slash/releases/latest | grep -q '^200$'
+          # is the download every button in the webapp points at, which is the ASSET and
+          # not the release page. `/releases/latest` answers 200 from the moment the
+          # release exists, upload or no upload — it cannot fail on the break that
+          # matters here. The name mirrors DESKTOP_DOWNLOAD_URL, which its own test pins
+          # to electron-builder's artifactName.
+          VERSION=${GITHUB_REF#refs/tags/v}
+          ASSET="Magic-Slash-${VERSION}-arm64.dmg"
+          BASE=https://github.com/xrequillart/magic-slash/releases/download
+          curl -fsSLI -o /dev/null -w '%{http_code}\n' "$BASE/v${VERSION}/$ASSET" \
+            | tail -1 | grep -q '^200$'

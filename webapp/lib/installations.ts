@@ -3,16 +3,17 @@ import { localeOf, t } from './i18n'
 import { DEFAULT_LANGUAGE, type LanguageId } from './i18n/languages'
 
 /**
- * Where the desktop app is downloaded from — the only entry point there is.
+ * The download itself lives in `desktopRelease.ts`, next to the version it is built
+ * from — this module is the Supabase read for the machines a user has signed in on, and
+ * the documentation pages need the link without dragging that client into their bundle.
  *
  * There used to be an INSTALL_COMMAND here too (`curl … install.sh | bash`), shown
- * next to this link on every install surface. It is gone: the app configures the
+ * next to that link on every install surface. It is gone: the app configures the
  * machine itself on first launch — skills, Claude Code hooks, permissions, MCP
  * servers, prerequisite checks (see desktop/src/main/setup/). Offering a script
  * alongside the download meant maintaining two installers that could disagree, and
  * asking people to pipe a remote script into a shell to get a GUI app.
  */
-export const DOWNLOAD_URL = 'https://github.com/xrequillart/magic-slash/releases/latest'
 
 export interface Installation {
   deviceId: string

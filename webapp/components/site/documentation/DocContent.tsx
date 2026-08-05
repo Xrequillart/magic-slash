@@ -3,6 +3,7 @@
 import { ExternalLink } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
 import { RichText } from '@/components/site/RichText'
+import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktopRelease'
 import type { ChangelogVersion } from '@/lib/changelog'
 import { Changelog } from './Changelog'
 import { useCodeCopyButtons } from './useCodeCopyButtons'
@@ -26,7 +27,7 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                     <div className="doc-section" id="quick-start">
                         <h2>{t('site.doc.quickStart.1')}</h2>
                         <p>{t('site.doc.quickStart.2')}</p>
-                        <p><a href="https://github.com/xrequillart/magic-slash/releases/latest" target="_blank" rel="noopener noreferrer">{t('site.doc.quickStart.download')}</a></p>
+                        <p><a href={DESKTOP_DOWNLOAD_URL}>{t('site.doc.quickStart.download')}</a></p>
                         <RichText k="site.doc.quickStart.3" as="p" />
 
                         <h3>{t('site.doc.quickStart.4')}</h3>

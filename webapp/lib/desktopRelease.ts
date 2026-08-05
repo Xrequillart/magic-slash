@@ -23,3 +23,25 @@
  * only a deploy can fix it.
  */
 export const LATEST_DESKTOP_VERSION = '0.64.3'
+
+/**
+ * The build itself — a URL that DOWNLOADS the app, not one that lands on GitHub.
+ *
+ * Every download button used to point at `/releases/latest`, which is a PAGE: the
+ * click left the product, and whoever followed it had to scroll past release notes and
+ * pick the right file out of five assets — two blockmaps and a YAML manifest among
+ * them. Pointing at the asset makes the button do the one thing it says: GitHub answers
+ * it with `Content-Disposition: attachment`, so the browser saves the file and the page
+ * the visitor was on never changes.
+ *
+ * The filename is a CONTRACT with electron-builder, which is why `artifactName` is
+ * pinned in desktop/package.json rather than left to its default: the default
+ * interpolates `productName` — "Magic Slash" — and that space is sanitised on upload,
+ * to a hyphen for the dmg but to a dot in its own blockmap's name. Relying on which
+ * one applies is how this URL becomes a 404 nobody notices. `desktopRelease.test.ts`
+ * asserts the two still agree.
+ *
+ * arm64 only, because that is the only build the release workflow publishes. No
+ * regression for Intel Macs: the releases page had nothing else to offer them either.
+ */
+export const DESKTOP_DOWNLOAD_URL = `https://github.com/xrequillart/magic-slash/releases/download/v${LATEST_DESKTOP_VERSION}/Magic-Slash-${LATEST_DESKTOP_VERSION}-arm64.dmg`

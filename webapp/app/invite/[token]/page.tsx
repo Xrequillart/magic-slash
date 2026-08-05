@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { getSupabase } from '@/lib/supabase'
 import { postAcceptUrl } from '@/lib/inviteLink'
-import { DOWNLOAD_URL } from '@/lib/installations'
+import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktopRelease'
 import { useT } from '@/lib/i18n/useLanguage'
 import type { MessageKey } from '@/lib/i18n'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
@@ -165,9 +165,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
               </p>
               {preview.status === 'accepted' && (
                 <a
-                  href={DOWNLOAD_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={DESKTOP_DOWNLOAD_URL}
                   className="mt-6 inline-block rounded-full bg-ink px-6 py-3 font-display text-sm font-medium text-white transition-colors hover:bg-black/80"
                 >
                   {t('invite.downloadApp')}
