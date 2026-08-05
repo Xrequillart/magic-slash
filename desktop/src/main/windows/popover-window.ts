@@ -33,6 +33,14 @@ export function createPopoverWindow(): BrowserWindow {
     movable: false,
     fullscreenable: false,
     skipTaskbar: true,
+    // Floats over whatever the user is in, like the menu it replaced.
+    alwaysOnTop: true,
+    // An NSPanel (NSWindowStyleMaskNonactivatingPanel), not a plain window: it
+    // takes key focus — which the blur handler below needs — WITHOUT making the
+    // app frontmost. A regular window would activate Magic Slash on every click
+    // of the menu bar icon, which macOS answers by jumping to the Space holding
+    // the main window and hanging the app menu next to the Apple logo.
+    ...(process.platform === 'darwin' ? { type: 'panel' as const } : {}),
     transparent: true,
     hasShadow: true,
     roundedCorners: true,
@@ -53,6 +61,15 @@ export function createPopoverWindow(): BrowserWindow {
   } else {
     popoverWindow.loadFile(join(__dirname, '../renderer/popover.html'))
   }
+
+  // The menu bar is shared by every Space and every fullscreen app, so the panel
+  // it opens has to be too. skipTransformProcessType keeps Electron from flipping
+  // the process to accessory and back on the way — that flip is itself an
+  // activation change, and it makes the Dock icon and menu bar blink.
+  popoverWindow.setVisibleOnAllWorkspaces(true, {
+    visibleOnFullScreen: true,
+    skipTransformProcessType: true,
+  })
 
   popoverWindow.on('blur', () => {
     popoverWindow?.hide()
