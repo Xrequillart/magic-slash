@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Cloud, X, LogIn, UserPlus, Loader2, KeyRound } from 'lucide-react'
+import { Cloud, X, LogIn, Loader2, KeyRound } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useT } from '../i18n'
 
@@ -9,22 +9,22 @@ interface LoginScreenProps {
   onSignedIn?: () => void
 }
 
-type Mode = 'signin' | 'signup' | 'reset'
+type Mode = 'signin' | 'reset'
 // The reset flow has two steps: request a code by email, then confirm the code
 // together with a new password.
 type ResetStep = 'request' | 'confirm'
 
 /**
- * Optional email/password sign-in + sign-up (personal org). Fully SKIPPABLE —
- * the app never blocks on auth. Sign-up creates a personal org server-side.
+ * Optional email/password sign-in. Fully SKIPPABLE — the app never blocks on
+ * auth. Account creation is NOT offered here: the only in-app path to a new
+ * account is the invitation wizard (see InvitationOnboardingWizard).
  */
 export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
-  const { login, signup, requestPasswordReset, confirmPasswordReset } = useAuth()
+  const { login, requestPasswordReset, confirmPasswordReset } = useAuth()
   const [mode, setMode] = useState<Mode>('signin')
   const [resetStep, setResetStep] = useState<ResetStep>('request')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [orgName, setOrgName] = useState('')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const t = useT()
@@ -95,32 +95,25 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
     }
     setBusy(true)
     try {
-      const status = mode === 'signin'
-        ? await login(email.trim(), password)
-        : await signup(email.trim(), password, { orgName: orgName.trim() || undefined })
+      const status = await login(email.trim(), password)
 
       if (status.loggedIn) {
         onSignedIn?.()
         onClose()
       } else {
-        // Sign-up with email confirmation enabled: no session yet.
+        // Account exists but the email is not confirmed yet: no session.
         setNotice('Check your inbox to confirm your email, then sign in.')
-        setMode('signin')
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : t('login.error.authFailed'))
     } finally {
       setBusy(false)
     }
-  }, [busy, email, password, orgName, mode, login, signup, onSignedIn, onClose, handleReset])
+  }, [busy, email, password, mode, login, onSignedIn, onClose, handleReset])
 
   if (!isOpen) return null
 
-  const title = mode === 'signin'
-    ? t('login.signinTitle')
-    : mode === 'signup'
-      ? t('login.signupTitle')
-      : t('login.resetTitle')
+  const title = mode === 'signin' ? t('login.signinTitle') : t('login.resetTitle')
 
   return (
     <div
@@ -193,16 +186,6 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
               />
             )}
 
-            {mode === 'signup' && (
-              <input
-                type="text"
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-                placeholder={t('login.orgPlaceholder')}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
-              />
-            )}
           </div>
 
           {error && (
@@ -225,41 +208,21 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : mode === 'signin' ? (
               <LogIn className="w-4 h-4" />
-            ) : mode === 'signup' ? (
-              <UserPlus className="w-4 h-4" />
             ) : (
               <KeyRound className="w-4 h-4" />
             )}
             {mode === 'signin'
               ? t('login.signIn')
-              : mode === 'signup'
-                ? t('login.signUp')
-                : resetStep === 'request'
-                  ? t('login.sendCode')
-                  : t('login.resetPassword')}
+              : resetStep === 'request'
+                ? t('login.sendCode')
+                : t('login.resetPassword')}
           </button>
 
           <div className="text-center text-xs text-text-secondary/60 space-y-1">
             {mode === 'signin' && (
-              <>
-                <div>
-                  {t('login.noAccount')}{' '}
-                  <button onClick={() => goToMode('signup')} className="text-accent hover:underline">
-                    {t('login.createOne')}
-                  </button>
-                </div>
-                <div>
-                  <button onClick={() => goToMode('reset')} className="text-accent hover:underline">
-                    {t('login.forgotPassword')}
-                  </button>
-                </div>
-              </>
-            )}
-            {mode === 'signup' && (
               <div>
-                {t('login.haveAccount')}{' '}
-                <button onClick={() => goToMode('signin')} className="text-accent hover:underline">
-                  {t('login.signIn')}
+                <button onClick={() => goToMode('reset')} className="text-accent hover:underline">
+                  {t('login.forgotPassword')}
                 </button>
               </div>
             )}

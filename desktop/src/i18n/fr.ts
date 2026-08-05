@@ -1046,7 +1046,6 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Écran de connexion ───────────────────────────────────────────────────
   'login.signinTitle': 'Se connecter à Magic Slash',
-  'login.signupTitle': 'Créer votre compte',
   'login.resetTitle': 'Réinitialiser votre mot de passe',
   'login.resetHelp':
     'Réinitialisez votre mot de passe avec un code à 6 chiffres envoyé par e-mail — aucun lien à cliquer.',
@@ -1056,15 +1055,10 @@ export const fr: Record<keyof typeof en, string> = {
   'login.codePlaceholder': 'Code à 6 chiffres',
   'login.passwordPlaceholder': 'Mot de passe',
   'login.newPasswordPlaceholder': 'Nouveau mot de passe',
-  'login.orgPlaceholder': 'Nom de l’organisation (facultatif)',
   'login.signIn': 'Se connecter',
-  'login.signUp': 'S’inscrire',
   'login.sendCode': 'Envoyer le code',
   'login.resetPassword': 'Réinitialiser le mot de passe',
-  'login.noAccount': 'Pas de compte ?',
-  'login.createOne': 'Créez-en un',
   'login.forgotPassword': 'Mot de passe oublié ?',
-  'login.haveAccount': 'Vous avez déjà un compte ?',
   'login.backToSignIn': 'Retour à la connexion',
   'login.error.emailRequired': 'L’e-mail est obligatoire',
   'login.error.resetEmailFailed': 'Impossible d’envoyer l’e-mail de réinitialisation',

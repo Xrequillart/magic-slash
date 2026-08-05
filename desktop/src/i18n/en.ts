@@ -1042,7 +1042,6 @@ export const en = {
 
   // ── Login screen ─────────────────────────────────────────────────────────
   'login.signinTitle': 'Sign in to Magic Slash',
-  'login.signupTitle': 'Create your account',
   'login.resetTitle': 'Reset your password',
   'login.resetHelp':
     'Reset your password with a 6-digit code sent to your email — no link to click.',
@@ -1052,15 +1051,10 @@ export const en = {
   'login.codePlaceholder': '6-digit code',
   'login.passwordPlaceholder': 'Password',
   'login.newPasswordPlaceholder': 'New password',
-  'login.orgPlaceholder': 'Organization name (optional)',
   'login.signIn': 'Sign in',
-  'login.signUp': 'Sign up',
   'login.sendCode': 'Send code',
   'login.resetPassword': 'Reset password',
-  'login.noAccount': 'No account?',
-  'login.createOne': 'Create one',
   'login.forgotPassword': 'Forgot password?',
-  'login.haveAccount': 'Already have an account?',
   'login.backToSignIn': 'Back to sign in',
   'login.error.emailRequired': 'Email is required',
   'login.error.resetEmailFailed': 'Could not send the reset email',
