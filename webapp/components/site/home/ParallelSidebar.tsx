@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import { AlertTriangle, Bot, Check, Clock, Sparkles, UserRound, Users } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
 import { usePointerTilt } from './usePointerTilt'
+import { MkLoader } from './MkLoader'
 
 /**
  * The illustration for section ④ — the app's agent list, on its own, leaning back.
@@ -90,7 +91,7 @@ export function ParallelSidebar() {
               <span className="mk-agent-meta">
                 <span className="mk-dot mk-dot--teal" />
                 <span className="mk-agent-state">
-                  {agent.state === 'working' ? <span className="mk-loader" /> : null}
+                  {agent.state === 'working' ? <MkLoader /> : null}
                   {agent.state === 'waiting' ? (
                     <Clock size={13} className="mk-agent-clock" />
                   ) : null}

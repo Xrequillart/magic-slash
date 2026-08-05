@@ -4311,25 +4311,40 @@ h1 {
 .mk-dot--green { background: var(--mk-green); }
 
 /* Idle -> working -> done, in the one status slot the row has. Idle shows NOTHING, as it
-   does in the app, so the run starts with an empty slot and only earns a spinner once the
+   does in the app, so the run starts with an empty slot and only earns a loader once the
    agent is given something to do.
 
-   The spinner is the app's own `loader-spinner-md`, scaled to the mockup: a full ring in
-   the border colour with the top arc in the accent, turning once every 0.8s. It is NOT
-   the terminal's `.mk-spin`, which leaves the top transparent instead.
+   The loader is the app's own `.loader-wave`, scaled from its 16px to this mockup's 13px:
+   three parallel bars, the middle one tallest, crossed by a wave that travels from the
+   left bar to the right one. The ring it replaced is gone from the app, and an
+   illustration of a sidebar has to show the sidebar people will open. The bars inherit
+   the ring's 1.6px stroke as their width, so the row's weight is unchanged.
+
+   Heights are the app's 6px and 13px at this scale. That RATIO is what keeps the middle
+   bar tallest through the whole cycle rather than flattening mid-wave — the reasoning,
+   and the numbers behind it, sit where they were chosen: desktop/src/renderer/index.css.
+
+   It is NOT the terminal's `.mk-spin`, which is still a ring and is a different thing:
+   that one is Claude thinking inside the conversation, not an agent at work in the list.
 
    It is visible unless it carries `is-out`, so a row that is not working says so in its
    own markup rather than depending on whether a script has taken over — which is what
    lets the tilted sidebar in ④ reuse these rows with no script at all. */
 .mk-loader {
+    display: flex; align-items: center; justify-content: center; gap: 1.5px;
     width: 13px; height: 13px;
-    border: 1.6px solid rgba(255, 255, 255, 0.14);
-    border-top-color: var(--mk-indigo);
-    border-radius: 50%;
     transition: opacity 0.25s;
-    animation: mk-spin 0.8s linear infinite;
 }
+.mk-loader > span {
+    width: 1.6px; height: 5px;
+    border-radius: 0.8px;
+    background: var(--mk-indigo);
+    animation: mk-wave 1.2s ease-in-out infinite;
+}
+.mk-loader > span:nth-child(2) { height: 10.5px; animation-delay: 0.15s; }
+.mk-loader > span:nth-child(3) { animation-delay: 0.3s; }
 .mk-loader.is-out { opacity: 0; }
+@keyframes mk-wave { 0%, 100% { transform: scaleY(1); } 35% { transform: scaleY(0.55); } 70% { transform: scaleY(1.1); } }
 /* `waiting`: the row is blocked on the person, not on the agent. */
 .mk-agent-clock { color: var(--mk-amber); }
 .mk-agent-check {
@@ -5006,7 +5021,10 @@ h1 {
     .mk { aspect-ratio: 4 / 3; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .mk-loader, .mk-caret, .mk-spin, .mk-block, .mk-file, .mk-run em,
+    /* The BARS carry the wave, not their container — stopping `.mk-loader` itself would
+       leave all three still waving. Halted, they hold their rest heights, which is the
+       silhouette the loader is recognisable by. */
+    .mk-loader > span, .mk-caret, .mk-spin, .mk-block, .mk-file, .mk-run em,
     .mk-card--reveal { animation: none; }
     .mk-line, .mk-run, .mk-run em, .mk-pr, .mk-banner { transition: none; }
 }

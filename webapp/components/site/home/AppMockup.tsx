@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
 import { mountMockup } from './mockupAnimation'
+import { MkLoader } from './MkLoader'
 
 /**
  * The animated app window in the hero — sidebar, terminal, info panel.
@@ -180,7 +181,7 @@ export function AppMockup() {
             <span className="mk-agent-meta">
               <span className="mk-dot mk-dot--teal" />
               <span className="mk-agent-state">
-                <span className="mk-loader is-out" data-mk="agent-loader" />
+                <MkLoader className="is-out" data-mk="agent-loader" />
                 <Check size={13} className="mk-agent-check" data-mk="agent-check" />
               </span>
             </span>
