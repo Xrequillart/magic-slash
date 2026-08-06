@@ -1033,6 +1033,7 @@ export const en = {
   'repoSetup.addRepo': 'Add a repository',
   'repoSetup.resolved': 'Ready',
   'repoSetup.error': 'Could not use this folder',
+  'repoSetup.unverified': 'Folder saved, but its state could not be checked — try again',
 
   // ── Config validation / invalid repositories ─────────────────────────────
   'toast.invalidConfig.one': 'Invalid configuration: {count} error found in config.json',

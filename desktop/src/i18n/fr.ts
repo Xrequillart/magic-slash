@@ -1034,6 +1034,7 @@ export const fr: Record<keyof typeof en, string> = {
   'repoSetup.addRepo': 'Ajouter un dépôt',
   'repoSetup.resolved': 'Prêt',
   'repoSetup.error': 'Impossible d’utiliser ce dossier',
+  'repoSetup.unverified': 'Dossier enregistré, mais son état n’a pas pu être vérifié — réessayez',
 
   // ── Validation de la config / dépôts invalides ───────────────────────────
   'toast.invalidConfig.one': 'Configuration invalide : {count} erreur trouvée dans config.json',

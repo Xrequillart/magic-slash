@@ -17,6 +17,13 @@ interface RowState {
   resolvedPath?: string
   /** The re-check's verdict when the picked folder is still not usable. */
   reason?: RepoSetupReason
+  /**
+   * The write landed but its verdict could not be read back. Distinct from both
+   * outcomes above and load-bearing: without it, "we don't know" is indistinguishable
+   * from "no reason left to show", which is how the row would claim Ready for a
+   * folder nothing ever confirmed.
+   */
+  unverified?: boolean
   error?: string
 }
 
@@ -44,7 +51,10 @@ function RepoRow({ name, path, reason, state = {}, onChooseFolder }: RepoRowProp
   const t = useT()
   // No reason left to show IS the resolved state: a row with no reason at all
   // (a repository just added) and one whose re-check came back clean read alike.
+  // An unverified row is the exception — it has no reason either, but nothing
+  // confirmed it, so it must keep its action instead of reading as done.
   const shownReason = state.resolvedPath ? undefined : state.reason ?? reason
+  const isResolved = !shownReason && !state.unverified
   const shownPath = state.resolvedPath ?? path
 
   return (
@@ -54,18 +64,20 @@ function RepoRow({ name, path, reason, state = {}, onChooseFolder }: RepoRowProp
           <div className="text-sm font-medium truncate">{name}</div>
           {shownPath && <div className="text-xs text-text-secondary/50 truncate">{shownPath}</div>}
         </div>
-        {!shownReason ? (
+        {isResolved ? (
           <div className="flex items-center gap-1.5 text-xs text-green flex-shrink-0">
             <Check className="w-3.5 h-3.5" />
             {t('repoSetup.resolved')}
           </div>
         ) : (
           <>
-            <span
-              className={`px-2 py-0.5 text-[11px] rounded-full flex-shrink-0 ${REASON_META[shownReason].severity === 'warning' ? 'bg-yellow/10 text-yellow' : 'bg-red/10 text-red'}`}
-            >
-              {t(REASON_META[shownReason].labelKey)}
-            </span>
+            {shownReason && (
+              <span
+                className={`px-2 py-0.5 text-[11px] rounded-full flex-shrink-0 ${REASON_META[shownReason].severity === 'warning' ? 'bg-yellow/10 text-yellow' : 'bg-red/10 text-red'}`}
+              >
+                {t(REASON_META[shownReason].labelKey)}
+              </span>
+            )}
             <button
               onClick={onChooseFolder}
               disabled={state.busy}
@@ -132,12 +144,32 @@ export function RepoSetupWizard({ setup, onClose }: RepoSetupWizardProps) {
   const effectiveMode = added.length > 0 ? 'empty' : displayed.mode
 
   /**
-   * Add a repository from a picked folder, then ASK THE MAIN PROCESS whether it is
-   * actually usable — `addRepository` only warns about a folder that does not exist
-   * or is not a git repository, so an unverified row would claim "Ready" for exactly
-   * what handleChooseFolder is careful not to claim. Repositories are keyed by name,
-   * so two folders sharing a basename would overwrite each other silently: the same
-   * guard Settings uses runs first.
+   * Ask the main process whether `name` is usable now. Runs only AFTER the config
+   * write has landed, which is what makes its failure mode different: it is a
+   * failure to learn the verdict, never a failed write. Reporting it as a failed
+   * write would drop a repository that really was added, or leave a row that
+   * really was re-bound showing its old reason — so an unreadable verdict keeps
+   * the row listed and actionable, and claims nothing.
+   */
+  const recheck = useCallback(async (name: string, folderPath: string): Promise<RowState> => {
+    try {
+      const invalid = await window.electronAPI.config.getInvalidRepos()
+      const stillInvalid = invalid.find((repo) => repo.name === name)
+      return stillInvalid
+        ? { reason: stillInvalid.reason, error: t('repoSetup.error') }
+        : { resolvedPath: folderPath }
+    } catch (e) {
+      return { unverified: true, error: e instanceof Error ? e.message : t('repoSetup.unverified') }
+    }
+  }, [t])
+
+  /**
+   * Add a repository from a picked folder, then re-check it — `addRepository` only
+   * warns about a folder that does not exist or is not a git repository, so an
+   * unverified row would claim "Ready" for exactly what handleChooseFolder is
+   * careful not to claim. Repositories are keyed by name, so two folders sharing a
+   * basename would overwrite each other silently: the same guard Settings uses runs
+   * first. Only the write itself is caught here; see recheck for why.
    */
   const handleAddRepo = useCallback(async () => {
     const folderPath = await window.electronAPI.dialog.openFolder()
@@ -150,48 +182,46 @@ export function RepoSetupWizard({ setup, onClose }: RepoSetupWizardProps) {
     setAddError(null)
     try {
       await addRepository(name, folderPath, [])
-      const invalid = await window.electronAPI.config.getInvalidRepos()
-      const stillInvalid = invalid.find((repo) => repo.name === name)
-      setRowStates((prev) => ({
-        ...prev,
-        [name]: stillInvalid
-          ? { reason: stillInvalid.reason, error: t('repoSetup.error') }
-          : { resolvedPath: folderPath },
-      }))
-      setAdded((prev) => (prev.some((r) => r.name === name) ? prev : [...prev, { name, path: folderPath }]))
     } catch (e) {
       setAddError(e instanceof Error ? e.message : t('repoSetup.error'))
-    } finally {
       setAddBusy(false)
+      return
     }
-  }, [addRepository, config, t])
+    // The write landed: the repository is in the config whatever the re-check says,
+    // so it is listed from here on and only its verdict is still open.
+    const state = await recheck(name, folderPath)
+    setRowStates((prev) => ({ ...prev, [name]: state }))
+    setAdded((prev) => (prev.some((r) => r.name === name) ? prev : [...prev, { name, path: folderPath }]))
+    setAddBusy(false)
+  }, [addRepository, config, recheck, t])
 
   /**
-   * Bind a folder to an existing repository, then ASK THE MAIN PROCESS whether
-   * that fixed it. `updateRepository` writes the path without validating it, so
-   * a folder that is not a git repository would otherwise get a green check.
+   * Bind a folder to an existing repository, then re-check whether that fixed it.
+   * `updateRepository` writes the path without validating it, so a folder that is
+   * not a git repository would otherwise get a green check. A failed write keeps
+   * whatever the row already showed — replacing that state would strip the reason
+   * an added row has no prop to fall back on, leaving it green AND in error.
    */
   const handleChooseFolder = useCallback(async (name: string) => {
     const folderPath = await window.electronAPI.dialog.openFolder()
     if (!folderPath) return
-    setRowStates((prev) => ({ ...prev, [name]: { busy: true } }))
+    setRowStates((prev) => ({ ...prev, [name]: { ...prev[name], busy: true, error: undefined } }))
     try {
       await updateRepository(name, { path: folderPath })
-      const invalid = await window.electronAPI.config.getInvalidRepos()
-      const stillInvalid = invalid.find((repo) => repo.name === name)
-      setRowStates((prev) => ({
-        ...prev,
-        [name]: stillInvalid
-          ? { reason: stillInvalid.reason, error: t('repoSetup.error') }
-          : { resolvedPath: folderPath },
-      }))
     } catch (e) {
       setRowStates((prev) => ({
         ...prev,
-        [name]: { error: e instanceof Error ? e.message : t('repoSetup.error') },
+        [name]: {
+          ...prev[name],
+          busy: false,
+          error: e instanceof Error ? e.message : t('repoSetup.error'),
+        },
       }))
+      return
     }
-  }, [updateRepository, t])
+    const state = await recheck(name, folderPath)
+    setRowStates((prev) => ({ ...prev, [name]: state }))
+  }, [updateRepository, recheck, t])
 
   return (
     <div
