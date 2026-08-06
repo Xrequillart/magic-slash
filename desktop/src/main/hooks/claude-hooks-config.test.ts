@@ -30,12 +30,25 @@ const promptSkillHooks = (): Hook[] =>
     h.hooks!.some((x) => x.command!.includes('pending-skills.ndjson')),
   )
 
-/** Run a generated hook the way Claude Code does: payload on stdin. */
+/**
+ * Run a generated hook the way Claude Code does: payload on stdin.
+ *
+ * stdin is a real file rather than a pipe: a hook whose guard short-circuits exits
+ * without ever reading it, and a pipe would then race the parent's write into EPIPE
+ * — a failure of the harness, not of the hook, which exited 0 as intended.
+ */
 function run(command: string, payload: string, terminalId: string): void {
-  execFileSync('/bin/sh', ['-c', command], {
-    input: payload,
-    env: { ...process.env, HOME: TMP_HOME, MAGIC_SLASH_TERMINAL_ID: terminalId },
-  })
+  const stdinFile = path.join(TMP_HOME, 'hook-stdin')
+  fs.writeFileSync(stdinFile, payload)
+  const stdin = fs.openSync(stdinFile, 'r')
+  try {
+    execFileSync('/bin/sh', ['-c', command], {
+      stdio: [stdin, 'pipe', 'pipe'],
+      env: { ...process.env, HOME: TMP_HOME, MAGIC_SLASH_TERMINAL_ID: terminalId },
+    })
+  } finally {
+    fs.closeSync(stdin)
+  }
 }
 
 function fireHook(payload: string, terminalId = 'claude-1'): void {
