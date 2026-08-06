@@ -2,11 +2,8 @@ import { useCallback } from 'react'
 import { useStore } from '../store'
 import { showToast } from '../components/Toast'
 import type { ScriptTerminalInfo } from '../../types'
-
-// Strip ANSI escape codes from terminal output
-function stripAnsi(str: string): string {
-  return str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
-}
+// Shared with the main process (menu bar panel previews) — see src/strip-ansi.ts.
+import { stripAnsi } from '../../strip-ansi'
 
 // Parse test results from terminal output (Vitest, Jest, Mocha)
 function parseTestResults(buffer: string): { passed: number; failed: number; total: number } | null {
