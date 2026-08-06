@@ -130,6 +130,49 @@ describe('setFromNotification', () => {
     expect(setFromNotification('term-1', {})).toBeNull()
     expect(setFromNotification('term-1', { message: '   ' })).toBeNull()
   })
+
+  it('never replaces a pending ask, whatever the wording', () => {
+    // The regression: Claude Code announces an AskUserQuestion with a permission
+    // notification of its own, which used to overwrite the question and its options
+    // with a bare Allow / Deny.
+    const ask = setFromAskQuestion('term-1', JSON.parse(askPayload(ONE_QUESTION)))
+    const notification = setFromNotification(
+      'term-1',
+      { message: 'Claude needs your permission to use AskUserQuestion' },
+      () => 'tail',
+    )
+    expect(notification).toBeNull()
+    expect(getPendingQuestion('term-1')).toEqual(ask)
+  })
+
+  it('does not read the terminal buffer for a notification it drops', () => {
+    setFromAskQuestion('term-1', JSON.parse(askPayload(ONE_QUESTION)))
+    const bufferProvider = vi.fn(() => 'tail')
+    setFromNotification('term-1', { message: 'Claude needs your permission to use Bash' }, bufferProvider)
+    expect(bufferProvider).not.toHaveBeenCalled()
+  })
+
+  it('takes the slot back once the ask is gone', () => {
+    setFromAskQuestion('term-1', JSON.parse(askPayload(ONE_QUESTION)))
+    clearPendingQuestion('term-1')
+    const question = setFromNotification('term-1', { message: 'Claude needs your permission to use Bash' })
+    expect(question!.kind).toBe('permission')
+  })
+
+  it('takes the slot back once the ask has expired', () => {
+    vi.useFakeTimers()
+    setFromAskQuestion('term-1', JSON.parse(askPayload(ONE_QUESTION)))
+    vi.advanceTimersByTime(31 * 60 * 1000)
+    const question = setFromNotification('term-1', { message: 'Claude needs your permission to use Bash' })
+    expect(question!.kind).toBe('permission')
+  })
+
+  it("leaves another agent's permission prompt alone", () => {
+    setFromAskQuestion('term-1', JSON.parse(askPayload(ONE_QUESTION)))
+    const question = setFromNotification('term-2', { message: 'Claude needs your permission to use Bash' })
+    expect(question!.kind).toBe('permission')
+    expect(getPendingQuestion('term-1')!.kind).toBe('ask')
+  })
 })
 
 describe('ingestQuestionPayload', () => {
@@ -188,9 +231,11 @@ describe('the store itself', () => {
     expect(second.token).not.toBe(first.token)
   })
 
+  // The one exception is a notification landing on a pending ask, which is dropped
+  // rather than stored — see setFromNotification.
   it('keeps one question per agent, the newest winning', () => {
-    setFromAskQuestion('term-1', JSON.parse(askPayload(ONE_QUESTION)))
-    const second = setFromNotification('term-1', { message: 'Claude needs your permission to use Bash' })!
+    setFromNotification('term-1', { message: 'Claude needs your permission to use Bash' })
+    const second = setFromAskQuestion('term-1', JSON.parse(askPayload(ONE_QUESTION)))!
     expect(getPendingQuestion('term-1')).toEqual(second)
   })
 
