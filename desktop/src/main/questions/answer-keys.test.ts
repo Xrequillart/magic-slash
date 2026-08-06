@@ -24,12 +24,21 @@ const option = (index: number): TrayAnswerChoice => ({ kind: 'option', index })
 
 describe('keysFor', () => {
   it('sends Enter alone for the first option (the row already highlighted)', () => {
-    expect(keysFor(ask(), option(0))).toBe('\r')
+    expect(keysFor(ask(), option(0))).toEqual(['\r'])
   })
 
   it('sends one arrow per row to walk down to the option, then Enter', () => {
-    expect(keysFor(ask(), option(1))).toBe('\x1b[B\r')
-    expect(keysFor(ask(), option(2))).toBe('\x1b[B\x1b[B\r')
+    expect(keysFor(ask(), option(1))).toEqual(['\x1b[B', '\r'])
+    expect(keysFor(ask(), option(2))).toEqual(['\x1b[B', '\x1b[B', '\r'])
+  })
+
+  it('keeps every keypress a separate element, never one concatenated burst', () => {
+    // The regression this whole module was rewritten for: `\x1b[B\x1b[B\r` written as
+    // one chunk had all its arrows dropped, so option 3 answered option 1. Each
+    // element must be exactly one keypress for the caller to be able to space them.
+    const keys = keysFor(ask(), option(2))
+    expect(keys).toHaveLength(3)
+    expect(keys?.every((key) => key === '\x1b[B' || key === '\r')).toBe(true)
   })
 
   it('refuses an index past the last option rather than writing an approximation', () => {
@@ -44,8 +53,9 @@ describe('keysFor', () => {
   })
 
   it('denies with a bare Escape, independent of how many options there are', () => {
-    expect(keysFor(permission(), { kind: 'deny' })).toBe('\x1b')
-    expect(keysFor(permission({ options: [{ label: 'a' }, { label: 'b' }] }), { kind: 'deny' })).toBe('\x1b')
+    expect(keysFor(permission(), { kind: 'deny' })).toEqual(['\x1b'])
+    expect(keysFor(permission({ options: [{ label: 'a' }, { label: 'b' }] }), { kind: 'deny' }))
+      .toEqual(['\x1b'])
   })
 
   it('does not offer a refusal on an AskUserQuestion (Escape would interrupt it)', () => {
@@ -54,7 +64,7 @@ describe('keysFor', () => {
 
   it('treats a permission Allow as the first row of an implicit one-option list', () => {
     expect(answerableOptionCount(permission())).toBe(1)
-    expect(keysFor(permission(), option(0))).toBe('\r')
+    expect(keysFor(permission(), option(0))).toEqual(['\r'])
     expect(keysFor(permission(), option(1))).toBeNull()
   })
 })

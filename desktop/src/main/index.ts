@@ -408,7 +408,9 @@ function setupTrayHandlers() {
     if (typeof payload !== 'object' || payload === null) return { ok: false }
     const { id, token, choice } = payload
 
-    const result = answerPendingQuestion(id, token, choice, {
+    // Awaited: the answer is typed one keypress at a time, spaced, because the TUI
+    // drops all but one event out of a single burst — see answer-keys.ts.
+    const result = await answerPendingQuestion(id, token, choice, {
       getQuestion: getPendingQuestion,
       write: writeToTerminal,
       clear: clearPendingQuestion,
