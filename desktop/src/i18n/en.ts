@@ -938,6 +938,13 @@ export const en = {
   // written to the agent — that is the point of saying so.
   'tray.question.stale': 'Already answered — nothing was sent',
   'tray.question.unsupported': 'Answer this one in the app',
+  // A question that takes several answers: the boxes are ticked here and sent in one
+  // go, so it needs a button of its own — the rows no longer answer on click.
+  'tray.question.multiHint': 'Pick as many as you like',
+  'tray.question.send': 'Send',
+  // The card renders at most four rows. Saying how many it left out beats a list that
+  // silently looks complete — "Open the agent" right below is where the rest is.
+  'tray.question.moreOptions': '{count} more in the agent',
 
   // ── Compact relative time (agent info sidebar) ───────────────────────────
   // Abbreviations, one key per unit: French shortens a day to "j" and a week to

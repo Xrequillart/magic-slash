@@ -159,9 +159,10 @@ function store(terminalId: string, question: Omit<TrayQuestion, 'token' | 'recei
  * An `AskUserQuestion` tool call, from the `PreToolUse` hook payload
  * (`{ tool_input: { questions: [{ question, header, multiSelect, options }] } }`).
  *
- * Several questions in one call, `multiSelect`, and the free-text "Other" option
- * are all out of scope for v1: they are stored as `unsupported` rather than
- * dropped, so the panel still shows what is being asked and offers "Open agent".
+ * `multiSelect` IS answered from the panel — checkboxes and a submit button, on the
+ * keystrokes verified in answer-keys.ts. Several questions in one call and the
+ * free-text "Other" option are still out of scope: they are stored as `unsupported`
+ * rather than dropped, so the panel shows what is being asked and offers "Open agent".
  */
 export function setFromAskQuestion(terminalId: string, payload: unknown): TrayQuestion | null {
   const toolInput = (payload as { tool_input?: { questions?: unknown } })?.tool_input
@@ -173,7 +174,9 @@ export function setFromAskQuestion(terminalId: string, payload: unknown): TrayQu
   if (!prompt) return null
 
   const options = parseOptions(first?.options)
-  const unsupported = questions.length > 1 || first?.multiSelect === true || options.length === 0
+  // Several questions in one call remain out of reach: the TUI walks them one tab at
+  // a time and the panel has a single card, so there is nothing honest to render.
+  const unsupported = questions.length > 1 || options.length === 0
 
   // No refusal is offered on an `ask`: Escape would interrupt the agent rather
   // than answer it. That follows from `kind` alone — see answer-keys.keysFor.
@@ -181,6 +184,7 @@ export function setFromAskQuestion(terminalId: string, payload: unknown): TrayQu
     kind: 'ask',
     prompt,
     options,
+    ...(first?.multiSelect === true ? { multiSelect: true } : {}),
     ...(unsupported ? { unsupported: true } : {}),
   })
 }

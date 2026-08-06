@@ -903,9 +903,9 @@ export interface TrayQuestionOption {
  * the PTY. Answer the same question in the main window and the store is cleared,
  * so a click on the panel's now-stale card writes nothing at all.
  *
- * `unsupported` marks a question v1 cannot answer from the panel (several
- * questions in one call, `multiSelect`, no readable option): the card is still
- * shown, but only offers "Open agent".
+ * `unsupported` marks a question the panel cannot answer (several questions in one
+ * call, no readable option, or the user has since typed in the terminal): the card
+ * is still shown, but only offers "Open agent".
  */
 export interface TrayQuestion {
   token: string
@@ -917,6 +917,11 @@ export interface TrayQuestion {
    * rather than parroting the TUI's wording, which we never see.
    */
   options: TrayQuestionOption[]
+  /**
+   * Several options may be picked at once — the card renders checkboxes and a submit
+   * button instead of one-click rows, and the answer carries every index.
+   */
+  multiSelect?: boolean
   /** Last lines of the terminal, ANSI-stripped — the real prompt, for permissions. */
   preview?: string
   receivedAt: number
@@ -924,11 +929,17 @@ export interface TrayQuestion {
 }
 
 /**
- * What the user clicked on a question card. `index` is 0-based, and refers to
+ * What the user clicked on a question card. Indexes are 0-based and refer to
  * `TrayQuestion.options` (for a permission, index 0 is Allow).
+ *
+ * `options` is the multiSelect answer: every box the user ticked, submitted in one
+ * go. It is a separate variant rather than an array on `option` so that a card and
+ * a question that disagree about multiSelect cannot silently half-work — `keysFor`
+ * matches the variant against the question and refuses the mismatch.
  */
 export type TrayAnswerChoice =
   | { kind: 'option'; index: number }
+  | { kind: 'options'; indexes: number[] }
   | { kind: 'deny' }
 
 /**

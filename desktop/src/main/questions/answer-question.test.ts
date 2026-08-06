@@ -24,6 +24,15 @@ const ASK: TrayQuestion = {
   receivedAt: 0,
 }
 
+const MULTI: TrayQuestion = {
+  token: 'tok-3',
+  kind: 'ask',
+  prompt: 'Which colours do you like?',
+  multiSelect: true,
+  options: [{ label: 'Red' }, { label: 'Green' }, { label: 'Blue' }, { label: 'Yellow' }],
+  receivedAt: 0,
+}
+
 const PERMISSION: TrayQuestion = {
   token: 'tok-2',
   kind: 'permission',
@@ -114,6 +123,10 @@ describe('answerPendingQuestion', () => {
     const malformed = [
       undefined, null, 'deny', 42, {}, { kind: 'nope' },
       { kind: 'option' }, { kind: 'option', index: '1' }, { kind: 'option', index: 1.5 },
+      // The multiSelect variant, whose array is iterated: a non-array or a member
+      // that is not an integer must be refused before anything is written.
+      { kind: 'options' }, { kind: 'options', indexes: 1 }, { kind: 'options', indexes: ['1'] },
+      { kind: 'options', indexes: [0, null] },
     ]
     for (const choice of malformed) {
       await expect(
@@ -139,6 +152,23 @@ describe('answerPendingQuestion', () => {
     expect(await answerPendingQuestion('t', 'tok-2', { kind: 'option', index: 0 }, deps(PERMISSION)))
       .toEqual({ ok: true })
     expect(written()).toEqual(['\r'])
+  })
+
+  it('types a multiSelect answer one digit at a time, then submits it', async () => {
+    // Same guarantee as the arrows, and it matters more here: a digit lost in a burst
+    // does not misplace the answer, it silently drops an option the user ticked.
+    const result = await answerPendingQuestion('t', 'tok-3', { kind: 'options', indexes: [2, 0] }, deps(MULTI))
+    expect(result).toEqual({ ok: true })
+    expect(written()).toEqual(['1', '3', '\x1b[C', '\r'])
+    expect(write).toHaveBeenCalledTimes(4)
+    expect(wait).toHaveBeenCalledTimes(3)
+    expect(clear).toHaveBeenCalledWith('t')
+  })
+
+  it('writes NOTHING for a multiSelect answer with no box ticked', async () => {
+    const result = await answerPendingQuestion('t', 'tok-3', { kind: 'options', indexes: [] }, deps(MULTI))
+    expect(result).toEqual({ ok: false })
+    expect(write).not.toHaveBeenCalled()
   })
 
   it('reports failure and keeps the question when the terminal is gone', async () => {

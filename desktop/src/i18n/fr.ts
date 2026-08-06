@@ -940,6 +940,9 @@ export const fr: Record<keyof typeof en, string> = {
   'tray.question.openAgent': 'Ouvrir l’agent',
   'tray.question.stale': 'Déjà répondu — rien n’a été envoyé',
   'tray.question.unsupported': 'À répondre dans l’application',
+  'tray.question.multiHint': 'Plusieurs réponses possibles',
+  'tray.question.send': 'Envoyer',
+  'tray.question.moreOptions': '{count} de plus dans l’agent',
 
   // ── Temps relatif compact (barre d'infos de l'agent) ─────────────────────
   'relative.now': 'à l’instant',

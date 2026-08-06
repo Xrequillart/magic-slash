@@ -56,17 +56,41 @@ describe('setFromAskQuestion', () => {
     expect(question!.prompt).toBe('Database')
   })
 
-  it('marks multi-question and multiSelect calls unsupported instead of dropping them', () => {
+  it('marks a multi-question call unsupported instead of dropping it', () => {
     const multi = setFromAskQuestion('term-1', {
       tool_input: { questions: [...ONE_QUESTION, { question: 'And the cache?', options: [{ label: 'Redis' }] }] },
     })
     expect(multi!.unsupported).toBe(true)
     expect(multi!.prompt).toBe('Which database should the API use?')
+  })
 
+  it('flags a multiSelect question as answerable, with its boxes to tick', () => {
     const multiSelect = setFromAskQuestion('term-2', {
       tool_input: { questions: [{ ...ONE_QUESTION[0], multiSelect: true }] },
     })
-    expect(multiSelect!.unsupported).toBe(true)
+    expect(multiSelect!.multiSelect).toBe(true)
+    expect(multiSelect!.unsupported).toBeUndefined()
+    expect(multiSelect!.options).toHaveLength(2)
+  })
+
+  it('leaves multiSelect off a single-answer question rather than setting it false', () => {
+    // The panel branches on its presence, and an absent flag is what keeps the
+    // one-click rows on every question that came before this feature.
+    const single = setFromAskQuestion('term-1', JSON.parse(askPayload(ONE_QUESTION)))
+    expect(single!.multiSelect).toBeUndefined()
+  })
+
+  it('still refuses a multiSelect call that carries several questions', () => {
+    const both = setFromAskQuestion('term-1', {
+      tool_input: {
+        questions: [
+          { ...ONE_QUESTION[0], multiSelect: true },
+          { question: 'And the cache?', options: [{ label: 'Redis' }] },
+        ],
+      },
+    })
+    expect(both!.multiSelect).toBe(true)
+    expect(both!.unsupported).toBe(true)
   })
 
   it('marks a question with no readable option unsupported', () => {

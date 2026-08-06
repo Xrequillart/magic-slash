@@ -74,6 +74,12 @@ function isAnswerChoice(choice: unknown): choice is TrayAnswerChoice {
   if (typeof choice !== 'object' || choice === null) return false
   const kind = (choice as { kind?: unknown }).kind
   if (kind === 'deny') return true
+  if (kind === 'options') {
+    // Emptiness and range are keysFor's call, against the question itself. All this
+    // has to guarantee is that iterating the array cannot throw out of the handler.
+    const indexes = (choice as { indexes?: unknown }).indexes
+    return Array.isArray(indexes) && indexes.every((i) => Number.isInteger(i))
+  }
   if (kind !== 'option') return false
   // Range is checked in keysFor, against the question's own option count.
   return Number.isInteger((choice as { index?: unknown }).index)

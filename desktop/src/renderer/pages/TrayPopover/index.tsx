@@ -274,6 +274,11 @@ export function TrayPopover() {
                 <AgentRow agent={agent} t={t} />
                 {agent.pendingQuestion && (
                   <QuestionCard
+                    // Keyed by the token, not the agent: a multiSelect card holds the
+                    // ticked boxes in local state, and a NEW question on the same
+                    // agent has to start from an empty selection rather than inherit
+                    // the previous one's.
+                    key={agent.pendingQuestion.token}
                     question={agent.pendingQuestion}
                     onAnswer={choice => answer(agent, choice)}
                     onOpenAgent={() => window.electronAPI.tray.focusAgent(agent.id)}
