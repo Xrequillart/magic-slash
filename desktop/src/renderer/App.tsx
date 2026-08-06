@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
 import { AlertTriangle, RotateCcw, FolderOpen } from 'lucide-react'
+import { REASON_META, buildRepoSetup, needsRepoSetup } from './utils/repoSetup'
 import type { InvalidRepo } from '../preload'
 import { useStore } from './store'
 import { useConfig } from './hooks/useConfig'
@@ -21,6 +22,7 @@ import { LiveIndicator } from './components/LiveIndicator'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProfileOnboardingWizard } from './components/ProfileOnboardingWizard'
 import { SetupWizard } from './components/SetupWizard'
+import { RepoSetupWizard } from './components/RepoSetupWizard'
 import { useWindowSplitMode } from './hooks/useWindowSplitMode'
 import FilePreviewPanel from './components/FilePreviewPanel'
 import { useT, type MessageKey } from './i18n'
@@ -56,17 +58,22 @@ function ErrorScreen({ error }: { error: string }) {
 
 export function App() {
   const t = useT()
-  const { closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, setActiveTerminal, rightPaneTerminalIds, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, setConfig, noReposWarningShown, setNoReposWarningShown, activeModal, openSettingsModal, closeModal } = useStore()
+  const { closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, setActiveTerminal, rightPaneTerminalIds, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, setConfig, repoSetupDismissed, setRepoSetupDismissed, activeModal, closeModal } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal, launchClaudeTerminal } = useTerminals()
   const { flatVisualOrder } = useGroupedTerminals()
   useWindowSplitMode()
   const confirmCloseButtonRef = useRef<HTMLButtonElement>(null)
-  const [showNoReposModal, setShowNoReposModal] = useState(false)
   const [showProfileWizard, setShowProfileWizard] = useState(false)
   const [profileChecked, setProfileChecked] = useState(false)
   const [setupNeeded, setSetupNeeded] = useState(false)
+  const [setupChecked, setSetupChecked] = useState(false)
+  const [invalidRepos, setInvalidRepos] = useState<InvalidRepo[]>([])
+  const [showRepoWizard, setShowRepoWizard] = useState(false)
   const didLandRef = useRef(false)
+  // Repositories already surfaced by a launch toast, kept out of the effect body
+  // so a re-run never re-toasts what the user has already been told about.
+  const toastedReposRef = useRef<Set<string>>(new Set())
 
   // Landing page: stay on the agents page and select the topmost agent of the
   // sidebar list, so the app never opens on an empty screen. Runs once, only
@@ -103,8 +110,14 @@ export function App() {
     if (configLoading) return
     window.electronAPI.setup
       .getStatus()
-      .then((status) => setSetupNeeded(status.needsSetup))
-      .catch(() => { /* the wizard stays closed; Settings still reports the state */ })
+      .then((status) => {
+        setSetupNeeded(status.needsSetup)
+        setSetupChecked(true)
+      })
+      .catch(() => {
+        /* the wizard stays closed; Settings still reports the state */
+        setSetupChecked(true)
+      })
   }, [configLoading])
 
   // Sequenced behind the profile wizard rather than raced against it: both trigger on
@@ -113,25 +126,36 @@ export function App() {
   // wizard to be closed) is what makes the order deterministic.
   const showSetupWizard = profileChecked && !showProfileWizard && setupNeeded
 
-  // Check if there are no repos configured
-  const hasNoRepos = useMemo(() => {
-    if (!config) return false
-    return Object.keys(config.repositories).length === 0
-  }, [config])
+  // Everything the launch repository-setup modal needs: no repository at all, or
+  // repositories the main process reported as unusable (no folder bound, folder
+  // gone, folder not a git repo). Both inputs are needed — the config says what
+  // the user has, only the main process can say whether the paths still work.
+  const repoSetup = useMemo(() => buildRepoSetup(config?.repositories, invalidRepos), [config, invalidRepos])
 
-  // Show warning modal on first app open if no repos configured
+  // Sequenced behind the profile and machine wizards for the same reason they are
+  // sequenced behind each other, and LATCHED rather than derived: fixing the last
+  // row makes the condition false, and a derived boolean would rip the modal away
+  // mid-action instead of letting the user see the row turn green. Only onClose
+  // closes it. `invalidRepos` is in the deps because an organization's repos land
+  // after the connectivity check, well after the first render.
+  //
+  // Both checks must have RESOLVED, not merely be "not showing a wizard right now":
+  // `profile.get()` is a file read and settles long before `setup.getStatus()` probes
+  // prerequisites and versions, so testing `showSetupWizard` alone would latch this
+  // modal open first and let the machine wizard mount on top of it — two backdrops,
+  // and one Escape reaching both keydown handlers.
   useEffect(() => {
-    if (!configLoading && hasNoRepos && !noReposWarningShown) {
-      setShowNoReposModal(true)
-      setNoReposWarningShown(true)
-    }
-  }, [configLoading, hasNoRepos, noReposWarningShown, setNoReposWarningShown])
+    if (configLoading || !profileChecked || !setupChecked || showProfileWizard || showSetupWizard) return
+    if (repoSetupDismissed || !needsRepoSetup(repoSetup)) return
+    setShowRepoWizard(true)
+  }, [configLoading, profileChecked, setupChecked, showProfileWizard, showSetupWizard, repoSetupDismissed, repoSetup])
 
-  // Handle going to configuration
-  const handleGoToConfig = useCallback(() => {
-    setShowNoReposModal(false)
-    openSettingsModal('repositories')
-  }, [openSettingsModal])
+  // "Later": gone for this session, back on the next launch while paths are still
+  // missing — the state is real and the user has to deal with it eventually.
+  const handleCloseRepoWizard = useCallback(() => {
+    setShowRepoWizard(false)
+    setRepoSetupDismissed(true)
+  }, [setRepoSetupDismissed])
 
   // Handle closing an agent
   const handleCloseAgent = useCallback(async () => {
@@ -263,11 +287,28 @@ export function App() {
     return () => { unsubscribe() }
   }, [loadConfig, t])
 
-  // Surface configured repositories whose folder is missing or is not a git repo,
-  // with a one-click "re-point folder" action. Runs on launch (initial fetch +
-  // the main-process 'repos:invalid' event) so invalid paths are caught early.
+  // The repositories the main process reports as unusable. Kept in state rather
+  // than consumed on the spot: both the launch modal and the toasts read it, and
+  // an organization's repositories only arrive with the event, once the
+  // connectivity check has passed — well after the initial fetch has resolved.
   useEffect(() => {
-    const shownRef = new Set<string>()
+    window.electronAPI.config.getInvalidRepos().then(setInvalidRepos).catch(() => {})
+    const unsubscribe = window.electronAPI.config.onInvalidRepos(setInvalidRepos)
+    return () => { unsubscribe() }
+  }, [])
+
+  // Surface configured repositories whose folder is missing or is not a git repo,
+  // with a one-click "re-point folder" action, for the ones the launch modal is
+  // NOT already showing — the same problem told twice, once behind a backdrop and
+  // once as a toast that outlives it, reads as two problems. Once the modal is
+  // out of the way, a repository that breaks later in the session toasts as usual.
+  useEffect(() => {
+    if (configLoading) return
+
+    const shownRef = toastedReposRef.current
+    if (!repoSetupDismissed) {
+      for (const row of repoSetup.rows) shownRef.add(row.name)
+    }
 
     const repointFolder = async (name: string) => {
       const folder = await window.electronAPI.dialog.openFolder()
@@ -281,33 +322,28 @@ export function App() {
       }
     }
 
-    const surface = (repos: InvalidRepo[]) => {
-      for (const repo of repos) {
-        // A team repo not yet bound to a local folder is an expected state,
-        // surfaced gently in Settings — don't nag with a persistent error toast.
-        if (repo.reason === 'no-local-path') continue
-        if (shownRef.has(repo.name)) continue
-        shownRef.add(repo.name)
-        const key: MessageKey = repo.reason === 'missing'
-          ? 'toast.repoInvalidMissing'
-          : 'toast.repoInvalidNotGit'
-        showToast(t(key, { name: repo.name, path: repo.path }), 'error', {
-          persistent: true,
-          actions: [
-            {
-              label: t('toast.repointFolder'),
-              icon: <FolderOpen className="w-3.5 h-3.5" />,
-              onClick: () => repointFolder(repo.name),
-            },
-          ],
-        })
-      }
+    // The cross-checked rows, not the raw invalid list: a stale `repos:invalid`
+    // payload can still name a repository the user has deleted since, and its
+    // "re-point folder" action would call updateRepository on a name that is gone.
+    for (const row of repoSetup.rows) {
+      // No toast key means the state is expected and surfaced gently elsewhere (a
+      // team repo not yet bound to a local folder) — see REASON_META.
+      const toastKey = REASON_META[row.reason].toastKey
+      if (!toastKey) continue
+      if (shownRef.has(row.name)) continue
+      shownRef.add(row.name)
+      showToast(t(toastKey, { name: row.name, path: row.path }), 'error', {
+        persistent: true,
+        actions: [
+          {
+            label: t('toast.repointFolder'),
+            icon: <FolderOpen className="w-3.5 h-3.5" />,
+            onClick: () => repointFolder(row.name),
+          },
+        ],
+      })
     }
-
-    window.electronAPI.config.getInvalidRepos().then(surface).catch(() => {})
-    const unsubscribe = window.electronAPI.config.onInvalidRepos(surface)
-    return () => { unsubscribe() }
-  }, [loadConfig])
+  }, [configLoading, repoSetup, repoSetupDismissed, loadConfig, t])
 
   // A write-through to the cloud failed: the main process already re-synced the
   // caches from the DB, so the latest change may not have been saved. Tell the
@@ -478,45 +514,15 @@ export function App() {
         onClose={() => setSetupNeeded(false)}
       />
 
-      {/* No Repos Warning Modal */}
-      {showNoReposModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-modal-backdrop">
-          <div className="bg-bg-secondary border border-line rounded-xl mx-4 max-w-md animate-modal-content">
-            {/* Header */}
-            <div className="flex items-center gap-3 px-5 pt-5 pb-4">
-              <div className="p-2 bg-yellow/10 rounded-lg">
-                <AlertTriangle className="w-4 h-4 text-yellow" />
-              </div>
-              <h3 className="text-base font-semibold">{t('app.configRequired.title')}</h3>
-            </div>
+      {/* Repositories that can't be used yet — none configured, or no usable folder.
+          Mounted only while open: the latch never re-opens it, and the wizard holds
+          a full-store subscription that would otherwise run for the whole session. */}
+      {showRepoWizard && <RepoSetupWizard setup={repoSetup} onClose={handleCloseRepoWizard} />}
 
-            {/* Body */}
-            <div className="px-5 pb-5">
-              <p className="text-text-secondary text-sm mb-5">
-                {t('app.configRequired.body')}
-              </p>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowNoReposModal(false)}
-                  className="flex-1 px-3 py-1.5 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-                >
-                  {t('app.later')}
-                </button>
-                <button
-                  onClick={handleGoToConfig}
-                  className="flex-1 px-3 py-1.5 text-xs font-medium text-yellow border border-yellow/20 rounded-lg hover:bg-yellow/10 transition-all"
-                >
-                  {t('app.configure')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* What's New Modal (after auto-update) */}
-      <WhatsNewModal />
+      {/* What's New Modal (after auto-update) — held back rather than stacked on
+          the repository wizard's backdrop. It self-gates and only clears the
+          pending payload when the user closes it, so it comes back on its own. */}
+      {!showRepoWizard && <WhatsNewModal />}
 
       {/* Update Overlay */}
       <UpdateOverlay />
