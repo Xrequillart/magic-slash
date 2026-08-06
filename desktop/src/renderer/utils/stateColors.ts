@@ -4,7 +4,7 @@ import type { TerminalState } from '../../types'
 export const stateColors: Record<TerminalState, string> = {
   idle: 'text-text-secondary',
   working: 'text-accent',
-  waiting: 'text-yellow',
+  waiting: 'text-orange',
   completed: 'text-green',
   error: 'text-red',
 }
@@ -13,7 +13,7 @@ export const stateColors: Record<TerminalState, string> = {
 export const stateColorsIcon: Record<TerminalState, string> = {
   idle: 'text-ink',
   working: 'text-accent',
-  waiting: 'text-yellow',
+  waiting: 'text-orange',
   completed: 'text-green',
   error: 'text-red',
 }
@@ -21,7 +21,7 @@ export const stateColorsIcon: Record<TerminalState, string> = {
 export const stateBgColors: Record<TerminalState, string> = {
   idle: 'bg-text-secondary/20',
   working: 'bg-accent/20',
-  waiting: 'bg-yellow/20',
+  waiting: 'bg-orange/20',
   completed: 'bg-green/20',
   error: 'bg-red/20',
 }
@@ -30,7 +30,7 @@ export const stateBgColors: Record<TerminalState, string> = {
 export const stateBgColorsIcon: Record<TerminalState, string> = {
   idle: 'bg-ink/20',
   working: 'bg-accent/20',
-  waiting: 'bg-yellow/20',
+  waiting: 'bg-orange/20',
   completed: 'bg-green/20',
   error: 'bg-red/20',
 }
@@ -38,7 +38,7 @@ export const stateBgColorsIcon: Record<TerminalState, string> = {
 export const stateHoverBgColors: Record<TerminalState, string> = {
   idle: 'hover:bg-text-secondary/10',
   working: 'hover:bg-accent/10',
-  waiting: 'hover:bg-yellow/10',
+  waiting: 'hover:bg-orange/10',
   completed: 'hover:bg-green/10',
   error: 'hover:bg-red/10',
 }

@@ -255,6 +255,38 @@ fieldset:disabled label:has(> input[type="checkbox"]) {
   }
 }
 
+/* The `waiting` badge — a question bubble, because that state is the agent asking you
+   something, not the agent being slow: nothing moves until the person answers.
+
+   It arrives rather than gestures: a small lift with a tilt into it, a settle back
+   past level, then rest — the motion of a message landing in a list. The lift is a
+   PERCENTAGE of the glyph's own height, not a pixel count, so it reads the same in the
+   16px sidebar badge and in the smaller one the marketing mockup draws.
+
+   One arrival per 3s loop, and the rest is most of it. The keyframes are spaced evenly
+   so the default ease-in-out shapes the motion like a breath rather than a snap — a
+   sidebar that can hold a dozen of these has to stay calm.
+
+   Under `prefers-reduced-motion` the global rule collapses the duration, freezing the
+   100% keyframe: the glyph at rest, untransformed. */
+.icon-ask {
+  animation: icon-ask-arrive 3s ease-in-out infinite;
+}
+
+@keyframes icon-ask-arrive {
+  0%,
+  44%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  14% {
+    transform: translateY(-14%) rotate(-5deg);
+  }
+  30% {
+    transform: translateY(0) rotate(2deg);
+  }
+}
+
 /* Modal animations */
 @keyframes modal-backdrop-in {
   from {
