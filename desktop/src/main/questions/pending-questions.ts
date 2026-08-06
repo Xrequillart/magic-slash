@@ -17,9 +17,14 @@ import type { TrayQuestion, TrayQuestionOption } from '../../types'
  * ---------------------------------------------------------------------------
  * Clearing is bound to EVENTS, never to agent state:
  *   - the `PostToolUse` (AskUserQuestion) / `UserPromptSubmit` / `Stop` hooks;
- *   - the user typing in the terminal (`terminal:write`, the IPC handler only);
+ *   - a human typing an answer into the terminal (`noteTerminalInput`, and only
+ *     for a permission prompt — see there);
  *   - the terminal exiting or being killed;
  *   - the 30-minute TTL below.
+ *
+ * Looking at the question in the main window is NOT one of them: the panel and the
+ * app show the same pending question until it is actually answered, wherever the
+ * answer comes from.
  *
  * ⚠️ Never from the `/status` route or any state transition. The generic
  * `PreToolUse` hook flips the agent to `working` at the same instant the
@@ -277,6 +282,70 @@ export function getPendingQuestion(terminalId: string): TrayQuestion | undefined
 
 export function clearPendingQuestion(terminalId: string): void {
   pendingQuestions.delete(terminalId)
+}
+
+/**
+ * Bytes a terminal emulator sends UPSTREAM on its own, with nobody typing.
+ *
+ * ⚠️ THIS IS THE WHOLE REASON THE PANEL USED TO SHOW NOTHING
+ * ---------------------------------------------------------------------------
+ * Claude Code enables focus reporting (`\x1b[?1004h` — verified against a live
+ * build), so xterm.js reports every focus change through the SAME `onData` channel
+ * as keystrokes: `\x1b[I` on focus, `\x1b[O` on blur. Clicking the menu bar icon
+ * blurs the main window, which sent `\x1b[O` down `terminal:write` — and the old
+ * unconditional clear there erased the question a fraction of a second before the
+ * panel painted. Merely clicking INTO the terminal did it too, via `\x1b[I`.
+ *
+ * The others are here for the same reason rather than from an observed bug: none of
+ * them is a person answering anything, and a terminal is free to send them at any
+ * time. Cursor position and device-attribute replies answer queries the agent made;
+ * the mouse reports would arrive on any build that turns tracking on; the bracketed
+ * paste markers wrap a paste whose CONTENT survives this strip, as it should.
+ */
+const TERMINAL_REPORT = /\x1b\[(?:[IO]|\d+;\d+R|\?[\d;]*[a-zA-Z]|>[\d;]*[a-zA-Z]|<[\d;]*[Mm]|20[01]~)/g
+
+/** Whether `data` contains anything a human actually typed. */
+function isUserInput(data: string): boolean {
+  return data.replace(TERMINAL_REPORT, '') !== ''
+}
+
+/**
+ * A human typed into the agent's terminal — what that means for its question.
+ *
+ * ⚠️ NOT A PLAIN CLEAR, AND NOT A NO-OP EITHER
+ * ---------------------------------------------------------------------------
+ * Two requirements meet here and only one of them is about the store:
+ *
+ *   1. The question must stay visible until it is ANSWERED, in the panel as much as
+ *      in the app. Someone who reads a question in the main window, wanders off and
+ *      opens the panel has answered nothing yet.
+ *   2. The panel answers by position — `keysFor` sends N× down-arrow from the row
+ *      the TUI highlights on its own. Once the user has moved that highlight with
+ *      the arrow keys, our count is wrong and clicking "option 1" would answer
+ *      whatever is highlighted now.
+ *
+ * So an `ask` is KEPT and marked `unsupported`: the card still shows the prompt and
+ * "Open the agent", it just no longer offers buttons we can no longer aim. Its real
+ * end of life stays hook-driven (`PostToolUse` on AskUserQuestion, or `Stop`).
+ *
+ * A `permission` is dropped instead, because nothing would ever take it back: the
+ * clear hooks are scoped to AskUserQuestion and to the end of the turn, so a card
+ * for a prompt the user allowed in the app seconds ago would sit in the panel for as
+ * long as the agent then works. A keystroke while a modal permission prompt is up IS
+ * the answer to it.
+ */
+export function noteTerminalInput(terminalId: string, data: string): void {
+  if (!isUserInput(data)) return
+  const question = getPendingQuestion(terminalId)
+  if (!question) return
+  if (question.kind === 'permission') {
+    pendingQuestions.delete(terminalId)
+    return
+  }
+  if (question.unsupported) return
+  // Same token: the question is the same question, only its buttons are gone. A
+  // fresh one would make a click read as "already answered" instead.
+  pendingQuestions.set(terminalId, { ...question, unsupported: true })
 }
 
 export function clearAllPendingQuestions(): void {

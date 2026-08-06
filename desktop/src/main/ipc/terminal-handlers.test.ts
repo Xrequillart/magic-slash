@@ -54,9 +54,9 @@ vi.mock('../config/agents', () => ({
 
 vi.mock('../config/activity-history', () => ({ addHistoryEntry: vi.fn() }))
 
-const clearPendingQuestion = vi.fn()
+const noteTerminalInput = vi.fn()
 vi.mock('../questions/pending-questions', () => ({
-  clearPendingQuestion: (...args: unknown[]) => clearPendingQuestion(...args),
+  noteTerminalInput: (...args: unknown[]) => noteTerminalInput(...args),
 }))
 
 const recordUsageSnapshot = vi.fn()
@@ -208,26 +208,24 @@ describe('the status contract with the skills', () => {
   })
 })
 
-describe('pending question cleared on a human write (terminal:write)', () => {
-  it('drops the pending question before writing, so a late panel click is a no-op', async () => {
+describe('the pending question and a write from the terminal view (terminal:write)', () => {
+  it('reports the data to the question store before writing it', async () => {
     await invoke('terminal:write', { id: 'claude-1', data: 'y' })
 
-    expect(clearPendingQuestion).toHaveBeenCalledWith('claude-1')
+    expect(noteTerminalInput).toHaveBeenCalledWith('claude-1', 'y')
   })
 
-  it('clears on every keystroke, not only on Enter', async () => {
-    // The user may start answering in the main window without submitting yet. The
-    // panel's card is already out of date at that point: the TUI selection has moved.
+  it('reports every keystroke, not only Enter — the store decides what each means', async () => {
     for (const data of ['\x1b[B', 'a', '\r']) {
-      clearPendingQuestion.mockClear()
+      noteTerminalInput.mockClear()
       await invoke('terminal:write', { id: 'claude-1', data })
-      expect(clearPendingQuestion).toHaveBeenCalledWith('claude-1')
+      expect(noteTerminalInput).toHaveBeenCalledWith('claude-1', data)
     }
   })
 
   it('ignores a write with no data, which cannot be an answer', async () => {
     await invoke('terminal:write', { id: 'claude-1', data: undefined })
 
-    expect(clearPendingQuestion).not.toHaveBeenCalled()
+    expect(noteTerminalInput).not.toHaveBeenCalled()
   })
 })

@@ -5,6 +5,7 @@ import {
   clearPendingQuestion,
   getPendingQuestion,
   ingestQuestionPayload,
+  noteTerminalInput,
   setFromAskQuestion,
   setFromNotification,
 } from './pending-questions'
@@ -172,6 +173,86 @@ describe('setFromNotification', () => {
     const question = setFromNotification('term-2', { message: 'Claude needs your permission to use Bash' })
     expect(question!.kind).toBe('permission')
     expect(getPendingQuestion('term-1')!.kind).toBe('ask')
+  })
+})
+
+describe('noteTerminalInput', () => {
+  const permission = () =>
+    setFromNotification('term-1', { message: 'Claude needs your permission to use Bash' }, () => 'rm -rf build/')
+
+  it('keeps the question intact when the terminal only reported a focus change', () => {
+    // THE REGRESSION THIS FEATURE EXISTS FOR: Claude Code turns focus reporting on, so
+    // clicking the menu bar icon blurs the main window and xterm sends `\x1b[O` down
+    // the very channel keystrokes use. The question has to survive it, buttons and all
+    // — the click that produced it is the click that opens the panel.
+    const ask = setFromAskQuestion('term-1', JSON.parse(askPayload(ONE_QUESTION)))
+    for (const report of ['\x1b[O', '\x1b[I']) {
+      noteTerminalInput('term-1', report)
+      expect(getPendingQuestion('term-1')).toEqual(ask)
+    }
+  })
+
+  it('keeps a permission prompt through a focus change too', () => {
+    const question = permission()
+    noteTerminalInput('term-1', '\x1b[O')
+    expect(getPendingQuestion('term-1')).toEqual(question)
+  })
+
+  it('ignores the other reports a terminal sends on its own', () => {
+    const ask = setFromAskQuestion('term-1', JSON.parse(askPayload(ONE_QUESTION)))
+    for (const report of [
+      '\x1b[24;80R',      // cursor position, answering the agent's own query
+      '\x1b[?1;2c',       // device attributes
+      '\x1b[>0;276;0c',   // secondary device attributes
+      '\x1b[<0;12;5M',    // a mouse press, on any build that enables tracking
+      '\x1b[200~\x1b[201~', // a paste with nothing in it
+      '',
+    ]) {
+      noteTerminalInput('term-1', report)
+      expect(getPendingQuestion('term-1')).toEqual(ask)
+    }
+  })
+
+  it('keeps an ask but drops its buttons once the user has typed', () => {
+    // A real keystroke moves the TUI's own highlight, and the panel answers by
+    // position — so the options can no longer be aimed. The question still shows: it
+    // has not been answered, and `unsupported` is exactly "answer this one in the app".
+    const ask = setFromAskQuestion('term-1', JSON.parse(askPayload(ONE_QUESTION)))
+    noteTerminalInput('term-1', '\x1b[B')
+
+    const after = getPendingQuestion('term-1')!
+    expect(after.unsupported).toBe(true)
+    expect(after.prompt).toBe(ask!.prompt)
+    expect(after.options).toEqual(ask!.options)
+    // Same question, so the same token: a panel click must read as "cannot drive
+    // this", never as an answer aimed at some other question.
+    expect(after.token).toBe(ask!.token)
+  })
+
+  it('treats the content of a paste as typing, markers aside', () => {
+    setFromAskQuestion('term-1', JSON.parse(askPayload(ONE_QUESTION)))
+    noteTerminalInput('term-1', '\x1b[200~Postgres\x1b[201~')
+    expect(getPendingQuestion('term-1')!.unsupported).toBe(true)
+  })
+
+  it('drops a permission prompt once the user has typed, since nothing else would', () => {
+    // Its clear hooks are the end of the turn and AskUserQuestion's PostToolUse:
+    // neither fires when a permission is allowed in the app, so the card would sit in
+    // the panel for as long as the agent then works.
+    permission()
+    noteTerminalInput('term-1', '\r')
+    expect(getPendingQuestion('term-1')).toBeUndefined()
+  })
+
+  it('leaves the other agents alone', () => {
+    const ask = setFromAskQuestion('term-2', JSON.parse(askPayload(ONE_QUESTION)))
+    noteTerminalInput('term-1', 'y')
+    expect(getPendingQuestion('term-2')).toEqual(ask)
+  })
+
+  it('is a no-op when the agent has no pending question', () => {
+    noteTerminalInput('term-1', 'y')
+    expect(getPendingQuestion('term-1')).toBeUndefined()
   })
 })
 

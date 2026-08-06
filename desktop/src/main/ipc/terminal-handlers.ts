@@ -17,7 +17,7 @@ import {
   updateTerminalRepositoriesFromHook,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
-import { clearPendingQuestion } from '../questions/pending-questions'
+import { noteTerminalInput } from '../questions/pending-questions'
 import { resolveAgentCwd } from '../pty/agent-cwd'
 import {
   saveAgent,
@@ -486,16 +486,18 @@ export function setupTerminalHandlers(
   // Write to terminal
   ipcMain.handle('terminal:write', async (_event, { id, data }) => {
     if (typeof id !== 'string' || typeof data !== 'string') return
-    // The user is typing in the terminal, so whatever the menu bar panel is still
-    // showing for this agent is answered (or being answered) right here. Dropping it
-    // now is what makes a late click on the panel's card a no-op (AC4).
+    // Someone may be answering this agent's question right here, in the terminal —
+    // which changes what the menu bar panel is still allowed to do with it (AC4).
+    // What exactly, and why it is not a plain clear, is in noteTerminalInput: this
+    // channel also carries xterm's own focus reports, and treating those as an answer
+    // is what used to make the panel show nothing at all.
     //
     // ⚠️ THIS BELONGS IN THIS HANDLER, NOT IN writeToTerminal(). That function is
     // shared: pr-review-handlers.ts and script-handlers.ts call it for writes the APP
     // makes on its own, which say nothing about the user having answered anything —
-    // moving the clear down there would silently wipe legitimate pending questions.
-    // Only this handler means "a human typed into that terminal".
-    clearPendingQuestion(id)
+    // moving this down there would silently wipe legitimate pending questions.
+    // Only this handler carries what came out of the terminal view.
+    noteTerminalInput(id, data)
     writeToTerminal(id, data)
   })
 
