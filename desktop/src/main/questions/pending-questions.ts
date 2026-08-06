@@ -39,11 +39,11 @@ const PREVIEW_LINES = 15
  *
  * A display buffer runs to ~100KB (DISPLAY_BUFFER_MAX_SIZE in pty/terminal-manager)
  * and only the last PREVIEW_LINES lines are ever shown, so stripping and splitting
- * the whole thing is work thrown away on a path a blocked agent is waiting on. This
- * window is far wider than 15 lines, so the leading fragment it may cut mid-escape
- * sequence always falls in a line that gets dropped anyway. It also bounds the
- * preview crossing IPC, which PREVIEW_LINES alone does not: a TUI redrawing with
- * bare `\r` can pile a lot of output into a single line.
+ * the whole thing is work thrown away on a path a blocked agent is waiting on. It
+ * also bounds the preview crossing IPC, which PREVIEW_LINES alone does not: a TUI
+ * redrawing with bare `\r` can pile a lot of output into a single line.
+ *
+ * That last property is why the cut cannot be a plain byte offset — see scanWindow.
  */
 const PREVIEW_SCAN_CHARS = 16384
 
@@ -101,15 +101,39 @@ function parseOptions(raw: unknown): TrayQuestionOption[] {
 }
 
 /**
+ * The buffer's tail, cut at an escape boundary rather than a byte offset.
+ *
+ * Slicing at PREVIEW_SCAN_CHARS lands mid-sequence roughly as often as not, and the
+ * fragment left behind is indistinguishable from text once the ESC is gone — `3H`,
+ * `25l` and friends showed up at the head of the preview. Dropping it by dropping
+ * the first line only works if there IS a first line to lose: a TUI that repaints
+ * with bare `\r` puts the whole window on one, so the fragment would survive on the
+ * same line as real content. Cutting at the first ESC costs a few characters of a
+ * line that is already partial, and a buffer with no escapes at all is plain output
+ * where every byte is content.
+ */
+function scanWindow(buffer: string): string {
+  if (buffer.length <= PREVIEW_SCAN_CHARS) return buffer
+  const window = buffer.slice(-PREVIEW_SCAN_CHARS)
+  const firstEscape = window.indexOf('\x1b')
+  return firstEscape === -1 ? window : window.slice(firstEscape)
+}
+
+/**
  * The last lines of a terminal buffer, ANSI-stripped — what the agent is actually
  * showing. Used as the permission preview: the alternative, reading
  * `transcript_path`, couples us to a file format we do not own.
+ *
+ * A bare `\r` returns the cursor to column 0, so only what follows the last one on a
+ * line is still on screen. Keeping just that segment is what collapses a repainting
+ * status line (spinner, elapsed time, token count) to its final frame instead of
+ * concatenating every frame the agent has drawn since it started.
  */
 export function buildPreview(buffer: string | null | undefined): string | undefined {
   if (!buffer) return undefined
-  const lines = stripAnsi(buffer.slice(-PREVIEW_SCAN_CHARS))
-    .split(/\r?\n/)
-    .map((line) => line.replace(/\s+$/, ''))
+  const lines = stripAnsi(scanWindow(buffer))
+    .split('\n')
+    .map((line) => line.slice(line.lastIndexOf('\r') + 1).replace(/\s+$/, ''))
   // Trailing blank lines are the norm in a TUI buffer and would eat the preview.
   while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
   if (lines.length === 0) return undefined

@@ -281,4 +281,23 @@ describe('buildPreview', () => {
     expect(buildPreview('')).toBeUndefined()
     expect(buildPreview('\n\n  \n')).toBeUndefined()
   })
+
+  it('keeps only the last frame of a line repainted with bare \\r', () => {
+    const buffer = 'esc to interrupt (1s)\resc to interrupt (2s · ↓25 tokens)'
+    expect(buildPreview(buffer)).toBe('esc to interrupt (2s · ↓25 tokens)')
+  })
+
+  it('does not leak a sequence cut in half by the scan window', () => {
+    // A single line wider than the window, so there is no leading line to drop:
+    // the cut has to land on the ESC or the fragment shows up next to the content.
+    const buffer = `${'x'.repeat(20000)}\x1b[3;1H\x1b[?25lBash(sw_vers)`
+    expect(buildPreview(buffer)).toBe('Bash(sw_vers)')
+  })
+
+  it('shows a permission prompt as the terminal draws it', () => {
+    const buffer =
+      '\x1b[?25l\x1b]0;⣿ Test askquestion avec toolbar\x07' +
+      '\x1b[1mBash\x1b[0m(sw_vers)\n  Print macOS version info\n\x1b[?25h'
+    expect(buildPreview(buffer)).toBe('Bash(sw_vers)\n  Print macOS version info')
+  })
 })
