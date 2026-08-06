@@ -399,8 +399,15 @@ function setupTrayHandlers() {
    */
   ipcMain.handle('tray:answerQuestion', async (
     _event,
-    { id, token, choice }: { id: string; token: string; choice: TrayAnswerChoice },
+    payload: { id: string; token: string; choice: TrayAnswerChoice },
   ): Promise<TrayAnswerResult> => {
+    // Guard the envelope BEFORE destructuring it. `answerPendingQuestion` validates
+    // the three fields, but it never gets the chance if unpacking a null payload has
+    // already thrown — and a TypeError crossing back over IPC rejects the renderer's
+    // invoke() instead of giving it the documented `{ ok: false }`.
+    if (typeof payload !== 'object' || payload === null) return { ok: false }
+    const { id, token, choice } = payload
+
     const result = answerPendingQuestion(id, token, choice, {
       getQuestion: getPendingQuestion,
       write: writeToTerminal,
