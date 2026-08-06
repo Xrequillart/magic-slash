@@ -72,6 +72,22 @@ describe('answerPendingQuestion', () => {
     expect(write).not.toHaveBeenCalled()
   })
 
+  it('writes NOTHING on a malformed choice, instead of throwing out of the IPC handler', () => {
+    // `choice` crosses IPC from the renderer, so its type annotation guarantees
+    // nothing at runtime. keysFor reads choice.kind directly.
+    const malformed = [
+      undefined, null, 'deny', 42, {}, { kind: 'nope' },
+      { kind: 'option' }, { kind: 'option', index: '1' }, { kind: 'option', index: 1.5 },
+    ]
+    for (const choice of malformed) {
+      expect(() =>
+        answerPendingQuestion('term-1', 'tok-1', choice as never, deps(ASK)),
+      ).not.toThrow()
+      expect(answerPendingQuestion('term-1', 'tok-1', choice as never, deps(ASK)).ok).toBe(false)
+    }
+    expect(write).not.toHaveBeenCalled()
+  })
+
   it('writes NOTHING on a malformed id or token', () => {
     for (const [id, token] of [['', 'tok-1'], ['term-1', ''], [null, 'tok-1'], ['term-1', undefined]]) {
       expect(answerPendingQuestion(id as string, token as string, { kind: 'option', index: 0 }, deps(ASK)).ok)
