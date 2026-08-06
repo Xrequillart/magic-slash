@@ -170,6 +170,18 @@ export function setFromAskQuestion(terminalId: string, payload: unknown): TrayQu
  * A message that is not the idle nudge but that we cannot positively identify as a
  * permission request is still surfaced — as `unsupported`, so the panel shows it and
  * sends the user to the agent rather than writing an Enter into the PTY on a guess.
+ *
+ * ⚠️ A NOTIFICATION NEVER REPLACES A LIVE `ask`
+ * ---------------------------------------------------------------------------
+ * Both hooks feed the same one-question-per-agent slot, and Claude Code announces an
+ * `AskUserQuestion` prompt with a Notification of its own ("Claude needs your
+ * permission to use AskUserQuestion") — which matches ANSWERABLE_NOTIFICATION and
+ * used to overwrite the question that had just been captured. The panel then showed a
+ * bare Allow / Deny and none of what was actually being asked.
+ *
+ * Hook order is not guaranteed, so the rule is stated as precedence rather than
+ * timing: an `ask` carries the real prompt and its options, which no notification
+ * ever can, and it is cleared by its own PostToolUse — so nothing strands it here.
  */
 export function setFromNotification(
   terminalId: string,
@@ -179,6 +191,9 @@ export function setFromNotification(
   const message = asString((payload as { message?: unknown })?.message)
   if (!message) return null
   if (NON_QUESTION_NOTIFICATION.test(message)) return null
+  // Checked before the preview is built: reading the buffer for a payload we are
+  // about to drop is work on the critical path of a blocked agent.
+  if (getPendingQuestion(terminalId)?.kind === 'ask') return null
 
   const preview = buildPreview(bufferProvider?.())
   const unsupported = !ANSWERABLE_NOTIFICATION.test(message)
