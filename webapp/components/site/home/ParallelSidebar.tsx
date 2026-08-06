@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
-import { AlertTriangle, Bot, Check, Clock, Sparkles, UserRound, Users } from 'lucide-react'
+import { AlertTriangle, Bot, Check, MessageCircleQuestionMark, Sparkles, UserRound, Users } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
 import { usePointerTilt } from './usePointerTilt'
 import { MkLoader } from './MkLoader'
@@ -93,7 +93,7 @@ export function ParallelSidebar() {
                 <span className="mk-agent-state">
                   {agent.state === 'working' ? <MkLoader /> : null}
                   {agent.state === 'waiting' ? (
-                    <Clock size={13} className="mk-agent-clock" />
+                    <MessageCircleQuestionMark size={13} className="mk-agent-ask" />
                   ) : null}
                   {agent.state === 'done' ? (
                     <Check size={13} className="mk-agent-check is-in" />

@@ -4345,8 +4345,18 @@ h1 {
 .mk-loader > span:nth-child(3) { animation-delay: 0.3s; }
 .mk-loader.is-out { opacity: 0; }
 @keyframes mk-wave { 0%, 100% { transform: scaleY(1); } 35% { transform: scaleY(0.55); } 70% { transform: scaleY(1.1); } }
-/* `waiting`: the row is blocked on the person, not on the agent. */
-.mk-agent-clock { color: var(--mk-amber); }
+/* `waiting`: the row is blocked on the person, not on the agent — the agent is asking a
+   question, so the glyph is the question. It is the app's own badge and its own arrival;
+   the numbers sit where they were chosen: desktop/src/renderer/index.css. */
+.mk-agent-ask {
+    color: var(--mk-orange);
+    animation: mk-agent-ask-arrive 3s ease-in-out infinite;
+}
+@keyframes mk-agent-ask-arrive {
+    0%, 44%, 100% { transform: translateY(0) rotate(0deg); }
+    14% { transform: translateY(-14%) rotate(-5deg); }
+    30% { transform: translateY(0) rotate(2deg); }
+}
 .mk-agent-check {
     position: absolute;
     color: var(--mk-green); transition: opacity 0.3s;
@@ -5025,7 +5035,7 @@ h1 {
        leave all three still waving. Halted, they hold their rest heights, which is the
        silhouette the loader is recognisable by. */
     .mk-loader > span, .mk-caret, .mk-spin, .mk-block, .mk-file, .mk-run em,
-    .mk-card--reveal { animation: none; }
+    .mk-card--reveal, .mk-agent-ask { animation: none; }
     .mk-line, .mk-run, .mk-run em, .mk-pr, .mk-banner { transition: none; }
 }
 
