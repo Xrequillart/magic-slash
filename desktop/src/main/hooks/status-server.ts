@@ -39,6 +39,13 @@ type CommandStartCallback = (terminalId: string, command: string) => void
 type CommandEndCallback = (terminalId: string, exitCode: number) => void
 type RepositoriesCallback = (terminalId: string, repositories: string[]) => void
 type UsageCallback = (terminalId: string, usage: TerminalUsage) => void
+/**
+ * A question hook fired: `body` is the raw hook payload from stdin, forwarded
+ * unparsed so the parsing (and its failure modes) live with the question store.
+ */
+type QuestionCallback = (terminalId: string, body: string) => void
+/** The agent is no longer blocked — see the clear hooks in claude-hooks-config. */
+type ClearQuestionCallback = (terminalId: string) => void
 /** terminalId is undefined for sessions started outside the app (no agent). */
 type SkillCallback = (terminalId: string | undefined, skill: string) => void
 // Read-back providers: unlike the callbacks above (terminal → app writes), these let a
@@ -61,6 +68,8 @@ let commandStartCallback: CommandStartCallback | null = null
 let commandEndCallback: CommandEndCallback | null = null
 let repositoriesCallback: RepositoriesCallback | null = null
 let usageCallback: UsageCallback | null = null
+let questionCallback: QuestionCallback | null = null
+let clearQuestionCallback: ClearQuestionCallback | null = null
 let skillCallback: SkillCallback | null = null
 let configProvider: ConfigProvider | null = null
 let agentProvider: AgentProvider | null = null
@@ -94,6 +103,14 @@ export function setUsageCallback(callback: UsageCallback) {
   usageCallback = callback
 }
 
+export function setQuestionCallback(callback: QuestionCallback) {
+  questionCallback = callback
+}
+
+export function setClearQuestionCallback(callback: ClearQuestionCallback) {
+  clearQuestionCallback = callback
+}
+
 export function setSkillCallback(callback: SkillCallback) {
   skillCallback = callback
 }
@@ -110,7 +127,7 @@ export function setWorktreeFilesWriter(writer: WorktreeFilesWriter) {
   worktreeFilesWriter = writer
 }
 
-// Read the full request body (used by the POST /usage route)
+// Read the full request body (used by the POST /usage and POST /question routes)
 function readRequestBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
@@ -214,6 +231,57 @@ export function startStatusServer(): Promise<number> {
               res.end('OK')
             })
           return
+        } else if (url.pathname === '/question') {
+          // An agent is blocked on a question — the hook POSTs its stdin payload
+          // verbatim (AskUserQuestion tool input, or a Notification message).
+          //
+          // Never fails loudly: a hook that errors or hangs would stall the agent
+          // it is reporting on, so every path here answers 200 and the parsing
+          // happens behind the callback.
+          const terminalId = url.searchParams.get('id')
+
+          // Ignore sidebar terminals (VS Code extension)
+          if (terminalId?.startsWith('sidebar-')) {
+            res.writeHead(200)
+            res.end('OK')
+            return
+          }
+
+          // `.finally` rather than a 200 in each branch: "every path answers 200" is
+          // the rule here, so it is written once instead of relying on three copies.
+          readRequestBody(req)
+            .then((body) => {
+              if (terminalId && body) questionCallback?.(terminalId, body)
+            })
+            .catch((e) => {
+              console.error('[Questions] Failed to handle question payload:', e)
+            })
+            .finally(() => {
+              res.writeHead(200)
+              res.end('OK')
+            })
+          return
+        } else if (url.pathname === '/question/clear') {
+          // The agent moved on (answered in the app, new prompt, or turn finished).
+          //
+          // ⚠️ This is the ONLY status-server route allowed to clear a question.
+          // Doing it from /status would race the generic PreToolUse hook, which
+          // reports `working` at the same instant AskUserQuestion is captured.
+          const terminalId = url.searchParams.get('id')
+
+          // Ignore sidebar terminals (VS Code extension)
+          if (terminalId?.startsWith('sidebar-')) {
+            res.writeHead(200)
+            res.end('OK')
+            return
+          }
+
+          if (terminalId && clearQuestionCallback) {
+            clearQuestionCallback(terminalId)
+          }
+
+          res.writeHead(200)
+          res.end('OK')
         } else if (url.pathname === '/status') {
           const terminalId = url.searchParams.get('id')
           const state = url.searchParams.get('state')

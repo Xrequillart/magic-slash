@@ -315,6 +315,52 @@ function getPromptSkillHookConfig(): HookConfig {
   }
 }
 
+/**
+ * The hooks that drive the menu bar panel's pending-question card.
+ *
+ * `question` ships the hook's own stdin to the app, so the panel can show WHAT the
+ * agent is asking (see main/questions/pending-questions.ts). `question/clear` tells
+ * the app the agent is no longer blocked, so the panel drops the card.
+ *
+ * ⚠️ The clears are bound to EVENTS, never to state. The generic PreToolUse hook
+ * reports `working` at the very instant the AskUserQuestion capture fires, and their
+ * order is not guaranteed — clearing on a state change would erase the question that
+ * just arrived. Hence three separate event registrations (the question's own
+ * PostToolUse, a new user prompt, and the end of the turn) instead.
+ *
+ * `--data-binary @-` makes curl read stdin itself — no `cat`, no temp file, and the
+ * payload reaches the app byte for byte, parsed on the app side rather than mangled
+ * by shell quoting here.
+ *
+ * `--max-time 2` is the load-bearing flag: these hooks run on the critical path of a
+ * blocked agent. If the app is not listening (closed, or restarting), the connection
+ * refusal is immediate; the timeout covers the pathological case of a socket that
+ * accepts and never answers, which would otherwise hang the agent indefinitely.
+ * `|| true` makes every failure a no-op, as with every other hook here.
+ *
+ * Both routes share one builder so the guard, the timeout and the marker exist once:
+ * these commands swallow their own errors, so a divergent copy would fail silently.
+ *
+ * @param route `question` to capture, `question/clear` to clear.
+ * @param options.post Send the hook's stdin as the request body.
+ * @param options.matcher Tool-name pattern, or omitted for events that have no tool.
+ */
+function getQuestionHookConfig(
+  route: 'question' | 'question/clear',
+  options: { post?: boolean; matcher?: string } = {}
+): HookConfig {
+  const body = options.post ? '-X POST --data-binary @- ' : ''
+  const command = `[ -n "$MAGIC_SLASH_TERMINAL_ID" ] && [ -n "$MAGIC_SLASH_PORT" ] && curl -s --max-time 2 ${body}"http://127.0.0.1:$MAGIC_SLASH_PORT/${route}?id=$MAGIC_SLASH_TERMINAL_ID" > /dev/null 2>&1 || true # ${MAGIC_SLASH_HOOK_MARKER}`
+
+  return {
+    ...(options.matcher ? { matcher: options.matcher } : {}),
+    hooks: [{
+      type: 'command',
+      command
+    }]
+  }
+}
+
 function isMagicSlashHook(hookConfig: HookConfig): boolean {
   return hookConfig.hooks?.some(h => h.command?.includes(MAGIC_SLASH_HOOK_MARKER)) ?? false
 }
@@ -389,6 +435,21 @@ export function configureClaudeHooks(options?: { atlassian?: boolean }): void {
     //   - the typed slash command, which never reaches a tool call.
     settings.hooks.PreToolUse!.push(getSkillHookConfig())
     settings.hooks.UserPromptSubmit!.push(getPromptSkillHookConfig())
+
+    // Pending questions, for the menu bar panel. Five more ADDITIONAL entries on
+    // events already hooked above — pushed, never assigned, or the state reporting
+    // that shares those events would be replaced by these.
+    //
+    // Capture: the AskUserQuestion tool call (scoped by matcher, since PreToolUse
+    // fires on every tool), and Notification, which is how a permission prompt
+    // announces itself.
+    settings.hooks.PreToolUse!.push(getQuestionHookConfig('question', { post: true, matcher: 'AskUserQuestion' }))
+    settings.hooks.Notification!.push(getQuestionHookConfig('question', { post: true }))
+    // Clear: the question was answered in the terminal (its PostToolUse), the user
+    // moved on to something else, or the turn ended.
+    settings.hooks.PostToolUse!.push(getQuestionHookConfig('question/clear', { matcher: 'AskUserQuestion' }))
+    settings.hooks.UserPromptSubmit!.push(getQuestionHookConfig('question/clear'))
+    settings.hooks.Stop!.push(getQuestionHookConfig('question/clear'))
 
     // Configure permissions for magic-slash skills (MCP tools + common commands)
     if (!settings.permissions) {

@@ -4,7 +4,8 @@ import { AgentStateBadge } from '../../components/AgentStateBadge'
 import { stateHoverBgColors } from '../../utils/stateColors'
 import { displayNameFromEmail } from '../../utils/displayName'
 import { useT, type Translate } from '../../i18n'
-import type { TrayAgent, TrayState, TrayUpdate } from '../../../types'
+import { QuestionCard } from './QuestionCard'
+import type { TrayAgent, TrayAnswerChoice, TrayState, TrayUpdate } from '../../../types'
 
 const EMPTY: TrayState = { version: '', update: { phase: 'idle' }, agents: [] }
 
@@ -108,6 +109,7 @@ export function TrayPopover() {
   const t = useT()
   const [{ version, update, agents }, setState] = useState<TrayState>(EMPTY)
   const [account, setAccount] = useState<string | null>(null)
+  const [staleAnswer, setStaleAnswer] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
@@ -117,6 +119,37 @@ export function TrayPopover() {
       // A poll that fails (main tearing down) leaves the last frame on screen.
     }
   }, [])
+
+  /**
+   * Answer an agent without leaving the panel.
+   *
+   * The card is dropped locally straight away rather than waiting for the next
+   * poll: the agent's state does NOT flip back from `waiting` on its own — it is
+   * the hooks that drive that — so an optimistic removal is the only thing that
+   * makes the click feel like it did something. `load()` then reconciles.
+   *
+   * A `stale` result means main compared the token and wrote nothing at all. The
+   * card is gone either way (the question really is over), so all that is left to
+   * do is say the answer was not sent.
+   */
+  const answer = useCallback(async (agent: TrayAgent, choice: TrayAnswerChoice) => {
+    const question = agent.pendingQuestion
+    if (!question) return
+
+    setStaleAnswer(false)
+    setState(prev => ({
+      ...prev,
+      agents: prev.agents.map(a => (a.id === agent.id ? { ...a, pendingQuestion: undefined } : a)),
+    }))
+
+    try {
+      const result = await window.electronAPI.tray.answerQuestion(agent.id, question.token, choice)
+      if (!result.ok) setStaleAnswer(true)
+    } catch {
+      setStaleAnswer(true)
+    }
+    load()
+  }, [load])
 
   /**
    * Who is signed in. Not part of the poll on purpose: resolving it can refresh an
@@ -141,6 +174,9 @@ export function TrayPopover() {
     const refresh = () => {
       load()
       loadAccount()
+      // Reopening the panel is a fresh look at the agents: a notice about an answer
+      // that missed has no business surviving into it.
+      setStaleAnswer(false)
     }
     window.addEventListener('focus', refresh)
     return () => window.removeEventListener('focus', refresh)
@@ -167,6 +203,11 @@ export function TrayPopover() {
     observer.observe(panel)
     return () => observer.disconnect()
   }, [])
+
+  // Agents blocked on a question first, each group keeping the order main sent it —
+  // so the list does not reshuffle under the cursor on every 2s poll.
+  const blocked = agents.filter(a => a.pendingQuestion)
+  const ordered = [...blocked, ...agents.filter(a => !a.pendingQuestion)]
 
   return (
     <div
@@ -199,8 +240,22 @@ export function TrayPopover() {
         </div>
       </div>
 
-      {/* Every agent in the app, whatever it is doing */}
-      <div className="max-h-[380px] overflow-y-auto">
+      {/* How many agents are blocked on something, when any are. Only ever shown
+          with a card below it, so it needs no state of its own. */}
+      {blocked.length > 0 && (
+        <div className="px-3.5 py-1.5 border-b border-line text-[11px] font-medium text-accent">
+          {t('tray.question.waiting', { count: blocked.length })}
+        </div>
+      )}
+
+      {/* Every agent in the app, whatever it is doing.
+
+          The cap grows only while a question is on screen: a card is far taller than
+          a row, and at 380px it would open inside a scroller instead of being read at
+          a glance. With nothing blocked the panel keeps exactly the height it had
+          before this feature. 560px stays under MAX_HEIGHT in popover-window once the
+          header, the counter and the footer are added. */}
+      <div className={`${blocked.length > 0 ? 'max-h-[560px]' : 'max-h-[380px]'} overflow-y-auto`}>
         {agents.length === 0 ? (
           <div className="px-3.5 py-6 text-center text-[13px] text-text-secondary">
             {t('tray.popover.empty')}
@@ -209,8 +264,23 @@ export function TrayPopover() {
           // px-2 like the sidebar's nav: the rounded rows sit inset from the
           // panel's edge instead of running into its border.
           <div className="flex flex-col gap-1 px-2 py-2">
-            {agents.map(agent => (
-              <AgentRow key={agent.id} agent={agent} t={t} />
+            {staleAnswer && (
+              <p className="px-2 py-1 text-[11px] text-text-secondary">{t('tray.question.stale')}</p>
+            )}
+            {ordered.map(agent => (
+              // An agent with nothing pending renders exactly as it always did:
+              // the row, and no card.
+              <div key={agent.id} className="flex flex-col gap-1">
+                <AgentRow agent={agent} t={t} />
+                {agent.pendingQuestion && (
+                  <QuestionCard
+                    question={agent.pendingQuestion}
+                    onAnswer={choice => answer(agent, choice)}
+                    onOpenAgent={() => window.electronAPI.tray.focusAgent(agent.id)}
+                    t={t}
+                  />
+                )}
+              </div>
             ))}
           </div>
         )}

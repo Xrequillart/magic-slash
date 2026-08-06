@@ -888,6 +888,59 @@ export interface ScriptTerminalInfo {
   state: 'running' | 'error'
 }
 
+/** One selectable answer of an `AskUserQuestion` call. */
+export interface TrayQuestionOption {
+  label: string
+  description?: string
+}
+
+/**
+ * A question an agent is blocked on, surfaced in the menu bar panel so it can be
+ * answered without bringing the app to the front (see main/questions/).
+ *
+ * `token` is what makes a late click safe: it is minted per question, and
+ * `tray:answerQuestion` compares it against the store BEFORE writing anything to
+ * the PTY. Answer the same question in the main window and the store is cleared,
+ * so a click on the panel's now-stale card writes nothing at all.
+ *
+ * `unsupported` marks a question v1 cannot answer from the panel (several
+ * questions in one call, `multiSelect`, no readable option): the card is still
+ * shown, but only offers "Open agent".
+ */
+export interface TrayQuestion {
+  token: string
+  /** `ask` = an AskUserQuestion tool call; `permission` = a permission prompt. */
+  kind: 'ask' | 'permission'
+  prompt: string
+  /**
+   * Empty for `permission`: the panel renders Allow / Deny from its own catalogue
+   * rather than parroting the TUI's wording, which we never see.
+   */
+  options: TrayQuestionOption[]
+  /** Last lines of the terminal, ANSI-stripped — the real prompt, for permissions. */
+  preview?: string
+  receivedAt: number
+  unsupported?: boolean
+}
+
+/**
+ * What the user clicked on a question card. `index` is 0-based, and refers to
+ * `TrayQuestion.options` (for a permission, index 0 is Allow).
+ */
+export type TrayAnswerChoice =
+  | { kind: 'option'; index: number }
+  | { kind: 'deny' }
+
+/**
+ * Outcome of `tray:answerQuestion`. `ok: false` always means nothing at all was
+ * written to the PTY — which is the only distinction the panel acts on. Why it
+ * refused (a stale token, or keystrokes we would have had to guess) is logged in
+ * main rather than carried here, since no caller branches on it.
+ */
+export interface TrayAnswerResult {
+  ok: boolean
+}
+
 /**
  * One row of the menu bar panel (renderer/pages/TrayPopover). A flattened
  * AgentSummary: `createdAt` is a number because it crosses IPC, where a Date
@@ -900,6 +953,8 @@ export interface TrayAgent {
   ticketId: string
   title: string
   createdAt: number
+  /** Absent for the overwhelmingly common case: an agent nobody is waiting on. */
+  pendingQuestion?: TrayQuestion
 }
 
 /**

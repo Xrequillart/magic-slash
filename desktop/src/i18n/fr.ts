@@ -933,6 +933,14 @@ export const fr: Record<keyof typeof en, string> = {
   'tray.popover.account': 'Compte et réglages',
   'tray.popover.quit': 'Quitter l’application',
 
+  // ── Questions en attente, répondues depuis le panneau ────────────────────
+  'tray.question.waiting': '{count} en attente de réponse',
+  'tray.question.allow': 'Autoriser',
+  'tray.question.deny': 'Refuser',
+  'tray.question.openAgent': 'Ouvrir l’agent',
+  'tray.question.stale': 'Déjà répondu — rien n’a été envoyé',
+  'tray.question.unsupported': 'À répondre dans l’application',
+
   // ── Temps relatif compact (barre d'infos de l'agent) ─────────────────────
   'relative.now': 'à l’instant',
   'relative.minutes': '{count} min',

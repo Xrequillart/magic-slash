@@ -201,6 +201,39 @@ fi
 echo ""
 
 # ============================================
+# 4c. HOOKS CLEANUP
+# ============================================
+# Every hook the desktop app writes ends its command with the marker below (see
+# desktop/src/main/hooks/claude-hooks-config.ts), which is what makes this filter
+# safe: hooks the user wrote themselves share the same events and must survive.
+#
+# The app removes its own hooks on request, but uninstalling can happen with the
+# app already gone — in which case nothing else would ever take them out, and
+# Claude Code would keep curling a port that answers no more.
+echo "4c. Removing Magic Slash hooks..."
+echo ""
+
+if [ -f "$CLAUDE_SETTINGS" ] && jq -e '.hooks' "$CLAUDE_SETTINGS" > /dev/null 2>&1; then
+  TMP_SETTINGS=$(mktemp)
+  jq '
+    .hooks |= (
+      with_entries(
+        .value |= [ .[] | select(
+          ([.hooks[]?.command // ""] | any(contains("magic-slash-desktop"))) | not
+        ) ]
+      )
+      | with_entries(select(.value | length > 0))
+    ) |
+    if (.hooks | length) == 0 then del(.hooks) else . end
+  ' "$CLAUDE_SETTINGS" > "$TMP_SETTINGS" && mv "$TMP_SETTINGS" "$CLAUDE_SETTINGS"
+  echo "   ✓ Magic Slash hooks removed"
+else
+  echo "   - No hooks to remove"
+fi
+
+echo ""
+
+# ============================================
 # 5. BACKUP CLEANUP (OPTIONAL)
 # ============================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

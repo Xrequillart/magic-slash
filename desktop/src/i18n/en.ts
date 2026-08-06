@@ -927,6 +927,18 @@ export const en = {
   'tray.popover.account': 'Account and settings',
   'tray.popover.quit': 'Quit the app',
 
+  // ── Pending questions, answered from the panel ───────────────────────────
+  // "Allow" and "Deny" are ours, not the TUI's: a permission prompt reaches us as
+  // a one-line notification, never as the wording of its own buttons.
+  'tray.question.waiting': '{count} awaiting an answer',
+  'tray.question.allow': 'Allow',
+  'tray.question.deny': 'Deny',
+  'tray.question.openAgent': 'Open the agent',
+  // Shown when the question was answered elsewhere between two polls. Nothing was
+  // written to the agent — that is the point of saying so.
+  'tray.question.stale': 'Already answered — nothing was sent',
+  'tray.question.unsupported': 'Answer this one in the app',
+
   // ── Compact relative time (agent info sidebar) ───────────────────────────
   // Abbreviations, one key per unit: French shortens a day to "j" and a week to
   // "sem", so a shared suffix table would not survive translation.
