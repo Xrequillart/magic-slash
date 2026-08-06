@@ -96,6 +96,9 @@ export const fr: Record<keyof typeof en, string> = {
   'sidebar.login': 'Connexion / Inscription',
   'sidebar.accountFallback': 'Compte',
   'sidebar.agents': 'Agents',
+  // Un compteur au-dessus de la liste, pas un en-tête de groupe : les agents
+  // comptés gardent leur ligne.
+  'sidebar.needsAttention': 'Demande une action',
   'sidebar.paneLeft': 'Gauche',
   'sidebar.paneRight': 'Droite',
   'sidebar.empty': 'Aucun agent pour l’instant. Cliquez sur « Nouvel agent » pour démarrer.',
@@ -105,12 +108,6 @@ export const fr: Record<keyof typeof en, string> = {
   'sidebar.docs': 'Docs',
   'sidebar.changelog': 'Nouveautés',
   'sidebar.github': 'GitHub',
-
-  // ── Groupes de workflow des agents (en-têtes de la barre latérale) ───────
-  'workflow.needsAttention': 'Attention requise',
-  'workflow.active': 'En cours',
-  'workflow.inReview': 'En revue',
-  'workflow.done': 'Terminé',
 
   // ── Jauges d'usage du forfait Claude ─────────────────────────────────────
   'usage.reset.soon': 'bientôt',

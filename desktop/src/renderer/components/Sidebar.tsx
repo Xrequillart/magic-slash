@@ -1,9 +1,9 @@
 import { useMemo, useState, useEffect, useCallback, memo } from 'react'
-import { Bot, AlertTriangle, XCircle, Sparkles, X, Eye, CheckCircle2, Zap, Users } from 'lucide-react'
+import { Bot, XCircle, Sparkles, X, Users, AlertTriangle } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
-import { useGroupedTerminals, useSplitGroupedTerminals, WORKFLOW_GROUPS, type WorkflowGroupKey, type TerminalWithRepos } from '../hooks/useGroupedTerminals'
+import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
 import { getProjectColorMap } from '../utils/projectColors'
 import { SidebarUsageCard } from './SidebarUsageCard'
 import { WaveLoader } from './WaveLoader'
@@ -28,17 +28,25 @@ const ProjectDot = memo(function ProjectDot({ color, title }: { color: string; t
   )
 })
 
-// Workflow group icon and color config
-const WORKFLOW_GROUP_CONFIG: Record<WorkflowGroupKey, {
-  icon: React.ComponentType<{ className?: string }> | null
-  spinner?: boolean
-  color: string
-}> = {
-  needs_attention: { icon: AlertTriangle, color: 'text-yellow' },
-  active:          { icon: Zap, color: 'text-text-secondary/50' },
-  in_review:       { icon: Eye, color: 'text-text-secondary/50' },
-  done:            { icon: CheckCircle2, color: 'text-text-secondary/50' },
-}
+/**
+ * How many agents are stuck on the person: waiting on an answer, or dead on an
+ * error. A count, NOT a group — the agents it counts stay exactly where they
+ * are in the list, and the banner hides itself at zero so a calm list stays calm.
+ */
+const AttentionBanner = memo(function AttentionBanner({ terminals }: { terminals: TerminalWithRepos[] }) {
+  const t = useT()
+  const count = terminals.filter(t => t.state === 'waiting' || t.state === 'error').length
+
+  if (count === 0) return null
+
+  return (
+    <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-orange">
+      <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+      <span className="truncate">{t('sidebar.needsAttention')}</span>
+      <span className="ml-auto">{count}</span>
+    </div>
+  )
+})
 
 interface AgentItemProps {
   terminal: TerminalWithRepos
@@ -87,10 +95,9 @@ const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, o
   )
 })
 
-// Workflow group section
-interface WorkflowGroupProps {
-  groupKey: WorkflowGroupKey
-  label: string
+// Flat agent list — newest first, never reordered by workflow status so a row
+// stays exactly where the user last saw it.
+interface AgentListProps {
   terminals: TerminalWithRepos[]
   activeTerminalId: string | null
   splitTerminalId: string | null
@@ -101,9 +108,7 @@ interface WorkflowGroupProps {
   draggable?: boolean
 }
 
-const WorkflowGroup = memo(function WorkflowGroup({
-  groupKey,
-  label,
+const AgentList = memo(function AgentList({
   terminals,
   activeTerminalId,
   splitTerminalId,
@@ -112,42 +117,23 @@ const WorkflowGroup = memo(function WorkflowGroup({
   colorMap,
   now,
   draggable,
-}: WorkflowGroupProps) {
+}: AgentListProps) {
   if (terminals.length === 0) return null
 
-  const config = WORKFLOW_GROUP_CONFIG[groupKey]
-  const IconComponent = config.icon
-
   return (
-    <div className="flex flex-col">
-      {/* Group header */}
-      <div className={`flex items-center gap-2 px-2 py-1 text-xs w-full ${config.color}`}>
-        <span className="flex items-center">
-          {config.spinner ? (
-            <WaveLoader className="flex-shrink-0" />
-          ) : IconComponent ? (
-            <IconComponent className="w-3 h-3" />
-          ) : null}
-        </span>
-        <span className="font-medium truncate">{label}</span>
-        <span className="opacity-50 text-xs">{terminals.length}</span>
-      </div>
-
-      {/* Agent list */}
-      <div className="flex flex-col gap-1">
-        {terminals.map(terminal => (
-          <AgentItem
-            key={terminal.id}
-            terminal={terminal}
-            isActive={activeTerminalId === terminal.id}
-            isSplitTarget={isSplitMode && splitTerminalId === terminal.id}
-            onSelect={(e) => onSelectTerminal(terminal.id, e)}
-            colorMap={colorMap}
-            now={now}
-            draggable={draggable}
-          />
-        ))}
-      </div>
+    <div className="flex flex-col gap-1">
+      {terminals.map(terminal => (
+        <AgentItem
+          key={terminal.id}
+          terminal={terminal}
+          isActive={activeTerminalId === terminal.id}
+          isSplitTarget={isSplitMode && splitTerminalId === terminal.id}
+          onSelect={(e) => onSelectTerminal(terminal.id, e)}
+          colorMap={colorMap}
+          now={now}
+          draggable={draggable}
+        />
+      ))}
     </div>
   )
 })
@@ -252,9 +238,9 @@ export function Sidebar() {
     return () => window.removeEventListener('resize', handleResize)
   }, [width, getMaxWidth])
 
-  // Group terminals by workflow status
-  const { groups, projectNames } = useGroupedTerminals()
-  const { leftGroups, rightGroups } = useSplitGroupedTerminals()
+  // Agents, newest first — no grouping, no status-driven reordering
+  const { ordered, projectNames } = useOrderedTerminals()
+  const { leftTerminals, rightTerminals } = useSplitOrderedTerminals()
 
   // Drag & drop state for split zones
   const [dragOverZone, setDragOverZone] = useState<'left' | 'right' | null>(null)
@@ -446,22 +432,18 @@ export function Sidebar() {
               onDragLeave={() => setDragOverZone(null)}
               onDrop={(e) => handleDropOnZone('left', e)}
             >
-              {WORKFLOW_GROUPS.map(({ key, labelKey }) => (
-                <WorkflowGroup
-                  key={`left-${key}`}
-                  groupKey={key}
-                  label={t(labelKey)}
-                  terminals={leftGroups[key]}
-                  activeTerminalId={focusedPane === 'primary' ? activeTerminalId : null}
-                  splitTerminalId={null}
-                  isSplitMode={false}
-                  onSelectTerminal={handleSelectLeftTerminal}
-                  colorMap={colorMap}
-                  now={now}
-                  draggable
-                />
-              ))}
-              {terminals.filter(t => !rightPaneTerminalIds.includes(t.id)).length === 0 && (
+              <AttentionBanner terminals={leftTerminals} />
+              <AgentList
+                terminals={leftTerminals}
+                activeTerminalId={focusedPane === 'primary' ? activeTerminalId : null}
+                splitTerminalId={null}
+                isSplitMode={false}
+                onSelectTerminal={handleSelectLeftTerminal}
+                colorMap={colorMap}
+                now={now}
+                draggable
+              />
+              {leftTerminals.length === 0 && (
                 <div className="text-text-secondary/30 text-xs text-center py-3">
                   {t('sidebar.dropAgents')}
                 </div>
@@ -482,21 +464,17 @@ export function Sidebar() {
                 <div className="text-xs text-text-secondary/50 uppercase tracking-wider">{t('sidebar.agents')}</div>
                 <span className="text-[10px] text-text-secondary/40 bg-surface px-1.5 py-0.5 rounded">{t('sidebar.paneRight')}</span>
               </div>
-              {WORKFLOW_GROUPS.map(({ key, labelKey }) => (
-                <WorkflowGroup
-                  key={`right-${key}`}
-                  groupKey={key}
-                  label={t(labelKey)}
-                  terminals={rightGroups[key]}
-                  activeTerminalId={focusedPane === 'secondary' ? splitTerminalId : null}
-                  splitTerminalId={null}
-                  isSplitMode={false}
-                  onSelectTerminal={handleSelectRightTerminal}
-                  colorMap={colorMap}
-                  now={now}
-                  draggable
-                />
-              ))}
+              <AttentionBanner terminals={rightTerminals} />
+              <AgentList
+                terminals={rightTerminals}
+                activeTerminalId={focusedPane === 'secondary' ? splitTerminalId : null}
+                splitTerminalId={null}
+                isSplitMode={false}
+                onSelectTerminal={handleSelectRightTerminal}
+                colorMap={colorMap}
+                now={now}
+                draggable
+              />
               {rightPaneTerminalIds.length === 0 && (
                 <div className="text-text-secondary/30 text-xs text-center py-3">
                   {t('sidebar.dropAgents')}
@@ -505,22 +483,18 @@ export function Sidebar() {
             </div>
           </>
         ) : (
-          <div className="flex flex-col gap-1">
-            {WORKFLOW_GROUPS.map(({ key, labelKey }) => (
-              <WorkflowGroup
-                key={key}
-                groupKey={key}
-                label={t(labelKey)}
-                terminals={groups[key]}
-                activeTerminalId={activeTerminalId}
-                splitTerminalId={splitTerminalId}
-                isSplitMode={isSplitMode}
-                onSelectTerminal={handleSelectTerminal}
-                colorMap={colorMap}
-                now={now}
-              />
-            ))}
-          </div>
+          <>
+            <AttentionBanner terminals={ordered} />
+            <AgentList
+              terminals={ordered}
+              activeTerminalId={activeTerminalId}
+              splitTerminalId={splitTerminalId}
+              isSplitMode={isSplitMode}
+              onSelectTerminal={handleSelectTerminal}
+              colorMap={colorMap}
+              now={now}
+            />
+          </>
         )}
       </nav>
 

@@ -105,6 +105,8 @@ export const en = {
   'sidebar.login': 'Login / Sign up',
   'sidebar.accountFallback': 'Account',
   'sidebar.agents': 'Agents',
+  // A count above the list, not a group header: the agents it counts keep their row.
+  'sidebar.needsAttention': 'Needs attention',
   'sidebar.paneLeft': 'Left',
   'sidebar.paneRight': 'Right',
   'sidebar.empty': 'No agents yet. Click “New agent” to start.',
@@ -114,12 +116,6 @@ export const en = {
   'sidebar.docs': 'Docs',
   'sidebar.changelog': 'Changelog',
   'sidebar.github': 'GitHub',
-
-  // ── Agent workflow groups (sidebar headers) ──────────────────────────────
-  'workflow.needsAttention': 'Needs attention',
-  'workflow.active': 'Active',
-  'workflow.inReview': 'In review',
-  'workflow.done': 'Done',
 
   // ── Claude plan usage gauges ─────────────────────────────────────────────
   // The reset countdown is split per unit rather than assembled from a suffix:

@@ -5,7 +5,7 @@ import type { InvalidRepo } from '../preload'
 import { useStore } from './store'
 import { useConfig } from './hooks/useConfig'
 import { useTerminals } from './hooks/useTerminals'
-import { useGroupedTerminals } from './hooks/useGroupedTerminals'
+import { useOrderedTerminals } from './hooks/useOrderedTerminals'
 import { TitleBar } from './components/TitleBar'
 import { Sidebar } from './components/Sidebar'
 import { AgentInfoSidebar } from './components/AgentInfoSidebar'
@@ -61,7 +61,7 @@ export function App() {
   const { closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, setActiveTerminal, rightPaneTerminalIds, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, setConfig, repoSetupDismissed, setRepoSetupDismissed, activeModal, closeModal } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal, launchClaudeTerminal } = useTerminals()
-  const { flatVisualOrder } = useGroupedTerminals()
+  const { flatVisualOrder } = useOrderedTerminals()
   useWindowSplitMode()
   const confirmCloseButtonRef = useRef<HTMLButtonElement>(null)
   const [showProfileWizard, setShowProfileWizard] = useState(false)

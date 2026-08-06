@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Bot } from 'lucide-react'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useScriptRunner } from '../../hooks/useScriptRunner'
-import { useGroupedTerminals } from '../../hooks/useGroupedTerminals'
+import { useOrderedTerminals } from '../../hooks/useOrderedTerminals'
 import { useStore } from '../../store'
 import { TerminalView } from '../../components/TerminalView'
 import { showToast } from '../../components/Toast'
@@ -14,7 +14,7 @@ const MAX_AGENTS = 12
 export function TerminalsPage() {
   const { terminals, activeTerminalId, launchClaudeTerminal, setActiveTerminal, duplicateAgent } = useTerminals()
   const { scriptTerminals } = useScriptRunner()
-  const { flatVisualOrder } = useGroupedTerminals()
+  const { flatVisualOrder } = useOrderedTerminals()
   const { toggleRightSidebar, closeModal, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane, openSettingsModal } = useStore()
   const t = useT()
   const [isCreating, setIsCreating] = useState(false)

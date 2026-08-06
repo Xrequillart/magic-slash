@@ -1,6 +1,6 @@
 import type { OrgAgent, RepositoryConfig } from '../../types'
 import { pathBelongsToRepo } from '../../repoMatch'
-import { PR_WORKFLOW_STATUSES } from '../hooks/groupedTerminals'
+import { PR_WORKFLOW_STATUSES } from './prStatuses'
 import { getProjectColorMap } from './projectColors'
 
 export interface RepoRow {
