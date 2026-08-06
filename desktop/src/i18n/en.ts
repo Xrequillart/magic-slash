@@ -1007,11 +1007,7 @@ export const en = {
   'app.closeAgent.title': 'Close this agent?',
   'app.closeAgent.body': 'Are you sure you want to close this agent?',
   'app.closeAgent.confirm': 'Yes, close agent',
-  'app.configRequired.title': 'Configuration required',
-  'app.configRequired.body':
-    'No repository is configured. To use Magic Slash, you must first add at least one repository in the configuration.',
   'app.later': 'Later',
-  'app.configure': 'Configure',
   'app.errorBoundary.title': 'Something went wrong',
   'app.errorBoundary.body': 'An unexpected error occurred.',
   'app.errorBoundary.retry': 'Try again',
@@ -1022,6 +1018,22 @@ export const en = {
   'gate.connectionLost.title': 'Connection lost',
   'gate.connectionLost.body':
     'Magic Slash can’t reach its backend. Check your internet connection — the app stays locked until the connection is restored.',
+
+  // ── Repository setup onboarding ──────────────────────────────────────────
+  'repoSetup.title.empty': 'Add your first repository',
+  'repoSetup.title.fix': 'Finish setting up your repositories',
+  'repoSetup.body.empty':
+    'Magic Slash needs at least one repository to launch agents on. Pick a local folder to get started.',
+  'repoSetup.body.fix':
+    'These repositories have no usable local folder yet. Pick one for each so agents can run on them.',
+  'repoSetup.reason.noLocalPath': 'No folder on this machine',
+  'repoSetup.reason.missing': 'Folder no longer exists',
+  'repoSetup.reason.notGit': 'Not a git repository',
+  'repoSetup.chooseFolder': 'Choose folder',
+  'repoSetup.addRepo': 'Add a repository',
+  'repoSetup.resolved': 'Ready',
+  'repoSetup.error': 'Could not use this folder',
+  'repoSetup.unverified': 'Folder saved, but its state could not be checked — try again',
 
   // ── Config validation / invalid repositories ─────────────────────────────
   'toast.invalidConfig.one': 'Invalid configuration: {count} error found in config.json',

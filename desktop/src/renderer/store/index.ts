@@ -50,8 +50,9 @@ interface AppState {
   // Close agent modal
   closeAgentModal: CloseAgentModalData | null
 
-  // No repos warning modal
-  noReposWarningShown: boolean
+  // Launch repository-setup modal: dismissed for this session ("Later"). Session
+  // storage, so it survives a renderer reload but comes back on the next launch.
+  repoSetupDismissed: boolean
 
   selectedFile: { repoPath: string; path: string; status: string } | null
 
@@ -96,8 +97,8 @@ interface AppState {
   removeScriptTerminal: (id: string) => void
   updateScriptTerminalState: (id: string, state: 'running' | 'error') => void
 
-  // No repos warning modal actions
-  setNoReposWarningShown: (shown: boolean) => void
+  // Launch repository-setup modal actions
+  setRepoSetupDismissed: (dismissed: boolean) => void
 
   setSelectedFile: (file: { repoPath: string; path: string; status: string } | null) => void
   closeFilePreview: () => void
@@ -134,7 +135,7 @@ export const useStore = create<AppState>()(
         scriptTerminals: [],
 
         closeAgentModal: null,
-        noReposWarningShown: false,
+        repoSetupDismissed: false,
         selectedFile: null,
 
         // Actions
@@ -338,8 +339,8 @@ export const useStore = create<AppState>()(
             ),
           })),
 
-        // No repos warning modal actions
-        setNoReposWarningShown: (noReposWarningShown) => set({ noReposWarningShown }),
+        // Launch repository-setup modal actions
+        setRepoSetupDismissed: (repoSetupDismissed) => set({ repoSetupDismissed }),
 
         setSelectedFile: (selectedFile) => set({ selectedFile }),
         closeFilePreview: () => set({ selectedFile: null }),
@@ -352,6 +353,7 @@ export const useStore = create<AppState>()(
           activeTerminalId: state.activeTerminalId,
           splitTerminalId: state.splitTerminalId,
           rightPaneTerminalIds: state.rightPaneTerminalIds,
+          repoSetupDismissed: state.repoSetupDismissed,
         }),
       }
     ),

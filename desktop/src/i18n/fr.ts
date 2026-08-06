@@ -1008,11 +1008,7 @@ export const fr: Record<keyof typeof en, string> = {
   'app.closeAgent.title': 'Fermer cet agent ?',
   'app.closeAgent.body': 'Voulez-vous vraiment fermer cet agent ?',
   'app.closeAgent.confirm': 'Oui, fermer l’agent',
-  'app.configRequired.title': 'Configuration requise',
-  'app.configRequired.body':
-    'Aucun dépôt n’est configuré. Pour utiliser Magic Slash, ajoutez d’abord au moins un dépôt dans la configuration.',
   'app.later': 'Plus tard',
-  'app.configure': 'Configurer',
   'app.errorBoundary.title': 'Une erreur est survenue',
   'app.errorBoundary.body': 'Une erreur inattendue s’est produite.',
   'app.errorBoundary.retry': 'Réessayer',
@@ -1023,6 +1019,22 @@ export const fr: Record<keyof typeof en, string> = {
   'gate.connectionLost.title': 'Connexion perdue',
   'gate.connectionLost.body':
     'Magic Slash n’arrive pas à joindre son backend. Vérifiez votre connexion Internet — l’application reste verrouillée jusqu’au rétablissement.',
+
+  // ── Configuration initiale des dépôts ────────────────────────────────────
+  'repoSetup.title.empty': 'Ajoutez votre premier dépôt',
+  'repoSetup.title.fix': 'Terminez la configuration de vos dépôts',
+  'repoSetup.body.empty':
+    'Magic Slash a besoin d’au moins un dépôt pour lancer des agents. Choisissez un dossier local pour commencer.',
+  'repoSetup.body.fix':
+    'Ces dépôts n’ont pas encore de dossier local utilisable. Choisissez-en un pour chacun afin que les agents puissent y travailler.',
+  'repoSetup.reason.noLocalPath': 'Aucun dossier sur cette machine',
+  'repoSetup.reason.missing': 'Le dossier n’existe plus',
+  'repoSetup.reason.notGit': 'Ce n’est pas un dépôt git',
+  'repoSetup.chooseFolder': 'Choisir un dossier',
+  'repoSetup.addRepo': 'Ajouter un dépôt',
+  'repoSetup.resolved': 'Prêt',
+  'repoSetup.error': 'Impossible d’utiliser ce dossier',
+  'repoSetup.unverified': 'Dossier enregistré, mais son état n’a pas pu être vérifié — réessayez',
 
   // ── Validation de la config / dépôts invalides ───────────────────────────
   'toast.invalidConfig.one': 'Configuration invalide : {count} erreur trouvée dans config.json',
