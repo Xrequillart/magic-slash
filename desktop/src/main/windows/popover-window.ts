@@ -14,7 +14,11 @@ const POPOVER_WIDTH = 320
  * past it the list scrolls inside the panel instead.
  */
 const MIN_HEIGHT = 120
-const MAX_HEIGHT = 600
+// Raised from 600 for the question cards: the renderer widens its own scroller when
+// an agent is blocked on a question (see the max-h switch in TrayPopover), and a card
+// plus the rows below it can now report past the old ceiling. The two caps move
+// together — this one only ever clamps what the renderer already limited.
+const MAX_HEIGHT = 720
 
 export function createPopoverWindow(): BrowserWindow {
   if (popoverWindow && !popoverWindow.isDestroyed()) {

@@ -9,6 +9,8 @@ import {
   setAgentProvider,
   setWorktreeFilesWriter,
   setSkillCallback,
+  setQuestionCallback,
+  setClearQuestionCallback,
 } from './status-server'
 
 describe('parseStatusLinePayload', () => {
@@ -108,6 +110,21 @@ describe('read-back endpoints', () => {
           res.on('end', () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf-8') }))
         })
         .on('error', reject)
+    })
+
+  const httpPost = (path: string, body: string): Promise<{ status: number; body: string }> =>
+    new Promise((resolve, reject) => {
+      const req = http.request(
+        `http://127.0.0.1:${getServerPort()}${path}`,
+        { method: 'POST' },
+        (res) => {
+          const chunks: Buffer[] = []
+          res.on('data', (c: Buffer) => chunks.push(c))
+          res.on('end', () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf-8') }))
+        },
+      )
+      req.on('error', reject)
+      req.end(body)
     })
 
   beforeAll(async () => {
@@ -224,6 +241,60 @@ describe('read-back endpoints', () => {
       const { status } = await httpGet('/skill?id=term-1')
       expect(status).toBe(200)
       expect(calls).toHaveLength(0)
+    })
+  })
+
+  describe('the question routes', () => {
+    let received: Array<{ id: string; body: string }> = []
+    let cleared: string[] = []
+
+    beforeEach(() => {
+      received = []
+      cleared = []
+      setQuestionCallback((id, body) => received.push({ id, body }))
+      setClearQuestionCallback((id) => cleared.push(id))
+    })
+
+    it('POST /question forwards the raw hook payload, unparsed', async () => {
+      const payload = JSON.stringify({
+        hook_event_name: 'PreToolUse',
+        tool_name: 'AskUserQuestion',
+        tool_input: { questions: [{ question: 'Which one?', options: [{ label: 'A' }] }] },
+      })
+      const { status } = await httpPost('/question?id=term-1', payload)
+      expect(status).toBe(200)
+      expect(received).toEqual([{ id: 'term-1', body: payload }])
+    })
+
+    // A hook must never stall the agent it reports on, so an unusable body is
+    // still a 200 — the callback decides what to do with it.
+    it('POST /question answers 200 for a body that is not JSON', async () => {
+      const { status } = await httpPost('/question?id=term-1', 'not json at all')
+      expect(status).toBe(200)
+      expect(received).toEqual([{ id: 'term-1', body: 'not json at all' }])
+    })
+
+    it('POST /question answers 200 and skips the callback for an empty body', async () => {
+      const { status } = await httpPost('/question?id=term-1', '')
+      expect(status).toBe(200)
+      expect(received).toHaveLength(0)
+    })
+
+    it('POST /question ignores sidebar terminals', async () => {
+      const { status } = await httpPost('/question?id=sidebar-1', '{"hook_event_name":"Notification"}')
+      expect(status).toBe(200)
+      expect(received).toHaveLength(0)
+    })
+
+    it('GET /question/clear forwards the terminal id', async () => {
+      const { status } = await httpGet('/question/clear?id=term-1')
+      expect(status).toBe(200)
+      expect(cleared).toEqual(['term-1'])
+    })
+
+    it('GET /question/clear ignores sidebar terminals', async () => {
+      await httpGet('/question/clear?id=sidebar-1')
+      expect(cleared).toHaveLength(0)
     })
   })
 })

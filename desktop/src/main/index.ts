@@ -2,12 +2,14 @@ import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell, globalS
 import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setConfigProvider, setAgentProvider, setWorktreeFilesWriter } from './hooks/status-server'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorktreeFilesWriter } from './hooks/status-server'
+import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion } from './questions/pending-questions'
+import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
-import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook } from './pty/terminal-manager'
-import type { TerminalUsage, TrayState, TrayUpdate } from '../types'
+import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, writeToTerminal, getTerminalBuffer } from './pty/terminal-manager'
+import type { TerminalUsage, TrayAnswerChoice, TrayAnswerResult, TrayState, TrayUpdate } from '../types'
 import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpdating, getUpdateStatus } from './updater'
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
@@ -375,8 +377,40 @@ function setupTrayHandlers() {
       ticketId: a.ticketId,
       title: a.title,
       createdAt: a.createdAt.getTime(),
+      // This .map() drops anything not listed, so a new field has to be added here
+      // as well as to AgentSummary or the panel simply never sees it.
+      pendingQuestion: a.pendingQuestion,
     })),
   }))
+
+  /**
+   * Answer a pending question from the panel, without activating the app.
+   *
+   * The token is the whole safety mechanism. Answer in the main window (or let the
+   * agent move on) and the store is cleared, so a click on a card the panel has not
+   * refreshed yet finds no match and writes NOTHING to the PTY — the alternative
+   * being keystrokes landing in whatever the agent is doing now.
+   *
+   * `keysFor` returning null is the second gate: an unsupported question or an index
+   * we cannot place is not approximated.
+   *
+   * The decision itself lives in `answerPendingQuestion` so it can be unit-tested;
+   * this handler only supplies the store and the PTY.
+   */
+  ipcMain.handle('tray:answerQuestion', async (
+    _event,
+    { id, token, choice }: { id: string; token: string; choice: TrayAnswerChoice },
+  ): Promise<TrayAnswerResult> => {
+    const result = answerPendingQuestion(id, token, choice, {
+      getQuestion: getPendingQuestion,
+      write: writeToTerminal,
+      clear: clearPendingQuestion,
+    })
+    // Refresh the tray immediately: the agent's state is hook-driven and will not
+    // leave `waiting` on its own just because we typed.
+    if (result.ok) aggregator?.update()
+    return result
+  })
 
   ipcMain.handle('tray:resize', async (_event, { height }: { height: number }) => {
     resizePopover(height)
@@ -557,6 +591,25 @@ async function initializeHooksAndSessions() {
           id: terminalId,
           metadata: { usage }
         })
+      }
+    })
+
+    // A question an agent is blocked on, from the capture hooks. The payload is
+    // forwarded raw and parsed by the store; the buffer is handed over as a callback
+    // so it is only read for the payloads that actually build a preview from it.
+    setQuestionCallback((terminalId: string, body: string) => {
+      const question = ingestQuestionPayload(terminalId, body, () => getTerminalBuffer(terminalId))
+      // Only nudge the tray when something was actually stored: the fingerprint
+      // now carries the question token, so this is what makes the panel repaint.
+      if (question && aggregator) {
+        aggregator.update()
+      }
+    })
+
+    setClearQuestionCallback((terminalId: string) => {
+      clearPendingQuestion(terminalId)
+      if (aggregator) {
+        aggregator.update()
       }
     })
 

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, UsageStats, TelemetryHealth, ThemeId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, UsageStats, TelemetryHealth, ThemeId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -338,6 +338,15 @@ const trayApi = {
   /** Height in CSS pixels the panel measured for itself; main clamps it. */
   resize: (height: number) => ipcRenderer.invoke('tray:resize', { height }),
   showWindow: () => ipcRenderer.invoke('tray:showWindow'),
+  /**
+   * Answer an agent's pending question by injecting keystrokes into its PTY.
+   *
+   * `token` comes from the question the panel is displaying: main compares it to
+   * what it holds and writes nothing at all if they differ, so a click on a card
+   * that went stale between two polls is harmless rather than misdirected.
+   */
+  answerQuestion: (id: string, token: string, choice: TrayAnswerChoice): Promise<TrayAnswerResult> =>
+    ipcRenderer.invoke('tray:answerQuestion', { id, token, choice }),
   focusAgent: (id: string) => ipcRenderer.invoke('tray:focusAgent', id),
   openSettings: () => ipcRenderer.invoke('tray:openSettings'),
   quit: () => ipcRenderer.invoke('tray:quit'),

@@ -10,6 +10,7 @@ import { withDetectedBranch } from './initial-metadata'
 import { expandPath } from '../config/validation'
 import { resolveAgentCwd } from './agent-cwd'
 import { getCommonPaths } from '../utils/paths'
+import { clearPendingQuestion, clearAllPendingQuestions } from '../questions/pending-questions'
 import type { TerminalMetadata, TerminalState, LaunchMode, TerminalUsage } from '../../types'
 export type { TerminalMetadata, TerminalState }
 
@@ -291,6 +292,8 @@ export function createTerminal(
   disposables.push(ptyProcess.onExit(({ exitCode }) => {
     terminal.state = exitCode === 0 ? 'completed' : 'error'
     displayBuffers.delete(id)
+    // Nothing can answer a question whose process is gone.
+    clearPendingQuestion(id)
     onExit(exitCode)
   }))
 
@@ -299,17 +302,25 @@ export function createTerminal(
   return terminal
 }
 
-export function writeToTerminal(id: string, data: string): void {
+/**
+ * Returns whether the data actually reached a PTY.
+ *
+ * An unknown id is a silent no-op, which is fine for the callers that fire and
+ * forget — but the menu bar panel reports back to the user whether their answer
+ * was delivered, and "written nowhere" must not read as success there.
+ */
+export function writeToTerminal(id: string, data: string): boolean {
   const terminal = terminals.get(id)
-  if (terminal) {
-    try {
-      terminal.pty.write(data)
-    } catch (e) {
-      console.error(`[writeToTerminal] Failed to write to terminal ${id}:`, e)
-    }
-    // State changes are now handled exclusively by Claude Code hooks
-    // via updateTerminalStateFromHook() - no automatic state change on Enter
+  if (!terminal) return false
+  try {
+    terminal.pty.write(data)
+  } catch (e) {
+    console.error(`[writeToTerminal] Failed to write to terminal ${id}:`, e)
+    return false
   }
+  // State changes are now handled exclusively by Claude Code hooks
+  // via updateTerminalStateFromHook() - no automatic state change on Enter
+  return true
 }
 
 export function resizeTerminal(id: string, cols: number, rows: number): void {
@@ -341,6 +352,7 @@ export function killTerminal(id: string): void {
     displayBuffers.delete(id)
     lastActivityTime.delete(id)
     restartTrackers.delete(id)
+    clearPendingQuestion(id)
   }
 }
 
@@ -403,6 +415,7 @@ export function cleanupAllTerminals(): void {
   lastActivityTime.clear()
   ptyDisposables.clear()
   restartTrackers.clear()
+  clearAllPendingQuestions()
 }
 
 // Get the display buffer for a terminal (used for reconnection after refresh)
@@ -487,6 +500,12 @@ export function launchClaude(
 
     // Handle exit - auto-restart with backoff if not intentionally killed
     disposables.push(ptyProcess.onExit(({ exitCode }) => {
+      // Cleared here, before any of the branches below, because all of them mean the
+      // same thing for a pending question: the process that asked it is gone. A
+      // restarted Claude Code has no memory of the prompt either, so keystrokes aimed
+      // at it would land in a fresh session.
+      clearPendingQuestion(id)
+
       // Check if this was an intentional kill
       if (intentionallyKilled.has(id)) {
         intentionallyKilled.delete(id)

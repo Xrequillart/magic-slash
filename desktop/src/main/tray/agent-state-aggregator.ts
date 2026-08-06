@@ -1,5 +1,7 @@
 import { EventEmitter } from 'events'
 import { getAllTerminals, type TerminalState } from '../pty/terminal-manager'
+import { getPendingQuestion } from '../questions/pending-questions'
+import type { TrayQuestion } from '../../types'
 import type { AggregateState } from './tray-icons'
 
 export interface AgentSummary {
@@ -10,6 +12,8 @@ export interface AgentSummary {
   title: string
   repositories: string[]
   createdAt: Date
+  /** The question this agent is blocked on, if any (see main/questions/). */
+  pendingQuestion?: TrayQuestion
 }
 
 export class AgentStateAggregator extends EventEmitter {
@@ -37,6 +41,7 @@ export class AgentStateAggregator extends EventEmitter {
         title: t.metadata?.title || t.name,
         repositories: t.repositories,
         createdAt: t.createdAt,
+        pendingQuestion: getPendingQuestion(t.id),
       }))
   }
 
@@ -73,9 +78,13 @@ export class AgentStateAggregator extends EventEmitter {
     }
 
     // Build a fingerprint that captures individual agent states and titles
-    // so we detect changes even when the aggregate state stays the same
+    // so we detect changes even when the aggregate state stays the same.
+    //
+    // The question token is part of it because a question typically arrives on an
+    // agent that is ALREADY `waiting` — same state, same title, so without the
+    // token nothing here would look changed and the panel would never be told.
     const newFingerprint = terminals
-      .map(t => `${t.id}:${t.state}:${t.metadata?.title || t.name}`)
+      .map(t => `${t.id}:${t.state}:${t.metadata?.title || t.name}:${getPendingQuestion(t.id)?.token ?? ''}`)
       .join('|')
 
     const changed = newState !== this.currentState

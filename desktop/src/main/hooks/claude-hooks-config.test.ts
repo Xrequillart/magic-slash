@@ -14,7 +14,7 @@ vi.mock('os', async (importOriginal) => {
   return { ...actual, default: { ...actual, homedir: () => TMP_HOME }, homedir: () => TMP_HOME }
 })
 
-import { configureClaudeHooks } from './claude-hooks-config'
+import { configureClaudeHooks, removeClaudeHooks } from './claude-hooks-config'
 
 const SETTINGS = path.join(TMP_HOME, '.claude', 'settings.json')
 const SPOOL = path.join(TMP_HOME, '.config', 'magic-slash', 'pending-skills.ndjson')
@@ -305,5 +305,112 @@ describe('the permission allowlist', () => {
     configureClaudeHooks()
     configureClaudeHooks()
     expect(new Set(allow()).size).toBe(allow().length)
+  })
+})
+
+/**
+ * The hooks that put an agent's pending question in the menu bar panel.
+ *
+ * Two of them capture (the AskUserQuestion tool call, and the Notification a
+ * permission prompt raises) and three clear. All five are ADDITIONAL entries on
+ * events that already carry the state-reporting hook, which is what most of these
+ * tests are actually guarding.
+ */
+describe('the pending-question hooks', () => {
+  const hooksFor = (event: string): Hook[] => (readSettings().hooks[event] as Hook[]) ?? []
+  const matching = (event: string, fragment: string): Hook[] =>
+    hooksFor(event).filter((h) => h.hooks!.some((x) => x.command!.includes(fragment)))
+  const captures = (event: string) => matching(event, '/question?id=')
+  const clears = (event: string) => matching(event, '/question/clear?id=')
+
+  it('captures the AskUserQuestion tool call, scoped by matcher', () => {
+    configureClaudeHooks()
+    const hooks = captures('PreToolUse')
+    expect(hooks).toHaveLength(1)
+    // Unscoped, this would POST the payload of every single tool call.
+    expect(hooks[0].matcher).toBe('AskUserQuestion')
+  })
+
+  it('captures Notification, which has no tool to match on', () => {
+    configureClaudeHooks()
+    const hooks = captures('Notification')
+    expect(hooks).toHaveLength(1)
+    expect(hooks[0].matcher).toBeUndefined()
+  })
+
+  it('POSTs the hook stdin as the request body', () => {
+    configureClaudeHooks()
+    const command = captures('Notification')[0].hooks![0].command!
+    expect(command).toContain('-X POST')
+    expect(command).toContain('--data-binary @-')
+    // A blocked agent is waiting on this hook: it must not be able to hang.
+    expect(command).toContain('--max-time 2')
+  })
+
+  it('clears on the question\'s own PostToolUse, a new prompt, and the end of the turn', () => {
+    configureClaudeHooks()
+    expect(clears('PostToolUse')).toHaveLength(1)
+    expect(clears('PostToolUse')[0].matcher).toBe('AskUserQuestion')
+    expect(clears('UserPromptSubmit')).toHaveLength(1)
+    expect(clears('Stop')).toHaveLength(1)
+  })
+
+  // The clear is bound to events precisely so it never has to be bound to state:
+  // the generic PreToolUse hook reports `working` at the same instant the capture
+  // fires, so a state-driven clear would erase the question it just received.
+  it('never clears on PreToolUse, whatever the matcher', () => {
+    configureClaudeHooks()
+    expect(clears('PreToolUse')).toHaveLength(0)
+  })
+
+  it('leaves the state reporting on every event it shares alone', () => {
+    configureClaudeHooks()
+    for (const [event, state] of [
+      ['PreToolUse', 'working'],
+      ['Notification', 'waiting'],
+      ['PostToolUse', 'working'],
+      ['UserPromptSubmit', 'working'],
+      ['Stop', 'completed'],
+    ]) {
+      const commands = hooksFor(event).flatMap((h) => h.hooks!.map((x) => x.command!))
+      expect(commands.some((c) => c.includes(`state=${state}`))).toBe(true)
+    }
+  })
+
+  it('stays one entry per event across repeated configuration', () => {
+    configureClaudeHooks()
+    configureClaudeHooks()
+    configureClaudeHooks()
+    expect(captures('PreToolUse')).toHaveLength(1)
+    expect(captures('Notification')).toHaveLength(1)
+    expect(clears('PostToolUse')).toHaveLength(1)
+    expect(clears('UserPromptSubmit')).toHaveLength(1)
+    expect(clears('Stop')).toHaveLength(1)
+  })
+
+  it('is a silent no-op when the app is not listening', () => {
+    // No MAGIC_SLASH_PORT: the guard short-circuits and the hook exits 0, so a
+    // closed app can never make an agent's question hook fail.
+    configureClaudeHooks()
+    const command = captures('Notification')[0].hooks![0].command!
+    expect(() => run(command, '{"hook_event_name":"Notification","message":"x"}', 'claude-1')).not.toThrow()
+  })
+
+  it('is removed by removeClaudeHooks, along with every other Magic Slash hook', () => {
+    fs.mkdirSync(path.join(TMP_HOME, '.claude'), { recursive: true })
+    fs.writeFileSync(SETTINGS, JSON.stringify({
+      hooks: { Stop: [{ hooks: [{ type: 'command', command: 'mine.sh' }] }] },
+    }))
+
+    configureClaudeHooks()
+    removeClaudeHooks()
+
+    const settings = readSettings()
+    const remaining = Object.values(settings.hooks ?? {})
+      .flatMap((entries) => (entries as Hook[]).flatMap((h) => h.hooks!.map((x) => x.command!)))
+    expect(remaining.some((c) => c.includes('magic-slash-desktop'))).toBe(false)
+    expect(remaining.some((c) => c.includes('/question'))).toBe(false)
+    // The user's own hook is untouched — the filter is by marker, not by event.
+    expect(remaining).toContain('mine.sh')
   })
 })

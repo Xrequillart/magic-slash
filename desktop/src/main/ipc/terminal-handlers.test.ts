@@ -54,6 +54,11 @@ vi.mock('../config/agents', () => ({
 
 vi.mock('../config/activity-history', () => ({ addHistoryEntry: vi.fn() }))
 
+const clearPendingQuestion = vi.fn()
+vi.mock('../questions/pending-questions', () => ({
+  clearPendingQuestion: (...args: unknown[]) => clearPendingQuestion(...args),
+}))
+
 const recordUsageSnapshot = vi.fn()
 vi.mock('../usage/usage-events', () => ({
   recordUsageSnapshot: (...args: unknown[]) => recordUsageSnapshot(...args),
@@ -200,5 +205,29 @@ describe('the status contract with the skills', () => {
     const fromStatuses: string[] = ['started', 'committed', 'ready_for_pr', 'pr_created',
       'ci_green', 'review', 'review_changes_requested', 'review_addressed', 'merged']
     expect([...produced].sort()).toEqual([...fromStatuses].sort())
+  })
+})
+
+describe('pending question cleared on a human write (terminal:write)', () => {
+  it('drops the pending question before writing, so a late panel click is a no-op', async () => {
+    await invoke('terminal:write', { id: 'claude-1', data: 'y' })
+
+    expect(clearPendingQuestion).toHaveBeenCalledWith('claude-1')
+  })
+
+  it('clears on every keystroke, not only on Enter', async () => {
+    // The user may start answering in the main window without submitting yet. The
+    // panel's card is already out of date at that point: the TUI selection has moved.
+    for (const data of ['\x1b[B', 'a', '\r']) {
+      clearPendingQuestion.mockClear()
+      await invoke('terminal:write', { id: 'claude-1', data })
+      expect(clearPendingQuestion).toHaveBeenCalledWith('claude-1')
+    }
+  })
+
+  it('ignores a write with no data, which cannot be an answer', async () => {
+    await invoke('terminal:write', { id: 'claude-1', data: undefined })
+
+    expect(clearPendingQuestion).not.toHaveBeenCalled()
   })
 })

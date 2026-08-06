@@ -17,6 +17,7 @@ import {
   updateTerminalRepositoriesFromHook,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
+import { clearPendingQuestion } from '../questions/pending-questions'
 import { resolveAgentCwd } from '../pty/agent-cwd'
 import {
   saveAgent,
@@ -485,6 +486,16 @@ export function setupTerminalHandlers(
   // Write to terminal
   ipcMain.handle('terminal:write', async (_event, { id, data }) => {
     if (typeof id !== 'string' || typeof data !== 'string') return
+    // The user is typing in the terminal, so whatever the menu bar panel is still
+    // showing for this agent is answered (or being answered) right here. Dropping it
+    // now is what makes a late click on the panel's card a no-op (AC4).
+    //
+    // ⚠️ THIS BELONGS IN THIS HANDLER, NOT IN writeToTerminal(). That function is
+    // shared: pr-review-handlers.ts and script-handlers.ts call it for writes the APP
+    // makes on its own, which say nothing about the user having answered anything —
+    // moving the clear down there would silently wipe legitimate pending questions.
+    // Only this handler means "a human typed into that terminal".
+    clearPendingQuestion(id)
     writeToTerminal(id, data)
   })
 
