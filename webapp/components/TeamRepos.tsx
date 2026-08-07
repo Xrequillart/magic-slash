@@ -19,6 +19,9 @@ const STATUS_TONES: Record<string, BadgeTone> = {
   committed: 'yellow',
   'ready for PR': 'neutral',
   'PR created': 'accent',
+  // The desktop gives this its own teal; the six tones here have no equivalent, and
+  // green is the honest read of a passing pipeline.
+  'CI green': 'green',
   'in review': 'purple',
   'changes requested': 'red',
   'Review addressed': 'green',
@@ -35,6 +38,7 @@ const STATUS_LABELS: Record<string, MessageKey> = {
   committed: 'team.status.committed',
   'ready for PR': 'team.status.readyForPR',
   'PR created': 'team.status.prCreated',
+  'CI green': 'team.status.ciGreen',
   'in review': 'team.status.inReview',
   'changes requested': 'team.status.changesRequested',
   'Review addressed': 'team.status.reviewAddressed',

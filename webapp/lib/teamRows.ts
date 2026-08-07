@@ -13,6 +13,7 @@
  */
 export const PR_WORKFLOW_STATUSES: readonly string[] = [
   'PR created',
+  'CI green',
   'in review',
   'changes requested',
   'Review addressed',

@@ -143,6 +143,7 @@ export const fr: Record<keyof typeof en, string> = {
   'team.status.committed': 'committé',
   'team.status.readyForPR': 'prêt pour la PR',
   'team.status.prCreated': 'PR créée',
+  'team.status.ciGreen': 'CI verte',
   'team.status.inReview': 'en revue',
   'team.status.changesRequested': 'modifications demandées',
   'team.status.reviewAddressed': 'revue traitée',

@@ -146,6 +146,7 @@ export const en = {
   'team.status.committed': 'committed',
   'team.status.readyForPR': 'ready for PR',
   'team.status.prCreated': 'PR created',
+  'team.status.ciGreen': 'CI green',
   'team.status.inReview': 'in review',
   'team.status.changesRequested': 'changes requested',
   'team.status.reviewAddressed': 'review addressed',

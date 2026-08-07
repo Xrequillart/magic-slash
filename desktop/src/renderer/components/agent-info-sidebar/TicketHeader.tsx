@@ -15,6 +15,9 @@ const STATUS_OPTIONS = [
   { value: 'committed',    labelKey: 'statusPill.committed',     bg: 'bg-cyan/20',       text: 'text-cyan' },
   { value: 'ready for PR', labelKey: 'statusPill.readyForPR',  bg: 'bg-orange/20',     text: 'text-orange' },
   { value: 'PR created',   labelKey: 'statusPill.prCreated',    bg: 'bg-green/20',      text: 'text-green' },
+  // The palette was already spent on the eight statuses around it (see themes.ts),
+  // so this one takes `accent` — the last role not spoken for here.
+  { value: 'CI green',     labelKey: 'statusPill.ciGreen',      bg: 'bg-accent/20',     text: 'text-accent' },
   { value: 'in review',    labelKey: 'statusPill.inReview',     bg: 'bg-blue/20',       text: 'text-blue' },
   { value: 'changes requested', labelKey: 'statusPill.changesRequested', bg: 'bg-red/20', text: 'text-red' },
   { value: 'Review addressed', labelKey: 'statusPill.reviewAddressed', bg: 'bg-teal/20', text: 'text-teal' },

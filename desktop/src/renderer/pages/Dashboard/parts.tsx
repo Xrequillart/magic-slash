@@ -15,6 +15,7 @@ export const STATUS_CONFIG: Record<string, { labelKey: MessageKey; className: st
   committed:            { labelKey: 'status.committed',        className: 'bg-yellow/15 text-yellow' },
   'ready for PR':       { labelKey: 'status.readyForPR',       className: 'bg-blue/15 text-blue' },
   'PR created':         { labelKey: 'status.prCreated',        className: 'bg-blue/15 text-blue' },
+  'CI green':           { labelKey: 'status.ciGreen',          className: 'bg-teal/15 text-teal' },
   'in review':          { labelKey: 'status.inReview',         className: 'bg-purple/15 text-purple' },
   'changes requested':  { labelKey: 'status.changesRequested', className: 'bg-red/15 text-red' },
   'Review addressed':   { labelKey: 'status.reviewAddressed',  className: 'bg-green/15 text-green' },
