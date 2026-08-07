@@ -24,6 +24,11 @@ export function createQuickLaunchWindow(): BrowserWindow {
     fullscreenable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
+    // An NSPanel, like the menu bar popover: a Spotlight-style bar has to take key
+    // focus — the blur handler below closes on it — without making Magic Slash
+    // frontmost, which macOS answers by jumping to the Space holding the main
+    // window. Only `focus()` exempts panels, hence showInactive in showQuickLaunch.
+    ...(process.platform === 'darwin' ? { type: 'panel' as const } : {}),
     transparent: true,
     hasShadow: true,
     roundedCorners: true,
@@ -81,7 +86,12 @@ export function showQuickLaunch(): void {
   const y = Math.round(dY + dH * 0.25)
   win.setPosition(x, y, false)
 
-  win.show()
+  // Electron's `show()` activates the app unconditionally on macOS, panel or not,
+  // so it would pull the user to the main window's Space before they typed a
+  // character. showInactive only orders the bar front; focus() then makes it key —
+  // which a panel gets without activating the app. Dispatching from the bar still
+  // brings the window forward on purpose (quicklaunch:dispatch → focusMainWindow).
+  win.showInactive()
   win.focus()
 }
 

@@ -101,7 +101,18 @@ export function showPopoverNearTray(trayBounds: Electron.Rectangle): void {
   x = Math.max(minX, Math.min(maxX, x))
 
   win.setPosition(x, y, false)
-  win.show()
+
+  // showInactive, never show: Electron's `show()` on macOS runs
+  // `[NSApp activateIgnoringOtherApps:YES]` with NO exemption for panel windows
+  // (native_window_mac.mm), so every click on the menu bar icon activated Magic
+  // Slash — and macOS answers an activation by bringing the app's main window
+  // forward, jumping to whichever Space that window sits on. The panel itself is
+  // on all Spaces (see createPopoverWindow); it was the activation that dragged
+  // the user away. showInactive is a plain `orderFrontRegardless`.
+  win.showInactive()
+  // Still needed, and still safe: the panel has to be the key window for the blur
+  // handler to close it, and `focus()` DOES exempt panels — it calls
+  // `activateIgnoringOtherApps:NO`, which leaves an inactive app inactive.
   win.focus()
 }
 
