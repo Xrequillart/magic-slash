@@ -21,8 +21,11 @@ function stateLabel(state: string, t: Translate): string {
   }
 }
 
-/** Every state of the button shares this, so only the icon and colour differ. */
-const ICON_BUTTON = 'flex items-center justify-center w-6 h-6 rounded-lg transition-colors shrink-0'
+/** Every state of the button shares this, so only the icon and colour differ.
+    No height of its own: the header stretches it to the account button beside it,
+    and aspect-square turns that height into a matching width. */
+const ICON_BUTTON =
+  'flex items-center justify-center self-stretch aspect-square rounded-lg transition-colors shrink-0'
 
 /**
  * The app's update control — the menu bar panel replaced a native menu that had a
@@ -225,7 +228,7 @@ export function TrayPopover() {
         >
           Magic Slash
         </button>
-        <div className="flex items-center gap-1 min-w-0">
+        <div className="flex items-stretch gap-1 min-w-0">
           <button
             onClick={() => window.electronAPI.tray.openSettings()}
             title={t('tray.popover.account')}
