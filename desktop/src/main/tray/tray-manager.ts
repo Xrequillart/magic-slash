@@ -64,7 +64,7 @@ export class TrayManager {
   }
 
   private updatePulse(state: AggregateState): void {
-    if (state === 'running' || state === 'waiting') {
+    if (state === 'running' || state === 'waiting' || state === 'question') {
       if (!this.pulseTimer) {
         this.pulseOn = true
         this.pulseTimer = setInterval(() => {

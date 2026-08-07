@@ -7,11 +7,14 @@
  * The "Template" suffix in the filename tells macOS to treat them as template images.
  *
  * The mark is the rabbit from `assets/rabbit-tray-source.png`, scaled down to menu bar
- * size. Only that source's ALPHA is read: a template image is tinted by the system from
- * its coverage alone, so the RGB it ships with is irrelevant and every output pixel is
- * written black. That is also why the status dot's colour never reaches the screen —
- * macOS keeps the shape and drops the hue. The dot stays anyway because it is what
- * distinguishes the four states, and the pulse in tray-manager blinks it on and off.
+ * size. Only that source's ALPHA is read: the shape comes from its coverage and the RGB
+ * it ships with is irrelevant, so each variant below paints its own.
+ *
+ * A template variant is painted black and macOS re-tints it, which is what keeps it
+ * legible on a light or a dark bar — and also what makes a colour pointless there. This
+ * used to emit one template per aggregate state (`-green`, `-orange`, `-red`), three
+ * files that differed by a suffix and by nothing else; they are one file now. Only
+ * `trayQuestion` ships a real colour, and it pays for it by being fixed in both bars.
  *
  * No image library: the desktop app has none, so this file carries a small PNG reader
  * and writer. Run it by hand after changing the source art:
@@ -203,7 +206,7 @@ function readAlpha(file) {
  * whole source rect per output pixel is what keeps the rabbit's thin motion streaks
  * from breaking up at menu bar size — the scale factor here is ~60x down.
  */
-function drawMark(pixels, canvasW, canvasH, src, ox, oy, dw, dh) {
+function drawMark(pixels, canvasW, canvasH, src, ox, oy, dw, dh, colour) {
   for (let y = 0; y < dh; y++) {
     const sy0 = (y / dh) * src.height
     const sy1 = ((y + 1) / dh) * src.height
@@ -232,17 +235,18 @@ function drawMark(pixels, canvasW, canvasH, src, ox, oy, dw, dh) {
       if (px < 0 || px >= canvasW || py < 0 || py >= canvasH) continue
 
       const idx = (py * canvasW + px) * 4
-      // Black, with coverage in alpha: macOS tints template images itself.
-      pixels[idx] = 0
-      pixels[idx + 1] = 0
-      pixels[idx + 2] = 0
+      // Coverage goes in alpha; the hue is the variant's, and is ignored by macOS on
+      // the template ones, which it tints itself.
+      pixels[idx] = colour[0]
+      pixels[idx + 1] = colour[1]
+      pixels[idx + 2] = colour[2]
       pixels[idx + 3] = Math.max(pixels[idx + 3], a)
     }
   }
 }
 
 /** Draw a status dot in the bottom-right corner. */
-function drawDot(pixels, canvasW, canvasH, radius) {
+function drawDot(pixels, canvasW, canvasH, radius, colour) {
   const cx = canvasW - radius - 1
   const cy = canvasH - radius - 1
 
@@ -252,16 +256,16 @@ function drawDot(pixels, canvasW, canvasH, radius) {
       if (dist <= radius) {
         const idx = (y * canvasW + x) * 4
         const alpha = dist > radius - 1 ? Math.round(255 * (radius - dist)) : 255
-        pixels[idx] = 0
-        pixels[idx + 1] = 0
-        pixels[idx + 2] = 0
+        pixels[idx] = colour[0]
+        pixels[idx + 1] = colour[1]
+        pixels[idx + 2] = colour[2]
         pixels[idx + 3] = Math.max(0, Math.min(255, alpha))
       }
     }
   }
 }
 
-function generateIcon(src, scale, withDot) {
+function generateIcon(src, scale, withDot, colour) {
   const canvasW = CANVAS_W * scale
   const canvasH = CANVAS_H * scale
   const pad = PADDING * scale
@@ -276,10 +280,10 @@ function generateIcon(src, scale, withDot) {
   const ox = Math.round((canvasW - dw) / 2)
   const oy = Math.round((canvasH - dh) / 2)
 
-  drawMark(pixels, canvasW, canvasH, src, ox, oy, dw, dh)
+  drawMark(pixels, canvasW, canvasH, src, ox, oy, dw, dh, colour)
 
   if (withDot) {
-    drawDot(pixels, canvasW, canvasH, Math.max(2, DOT_RADIUS * canvasH))
+    drawDot(pixels, canvasW, canvasH, Math.max(2, DOT_RADIUS * canvasH), colour)
   }
 
   return { png: createPNG(canvasW, canvasH, pixels), canvasW, canvasH, dw, dh }
@@ -287,13 +291,19 @@ function generateIcon(src, scale, withDot) {
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
-// The four states tray-icons.ts maps to: plain, then one per aggregate state. The dot
-// is the only difference — macOS strips the colour these used to carry.
+/** Painted into the mark and the dot. macOS overrides it on the template variants. */
+const BLACK = [0, 0, 0]
+/** The app's orange (#F97316). Keep in step with tray-icons.ts, which documents why. */
+const ORANGE = [249, 115, 22]
+
+// What tray-icons.ts maps its five aggregate states onto — three files, because
+// `idle`, `running` and `waiting` cannot look different from each other under the
+// template mask however they are named. `Template` in the filename is load-bearing:
+// macOS reads that suffix as "tint this yourself".
 const variants = [
-  { suffix: '', dot: false },
-  { suffix: '-green', dot: true },
-  { suffix: '-orange', dot: true },
-  { suffix: '-red', dot: true },
+  { name: 'trayTemplate', dot: false, colour: BLACK },
+  { name: 'trayActiveTemplate', dot: true, colour: BLACK },
+  { name: 'trayQuestion', dot: true, colour: ORANGE },
 ]
 
 const src = readAlpha(SOURCE)
@@ -306,10 +316,10 @@ if (!fs.existsSync(OUTPUT_DIR)) {
 
 for (const variant of variants) {
   for (const [scale, suffix2x] of [[1, ''], [2, '@2x']]) {
-    const { png, canvasW, canvasH, dw, dh } = generateIcon(src, scale, variant.dot)
-    const name = `trayTemplate${variant.suffix}${suffix2x}.png`
+    const { png, canvasW, canvasH, dw, dh } = generateIcon(src, scale, variant.dot, variant.colour)
+    const name = `${variant.name}${suffix2x}.png`
     fs.writeFileSync(path.join(OUTPUT_DIR, name), png)
-    if (!variant.suffix) {
+    if (!suffix2x) {
       console.log(`  ${name}: canvas ${canvasW}x${canvasH}, mark ${dw}x${dh}`)
     }
   }

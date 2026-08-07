@@ -65,10 +65,17 @@ export class AgentStateAggregator extends EventEmitter {
     let newState: AggregateState = 'none'
 
     if (count > 0) {
+      // A question or a permission request is the only thing here that cannot resolve
+      // itself: every other state ends on its own, this one waits on a person. It
+      // therefore outranks `waiting`, which it would otherwise hide behind — an agent
+      // blocked on a question is already `waiting`, so the two always coincide.
+      const hasQuestion = terminals.some(t => getPendingQuestion(t.id) !== undefined)
       const hasWaiting = terminals.some(t => t.state === 'waiting')
       const hasWorking = terminals.some(t => t.state === 'working')
 
-      if (hasWaiting) {
+      if (hasQuestion) {
+        newState = 'question'
+      } else if (hasWaiting) {
         newState = 'waiting'
       } else if (hasWorking) {
         newState = 'running'
