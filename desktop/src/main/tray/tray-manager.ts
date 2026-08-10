@@ -38,9 +38,12 @@ export class TrayManager {
     this.tray.on('click', () => this.toggle())
     this.tray.on('right-click', () => this.toggle())
 
-    this.aggregator.on('change', ({ state, count }: { state: AggregateState; count: number }) => {
-      this.updateIcon(state)
-      this.updateTitle(count)
+    this.aggregator.on('change', ({ state }: { state: AggregateState }) => {
+      // Snapped back to the loud beat on every change: a question that has just come in
+      // should not wait up to a second for its orange, and the icon and the title have
+      // to agree on which beat they are showing.
+      this.pulseOn = true
+      this.applyFrame()
       this.updatePulse(state)
     })
 
@@ -53,37 +56,55 @@ export class TrayManager {
     togglePopover(this.tray.getBounds())
   }
 
-  private updateIcon(state: AggregateState): void {
-    if (!this.tray) return
-    this.tray.setImage(getIconForState(state))
+  /**
+   * The text beside the icon, for the beat the pulse is currently on.
+   *
+   * Normally the number of agents that are up. While one of them is asking something,
+   * the loud beat swaps that total for `?N` — N being how many are actually blocked on
+   * an answer, which is the number worth acting on: three agents running and one asking
+   * is one thing to do, not four. It rides the same rhythm as the colour on purpose.
+   * The orange says someone needs you and the `?N` says how many; read as one signal,
+   * they have to change together.
+   */
+  private renderTitle(): string {
+    const questions = this.aggregator.getQuestionCount()
+    if (this.pulseOn && this.aggregator.getState() === 'question' && questions > 0) {
+      return `?${questions}`
+    }
+    const count = this.aggregator.getActiveCount()
+    return count > 0 ? `${count}` : ''
   }
 
-  private updateTitle(count: number): void {
+  /**
+   * Icon and title painted together, so they can never disagree about the beat. On the
+   * quiet one the mark falls back to `none`, which is the same rabbit without its status
+   * dot — that is the whole animation.
+   */
+  private applyFrame(): void {
     if (!this.tray) return
-    this.tray.setTitle(count > 0 ? `${count}` : '')
+    const state = this.aggregator.getState()
+    this.tray.setImage(getIconForState(this.pulseOn ? state : 'none'))
+    this.tray.setTitle(this.renderTitle())
   }
 
   private updatePulse(state: AggregateState): void {
-    if (state === 'running' || state === 'waiting' || state === 'question') {
-      if (!this.pulseTimer) {
-        this.pulseOn = true
-        this.pulseTimer = setInterval(() => {
-          if (!this.tray) return
-          this.pulseOn = !this.pulseOn
-          this.tray.setImage(getIconForState(this.pulseOn ? this.aggregator.getState() : 'none'))
-        }, 1000)
-      }
-    } else {
+    const shouldPulse = state === 'running' || state === 'waiting' || state === 'question'
+
+    if (!shouldPulse) {
       if (this.pulseTimer) {
         clearInterval(this.pulseTimer)
         this.pulseTimer = null
-        this.pulseOn = true
-        // Ensure correct icon is shown
-        if (this.tray) {
-          this.tray.setImage(getIconForState(state))
-        }
       }
+      return
     }
+
+    // Left running across a change: restarting it would let a stream of updates reset
+    // the interval forever and the icon would sit still.
+    if (this.pulseTimer) return
+    this.pulseTimer = setInterval(() => {
+      this.pulseOn = !this.pulseOn
+      this.applyFrame()
+    }, 1000)
   }
 
   destroy(): void {

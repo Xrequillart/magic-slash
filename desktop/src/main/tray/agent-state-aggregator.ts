@@ -19,6 +19,7 @@ export interface AgentSummary {
 export class AgentStateAggregator extends EventEmitter {
   private currentState: AggregateState = 'none'
   private activeCount = 0
+  private questionCount = 0
   private pollTimer: ReturnType<typeof setInterval> | null = null
   private fingerprint = ''
 
@@ -28,6 +29,16 @@ export class AgentStateAggregator extends EventEmitter {
 
   getActiveCount(): number {
     return this.activeCount
+  }
+
+  /**
+   * How many agents are blocked on a question, which is not the same number as
+   * `getActiveCount` and is the one worth acting on: three agents running and one
+   * asking means one thing to do, not four. The menu bar alternates between them
+   * (see TrayManager.renderTitle).
+   */
+  getQuestionCount(): number {
+    return this.questionCount
   }
 
   getAgentSummaries(): AgentSummary[] {
@@ -62,6 +73,9 @@ export class AgentStateAggregator extends EventEmitter {
       t => !t.id.startsWith('script-') && !t.id.startsWith('sidebar-')
     )
     const count = terminals.length
+    // Counted rather than probed with `some`: the menu bar shows this number, so it is
+    // not enough to know that at least one agent is asking.
+    const questions = terminals.filter(t => getPendingQuestion(t.id) !== undefined).length
     let newState: AggregateState = 'none'
 
     if (count > 0) {
@@ -69,11 +83,10 @@ export class AgentStateAggregator extends EventEmitter {
       // itself: every other state ends on its own, this one waits on a person. It
       // therefore outranks `waiting`, which it would otherwise hide behind — an agent
       // blocked on a question is already `waiting`, so the two always coincide.
-      const hasQuestion = terminals.some(t => getPendingQuestion(t.id) !== undefined)
       const hasWaiting = terminals.some(t => t.state === 'waiting')
       const hasWorking = terminals.some(t => t.state === 'working')
 
-      if (hasQuestion) {
+      if (questions > 0) {
         newState = 'question'
       } else if (hasWaiting) {
         newState = 'waiting'
@@ -100,10 +113,11 @@ export class AgentStateAggregator extends EventEmitter {
 
     this.currentState = newState
     this.activeCount = count
+    this.questionCount = questions
     this.fingerprint = newFingerprint
 
     if (changed) {
-      this.emit('change', { state: newState, count })
+      this.emit('change', { state: newState, count, questions })
     }
   }
 }

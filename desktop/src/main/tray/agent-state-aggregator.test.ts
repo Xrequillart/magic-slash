@@ -76,6 +76,39 @@ describe('AgentStateAggregator.update', () => {
   })
 })
 
+// The menu bar prints this number, so "at least one" is not enough to know.
+describe('AgentStateAggregator.getQuestionCount', () => {
+  function count(terminals: { id: string; state: string }[], questions: string[] = []) {
+    mocks.terminals = terminals
+    mocks.withQuestion = new Set(questions)
+    const aggregator = new AgentStateAggregator()
+    aggregator.update()
+    return { active: aggregator.getActiveCount(), asking: aggregator.getQuestionCount() }
+  }
+
+  it('counts the agents that are asking, not the agents that are up', () => {
+    expect(count([
+      { id: 'a', state: 'working' },
+      { id: 'b', state: 'waiting' },
+      { id: 'c', state: 'waiting' },
+    ], ['b', 'c'])).toEqual({ active: 3, asking: 2 })
+  })
+
+  it('reports none while nobody is asking', () => {
+    expect(count([{ id: 'a', state: 'working' }])).toEqual({ active: 1, asking: 0 })
+  })
+
+  // Same exclusion update() applies to the state: a script shell holding a prompt is
+  // not an agent asking a question, and must not be counted as one.
+  it('excludes script and sidebar shells', () => {
+    expect(count([
+      { id: 'a', state: 'waiting' },
+      { id: 'script-1', state: 'waiting' },
+      { id: 'sidebar-1', state: 'waiting' },
+    ], ['a', 'script-1', 'sidebar-1'])).toEqual({ active: 1, asking: 1 })
+  })
+})
+
 describe('AgentStateAggregator change events', () => {
   it('emits when a question arrives on an agent that was already waiting', () => {
     mocks.terminals = [{ id: 'a', state: 'waiting' }]
@@ -89,5 +122,21 @@ describe('AgentStateAggregator change events', () => {
     aggregator.update()
 
     expect(seen).toEqual(['waiting', 'question'])
+  })
+
+  // A second agent asking moves no state — it is already `question` — but it does move
+  // the number the menu bar prints, so the event has to carry it.
+  it('emits again when a second agent starts asking', () => {
+    mocks.terminals = [{ id: 'a', state: 'waiting' }, { id: 'b', state: 'waiting' }]
+    mocks.withQuestion = new Set(['a'])
+    const aggregator = new AgentStateAggregator()
+    const seen: number[] = []
+    aggregator.on('change', ({ questions }: { questions: number }) => seen.push(questions))
+
+    aggregator.update()
+    mocks.withQuestion.add('b')
+    aggregator.update()
+
+    expect(seen).toEqual([1, 2])
   })
 })
