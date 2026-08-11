@@ -309,7 +309,7 @@ export function clearPendingQuestion(terminalId: string): void {
 const TERMINAL_REPORT = /\x1b\[(?:[IO]|\d+;\d+R|\?[\d;]*[a-zA-Z]|>[\d;]*[a-zA-Z]|<[\d;]*[Mm]|20[01]~)/g
 
 /** Whether `data` contains anything a human actually typed. */
-function isUserInput(data: string): boolean {
+export function isUserInput(data: string): boolean {
   return data.replace(TERMINAL_REPORT, '') !== ''
 }
 

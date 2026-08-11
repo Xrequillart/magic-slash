@@ -1068,6 +1068,12 @@ export const en = {
   'toast.cloudWriteKind.config': 'settings',
   'toast.cloudWriteKind.agents': 'agents',
 
+  // ── Agent relaunched in its repository ───────────────────────────────────
+  'toast.cwdRelaunched': 'Agent relaunched in “{dir}”',
+  'toast.cwdRelaunchOffer':
+    'This agent is still running in “{current}”. Relaunching it in “{dir}” will clear its current conversation.',
+  'toast.cwdRelaunchAction': 'Relaunch in “{dir}”',
+
   // ── Login screen ─────────────────────────────────────────────────────────
   'login.signinTitle': 'Sign in to Magic Slash',
   'login.resetTitle': 'Reset your password',

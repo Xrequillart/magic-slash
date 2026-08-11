@@ -21,6 +21,9 @@ const term = vi.hoisted(() => ({
   getTerminal: vi.fn(),
   createTerminal: vi.fn(),
   killTerminal: vi.fn(),
+  noteTerminalUserInput: vi.fn((_id: string) => {}),
+  syncTerminalCwd: vi.fn((_id: string): { action: string; cwd?: string; from?: string } => ({ action: 'none' })),
+  relaunchTerminalInResolvedCwd: vi.fn((_id: string): string | null => null),
 }))
 // Captured onExit callback from the most recent createTerminal call.
 let capturedOnExit: ((code: number) => void) | undefined
@@ -42,6 +45,9 @@ vi.mock('../pty/terminal-manager', () => ({
   cleanupAllTerminals: vi.fn(),
   updateTerminalMetadataFromHook: vi.fn(),
   updateTerminalRepositoriesFromHook: vi.fn(),
+  noteTerminalUserInput: (id: string) => term.noteTerminalUserInput(id),
+  syncTerminalCwd: (id: string) => term.syncTerminalCwd(id),
+  relaunchTerminalInResolvedCwd: (id: string) => term.relaunchTerminalInResolvedCwd(id),
 }))
 
 const archiveAgent = vi.fn()
@@ -57,6 +63,9 @@ vi.mock('../config/activity-history', () => ({ addHistoryEntry: vi.fn() }))
 const noteTerminalInput = vi.fn()
 vi.mock('../questions/pending-questions', () => ({
   noteTerminalInput: (...args: unknown[]) => noteTerminalInput(...args),
+  // A stub rather than the real strip-the-terminal-reports implementation (which
+  // has its own tests): these cases only need genuine keystrokes to get through.
+  isUserInput: (data: string) => data.length > 0,
 }))
 
 const recordUsageSnapshot = vi.fn()
@@ -227,5 +236,84 @@ describe('the pending question and a write from the terminal view (terminal:writ
     await invoke('terminal:write', { id: 'claude-1', data: undefined })
 
     expect(noteTerminalInput).not.toHaveBeenCalled()
+  })
+
+  it('marks the session as talked to, so it is no longer relaunched silently', async () => {
+    await invoke('terminal:write', { id: 'claude-1', data: 'y' })
+
+    expect(term.noteTerminalUserInput).toHaveBeenCalledWith('claude-1')
+  })
+})
+
+describe('moving an agent to its repository (terminal:updateRepositories)', () => {
+  // The default beforeEach hands setupTerminalHandlers a null window, which makes
+  // every IPC forward a silent no-op. These cases are about what reaches the
+  // renderer, so they need a window whose sends can be read back.
+  let sent: Array<{ channel: string; payload: unknown }>
+
+  beforeEach(() => {
+    sent = []
+    handlers.clear()
+    const win = {
+      webContents: {
+        send: (channel: string, payload: unknown) => { sent.push({ channel, payload }) },
+      },
+    }
+    setupTerminalHandlers(() => win as never, vi.fn(), vi.fn())
+  })
+
+  it('reconciles the running directory after the repositories change', async () => {
+    await invoke('terminal:updateRepositories', { id: 'claude-1', repositories: ['/repo'] })
+
+    expect(term.syncTerminalCwd).toHaveBeenCalledWith('claude-1')
+  })
+
+  it('tells the renderer when the agent was moved on its own', async () => {
+    term.syncTerminalCwd.mockReturnValueOnce(
+      { action: 'relaunched', cwd: '/repo', from: '/Users/me/Documents' }
+    )
+
+    await invoke('terminal:updateRepositories', { id: 'claude-1', repositories: ['/repo'] })
+
+    expect(sent).toContainEqual({
+      channel: 'terminal:cwdSync',
+      payload: { id: 'claude-1', action: 'relaunched', cwd: '/repo', from: '/Users/me/Documents' },
+    })
+  })
+
+  it('tells the renderer when moving the agent needs the user to agree first', async () => {
+    term.syncTerminalCwd.mockReturnValueOnce(
+      { action: 'suggested', cwd: '/repo', from: '/Users/me/Documents' }
+    )
+
+    await invoke('terminal:updateRepositories', { id: 'claude-1', repositories: ['/repo'] })
+
+    expect(sent.filter(s => s.channel === 'terminal:cwdSync')).toHaveLength(1)
+  })
+
+  // Attaching a SECOND repository does not move the resolved directory, and a toast
+  // for a non-event is worse than no toast at all.
+  it('says nothing when the running directory is already the right one', async () => {
+    term.syncTerminalCwd.mockReturnValueOnce({ action: 'none' })
+
+    await invoke('terminal:updateRepositories', { id: 'claude-1', repositories: ['/repo', '/other'] })
+
+    expect(sent.filter(s => s.channel === 'terminal:cwdSync')).toEqual([])
+  })
+
+  it('relaunches on request, once the user has agreed', async () => {
+    term.relaunchTerminalInResolvedCwd.mockReturnValueOnce('/repo')
+
+    const result = await invoke('terminal:relaunchInCwd', { id: 'claude-1' })
+
+    expect(term.relaunchTerminalInResolvedCwd).toHaveBeenCalledWith('claude-1')
+    expect(result).toBe('/repo')
+  })
+
+  it('refuses a relaunch request with no agent id', async () => {
+    const result = await invoke('terminal:relaunchInCwd', { id: 42 })
+
+    expect(term.relaunchTerminalInResolvedCwd).not.toHaveBeenCalled()
+    expect(result).toBeNull()
   })
 })

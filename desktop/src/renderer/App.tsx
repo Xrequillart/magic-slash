@@ -345,6 +345,38 @@ export function App() {
     }
   }, [configLoading, repoSetup, repoSetupDismissed, loadConfig, t])
 
+  // A repository was attached to an agent still running somewhere else. The main
+  // process has either already moved it (nothing was going on in that session) or
+  // is offering to, because relaunching Claude Code wipes the conversation.
+  //
+  // Lives here rather than in useTerminals: that hook is called by four components,
+  // so its listeners are registered four times over — harmless for store writes,
+  // four toasts for one event.
+  useEffect(() => {
+    const basename = (p: string) => p.split('/').filter(Boolean).pop() || p
+    const unsubscribe = window.electronAPI.terminal.onCwdSync(({ id, action, cwd, from }) => {
+      if (action === 'relaunched') {
+        showToast(t('toast.cwdRelaunched', { dir: basename(cwd) }), 'success')
+        return
+      }
+      showToast(
+        t('toast.cwdRelaunchOffer', { current: basename(from), dir: basename(cwd) }),
+        'warning',
+        {
+          persistent: true,
+          actions: [
+            {
+              label: t('toast.cwdRelaunchAction', { dir: basename(cwd) }),
+              icon: <RotateCcw className="w-3.5 h-3.5" />,
+              onClick: () => { window.electronAPI.terminal.relaunchInCwd(id) },
+            },
+          ],
+        }
+      )
+    })
+    return () => { unsubscribe() }
+  }, [t])
+
   // A write-through to the cloud failed: the main process already re-synced the
   // caches from the DB, so the latest change may not have been saved. Tell the
   // user, and refresh the local config view so it reflects the re-synced state.

@@ -15,9 +15,12 @@ import {
   cleanupAllTerminals,
   updateTerminalMetadataFromHook,
   updateTerminalRepositoriesFromHook,
+  noteTerminalUserInput,
+  syncTerminalCwd,
+  relaunchTerminalInResolvedCwd,
   type TerminalMetadata,
 } from '../pty/terminal-manager'
-import { noteTerminalInput } from '../questions/pending-questions'
+import { noteTerminalInput, isUserInput } from '../questions/pending-questions'
 import { resolveAgentCwd } from '../pty/agent-cwd'
 import {
   saveAgent,
@@ -498,6 +501,11 @@ export function setupTerminalHandlers(
     // moving this down there would silently wipe legitimate pending questions.
     // Only this handler carries what came out of the terminal view.
     noteTerminalInput(id, data)
+    // Same channel, same reason for living here rather than in writeToTerminal, and
+    // the same filter: a focus report is not somebody typing. What it guards is the
+    // silent relaunch in syncTerminalCwd — once a session has been talked to, its
+    // conversation is worth more than its working directory being right.
+    if (isUserInput(data)) noteTerminalUserInput(id)
     writeToTerminal(id, data)
   })
 
@@ -610,6 +618,25 @@ export function setupTerminalHandlers(
     if (mainWindow) {
       mainWindow.webContents.send('terminal:repositories', { id, repositories })
     }
+
+    // Attaching the first repository to an agent leaves Claude Code running in the
+    // launch folder, where git and the skills read the wrong project. Reconcile it.
+    //
+    // Deliberately NOT in updateTerminalRepositoriesFromHook: that function is also
+    // how Claude Code itself reports repositories mid-task, and an agent that is
+    // working has not asked to be interrupted. This handler is the explicit human
+    // action — attaching a repository from the agent info panel.
+    const sync = syncTerminalCwd(id)
+    if (sync.action !== 'none' && mainWindow) {
+      mainWindow.webContents.send('terminal:cwdSync', { id, action: sync.action, cwd: sync.cwd, from: sync.from })
+    }
+  })
+
+  // Relaunch an agent in the directory its repositories resolve to. The offer the
+  // user accepts when syncTerminalCwd declined to do it on its own.
+  ipcMain.handle('terminal:relaunchInCwd', async (_event, { id }) => {
+    if (typeof id !== 'string') return null
+    return relaunchTerminalInResolvedCwd(id)
   })
 }
 

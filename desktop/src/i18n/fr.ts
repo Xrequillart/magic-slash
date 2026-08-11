@@ -1062,6 +1062,12 @@ export const fr: Record<keyof typeof en, string> = {
   'toast.cloudWriteKind.config': 'vos réglages',
   'toast.cloudWriteKind.agents': 'vos agents',
 
+  // ── Agent relancé dans son dépôt ─────────────────────────────────────────
+  'toast.cwdRelaunched': 'Agent relancé dans « {dir} »',
+  'toast.cwdRelaunchOffer':
+    'Cet agent tourne toujours dans « {current} ». Le relancer dans « {dir} » effacera sa conversation en cours.',
+  'toast.cwdRelaunchAction': 'Relancer dans « {dir} »',
+
   // ── Écran de connexion ───────────────────────────────────────────────────
   'login.signinTitle': 'Se connecter à Magic Slash',
   'login.resetTitle': 'Réinitialiser votre mot de passe',

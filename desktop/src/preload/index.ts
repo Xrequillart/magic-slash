@@ -198,6 +198,9 @@ const terminalApi = {
   updateSplitPane: (id: string, pane: 'left' | 'right') =>
     ipcRenderer.invoke('terminal:updateSplitPane', { id, pane }),
 
+  relaunchInCwd: (id: string): Promise<string | null> =>
+    ipcRenderer.invoke('terminal:relaunchInCwd', { id }),
+
   // Event listeners
   onData: (callback: (data: { id: string; data: string }) => void) => {
     const listener = (_event: IpcRendererEvent, data: { id: string; data: string }) => callback(data)
@@ -215,6 +218,12 @@ const terminalApi = {
     const listener = (_event: IpcRendererEvent, data: { id: string; exitCode: number }) => callback(data)
     ipcRenderer.on('terminal:exit', listener)
     return () => ipcRenderer.removeListener('terminal:exit', listener)
+  },
+
+  onCwdSync: (callback: (data: { id: string; action: 'relaunched' | 'suggested'; cwd: string; from: string }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: string; action: 'relaunched' | 'suggested'; cwd: string; from: string }) => callback(data)
+    ipcRenderer.on('terminal:cwdSync', listener)
+    return () => ipcRenderer.removeListener('terminal:cwdSync', listener)
   },
 
   onBranch: (callback: (data: { id: string; branchName: string | null }) => void) => {

@@ -153,6 +153,20 @@ export interface Terminal {
   onMetadataChange?: (metadata: TerminalMetadata) => void
   onRepositoriesChange?: (repositories: string[]) => void
   isRestarting?: boolean
+  /** Where the CURRENT PTY was spawned. Compared against the directory the
+   *  agent's repositories resolve to, to know whether it is running in the
+   *  wrong place — see syncTerminalCwd. */
+  cwd: string
+  /** The folder the agent was created in, kept as the fallback for when none of
+   *  its attached paths is usable. Never changes over the agent's life. */
+  launchDir: string
+  /** Whether this session has ever been talked to — a keystroke, or a prompt
+   *  passed at launch. A session nobody has said anything to holds nothing worth
+   *  keeping, which is what makes a silent relaunch safe. */
+  hasUserInput?: boolean
+  /** Replaces the running Claude Code with a fresh one in a given directory.
+   *  Only set for agents (launchClaude), not for plain shells. */
+  respawn?: (cwd: string, notice?: string) => void
 }
 
 const terminals = new Map<string, Terminal>()
@@ -269,7 +283,9 @@ export function createTerminal(
     onStateChange,
     onBranchChange,
     onMetadataChange,
-    onRepositoriesChange
+    onRepositoriesChange,
+    cwd: workingDir,
+    launchDir: workingDir
   }
 
   terminals.set(id, terminal)
@@ -555,54 +571,9 @@ export function launchClaude(
         }
 
         try {
-          // Dispose old listeners BEFORE killing old PTY to avoid cascade
-          const oldDisposables = ptyDisposables.get(id)
-          if (oldDisposables) {
-            for (const d of oldDisposables) d.dispose()
-          }
-
-          // Kill the old PTY process
-          try {
-            terminal.pty.kill()
-          } catch {
-            // Already dead, ignore
-          }
-
-          // Create new PTY process and attach to terminal with current size.
           // Repositories attached since the first spawn are honored here, so an
           // agent bound to a repo after launch restarts inside that repo.
-          const restartCwd = resolveAgentCwd(terminal.repositories, workingDir)
-          const previousStateBeforeRestart = terminal.state
-          const newPty = createPtyProcess(restartCwd, terminal.cols, terminal.rows)
-          terminal.pty = newPty
-          terminal.state = 'idle'
-          terminal.isRestarting = false
-
-          // Notify state change
-          if (terminal.onStateChange) {
-            terminal.onStateChange('idle', previousStateBeforeRestart)
-          }
-
-          // The restart directory may differ from the original one (repository
-          // attached after launch), so re-read the branch from where we now are.
-          const restartBranch = detectGitBranch(restartCwd)
-          if (restartBranch !== terminal.branchName) {
-            terminal.branchName = restartBranch
-            if (terminal.onBranchChange) {
-              terminal.onBranchChange(restartBranch)
-            }
-            // Persist it too, not just paint it. Guarded on non-null: a detached
-            // HEAD or a non-repo cwd reports nothing, and overwriting a branch a
-            // skill recorded with "no branch" would lose the better answer.
-            if (restartBranch) {
-              terminal.metadata = mergeMetadata(terminal.metadata, { branchName: restartBranch })
-              try {
-                updateAgentMetadata(id, { branchName: restartBranch })
-              } catch (e) {
-                console.error(`[launchClaude] Failed to persist branch for terminal ${id}:`, e)
-              }
-            }
-          }
+          respawnInCwd(resolveAgentCwd(terminal.repositories, workingDir))
         } catch (e) {
           console.error(`[launchClaude] Restart failed for terminal ${id}:`, e)
           terminal.isRestarting = false
@@ -619,6 +590,71 @@ export function launchClaude(
     ptyDisposables.set(id, disposables)
 
     return ptyProcess
+  }
+
+  /**
+   * Replaces the running Claude Code with a fresh one in `targetCwd`, keeping the
+   * terminal's identity, size, metadata and place in the UI.
+   *
+   * Shared by the crash auto-restart and by the deliberate relaunch that follows
+   * attaching a repository: both need this exact sequence, and the order matters —
+   * the old listeners are disposed BEFORE the kill, or the dying PTY's own exit
+   * handler fires and cascades into a second, competing restart.
+   */
+  const respawnInCwd = (targetCwd: string, notice?: string) => {
+    // Nothing can answer a question whose process is about to be replaced. The
+    // crash path has already done this from its exit handler; the deliberate
+    // relaunch has no exit handler left to run, and needs it done here.
+    clearPendingQuestion(id)
+
+    if (notice) {
+      onData(notice)
+      displayBuffers.set(id, notice)
+    }
+
+    const oldDisposables = ptyDisposables.get(id)
+    if (oldDisposables) {
+      for (const d of oldDisposables) d.dispose()
+    }
+
+    // Kill the old PTY process
+    try {
+      terminal.pty.kill()
+    } catch {
+      // Already dead, ignore
+    }
+
+    const previousState = terminal.state
+    terminal.pty = createPtyProcess(targetCwd, terminal.cols, terminal.rows)
+    terminal.cwd = targetCwd
+    terminal.state = 'idle'
+    terminal.isRestarting = false
+
+    // Notify state change
+    if (terminal.onStateChange) {
+      terminal.onStateChange('idle', previousState)
+    }
+
+    // The new directory may differ from the original one (repository attached
+    // after launch), so re-read the branch from where we now are.
+    const branch = detectGitBranch(targetCwd)
+    if (branch !== terminal.branchName) {
+      terminal.branchName = branch
+      if (terminal.onBranchChange) {
+        terminal.onBranchChange(branch)
+      }
+      // Persist it too, not just paint it. Guarded on non-null: a detached HEAD
+      // or a non-repo cwd reports nothing, and overwriting a branch a skill
+      // recorded with "no branch" would lose the better answer.
+      if (branch) {
+        terminal.metadata = mergeMetadata(terminal.metadata, { branchName: branch })
+        try {
+          updateAgentMetadata(id, { branchName: branch })
+        } catch (e) {
+          console.error(`[launchClaude] Failed to persist branch for terminal ${id}:`, e)
+        }
+      }
+    }
   }
 
   // Detect initial git branch
@@ -640,7 +676,14 @@ export function launchClaude(
     onStateChange,
     onBranchChange,
     onMetadataChange,
-    onRepositoriesChange
+    onRepositoriesChange,
+    cwd: workingDir,
+    launchDir: workingDir,
+    // A prompt handed over at launch counts as having talked to the session: the
+    // conversation it starts is just as real as a typed one, and just as lost on
+    // a relaunch — even though no keystroke ever reached the PTY.
+    hasUserInput: Boolean(initialPrompt),
+    respawn: respawnInCwd
   }
 
   terminals.set(id, terminal)
@@ -698,5 +741,98 @@ export function updateTerminalRepositoriesFromHook(terminalId: string, repositor
   if (terminal.onRepositoriesChange) {
     terminal.onRepositoriesChange(repositories)
   }
+}
+
+/**
+ * A human typed into this agent's terminal, so the session now holds a
+ * conversation a relaunch would throw away.
+ *
+ * ⚠️ Call this from the `terminal:write` IPC handler and nowhere else — that
+ * handler is the only channel carrying what actually came out of the terminal
+ * view. `writeToTerminal` is shared with writes the APP makes on its own (script
+ * and PR-review handlers), which say nothing about anyone having typed, and it
+ * also carries xterm's own focus reports; see isUserInput.
+ */
+export function noteTerminalUserInput(terminalId: string): void {
+  const terminal = terminals.get(terminalId)
+  if (terminal) terminal.hasUserInput = true
+}
+
+export type CwdSyncResult =
+  | { action: 'none' }
+  | { action: 'relaunched' | 'suggested'; cwd: string; from: string }
+
+/**
+ * Reconciles where Claude Code is RUNNING with where its agent is supposed to be
+ * working, after that agent's repositories changed.
+ *
+ * An agent created with ⌘N starts in the generic launch folder and stays there:
+ * attaching a repository only appends to a list, it does not move a live process.
+ * So the agent shows a repository in the app while `claude`, git and every
+ * `/magic:*` skill still see ~/Documents. The only way to move it is to replace
+ * the process, which is what this does.
+ *
+ * The catch is that a relaunch is not free: Claude Code comes back with no memory
+ * of the conversation, and cannot be resumed into it either — its session history
+ * is keyed by directory, so a session started in the launch folder does not exist
+ * as far as the repository folder is concerned. Hence the split:
+ *
+ *   - a session nobody has said anything to yet holds nothing worth keeping, and
+ *     is replaced silently. This is the ordinary case, since attaching the repo
+ *     is usually the first thing done to a brand-new agent;
+ *   - anything else is the person's call, so this only reports that a relaunch is
+ *     available and leaves the process alone until they ask for it.
+ *
+ * Returns `none` when nothing is needed, which covers the common non-event of
+ * attaching a SECOND repository: the resolved directory doesn't move, so neither
+ * does the process.
+ */
+export function syncTerminalCwd(terminalId: string): CwdSyncResult {
+  const terminal = terminals.get(terminalId)
+  // No respawn means a plain shell (sidebar, scripts) rather than an agent, and a
+  // restart already in flight will resolve the directory itself when it lands.
+  if (!terminal || !terminal.respawn || terminal.isRestarting) return { action: 'none' }
+
+  const target = resolveAgentCwd(terminal.repositories, terminal.launchDir)
+  const from = terminal.cwd
+  if (target === from) return { action: 'none' }
+
+  if (!terminal.hasUserInput && terminal.state === 'idle') {
+    return relaunchTerminalInResolvedCwd(terminalId)
+      ? { action: 'relaunched', cwd: target, from }
+      : { action: 'none' }
+  }
+
+  return { action: 'suggested', cwd: target, from }
+}
+
+/**
+ * Replaces the agent's Claude Code with a fresh one in the directory its
+ * repositories resolve to. Returns that directory, or null if it could not be
+ * done. Called by syncTerminalCwd for a session that holds nothing, and directly
+ * when the user accepts the offer for one that does.
+ */
+export function relaunchTerminalInResolvedCwd(terminalId: string): string | null {
+  const terminal = terminals.get(terminalId)
+  if (!terminal || !terminal.respawn) return null
+
+  const target = resolveAgentCwd(terminal.repositories, terminal.launchDir)
+  const notice = `\x1b[2J\x1b[H\x1b[33m--- Relaunching Claude Code in ${target} ---\x1b[0m\r\n\r\n`
+
+  try {
+    terminal.respawn(target, notice)
+  } catch (e) {
+    console.error(`[relaunchTerminalInResolvedCwd] Failed for terminal ${terminalId}:`, e)
+    return null
+  }
+
+  // The process that was talked to is gone, and its replacement has not been. So
+  // a later repository change is eligible for the silent treatment again.
+  terminal.hasUserInput = false
+  // Deliberate, so it must not eat into the crash budget — five of these in a
+  // minute would otherwise leave the agent declared dead.
+  restartTrackers.delete(terminalId)
+
+  return target
 }
 
