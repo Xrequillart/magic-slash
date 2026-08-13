@@ -879,7 +879,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               {claudeAccount.emailAddress && (
                 <div className="flex items-center justify-between">
                   <span className="text-text-secondary/60">{t('settings.claude.email')}</span>
-                  <span className="text-xs">{claudeAccount.emailAddress}</span>
+                  <span className="font-medium">{claudeAccount.emailAddress}</span>
                 </div>
               )}
               {claudeAccount.organizationName && (
