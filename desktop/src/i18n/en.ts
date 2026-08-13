@@ -606,6 +606,17 @@ export const en = {
   'toast.orgJoined': 'You joined the organization',
   'toast.orgJoinFailed': 'Failed to join organization',
 
+  // ── Settings → Account → Account status checklist ────────────────────────
+  'account.checklist.section': 'Account status',
+  'account.checklist.ready': 'Ready to use',
+  'account.checklist.readyHint': 'Onboarding is complete — every skill can run end to end.',
+  'account.checklist.pending': 'Setup in progress',
+  'account.checklist.pendingHint': '{done} of {total} steps done.',
+  'account.checklist.step.account': 'Cloud account connected',
+  'account.checklist.step.profile': 'Profile filled in',
+  'account.checklist.step.repository': 'At least one usable repository',
+  'account.checklist.step.setup': 'Machine setup complete',
+
   // ── Settings → Account → Cloud account ───────────────────────────────────
   'cloud.section': 'Cloud account',
   'cloud.signedInFallback': 'Signed in',

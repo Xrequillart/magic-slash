@@ -608,6 +608,17 @@ export const fr: Record<keyof typeof en, string> = {
   'toast.orgJoined': 'Vous avez rejoint l’organisation',
   'toast.orgJoinFailed': 'Impossible de rejoindre l’organisation',
 
+  // ── Réglages → Compte → Statut du compte ─────────────────────────────────
+  'account.checklist.section': 'Statut du compte',
+  'account.checklist.ready': 'Prêt à l’emploi',
+  'account.checklist.readyHint': 'L’onboarding est terminé — toutes les skills peuvent tourner de bout en bout.',
+  'account.checklist.pending': 'Configuration en cours',
+  'account.checklist.pendingHint': '{done} étape(s) sur {total} terminée(s).',
+  'account.checklist.step.account': 'Compte cloud connecté',
+  'account.checklist.step.profile': 'Profil renseigné',
+  'account.checklist.step.repository': 'Au moins un dépôt utilisable',
+  'account.checklist.step.setup': 'Configuration de la machine complète',
+
   // ── Réglages → Compte → Compte cloud ─────────────────────────────────────
   'cloud.section': 'Compte cloud',
   'cloud.signedInFallback': 'Connecté',
