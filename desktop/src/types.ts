@@ -343,8 +343,10 @@ export interface Config {
   }
   spotlight?: SpotlightConfig
   launchMode?: LaunchMode
-  usageCardEnabled?: boolean    // show the Claude usage card in the sidebar
-  usageCardMinimized?: boolean  // sidebar usage card collapsed to gauges only
+  usageCardEnabled?: boolean    // show the Claude usage card in the left sidebar
+  usageCardMinimized?: boolean  // left sidebar usage card collapsed to gauges only
+  agentContextEnabled?: boolean // show the agent's context/session card in the right sidebar
+  agentContextMinimized?: boolean // that card collapsed to its context gauge only
   // Activity recording, ON by default: an aggregated usage snapshot is written to
   // usage_events at session end, alongside activity_events and skill_invocations.
   // Only an EXPLICIT false stops it (absent = never touched = on), so every gate
@@ -356,6 +358,21 @@ export interface Config {
     enabled?: boolean
     pollIntervalMs?: number
     autoLaunchSkills?: boolean
+  }
+  /**
+   * OS notifications. Everything defaults to ON, so an absent block is an app
+   * that notifies exactly as it always has — only an explicit `false` silences
+   * anything.
+   *
+   * `enabled` is the master and is checked at the single sink in main/index.ts,
+   * which is why it covers kinds that have no switch of their own (PR reviews,
+   * a colleague picking up a ticket, the daily digest). The per-kind flags below
+   * are checked where the notification is produced.
+   */
+  notifications?: {
+    enabled?: boolean
+    agentWaiting?: boolean
+    agentCompleted?: boolean
   }
   // Optional daily team digest (opt-in, default OFF): a single OS notification at
   // 9:00 local summarizing yesterday's team activity (merged PRs / tickets done).
@@ -398,6 +415,7 @@ export type SettingsTab =
   | 'repositories'
   | 'application'
   | 'claude-code'
+  | 'notifications'
   | 'appearance'
   | 'language'
   | 'shortcuts'

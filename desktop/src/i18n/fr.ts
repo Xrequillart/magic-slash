@@ -65,6 +65,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.tab.organization': 'Organisation',
   'settings.tab.repositories': 'Dépôts',
   'settings.tab.claudeCode': 'Claude Code',
+  'settings.tab.notifications': 'Notifications',
   'settings.tab.appearance': 'Apparence',
   'settings.tab.language': 'Langue et région',
   'settings.tab.application': 'Application',
@@ -207,10 +208,6 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.spend.empty': 'Aucun historique d’usage trouvé dans ~/.claude pour l’instant.',
 
   // ── Réglages → Application ───────────────────────────────────────────────
-  'settings.application.usageCard.section': 'Carte d’usage',
-  'settings.application.usageCard.label': 'Afficher la carte d’usage dans la barre latérale',
-  'settings.application.usageCard.help':
-    'Affiche le compte connecté et les jauges Session (5 h) / Semaine (7 j) en bas de la barre latérale',
   'settings.application.usageLogs.section': 'Enregistrement de l’activité',
   'settings.application.usageLogs.label': 'Partager mon activité avec mon équipe',
   'settings.application.usageLogs.help':
@@ -234,10 +231,6 @@ export const fr: Record<keyof typeof en, string> = {
     'Chaque membre de votre organisation voit ces chiffres par personne sur la page Équipe.',
   'settings.application.usageLogs.footnote.agents':
     'Quoi que dise ce réglage, vos agents (nom, branche, ticket, dépôts) se synchronisent avec votre équipe — c’est ce qui alimente la vue temps réel.',
-  'settings.application.digest.section': 'Résumé quotidien',
-  'settings.application.digest.label': 'Résumé quotidien de l’équipe',
-  'settings.application.digest.help':
-    'Désactivé par défaut. Une fois activé, vous recevez une notification à 9 h résumant l’activité de votre équipe sur les dernières 24 heures (PR livrées, tickets passés en Terminé). Rien n’est envoyé s’il n’y a eu aucune activité.',
   'settings.application.split.section': 'Vue divisée',
   'settings.application.split.label': 'Activer la vue divisée',
   'settings.application.split.help': 'Affiche deux agents côte à côte sur les écrans larges',
@@ -681,11 +674,39 @@ export const fr: Record<keyof typeof en, string> = {
   'theme.daylight': 'Grand jour',
   'theme.daylight.help': 'Noir sur blanc, arêtes franches.',
 
+  // ── Réglages → Notifications ─────────────────────────────────────────────
+  'settings.notifications.section': 'Notifications',
+  'settings.notifications.master.label': 'Activer les notifications',
+  'settings.notifications.master.help':
+    'Tout ce qui suit, ainsi que celles qui n’ont pas d’interrupteur propre : une revue qui arrive sur votre PR, un relecteur qui demande des modifications, un collègue qui reprend un ticket sur lequel vous êtes. Aucune notification n’apparaît quand la fenêtre est au premier plan.',
+  'settings.notifications.agents.section': 'Vos agents',
+  'settings.notifications.agentWaiting.label': 'Agent en attente',
+  'settings.notifications.agentWaiting.help':
+    'Un agent s’est arrêté et attend une réponse ou une autorisation pour continuer.',
+  'settings.notifications.agentCompleted.label': 'Agent terminé',
+  'settings.notifications.agentCompleted.help': 'Un agent a terminé la tâche qui lui a été confiée.',
+  'settings.notifications.team.section': 'Équipe',
+  'settings.notifications.digest.label': 'Résumé quotidien de l’équipe',
+  'settings.notifications.digest.help':
+    'Désactivé par défaut. Une notification à 9 h résumant les dernières 24 heures de votre équipe (PR livrées, tickets passés en Terminé). Rien n’est envoyé s’il n’y a eu aucune activité.',
+  'settings.notifications.team.footnote':
+    'Une revue qui arrive sur votre PR, et un collègue qui reprend un ticket sur lequel vous avez aussi un agent, suivent l’interrupteur principal ci-dessus — elles sont assez rares pour ne pas mériter le leur.',
+  'toast.notificationsFailed': 'Impossible de modifier les réglages de notification',
+
   // ── Réglages → Apparence ─────────────────────────────────────────────────
   'settings.appearance.themeSection': 'Thème',
   'settings.appearance.followsAccount':
     'Le thème suit votre compte — il s’applique sur toutes les machines où vous vous connectez.',
-  'settings.appearance.terminalSection': 'Terminal',
+  'settings.appearance.sidebars.section': 'Barres latérales',
+  'settings.appearance.sidebars.usageCard.label': 'Carte d’usage',
+  'settings.appearance.sidebars.usageCard.help':
+    'Le compte connecté et les jauges Session (5 h) / Semaine (7 j), en bas de la barre latérale gauche.',
+  'settings.appearance.sidebars.agentContext.label': 'Contexte de l’agent',
+  'settings.appearance.sidebars.agentContext.help':
+    'La jauge de contexte de l’agent sélectionné, son modèle, son coût et sa durée, en haut de la barre latérale droite.',
+  'settings.appearance.sidebars.format.label': 'Format',
+  'settings.appearance.sidebars.format.full': 'Complet',
+  'settings.appearance.sidebars.format.minimized': 'Réduit',
   'settings.appearance.claudeTheme.label': 'Accorder Claude Code au thème',
   'settings.appearance.claudeTheme.help':
     'Claude Code adopte les couleurs du thème choisi dans les terminaux de l’app. Les sessions déjà ouvertes se repeignent aussi. Votre Claude Code lancé depuis un vrai terminal n’est pas touché.',
@@ -698,6 +719,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.appearance.zoomReset': 'Revenir à 100 %',
   'toast.themeChangeFailed': 'Impossible de changer de thème',
   'toast.claudeThemeSyncFailed': 'Impossible de changer le thème de Claude Code',
+  'toast.sidebarPanelFailed': 'Impossible de modifier les panneaux des barres latérales',
 
   // ── Champs du profil utilisateur ─────────────────────────────────────────
   'profile.role.product': 'Produit',

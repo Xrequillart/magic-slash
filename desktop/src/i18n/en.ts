@@ -75,6 +75,7 @@ export const en = {
   'settings.tab.organization': 'Organization',
   'settings.tab.repositories': 'Repositories',
   'settings.tab.claudeCode': 'Claude Code',
+  'settings.tab.notifications': 'Notifications',
   'settings.tab.appearance': 'Appearance',
   'settings.tab.language': 'Language & Region',
   'settings.tab.application': 'Application',
@@ -214,10 +215,6 @@ export const en = {
   'settings.spend.empty': 'No usage history found in ~/.claude yet.',
 
   // ── Settings → Application ───────────────────────────────────────────────
-  'settings.application.usageCard.section': 'Usage card',
-  'settings.application.usageCard.label': 'Show usage card in sidebar',
-  'settings.application.usageCard.help':
-    'Display the connected account and the Session (5h) / Weekly (7d) gauges at the bottom of the sidebar',
   'settings.application.usageLogs.section': 'Activity recording',
   'settings.application.usageLogs.label': 'Share my activity with my team',
   'settings.application.usageLogs.help':
@@ -240,10 +237,6 @@ export const en = {
     'Every member of your organization can see these figures per person on the Team page.',
   'settings.application.usageLogs.footnote.agents':
     'Whatever this setting says, your agents (name, branch, ticket, repositories) sync to your team — that is what powers the live view.',
-  'settings.application.digest.section': 'Daily digest',
-  'settings.application.digest.label': 'Daily team digest',
-  'settings.application.digest.help':
-    'Off by default. When enabled, you get one notification at 9:00 AM summarizing your team’s activity from the last 24 hours (PRs shipped, tickets moved to Done). Nothing is sent when there was no activity.',
   'settings.application.split.section': 'Split View',
   'settings.application.split.label': 'Enable split view',
   'settings.application.split.help': 'Display two agents side by side on wide screens',
@@ -678,11 +671,39 @@ export const en = {
   'theme.daylight': 'Daylight',
   'theme.daylight.help': 'Black on white, hard edges.',
 
+  // ── Settings → Notifications ─────────────────────────────────────────────
+  'settings.notifications.section': 'Notifications',
+  'settings.notifications.master.label': 'Enable notifications',
+  'settings.notifications.master.help':
+    'Everything below, plus the ones with no switch of their own: a review landing on your PR, a reviewer requesting changes, a colleague picking up a ticket you are on. Notifications never appear while the window is focused.',
+  'settings.notifications.agents.section': 'Your agents',
+  'settings.notifications.agentWaiting.label': 'Agent waiting for you',
+  'settings.notifications.agentWaiting.help':
+    'An agent has stopped and needs an answer or a permission before it can carry on.',
+  'settings.notifications.agentCompleted.label': 'Agent finished',
+  'settings.notifications.agentCompleted.help': 'An agent has finished the task it was given.',
+  'settings.notifications.team.section': 'Team',
+  'settings.notifications.digest.label': 'Daily team digest',
+  'settings.notifications.digest.help':
+    'Off by default. One notification at 9:00 AM summarizing your team’s last 24 hours (PRs shipped, tickets moved to Done). Nothing is sent when there was no activity.',
+  'settings.notifications.team.footnote':
+    'A review landing on your PR, and a colleague picking up a ticket you also have an agent on, follow the master switch above — they are rare enough not to need one of their own.',
+  'toast.notificationsFailed': 'Failed to change the notification settings',
+
   // ── Settings → Appearance ────────────────────────────────────────────────
   'settings.appearance.themeSection': 'Theme',
   'settings.appearance.followsAccount':
     'The theme follows your account — every machine you sign in on uses it.',
-  'settings.appearance.terminalSection': 'Terminal',
+  'settings.appearance.sidebars.section': 'Sidebars',
+  'settings.appearance.sidebars.usageCard.label': 'Usage card',
+  'settings.appearance.sidebars.usageCard.help':
+    'The connected account and the Session (5h) / Weekly (7d) gauges, at the bottom of the left sidebar.',
+  'settings.appearance.sidebars.agentContext.label': 'Agent context',
+  'settings.appearance.sidebars.agentContext.help':
+    'The selected agent’s context gauge, model, cost and elapsed time, at the top of the right sidebar.',
+  'settings.appearance.sidebars.format.label': 'Format',
+  'settings.appearance.sidebars.format.full': 'Expanded',
+  'settings.appearance.sidebars.format.minimized': 'Compact',
   'settings.appearance.claudeTheme.label': 'Match Claude Code to the theme',
   'settings.appearance.claudeTheme.help':
     'Claude Code takes the chosen theme’s colours in the app’s terminals, repainting sessions that are already open. Claude Code started from a real terminal is left alone.',
@@ -695,6 +716,7 @@ export const en = {
   'settings.appearance.zoomReset': 'Reset to 100%',
   'toast.themeChangeFailed': 'Failed to change theme',
   'toast.claudeThemeSyncFailed': 'Failed to change the Claude Code theme',
+  'toast.sidebarPanelFailed': 'Failed to change the sidebar panels',
 
   // ── User profile fields ──────────────────────────────────────────────────
   'profile.role.product': 'Product',

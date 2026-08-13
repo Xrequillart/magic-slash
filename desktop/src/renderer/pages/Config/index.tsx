@@ -4,6 +4,7 @@ import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage } from './OrgPage'
 import { AppearancePage } from './AppearancePage'
+import { NotificationsPage } from './NotificationsPage'
 import { LanguagePage } from './LanguagePage'
 import { SectionHeader } from './SectionHeader'
 import { TelemetryHealthCard } from './TelemetryHealthCard'
@@ -57,6 +58,7 @@ const SETTINGS_TABS: { id: SettingsTab; labelKey: MessageKey; icon: LucideIcon }
   { id: 'repositories', labelKey: 'settings.tab.repositories', icon: FolderGit },
   { id: 'application', labelKey: 'settings.tab.application', icon: AppWindow },
   { id: 'claude-code', labelKey: 'settings.tab.claudeCode', icon: SquareTerminal },
+  { id: 'notifications', labelKey: 'settings.tab.notifications', icon: Bell },
   { id: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
   { id: 'language', labelKey: 'settings.tab.language', icon: Languages },
   { id: 'shortcuts', labelKey: 'settings.tab.shortcuts', icon: Keyboard },
@@ -412,9 +414,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   const [spotlightError, setSpotlightError] = useState(false)
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
   const [showBypassWarning, setShowBypassWarning] = useState(false)
-  const [usageCardEnabled, setUsageCardEnabled] = useState(config?.usageCardEnabled ?? true)
   const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? true)
-  const [dailyDigestEnabled, setDailyDigestEnabled] = useState(config?.dailyDigest?.enabled ?? false)
   const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)
   const [prWatcherInterval, setPrWatcherInterval] = useState(config?.prReviews?.pollIntervalMs ?? 60_000)
   const [prWatcherAutoLaunch, setPrWatcherAutoLaunch] = useState(config?.prReviews?.autoLaunchSkills ?? false)
@@ -431,20 +431,10 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
     if (configLaunchMode !== undefined) setLaunchMode(configLaunchMode)
   }, [configLaunchMode])
 
-  const configUsageCardEnabled = config?.usageCardEnabled
-  useEffect(() => {
-    if (configUsageCardEnabled !== undefined) setUsageCardEnabled(configUsageCardEnabled)
-  }, [configUsageCardEnabled])
-
   const configUsageLogsEnabled = config?.usageLogsEnabled
   useEffect(() => {
     if (configUsageLogsEnabled !== undefined) setUsageLogsEnabled(configUsageLogsEnabled)
   }, [configUsageLogsEnabled])
-
-  const configDailyDigestEnabled = config?.dailyDigest?.enabled
-  useEffect(() => {
-    if (configDailyDigestEnabled !== undefined) setDailyDigestEnabled(configDailyDigestEnabled)
-  }, [configDailyDigestEnabled])
 
   const configPrWatcherEnabled = config?.prReviews?.enabled
   const configPrWatcherInterval = config?.prReviews?.pollIntervalMs
@@ -1036,41 +1026,14 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       </div>}
 
       {/* Application tab — the app itself. Setup comes first: nothing below it
-          matters if the skills cannot run. Then the window you look at every day
-          (usage card, split view, Spotlight, menu bar), and last what the app does
-          on its own in the background (activity recording, digest, PR watcher). */}
+          matters if the skills cannot run. Then the window you work in (split
+          view, Spotlight, menu bar), and last what the app does on its own in the
+          background (activity recording, digest, PR watcher). Which panels the
+          sidebars show is an appearance decision and lives in that tab. */}
       {contentTab === 'application' && <div className="flex flex-col gap-8">
 
       {/* Machine setup (prerequisites, MCP servers, integrations) */}
       <SetupHealthCard />
-
-      {/* Usage Card Section */}
-      <div>
-        <SectionHeader icon={Gauge} title={t('settings.application.usageCard.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.usageCard.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.usageCard.help')}</div>
-            </div>
-            <button
-              onClick={async () => {
-                const newValue = !usageCardEnabled
-                setUsageCardEnabled(newValue)
-                const result = await window.electronAPI.config.setUsageCardEnabled(newValue)
-                setConfig(result.config)
-              }}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                usageCardEnabled ? 'bg-accent' : 'bg-ink/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                usageCardEnabled ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Split View Section */}
       <div>
@@ -1225,36 +1188,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         </div>
       </div>
 
-      {/* Daily Digest Section (opt-in — off by default) */}
-      <div>
-        <SectionHeader icon={Bell} title={t('settings.application.digest.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.digest.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">
-                {t('settings.application.digest.help')}
-              </div>
-            </div>
-            <button
-              onClick={async () => {
-                const newValue = !dailyDigestEnabled
-                setDailyDigestEnabled(newValue)
-                const result = await window.electronAPI.config.setDailyDigestEnabled(newValue)
-                setConfig(result.config)
-              }}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                dailyDigestEnabled ? 'bg-accent' : 'bg-ink/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                dailyDigestEnabled ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* PR Review Watcher Section */}
       <div>
         <SectionHeader icon={GitPullRequest} title={t('settings.application.prWatcher.section')} />
@@ -1334,6 +1267,9 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       </div>
 
       </div>}
+
+      {/* Notifications tab */}
+      {contentTab === 'notifications' && <NotificationsPage />}
 
       {/* Appearance tab */}
       {contentTab === 'appearance' && <AppearancePage />}

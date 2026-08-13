@@ -26,8 +26,13 @@ import {
 const emptyRow = (): UserSettingsRow => ({
   usage_card_enabled: null,
   usage_card_minimized: null,
+  agent_context_enabled: null,
+  agent_context_minimized: null,
   usage_logs_enabled: null,
   daily_digest_enabled: null,
+  notifications_enabled: null,
+  notification_agent_waiting: null,
+  notification_agent_completed: null,
   split_enabled: null,
   split_active: null,
   pr_reviews_enabled: null,

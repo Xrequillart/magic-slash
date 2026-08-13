@@ -57,6 +57,12 @@ const configApi = {
     ipcRenderer.invoke('config:setUsageCardEnabled', { enabled }),
   setUsageCardMinimized: (minimized: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setUsageCardMinimized', { minimized }),
+  setAgentContextEnabled: (enabled: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setAgentContextEnabled', { enabled }),
+  setAgentContextMinimized: (minimized: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setAgentContextMinimized', { minimized }),
+  setNotifications: (patch: Partial<NonNullable<Config['notifications']>>): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setNotifications', { patch }),
   setUsageLogsEnabled: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setUsageLogsEnabled', { enabled }),
   setDailyDigestEnabled: (enabled: boolean): Promise<{ config: Config }> =>

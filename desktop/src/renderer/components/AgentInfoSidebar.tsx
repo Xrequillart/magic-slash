@@ -14,7 +14,7 @@ const MIN_WIDTH = 288 // w-72
 const DEFAULT_WIDTH = 500
 
 export function AgentInfoSidebar() {
-  const { rightSidebar, toggleRightSidebar, terminals, activeTerminalId, config, openCloseAgentModal, isSplitMode, focusedPane, splitTerminalId } = useStore()
+  const { rightSidebar, toggleRightSidebar, terminals, activeTerminalId, config, setConfig, openCloseAgentModal, isSplitMode, focusedPane, splitTerminalId } = useStore()
   const { updateTerminalMetadata, updateTerminalRepositories } = useTerminals()
   const t = useT()
   const [width, setWidth] = useState(DEFAULT_WIDTH)
@@ -140,6 +140,13 @@ export function AgentInfoSidebar() {
   const configuredAttachedRepos = useMemo(() => {
     return attachedRepos.filter(repoPath => isRepoInConfig(repoPath))
   }, [attachedRepos, isRepoInConfig])
+
+  // The ± button on the session card writes the same setting the Appearance tab's
+  // format select does — same path as the left sidebar's usage card.
+  const setAgentContextMinimized = useCallback(async (minimized: boolean) => {
+    const result = await window.electronAPI.config.setAgentContextMinimized(minimized)
+    setConfig(result.config)
+  }, [setConfig])
 
   // Get jira/github URL config from first repo (for ticket link)
   const firstRepoConfig = attachedRepos.length > 0 ? getRepoConfig(attachedRepos[0]) : null
@@ -411,13 +418,19 @@ export function AgentInfoSidebar() {
           </div>
         ) : (
           <div className="p-4 space-y-4">
-            {/* Usage Card (context, cost, model). Rendered unconditionally so the
-                context gauge is present from the moment an agent is selected: the
-                usage feed only lands after Claude's first response, and a bar that
-                appears out of nowhere mid-session reads as a glitch. With no usage
-                yet the card degrades to the gauge alone — every other row inside it
-                is already conditional. */}
-            <UsageCard usage={metadata?.usage ?? {}} />
+            {/* Usage Card (context, cost, model). Switched off from Appearance →
+                Sidebars; on by default, and shown for the whole life of the agent
+                once on. That second part is deliberate: the usage feed only lands
+                after Claude's first response, and a bar that appears out of nowhere
+                mid-session reads as a glitch. With no usage yet the card degrades to
+                the gauge alone — every other row inside it is already conditional. */}
+            {config?.agentContextEnabled !== false && (
+              <UsageCard
+                usage={metadata?.usage ?? {}}
+                minimized={config?.agentContextMinimized === true}
+                onMinimizedChange={setAgentContextMinimized}
+              />
+            )}
 
             {/* Ticket Header Card */}
             <TicketHeader

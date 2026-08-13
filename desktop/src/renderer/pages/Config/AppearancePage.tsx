@@ -1,9 +1,10 @@
-import { Check, Minus, Palette, Plus, RotateCcw, Scaling, SquareTerminal } from 'lucide-react'
+import { Check, ChevronDown, Minus, Palette, PanelsTopLeft, Plus, RotateCcw, Scaling } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useConfig } from '../../hooks/useConfig'
 import { useZoom } from '../../hooks/useZoom'
 import { showToast } from '../../components/Toast'
 import { SectionHeader } from './SectionHeader'
+import { ToggleRow } from './ToggleRow'
 import { THEMES, THEME_IDS, useTheme } from '../../theme'
 import { useT } from '../../i18n'
 import { DEFAULT_ZOOM, MAX_ZOOM, MIN_ZOOM, type ThemeId } from '../../../types'
@@ -104,58 +105,137 @@ function ZoomControl() {
   )
 }
 
+interface FormatSelectProps {
+  /** The stored flag. `undefined` = never chosen, which reads as expanded. */
+  minimized: boolean | undefined
+  onChange: (minimized: boolean) => Promise<unknown>
+  ariaLabel: string
+  errorMessage?: string
+}
+
 /**
- * Whether Claude Code in the terminal panes follows the app's theme.
+ * Expanded or compact, for one card.
  *
- * Lives here rather than under Features because it is an appearance decision and
- * only makes sense next to the picker it tracks. Optimistic like the other
- * toggles in Settings: the switch moves first and reverts if the write fails,
- * because the visible result of a successful one happens in another process.
+ * The same value the card's own ± button writes, so the two never disagree: pick
+ * "Compact" here and the card in the sidebar collapses; collapse it there and
+ * this select follows. Native <select> with the chevron drawn over it, like the
+ * launch-mode picker in Settings.
  */
-function ClaudeThemeToggle() {
-  const { config, updateSyncClaudeTheme } = useConfig()
+function FormatSelect({ minimized, onChange, ariaLabel, errorMessage }: FormatSelectProps) {
   const t = useT()
-  const stored = config?.syncClaudeTheme
-  const [enabled, setEnabled] = useState(stored ?? true)
+  const [value, setValue] = useState(minimized === true)
 
   useEffect(() => {
-    if (stored !== undefined) setEnabled(stored)
-  }, [stored])
+    setValue(minimized === true)
+  }, [minimized])
 
-  const toggle = async () => {
-    const next = !enabled
-    setEnabled(next)
+  const choose = async (next: boolean) => {
+    setValue(next)
     try {
-      await updateSyncClaudeTheme(next)
+      await onChange(next)
     } catch (error) {
-      setEnabled(!next)
-      showToast(error instanceof Error ? error.message : t('toast.claudeThemeSyncFailed'), 'error')
+      setValue(!next)
+      showToast(error instanceof Error ? error.message : errorMessage ?? '', 'error')
     }
   }
 
   return (
+    <div className="relative">
+      <select
+        value={value ? 'minimized' : 'full'}
+        onChange={(e) => choose(e.target.value === 'minimized')}
+        aria-label={ariaLabel}
+        className="w-32 pl-3 pr-7 py-1.5 bg-surface border border-line-field rounded-lg text-xs focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+      >
+        <option value="full">{t('settings.appearance.sidebars.format.full')}</option>
+        <option value="minimized">{t('settings.appearance.sidebars.format.minimized')}</option>
+      </select>
+      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+    </div>
+  )
+}
+
+/**
+ * Whether Claude Code in the terminal panes follows the app's theme.
+ *
+ * Sits directly under the theme picker rather than in a section of its own: it
+ * has no meaning apart from the theme chosen above — it says how far that choice
+ * reaches — and a "Terminal" heading of its own made it read as a separate
+ * subject you had to scroll past the sidebars to find.
+ */
+function ClaudeThemeToggle() {
+  const { config, updateSyncClaudeTheme } = useConfig()
+  const t = useT()
+
+  return (
     <div className="bg-surface border border-line-strong rounded-xl p-4">
-      <div className="flex items-center justify-between gap-6">
-        <div>
-          <div className="text-sm font-medium">{t('settings.appearance.claudeTheme.label')}</div>
-          <p className="text-xs text-text-secondary/50 mt-0.5">
-            {t('settings.appearance.claudeTheme.help')}
-          </p>
-        </div>
-        <button
-          onClick={toggle}
-          role="switch"
-          aria-checked={enabled}
-          aria-label={t('settings.appearance.claudeTheme.label')}
-          className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-            enabled ? 'bg-accent' : 'bg-ink/20'
-          }`}
-        >
-          <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-            enabled ? 'translate-x-[18px]' : 'translate-x-0'
-          }`} />
-        </button>
-      </div>
+      <ToggleRow
+        label={t('settings.appearance.claudeTheme.label')}
+        help={t('settings.appearance.claudeTheme.help')}
+        value={config?.syncClaudeTheme}
+        onChange={updateSyncClaudeTheme}
+        errorMessage={t('toast.claudeThemeSyncFailed')}
+      />
+    </div>
+  )
+}
+
+/**
+ * The two optional panels of the two sidebars, in one card.
+ *
+ * The usage card switch used to live under Application, next to the machine
+ * setup and the background workers — things the app DOES. Showing a panel or not
+ * is a decision about what the window looks like, so it belongs here, and the
+ * agent's context card (the same kind of panel, on the other side of the screen)
+ * is only comprehensible next to it: one card, one question — which panels do
+ * you want to see, and in which form.
+ */
+function SidebarPanelsSection() {
+  const {
+    config,
+    updateUsageCardEnabled,
+    updateUsageCardMinimized,
+    updateAgentContextEnabled,
+    updateAgentContextMinimized,
+  } = useConfig()
+  const t = useT()
+
+  return (
+    <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
+      <ToggleRow
+        label={t('settings.appearance.sidebars.usageCard.label')}
+        help={t('settings.appearance.sidebars.usageCard.help')}
+        value={config?.usageCardEnabled}
+        onChange={updateUsageCardEnabled}
+        errorMessage={t('toast.sidebarPanelFailed')}
+        /* Hidden card, hidden format: the choice still exists in the config and
+           comes back untouched when the card does, but offering it here would be
+           asking how to lay out something that is not on screen. */
+        trailing={(enabled) => enabled && (
+          <FormatSelect
+            minimized={config?.usageCardMinimized}
+            onChange={updateUsageCardMinimized}
+            ariaLabel={`${t('settings.appearance.sidebars.usageCard.label')} — ${t('settings.appearance.sidebars.format.label')}`}
+            errorMessage={t('toast.sidebarPanelFailed')}
+          />
+        )}
+      />
+      <div className="border-t border-line-subtle" />
+      <ToggleRow
+        label={t('settings.appearance.sidebars.agentContext.label')}
+        help={t('settings.appearance.sidebars.agentContext.help')}
+        value={config?.agentContextEnabled}
+        onChange={updateAgentContextEnabled}
+        errorMessage={t('toast.sidebarPanelFailed')}
+        trailing={(enabled) => enabled && (
+          <FormatSelect
+            minimized={config?.agentContextMinimized}
+            onChange={updateAgentContextMinimized}
+            ariaLabel={`${t('settings.appearance.sidebars.agentContext.label')} — ${t('settings.appearance.sidebars.format.label')}`}
+            errorMessage={t('toast.sidebarPanelFailed')}
+          />
+        )}
+      />
     </div>
   )
 }
@@ -208,9 +288,16 @@ export function AppearancePage() {
         {t('settings.appearance.followsAccount')}
       </p>
 
-      <div className="mt-8">
-        <SectionHeader icon={SquareTerminal} title={t('settings.appearance.terminalSection')} />
+      {/* Part of the theme section, not a section of its own: it decides how far
+          the theme above reaches, and read anywhere else it is a question about
+          nothing. */}
+      <div className="mt-3">
         <ClaudeThemeToggle />
+      </div>
+
+      <div className="mt-8">
+        <SectionHeader icon={PanelsTopLeft} title={t('settings.appearance.sidebars.section')} />
+        <SidebarPanelsSection />
       </div>
 
       <div className="mt-8">

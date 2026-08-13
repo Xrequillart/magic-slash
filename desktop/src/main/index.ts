@@ -224,8 +224,15 @@ function setupHandlers() {
   setupAuthHandlers(() => mainWindow)
   setupOrgHandlers()
   setupConnectivityHandlers(() => mainWindow)
-  // Notification callback - only show when window is not focused
+  // Notification callback - only show when window is not focused.
+  //
+  // Also the master switch: every producer in the app (agent states, PR review
+  // watcher, re-engagement, daily digest) funnels through here, so one check
+  // silences all of them — including the kinds that have no switch of their own.
+  // The config is re-read per notification rather than captured, so the switch
+  // takes effect immediately and survives a remote settings change.
   const notificationCallback = (title: string, body: string) => {
+    if (readConfig().notifications?.enabled === false) return
     if (Notification.isSupported() && mainWindow && !mainWindow.isFocused()) {
       const notification = new Notification({ title, body })
       notification.on('click', () => {

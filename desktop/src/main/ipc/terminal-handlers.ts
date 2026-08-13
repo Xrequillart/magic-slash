@@ -148,13 +148,21 @@ function flushUsageSnapshot(id: string): void {
   })
 }
 
-// Helper to show notification with cooldown and focus check
+// Helper to show notification with cooldown, focus check and per-kind opt-out
 function maybeShowNotification(
   id: string,
   _name: string,
   title: string,
-  body: string
+  body: string,
+  kind: 'agentWaiting' | 'agentCompleted',
 ) {
+  // Read per notification rather than captured: Settings → Notifications takes
+  // effect on the next agent state change, with no restart and no re-wiring.
+  // Absent means never chosen, which is ON — only an explicit false silences it.
+  if (readConfig().notifications?.[kind] === false) {
+    return
+  }
+
   const mainWindow = getMainWindow()
 
   // Don't notify if window is focused
@@ -221,7 +229,8 @@ function createTerminalCallbacks(id: string, name: string) {
           id,
           displayName,
           translate('notification.waiting.title'),
-          translate('notification.waiting.body', { name: displayName })
+          translate('notification.waiting.body', { name: displayName }),
+          'agentWaiting',
         )
         addHistoryEntry({
           agentId: id,
@@ -254,7 +263,8 @@ function createTerminalCallbacks(id: string, name: string) {
           id,
           displayName,
           translate('notification.completed.title'),
-          translate('notification.completed.body', { name: displayName })
+          translate('notification.completed.body', { name: displayName }),
+          'agentCompleted',
         )
         addHistoryEntry({
           agentId: id,

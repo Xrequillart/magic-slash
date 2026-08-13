@@ -26,13 +26,14 @@ import {
   updateLanguage,
   updateUsageLogsEnabled,
   updateDailyDigestEnabled,
+  updateNotifications,
   setIntegration,
 } from '../config/config'
 import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { repairConfig } from '../config/migrate'
 import { isValidSpotlightShortcut, isValidLaunchMode } from '../config/defaults'
-import { isValidLanguage, isValidTheme } from '../../types'
+import { isValidLanguage, isValidTheme, type Config } from '../../types'
 import { applyLanguage, applyTheme } from '../appearance'
 import { validateConfig } from '../config/schema-validator'
 import {
@@ -264,10 +265,26 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
     return { config }
   })
 
-  // Show/hide the Claude usage card in the sidebar
+  // Show/hide the Claude usage card in the left sidebar
   ipcMain.handle('config:setUsageCardEnabled', async (_event, { enabled }: { enabled: boolean }) => {
     const config = readConfig()
     config.usageCardEnabled = enabled
+    writeConfig(config)
+    return { config }
+  })
+
+  // Show/hide the agent's context card in the right sidebar
+  ipcMain.handle('config:setAgentContextEnabled', async (_event, { enabled }: { enabled: boolean }) => {
+    const config = readConfig()
+    config.agentContextEnabled = enabled
+    writeConfig(config)
+    return { config }
+  })
+
+  // Collapse/expand that card (context gauge only)
+  ipcMain.handle('config:setAgentContextMinimized', async (_event, { minimized }: { minimized: boolean }) => {
+    const config = readConfig()
+    config.agentContextMinimized = minimized
     writeConfig(config)
     return { config }
   })
@@ -289,6 +306,12 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
   // Opt-in daily team digest (default OFF).
   ipcMain.handle('config:setDailyDigestEnabled', async (_event, { enabled }: { enabled: boolean }) => {
     const config = updateDailyDigestEnabled(enabled)
+    return { config }
+  })
+
+  // OS notifications: master switch + per-kind opt-outs, patched one flag at a time.
+  ipcMain.handle('config:setNotifications', async (_event, { patch }: { patch: Partial<NonNullable<Config['notifications']>> }) => {
+    const config = updateNotifications(patch)
     return { config }
   })
 

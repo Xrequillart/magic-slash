@@ -605,6 +605,24 @@ export function updateDailyDigestEnabled(enabled: boolean): Config {
 }
 
 /**
+ * Patch the OS notification settings (master switch and per-kind opt-outs).
+ *
+ * Merged rather than replaced so the renderer can send one flag at a time, and
+ * so turning the master off KEEPS the per-kind choices — they are hidden while
+ * it is off and come back untouched, which is what makes the master usable as a
+ * temporary "not now" rather than a reset.
+ *
+ * Every consumer re-reads the config when it is about to notify, so nothing here
+ * needs to restart a worker.
+ */
+export function updateNotifications(patch: Partial<NonNullable<Config['notifications']>>): Config {
+  const config = readConfig()
+  config.notifications = { ...config.notifications, ...patch }
+  writeConfig(config)
+  return config
+}
+
+/**
  * Toggle an integration flag. github is always true (const true in the schema);
  * only atlassian is user-settable. DISPLAY/detection only — no token is stored.
  */

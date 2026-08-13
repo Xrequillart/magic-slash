@@ -7,6 +7,14 @@ import { formatUsd } from '../../utils/usageStats'
 
 interface UsageCardProps {
   usage: TerminalUsage
+  /**
+   * Collapsed to the context gauge alone. Owned by the parent (and through it by
+   * the config) rather than by this card: it used to be local state, which meant
+   * the compact form was forgotten on every agent switch, and the Appearance tab
+   * now offers the same choice as a select. One value, two ways to set it.
+   */
+  minimized: boolean
+  onMinimizedChange: (minimized: boolean) => void
 }
 
 // The mantissa goes through toLocaleString and the unit through the catalogue:
@@ -29,7 +37,7 @@ function formatDuration(ms: number, t: Translate): string {
   return t('relative.seconds', { count: s })
 }
 
-export function UsageCard({ usage }: UsageCardProps) {
+export function UsageCard({ usage, minimized, onMinimizedChange }: UsageCardProps) {
   const t = useT()
   const locale = useLocale()
   const {
@@ -51,8 +59,6 @@ export function UsageCard({ usage }: UsageCardProps) {
   const colors = contextColors(pct)
   const pctLabel = hasContext ? `${Math.round(pct)}%` : '—'
   const pctColor = hasContext ? colors.text : 'text-text-secondary/50'
-
-  const [minimized, setMinimized] = useState(false)
 
   // Re-render every 30s so the "updated X ago" label stays fresh.
   const [now, setNow] = useState(() => Date.now())
@@ -77,7 +83,7 @@ export function UsageCard({ usage }: UsageCardProps) {
         </div>
         <span className={`font-medium text-xs shrink-0 ${pctColor}`}>{pctLabel}</span>
         <button
-          onClick={() => setMinimized(false)}
+          onClick={() => onMinimizedChange(false)}
           title={t('usage.expand')}
           className="p-0.5 rounded text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
         >
@@ -110,7 +116,7 @@ export function UsageCard({ usage }: UsageCardProps) {
               to it, whatever that pill's line-height works out to. With no model
               it keeps its natural height. */}
           <button
-            onClick={() => setMinimized(true)}
+            onClick={() => onMinimizedChange(true)}
             title={t('usage.minimize')}
             className="self-stretch px-1 flex items-center justify-center rounded-md text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
           >

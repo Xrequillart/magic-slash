@@ -27,10 +27,15 @@ import { isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 export interface UserSettingsRow {
   usage_card_enabled: boolean | null
   usage_card_minimized: boolean | null
+  agent_context_enabled: boolean | null
+  agent_context_minimized: boolean | null
   usage_logs_enabled: boolean | null
   daily_digest_enabled: boolean | null
   split_enabled: boolean | null
   split_active: boolean | null
+  notifications_enabled: boolean | null
+  notification_agent_waiting: boolean | null
+  notification_agent_completed: boolean | null
   pr_reviews_enabled: boolean | null
   pr_reviews_poll_interval_ms: number | null
   pr_reviews_auto_launch_skills: boolean | null
@@ -45,8 +50,10 @@ export interface UserSettingsRow {
 }
 
 export const USER_SETTINGS_COLUMNS =
-  'usage_card_enabled, usage_card_minimized, usage_logs_enabled, ' +
-  'daily_digest_enabled, split_enabled, split_active, pr_reviews_enabled, ' +
+  'usage_card_enabled, usage_card_minimized, agent_context_enabled, ' +
+  'agent_context_minimized, usage_logs_enabled, ' +
+  'daily_digest_enabled, notifications_enabled, notification_agent_waiting, ' +
+  'notification_agent_completed, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
   'language, sync_claude_theme'
@@ -64,8 +71,11 @@ export const USER_SETTINGS_COLUMNS =
 export const SETTINGS_KEYS = [
   'usageCardEnabled',
   'usageCardMinimized',
+  'agentContextEnabled',
+  'agentContextMinimized',
   'usageLogsEnabled',
   'dailyDigest',
+  'notifications',
   'splitEnabled',
   'splitActive',
   'prReviews',
@@ -93,10 +103,15 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
   return {
     usage_card_enabled: orNull(config.usageCardEnabled),
     usage_card_minimized: orNull(config.usageCardMinimized),
+    agent_context_enabled: orNull(config.agentContextEnabled),
+    agent_context_minimized: orNull(config.agentContextMinimized),
     usage_logs_enabled: orNull(config.usageLogsEnabled),
     daily_digest_enabled: orNull(config.dailyDigest?.enabled),
     split_enabled: orNull(config.splitEnabled),
     split_active: orNull(config.splitActive),
+    notifications_enabled: orNull(config.notifications?.enabled),
+    notification_agent_waiting: orNull(config.notifications?.agentWaiting),
+    notification_agent_completed: orNull(config.notifications?.agentCompleted),
     pr_reviews_enabled: orNull(config.prReviews?.enabled),
     pr_reviews_poll_interval_ms: orNull(config.prReviews?.pollIntervalMs),
     pr_reviews_auto_launch_skills: orNull(config.prReviews?.autoLaunchSkills),
@@ -124,6 +139,8 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
 export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   if (isSet(row.usage_card_enabled)) config.usageCardEnabled = row.usage_card_enabled
   if (isSet(row.usage_card_minimized)) config.usageCardMinimized = row.usage_card_minimized
+  if (isSet(row.agent_context_enabled)) config.agentContextEnabled = row.agent_context_enabled
+  if (isSet(row.agent_context_minimized)) config.agentContextMinimized = row.agent_context_minimized
   if (isSet(row.usage_logs_enabled)) config.usageLogsEnabled = row.usage_logs_enabled
   if (isSet(row.daily_digest_enabled)) config.dailyDigest = { enabled: row.daily_digest_enabled }
   if (isSet(row.split_enabled)) config.splitEnabled = row.split_enabled
@@ -137,6 +154,14 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   // so this build falls back to English rather than to a locale it cannot show.
   if (isValidLanguage(row.language)) config.language = row.language
   if (isSet(row.sync_claude_theme)) config.syncClaudeTheme = row.sync_claude_theme
+
+  // Same shape as prReviews below: a partial object is fine, since every flag in
+  // it defaults to ON when absent and the block itself is optional.
+  const notifications: NonNullable<Config['notifications']> = {}
+  if (isSet(row.notifications_enabled)) notifications.enabled = row.notifications_enabled
+  if (isSet(row.notification_agent_waiting)) notifications.agentWaiting = row.notification_agent_waiting
+  if (isSet(row.notification_agent_completed)) notifications.agentCompleted = row.notification_agent_completed
+  if (Object.keys(notifications).length > 0) config.notifications = notifications
 
   const prReviews: NonNullable<Config['prReviews']> = {}
   if (isSet(row.pr_reviews_enabled)) prReviews.enabled = row.pr_reviews_enabled

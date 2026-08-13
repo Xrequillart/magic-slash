@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
-import type { LanguageId, RepositoryConfig, ThemeId } from '../../types'
+import type { Config, LanguageId, RepositoryConfig, ThemeId } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -121,6 +121,50 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  // The two sidebar panels, recorded the same way — Appearance shows them as one
+  // pair, and the renderer reads the flags straight off the config to decide.
+  const updateUsageCardEnabled = useCallback(async (enabled: boolean) => {
+    const result = await window.electronAPI.config.setUsageCardEnabled(enabled)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateAgentContextEnabled = useCallback(async (enabled: boolean) => {
+    const result = await window.electronAPI.config.setAgentContextEnabled(enabled)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  // Expanded/compact for those same two cards. The ± button inside each card
+  // writes the same setting, so Settings and the sidebars cannot disagree.
+  const updateUsageCardMinimized = useCallback(async (minimized: boolean) => {
+    const result = await window.electronAPI.config.setUsageCardMinimized(minimized)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateAgentContextMinimized = useCallback(async (minimized: boolean) => {
+    const result = await window.electronAPI.config.setAgentContextMinimized(minimized)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  // OS notifications. Patched one flag at a time and merged in the main process,
+  // so the master switch never destroys the per-kind choices under it. Every
+  // producer re-reads the config when it is about to notify, so there is nothing
+  // to restart here either.
+  const updateNotifications = useCallback(async (patch: Partial<NonNullable<Config['notifications']>>) => {
+    const result = await window.electronAPI.config.setNotifications(patch)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateDailyDigestEnabled = useCallback(async (enabled: boolean) => {
+    const result = await window.electronAPI.config.setDailyDigestEnabled(enabled)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   // Re-rendering in the new language is the main process's job too (it owns the
   // menus, the tray and the other windows), so this only records the choice.
   const updateLanguage = useCallback(async (language: LanguageId) => {
@@ -167,6 +211,12 @@ export function useConfig() {
     updateLaunchMode,
     updateTheme,
     updateSyncClaudeTheme,
+    updateUsageCardEnabled,
+    updateUsageCardMinimized,
+    updateAgentContextEnabled,
+    updateAgentContextMinimized,
+    updateNotifications,
+    updateDailyDigestEnabled,
     updateLanguage,
     validatePath,
     getPRTemplate,
