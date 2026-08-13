@@ -236,6 +236,124 @@ interface SettingsRoute {
   params: { name?: string }
 }
 
+/**
+ * How long the repository list takes to fold or unfold in the rail. Kept in sync
+ * with the `duration-200` on the wrapper below — it is what holds the items
+ * mounted for the length of their own exit.
+ */
+const RAIL_COLLAPSE_MS = 200
+
+interface RepoRailContent {
+  repos: [string, RepositoryConfig][]
+  colorMap: Record<string, string>
+  activeName?: string
+}
+
+/**
+ * The repositories unfolded under the Repositories tab in the rail — one entry
+ * per configured repo, indented under a hairline that stands for the parent.
+ *
+ * Flat, in the same order as the list page reads — personal first, then each
+ * organization — so the rail and the content never disagree about which repo
+ * comes next. Grouping headers are left to the page: they cost a third of this
+ * column's width and repeat what the page already says.
+ *
+ * The dot is the project colour used everywhere else (sidebar, agent chips), so
+ * a repo is recognisable here before its name is read.
+ */
+function RepoRailItems({ repos, colorMap, activeName }: RepoRailContent) {
+  return (
+    <div className="ml-[19px] pl-3 py-0.5 border-l border-line-field space-y-0.5">
+      {repos.map(([name]) => {
+        const isActive = name === activeName
+        return (
+          <a
+            key={name}
+            href={`#/repo/${encodeURIComponent(name)}`}
+            aria-current={isActive ? 'page' : undefined}
+            className={`relative flex items-center gap-2 px-2 py-1.5 text-[13px] rounded-lg transition-colors ${
+              isActive
+                ? 'text-ink font-medium'
+                : 'text-text-secondary/70 hover:text-ink hover:bg-surface'
+            }`}
+          >
+            {/* Sits on top of the container's hairline, marking the open page */}
+            {isActive && (
+              <span className="absolute -left-[13px] top-1 bottom-1 w-[2px] rounded-full bg-accent" />
+            )}
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: colorMap[name] }}
+            />
+            <span className="truncate">{name}</span>
+          </a>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * Folds the repository list in and out of the rail, both ways. Shown only while
+ * Repositories is the live tab (a repo detail counts): the rail lists the tabs,
+ * and a tab that is not open has no business spending nine lines of it.
+ *
+ * The height is animated through `grid-template-rows: 0fr → 1fr` rather than a
+ * max-height guess: the rail holds however many repos the user configured, and
+ * a cap tall enough for twenty would make five snap open. The single grid track
+ * measures itself, and the two values interpolate.
+ *
+ * Leaving the tab has to animate too, which means the items outlive the prop
+ * that showed them: `mounted` keeps them in the tree for the fold, and the props
+ * are replayed from the last open commit — a switch away from a repo detail
+ * clears the active name in the same commit, and reading it live would blink the
+ * marker off at the very moment the list starts folding.
+ */
+function RepoRailDisclosure({ open, ...content }: RepoRailContent & { open: boolean }) {
+  const shownRef = useRef<RepoRailContent>(content)
+  if (open) shownRef.current = content
+
+  const [mounted, setMounted] = useState(open)
+  const [expanded, setExpanded] = useState(open)
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true)
+      return
+    }
+    if (!mounted) return
+    setExpanded(false)
+    const timer = window.setTimeout(() => setMounted(false), RAIL_COLLAPSE_MS)
+    return () => window.clearTimeout(timer)
+  }, [open, mounted])
+
+  // Opening flips the track one frame after the items are in the tree: a
+  // transition needs two committed values, and going 0fr → 1fr within a single
+  // commit is a jump, not a fold.
+  useEffect(() => {
+    if (!mounted || !open) return
+    const frame = requestAnimationFrame(() => setExpanded(true))
+    return () => cancelAnimationFrame(frame)
+  }, [mounted, open])
+
+  if (!mounted) return null
+
+  return (
+    <div
+      // Folded away is not "there but short": a link inside a closing list must
+      // stop answering the keyboard and the mouse the moment it starts leaving.
+      aria-hidden={!expanded}
+      className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
+        expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+      }`}
+    >
+      <div className="overflow-hidden">
+        <RepoRailItems {...shownRef.current} />
+      </div>
+    </div>
+  )
+}
+
 function WelcomePage({ route }: { route: SettingsRoute }) {
   const { config, terminals, splitEnabled, toggleSplitEnabled, setConfig, settingsInitialTab, setSettingsInitialTab } = useStore()
   const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode } = useConfig()
@@ -404,6 +522,15 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
     }
     return byOrg
   }, [repos, orgs])
+
+  // The rail's flat reading of the same list: personal repos, then each org's, in
+  // the order the sections are rendered below. Built from reposByOrg rather than
+  // from `repos` so a repo whose orgId points at an org the user is no longer in
+  // stays out of the rail exactly as it stays out of the page.
+  const railRepos = useMemo(
+    () => [...personalRepos, ...orgs.flatMap((org) => reposByOrg.get(org.id) ?? [])],
+    [personalRepos, orgs, reposByOrg]
+  )
 
   // Generate color map for projects
   const colorMap = useMemo(
@@ -618,19 +745,33 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         <nav className="flex-1 overflow-y-auto px-2 pt-3 space-y-0.5">
           {SETTINGS_TABS.map((tab) => {
             const Icon = tab.icon
+            const isActive = railActiveTab === tab.id
+            // Repositories is the one tab with sub-entries, so it is also the one
+            // that reports an expanded state to assistive tech.
+            const expandable = tab.id === 'repositories' && railRepos.length > 0
             return (
-              <button
-                key={tab.id}
-                onClick={() => handleSelectTab(tab.id)}
-                className={`w-full flex items-center gap-2.5 text-left px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                  railActiveTab === tab.id
-                    ? 'bg-accent/15 text-ink'
-                    : 'text-text-secondary hover:text-ink hover:bg-surface'
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="truncate">{t(tab.labelKey)}</span>
-              </button>
+              <Fragment key={tab.id}>
+                <button
+                  onClick={() => handleSelectTab(tab.id)}
+                  aria-expanded={expandable ? isActive : undefined}
+                  className={`w-full flex items-center gap-2.5 text-left px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                    isActive
+                      ? 'bg-accent/15 text-ink'
+                      : 'text-text-secondary hover:text-ink hover:bg-surface'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{t(tab.labelKey)}</span>
+                </button>
+                {expandable && (
+                  <RepoRailDisclosure
+                    open={isActive}
+                    repos={railRepos}
+                    colorMap={colorMap}
+                    activeName={isRepoRoute ? route.params.name : undefined}
+                  />
+                )}
+              </Fragment>
             )
           })}
         </nav>
