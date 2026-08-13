@@ -1,21 +1,37 @@
 import { useState, useEffect, useCallback } from 'react'
-import { User, Pencil } from 'lucide-react'
-import { ProfileOnboardingWizard } from '../../components/ProfileOnboardingWizard'
+import { User } from 'lucide-react'
 import { ProfileForm } from './ProfileForm'
+import { ProfileFields, draftFromProfile, profileFromDraft, type ProfileDraft } from './ProfileFields'
 import { SectionHeader } from './SectionHeader'
-import { useT, ROLE_LABEL_KEYS, LEVEL_LABEL_KEYS, STYLE_LABEL_KEYS } from '../../i18n'
+import { showToast } from '../../components/Toast'
+import { useT } from '../../i18n'
 import type { UserProfile } from '../../../types'
 
+/**
+ * The profile, editable where it is displayed.
+ *
+ * It used to be a read-only summary card with an "Edit profile" button that
+ * opened the six-step onboarding wizard — so changing one word of the free-text
+ * field meant walking through role, level, style and languages again, in a modal,
+ * to arrive back where you started. Every field is now its own row here, and a
+ * change is written as soon as it is made: pills on click, text on blur. Nothing
+ * to submit, like the rest of Settings.
+ *
+ * The wizard is untouched and still owns FIRST launch (App.tsx opens it when no
+ * profile exists) — a first-run walkthrough and a settings panel are two different
+ * jobs, and the walkthrough is the one that has to explain itself.
+ */
 export function ProfileSection() {
   const t = useT()
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [draft, setDraft] = useState<ProfileDraft>(() => draftFromProfile(null))
   const [loading, setLoading] = useState(true)
-  const [showWizard, setShowWizard] = useState(false)
 
   const loadProfile = useCallback(async () => {
     try {
       const data = await window.electronAPI.profile.get()
       setProfile(data)
+      setDraft(draftFromProfile(data))
     } catch {
       setProfile(null)
     } finally {
@@ -27,74 +43,56 @@ export function ProfileSection() {
     loadProfile()
   }, [loadProfile])
 
-  const handleWizardClose = useCallback(() => {
-    setShowWizard(false)
-    loadProfile()
-  }, [loadProfile])
+  /**
+   * Apply a field change, and persist it when it is final.
+   *
+   * The draft moves first so the pill lights up immediately, and the whole
+   * profile is written — `profile.save` takes a complete object, and every field
+   * here is already in the draft. A save that fails reverts the draft to the
+   * profile we know is on disk rather than leaving the UI claiming a value the
+   * skills will never read.
+   */
+  const handleChange = useCallback(async (patch: Partial<ProfileDraft>, commit: boolean) => {
+    const next = { ...draft, ...patch }
+    setDraft(next)
+    if (!commit) return
+
+    // Name, role and level are required — a cleared name is an edit in progress,
+    // not an instruction to delete the profile, so it is kept on screen unsaved.
+    const candidate = profileFromDraft(next)
+    if (!candidate) return
+
+    try {
+      await window.electronAPI.profile.save(candidate)
+      setProfile(candidate)
+    } catch (e) {
+      setDraft(draftFromProfile(profile))
+      showToast(e instanceof Error ? e.message : t('toast.profileSaveFailed'), 'error')
+    }
+  }, [draft, profile, t])
 
   if (loading) return null
 
   return (
-    <>
-      <div>
-        <SectionHeader
-          icon={User}
-          title={t('profile.section')}
-          action={profile && (
-            <button
-              onClick={() => setShowWizard(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-            >
-              <Pencil className="w-3 h-3" />
-              <span>{t('profile.edit')}</span>
-            </button>
+    <div>
+      <SectionHeader icon={User} title={t('profile.section')} />
+
+      {profile ? (
+        <div className="bg-surface border border-line-strong rounded-xl p-4 flex flex-col gap-4">
+          <ProfileFields draft={draft} onChange={handleChange} />
+          {/* Saving is silent by design — but a draft missing a required field
+              saves NOTHING, including the pills clicked after it. Without this
+              line, clearing the name turns the whole card into a no-op that
+              still looks like it is working. */}
+          {!profileFromDraft(draft) && (
+            <p className="text-xs text-yellow">{t('profile.form.requiredWarning')}</p>
           )}
-        />
-
-        {profile ? (
-          <div className="bg-surface border border-line-strong rounded-xl p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center">
-                <span className="text-sm font-semibold text-accent">
-                  {profile.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div>
-                <div className="text-sm font-medium">{profile.name}</div>
-                <div className="text-xs text-text-secondary/50 mt-0.5">
-                  {LEVEL_LABEL_KEYS[profile.technical_level] ? t(LEVEL_LABEL_KEYS[profile.technical_level]) : profile.technical_level}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-1.5">
-              <span className="px-2 py-0.5 bg-accent/10 text-accent text-xs font-medium rounded">
-                {ROLE_LABEL_KEYS[profile.role] ? t(ROLE_LABEL_KEYS[profile.role]) : profile.role}
-              </span>
-              {profile.communication_style && (
-                <span className="px-2 py-0.5 bg-surface text-text-secondary text-xs font-medium rounded">
-                  {STYLE_LABEL_KEYS[profile.communication_style] ? t(STYLE_LABEL_KEYS[profile.communication_style]) : profile.communication_style}
-                </span>
-              )}
-              {profile.languages?.map((lang) => (
-                <span key={lang} className="px-2 py-0.5 bg-surface text-text-secondary text-xs font-medium rounded">
-                  {lang}
-                </span>
-              ))}
-            </div>
-          </div>
-        ) : (
-          /* No profile → fill it in right here rather than behind a wizard. */
-          <ProfileForm onSaved={loadProfile} />
-        )}
-      </div>
-
-      <ProfileOnboardingWizard
-        isOpen={showWizard}
-        onClose={handleWizardClose}
-        editMode={profile !== null}
-        initialData={profile || undefined}
-      />
-    </>
+        </div>
+      ) : (
+        /* No profile yet: same fields, but nothing can be written one at a time
+           until the required ones are answered — so that path keeps its button. */
+        <ProfileForm onSaved={loadProfile} />
+      )}
+    </div>
   )
 }

@@ -712,7 +712,8 @@ export const en = {
   'profile.style.detailed': 'Detailed',
 
   'profile.section': 'Profile',
-  'profile.edit': 'Edit profile',
+  'profile.form.requiredWarning':
+    'A name, a role and a technical level are required — nothing is saved until all three are filled in.',
   'profile.form.intro':
     'No profile yet. Claude uses it to adapt its vocabulary, level of detail and language to you.',
   'profile.form.firstName': 'First name',

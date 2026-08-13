@@ -715,7 +715,8 @@ export const fr: Record<keyof typeof en, string> = {
   'profile.style.detailed': 'Détaillé',
 
   'profile.section': 'Profil',
-  'profile.edit': 'Modifier le profil',
+  'profile.form.requiredWarning':
+    'Un prénom, un rôle et un niveau technique sont obligatoires — rien n’est enregistré tant que les trois ne sont pas remplis.',
   'profile.form.intro':
     'Aucun profil pour l’instant. Claude s’en sert pour adapter son vocabulaire, son niveau de détail et sa langue à vous.',
   'profile.form.firstName': 'Prénom',
