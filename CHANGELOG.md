@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.69.0] - 2026-08-13
+
+### Added
+
+- **Desktop**: List repositories as a settings sidebar submenu
+- **Desktop**: Show how many agents are asking in the menu bar
+
+### Changed
+
+- **Deps**: Bump globals from 17.8.0 to 17.9.0
+- **Deps**: Bump typescript-eslint in the linters group
+
+### Fixed
+
+- **Desktop**: Relaunch an agent in the repository attached to it
+
 ## [0.68.6] - 2026-08-07
 
 ### Fixed
@@ -2035,6 +2051,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.69.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.69.0
 [0.68.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.68.6
 [0.68.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.68.5
 [0.68.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.68.4
