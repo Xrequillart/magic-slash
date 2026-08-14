@@ -102,10 +102,19 @@ describe('fetchPRStatusGraphQL', () => {
   it('queries the newest reviews and comments, never the oldest', () => {
     // `first:` returns the OLDEST entries and the bots post late — that is the very
     // defect this query exists to close, so the paging direction is asserted.
-    expect(PR_STATUS_QUERY).toContain('reviews(last:20)')
     expect(PR_STATUS_QUERY).toContain('comments(last:20)')
     expect(PR_STATUS_QUERY).toContain('reviewThreads(last:50)')
     expect(PR_STATUS_QUERY).not.toContain('reviews(first:')
+    // Note: `comments(first:1)` inside reviewThreads is deliberate and unrelated —
+    // it reads each thread's ORIGINATING comment to attribute the thread.
+  })
+
+  it('takes a full page of reviews, because they decide the verdict', () => {
+    // Reviews are not counted, they are REDUCED to a status: `aggregatePRStatus`
+    // keeps the latest review per reviewer, so a reviewer falling outside the
+    // window makes an approved PR read back as pending. Counts can be truncated
+    // safely; verdicts cannot.
+    expect(PR_STATUS_QUERY).toContain('reviews(last:100)')
   })
 
   it('maps a full response into a snapshot', async () => {

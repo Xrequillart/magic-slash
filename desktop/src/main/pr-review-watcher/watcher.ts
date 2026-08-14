@@ -54,6 +54,14 @@ interface LastKnown {
   key: string
 }
 
+/** One card to keep up to date: a repository entry, on a terminal, carrying a PR URL. */
+interface Target {
+  terminalId: string
+  repoPath: string
+  prUrl: string
+  existing: RepositoryMetadata
+}
+
 /** Backoff bookkeeping for a PR whose last read failed. */
 interface RetryState {
   /** Consecutive failures, feeding the backoff ladder. */
@@ -180,8 +188,11 @@ export class PRReviewWatcher {
    */
   async refresh(prUrl?: string): Promise<{ refreshed: boolean }> {
     if (this.isThrottled()) return { refreshed: false }
-    await this.tick({ force: true, prUrl })
-    return { refreshed: true }
+    // Report what `tick` actually did, not what we asked it to do: it also bails
+    // on the concurrency guard, and claiming success there stops the card's
+    // spinner with no fresh data and no explanation.
+    const refreshed = await this.tick({ force: true, prUrl })
+    return { refreshed }
   }
 
   private isThrottled(): boolean {
@@ -198,8 +209,9 @@ export class PRReviewWatcher {
     }, clampPollInterval(delayMs))
   }
 
-  async tick(options: TickOptions = {}): Promise<void> {
-    if (this.ticking) return
+  /** Resolves to whether this call actually performed a read pass. */
+  async tick(options: TickOptions = {}): Promise<boolean> {
+    if (this.ticking) return false
     this.ticking = true
     this.lastTickAt = Date.now()
 
@@ -216,10 +228,9 @@ export class PRReviewWatcher {
     try {
       const config = readConfig()
       // Absent means ENABLED. An explicit refresh bypasses the setting entirely.
-      if (!options.force && config.prReviews?.enabled === false) return
+      if (!options.force && config.prReviews?.enabled === false) return false
 
       const terminals = getAllTerminals()
-      type Target = { terminalId: string; repoPath: string; prUrl: string; existing: RepositoryMetadata }
       const targets: Target[] = []
 
       for (const terminal of terminals) {
@@ -243,9 +254,21 @@ export class PRReviewWatcher {
 
       this.watchingCount = targets.length
 
+      // The SAME PR can be attached to several targets — two agents on one repo,
+      // or one agent with the repo mounted twice. Reading it once per target would
+      // spend N queries where one suffices, and would let the first target's
+      // change-detection entry make the others look unchanged. Group first, read
+      // once, then fan the single result out to every target that shares the URL.
+      const byUrl = new Map<string, Target[]>()
       for (const target of targets) {
+        const group = byUrl.get(target.prUrl)
+        if (group) group.push(target)
+        else byUrl.set(target.prUrl, [target])
+      }
+
+      for (const [prUrl, group] of byUrl) {
         const now = Date.now()
-        const notBefore = this.retries.get(target.prUrl)?.notBefore ?? 0
+        const notBefore = this.retries.get(prUrl)?.notBefore ?? 0
         if (!options.force && notBefore > now) {
           // Still in backoff. Keep the timer aware of when it becomes readable again.
           candidateDelays.push(notBefore - now)
@@ -253,17 +276,19 @@ export class PRReviewWatcher {
         }
 
         try {
-          const result: PRStatusSnapshot | PRStatusError | null = await fetchPRStatus(target.prUrl)
+          const result: PRStatusSnapshot | PRStatusError | null = await fetchPRStatus(prUrl)
           // null means the URL never parsed as a PR — nothing to report, nothing to retry.
           if (result === null) continue
 
           if (isPRStatusError(result)) {
-            candidateDelays.push(this.noteFailure(target, result.error, result.retryAtMs))
+            candidateDelays.push(this.noteFailure(group, result.error, result.retryAtMs))
             continue
           }
 
-          this.retries.delete(target.prUrl)
-          this.applySnapshot(target.terminalId, target.repoPath, target.prUrl, target.existing, result, terminals)
+          this.retries.delete(prUrl)
+          for (const target of group) {
+            this.applySnapshot(target.terminalId, target.repoPath, prUrl, target.existing, result, terminals)
+          }
 
           if (result.rateLimitRemaining < RATE_LIMIT_SAFETY_FLOOR) {
             // `continue`, not `return`: bailing out of the whole tick always
@@ -283,10 +308,11 @@ export class PRReviewWatcher {
           })
           if (interval !== null) candidateDelays.push(interval)
         } catch (err) {
-          console.error(`[PRReviewWatcher] Failed to refresh ${target.prUrl}:`, err)
-          candidateDelays.push(this.noteFailure(target, 'network'))
+          console.error(`[PRReviewWatcher] Failed to refresh ${prUrl}:`, err)
+          candidateDelays.push(this.noteFailure(group, 'network'))
         }
       }
+      return true
     } finally {
       this.ticking = false
       if (reschedule) {
@@ -318,24 +344,24 @@ export class PRReviewWatcher {
    * Written BEFORE any change-detection guard: routing failures through the same
    * `continue` as an unchanged snapshot is what kept them mute.
    */
-  private noteFailure(
-    target: { terminalId: string; repoPath: string; prUrl: string; existing: RepositoryMetadata },
-    error: PRWatchError,
-    retryAtMs?: number,
-  ): number {
-    const attempt = (this.retries.get(target.prUrl)?.attempt ?? 0) + 1
+  private noteFailure(group: Target[], error: PRWatchError, retryAtMs?: number): number {
+    const prUrl = group[0].prUrl
+    const attempt = (this.retries.get(prUrl)?.attempt ?? 0) + 1
     const now = Date.now()
     // `retryAtMs` is an absolute deadline, not a duration — `nextBackoff`
     // converts it against the same `now` used to arm `notBefore` below.
     const backoff = nextBackoff(attempt, retryAtMs, now)
-    this.retries.set(target.prUrl, { attempt, notBefore: now + backoff })
+    this.retries.set(prUrl, { attempt, notBefore: now + backoff })
 
-    // `existing` is re-read from the terminal metadata on every tick, so it is
-    // the authoritative record of what was last persisted.
-    if (target.existing.prWatchError !== error) {
+    // Every card showing this PR must name the failure, not just the first one:
+    // the backoff is per URL, but the error is rendered per target.
+    for (const target of group) {
+      // `existing` is re-read from the terminal metadata on every tick, so it is
+      // the authoritative record of what was last persisted.
+      if (target.existing.prWatchError === error) continue
       updateTerminalMetadataFromHook(target.terminalId, {
         repositoryMetadata: {
-          [target.repoPath]: { ...target.existing, prWatchError: error, prLastCheckedAt: Date.now() },
+          [target.repoPath]: { ...target.existing, prWatchError: error, prLastCheckedAt: now },
         },
       })
     }
@@ -365,7 +391,12 @@ export class PRReviewWatcher {
         reviewers: snapshot.reviewers,
       },
     )
-    const previous = this.lastKnownStatus.get(prUrl)
+    // Keyed by TARGET, not by URL: one PR can feed several cards, and a URL-wide
+    // entry would let the first card mark the snapshot "seen" and leave every
+    // other card empty. History entries and the merge event are per agent too, so
+    // per-target state is the correct scope for all three.
+    const targetKey = `${terminalId}|${repoPath}|${prUrl}`
+    const previous = this.lastKnownStatus.get(targetKey)
     // A stale error must be cleared even when nothing else moved, otherwise a
     // transient failure stays on the card forever.
     if (previous && previous.key === key && existing.prWatchError === undefined) return
@@ -446,7 +477,7 @@ export class PRReviewWatcher {
       )
     }
 
-    this.lastKnownStatus.set(prUrl, {
+    this.lastKnownStatus.set(targetKey, {
       status: snapshot.status,
       merged: snapshot.merged,
       key,

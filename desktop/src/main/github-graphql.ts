@@ -43,6 +43,17 @@ const GRAPHQL_POOL_SIZE = 5000
  * `last:` everywhere on reviews/comments, never `first:`. `first:20` returns the
  * OLDEST twenty, and the bots we care about post late — reading the front of the list
  * is exactly the bug this query exists to fix.
+ *
+ * Reviews take the full page of 100 rather than a smaller slice, because
+ * `aggregatePRStatus` derives a VERDICT from them: it keeps the latest review per
+ * reviewer, so a reviewer whose approval falls off the window is not merely missing
+ * from a count — the PR reads back as `pending` when it is actually approved. 100 is
+ * GraphQL's per-page maximum; beyond that the oldest verdicts would need a second
+ * page, which no real PR reaches (and which the REST path never did either — it
+ * silently took the FIRST 30, i.e. the oldest, unpaginated).
+ *
+ * Counts are a different matter and come from `totalCount`, which is exact
+ * regardless of how many nodes are returned.
  */
 export const PR_STATUS_QUERY = `query($owner:String!,$repo:String!,$number:Int!){
   rateLimit { remaining }
@@ -55,7 +66,7 @@ export const PR_STATUS_QUERY = `query($owner:String!,$repo:String!,$number:Int!)
         ... on CheckRun { name status conclusion detailsUrl }
         ... on StatusContext { context state targetUrl }
       } } } } } }
-      reviews(last:20){ nodes { author{login} state submittedAt body } }
+      reviews(last:100){ nodes { author{login} state submittedAt body } }
       reviewThreads(last:50){ nodes { comments(first:1){ totalCount nodes { author{login} } } } }
       comments(last:20){ totalCount nodes { author{login} } }
     }
