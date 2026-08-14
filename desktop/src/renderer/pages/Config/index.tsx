@@ -1141,53 +1141,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         </div>
       </div>
 
-      {/* Activity recording (ON by default — an explicit false opts out) */}
-      <div>
-        <SectionHeader icon={BarChart3} title={t('settings.application.usageLogs.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-sm font-medium">{t('settings.application.usageLogs.label')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">
-                {t('settings.application.usageLogs.help')}
-              </div>
-            </div>
-            <button
-              onClick={async () => {
-                const newValue = !usageLogsEnabled
-                setUsageLogsEnabled(newValue)
-                const result = await window.electronAPI.config.setUsageLogsEnabled(newValue)
-                setConfig(result.config)
-              }}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                usageLogsEnabled ? 'bg-accent' : 'bg-ink/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                usageLogsEnabled ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
-          </div>
-          {/*
-            The breakdown answers "what am I sharing?", so it goes away with the
-            sharing — same for the sentence about who can read it. What stays in
-            both states is the agents caveat: it is truest for the person who just
-            turned this off, since their agents keep syncing regardless.
-          */}
-          {usageLogsEnabled && (
-            <>
-              <UsageLogsBreakdown t={t} />
-              <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-                {t('settings.application.usageLogs.footnote')}
-              </div>
-            </>
-          )}
-          <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-            {t('settings.application.usageLogs.footnote.agents')}
-          </div>
-        </div>
-      </div>
-
       {/* PR Review Watcher Section */}
       <div>
         <SectionHeader icon={GitPullRequest} title={t('settings.application.prWatcher.section')} />
@@ -1267,6 +1220,53 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Activity recording (ON by default — an explicit false opts out) */}
+      <div>
+        <SectionHeader icon={BarChart3} title={t('settings.application.usageLogs.section')} />
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-medium">{t('settings.application.usageLogs.label')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">
+                {t('settings.application.usageLogs.help')}
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                const newValue = !usageLogsEnabled
+                setUsageLogsEnabled(newValue)
+                const result = await window.electronAPI.config.setUsageLogsEnabled(newValue)
+                setConfig(result.config)
+              }}
+              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
+                usageLogsEnabled ? 'bg-accent' : 'bg-ink/20'
+              }`}
+            >
+              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
+                usageLogsEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+          {/*
+            The breakdown answers "what am I sharing?", so it goes away with the
+            sharing — same for the sentence about who can read it. What stays in
+            both states is the agents caveat: it is truest for the person who just
+            turned this off, since their agents keep syncing regardless.
+          */}
+          {usageLogsEnabled && (
+            <>
+              <UsageLogsBreakdown t={t} />
+              <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
+                {t('settings.application.usageLogs.footnote')}
+              </div>
+            </>
+          )}
+          <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
+            {t('settings.application.usageLogs.footnote.agents')}
+          </div>
         </div>
       </div>
 
