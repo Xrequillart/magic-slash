@@ -1,4 +1,4 @@
-import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, SkillCounts, SkillInvocationInput, SkillRunEndInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
+import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -114,6 +114,17 @@ export interface Store {
   loadPersonalSkillCounts(): Promise<SkillCounts>
 
   /**
+   * How long the CALLER has spent inside the skills — every scope, all time plus the
+   * current week.
+   *
+   * Takes no org and has no org variant, unlike the two rollups above: the RPC scopes
+   * itself to the caller, which is what makes this a person's own figure rather than a
+   * tab's. `null` means the read FAILED — an empty history is a resolved row of zeros,
+   * and the two are shown differently.
+   */
+  loadSkillHours(): Promise<SkillHours | null>
+
+  /**
    * Org-wide activity events (all members). Read-only, and open to any org
    * member — the RLS select policy is scoped by org, not by user. The only read
    * of activity_events left: nothing reads back the caller's own events.
@@ -171,6 +182,7 @@ export const NOOP_STORE: Store = {
   async loadOrgUsageStats() { return { rows: [], capped: false } },
   async loadOrgSkillCounts() { return {} },
   async loadPersonalSkillCounts() { return {} },
+  async loadSkillHours() { return null },
   async loadOrgActivity() { return { events: [], capped: false, since: new Date(0).toISOString() } },
   async setOrgSharedConfig() { /* no-op */ },
   async loadProfile() { return null },

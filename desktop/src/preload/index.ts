@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, UsageStats, TelemetryHealth, ThemeId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult } from '../types'
+import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -492,6 +492,10 @@ const usageApi = {
   getAccount: (): Promise<ClaudeAccount | null> => ipcRenderer.invoke('usage:getAccount'),
   getSpend: (): Promise<SpendSummary> => ipcRenderer.invoke('usage:getSpend'),
   getTelemetryHealth: (): Promise<TelemetryHealth> => ipcRenderer.invoke('usage:getTelemetryHealth'),
+  // Team page: how long the SIGNED-IN USER has spent inside the skills, all time and this
+  // week. No org argument, and no org variant — see the RPC for why that is a different
+  // question rather than a missing parameter. `null` means the read failed.
+  getSkillHours: (): Promise<SkillHours | null> => ipcRenderer.invoke('usage:getSkillHours'),
 }
 
 // Auth API (optional cloud auth via Supabase — never required for the app to run)

@@ -1014,6 +1014,89 @@ describe('loadPersonalSkillCounts', () => {
   })
 })
 
+// ── loadSkillHours (the caller's own time, every scope) ─────────────────────
+
+describe('loadSkillHours', () => {
+  const ROW = {
+    total_seconds: 3600,
+    week_seconds: 1800,
+    first_measured_at: '2026-07-31T09:00:00.000Z',
+    last_run_at: '2026-08-13T17:30:00.000Z',
+    last_run_agent: 'API refactor',
+  }
+
+  it('asks for the machine timezone and no org at all', async () => {
+    const { client, calls } = makeClient(
+      { memberships: membershipsOk },
+      { skill_hours: { data: [ROW], error: null } },
+    )
+    h.state.client = client
+
+    await new CloudStore().loadSkillHours()
+
+    // The week boundary is the RPC's to compute, and it needs the zone to compute it in.
+    // No org id anywhere: this figure is the caller's across every scope, and an org
+    // filter here could only ever narrow it into a different question.
+    const rpc = calls.find((call) => call.table === 'rpc:skill_hours')
+    expect(rpc?.args).toEqual([{ p_tz: expect.any(String) }])
+  })
+
+  it('maps the row and coerces bigints returned as strings', async () => {
+    const { client } = makeClient(
+      { memberships: membershipsOk },
+      { skill_hours: { data: [{ ...ROW, total_seconds: '3600', week_seconds: '1800' }], error: null } },
+    )
+    h.state.client = client
+
+    expect(await new CloudStore().loadSkillHours()).toEqual({
+      totalSeconds: 3600,
+      weekSeconds: 1800,
+      firstMeasuredAt: ROW.first_measured_at,
+      lastRunAt: ROW.last_run_at,
+      lastRunAgent: 'API refactor',
+    })
+  })
+
+  it('treats an absent last_run_agent as no agent to name', async () => {
+    // What a database still on 20260814120000 answers with: the column does not exist,
+    // so the key is missing rather than null. Both mean the same to the card.
+    const { last_run_agent: _dropped, ...withoutAgent } = ROW
+    const { client } = makeClient(
+      { memberships: membershipsOk },
+      { skill_hours: { data: [withoutAgent], error: null } },
+    )
+    h.state.client = client
+
+    expect((await new CloudStore().loadSkillHours())?.lastRunAgent).toBeNull()
+  })
+
+  it('answers null when the RPC errors, not a row of zeros', async () => {
+    const { client } = makeClient(
+      { memberships: membershipsOk },
+      { skill_hours: { data: null, error: { message: 'boom' } } },
+    )
+    h.state.client = client
+
+    // A FAILED read and an empty history are different things to show — the card hides
+    // itself on the first and explains itself on the second. Zeros here would present a
+    // failure as a fact about how much work someone has done.
+    expect(await new CloudStore().loadSkillHours()).toBeNull()
+  })
+
+  it('answers null when the RPC returns no row', async () => {
+    const { client } = makeClient(
+      { memberships: membershipsOk },
+      { skill_hours: { data: [], error: null } },
+    )
+    h.state.client = client
+
+    // The RPC aggregates without a GROUP BY precisely so a user with no runs still gets
+    // one row, so an empty result is a contract that has broken rather than an empty
+    // history — and must not be printed as one.
+    expect(await new CloudStore().loadSkillHours()).toBeNull()
+  })
+})
+
 // ── loadOrgActivity (org-wide, action-filtered) ─────────────────────────────
 
 describe('loadOrgActivity', () => {

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
@@ -139,6 +139,36 @@ function toNumber(value: string | number | null): number {
     return Number.isFinite(n) ? n : 0
   }
   return 0
+}
+
+/**
+ * The IANA zone this machine is in, for the week boundary `skill_hours()` computes.
+ *
+ * Falls back to UTC rather than throwing: a machine whose ICU data cannot name its zone
+ * still deserves a total, and the only thing at stake is which midnight the week opens on.
+ */
+function machineTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
+  }
+}
+
+/**
+ * The single row `skill_hours()` returns, as PostgREST serialises it.
+ *
+ * `last_run_agent` is OPTIONAL where its neighbours are not, and that is about
+ * deployment rather than about the data: a database still on 20260814120000 answers with
+ * a row that has no such key at all. Typing it as always-present would let the compiler
+ * bless a value that is `undefined` at runtime.
+ */
+interface SkillHoursRow {
+  total_seconds: string | number | null
+  week_seconds: string | number | null
+  first_measured_at: string | null
+  last_run_at: string | null
+  last_run_agent?: string | null
 }
 
 /** One row of any of the three skill rollups; they return an identical shape. */
@@ -1301,6 +1331,43 @@ export class CloudStore implements Store {
     const { data, error } = await ctx.client.rpc('personal_skill_counts')
     if (error || !data) return {}
     return mapSkillCountRows(data)
+  }
+
+  /**
+   * How long the CALLER has spent running skills — every scope, all time, plus the
+   * current week.
+   *
+   * EVERY SCOPE, unlike the two rollups above, and no org argument: the RPC scopes itself
+   * to `auth.uid()`, which is what makes this the viewer's own figure rather than a tab's.
+   *
+   * `p_tz` is the MACHINE's timezone, and the week boundary is computed from it inside the
+   * RPC. Monday-to-Sunday in the user's own zone, not a rolling seven days — a Monday
+   * morning is meant to read as a fresh week.
+   *
+   * `null` is a FAILED read, distinct from a successful read of an empty history (a row of
+   * zeros with null dates). The card hides itself on the first and explains itself on the
+   * second, which are different things to show — so this must not flatten one into the
+   * other by answering zeros on an error.
+   */
+  async loadSkillHours(): Promise<SkillHours | null> {
+    const ctx = await this.userContext()
+    if (!ctx) return null
+
+    const { data, error } = await ctx.client.rpc('skill_hours', { p_tz: machineTimeZone() })
+    // Always one row, never zero — the RPC aggregates without a GROUP BY precisely so a
+    // user with no runs still has something to read.
+    const row = (data as SkillHoursRow[] | null)?.[0]
+    if (error || !row) return null
+
+    return {
+      totalSeconds: toNumber(row.total_seconds),
+      weekSeconds: toNumber(row.week_seconds),
+      firstMeasuredAt: row.first_measured_at ?? null,
+      lastRunAt: row.last_run_at ?? null,
+      // Absent (a database that has not run 20260814140000 yet) and null (a run with no
+      // readable agent) are the same answer to the caller: there is no name to print.
+      lastRunAgent: row.last_run_agent ?? null,
+    }
   }
 
   /**

@@ -857,6 +857,31 @@ export const fr: Record<keyof typeof en, string> = {
   'dashboard.skills.emptyPersonal':
     'Aucune exécution enregistrée hors organisation. Une exécution arrive ici quand l’agent qui l’a lancée travaille uniquement sur des dépôts personnels, et quand elle a été démarrée dans un terminal que l’app n’a pas ouvert : sans agent, elle n’appartient à aucune organisation.',
 
+  // ── Tableau de bord d'équipe · heures passées sur les skills ──────────────
+  'skillHours.hours': '{count}h',
+  'skillHours.minutes': '{count} min',
+  'skillHours.label.total': 'Temps total',
+  'skillHours.label.week': 'Temps passé cette semaine',
+  'skillHours.label.last': 'Dernière utilisation',
+  'skillHours.since': 'depuis le {date}',
+  'skillHours.sinceMonday': 'depuis lundi',
+  'skillHours.byAgent': 'sur {name}',
+  'skillHours.hint':
+    'Seules les exécutions qui ont signalé leur fin sont comptées : une exécution interrompue n’ajoute rien et une exécution compte au maximum quatre heures — le vrai total est donc plus élevé.',
+
+  // ── Tableau de bord d'équipe · heures, enregistrement coupé ──────────────
+  'skillHours.optIn.title': 'Tes heures, une fois le suivi activé',
+  'skillHours.optIn.body':
+    'L’enregistrement de l’activité est coupé : aucune exécution de skill n’est enregistrée, il n’y a donc rien à compter ici. Active-le et le total repart à ta prochaine exécution — celles faites entre-temps ne sont pas rattrapées.',
+  'skillHours.optIn.cta': 'Activer le suivi',
+  'skillHours.optIn.saving': 'Activation…',
+  'skillHours.optIn.savedTitle': 'C’est activé.',
+  'skillHours.optIn.savedBody':
+    'Tes heures apparaîtront ici après ta prochaine exécution de skill. Rien à redémarrer : le réglage prend effet tout de suite.',
+  'skillHours.optIn.note':
+    'Il s’agit du réglage « Partager mon activité avec mon équipe ». Le détail de ce qui est enregistré est dans Réglages → Application, où tu peux le désactiver à nouveau quand tu veux.',
+  'skillHours.optIn.failed': 'Enregistrement impossible. Réessaie.',
+
   // ── Skills ───────────────────────────────────────────────────────────────
   'skills.budget.section': 'Budget des skills',
   'skills.budget.tokens': 'Tokens (2 % du contexte)',

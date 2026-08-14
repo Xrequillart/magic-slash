@@ -722,6 +722,41 @@ export interface SkillRunCounts {
 
 export type SkillCounts = Record<string, SkillRunCounts>
 
+/**
+ * Skill TIME, as opposed to the skill COUNTS above: how long the SIGNED-IN USER has
+ * spent inside the /magic:* skills, all time and this week.
+ *
+ * The one figure on the Team page that is not scoped by the tab on screen, and that is
+ * the point rather than an omission — a person's week is not divided by which
+ * repository an agent happened to touch. There is deliberately no org variant: the
+ * `skill_hours` RPC scopes itself to `auth.uid()` and cannot be bent into one.
+ *
+ * THE DURATIONS ARE A FLOOR. Only a run that reported finishing carries a duration, so
+ * an interrupted one weighs nothing, and `close_skill_run` will not attach an end more
+ * than four hours out. Copy on screen has to survive that being pointed out, which is
+ * why the card carries the caveat.
+ *
+ * Mirrors `webapp/lib/skillHours.ts`, like SkillStats mirrors `lib/skills.ts`: two
+ * builds with no code path between them, held together by the RPC's own column names.
+ */
+export interface SkillHours {
+  totalSeconds: number
+  weekSeconds: number
+  /**
+   * ISO date of the first MEASURED run — not the first run. Null means nothing has been
+   * measured, the one state the card cannot phrase as a period.
+   */
+  firstMeasuredAt: string | null
+  /**
+   * ISO date of the last run STARTED, closed or not — which is what "last used" means,
+   * and why it is not restricted to closed runs like the durations are. It can therefore
+   * be more recent than the period the hours cover.
+   */
+  lastRunAt: string | null
+  /** What that last run was working on — the agent's name, or null when there is none. */
+  lastRunAgent: string | null
+}
+
 /** A single usage_events row, normalized for client-side aggregation. */
 export interface UsageStatRow {
   userId: string | null

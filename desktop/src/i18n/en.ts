@@ -852,6 +852,31 @@ export const en = {
   'dashboard.skills.emptyPersonal':
     'No run recorded outside an organization yet. A run lands here when the agent that launched it works on personal repositories alone, and when it was started in a terminal the app did not open — one with no agent belongs to no organization.',
 
+  // ── Team dashboard · hours spent inside the skills ────────────────────────
+  'skillHours.hours': '{count}h',
+  'skillHours.minutes': '{count} min',
+  'skillHours.label.total': 'Total time',
+  'skillHours.label.week': 'Time spent this week',
+  'skillHours.label.last': 'Last used',
+  'skillHours.since': 'since {date}',
+  'skillHours.sinceMonday': 'since Monday',
+  'skillHours.byAgent': 'on {name}',
+  'skillHours.hint':
+    'Counts runs that reported finishing, so an interrupted run adds nothing and a single run counts at most four hours — the real figure is higher.',
+
+  // ── Team dashboard · hours, activity recording off ────────────────────────
+  'skillHours.optIn.title': 'Your hours, once recording is on',
+  'skillHours.optIn.body':
+    'Activity recording is off, so no skill run is being logged and there is nothing to count here. Turn it on and the total starts again at your next run — the ones made in the meantime are not backfilled.',
+  'skillHours.optIn.cta': 'Turn on recording',
+  'skillHours.optIn.saving': 'Turning it on…',
+  'skillHours.optIn.savedTitle': 'Recording is on.',
+  'skillHours.optIn.savedBody':
+    'Your hours show up here after your next skill run. Nothing to restart — the switch takes effect straight away.',
+  'skillHours.optIn.note':
+    'This is the “Share my activity with my team” switch. What it records is listed under Settings → Application, where you can turn it back off whenever you like.',
+  'skillHours.optIn.failed': 'Could not save that. Try again.',
+
   // ── Skills ───────────────────────────────────────────────────────────────
   'skills.budget.section': 'Skills Budget',
   'skills.budget.tokens': 'Tokens (2% context)',

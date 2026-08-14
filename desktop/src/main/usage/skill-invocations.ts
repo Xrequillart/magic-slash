@@ -1,4 +1,4 @@
-import type { SkillInvocationInput, SkillRunEndInput } from '../../types'
+import type { SkillHours, SkillInvocationInput, SkillRunEndInput } from '../../types'
 import { readConfig } from '../config/config'
 import { getStore } from '../store/Store'
 import { enqueue, newClientEventId } from '../store/outbox'
@@ -83,5 +83,28 @@ export async function closeSkillRun(input: SkillRunEndInput): Promise<void> {
   } catch (error) {
     console.error('[skills] Queued a skill run closure after a failed write:', error)
     enqueue({ kind: 'skillEnd', payload: input })
+  }
+}
+
+/**
+ * The READ side of the two writes above: how long this user has spent inside the skills,
+ * all time and this week, for the Team page's hours card.
+ *
+ * DELIBERATELY NOT GATED on `usageLogsEnabled`, unlike both writers. What the switch
+ * decides is whether a run is recorded; whatever was recorded before it was turned off
+ * stays readable, and hiding it is the RENDERER's call — it is the side that knows the
+ * card would otherwise present a frozen total as a current one, and it has a panel to
+ * put there instead. Gating here would leave that panel unable to tell "recording is
+ * off" apart from "the read failed".
+ *
+ * Never throws into the caller: a failed read is `null`, which the card reads as "say
+ * nothing" rather than as zero hours.
+ */
+export async function readSkillHours(): Promise<SkillHours | null> {
+  try {
+    return await getStore().loadSkillHours()
+  } catch (error) {
+    console.error('[skills] Failed to read skill hours:', error)
+    return null
   }
 }
