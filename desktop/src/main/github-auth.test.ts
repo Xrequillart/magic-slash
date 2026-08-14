@@ -7,7 +7,7 @@ vi.mock('child_process', () => ({
 }))
 
 import { execFileSync } from 'child_process'
-import { getGitHubAuthStatus } from './github'
+import { getGitHubAuthStatus, getGitHubToken, clearGitHubTokenCache } from './github'
 
 const mockExec = execFileSync as unknown as ReturnType<typeof vi.fn>
 
@@ -58,5 +58,44 @@ describe('getGitHubAuthStatus', () => {
     mockExec.mockReturnValue('✓ Logged in to github.com account octocat\n')
     const result = getGitHubAuthStatus()
     expect(Object.keys(result).sort()).toEqual(['account', 'loggedIn'])
+  })
+})
+
+/**
+ * Launched from the Dock, the app inherits launchd's PATH (/usr/bin:/bin:...), which
+ * does NOT contain Homebrew — so `gh` used to come back ENOENT for someone logged in
+ * fine in their terminal, and the PR watcher said "no GitHub token".
+ */
+describe('resolving gh outside a terminal', () => {
+  beforeEach(() => {
+    mockExec.mockReset()
+    clearGitHubTokenCache()
+  })
+
+  it('runs gh with the common install prefixes prepended to PATH', () => {
+    mockExec.mockReturnValue('gho_token\n')
+    expect(getGitHubToken()).toBe('gho_token')
+
+    const [file, args, options] = mockExec.mock.calls[0]
+    expect(file).toBe('gh')
+    expect(args).toEqual(['auth', 'token'])
+    expect(options.env.PATH).toContain('/opt/homebrew/bin')
+  })
+
+  it('falls back to a login shell when gh is not on that PATH either', () => {
+    // mise/asdf/an exotic npm prefix: only the user's profile knows where gh is.
+    mockExec.mockImplementation((file: string, args: string[]) => {
+      if (file === 'gh') throw Object.assign(new Error('spawnSync gh ENOENT'), { code: 'ENOENT' })
+      expect(args).toContain('gh auth token')
+      return 'gho_from_profile\n'
+    })
+    expect(getGitHubToken()).toBe('gho_from_profile')
+  })
+
+  it('returns null when neither the direct call nor the shell finds a token', () => {
+    mockExec.mockImplementation(() => {
+      throw ghError('not logged in')
+    })
+    expect(getGitHubToken()).toBeNull()
   })
 })

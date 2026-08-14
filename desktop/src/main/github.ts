@@ -4,6 +4,33 @@ import { execFileSync } from 'child_process'
 // there directly.
 import type { AggregatedPRStatus, AggregatedReviewStatus, PRStatusError, PRStatusSnapshot } from '../types'
 import { fetchPRStatusGraphQL } from './github-graphql'
+import { runInLoginShellSync } from './setup/shell-exec'
+import { getCommonPaths } from './utils/paths'
+
+/**
+ * Runs a `gh` subcommand the way the USER's terminal would.
+ *
+ * An app launched from the Finder or the Dock inherits launchd's environment, where
+ * PATH is roughly /usr/bin:/bin:/usr/sbin:/sbin — and Homebrew's `gh` lives in
+ * /opt/homebrew/bin. A bare execFileSync('gh', ...) therefore fails with ENOENT on a
+ * machine whose terminal runs `gh auth token` fine, and the watcher reported "no
+ * GitHub token" to someone who was perfectly logged in.
+ *
+ * Two steps, cheapest first: the common install prefixes cover Homebrew, nvm, volta
+ * and ~/.local/bin without spawning a shell; the login-shell fallback sources the
+ * user's profile, which is the only way to see a `gh` managed by mise, asdf or an
+ * exotic npm prefix. Returns null when both come up empty — "not logged in" and
+ * "not installed" are the same answer to every caller here.
+ */
+function runGh(args: string[]): string | null {
+  const env = { ...process.env, PATH: [...getCommonPaths(), process.env.PATH || ''].join(':') }
+  try {
+    return execFileSync('gh', args, { env, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] })
+  } catch {
+    const { ok, stdout } = runInLoginShellSync(`gh ${args.join(' ')}`)
+    return ok ? stdout : null
+  }
+}
 
 /**
  * The `gh auth token` result, memoised for the process lifetime.
@@ -18,11 +45,7 @@ let cachedToken: string | null = null
 
 export function getGitHubToken(): string | null {
   if (cachedToken) return cachedToken
-  try {
-    cachedToken = execFileSync('gh', ['auth', 'token'], { encoding: 'utf-8' }).trim() || null
-  } catch {
-    cachedToken = null
-  }
+  cachedToken = runGh(['auth', 'token'])?.trim() || null
   return cachedToken
 }
 
@@ -43,18 +66,12 @@ function parseGhAccount(text: string): string | undefined {
  * when available, the detected account handle.
  */
 export function getGitHubAuthStatus(): { loggedIn: boolean; account?: string } {
-  try {
-    const output = execFileSync('gh', ['auth', 'status'], {
-      encoding: 'utf-8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    return { loggedIn: true, account: parseGhAccount(output) }
-  } catch {
-    // gh exits non-zero when not logged in OR when the stored credentials are
-    // invalid/expired. Either way the login is unusable, so report disconnected
-    // even if an account handle still appears in the error output.
-    return { loggedIn: false }
-  }
+  // runGh returns null when gh exits non-zero — not logged in, OR stored credentials
+  // that are invalid/expired. Either way the login is unusable, so report disconnected
+  // even if an account handle still appears in the failing output.
+  const output = runGh(['auth', 'status'])
+  if (output === null) return { loggedIn: false }
+  return { loggedIn: true, account: parseGhAccount(output) }
 }
 
 export function githubHeaders(extra?: Record<string, string>): Record<string, string> {
