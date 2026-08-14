@@ -66,12 +66,33 @@ export const PR_STATUS_QUERY = `query($owner:String!,$repo:String!,$number:Int!)
         ... on CheckRun { name status conclusion detailsUrl }
         ... on StatusContext { context state targetUrl }
       } } } } } }
-      reviews(last:100){ nodes { author{login} state submittedAt body } }
+      reviews(last:100){ pageInfo { hasPreviousPage startCursor } nodes { author{login} state submittedAt body } }
       reviewThreads(last:50){ nodes { comments(first:1){ totalCount nodes { author{login} } } } }
       comments(last:20){ totalCount nodes { author{login} } }
     }
   }
 }`
+
+/**
+ * Older pages of reviews only. Nothing else is re-fetched: the first response
+ * already carries the checks, the counts and the PR itself, and asking for them
+ * again would multiply the cost of the very PRs this path exists to serve.
+ */
+export const REVIEWS_PAGE_QUERY = `query($owner:String!,$repo:String!,$number:Int!,$before:String!){
+  rateLimit { remaining }
+  repository(owner:$owner,name:$repo){
+    pullRequest(number:$number){
+      reviews(last:100, before:$before){ pageInfo { hasPreviousPage startCursor } nodes { author{login} state submittedAt body } }
+    }
+  }
+}`
+
+/**
+ * Ceiling on the extra pages walked, so a pathological PR cannot spin the tick.
+ * 10 pages ≈ 1000 reviews on top of the first 100 — far past anything real, and a
+ * hard stop is better than an unbounded loop against a rate-limited API.
+ */
+const MAX_REVIEW_PAGES = 10
 
 // --- Response shapes -------------------------------------------------------
 // Everything is optional: a partial `data` alongside `errors` is a documented
@@ -111,14 +132,7 @@ export interface GQLPullRequest {
       } | null
     } | null)[] | null
   } | null
-  reviews?: {
-    nodes?: ({
-      author?: GQLActor | null
-      state?: string | null
-      submittedAt?: string | null
-      body?: string | null
-    } | null)[] | null
-  } | null
+  reviews?: GQLReviewConnection | null
   reviewThreads?: {
     nodes?: ({
       comments?: { totalCount?: number; nodes?: ({ author?: GQLActor | null } | null)[] | null } | null
@@ -128,6 +142,23 @@ export interface GQLPullRequest {
     totalCount?: number
     nodes?: ({ author?: GQLActor | null } | null)[] | null
   } | null
+}
+
+export interface GQLReviewNode {
+  author?: GQLActor | null
+  state?: string | null
+  submittedAt?: string | null
+  body?: string | null
+}
+
+/**
+ * Paginated backwards (`last:` + `before:`), so the cursor of interest is
+ * `startCursor` and the flag is `hasPreviousPage` — the mirror image of the usual
+ * `first:`/`after:`/`endCursor` idiom.
+ */
+export interface GQLReviewConnection {
+  nodes?: (GQLReviewNode | null)[] | null
+  pageInfo?: { hasPreviousPage?: boolean | null; startCursor?: string | null } | null
 }
 
 interface GQLResponse {
@@ -366,23 +397,19 @@ export function mapPullRequestToSnapshot(
  * Reads one PR. Never throws: every failure comes back as a named `PRStatusError`
  * so the card can say what is wrong instead of going quiet.
  */
-export async function fetchPRStatusGraphQL(
+async function postGraphQL(
+  query: string,
+  variables: Record<string, unknown>,
   owner: string,
   repo: string,
   number: number,
-): Promise<PRStatusSnapshot | PRStatusError> {
-  const token = getGitHubToken()
-  // GraphQL has no anonymous access at all — no point spending a request to learn it.
-  if (!token) {
-    return { error: 'no-token', message: 'No GitHub token: run `gh auth login` to watch pull requests.' }
-  }
-
+): Promise<{ pullRequest: GQLPullRequest; rateLimit?: { remaining?: number | null } | null } | PRStatusError> {
   let res: Response
   try {
     res = await fetch(GITHUB_GRAPHQL_URL, {
       method: 'POST',
       headers: githubHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
-      body: JSON.stringify({ query: PR_STATUS_QUERY, variables: { owner, repo, number } }),
+      body: JSON.stringify({ query, variables }),
     })
   } catch (err) {
     return { error: 'network', message: `Could not reach GitHub: ${err instanceof Error ? err.message : String(err)}` }
@@ -402,8 +429,7 @@ export async function fetchPRStatusGraphQL(
       const mapped = mapErrorType(err.type)
       if (mapped) return toError(mapped, err.message || mapped, res.headers)
     }
-    const pullRequest = body?.data?.repository?.pullRequest
-    if (!pullRequest) {
+    if (!body?.data?.repository?.pullRequest) {
       return toError('network', errors[0].message || 'GitHub GraphQL returned an error', res.headers)
     }
     // Partial data with an unmapped error on some other field: the PR itself is here.
@@ -420,5 +446,85 @@ export async function fetchPRStatusGraphQL(
     return { error: 'not-found', message: `Pull request ${owner}/${repo}#${number} was not found.` }
   }
 
-  return mapPullRequestToSnapshot(pullRequest, body?.data?.rateLimit)
+  return { pullRequest, rateLimit: body?.data?.rateLimit }
+}
+
+/**
+ * Walks older pages of reviews until the connection is exhausted.
+ *
+ * Only reached when the first page reports `hasPreviousPage`, i.e. the PR has more
+ * than 100 reviews — so the normal tick remains exactly one request, and this cost
+ * is paid solely by PRs that would otherwise report the wrong verdict. Bots submit
+ * a review per push, so the threshold is reachable on a long-lived PR.
+ *
+ * A failure here is deliberately NOT fatal: an incomplete review history still
+ * yields a usable snapshot, and returning an error would blank a card over an
+ * edge case. The caller keeps whatever pages were collected.
+ */
+async function fetchOlderReviews(
+  owner: string,
+  repo: string,
+  number: number,
+  firstPage: GQLReviewConnection,
+): Promise<GQLReviewNode[]> {
+  const collected: GQLReviewNode[] = []
+  let cursor = firstPage.pageInfo?.startCursor
+  let hasMore = firstPage.pageInfo?.hasPreviousPage === true
+
+  for (let page = 0; page < MAX_REVIEW_PAGES && hasMore && cursor; page += 1) {
+    const result = await postGraphQL(
+      REVIEWS_PAGE_QUERY,
+      { owner, repo, number, before: cursor },
+      owner,
+      repo,
+      number,
+    )
+    if ('error' in result) break
+
+    const connection = result.pullRequest.reviews
+    const nodes = (connection?.nodes ?? []).filter((n): n is GQLReviewNode => !!n)
+    // Older pages go in FRONT: aggregatePRStatus relies on chronological order,
+    // overwriting each reviewer's entry so the last one wins.
+    collected.unshift(...nodes)
+
+    cursor = connection?.pageInfo?.startCursor
+    hasMore = connection?.pageInfo?.hasPreviousPage === true
+  }
+
+  return collected
+}
+
+/**
+ * Reads one PR. Never throws: every failure comes back as a named `PRStatusError`
+ * so the card can say what is wrong instead of going quiet.
+ */
+export async function fetchPRStatusGraphQL(
+  owner: string,
+  repo: string,
+  number: number,
+): Promise<PRStatusSnapshot | PRStatusError> {
+  const token = getGitHubToken()
+  // GraphQL has no anonymous access at all — no point spending a request to learn it.
+  if (!token) {
+    return { error: 'no-token', message: 'No GitHub token: run `gh auth login` to watch pull requests.' }
+  }
+
+  const result = await postGraphQL(PR_STATUS_QUERY, { owner, repo, number }, owner, repo, number)
+  if ('error' in result) return result
+
+  const { pullRequest, rateLimit } = result
+
+  // Reviews decide the VERDICT, so a truncated list is not a smaller answer — it is
+  // a wrong one. Everything else in the query is either a total or a bounded window.
+  if (pullRequest.reviews?.pageInfo?.hasPreviousPage === true) {
+    const older = await fetchOlderReviews(owner, repo, number, pullRequest.reviews)
+    if (older.length > 0) {
+      pullRequest.reviews = {
+        ...pullRequest.reviews,
+        nodes: [...older, ...(pullRequest.reviews.nodes ?? [])],
+      }
+    }
+  }
+
+  return mapPullRequestToSnapshot(pullRequest, rateLimit)
 }

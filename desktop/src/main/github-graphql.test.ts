@@ -115,6 +115,87 @@ describe('fetchPRStatusGraphQL', () => {
     // window makes an approved PR read back as pending. Counts can be truncated
     // safely; verdicts cannot.
     expect(PR_STATUS_QUERY).toContain('reviews(last:100)')
+    expect(PR_STATUS_QUERY).toContain('pageInfo { hasPreviousPage startCursor }')
+  })
+
+  describe('review pagination', () => {
+    type ReviewNode = NonNullable<NonNullable<GQLPullRequest['reviews']>['nodes']>[number]
+
+    /** A first page that declares older reviews behind it. */
+    function truncated(nodes: ReviewNode[], cursor = 'CUR1') {
+      return payload({ reviews: { pageInfo: { hasPreviousPage: true, startCursor: cursor }, nodes } })
+    }
+
+    /** An older page, as returned by REVIEWS_PAGE_QUERY (reviews only). */
+    function olderPage(nodes: ReviewNode[], hasPreviousPage = false) {
+      return {
+        data: {
+          rateLimit: { remaining: 4980 },
+          repository: {
+            pullRequest: { reviews: { pageInfo: { hasPreviousPage, startCursor: null }, nodes } },
+          },
+        },
+      }
+    }
+
+    it('does not paginate when the first page is the whole history', async () => {
+      // The common case must stay at exactly one request — that is an acceptance
+      // criterion, and pagination must not quietly cost every PR a second call.
+      mockFetch.mockResolvedValue(graphQLResponse(payload()))
+      await fetchPRStatusGraphQL('o', 'r', 1)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('walks older pages and recovers a verdict that fell out of the window', async () => {
+      // alice approved long ago; 100+ later reviews pushed her out of the first page.
+      // Without pagination the PR reads back as `commented` instead of `approved`.
+      mockFetch
+        .mockResolvedValueOnce(graphQLResponse(truncated([
+          { author: { login: 'greptile' }, state: 'COMMENTED', submittedAt: '2025-01-02T09:00:00Z', body: 'x' },
+        ])))
+        .mockResolvedValueOnce(graphQLResponse(olderPage([
+          { author: { login: 'alice' }, state: 'APPROVED', submittedAt: '2025-01-01T08:00:00Z', body: 'LGTM' },
+        ])))
+
+      const snapshot = snapshotOf(await fetchPRStatusGraphQL('o', 'r', 1))
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(snapshot.status).toBe('approved')
+      expect(snapshot.reviewers).toContain('alice')
+    })
+
+    it('passes the start cursor as `before` when walking back', async () => {
+      mockFetch
+        .mockResolvedValueOnce(graphQLResponse(truncated([], 'CURSOR_X')))
+        .mockResolvedValueOnce(graphQLResponse(olderPage([])))
+
+      await fetchPRStatusGraphQL('o', 'r', 1)
+      const secondBody = JSON.parse(mockFetch.mock.calls[1][1].body)
+      expect(secondBody.variables.before).toBe('CURSOR_X')
+      expect(secondBody.query).toContain('before:$before')
+    })
+
+    it('keeps the snapshot when an older page fails, rather than blanking the card', async () => {
+      // An incomplete history is still usable; an error here would empty a card
+      // over an edge case the user cannot act on.
+      mockFetch
+        .mockResolvedValueOnce(graphQLResponse(truncated([
+          { author: { login: 'alice' }, state: 'APPROVED', submittedAt: '2025-01-02T09:00:00Z', body: 'ok' },
+        ])))
+        .mockRejectedValueOnce(new Error('socket hang up'))
+
+      const snapshot = snapshotOf(await fetchPRStatusGraphQL('o', 'r', 1))
+      expect(snapshot.status).toBe('approved')
+    })
+
+    it('stops after the page ceiling instead of looping forever', async () => {
+      // Every page keeps claiming another one behind it, cursor included: without a
+      // ceiling this walks until the rate limit stops it.
+      mockFetch.mockResolvedValue(graphQLResponse(truncated([], 'C')))
+
+      await fetchPRStatusGraphQL('o', 'r', 1)
+      // 1 initial + at most MAX_REVIEW_PAGES (10) follow-ups.
+      expect(mockFetch.mock.calls.length).toBe(11)
+    })
   })
 
   it('maps a full response into a snapshot', async () => {
