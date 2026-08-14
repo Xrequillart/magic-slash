@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.71.0] - 2026-08-14
+
+### Added
+
+- **Desktop**: Show the time spent running skills on the team page
+- **Webapp**: Replace the hours card with an opt-in when tracking is off
+- **Webapp**: Report which agent the last skill run belonged to
+- **Webapp**: Show the time spent running skills on the dashboard
+- **Desktop**: Add a dedicated pr watch card to the repository card
+- **Desktop**: Rebuild the pr watcher on a single graphql query
+- **Webapp**: Add the spotlight toggle and regroup the features tab
+- **Webapp**: Split the application page into tabs
+- **Webapp**: Make the notification and sidebar settings editable
+
+### Changed
+
+- **Desktop**: Give the team page tabs the webapp's sliding pill rail
+- **Webapp**: Share the application tab strip with the dashboard
+- **Webapp**: Show the repository icon instead of a color dot on the dashboard
+
+### Fixed
+
+- **Desktop**: Key an agent even when its writer omits the app id
+- **Desktop**: Report and retry a failed agent archive
+- **Desktop**: Retry a transient review page before abandoning the walk
+- **Desktop**: Paginate reviews so a verdict cannot fall out of the window
+- **Desktop**: Fan pr reads out to every card sharing a url
+- **Desktop**: Heartbeat a spool drain so a live claim is never adopted
+- **Desktop**: Give each spool drain its own working files
+- **Desktop**: Claim the skill spool with an atomic rename
+- **Desktop**: Isolate the dev build's config, port and instance lock
+- **Desktop**: Key agents on their app id to stop duplicate rows
+
 ## [0.70.0] - 2026-08-13
 
 ### Added
@@ -2063,6 +2096,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.71.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.71.0
 [0.70.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.70.0
 [0.69.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.69.0
 [0.68.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.68.6
