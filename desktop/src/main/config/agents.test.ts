@@ -1,7 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { Agent } from '../../types'
 import type { Store } from '../store/Store'
 import { setStore, NOOP_STORE } from '../store/Store'
+
+// The archive spool is a real file in the real config dir (its own behaviour lives in
+// store/pending-archives.test.ts). Mocked here so a test can say "this close has not
+// been confirmed yet" without writing to the developer's disk.
+const spool = vi.hoisted(() => ({ pending: [] as string[] }))
+
+vi.mock('../store/pending-archives', () => ({
+  pendingArchiveIds: () => spool.pending,
+}))
+
 import {
   createDefaultMetadata,
   mergeMetadata,
@@ -38,6 +48,10 @@ async function seed(initial: unknown[] = []): Promise<void> {
   setStore(fakeStore(initial))
   await hydrateAgents()
 }
+
+beforeEach(() => {
+  spool.pending = []
+})
 
 // --- Pure function tests (no store needed) ---
 
@@ -229,6 +243,32 @@ describe('archiveAgent', () => {
     archiveAgent('nope')
     expect(readAgents()).toHaveLength(1)
     expect(archivedAgents).toEqual([])
+  })
+
+  it('never hydrates back an agent whose archive has not been confirmed', async () => {
+    // The store filters on `archived_at is null`, so a close whose stamp never
+    // landed comes back in the roster — and comes back all the way: restoreAgents()
+    // gives it a PTY and the next writeAgents() re-upserts it. Filtering here, on
+    // the cache every one of those reads, is what covers them at once.
+    spool.pending = ['a1']
+    await seed([
+      { id: 'a1', name: 'Closed offline', repositories: [], tsCreate: 100 },
+      { id: 'a2', name: 'Agent 2', repositories: [], tsCreate: 200 },
+    ])
+
+    expect(readAgents().map(a => a.id)).toEqual(['a2'])
+  })
+
+  it('hydrates the agent again once its archive is settled', async () => {
+    // The filter is not a tombstone: an entry leaves the spool as soon as its write
+    // is resolved one way or the other, so it can never hide an agent for good.
+    spool.pending = ['a1']
+    await seed([{ id: 'a1', name: 'Agent 1', repositories: [], tsCreate: 100 }])
+    expect(readAgents()).toEqual([])
+
+    spool.pending = []
+    await hydrateAgents()
+    expect(readAgents().map(a => a.id)).toEqual(['a1'])
   })
 })
 

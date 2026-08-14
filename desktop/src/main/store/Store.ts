@@ -51,7 +51,15 @@ export interface Store {
    * Soft-delete ONE agent (the user closed it). Never a hard delete: the row is
    * kept so its activity, usage and skill-invocation events keep their agent
    * link — a deleted row would null those FKs and orphan the history.
-   * Idempotent, and a no-op for an agent the store never loaded.
+   *
+   * Idempotent: closing an already-closed agent succeeds and changes nothing. NOT a
+   * no-op for an agent the store never loaded, which it used to be — the id→uuid
+   * binding is process-local, so "never loaded" describes a cold cache far more
+   * often than a nonexistent agent, and returning quietly there is how a close came
+   * back as a live agent after the next launch. An implementation must either
+   * archive the row, defer the write durably, or reject — never report a write that
+   * matched nothing as done. (NOOP_STORE stays a no-op: it persists nothing at all,
+   * so it has nothing to lose.)
    */
   archiveAgent(appId: string): Promise<void>
 

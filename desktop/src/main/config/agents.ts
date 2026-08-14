@@ -3,6 +3,7 @@ import { filterValidRepositories, readConfig } from './config'
 import { expandPath } from './validation'
 import { resolveRepoIds } from '../../repoMatch'
 import { getStore, reportWriteError } from '../store/Store'
+import { pendingArchiveIds } from '../store/pending-archives'
 
 /**
  * The configured repositories these paths belong to, as `repositories` table
@@ -79,10 +80,24 @@ function normalizeAgents(raw: unknown): Agent[] {
 
 let agentsCache: Agent[] = []
 
-/** Load agents from the store into the cache. Call after auth is established. */
+/**
+ * Load agents from the store into the cache. Call after auth is established.
+ *
+ * Agents whose archive is still pending are dropped on the way in. The store's read
+ * filters on `archived_at is null`, so an agent the user closed while the stamp
+ * could not be written comes back in this list — and it comes back all the way:
+ * restoreAgents() spawns it a PTY, and the next writeAgents() re-upserts it. One
+ * filter here covers every one of those, because they all read this cache.
+ *
+ * Read AFTER the load, so a close made while the roster was in flight is honoured
+ * too. The ids leave the spool as soon as their write is settled (see
+ * pending-archives), which is why this cannot hide an agent indefinitely.
+ */
 export async function hydrateAgents(): Promise<Agent[]> {
   try {
-    agentsCache = normalizeAgents(await getStore().loadAgents())
+    const loaded = normalizeAgents(await getStore().loadAgents())
+    const pending = new Set(pendingArchiveIds())
+    agentsCache = loaded.filter((agent) => !pending.has(agent.id))
   } catch (error) {
     console.error('Error hydrating agents:', error)
     agentsCache = []

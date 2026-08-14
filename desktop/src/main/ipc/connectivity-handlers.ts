@@ -3,6 +3,7 @@ import type { ConnectivityStatus, StoreWriteKind } from '../store/Store'
 import { getStore, setWriteErrorHandler } from '../store/Store'
 import { ensureHydrated, rehydrate, resetHydration } from '../store/hydrate'
 import { flushOutbox } from '../store/outbox'
+import { flushPendingArchives } from '../store/pending-archives'
 import { drainSkillSpool } from '../usage/skill-spool'
 import { migrateConfig } from '../config/migrate'
 import { applyRemoteSettingsRow, scheduleRemoteRefresh, setRemoteSyncEmitters } from '../config/remote-sync'
@@ -96,6 +97,13 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
 
     if (status === 'ok') {
       try {
+        // BEFORE hydrating, and awaited: a close whose stamp never landed is
+        // replayed here, so the roster this hydration reads already excludes it
+        // through the store's own `archived_at is null` filter. Flushing after
+        // would leave the agent in the cache — and restored, with a live PTY —
+        // until the next hydration. Never rejects; an entry it cannot deliver
+        // stays for the next tick.
+        await flushPendingArchives()
         await ensureHydrated()
         // migrateConfig only ever changes data on the first post-upgrade pass;
         // run it (and restoreAgents) once rather than on every 20s poll/focus.
