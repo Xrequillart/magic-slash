@@ -6,8 +6,19 @@ import { useOrg } from '../../hooks/useOrg'
 import { useOrgAgents } from '../../hooks/useOrgAgents'
 import { buildRepoRows, type RepoRow, type RepoScope } from '../../utils/repoRows'
 import { useT, type Translate } from '../../i18n'
+import { TabStrip } from '../../components/TabStrip'
 import { OwnerLabel, StatusPill, TicketBadge } from './parts'
 import { SkillStats } from './SkillStats'
+
+/**
+ * What the personal tab is called on the way through `TabStrip`.
+ *
+ * `null` is a legitimate scope — the repositories attached to no organization — but it
+ * cannot be a React key or a callback argument, so this string stands in for it across the
+ * strip and is resolved back to null on the way out. An organization id is a uuid, so
+ * there is nothing it can collide with.
+ */
+const PERSONAL_KEY = 'personal'
 
 /** The live PR of an agent, if it has one that is neither merged nor closed. */
 function livePrUrl(agent: OrgAgent): string | undefined {
@@ -163,21 +174,12 @@ export function RepoSection() {
           Purely a view — switching tabs changes nothing but what is listed, there is
           no active organization to set. */}
       {tabs.length > 1 && (
-        <div className="flex items-center gap-1 flex-wrap">
-          {tabs.map((tab) => (
-            <button
-              key={tab.scope ?? 'personal'}
-              onClick={() => setScope(tab.scope)}
-              className={`h-7 px-2.5 text-[11px] font-medium rounded-lg border transition-all ${
-                tab.scope === activeScope
-                  ? 'bg-accent/15 border-accent/30 text-accent'
-                  : 'bg-surface border-line text-text-secondary hover:bg-surface-strong hover:text-ink'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <TabStrip
+          ariaLabel={t('dashboard.repos.section')}
+          items={tabs.map((tab) => ({ key: tab.scope ?? PERSONAL_KEY, label: tab.label }))}
+          activeKey={activeScope === undefined ? undefined : (activeScope ?? PERSONAL_KEY)}
+          onSelect={(key) => setScope(key === PERSONAL_KEY ? null : key)}
+        />
       )}
 
       {/* What this tab RUNS, before what it HAS. Every count below says how much work
