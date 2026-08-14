@@ -1,8 +1,8 @@
 import * as http from 'http'
 import * as fs from 'fs'
-import * as os from 'os'
 import * as path from 'path'
 import { URL } from 'url'
+import { CONFIG_DIR } from '../config/paths'
 import type { TerminalUsage } from '../../types'
 
 /**
@@ -12,8 +12,11 @@ import type { TerminalUsage } from '../../types'
  * reaches PTYs the app spawned itself — a Claude Code started from an external
  * terminal never inherits it. Publishing the port to a well-known file lets any
  * local process find the server, so hooks keep working outside the app.
+ *
+ * Per-instance (CONFIG_DIR, not the stable dir): one shared file means the last app
+ * started wins it, and every session's hooks then report into that one.
  */
-const PORT_FILE = path.join(os.homedir(), '.config', 'magic-slash', 'port')
+const PORT_FILE = path.join(CONFIG_DIR, 'port')
 
 function publishPort(port: number): void {
   try {
@@ -514,15 +517,23 @@ export function startStatusServer(): Promise<number> {
 
 export function stopStatusServer(): Promise<void> {
   return new Promise((resolve) => {
-    unpublishPort()
-    if (server) {
-      server.close(() => {
-        server = null
-        serverPort = 0
-        resolve()
-      })
-    } else {
+    // Only a process that published the file may remove it. This is not
+    // hypothetical: `before-quit` is registered at module scope and runs in every
+    // instance, including the one that loses the single-instance lock and quits
+    // without ever calling startStatusServer (see index.ts). Same build means the
+    // same CONFIG_DIR, so an unconditional unpublish there would delete the port
+    // file of the instance that is actually serving — and the winner only writes
+    // it at startup, so nothing would restore it until the next launch.
+    if (!server) {
       resolve()
+      return
     }
+
+    unpublishPort()
+    server.close(() => {
+      server = null
+      serverPort = 0
+      resolve()
+    })
   })
 }

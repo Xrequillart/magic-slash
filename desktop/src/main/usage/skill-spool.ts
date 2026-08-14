@@ -1,6 +1,6 @@
 import * as fs from 'fs'
-import * as os from 'os'
 import * as path from 'path'
+import { STABLE_CONFIG_DIR } from '../config/paths'
 import type { SkillRunOutcome } from '../../types'
 import { closeSkillRun, recordSkillInvocation } from './skill-invocations'
 
@@ -31,8 +31,9 @@ import { closeSkillRun, recordSkillInvocation } from './skill-invocations'
  * is ever visible in both files or in neither.
  */
 
-const CONFIG_DIR = path.join(os.homedir(), '.config', 'magic-slash')
-const SPOOL_FILE = path.join(CONFIG_DIR, 'pending-skills.ndjson')
+// STABLE_CONFIG_DIR, never the dev-suffixed one: the producing hook lives in
+// ~/.claude/settings.json with this path baked in, shared by every build.
+const SPOOL_FILE = path.join(STABLE_CONFIG_DIR, 'pending-skills.ndjson')
 /** Where a drain moves the spool to work on it, out of the hook's way. */
 const DRAINING_FILE = `${SPOOL_FILE}.draining`
 

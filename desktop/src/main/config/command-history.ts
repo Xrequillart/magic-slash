@@ -1,8 +1,8 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+import { CONFIG_DIR } from './paths'
 
-const CONFIG_DIR = path.join(os.homedir(), '.config', 'magic-slash')
 const HISTORY_FILE = path.join(CONFIG_DIR, 'command-history.json')
 const MAX_COMMANDS_PER_REPO = 500
 

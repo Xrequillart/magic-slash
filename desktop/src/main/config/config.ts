@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import type { Config, RepositoryConfig, LanguageId, LaunchMode, OrgSharedConfig, ThemeId } from '../../types'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
 import { expandPath } from './validation'
+import { CONFIG_DIR } from './paths'
 import { getStore, reportWriteError } from '../store/Store'
 
 /** Settings input where each field can be its normal type, 'default', or null (to reset) */
@@ -34,7 +35,6 @@ const isOneOf = (allowed: string[]) => (v: unknown) => typeof v === 'string' && 
 const isBool = (v: unknown) => typeof v === 'boolean'
 const isString = (v: unknown) => typeof v === 'string'
 
-const CONFIG_DIR = path.join(os.homedir(), '.config', 'magic-slash')
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
 
 /**
