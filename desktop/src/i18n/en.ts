@@ -1061,12 +1061,11 @@ export const en = {
   // The card renders from `prUrl` alone, so most of these have to read sensibly
   // against a snapshot with almost nothing in it.
   'agentInfo.pr.title': 'Pull request',
-  'agentInfo.pr.number': 'PR #{number}',
+  'agentInfo.pr.number': 'Pull request #{number}',
   'agentInfo.pr.state.open': 'Open',
   'agentInfo.pr.state.draft': 'Draft',
   'agentInfo.pr.state.merged': 'Merged',
   'agentInfo.pr.state.closed': 'Closed',
-  'agentInfo.pr.checks': 'Checks',
   'agentInfo.pr.checksPassed': '{passed}/{total} passed',
   'agentInfo.pr.noChecks': 'no checks',
   'agentInfo.pr.checkPassed': 'Passed',

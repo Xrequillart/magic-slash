@@ -1055,12 +1055,11 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Carte pull request (barre d'infos de l'agent) ────────────────────────
   'agentInfo.pr.title': 'Pull request',
-  'agentInfo.pr.number': 'PR #{number}',
+  'agentInfo.pr.number': 'Pull request #{number}',
   'agentInfo.pr.state.open': 'Ouverte',
   'agentInfo.pr.state.draft': 'Brouillon',
   'agentInfo.pr.state.merged': 'Mergée',
   'agentInfo.pr.state.closed': 'Fermée',
-  'agentInfo.pr.checks': 'Checks',
   'agentInfo.pr.checksPassed': '{passed}/{total} réussis',
   'agentInfo.pr.noChecks': 'aucun check',
   'agentInfo.pr.checkPassed': 'Réussi',

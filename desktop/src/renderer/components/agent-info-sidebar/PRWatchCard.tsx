@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
   AlertCircle,
   AlertTriangle,
   CheckCircle,
   CheckCircle2,
   Clock,
+  ExternalLink,
   GitMerge,
   GitPullRequest,
   GitPullRequestClosed,
   GitPullRequestDraft,
+  ListChecks,
   Loader2,
   MessageSquare,
   MessagesSquare,
@@ -36,11 +38,19 @@ interface PRWatchCardProps {
   metadata: RepositoryMetadata | undefined
 }
 
-const REVIEW_STATUS_LABELS: Record<NonNullable<RepositoryMetadata['prReviewStatus']>, MessageKey> = {
-  approved: 'prReview.approved',
-  'changes-requested': 'prReview.changesRequested',
-  commented: 'prReview.commented',
-  pending: 'prReview.pending',
+/**
+ * The review verdict as a full-width band, the way GitHub itself leads with it.
+ * Its tone is the card's headline: everything below is detail, and someone
+ * scanning the sidebar should get the verdict from the colour alone.
+ */
+const REVIEW_STATUS_BANNERS: Record<
+  NonNullable<RepositoryMetadata['prReviewStatus']>,
+  { label: MessageKey; tone: string }
+> = {
+  approved: { label: 'prReview.approved', tone: 'bg-green/10 text-green' },
+  'changes-requested': { label: 'prReview.changesRequested', tone: 'bg-red/10 text-red' },
+  commented: { label: 'prReview.commented', tone: 'bg-blue/10 text-blue' },
+  pending: { label: 'prReview.pending', tone: 'bg-yellow/10 text-yellow' },
 }
 
 const STATE_LABELS: Record<PRState, MessageKey> = {
@@ -69,7 +79,7 @@ const WATCH_ERROR_LABELS: Record<PRWatchError, { label: MessageKey; fix: Message
   network: { label: 'agentInfo.pr.error.network', fix: 'agentInfo.pr.error.networkFix' },
 }
 
-// One row per bucket of the checks summary, rendered from the counts alone.
+// One counter per bucket of the checks summary, rendered from the counts alone.
 const CHECK_COUNTERS = [
   { key: 'passed', Icon: CheckCircle2, tone: 'text-green', label: 'agentInfo.pr.checkPassed', spin: false },
   { key: 'failed', Icon: XCircle, tone: 'text-red', label: 'agentInfo.pr.checkFailed', spin: false },
@@ -96,29 +106,29 @@ interface CommentRow {
   value: number
 }
 
-function StateIcon({ state }: { state: PRState }) {
+function StateIcon({ state, className = 'w-4 h-4' }: { state: PRState; className?: string }) {
   switch (state) {
     case 'merged':
-      return <GitMerge className="w-3.5 h-3.5 text-purple" />
+      return <GitMerge className={`${className} text-purple`} />
     case 'closed':
-      return <GitPullRequestClosed className="w-3.5 h-3.5 text-red" />
+      return <GitPullRequestClosed className={`${className} text-red`} />
     case 'draft':
-      return <GitPullRequestDraft className="w-3.5 h-3.5 text-text-secondary" />
+      return <GitPullRequestDraft className={`${className} text-text-secondary`} />
     case 'open':
-      return <GitPullRequest className="w-3.5 h-3.5 text-green" />
+      return <GitPullRequest className={`${className} text-green`} />
   }
 }
 
 function ReviewStatusIcon({ status }: { status: NonNullable<RepositoryMetadata['prReviewStatus']> }) {
   switch (status) {
     case 'approved':
-      return <CheckCircle2 className="w-3.5 h-3.5 text-green" />
+      return <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
     case 'changes-requested':
-      return <AlertCircle className="w-3.5 h-3.5 text-red" />
+      return <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
     case 'commented':
-      return <MessageSquare className="w-3.5 h-3.5 text-blue" />
+      return <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />
     case 'pending':
-      return <Clock className="w-3.5 h-3.5 text-text-secondary" />
+      return <Clock className="w-3.5 h-3.5 flex-shrink-0" />
   }
 }
 
@@ -133,6 +143,23 @@ async function runSlashCommand(terminalId: string, command: string, t: Translate
   } catch (err) {
     showToast(err instanceof Error ? err.message : t('toast.commandFailed'), 'error')
   }
+}
+
+/**
+ * One row of the body: a fixed icon gutter on the left, content on the right.
+ *
+ * The gutter is what makes the card scannable — every row starts its text on the
+ * same x, so the icons read as a column of row types rather than as decoration
+ * glued to the front of a sentence. `items-start` because a row is allowed to grow
+ * (check names, a long author list) while its icon stays on the first line.
+ */
+function Cell({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className="w-4 flex-shrink-0 flex items-center justify-center pt-px">{icon}</span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  )
 }
 
 /** A short list of check names, capped upstream at 5. */
@@ -165,7 +192,9 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
     return () => clearInterval(id)
   }, [])
 
-  const prNumber = prUrl.match(/\/pull\/(\d+)/)?.[1]
+  const parsed = prUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/)
+  const repoSlug = parsed ? `${parsed[1]}/${parsed[2]}` : undefined
+  const prNumber = parsed?.[3]
 
   // `prState` is the field to trust, but it is absent from every row written
   // before this feature — those only ever carried the two booleans. Falling back
@@ -214,6 +243,13 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
       : []
   const commentRows = splitRows.filter((row) => row.value > 0)
 
+  // The bar answers "how far along" at a glance; the colour answers "is it going
+  // well". Red the moment anything failed — a run that is 9/10 green is still a
+  // red PR — blue while work is in flight, green only once nothing is outstanding.
+  const checksTone =
+    checks && checks.failed > 0 ? 'bg-red' : checks && checks.running > 0 ? 'bg-blue' : 'bg-green'
+  const checksProgress = checks && checks.total > 0 ? Math.round((checks.passed / checks.total) * 100) : 0
+
   const handleRefresh = async () => {
     setRefreshing(true)
     try {
@@ -231,143 +267,172 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   }
 
   return (
-    <div className="mt-2 bg-surface rounded-md p-2 space-y-2 border border-line-subtle">
-      {/* Header — PR number, state badge, freshness and a manual poll */}
-      <div className="flex items-center gap-1.5 text-xs">
-        {state ? <StateIcon state={state} /> : <GitPullRequest className="w-3.5 h-3.5 text-text-secondary" />}
-        <span className="text-ink/80 font-medium">
-          {prNumber ? t('agentInfo.pr.number', { number: prNumber }) : t('agentInfo.pr.title')}
-        </span>
+    <div className="mt-2 bg-surface rounded-lg border border-line-subtle overflow-hidden">
+      {/* Header — the card's identity IS the link to GitHub, which is why the
+          separate "View pull request" button below the card could go away. The
+          refresh control stays a sibling: a button inside a button is invalid. */}
+      <div className="flex items-center gap-1.5 p-2">
+        <button
+          onClick={() => window.electronAPI.shell.openExternal(prUrl)}
+          title={t('agentInfo.viewPullRequest')}
+          className="group flex items-center gap-2 min-w-0 flex-1 text-left rounded-md -m-1 p-1 hover:bg-surface-strong transition-colors"
+        >
+          <span className="w-4 flex-shrink-0 flex items-center justify-center">
+            {state ? <StateIcon state={state} /> : <GitPullRequest className="w-4 h-4 text-text-secondary" />}
+          </span>
+          <span className="min-w-0">
+            <span className="flex items-center gap-1">
+              <span className="text-xs font-medium text-ink/90 truncate group-hover:text-accent transition-colors">
+                {prNumber ? t('agentInfo.pr.number', { number: prNumber }) : t('agentInfo.pr.title')}
+              </span>
+              <ExternalLink className="w-3 h-3 flex-shrink-0 text-text-secondary/40 group-hover:text-accent transition-colors" />
+            </span>
+            {repoSlug && (
+              <span className="block text-[10px] text-text-secondary/50 truncate" title={repoSlug}>
+                {repoSlug}
+              </span>
+            )}
+          </span>
+        </button>
         {state && (
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${STATE_BADGE[state]}`}>
+          <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${STATE_BADGE[state]}`}>
             {t(STATE_LABELS[state])}
           </span>
         )}
-        <span className="ml-auto flex items-center gap-1">
-          <span className="text-[10px] text-text-secondary/50">{checkedLabel}</span>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            title={t('agentInfo.pr.refresh')}
-            className="p-1 rounded text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </span>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          title={t('agentInfo.pr.refresh')}
+          className="flex-shrink-0 p-1 rounded text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
-      {/* Why the watcher is blind, and how to fix it */}
-      {watchError && (
-        <div className="flex items-start gap-1.5 rounded bg-red/10 border border-red/20 p-1.5">
-          <AlertTriangle className="w-3.5 h-3.5 text-red flex-shrink-0 mt-px" />
-          <div className="min-w-0">
-            <div className="text-[11px] text-red font-medium">{t(WATCH_ERROR_LABELS[watchError].label)}</div>
-            <div className="text-[10px] text-text-secondary/70">{t(WATCH_ERROR_LABELS[watchError].fix)}</div>
+      {/* Body — one cell per signal, all sharing the same icon gutter */}
+      <div className="border-t border-line-subtle p-2 space-y-2">
+        {/* Why the watcher is blind, and how to fix it. Above the verdict on
+            purpose: a stale verdict is worth less than the reason it is stale. */}
+        {watchError && (
+          <div className="flex items-start gap-2 rounded-md bg-red/10 px-2 py-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-red flex-shrink-0 mt-px" />
+            <div className="min-w-0">
+              <div className="text-[11px] text-red font-medium">{t(WATCH_ERROR_LABELS[watchError].label)}</div>
+              <div className="text-[10px] text-text-secondary/70">{t(WATCH_ERROR_LABELS[watchError].fix)}</div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Review status — the one signal the oldest rows do carry */}
-      {metadata?.prReviewStatus && (
-        <div className="flex items-center gap-1.5 text-xs">
-          <ReviewStatusIcon status={metadata.prReviewStatus} />
-          <span className="text-ink/80">{t(REVIEW_STATUS_LABELS[metadata.prReviewStatus])}</span>
-        </div>
-      )}
+        {/* The verdict, as a band rather than a row */}
+        {metadata?.prReviewStatus && (() => {
+          const { label, tone } = REVIEW_STATUS_BANNERS[metadata.prReviewStatus]
+          return (
+            <div className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium ${tone}`}>
+              <ReviewStatusIcon status={metadata.prReviewStatus} />
+              {t(label)}
+            </div>
+          )
+        })()}
 
-      {/* Checks */}
-      {checks && (
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-text-secondary/70">{t('agentInfo.pr.checks')}</span>
+        {/* Checks — count, progress bar, then the per-bucket counters */}
+        {checks && (
+          <Cell icon={<ListChecks className="w-3.5 h-3.5 text-text-secondary/60" />}>
             {checks.total > 0 ? (
-              <>
-                <span className="text-ink/80 font-medium tabular-nums">
-                  {t('agentInfo.pr.checksPassed', { passed: checks.passed, total: checks.total })}
-                </span>
-                <span className="ml-auto flex items-center gap-1.5 text-[10px] tabular-nums">
-                  {CHECK_COUNTERS.filter((counter) => checks[counter.key] > 0).map(({ key, Icon, tone, label, spin }) => (
-                    <span key={key} className={`flex items-center gap-0.5 ${tone}`} title={t(label)}>
-                      <Icon className={`w-3 h-3 ${spin ? 'animate-spin' : ''}`} />
-                      {checks[key]}
-                    </span>
-                  ))}
-                </span>
-              </>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-ink/80 font-medium tabular-nums">
+                    {t('agentInfo.pr.checksPassed', { passed: checks.passed, total: checks.total })}
+                  </span>
+                  <span className="ml-auto flex items-center gap-1.5 text-[10px] tabular-nums">
+                    {CHECK_COUNTERS.filter((counter) => checks[counter.key] > 0).map(({ key, Icon, tone, label, spin }) => (
+                      <span key={key} className={`flex items-center gap-0.5 ${tone}`} title={t(label)}>
+                        <Icon className={`w-3 h-3 ${spin ? 'animate-spin' : ''}`} />
+                        {checks[key]}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+                <div className="h-1 rounded-full bg-surface-strong overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${checksTone}`} style={{ width: `${checksProgress}%` }} />
+                </div>
+                {(runningChecks.length > 0 || failedChecks.length > 0) && (
+                  <div className="rounded-md bg-surface-sunken p-1.5 space-y-1">
+                    {runningChecks.length > 0 && (
+                      <CheckNames names={runningChecks} tone="text-blue" label={t('agentInfo.pr.runningChecks')} />
+                    )}
+                    {failedChecks.length > 0 && (
+                      <CheckNames names={failedChecks} tone="text-red" label={t('agentInfo.pr.failedChecks')} />
+                    )}
+                  </div>
+                )}
+              </div>
             ) : (
-              <span className="text-text-secondary/50 italic">{t('agentInfo.pr.noChecks')}</span>
+              <span className="text-xs text-text-secondary/50 italic">{t('agentInfo.pr.noChecks')}</span>
             )}
-          </div>
-          {runningChecks.length > 0 && (
-            <CheckNames names={runningChecks} tone="text-blue" label={t('agentInfo.pr.runningChecks')} />
-          )}
-          {failedChecks.length > 0 && (
-            <CheckNames names={failedChecks} tone="text-red" label={t('agentInfo.pr.failedChecks')} />
-          )}
-        </div>
-      )}
+          </Cell>
+        )}
 
-      {/* Mergeability — absent means unknown, never a conflict */}
-      {showMergeable && (() => {
-        const { Icon, tone, label } = MERGEABLE_ROWS[String(metadata?.prMergeable ?? 'unknown') as keyof typeof MERGEABLE_ROWS]
-        return (
-          <div className="flex items-center gap-1.5 text-xs">
-            <Icon className={`w-3.5 h-3.5 ${tone}`} />
-            <span className={tone}>{t(label)}</span>
-          </div>
-        )
-      })()}
+        {/* Mergeability — absent means unknown, never a conflict */}
+        {showMergeable && (() => {
+          const { Icon, tone, label } = MERGEABLE_ROWS[String(metadata?.prMergeable ?? 'unknown') as keyof typeof MERGEABLE_ROWS]
+          return (
+            <Cell icon={<Icon className={`w-3.5 h-3.5 ${tone}`} />}>
+              <span className={`text-xs ${tone}`}>{t(label)}</span>
+            </Cell>
+          )
+        })()}
 
-      {/* Comment counters, split by where they were left */}
-      {commentRows.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-text-secondary/70">
-          <MessagesSquare className="w-3.5 h-3.5 text-blue" />
-          {commentRows.map((row) => (
-            <span key={row.label} className="flex items-center gap-1">
-              <span className="text-ink/80 font-medium tabular-nums">{row.value}</span>
-              {t(row.label)}
+        {/* Comment counters, split by where they were left */}
+        {commentRows.length > 0 && (
+          <Cell icon={<MessagesSquare className="w-3.5 h-3.5 text-blue" />}>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-text-secondary/70">
+              {commentRows.map((row) => (
+                <span key={row.label} className="flex items-center gap-1">
+                  <span className="text-ink/80 font-medium tabular-nums">{row.value}</span>
+                  {t(row.label)}
+                </span>
+              ))}
+            </div>
+          </Cell>
+        )}
+
+        {/* Who said it */}
+        {authors.length > 0 && (
+          <Cell icon={<Users className="w-3.5 h-3.5 text-text-secondary/60" />}>
+            <span className="block text-[11px] text-text-secondary/70 truncate" title={authors.join(', ')}>
+              {t('agentInfo.pr.authors')} {authors.join(', ')}
             </span>
-          ))}
-        </div>
-      )}
+          </Cell>
+        )}
+      </div>
 
-      {/* Who said it */}
-      {authors.length > 0 && (
-        <div className="flex items-center gap-1.5 text-[10px] text-text-secondary/60 min-w-0">
-          <Users className="w-3 h-3 flex-shrink-0" />
-          <span className="truncate" title={authors.join(', ')}>
-            {t('agentInfo.pr.authors')} {authors.join(', ')}
-          </span>
-        </div>
-      )}
-
-      {/* The commands move into the card, but they keep the conditions that made
-          them meaningful: offering "/magic:done" on a freshly opened PR, or
-          "/magic:resolve" with no review to address, is an affordance that lies.
-          Legacy rows carry `prReviewStatus` and `prMerged`, so both still work
-          without any of the new fields. */}
-      {(showResolve || showDone) && (
-        <div className="flex items-center gap-1.5 pt-0.5">
-          {showResolve && (
-            <button
-              onClick={() => runSlashCommand(agentId, '/magic:resolve', t)}
-              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-red/10 hover:bg-red/20 border border-red/20 rounded-md text-red text-xs font-medium transition-colors"
-            >
-              <Wrench className="w-3 h-3" />
-              {t('agentInfo.launchResolve')}
-            </button>
-          )}
-          {showDone && (
-            <button
-              onClick={() => runSlashCommand(agentId, '/magic:done', t)}
-              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-green/10 hover:bg-green/20 border border-green/20 rounded-md text-green text-xs font-medium transition-colors"
-            >
-              <CheckCircle className="w-3 h-3" />
-              {t('agentInfo.launchDone')}
-            </button>
-          )}
-        </div>
-      )}
+      {/* Footer — the actions, with the freshness of everything above them.
+          The commands keep the conditions that made them meaningful: offering
+          "/magic:done" on a freshly opened PR, or "/magic:resolve" with no review
+          to address, is an affordance that lies. Legacy rows carry
+          `prReviewStatus` and `prMerged`, so both still work without any of the
+          new fields. */}
+      <div className="border-t border-line-subtle px-2 py-1.5 flex items-center gap-1.5">
+        {showResolve && (
+          <button
+            onClick={() => runSlashCommand(agentId, '/magic:resolve', t)}
+            className="flex items-center gap-1.5 px-2 py-1 bg-red/10 hover:bg-red/20 rounded-md text-red text-[11px] font-medium transition-colors"
+          >
+            <Wrench className="w-3 h-3" />
+            {t('agentInfo.launchResolve')}
+          </button>
+        )}
+        {showDone && (
+          <button
+            onClick={() => runSlashCommand(agentId, '/magic:done', t)}
+            className="flex items-center gap-1.5 px-2 py-1 bg-green/10 hover:bg-green/20 rounded-md text-green text-[11px] font-medium transition-colors"
+          >
+            <CheckCircle className="w-3 h-3" />
+            {t('agentInfo.launchDone')}
+          </button>
+        )}
+        <span className="ml-auto text-[10px] text-text-secondary/50 truncate">{checkedLabel}</span>
+      </div>
     </div>
   )
 }

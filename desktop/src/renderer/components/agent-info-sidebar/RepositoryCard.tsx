@@ -1,4 +1,4 @@
-import { GitBranch, Copy, Check, ExternalLink, ArrowRight, X } from 'lucide-react'
+import { GitBranch, Copy, Check, ArrowRight, X } from 'lucide-react'
 import { GitHubIcon, VSCodeIcon } from './icons'
 import { ScriptsDropdown } from './ScriptsDropdown'
 import { PRWatchCard } from './PRWatchCard'
@@ -236,23 +236,13 @@ export function RepositoryCard({
         </div>
       )}
 
-      {/* Per-repo PR button */}
-      {prUrl && (
-        <button
-          onClick={() => window.electronAPI.shell.openExternal(prUrl)}
-          className="w-full flex items-center justify-between bg-accent/10 hover:bg-accent/20 rounded-md p-2 mt-2 border border-accent/20 transition-colors group cursor-pointer"
-        >
-          <div className="flex items-center gap-1.5">
-            <GitHubIcon className="w-3.5 h-3.5 text-accent/70 group-hover:text-accent transition-colors" />
-            <span className="text-accent text-xs font-medium group-hover:text-accent transition-colors">{t('agentInfo.viewPullRequest')}</span>
-          </div>
-          <ExternalLink className="w-3 h-3 text-accent/50 group-hover:text-accent transition-colors" />
-        </button>
-      )}
-
       {/* Dedicated PR card. Keyed off `prUrl` alone, deliberately: when the watcher
           is switched off the card still shows the last snapshot, dated, instead of
-          vanishing along with the polling. */}
+          vanishing along with the polling.
+
+          It carries the link to GitHub itself — its header is the link — so the
+          accent "View pull request" button that used to sit right above it is
+          gone: one PR, one card. */}
       {prUrl && <PRWatchCard prUrl={prUrl} agentId={agentId} metadata={repoMetadata} />}
     </div>
   )
