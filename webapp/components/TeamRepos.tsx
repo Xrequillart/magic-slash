@@ -111,7 +111,16 @@ function RepoCard({
         }`}
       >
         <Chevron className={`h-4 w-4 shrink-0 text-muted ${hasAgents ? '' : 'opacity-0'}`} />
-        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
+        {/* Same repository tile as the organization list and the repository page:
+            the row's color tints the icon rather than standing alone as a dot.
+            `row.color` always resolves — buildTeamRows falls back to the palette —
+            so there is no colorless branch to handle here. */}
+        <span
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: `${row.color}1f`, color: row.color }}
+        >
+          <FolderGit2 className="h-3.5 w-3.5" />
+        </span>
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{row.name}</span>
         <span className="shrink-0 text-xs text-muted">{agentCountLabel(row.agents.length, t)}</span>
         {row.prCount > 0 && <Badge tone="purple">{t('team.onPr', { count: row.prCount })}</Badge>}
