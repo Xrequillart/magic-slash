@@ -94,6 +94,14 @@ export const REVIEWS_PAGE_QUERY = `query($owner:String!,$repo:String!,$number:In
  */
 const MAX_REVIEW_PAGES = 10
 
+/**
+ * Page failures worth one retry: a dropped connection or a transient 5xx is
+ * usually gone by the next call. `no-token`, `forbidden`, `not-found` and
+ * `rate-limited` are states, not blips — retrying them fails identically and
+ * spends budget we were just told we do not have.
+ */
+const RETRYABLE_PAGE_ERRORS = new Set<PRWatchError>(['network'])
+
 // --- Response shapes -------------------------------------------------------
 // Everything is optional: a partial `data` alongside `errors` is a documented
 // GitHub behaviour, and every reader below tolerates a hole.
@@ -460,6 +468,12 @@ async function postGraphQL(
  * A failure here is deliberately NOT fatal: an incomplete review history still
  * yields a usable snapshot, and returning an error would blank a card over an
  * edge case. The caller keeps whatever pages were collected.
+ *
+ * Giving up is not free either, though — an abandoned page can drop a reviewer's
+ * latest verdict, so the card would show `pending` for an approved PR. Since the
+ * likeliest cause is a transient blip on one request, each page gets ONE retry
+ * before the walk stops; a rate-limit or auth failure gives up immediately,
+ * because retrying those is guaranteed to fail again and only burns budget.
  */
 async function fetchOlderReviews(
   owner: string,
@@ -472,14 +486,20 @@ async function fetchOlderReviews(
   let hasMore = firstPage.pageInfo?.hasPreviousPage === true
 
   for (let page = 0; page < MAX_REVIEW_PAGES && hasMore && cursor; page += 1) {
-    const result = await postGraphQL(
-      REVIEWS_PAGE_QUERY,
-      { owner, repo, number, before: cursor },
-      owner,
-      repo,
-      number,
-    )
-    if ('error' in result) break
+    const variables = { owner, repo, number, before: cursor }
+    let result = await postGraphQL(REVIEWS_PAGE_QUERY, variables, owner, repo, number)
+
+    if ('error' in result && RETRYABLE_PAGE_ERRORS.has(result.error)) {
+      result = await postGraphQL(REVIEWS_PAGE_QUERY, variables, owner, repo, number)
+    }
+
+    if ('error' in result) {
+      console.warn(
+        `[github-graphql] Review history for ${owner}/${repo}#${number} is incomplete: ` +
+        `older page failed (${result.error}). The verdict is derived from the ${collected.length + 100} newest reviews.`,
+      )
+      break
+    }
 
     const connection = result.pullRequest.reviews
     const nodes = (connection?.nodes ?? []).filter((n): n is GQLReviewNode => !!n)

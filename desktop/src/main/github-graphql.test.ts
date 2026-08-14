@@ -181,10 +181,40 @@ describe('fetchPRStatusGraphQL', () => {
         .mockResolvedValueOnce(graphQLResponse(truncated([
           { author: { login: 'alice' }, state: 'APPROVED', submittedAt: '2025-01-02T09:00:00Z', body: 'ok' },
         ])))
-        .mockRejectedValueOnce(new Error('socket hang up'))
+        .mockRejectedValue(new Error('socket hang up'))
 
       const snapshot = snapshotOf(await fetchPRStatusGraphQL('o', 'r', 1))
       expect(snapshot.status).toBe('approved')
+    })
+
+    it('retries a transient page failure once before giving up', async () => {
+      // Abandoning a page can drop a reviewer's latest verdict, so a blip on one
+      // request must not be the end of the walk.
+      mockFetch
+        .mockResolvedValueOnce(graphQLResponse(truncated([
+          { author: { login: 'greptile' }, state: 'COMMENTED', submittedAt: '2025-01-02T09:00:00Z', body: 'x' },
+        ])))
+        .mockRejectedValueOnce(new Error('socket hang up'))
+        .mockResolvedValueOnce(graphQLResponse(olderPage([
+          { author: { login: 'alice' }, state: 'APPROVED', submittedAt: '2025-01-01T08:00:00Z', body: 'LGTM' },
+        ])))
+
+      const snapshot = snapshotOf(await fetchPRStatusGraphQL('o', 'r', 1))
+      // 1 first page + 1 failed page + 1 successful retry.
+      expect(mockFetch).toHaveBeenCalledTimes(3)
+      expect(snapshot.status).toBe('approved')
+    })
+
+    it('does not retry a rate-limited page', async () => {
+      // Rate limiting is a state, not a blip: an immediate second call fails the
+      // same way and spends budget GitHub just said we do not have.
+      mockFetch
+        .mockResolvedValueOnce(graphQLResponse(truncated([])))
+        .mockResolvedValue(graphQLResponse({ errors: [{ type: 'RATE_LIMITED', message: 'quota' }] }))
+
+      await fetchPRStatusGraphQL('o', 'r', 1)
+      // 1 first page + 1 rate-limited page, and no retry after it.
+      expect(mockFetch).toHaveBeenCalledTimes(2)
     })
 
     it('stops after the page ceiling instead of looping forever', async () => {
