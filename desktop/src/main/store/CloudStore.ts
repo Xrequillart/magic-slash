@@ -6,6 +6,7 @@ import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
 import { mapOrgAgentRow, type OrgAgentRow } from '../cloud/realtime'
 import type { ConnectivityStatus, Store } from './Store'
+import { enqueuePendingArchive, resolvePendingArchive } from './pending-archives'
 import {
   applySettingsRow,
   configToSettingsRow,
@@ -57,6 +58,49 @@ interface OrgActivityEventRow {
   ticket_id: string | null
   repositories: string[]
   occurred_at: string
+}
+
+/**
+ * The app id where archiving cannot erase it: inside the metadata jsonb.
+ *
+ * PostgREST's jsonb path syntax — `->` walks, `->>` takes the leaf as text, which is
+ * what makes it comparable to a `claude-…` string. The same path migration
+ * 20260814090000 backfilled `app_agent_id` from, and the same one fromAgentRow falls
+ * back to. Its column namesake is nulled by the archive statement itself, so this is
+ * the ONLY way to recognise a row that is already archived. See isAlreadyArchived.
+ */
+const APP_ID_IN_METADATA = 'metadata->__app->>id'
+
+/**
+ * How many rows the already-archived probe reads.
+ *
+ * More than one because an app id may legitimately repeat across ARCHIVED rows (see
+ * isAlreadyArchived), bounded because the answer is a yes/no and a user who cycled
+ * one id a hundred times has already been answered by the first few.
+ */
+const ARCHIVED_PROBE_LIMIT = 20
+
+/**
+ * What the already-archived probe could establish — three states, not a boolean.
+ *
+ * `live` and `unknown` used to be the same answer (`false`), and they have OPPOSITE
+ * consequences for the write-ahead entry. `live` is a verdict: the row exists and is
+ * not stamped, so this update will match exactly as many rows next time and the
+ * entry must go. `unknown` is the absence of a verdict — a dropped connection, an
+ * expired token, PostgREST answering 5xx — and dropping the entry there voids the
+ * retry guarantee at the precise moment the backend is flaky, which is the moment
+ * the spool exists for. It also blamed the wrong thing, reporting `no agent row
+ * matched` for a question that was never answered.
+ */
+type ArchiveProbe =
+  | { state: 'archived' }
+  | { state: 'live' }
+  | { state: 'unknown'; reason: string }
+
+/** The message of whatever PostgREST (or the transport) handed back. */
+function probeFailure(error: unknown): string {
+  const message = (error as { message?: unknown } | null)?.message
+  return typeof message === 'string' && message !== '' ? message : 'the query failed'
 }
 
 /**
@@ -1042,19 +1086,75 @@ export class CloudStore implements Store {
    * Queued behind the pending agent writes (see queueAgentWrite) so it cannot drop
    * the id→uuid binding from under a save that is still using it, and so a save
    * that was already in flight cannot re-upsert the row it just stamped archived.
+   *
+   * Write-ahead logged (see pending-archives): the close is on disk before this
+   * method even joins the queue, so it is replayed rather than lost when the write
+   * cannot be made now — and when it CAN be made and still matches nothing, that is
+   * reported instead of passing for success.
    */
   async archiveAgent(appId: string): Promise<void> {
-    return this.queueAgentWrite(() => this.archiveAgentRow(appId))
+    // Ahead of the QUEUE, not merely ahead of the PATCH — and synchronously, before
+    // this method's first await. Inside archiveAgentRow the enqueue would run only
+    // once the agent-write chain had drained, and that chain is routinely holding a
+    // network round-trip: writeAgents() fires on every metadata mutation and
+    // loadAgents rides the same chain. Quit in that window and nothing was ever
+    // spooled — which is failure mode 3 of the ticket, the close whose PATCH dies
+    // with the process, and there is deliberately no `before-quit` hook to catch it
+    // (Electron does not await that handler anyway).
+    //
+    // loadSession() rather than userContext(): the uid has to be read WITHOUT an
+    // await, since awaiting anything at all is what this line exists to avoid. It is
+    // the same synchronous read context()/userContext() do, so it yields the same
+    // uid they would. Empty when no session is loaded, which the spool tolerates by
+    // design — replaying such an entry is scoped by owner_id all the same (see the
+    // header of pending-archives).
+    //
+    // The answer matters: everything downstream that stays QUIET about an
+    // unfinished archive does so because this file holds the intent. If the spool
+    // could not be written, that justification is gone and silence becomes the
+    // original bug again.
+    const spooled = enqueuePendingArchive({ appId, uid: loadSession()?.user?.id ?? '' })
+
+    return this.queueAgentWrite(() => this.archiveAgentRow(appId, spooled))
   }
 
-  private async archiveAgentRow(appId: string): Promise<void> {
+  private async archiveAgentRow(appId: string, spooled = true): Promise<void> {
     // Read the uuid before any await: a concurrent write must not observe a
-    // half-updated map, and callers flush usage right before closing.
+    // half-updated map, and callers flush usage right before closing. It may
+    // legitimately be missing — the binding is process-local, so a cold map (a
+    // close before the first hydration, a replay after a restart) knows nothing.
+    // That is a reason to match the row differently, not a reason to give up: an
+    // archive that does not happen is an agent that comes back live on the next
+    // launch.
     const uuid = this.agentIdMap.get(appId)
-    if (!uuid) return
 
-    const ctx = await this.context()
-    if (!ctx) return
+    // The write-ahead entry is already on disk — archiveAgent() spooled it before
+    // queueing this task, which is the only placement that survives a quit while
+    // another agent write holds the chain. Nothing to record here; from here on the
+    // job is to SETTLE that entry, and to leave it alone whenever the outcome is
+    // still open.
+
+    // userContext, not context: this write never reads ctx.orgId — it is scoped by
+    // owner_id — so requiring a resolved membership only meant silently dropping
+    // the archives of anyone working on personal repositories alone.
+    const ctx = await this.userContext()
+    if (!ctx) {
+      // Offline, no session, or cloud disabled. The entry stays in the spool and
+      // hydration already hides the agent, so this is a DEFERRED write, not a lost
+      // one — nothing to report to the user, and nothing to throw at the caller.
+      //
+      // Unless the spool never took it. Then there is no entry to replay and no
+      // hydration filter hiding the agent: the close would vanish here in silence
+      // and the agent would come back with a fresh PTY at the next launch, which is
+      // precisely what deferring quietly is allowed to do only when the intent is
+      // durable. Report it instead — the toast is the only remaining trace.
+      if (!spooled) {
+        throw new Error(
+          `archiveAgent failed: ${appId} could not be written now and could not be spooled for retry`
+        )
+      }
+      return
+    }
 
     // Scoped by owner, not by org: an agent on a personal repo has no org, and
     // ownership is the real permission boundary anyway.
@@ -1067,18 +1167,139 @@ export class CloudStore implements Store {
     // in the database yet filtered out of every read. Null is also what keeps the
     // unique index total-index-safe: any number of archived rows may share an app
     // id, because null keys are distinct (see 20260814090000).
-    const { error } = await ctx.client
+    const patch = ctx.client
       .from('agents')
       .update({ archived_at: new Date().toISOString(), app_agent_id: null })
       .eq('owner_id', ctx.uid)
-      .eq('id', uuid)
-      .is('archived_at', null)
+
+    // The uuid when the map has it, the app id ONLY as the cold-map fallback —
+    // never the other way round. fromAgentRow reads the app id from the column,
+    // the jsonb, then the uuid precisely because an older installed build still
+    // upserts `onConflict: 'id'` and leaves the column null; migration
+    // 20260814090000 backfilled the rows that existed then, not the ones such a
+    // build writes afterwards. Matching on app_agent_id alone would find 0 rows
+    // for those and report an archive that in fact should have worked.
+    const scoped = uuid ? patch.eq('id', uuid) : patch.eq('app_agent_id', appId)
+
+    // `.select()` is what turns "the statement ran" into "a row changed". Without
+    // it PostgREST answers the same for 0 rows matched as for 1, so every way this
+    // write can miss its row — a stale binding, a filter that matches nothing —
+    // reported as a success.
+    const { data, error } = await scoped.is('archived_at', null).select('id')
     if (error) throw new Error(`archiveAgent failed: ${error.message}`)
 
+    if ((data ?? []).length > 0) {
+      this.settleArchive(appId, ctx.uid)
+      return
+    }
+
+    // Zero rows. Two very different situations look identical from here, and only
+    // the row itself can tell them apart: the agent was ALREADY archived (a second
+    // close matches nothing, since app_agent_id is null and archived_at is set), or
+    // the update never found its agent at all.
+    //
+    // Asked with or WITHOUT a uuid, which is the whole point of the write-ahead
+    // spool: flushPendingArchives() runs before ensureHydrated(), so the canonical
+    // replay — the first PATCH committed, its response was lost with the process —
+    // arrives here on a cold map. Skipping the question there would throw
+    // `no agent row matched` and toast a failure for an archive that provably
+    // succeeded, which is the exact failure this ticket removes.
+    const probe = await this.isAlreadyArchived(ctx, uuid, appId)
+
+    if (probe.state === 'archived') {
+      this.settleArchive(appId, ctx.uid)
+      return
+    }
+
+    if (probe.state === 'unknown') {
+      // The probe never got an answer, so nothing has been proved about this agent.
+      // KEEP the entry: this is a transient backend failure, and the connectivity
+      // gate will replay the close once the backend answers again — dropping it here
+      // would spend the retry guarantee on the one condition it was written for. The
+      // message names the probe, because `no agent row matched` would assert
+      // something this pass is in no position to assert.
+      throw new Error(`archiveAgent failed: could not confirm whether ${appId} is already archived: ${probe.reason}`)
+    }
+
+    // A genuine miss: the row is there and still live, or it is gone entirely. Drop
+    // the spool entry first: replaying this exact update would match exactly as many
+    // rows next time, and an entry that can never be resolved would hide the app id
+    // from every hydration forever. Then throw, so config/agents.ts reports the
+    // failure instead of the user discovering it when the agent reappears.
+    //
+    // `unmatched`, which is what stops this from eating an unattributed entry. A
+    // close recorded with no session is replayed under whoever signs in next; if that
+    // guess was wrong the update lands here, and deleting the entry would destroy the
+    // real owner's only durable record of it.
+    resolvePendingArchive(appId, ctx.uid, 'unmatched')
+    throw new Error(`archiveAgent failed: no agent row matched ${appId}`)
+  }
+
+  /** The archive landed: forget the pending entry and the now-meaningless bindings. */
+  private settleArchive(appId: string, uid: string): void {
+    resolvePendingArchive(appId, uid, 'landed')
     // The local binding goes too: nothing in this process should keep pointing an
     // app id at a row that no longer answers to it.
     this.agentIdMap.delete(appId)
     this.agentRepoKey.delete(appId)
+  }
+
+  /**
+   * Whether the row this archive targeted is already stamped — i.e. the update
+   * matched nothing because the work was done, not because it was lost.
+   *
+   * A plain read of the caller's own row: `agents_select` (migration
+   * 20260727160000) lets an owner read back their agents, personal null-org ones
+   * included, so no policy has to change for this. Never `archived` on a doubt —
+   * reporting a doubtful archive is the pessimistic direction, and the right one.
+   *
+   * But a read that FAILS answers `unknown`, not `live`: it establishes nothing, and
+   * treating it as a verdict would delete the durable entry over a dropped
+   * connection. A read that succeeds and finds nothing does answer `live` — a row
+   * that is not there will not be there next time either (see ArchiveProbe).
+   *
+   * Two ways in, because the archive itself destroys the obvious one. Archiving
+   * nulls `app_agent_id` in the same statement that stamps `archived_at`, so the
+   * column cannot find an already-archived row, and the uuid is only known while
+   * the process that hydrated the map is still alive. What survives BOTH is the
+   * copy in the jsonb: toAgentRow always writes `metadata.__app.id` (it is the
+   * rung fromAgentRow falls back to, and what migration 20260814090000 backfilled
+   * the column from), and no archive path ever touches metadata.
+   */
+  private async isAlreadyArchived(
+    ctx: { client: SupabaseClient; uid: string },
+    uuid: string | undefined,
+    appId: string,
+  ): Promise<ArchiveProbe> {
+    const scoped = ctx.client.from('agents').select('archived_at').eq('owner_id', ctx.uid)
+
+    // Warm map: the uuid is the primary key, so at most one row can answer.
+    if (uuid) {
+      const { data, error } = await scoped.eq('id', uuid).maybeSingle()
+      if (error) return { state: 'unknown', reason: probeFailure(error) }
+      const row = data as { archived_at?: string | null } | null
+      // No row is a verdict of its own: the agent this update targeted does not
+      // exist under this owner, and no amount of replaying will make it appear.
+      return row?.archived_at ? { state: 'archived' } : { state: 'live' }
+    }
+
+    // Cold map — a replay after a restart, or a close before the first hydration.
+    // NOT maybeSingle: several rows may legitimately carry this app id in their
+    // jsonb, because the invariant "only a LIVE agent holds an app id" is enforced
+    // on the column alone (20260814090000). Closing and reusing an id leaves one
+    // archived row per cycle, and the duplicates that migration folded are archived
+    // rows carrying it too.
+    const { data, error } = await scoped.eq(APP_ID_IN_METADATA, appId).limit(ARCHIVED_PROBE_LIMIT)
+    if (error) return { state: 'unknown', reason: probeFailure(error) }
+
+    const rows = (data ?? []) as { archived_at?: string | null }[]
+    // EVERY row, not merely one of them. The update above already proved no live row
+    // holds this id in the COLUMN; a live row that still matches here is one an older
+    // build wrote with a null column, and for it the archive genuinely did not
+    // happen. Answering `archived` on the strength of an unrelated archived namesake
+    // would swallow exactly the loss this path exists to report.
+    const archived = rows.length > 0 && rows.every((row) => Boolean(row.archived_at))
+    return archived ? { state: 'archived' } : { state: 'live' }
   }
 
   /**

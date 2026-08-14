@@ -34,6 +34,29 @@ vi.mock('../cloud/realtime', () => ({
   mapOrgAgentRow: vi.fn(),
 }))
 
+// The archive spool is a real file in the real config dir; its own behaviour is
+// covered in pending-archives.test.ts. Here it is a recorder, so these tests can
+// assert WHAT the store spools and settles — the write-ahead entry, and whether an
+// outcome was treated as final — without touching the developer's disk.
+//
+// `writable` mirrors the real return value: whether the intent actually reached the
+// disk. It is what entitles the store to stay quiet about a write it could not make
+// now, so a test can revoke it and check the store stops being quiet.
+const spool = vi.hoisted(() => ({
+  enqueued: [] as { appId: string; uid: string }[],
+  resolved: [] as string[],
+  writable: true,
+}))
+
+vi.mock('./pending-archives', () => ({
+  enqueuePendingArchive: (entry: { appId: string; uid: string }) => {
+    if (!spool.writable) return false
+    spool.enqueued.push(entry)
+    return true
+  },
+  resolvePendingArchive: (appId: string) => { spool.resolved.push(appId) },
+}))
+
 import { CloudStore } from './CloudStore'
 
 // ── Supabase client fake ────────────────────────────────────────────────────
@@ -48,6 +71,22 @@ type QueryResult = { data?: unknown; error?: unknown }
 // A result may be a promise, which is how a test parks a query mid-chain and
 // interleaves another call with it (the builder adopts whatever it is given).
 type PendingResult = QueryResult | PromiseLike<QueryResult>
+/**
+ * The answers a table gives, in call order. An ARRAY is a queue consumed one query
+ * at a time, with the last element sticking; a bare value answers every query. The
+ * queue exists because one query on a table now legitimately follows another and
+ * must answer differently — archiveAgentRow updates, then reads the row back when
+ * the update matched nothing, and that control select is the only thing that tells
+ * an already-archived agent from a lost write.
+ */
+type TableResults = Record<string, PendingResult | PendingResult[]>
+
+/** The next result configured for `table`, consuming one step of a queue. */
+function take(source: TableResults, table: string): PendingResult | undefined {
+  const configured = source[table]
+  if (!Array.isArray(configured)) return configured
+  return configured.length > 1 ? configured.shift() : configured[0]
+}
 
 interface RecordedCall {
   table: string
@@ -56,7 +95,7 @@ interface RecordedCall {
 }
 
 function makeClient(
-  resultsByTable: Record<string, PendingResult>,
+  resultsByTable: TableResults,
   // Keyed by function name. Separate from the table map because an RPC is not a
   // table and shares no builder chain with one: `client.rpc()` resolves straight
   // to { data, error }.
@@ -73,7 +112,6 @@ function makeClient(
   const upserts: Record<string, unknown[]> = {}
 
   function builder(table: string) {
-    const result = resultsByTable[table] ?? { data: [], error: null }
     let upserted = false
     const record = (method: string, args: unknown[]) => calls.push({ table, method, args })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,8 +141,15 @@ function makeClient(
         return b
       },
       delete: (...args: unknown[]) => { record('delete', args); return b },
-      then: (resolve: (v: QueryResult) => unknown, reject?: (e: unknown) => unknown) =>
-        Promise.resolve(upserted ? resultsByUpsert[table] ?? result : result).then(resolve, reject),
+      then: (resolve: (v: QueryResult) => unknown, reject?: (e: unknown) => unknown) => {
+        // An update takes its answer from the table queue like any other query: what
+        // PostgREST returns for `update(...).select(...)` is the rows it MATCHED, and
+        // that is simply this table's next answer.
+        const result = (upserted ? resultsByUpsert[table] : undefined)
+          ?? take(resultsByTable, table)
+          ?? { data: [], error: null }
+        return Promise.resolve(result).then(resolve, reject)
+      },
     }
     return b
   }
@@ -127,6 +172,9 @@ beforeEach(() => {
   h.state.session = { user: { id: UID } }
   h.state.cloudEnabled = true
   h.state.client = null
+  spool.enqueued.length = 0
+  spool.resolved.length = 0
+  spool.writable = true
 })
 
 // ── appendUsage ─────────────────────────────────────────────────────────────
@@ -403,7 +451,7 @@ describe('agents', () => {
     expect(payload.app_agent_id).toBeNull()
 
     // Scoped by owner_id so closing an agent can never reach a teammate's row,
-    // and by `archived_at is null` so a second close is a no-op.
+    // and by `archived_at is null` so a second close matches nothing.
     const updateIndex = calls.findIndex((c) => c.table === 'agents' && c.method === 'update')
     expect(calls.slice(updateIndex).filter((c) => c.method === 'eq')).toEqual([
       { table: 'agents', method: 'eq', args: ['owner_id', UID] },
@@ -412,18 +460,302 @@ describe('agents', () => {
     expect(calls.slice(updateIndex)).toContainEqual({
       table: 'agents', method: 'is', args: ['archived_at', null],
     })
+    // The update asks for the rows it matched. Without this, PostgREST answers the
+    // same whether it stamped one row or none.
+    expect(calls.slice(updateIndex)).toContainEqual({
+      table: 'agents', method: 'select', args: ['id'],
+    })
+    // Confirmed by the database, so the write-ahead entry is settled.
+    expect(spool.resolved).toEqual(['claude-1'])
   })
 
-  it('archiveAgent is a no-op for an agent the store never loaded', async () => {
+  it('archiveAgent records the close on disk before the write, and keeps it there when the write fails', async () => {
+    // The entry has to exist BEFORE the round-trip: Electron does not await
+    // `before-quit`, so nothing can flush a close at quit time — surviving the
+    // process is the only way a close in flight is not lost. A failed write must
+    // leave it alone, or the retry has nothing to retry.
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      agents: [
+        { data: [agentRow('uuid-1', 'claude-1', UID)], error: null }, // loadAgents
+        { data: null, error: { message: 'offline' } }, // the archiving update
+      ],
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents()
+    await expect(store.archiveAgent('claude-1')).rejects.toThrow('archiveAgent failed: offline')
+
+    expect(spool.enqueued).toEqual([{ appId: 'claude-1', uid: UID }])
+    expect(spool.resolved).toEqual([])
+  })
+
+  it('archiveAgent spools the close before the write chain even starts, not after it drains', async () => {
+    // "Write-ahead" has to mean ahead of the QUEUE, not merely ahead of the PATCH.
+    // Spooling from inside the queued task made the entry wait on whatever the
+    // agent-write chain was already holding — and that chain holds a network
+    // round-trip routinely, since writeAgents() fires on every metadata mutation and
+    // loadAgents rides it too. Quit in that window and nothing was ever written to
+    // disk: the close is gone, with no `before-quit` hook to catch it. So the
+    // invariant is about ORDER, and the assertion is made with the chain provably
+    // still blocked.
+    let releaseLoad: (() => void) | undefined
+    const parkedLoad = new Promise<QueryResult>((resolve) => {
+      releaseLoad = () => resolve({ data: [], error: null })
+    })
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      agents: [
+        parkedLoad, // a loadAgents that never comes back until this test says so
+        { data: [{ id: 'uuid-1' }], error: null }, // the archiving update, once unblocked
+      ],
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    const loading = store.loadAgents() // occupies the chain, parked mid-query
+    const archiving = store.archiveAgent('claude-1')
+
+    // Synchronously: not one microtask later, and above all not after `loading`.
+    expect(spool.enqueued).toEqual([{ appId: 'claude-1', uid: UID }])
+    // And still nothing settled — the write has not been attempted yet, let alone
+    // confirmed. Only the intent is durable at this point, which is the whole idea.
+    expect(spool.resolved).toEqual([])
+
+    releaseLoad?.()
+    await loading
+    await archiving
+    expect(spool.resolved).toEqual(['claude-1'])
+  })
+
+  it('archiveAgent still archives an agent the store never loaded, matching on the app id', async () => {
+    // This used to return early: the id→uuid binding is process-local, so an empty
+    // map describes a cold cache — a close before the first hydration, a replay
+    // after a restart — far more often than a nonexistent agent. Returning quietly
+    // there is exactly how a closed agent came back live on the next launch.
     const { client, calls } = makeClient({
       memberships: membershipsOk,
-      agents: { data: [], error: null },
+      // No loadAgents here, so the archiving update is the only query on the table.
+      agents: { data: [{ id: 'uuid-1' }], error: null },
     })
     h.state.client = client
 
     await new CloudStore().archiveAgent('claude-unknown')
 
-    expect(calls.filter((c) => c.table === 'agents')).toEqual([])
+    const updateIndex = calls.findIndex((c) => c.table === 'agents' && c.method === 'update')
+    expect(updateIndex).toBeGreaterThanOrEqual(0)
+    expect(calls.slice(updateIndex).filter((c) => c.method === 'eq')).toEqual([
+      { table: 'agents', method: 'eq', args: ['owner_id', UID] },
+      { table: 'agents', method: 'eq', args: ['app_agent_id', 'claude-unknown'] },
+    ])
+    expect(spool.resolved).toEqual(['claude-unknown'])
+  })
+
+  it('archiveAgent matches on the uuid when it knows it, so a legacy row with a null app id is still archived', async () => {
+    // An older installed build upserts `onConflict: 'id'` and leaves app_agent_id
+    // null, and migration 20260814090000 only backfilled the rows that existed
+    // then. Matching on the app id unconditionally would find 0 rows for those and
+    // report a failure for an archive that should have worked.
+    const legacy = { ...agentRow('uuid-2', 'claude-2', UID), app_agent_id: null }
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [legacy], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents() // the id comes from the jsonb, and still binds to uuid-2
+    await store.archiveAgent('claude-2')
+
+    const updateIndex = calls.findIndex((c) => c.table === 'agents' && c.method === 'update')
+    expect(calls.slice(updateIndex).filter((c) => c.method === 'eq')).toEqual([
+      { table: 'agents', method: 'eq', args: ['owner_id', UID] },
+      { table: 'agents', method: 'eq', args: ['id', 'uuid-2'] },
+    ])
+    expect(spool.resolved).toEqual(['claude-2'])
+  })
+
+  it('archiveAgent treats a re-close of an already archived agent as done, not as a failure', async () => {
+    // The second close matches nothing — app_agent_id is already null and
+    // archived_at is already set — which is indistinguishable from a lost write
+    // until the row itself is read back. Toasting here would report a failure for
+    // the one case where the work is provably finished.
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      agents: [
+        { data: [agentRow('uuid-1', 'claude-1', UID)], error: null }, // loadAgents
+        { data: [], error: null }, // the update matches nothing
+        // The control select: the row is there, and it is stamped.
+        { data: { id: 'uuid-1', archived_at: '2026-08-14T09:00:00.000Z' }, error: null },
+      ],
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents()
+    await expect(store.archiveAgent('claude-1')).resolves.toBeUndefined()
+
+    expect(spool.resolved).toEqual(['claude-1'])
+  })
+
+  it('archiveAgent recognises an already archived row on a cold map, which is the state every replay finds', async () => {
+    // THE case the spool exists for: the first PATCH committed and its response died
+    // with the process. flushPendingArchives() runs BEFORE ensureHydrated(), so the
+    // replay has no id→uuid binding at all — and the row it is looking for holds a
+    // null app_agent_id, so the update matches nothing. Asking for the row by uuid
+    // only, as this did, means never asking on the one path that needs it: the
+    // recovery would throw, toast, and report a failure for a close that worked.
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      agents: [
+        { data: [], error: null }, // the update matches nothing: the row is already stamped
+        // The control select, by the jsonb copy of the app id — the archive statement
+        // nulled the column but has never touched metadata.
+        { data: [{ archived_at: '2026-08-14T09:00:00.000Z' }], error: null },
+      ],
+    })
+    h.state.client = client
+
+    // No loadAgents: a freshly started process, exactly as the flush finds it.
+    await expect(new CloudStore().archiveAgent('claude-1')).resolves.toBeUndefined()
+
+    expect(calls).toContainEqual({
+      table: 'agents', method: 'eq', args: ['metadata->__app->>id', 'claude-1'],
+    })
+    expect(spool.resolved).toEqual(['claude-1'])
+  })
+
+  it('archiveAgent still reports a loss on a cold map when the row it finds is live', async () => {
+    // The jsonb lookup must not turn every miss into a success. A row carrying this
+    // app id in its metadata with a null column and no stamp is an agent an older
+    // build wrote and that is still running — the archive genuinely did not happen,
+    // and this is the one path that can say so.
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      agents: [
+        { data: [], error: null }, // the update matches nothing
+        { data: [{ archived_at: null }], error: null }, // the control select: still live
+      ],
+    })
+    h.state.client = client
+
+    await expect(new CloudStore().archiveAgent('claude-1')).rejects.toThrow('no agent row matched claude-1')
+
+    // Settled all the same: replaying this update would match exactly as many rows
+    // next time, and an entry that can never resolve would hide the id from every
+    // hydration for good.
+    expect(spool.resolved).toEqual(['claude-1'])
+  })
+
+  it('archiveAgent throws when the update matched nothing and the row is not archived', async () => {
+    // The failure this whole path exists to surface: the statement ran, changed
+    // nothing, and the agent is still live. config/agents.ts turns the rejection
+    // into a toast + a rehydrate, instead of the user meeting the agent again on
+    // the next launch.
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      agents: [
+        { data: [agentRow('uuid-1', 'claude-1', UID)], error: null }, // loadAgents
+        { data: [], error: null }, // the update matches nothing
+        // The control select: the row is there, and it is NOT stamped.
+        { data: { id: 'uuid-1', archived_at: null }, error: null },
+      ],
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents()
+    await expect(store.archiveAgent('claude-1')).rejects.toThrow('no agent row matched claude-1')
+
+    // Dropped rather than retried: this update will match exactly as many rows next
+    // time, and an entry that can never resolve would hide the id from hydration
+    // for good.
+    expect(spool.resolved).toEqual(['claude-1'])
+  })
+
+  it('archiveAgent keeps the close spooled when the control select itself fails, and blames the probe', async () => {
+    // The probe answering `false` on ANY error made a transport failure
+    // indistinguishable from a live row — so a flaky backend took the genuine-miss
+    // path, deleted the durable entry and threw `no agent row matched`. That voided
+    // the retry guarantee exactly when it was needed, and misattributed the cause on
+    // the way out. "The row is live" is a verdict; "the probe could not run" is the
+    // absence of one, and only the first may settle the entry.
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      agents: [
+        { data: [agentRow('uuid-1', 'claude-1', UID)], error: null }, // loadAgents
+        { data: [], error: null }, // the update matches nothing
+        // The control select never gets an answer: the connection went away between
+        // the update and this read.
+        { data: null, error: { message: 'fetch failed' } },
+      ],
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents()
+    await expect(store.archiveAgent('claude-1'))
+      .rejects.toThrow('archiveAgent failed: could not confirm whether claude-1 is already archived: fetch failed')
+
+    // Kept, so the connectivity gate replays the close once the backend answers.
+    expect(spool.resolved).toEqual([])
+  })
+
+  it('archiveAgent keeps the close spooled when the cold-map probe fails, which is the state every replay starts from', async () => {
+    // The same hole on the path the spool exists for. A replay runs before
+    // ensureHydrated(), so it has no uuid and probes through the jsonb — and it runs
+    // the instant connectivity flipped to 'ok', which is the likeliest moment for a
+    // read to fail. Dropping the entry there would burn the retry on its first
+    // attempt.
+    const { client } = makeClient({
+      memberships: membershipsOk,
+      agents: [
+        { data: [], error: null }, // the update matches nothing
+        { data: null, error: { message: 'upstream timeout' } }, // the jsonb probe fails
+      ],
+    })
+    h.state.client = client
+
+    // No loadAgents: a freshly started process, exactly as the flush finds it.
+    await expect(new CloudStore().archiveAgent('claude-1'))
+      .rejects.toThrow('could not confirm whether claude-1 is already archived: upstream timeout')
+
+    expect(spool.resolved).toEqual([])
+  })
+
+  it('archiveAgent keeps the close spooled and stays quiet when there is no session to write it with', async () => {
+    // Offline, signed out, or cloud disabled. The connectivity gate replays this on
+    // reconnect and hydration already hides the agent, so a deferred write is not a
+    // lost one — there is nothing here to report to the user.
+    const { client, from } = makeClient({ memberships: membershipsOk, agents: { data: [], error: null } })
+    h.state.client = null // getAuthedClient() → null → userContext() bails
+    void client
+
+    await expect(new CloudStore().archiveAgent('claude-1')).resolves.toBeUndefined()
+
+    expect(from).not.toHaveBeenCalled()
+    expect(spool.enqueued).toEqual([{ appId: 'claude-1', uid: UID }])
+    expect(spool.resolved).toEqual([])
+  })
+
+  it('archiveAgent reports the close instead of deferring quietly when the spool could not take it', async () => {
+    // Same no-session path as above, minus the one thing that made silence
+    // acceptable there. With a read-only or full config dir nothing was written, so
+    // there is no entry for the gate to replay and no pending id for hydration to
+    // hide behind: staying quiet would drop the close on the floor and let the agent
+    // come back with a fresh PTY at the next launch — the very bug this file fixes.
+    // The toast is the only trace left, so it has to fire.
+    const { client, from } = makeClient({ memberships: membershipsOk, agents: { data: [], error: null } })
+    h.state.client = null
+    spool.writable = false
+    void client
+
+    await expect(new CloudStore().archiveAgent('claude-1')).rejects.toThrow(/could not be spooled/)
+
+    expect(from).not.toHaveBeenCalled()
+    expect(spool.enqueued).toEqual([])
+    expect(spool.resolved).toEqual([])
   })
 
   it('an app id reused after archiving cannot land on the archived row', async () => {
