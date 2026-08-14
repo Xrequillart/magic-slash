@@ -1049,7 +1049,6 @@ export const en = {
   'agentInfo.noRepositories': 'No repositories configured',
   'agentInfo.openInEditor': 'Open',
   'agentInfo.scripts': 'Scripts',
-  'agentInfo.launchResolve': 'Launch magic-resolve',
   'agentInfo.launchDone': 'Launch magic-done',
   'agentInfo.files.one': '{count} file',
   'agentInfo.files.other': '{count} files',
@@ -1066,27 +1065,34 @@ export const en = {
   'agentInfo.pr.state.draft': 'Draft',
   'agentInfo.pr.state.merged': 'Merged',
   'agentInfo.pr.state.closed': 'Closed',
+  // The checklist line; the count rides beside it as '{passed}/{total} passed'.
+  'agentInfo.pr.checksLabel': 'CI checks',
   'agentInfo.pr.checksPassed': '{passed}/{total} passed',
   'agentInfo.pr.noChecks': 'no checks',
   'agentInfo.pr.checkPassed': 'Passed',
   'agentInfo.pr.checkFailed': 'Failed',
   'agentInfo.pr.checkRunning': 'Running',
   'agentInfo.pr.checkSkipped': 'Skipped',
-  'agentInfo.pr.runningChecks': 'running:',
-  'agentInfo.pr.failedChecks': 'failing:',
+  // The watcher caps the list it persists; whatever it left out is counted here
+  // rather than silently missing.
+  'agentInfo.pr.checksMore': '+{count} not listed',
   // GitHub computes mergeability lazily and answers UNKNOWN on the first read
   // after a push, so the absence of an answer is its own state — never a conflict.
   'agentInfo.pr.mergeable': 'No conflicts',
   'agentInfo.pr.conflicts': 'Conflicts to resolve',
   'agentInfo.pr.mergeableUnknown': 'Mergeability unknown',
+  // The checklist line; the total rides beside it and the breakdown below it.
+  'agentInfo.pr.commentsLabel': 'Comments',
   'agentInfo.pr.comments': 'comments',
   'agentInfo.pr.commentsInline': 'inline',
   'agentInfo.pr.commentsConversation': 'in conversation',
   'agentInfo.pr.commentsReviews': 'review summaries',
-  'agentInfo.pr.authors': 'from',
   'agentInfo.pr.lastChecked': 'checked {time}',
   'agentInfo.pr.neverChecked': 'never checked',
   'agentInfo.pr.refresh': 'Refresh now',
+  // On the button itself, beside the "checked …" stamp it moves — the tooltip
+  // above carries the "now".
+  'agentInfo.pr.refreshAction': 'Refresh',
   'agentInfo.pr.refreshFailed': 'Could not refresh the pull request',
   'agentInfo.pr.refreshThrottled': 'Just checked — try again in a few seconds',
   // The watcher being off is a setting, not a failure — so it gets its own band,

@@ -1,31 +1,27 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import {
-  AlertCircle,
   AlertTriangle,
   CheckCircle,
   CheckCircle2,
-  Clock,
+  ChevronDown,
+  Circle,
   EyeOff,
-  ExternalLink,
   GitMerge,
   GitPullRequest,
   GitPullRequestClosed,
   GitPullRequestDraft,
-  ListChecks,
   Loader2,
-  MessageSquare,
   MessagesSquare,
   MinusCircle,
   RefreshCw,
   Users,
-  Wrench,
   XCircle,
 } from 'lucide-react'
 import { formatTimestamp } from './utils'
 import { useStore } from '../../store'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 import { showToast } from '../Toast'
-import type { PRChecksSummary, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
+import type { PRCheck, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
 
 interface PRWatchCardProps {
   /**
@@ -45,11 +41,30 @@ interface PRWatchCardProps {
 }
 
 /**
- * The review verdict as a full-width band, the way GitHub itself leads with it.
- * Its tone is the card's headline: everything below is detail, and someone
- * scanning the sidebar should get the verdict from the colour alone.
+ * One line of the card's checklist — "is this box ticked, and if not, why".
+ *
+ * `done` drives the styling rather than the icon: a ticked line steps back to a
+ * muted grey, an open one keeps its own tone, so scanning the card means landing
+ * on what still needs doing rather than on what is already fine.
  */
-const REVIEW_STATUS_BANNERS: Record<
+interface ChecklistItem {
+  Icon: typeof CheckCircle2
+  tone: string
+  label: string
+  done: boolean
+  /** For the one state that is genuinely in motion: checks still running. */
+  spin?: boolean
+}
+
+/**
+ * The review verdict as the header badge, in the slot the PR state used to hold.
+ *
+ * On an open PR the state is the one thing the reader already knows — the card is
+ * there, so the PR is open — while "Changes requested" is what they opened the
+ * sidebar to find out. Same tint scale as `STATE_BADGE`, so whichever of the two
+ * ends up in the slot reads as the same badge.
+ */
+const REVIEW_BADGE: Record<
   NonNullable<RepositoryMetadata['prReviewStatus']>,
   { label: MessageKey; tone: string }
 > = {
@@ -85,27 +100,26 @@ const WATCH_ERROR_LABELS: Record<PRWatchError, { label: MessageKey; fix: Message
   network: { label: 'agentInfo.pr.error.network', fix: 'agentInfo.pr.error.networkFix' },
 }
 
-// One counter per bucket of the checks summary, rendered from the counts alone.
-const CHECK_COUNTERS = [
-  { key: 'passed', Icon: CheckCircle2, tone: 'text-green', label: 'agentInfo.pr.checkPassed', spin: false },
-  { key: 'failed', Icon: XCircle, tone: 'text-red', label: 'agentInfo.pr.checkFailed', spin: false },
-  { key: 'running', Icon: Loader2, tone: 'text-blue', label: 'agentInfo.pr.checkRunning', spin: true },
-  { key: 'skipped', Icon: MinusCircle, tone: 'text-text-secondary/60', label: 'agentInfo.pr.checkSkipped', spin: false },
-] as const satisfies readonly {
-  key: keyof PRChecksSummary
-  Icon: typeof CheckCircle2
-  tone: string
-  label: MessageKey
-  spin: boolean
-}[]
+// One entry per state a single check can be in — the icons of the list inside the
+// checks card, and the same vocabulary the card's own checks line is built from.
+const CHECK_STATES = {
+  passed: { Icon: CheckCircle2, tone: 'text-green', label: 'agentInfo.pr.checkPassed', spin: false },
+  failed: { Icon: XCircle, tone: 'text-red', label: 'agentInfo.pr.checkFailed', spin: false },
+  running: { Icon: Loader2, tone: 'text-blue', label: 'agentInfo.pr.checkRunning', spin: true },
+  skipped: { Icon: MinusCircle, tone: 'text-text-secondary/60', label: 'agentInfo.pr.checkSkipped', spin: false },
+} as const satisfies Record<
+  PRCheck['state'],
+  { Icon: typeof CheckCircle2; tone: string; label: MessageKey; spin: boolean }
+>
 
 // `undefined` is its own entry, not a missing one: GitHub answers UNKNOWN while it
-// computes mergeability, and that must never render as "conflicts".
-const MERGEABLE_ROWS = {
-  true: { Icon: GitMerge, tone: 'text-green', label: 'agentInfo.pr.mergeable' },
-  false: { Icon: AlertTriangle, tone: 'text-red', label: 'agentInfo.pr.conflicts' },
-  unknown: { Icon: CheckCircle, tone: 'text-text-secondary/60', label: 'agentInfo.pr.mergeableUnknown' },
-} as const satisfies Record<string, { Icon: typeof GitMerge; tone: string; label: MessageKey }>
+// computes mergeability, and that must never render as "conflicts" — nor as a tick,
+// which is why the unknown line gets an empty box rather than a check.
+const MERGEABLE_ITEMS = {
+  true: { Icon: CheckCircle2, tone: 'text-green', label: 'agentInfo.pr.mergeable', done: true },
+  false: { Icon: AlertTriangle, tone: 'text-red', label: 'agentInfo.pr.conflicts', done: false },
+  unknown: { Icon: Circle, tone: 'text-text-secondary/60', label: 'agentInfo.pr.mergeableUnknown', done: false },
+} as const satisfies Record<string, Omit<ChecklistItem, 'label'> & { label: MessageKey }>
 
 /**
  * The fields only the watcher ever writes.
@@ -121,6 +135,7 @@ const WATCHER_WRITTEN_FIELDS = [
   'prMerged',
   'prClosed',
   'prChecks',
+  'prCheckList',
   'prMergeable',
   'prReviewStatus',
   'prReviewCommentCount',
@@ -150,19 +165,6 @@ function StateIcon({ state, className = 'w-4 h-4' }: { state: PRState; className
   }
 }
 
-function ReviewStatusIcon({ status }: { status: NonNullable<RepositoryMetadata['prReviewStatus']> }) {
-  switch (status) {
-    case 'approved':
-      return <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
-    case 'changes-requested':
-      return <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-    case 'commented':
-      return <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />
-    case 'pending':
-      return <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-  }
-}
-
 async function runSlashCommand(terminalId: string, command: string, t: Translate) {
   try {
     const result = await window.electronAPI.prWatcher.sendCommand(terminalId, command)
@@ -177,37 +179,102 @@ async function runSlashCommand(terminalId: string, command: string, t: Translate
 }
 
 /**
- * One row of the body: a fixed icon gutter on the left, content on the right.
- *
- * The gutter is what makes the card scannable — every row starts its text on the
- * same x, so the icons read as a column of row types rather than as decoration
- * glued to the front of a sentence. `items-start` because a row is allowed to grow
- * (check names, a long author list) while its icon stays on the first line.
+ * The chip every item on this card is drawn in — a checklist line, the comments —
+ * so the bands read as one grid rather than as separate treatments. The surface is
+ * the commit-hash button's, one shade up from the card it sits on, where
+ * `surface-sunken` punched a dark hole instead.
  */
-function Cell({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+function Chip({ children }: { children: ReactNode }) {
+  return <div className="rounded-md border border-border/30 bg-surface px-2">{children}</div>
+}
+
+/**
+ * A chip holding one item: an icon gutter, what the item is about, and an optional
+ * detail pinned right.
+ *
+ * `min-h-7` rather than a fixed height: every single-line item lands on exactly the
+ * same 28 px — a line carrying a button is no taller than one carrying a word, and a
+ * checklist of ragged boxes stops reading as a list — while a line whose content
+ * wraps is still allowed to grow.
+ *
+ * The icon is a flex item OF the header line, not centred in its own box beside it:
+ * that box only lines up while the line happens to be exactly as tall as it is.
+ *
+ * `toggle` turns the header into a button and gates `children` behind it; `children`
+ * is indented by hand to the same gutter, 16 px of icon plus the 8 px gap.
+ */
+function ItemCard({
+  icon,
+  header,
+  detail,
+  toggle,
+  children,
+}: {
+  icon: ReactNode
+  header: ReactNode
+  /** Pinned right of the header line: a count, or a command. */
+  detail?: ReactNode
+  toggle?: { open: boolean; onToggle: () => void }
+  children?: ReactNode
+}) {
+  const line = (
+    <>
+      <span className="w-4 flex-shrink-0 flex items-center justify-center">{icon}</span>
+      <div className="min-w-0 flex-1">{header}</div>
+      {detail !== undefined && <span className="flex-shrink-0">{detail}</span>}
+      {toggle && (
+        <ChevronDown
+          className={`w-3 h-3 flex-shrink-0 text-text-secondary/50 group-hover:text-ink transition-all ${toggle.open ? '' : '-rotate-90'}`}
+        />
+      )}
+    </>
+  )
+
   return (
-    <div className="flex items-start gap-2">
-      <span className="w-4 flex-shrink-0 flex items-center justify-center pt-px">{icon}</span>
-      <div className="min-w-0 flex-1">{children}</div>
-    </div>
+    <Chip>
+      {toggle ? (
+        <button onClick={toggle.onToggle} className="group w-full min-h-7 py-1 flex items-center gap-2 text-left">
+          {line}
+        </button>
+      ) : (
+        <div className="min-h-7 py-1 flex items-center gap-2">{line}</div>
+      )}
+      {children && (!toggle || toggle.open) && <div className="pb-2 pl-6">{children}</div>}
+    </Chip>
   )
 }
 
-/** A short list of check names, capped upstream at 5. */
-function CheckNames({ names, tone, label }: { names: string[]; tone: string; label: string }) {
+/**
+ * One item of the checklist: the box, what it is about, and an optional detail.
+ *
+ * A card per item rather than one panel of rows, because each line here is a
+ * separate question — green? mergeable? merged? — and giving each its own edge stops
+ * them reading as one paragraph of status.
+ */
+function ChecklistRow({
+  item,
+  detail,
+  toggle,
+  children,
+}: {
+  item: ChecklistItem
+  detail?: ReactNode
+  toggle?: { open: boolean; onToggle: () => void }
+  children?: ReactNode
+}) {
   return (
-    <div className="flex flex-wrap items-center gap-1">
-      <span className="text-[10px] text-text-secondary/50">{label}</span>
-      {names.map((name) => (
-        <span
-          key={name}
-          className={`px-1.5 py-0.5 rounded bg-surface-strong text-[10px] font-mono truncate max-w-[140px] ${tone}`}
-          title={name}
-        >
-          {name}
+    <ItemCard
+      icon={<item.Icon className={`w-3.5 h-3.5 ${item.tone} ${item.spin ? 'animate-spin' : ''}`} />}
+      header={(
+        <span className={`block text-xs truncate ${item.done ? 'text-text-secondary/70' : `font-medium ${item.tone}`}`}>
+          {item.label}
         </span>
-      ))}
-    </div>
+      )}
+      detail={detail}
+      toggle={toggle}
+    >
+      {children}
+    </ItemCard>
   )
 }
 
@@ -215,6 +282,13 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   const t = useT()
   const [refreshing, setRefreshing] = useState(false)
   const [enabling, setEnabling] = useState(false)
+  // `null` means nobody has touched it: until then the checks list follows the data
+  // — a run with something failing or still moving opens itself, a clean one stays
+  // folded — and after a click the reader's choice wins for the life of the card.
+  const [checksExpanded, setChecksExpanded] = useState<boolean | null>(null)
+  // Comments start folded, always: the count is the answer most of the time, and who
+  // said it is the follow-up question.
+  const [commentsOpen, setCommentsOpen] = useState(false)
 
   // Absent means ON — the same reading as the watcher, the IPC handlers and the
   // Settings toggle. Anything else here would show "switched off" on a fresh
@@ -242,9 +316,34 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
     metadata?.prState ??
     (metadata?.prMerged === true ? 'merged' : metadata?.prClosed === true ? 'closed' : undefined)
 
+  // What goes in the header badge. `open` is the one state worth giving up the slot
+  // for: the card being there already says the PR is open, whereas the review
+  // verdict is what someone opens the sidebar to learn. Draft, merged and closed
+  // keep the slot — those say something the verdict cannot — and the state icon on
+  // the left carries the state in every case.
+  const reviewStatus = metadata?.prReviewStatus
+  const badge =
+    state === 'open' && reviewStatus
+      ? { label: t(REVIEW_BADGE[reviewStatus].label), tone: REVIEW_BADGE[reviewStatus].tone }
+      : state
+        ? { label: t(STATE_LABELS[state]), tone: STATE_BADGE[state] }
+        : reviewStatus
+          ? { label: t(REVIEW_BADGE[reviewStatus].label), tone: REVIEW_BADGE[reviewStatus].tone }
+          : undefined
+
   const checks = metadata?.prChecks
-  const runningChecks = metadata?.prRunningChecks ?? []
-  const failedChecks = metadata?.prFailedChecks ?? []
+  // The named checks behind the counts. Rows written before `prCheckList` existed
+  // carry the two capped name arrays instead, and only for the states that were
+  // worth naming then — rebuilt into the same shape so there is one list to render
+  // rather than two code paths, worst first either way.
+  const checkList: PRCheck[] =
+    metadata?.prCheckList ?? [
+      ...(metadata?.prFailedChecks ?? []).map((name) => ({ name, state: 'failed' as const })),
+      ...(metadata?.prRunningChecks ?? []).map((name) => ({ name, state: 'running' as const })),
+    ]
+  // Said out loud rather than silently dropped: the watcher caps the list, and a
+  // card that shows 20 of 34 checks while saying "12/34" invites the wrong count.
+  const hiddenChecks = Math.max(0, (checks?.total ?? 0) - checkList.length)
   const counts = metadata?.prCommentCounts
   const authors = metadata?.prCommentAuthors ?? metadata?.prReviewers ?? []
   const watchError = metadata?.prWatchError
@@ -260,19 +359,23 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   // statement about the watcher.
   const showMergeable = hasSnapshot && state !== 'merged' && state !== 'closed'
 
-  // There is something to address only once a reviewer has actually spoken, and
-  // something to close out only once the PR is merged.
-  const showResolve =
-    metadata?.prReviewStatus === 'changes-requested' || metadata?.prReviewStatus === 'commented'
+  // There is something to close out only once the PR is merged.
   const showDone = state === 'merged' || metadata?.prMerged === true
 
   // Legacy rows have no `prLastCheckedAt`; the review timestamp is the closest
   // honest answer, and "never" is better than a blank when neither exists.
   const checkedAt = metadata?.prLastCheckedAt ?? metadata?.prReviewUpdatedAt
-  const checkedLabel =
-    typeof checkedAt === 'number'
-      ? t('agentInfo.pr.lastChecked', { time: t('relative.ago', { time: formatTimestamp(checkedAt, now, t) }) })
-      : t('agentInfo.pr.neverChecked')
+  const checkedLabel = (() => {
+    if (typeof checkedAt !== 'number') return t('agentInfo.pr.neverChecked')
+    // A read that just landed is the normal outcome of pressing refresh, and
+    // "checked now ago" is not a sentence — the "ago" wrapper is for ages, so it
+    // is skipped inside the first minute. `now` ticks every 30 s, so a stamp
+    // written this second can sit slightly ahead of it: that lands here too,
+    // rather than in a negative age.
+    const age = now - checkedAt
+    const time = age < 60_000 ? t('relative.now') : t('relative.ago', { time: formatTimestamp(checkedAt, now, t) })
+    return t('agentInfo.pr.lastChecked', { time })
+  })()
 
   // Counters are only worth a row once one of them is non-zero. The pre-split
   // total is the fallback for rows written before the buckets existed.
@@ -287,25 +390,40 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
       ? [{ label: 'agentInfo.pr.comments', value: legacyCommentCount }]
       : []
   const commentRows = splitRows.filter((row) => row.value > 0)
+  // The one number the comments line leads with. Summed from the buckets rather than
+  // read from `prReviewCommentCount`, which predates the split and only ever counted
+  // some of them.
+  const commentTotal = counts
+    ? counts.inline + counts.conversation + counts.reviewSummaries
+    : legacyCommentCount
 
-  // The bar answers "how far along" at a glance; the colour answers "is it going
-  // well". Red the moment anything failed — a run that is 9/10 green is still a
-  // red PR — blue while work is in flight, green only once nothing is outstanding.
-  const checksTone =
-    checks && checks.failed > 0 ? 'bg-red' : checks && checks.running > 0 ? 'bg-blue' : 'bg-green'
-  const checksProgress = checks && checks.total > 0 ? Math.round((checks.passed / checks.total) * 100) : 0
+  // The checks line of the checklist: ticked only once the run is over AND nothing
+  // in it failed — a run that is 9/10 green is still a red PR. A repo with no CI at
+  // all gets an empty box rather than a tick: there is nothing to have passed.
+  const checksItem: ChecklistItem | undefined =
+    checks === undefined
+      ? undefined
+      : checks.total === 0
+        ? { Icon: MinusCircle, tone: 'text-text-secondary/60', label: t('agentInfo.pr.noChecks'), done: false }
+        : checks.failed > 0
+          ? { Icon: XCircle, tone: 'text-red', label: t('agentInfo.pr.checksLabel'), done: false }
+          : checks.running > 0
+            ? { Icon: Loader2, tone: 'text-blue', label: t('agentInfo.pr.checksLabel'), done: false, spin: true }
+            : { Icon: CheckCircle2, tone: 'text-green', label: t('agentInfo.pr.checksLabel'), done: true }
 
-  // The body is the only part that can end up with nothing to say: an empty
-  // `border-t` band under the header reads as a rendering bug, so it is rendered
-  // only once at least one cell will be.
-  const showBody =
-    watcherOff ||
+  const checksOpen = checksExpanded ?? (checks !== undefined && (checks.failed > 0 || checks.running > 0))
+
+  // An empty `border-t` band reads as a rendering bug, so both middle bands are
+  // gated on having a line to draw. Only the status bar is unconditional — the
+  // freshness stamp and its button are meaningful even on a card that knows
+  // nothing else yet.
+  const showComments = commentRows.length > 0 || authors.length > 0
+  const showChecklist =
     watchError !== undefined ||
-    metadata?.prReviewStatus !== undefined ||
-    checks !== undefined ||
+    showComments ||
+    checksItem !== undefined ||
     showMergeable ||
-    commentRows.length > 0 ||
-    authors.length > 0
+    showDone
 
   const handleEnableWatcher = async () => {
     setEnabling(true)
@@ -341,22 +459,27 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
     <div className="mt-2 bg-surface rounded-lg border border-line-subtle overflow-hidden">
       {/* Header — the card's identity IS the link to GitHub, which is why the
           separate "View pull request" button below the card could go away. The
-          refresh control stays a sibling: a button inside a button is invalid. */}
-      <div className="flex items-center gap-1.5 p-2">
+          badge sits inside that target: it labels the PR, so clicking it should open
+          the PR rather than land on dead space. The whole row is one
+          generous hit area — the negative margin lets its hover surface reach past
+          the container's padding to 4px from the card edge, while its own padding
+          keeps the text off that edge. No external-link glyph: the title, the
+          repo slug and the tooltip already say where this goes. */}
+      <div className="flex items-center p-2">
         <button
           onClick={() => window.electronAPI.shell.openExternal(prUrl)}
           title={t('agentInfo.viewPullRequest')}
-          className="group flex items-center gap-2 min-w-0 flex-1 text-left rounded-md -m-1 p-1 hover:bg-surface-strong transition-colors"
+          className="group flex items-center gap-2 min-w-0 flex-1 text-left rounded-md -m-1 p-2 hover:bg-surface-strong transition-colors"
         >
           <span className="w-4 flex-shrink-0 flex items-center justify-center">
             {state ? <StateIcon state={state} /> : <GitPullRequest className="w-4 h-4 text-text-secondary" />}
           </span>
-          <span className="min-w-0">
-            <span className="flex items-center gap-1">
-              <span className="text-xs font-medium text-ink/90 truncate group-hover:text-accent transition-colors">
-                {prNumber ? t('agentInfo.pr.number', { number: prNumber }) : t('agentInfo.pr.title')}
-              </span>
-              <ExternalLink className="w-3 h-3 flex-shrink-0 text-text-secondary/40 group-hover:text-accent transition-colors" />
+          <span className="min-w-0 flex-1">
+            {/* Hover brightens the title to full white rather than tinting it: the
+                surface lighting up is already the affordance, and the accent read as
+                a state change on the PR itself. */}
+            <span className="block text-xs font-medium text-ink/90 truncate group-hover:text-ink transition-colors">
+              {prNumber ? t('agentInfo.pr.number', { number: prNumber }) : t('agentInfo.pr.title')}
             </span>
             {repoSlug && (
               <span className="block text-[10px] text-text-secondary/50 truncate" title={repoSlug}>
@@ -364,36 +487,31 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
               </span>
             )}
           </span>
-        </button>
-        {state && (
-          <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${STATE_BADGE[state]}`}>
-            {t(STATE_LABELS[state])}
-          </span>
-        )}
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          title={t('agentInfo.pr.refresh')}
-          className="flex-shrink-0 p-1 rounded text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+          {badge && (
+            // Not upper-cased any more: "CHANGES REQUESTED" is twice the width of
+            // "Open" and would eat the title it sits next to.
+            <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${badge.tone}`}>
+              {badge.label}
+            </span>
+          )}
         </button>
       </div>
 
-      {/* Body — one cell per signal, all sharing the same icon gutter */}
-      {showBody && <div className="border-t border-line-subtle p-2 space-y-2">
-        {/* The setting, not a failure: the watcher is off, so nothing below will
-            ever move. Top of the body and above the errors — an error explains one
-            failed read, this explains why there are no reads at all — and it
-            carries its own fix, the same way each watch error names one. */}
-        {watcherOff && (
+      {/* The setting, not a failure: the watcher is off, so nothing the card could
+          show below would ever move again. Everything else is therefore replaced by
+          this one prompt rather than stacked above a frozen snapshot presented as
+          the state of the PR — and it carries its own fix, the same way each watch
+          error names one. */}
+      {watcherOff ? (
+        <div className="border-t border-line-subtle p-2">
           <div className="flex items-start gap-2 rounded-md bg-surface-sunken px-2 py-1.5">
             <EyeOff className="w-3.5 h-3.5 text-text-secondary/60 flex-shrink-0 mt-px" />
             <div className="min-w-0 flex-1">
               <div className="text-[11px] text-ink/80 font-medium">{t('agentInfo.pr.watcherOff')}</div>
               <div className="text-[10px] text-text-secondary/70">
-                {/* Two different situations behind one setting: a card carrying a
-                    snapshot is dated, one carrying only the link is empty. */}
+                {/* Two different situations behind one setting: a card that has a
+                    snapshot hidden behind it is dated, one carrying only the link
+                    is empty. */}
                 {t(hasSnapshot ? 'agentInfo.pr.watcherOffStale' : 'agentInfo.pr.watcherOffEmpty')}
               </div>
             </div>
@@ -405,130 +523,159 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
               {t('agentInfo.pr.enableWatcher')}
             </button>
           </div>
-        )}
-
-        {/* Why the watcher is blind, and how to fix it. Above the verdict on
-            purpose: a stale verdict is worth less than the reason it is stale. */}
-        {watchError && (
-          <div className="flex items-start gap-2 rounded-md bg-red/10 px-2 py-1.5">
-            <AlertTriangle className="w-3.5 h-3.5 text-red flex-shrink-0 mt-px" />
-            <div className="min-w-0">
-              <div className="text-[11px] text-red font-medium">{t(WATCH_ERROR_LABELS[watchError].label)}</div>
-              <div className="text-[10px] text-text-secondary/70">{t(WATCH_ERROR_LABELS[watchError].fix)}</div>
+        </div>
+      ) : (
+        <>
+        {/* The checklist — everything that has to be true before this PR can ship,
+            one line each, ticked when it is. Straight under the header because it is
+            the band that answers "can this ship", and a list rather than a stack of
+            differently-shaped panels because the shape itself carries the meaning:
+            same gutter, same box, so the open items are the ones that stand out.
+            Rendered whenever any line has something to say. */}
+        {showChecklist && <div className="border-t border-line-subtle p-2 space-y-1">
+          {/* Why the watcher is blind, and how to fix it. Above the verdict on
+              purpose: a stale verdict is worth less than the reason it is stale. */}
+          {watchError && (
+            <div className="flex items-start gap-2 rounded-md border border-red/20 bg-red/10 px-2 py-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-red flex-shrink-0 mt-px" />
+              <div className="min-w-0">
+                <div className="text-[11px] text-red font-medium">{t(WATCH_ERROR_LABELS[watchError].label)}</div>
+                <div className="text-[10px] text-text-secondary/70">{t(WATCH_ERROR_LABELS[watchError].fix)}</div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* The verdict, as a band rather than a row */}
-        {metadata?.prReviewStatus && (() => {
-          const { label, tone } = REVIEW_STATUS_BANNERS[metadata.prReviewStatus]
-          return (
-            <div className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium ${tone}`}>
-              <ReviewStatusIcon status={metadata.prReviewStatus} />
-              {t(label)}
-            </div>
-          )
-        })()}
+          {/* No review line here: the verdict is the header badge now, and stating
+              it twice on one card made the checklist look longer than it is. */}
 
-        {/* Checks — count, progress bar, then the per-bucket counters */}
-        {checks && (
-          <Cell icon={<ListChecks className="w-3.5 h-3.5 text-text-secondary/60" />}>
-            {checks.total > 0 ? (
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-ink/80 font-medium tabular-nums">
-                    {t('agentInfo.pr.checksPassed', { passed: checks.passed, total: checks.total })}
-                  </span>
-                  <span className="ml-auto flex items-center gap-1.5 text-[10px] tabular-nums">
-                    {CHECK_COUNTERS.filter((counter) => checks[counter.key] > 0).map(({ key, Icon, tone, label, spin }) => (
-                      <span key={key} className={`flex items-center gap-0.5 ${tone}`} title={t(label)}>
-                        <Icon className={`w-3 h-3 ${spin ? 'animate-spin' : ''}`} />
-                        {checks[key]}
+          {/* Comments — the count on the line, who wrote them behind the fold. Not a
+              box to tick, so no `done` styling: it reports, it does not gate. First of
+              the list because it is the one line that is about people rather than
+              machinery, and the reason anyone opens this card mid-review. */}
+          {showComments && (
+            <ItemCard
+              icon={<MessagesSquare className="w-3.5 h-3.5 text-blue" />}
+              header={<span className="block text-xs truncate text-text-secondary/70">{t('agentInfo.pr.commentsLabel')}</span>}
+              detail={commentTotal > 0 ? (
+                <span className="text-[10px] text-text-secondary/60 tabular-nums">{commentTotal}</span>
+              ) : undefined}
+              toggle={{ open: commentsOpen, onToggle: () => setCommentsOpen(!commentsOpen) }}
+            >
+              <div className="space-y-1">
+                {/* Where they were left, then who left them. Allowed to wrap here —
+                    the fold is open because somebody asked for the detail. */}
+                {commentRows.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-text-secondary/70">
+                    {commentRows.map((row) => (
+                      <span key={row.label} className="flex items-center gap-1">
+                        <span className="text-ink/80 font-medium tabular-nums">{row.value}</span>
+                        {t(row.label)}
                       </span>
                     ))}
-                  </span>
-                </div>
-                <div className="h-1 rounded-full bg-surface-strong overflow-hidden">
-                  <div className={`h-full rounded-full transition-all ${checksTone}`} style={{ width: `${checksProgress}%` }} />
-                </div>
-                {(runningChecks.length > 0 || failedChecks.length > 0) && (
-                  <div className="rounded-md bg-surface-sunken p-1.5 space-y-1">
-                    {runningChecks.length > 0 && (
-                      <CheckNames names={runningChecks} tone="text-blue" label={t('agentInfo.pr.runningChecks')} />
-                    )}
-                    {failedChecks.length > 0 && (
-                      <CheckNames names={failedChecks} tone="text-red" label={t('agentInfo.pr.failedChecks')} />
-                    )}
+                  </div>
+                )}
+                {authors.length > 0 && (
+                  <div className="flex items-start gap-1.5 text-[10px] text-text-secondary/70">
+                    <Users className="w-3 h-3 flex-shrink-0 mt-0.5 text-text-secondary/60" />
+                    <span className="min-w-0">{authors.join(', ')}</span>
                   </div>
                 )}
               </div>
-            ) : (
-              <span className="text-xs text-text-secondary/50 italic">{t('agentInfo.pr.noChecks')}</span>
-            )}
-          </Cell>
-        )}
+            </ItemCard>
+          )}
 
-        {/* Mergeability — absent means unknown, never a conflict */}
-        {showMergeable && (() => {
-          const { Icon, tone, label } = MERGEABLE_ROWS[String(metadata?.prMergeable ?? 'unknown') as keyof typeof MERGEABLE_ROWS]
-          return (
-            <Cell icon={<Icon className={`w-3.5 h-3.5 ${tone}`} />}>
-              <span className={`text-xs ${tone}`}>{t(label)}</span>
-            </Cell>
-          )
-        })()}
-
-        {/* Comment counters, split by where they were left */}
-        {commentRows.length > 0 && (
-          <Cell icon={<MessagesSquare className="w-3.5 h-3.5 text-blue" />}>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-text-secondary/70">
-              {commentRows.map((row) => (
-                <span key={row.label} className="flex items-center gap-1">
-                  <span className="text-ink/80 font-medium tabular-nums">{row.value}</span>
-                  {t(row.label)}
+          {/* Checks — the count beside the label, and the checks themselves folded
+              behind it, one line each with the icon of its own state. No progress
+              bar: on a checklist the box already says whether this one is settled,
+              "9/12" says how far along, and the names say which. The header is only
+              a button when there is a list to unfold. */}
+          {checksItem && (
+            <ChecklistRow
+              item={checksItem}
+              detail={checks && checks.total > 0 ? (
+                <span className="text-[10px] text-text-secondary/60 tabular-nums">
+                  {t('agentInfo.pr.checksPassed', { passed: checks.passed, total: checks.total })}
                 </span>
-              ))}
-            </div>
-          </Cell>
-        )}
+              ) : undefined}
+              toggle={checkList.length > 0
+                ? { open: checksOpen, onToggle: () => setChecksExpanded(!checksOpen) }
+                : undefined}
+            >
+              {checkList.length > 0 && (
+                <ul className="space-y-1">
+                  {checkList.map((check) => {
+                    const { Icon, tone, label, spin } = CHECK_STATES[check.state]
+                    return (
+                      <li key={`${check.state}:${check.name}`} className="flex items-center gap-1.5">
+                        <span className="flex-shrink-0 flex" title={t(label)}>
+                          <Icon className={`w-3 h-3 ${tone} ${spin ? 'animate-spin' : ''}`} />
+                        </span>
+                        <span className="min-w-0 text-[10px] font-mono text-text-secondary/70 truncate" title={check.name}>
+                          {check.name}
+                        </span>
+                      </li>
+                    )
+                  })}
+                  {hiddenChecks > 0 && (
+                    <li className="pl-[18px] text-[10px] text-text-secondary/50">
+                      {t('agentInfo.pr.checksMore', { count: hiddenChecks })}
+                    </li>
+                  )}
+                </ul>
+              )}
+            </ChecklistRow>
+          )}
 
-        {/* Who said it */}
-        {authors.length > 0 && (
-          <Cell icon={<Users className="w-3.5 h-3.5 text-text-secondary/60" />}>
-            <span className="block text-[11px] text-text-secondary/70 truncate" title={authors.join(', ')}>
-              {t('agentInfo.pr.authors')} {authors.join(', ')}
-            </span>
-          </Cell>
-        )}
-      </div>}
+          {/* Conflicts — absent means unknown, never a conflict */}
+          {showMergeable && (() => {
+            const { label, ...rest } = MERGEABLE_ITEMS[String(metadata?.prMergeable ?? 'unknown') as keyof typeof MERGEABLE_ITEMS]
+            return <ChecklistRow item={{ ...rest, label: t(label) }} />
+          })()}
 
-      {/* Footer — the actions, with the freshness of everything above them.
-          The commands keep the conditions that made them meaningful: offering
-          "/magic:done" on a freshly opened PR, or "/magic:resolve" with no review
-          to address, is an affordance that lies. Legacy rows carry
-          `prReviewStatus` and `prMerged`, so both still work without any of the
-          new fields. */}
-      <div className="border-t border-line-subtle px-2 py-1.5 flex items-center gap-1.5">
-        {showResolve && (
+          {/* The last box, and the only one with a command attached: merged, so all
+              that is left is closing the ticket out. Never on the same list as the
+              conflicts line — one needs an open PR, the other a merged one — and
+              legacy rows carry `prMerged`, so it works without any of the new
+              fields. Offered on a freshly opened PR it would be an affordance that
+              lies, which is why it is gated at all. */}
+          {showDone && (
+            <ChecklistRow
+              // Ticked box, merge colour: the shape says the work is done, the
+              // purple keeps GitHub's association the header badge already uses.
+              item={{ Icon: CheckCircle2, tone: 'text-purple', label: t('agentInfo.pr.state.merged'), done: true }}
+              detail={(
+                <button
+                  onClick={() => runSlashCommand(agentId, '/magic:done', t)}
+                  // Fixed 20 px so this chip is exactly as tall as the ones carrying
+                  // a single word — the button is what used to make it the odd one.
+                  className="flex h-5 items-center gap-1.5 px-2 bg-green/10 hover:bg-green/20 rounded-md text-green text-[11px] font-medium transition-colors"
+                >
+                  <CheckCircle className="w-3 h-3" />
+                  {t('agentInfo.launchDone')}
+                </button>
+              )}
+            />
+          )}
+        </div>}
+
+        {/* Status bar — the card's footer, and the one band that is always there:
+            how old everything above it is, and the button that makes it newer.
+            Reading on the left, action on the right, so the button is where the eye
+            already is when the stamp turns out to be stale. */}
+        <div className="border-t border-line-subtle px-2 py-1.5 flex items-center gap-2">
+          <span className="min-w-0 text-[10px] text-text-secondary/50 truncate">{checkedLabel}</span>
           <button
-            onClick={() => runSlashCommand(agentId, '/magic:resolve', t)}
-            className="flex items-center gap-1.5 px-2 py-1 bg-red/10 hover:bg-red/20 rounded-md text-red text-[11px] font-medium transition-colors"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title={t('agentInfo.pr.refresh')}
+            className="ml-auto flex-shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-md border border-line-subtle text-[11px] font-medium text-text-secondary hover:text-ink hover:bg-surface-strong hover:border-border transition-colors disabled:opacity-50"
           >
-            <Wrench className="w-3 h-3" />
-            {t('agentInfo.launchResolve')}
+            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+            {t('agentInfo.pr.refreshAction')}
           </button>
-        )}
-        {showDone && (
-          <button
-            onClick={() => runSlashCommand(agentId, '/magic:done', t)}
-            className="flex items-center gap-1.5 px-2 py-1 bg-green/10 hover:bg-green/20 rounded-md text-green text-[11px] font-medium transition-colors"
-          >
-            <CheckCircle className="w-3 h-3" />
-            {t('agentInfo.launchDone')}
-          </button>
-        )}
-        <span className="ml-auto text-[10px] text-text-secondary/50 truncate">{checkedLabel}</span>
-      </div>
+        </div>
+        </>
+      )}
     </div>
   )
 }
