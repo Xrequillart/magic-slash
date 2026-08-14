@@ -52,11 +52,16 @@ afterAll(() => fs.rmSync(TMP_HOME, { recursive: true, force: true }))
 const claimFiles = () =>
   fs.readdirSync(CONFIG_DIR).filter((f) => f.startsWith('pending-skills.ndjson.claiming.'))
 
-/** Write an abandoned claim, aged so the drain will or will not adopt it. */
-function abandonedClaim(records: object[], ageMs: number): string {
-  const file = path.join(CONFIG_DIR, `pending-skills.ndjson.claiming.9999.${Date.now()}`)
+/**
+ * Write a claim last stamped `sinceLastBeatMs` ago.
+ *
+ * A drain in progress stamps the files it owns every 15s, so the time since the last
+ * stamp — not the file's age — is what says whether anyone still owns it.
+ */
+function claimLastBeat(records: object[], sinceLastBeatMs: number): string {
+  const file = path.join(CONFIG_DIR, `pending-skills.ndjson.claiming.4242.${Date.now()}.0`)
   fs.writeFileSync(file, records.map((r) => JSON.stringify(r)).join('\n') + '\n')
-  const when = new Date(Date.now() - ageMs)
+  const when = new Date(Date.now() - sinceLastBeatMs)
   fs.utimesSync(file, when, when)
   return file
 }
@@ -124,7 +129,7 @@ describe('drainSkillSpool', () => {
     // more, but an upgrade must still pick up whatever one of them left behind — and
     // ahead of the fresh spool, so the older runs are recorded first.
     fs.writeFileSync(DRAINING_FILE, JSON.stringify(start('magic-done')) + '\n')
-    const old = new Date(Date.now() - 120_000)
+    const old = new Date(Date.now() - 20 * 60_000)
     fs.utimesSync(DRAINING_FILE, old, old)
     spool(start('magic-commit'))
 
@@ -324,22 +329,50 @@ describe('claiming the spool', () => {
     expect(recorded().map((r) => r.skill)).toEqual(['magic-commit', 'magic-pr'])
   })
 
-  it('adopts a claim abandoned by a process that died mid-drain', async () => {
-    abandonedClaim([start('magic-review')], 120_000)
+  it('adopts a claim that stopped beating', async () => {
+    // Four missed beats: the process that owned this is gone, and nothing else will ever
+    // come back for its runs.
+    claimLastBeat([start('magic-review')], 90_000)
 
     expect(await drainSkillSpool()).toBe(1)
     expect(recorded().map((r) => r.skill)).toEqual(['magic-review'])
     expect(claimFiles()).toEqual([])
   })
 
-  it('leaves a claim another drain is still working on alone', async () => {
-    // Fresh mtime means a live claim in another app. Adopting it would record the same
-    // runs twice — the one failure mode worse than adopting late.
-    const live = abandonedClaim([start('magic-review')], 0)
+  it('leaves a beating claim alone however old the file is', async () => {
+    // The case an age-only cutoff gets wrong. This claim was opened an hour ago and its
+    // drain is still going — a big backlog is minutes of network round-trips. It beat a
+    // moment ago, so it has an owner, and stealing it would record its runs twice.
+    const live = claimLastBeat([start('magic-review')], 1_000)
 
     expect(await drainSkillSpool()).toBe(0)
     expect(recorded()).toEqual([])
     expect(fs.existsSync(live)).toBe(true)
+  })
+
+  it('keeps its own claims beating while it drains', async () => {
+    // Without this the guarantee above is empty: a slow drain that never stamped its
+    // files would go stale under itself and be adopted by the other build mid-flight.
+    vi.useFakeTimers()
+    try {
+      spool(start('magic-commit'))
+
+      let before = 0
+      let after = 0
+      vi.mocked(recordSkillInvocation).mockImplementationOnce(async () => {
+        const claimed = path.join(CONFIG_DIR, claimFiles()[0])
+        before = fs.statSync(claimed).mtimeMs
+        // Long enough for the interval to fire, while this drain is still going.
+        await vi.advanceTimersByTimeAsync(16_000)
+        after = fs.statSync(claimed).mtimeMs
+      })
+
+      await drainSkillSpool()
+
+      expect(after).toBeGreaterThan(before)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 
