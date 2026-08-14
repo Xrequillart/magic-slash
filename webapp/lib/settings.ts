@@ -29,9 +29,16 @@ export { DEFAULTS } from './settingsCatalog'
 
 export interface UserSettings {
   theme: string | null
+  syncClaudeTheme: boolean | null
   language: string | null
   usageCardEnabled: boolean | null
+  usageCardMinimized: boolean | null
+  agentContextEnabled: boolean | null
+  agentContextMinimized: boolean | null
   usageLogsEnabled: boolean | null
+  notificationsEnabled: boolean | null
+  notificationAgentWaiting: boolean | null
+  notificationAgentCompleted: boolean | null
   dailyDigestEnabled: boolean | null
   splitEnabled: boolean | null
   prReviewsEnabled: boolean | null
@@ -44,9 +51,16 @@ export type UserSettingsPatch = Partial<UserSettings>
 
 interface UserSettingsRow {
   theme: string | null
+  sync_claude_theme: boolean | null
   language: string | null
   usage_card_enabled: boolean | null
+  usage_card_minimized: boolean | null
+  agent_context_enabled: boolean | null
+  agent_context_minimized: boolean | null
   usage_logs_enabled: boolean | null
+  notifications_enabled: boolean | null
+  notification_agent_waiting: boolean | null
+  notification_agent_completed: boolean | null
   daily_digest_enabled: boolean | null
   split_enabled: boolean | null
   pr_reviews_enabled: boolean | null
@@ -56,14 +70,21 @@ interface UserSettingsRow {
 }
 
 const COLUMNS =
-  'theme, language, usage_card_enabled, usage_logs_enabled, daily_digest_enabled, split_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode'
+  'theme, sync_claude_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, daily_digest_enabled, split_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   theme: 'theme',
+  syncClaudeTheme: 'sync_claude_theme',
   language: 'language',
   usageCardEnabled: 'usage_card_enabled',
+  usageCardMinimized: 'usage_card_minimized',
+  agentContextEnabled: 'agent_context_enabled',
+  agentContextMinimized: 'agent_context_minimized',
   usageLogsEnabled: 'usage_logs_enabled',
+  notificationsEnabled: 'notifications_enabled',
+  notificationAgentWaiting: 'notification_agent_waiting',
+  notificationAgentCompleted: 'notification_agent_completed',
   dailyDigestEnabled: 'daily_digest_enabled',
   splitEnabled: 'split_enabled',
   prReviewsEnabled: 'pr_reviews_enabled',
@@ -75,9 +96,16 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
 /** What the page shows before the fetch resolves, and when no row exists yet. */
 export const EMPTY_SETTINGS: UserSettings = {
   theme: null,
+  syncClaudeTheme: null,
   language: null,
   usageCardEnabled: null,
+  usageCardMinimized: null,
+  agentContextEnabled: null,
+  agentContextMinimized: null,
   usageLogsEnabled: null,
+  notificationsEnabled: null,
+  notificationAgentWaiting: null,
+  notificationAgentCompleted: null,
   dailyDigestEnabled: null,
   splitEnabled: null,
   prReviewsEnabled: null,
@@ -90,9 +118,16 @@ export const EMPTY_SETTINGS: UserSettings = {
 function toSettings(row: UserSettingsRow): UserSettings {
   return {
     theme: row.theme,
+    syncClaudeTheme: row.sync_claude_theme,
     language: row.language,
     usageCardEnabled: row.usage_card_enabled,
+    usageCardMinimized: row.usage_card_minimized,
+    agentContextEnabled: row.agent_context_enabled,
+    agentContextMinimized: row.agent_context_minimized,
     usageLogsEnabled: row.usage_logs_enabled,
+    notificationsEnabled: row.notifications_enabled,
+    notificationAgentWaiting: row.notification_agent_waiting,
+    notificationAgentCompleted: row.notification_agent_completed,
     dailyDigestEnabled: row.daily_digest_enabled,
     splitEnabled: row.split_enabled,
     prReviewsEnabled: row.pr_reviews_enabled,
@@ -326,6 +361,18 @@ export const LAUNCH_MODE_OPTIONS: KeyedOption[] = [
     labelKey: 'settings.launchMode.bypass',
     descriptionKey: 'settings.launchMode.bypass.help',
   },
+]
+
+/**
+ * How a sidebar panel is drawn. Two values rather than a boolean because this is
+ * a picker, and `usage_card_minimized` / `agent_context_minimized` are the
+ * booleans behind it — 'minimized' is true, 'full' is false. Mirrors the
+ * FormatSelect in `desktop/src/renderer/pages/Config/AppearancePage.tsx`, which
+ * writes the same two columns.
+ */
+export const PANEL_FORMAT_OPTIONS: KeyedOption[] = [
+  { value: 'full', labelKey: 'settings.sidebars.format.full' },
+  { value: 'minimized', labelKey: 'settings.sidebars.format.minimized' },
 ]
 
 export const POLL_INTERVAL_OPTIONS: KeyedOption[] = [

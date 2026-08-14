@@ -284,6 +284,16 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.appearance': 'Apparence',
   'settings.appearance.note':
     'Le thème habille l’application Magic Slash, pas ce site. Il suit votre compte — il s’applique sur toutes les machines où vous vous connectez. L’échelle de l’interface reste propre à chaque machine, puisqu’elle compense cet écran-là.',
+  'settings.appearance.claudeTheme.label': 'Accorder Claude Code au thème',
+  'settings.appearance.claudeTheme.help':
+    'Claude Code adopte les couleurs du thème choisi dans les terminaux de l’app. Les sessions déjà ouvertes se repeignent aussi. Votre Claude Code lancé depuis un vrai terminal n’est pas touché.',
+  'settings.sidebars.section': 'Barres latérales',
+  'settings.sidebars.agentContext.label': 'Contexte de l’agent',
+  'settings.sidebars.agentContext.help':
+    'La jauge de contexte de l’agent sélectionné, son modèle, son coût et sa durée, en haut de la barre latérale droite.',
+  'settings.sidebars.format.label': 'Format',
+  'settings.sidebars.format.full': 'Complet',
+  'settings.sidebars.format.minimized': 'Réduit',
   'theme.dark': 'Sombre',
   'theme.dark.help': 'L’original, presque noir.',
   'theme.midnight': 'Minuit',
@@ -314,9 +324,9 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Réglages · Fonctionnalités ─────────────────────────────────────────────
   'settings.features': 'Fonctionnalités',
-  'settings.usageCard.label': 'Afficher la carte d’usage dans la barre latérale',
+  'settings.usageCard.label': 'Carte d’usage',
   'settings.usageCard.help':
-    'Affiche le compte connecté et les jauges Session (5 h) / Semaine (7 j) en bas de la barre latérale.',
+    'Le compte connecté et les jauges Session (5 h) / Semaine (7 j), en bas de la barre latérale gauche.',
   'settings.usageLogs.label': 'Partager mon activité avec mon équipe',
   'settings.usageLogs.help':
     'Activé par défaut, et vous pouvez le couper à tout moment. Ce que vous faites avec vos agents est envoyé au cloud Magic Slash pour que le tableau de bord de votre équipe reflète votre travail. Le couper arrête les nouveaux enregistrements ; ce qui a déjà été envoyé est conservé.',
@@ -348,6 +358,21 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.split.help': 'Affiche deux agents côte à côte sur les écrans larges.',
 
   // ── Réglages · Surveillance des revues de PR ───────────────────────────────
+  // ── Réglages · Notifications ───────────────────────────────────────────────
+  'settings.notifications.section': 'Notifications',
+  'settings.notifications.master.label': 'Activer les notifications',
+  'settings.notifications.master.help':
+    'Tout ce qui suit, ainsi que celles qui n’ont pas d’interrupteur propre : une revue qui arrive sur votre PR, un relecteur qui demande des modifications, un collègue qui reprend un ticket sur lequel vous êtes. Aucune notification n’apparaît quand la fenêtre de l’app est au premier plan.',
+  'settings.notifications.agents.section': 'Vos agents',
+  'settings.notifications.agentWaiting.label': 'Agent en attente',
+  'settings.notifications.agentWaiting.help':
+    'Un agent s’est arrêté et attend une réponse ou une autorisation pour continuer.',
+  'settings.notifications.agentCompleted.label': 'Agent terminé',
+  'settings.notifications.agentCompleted.help': 'Un agent a terminé la tâche qui lui a été confiée.',
+  'settings.notifications.team.section': 'Équipe',
+  'settings.notifications.team.footnote':
+    'Une revue qui arrive sur votre PR, et un collègue qui reprend un ticket sur lequel vous avez aussi un agent, suivent l’interrupteur principal ci-dessus — elles sont assez rares pour ne pas mériter le leur.',
+
   'settings.prWatcher.section': 'Surveillance des revues de PR',
   'settings.prWatcher.label': 'Surveiller les revues de PR',
   'settings.prWatcher.help':

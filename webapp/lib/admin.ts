@@ -237,8 +237,13 @@ interface AdminUserDetailRpcRow {
   role: string | null
   usage_card_enabled: boolean | null
   usage_card_minimized: boolean | null
+  agent_context_enabled: boolean | null
+  agent_context_minimized: boolean | null
   usage_logs_enabled: boolean | null
   daily_digest_enabled: boolean | null
+  notifications_enabled: boolean | null
+  notification_agent_waiting: boolean | null
+  notification_agent_completed: boolean | null
   split_enabled: boolean | null
   split_active: boolean | null
   pr_reviews_enabled: boolean | null
@@ -383,8 +388,13 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
     settings: {
       usageCardEnabled: r.usage_card_enabled,
       usageCardMinimized: r.usage_card_minimized,
+      agentContextEnabled: r.agent_context_enabled,
+      agentContextMinimized: r.agent_context_minimized,
       usageLogsEnabled: r.usage_logs_enabled,
       dailyDigestEnabled: r.daily_digest_enabled,
+      notificationsEnabled: r.notifications_enabled,
+      notificationAgentWaiting: r.notification_agent_waiting,
+      notificationAgentCompleted: r.notification_agent_completed,
       splitEnabled: r.split_enabled,
       splitActive: r.split_active,
       prReviewsEnabled: r.pr_reviews_enabled,

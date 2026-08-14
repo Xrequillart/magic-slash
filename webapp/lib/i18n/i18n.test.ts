@@ -191,6 +191,9 @@ describe('message catalogues', () => {
       'profile.style.simple',
       'application.title',
       'theme.espresso',
+      // "Notifications" and "Format" are the same word in both languages.
+      'settings.notifications.section',
+      'settings.sidebars.format.label',
       'settings.prWatcher.interval1m',
       'settings.prWatcher.interval2m',
       'settings.prWatcher.interval5m',

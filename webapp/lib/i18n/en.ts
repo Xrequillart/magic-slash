@@ -276,6 +276,16 @@ export const en = {
   'settings.appearance': 'Appearance',
   'settings.appearance.note':
     'The theme styles the Magic Slash desktop app, not this website. It follows your account — every machine you sign in on uses it. Interface scale stays on each machine, since it compensates for that screen.',
+  'settings.appearance.claudeTheme.label': 'Match Claude Code to the theme',
+  'settings.appearance.claudeTheme.help':
+    'Claude Code takes the chosen theme’s colours in the app’s terminals, repainting sessions that are already open. Claude Code started from a real terminal is left alone.',
+  'settings.sidebars.section': 'Sidebars',
+  'settings.sidebars.agentContext.label': 'Agent context',
+  'settings.sidebars.agentContext.help':
+    'The selected agent’s context gauge, model, cost and elapsed time, at the top of the right sidebar.',
+  'settings.sidebars.format.label': 'Format',
+  'settings.sidebars.format.full': 'Expanded',
+  'settings.sidebars.format.minimized': 'Compact',
   'theme.dark': 'Dark',
   'theme.dark.help': 'The original, near-black.',
   'theme.midnight': 'Midnight',
@@ -306,9 +316,9 @@ export const en = {
 
   // ── Settings · Features ────────────────────────────────────────────────────
   'settings.features': 'Features',
-  'settings.usageCard.label': 'Show usage card in sidebar',
+  'settings.usageCard.label': 'Usage card',
   'settings.usageCard.help':
-    'Display the connected account and the Session (5h) / Weekly (7d) gauges at the bottom of the sidebar.',
+    'The connected account and the Session (5h) / Weekly (7d) gauges, at the bottom of the left sidebar.',
   'settings.usageLogs.label': 'Share my activity with my team',
   'settings.usageLogs.help':
     'On by default, and yours to turn off at any time. What you do with your agents is sent to Magic Slash Cloud so your team’s dashboard reflects your work. Turning it off stops new records; what was already sent is kept.',
@@ -336,6 +346,21 @@ export const en = {
     'Off by default. When enabled, you get one notification at 9:00 AM summarizing your team’s activity from the last 24 hours (PRs shipped, tickets moved to Done). Nothing is sent when there was no activity.',
   'settings.split.label': 'Enable split view',
   'settings.split.help': 'Display two agents side by side on wide screens.',
+
+  // ── Settings · Notifications ───────────────────────────────────────────────
+  'settings.notifications.section': 'Notifications',
+  'settings.notifications.master.label': 'Enable notifications',
+  'settings.notifications.master.help':
+    'Everything below, plus the ones with no switch of their own: a review landing on your PR, a reviewer requesting changes, a colleague picking up a ticket you are on. Notifications never appear while the app window is focused.',
+  'settings.notifications.agents.section': 'Your agents',
+  'settings.notifications.agentWaiting.label': 'Agent waiting for you',
+  'settings.notifications.agentWaiting.help':
+    'An agent has stopped and needs an answer or a permission before it can carry on.',
+  'settings.notifications.agentCompleted.label': 'Agent finished',
+  'settings.notifications.agentCompleted.help': 'An agent has finished the task it was given.',
+  'settings.notifications.team.section': 'Team',
+  'settings.notifications.team.footnote':
+    'A review landing on your PR, and a colleague picking up a ticket you also have an agent on, follow the master switch above — they are rare enough not to need one of their own.',
 
   // ── Settings · PR Review Watcher ───────────────────────────────────────────
   'settings.prWatcher.section': 'PR Review Watcher',

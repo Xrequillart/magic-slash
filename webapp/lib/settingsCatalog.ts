@@ -26,9 +26,21 @@ import type { UserSettings } from './settings'
  */
 export const DEFAULTS = {
   theme: 'dark',
+  // `?? true` in AppearancePage: an unreadable transcript would read as a bug
+  // rather than as a feature nobody switched on.
+  syncClaudeTheme: true,
   language: 'en',
   usageCardEnabled: true,
+  // `=== true` in SidebarUsageCard / the agent card, so anything else is expanded.
+  usageCardMinimized: false,
+  agentContextEnabled: true,
+  agentContextMinimized: false,
   usageLogsEnabled: true,
+  // All three read `!== false` at the notification sink in the main process:
+  // absent has to describe the behaviour every existing install already has.
+  notificationsEnabled: true,
+  notificationAgentWaiting: true,
+  notificationAgentCompleted: true,
   dailyDigestEnabled: false,
   splitEnabled: false,
   prReviewsEnabled: true,
@@ -38,25 +50,23 @@ export const DEFAULTS = {
 } as const
 
 /**
- * All 17 `user_settings` columns, as the desktop app stores them. Every one is
+ * All 22 `user_settings` columns, as the desktop app stores them. Every one is
  * nullable and NULL is a third state distinct from false — it means the user
  * never chose, and the app applies its own default. Nothing here normalises a
  * null away: "never chose" is exactly what a support question needs to see.
  *
- * Extends the 10 fields `lib/settings.ts` already names (the ones the webapp lets
+ * Extends the 17 fields `lib/settings.ts` already names (the ones the webapp lets
  * a user edit) rather than restating them, so a column rename is one edit and not
- * two camelCase lists that must silently agree. The 7 added below are the ones
+ * two camelCase lists that must silently agree. The 5 added below are the ones
  * `UserSettings` deliberately omits: per-machine properties and transient view
  * state, which the back-office reports precisely because it cannot edit them.
  */
 export interface AdminUserSettings extends UserSettings {
-  usageCardMinimized: boolean | null
   splitActive: boolean | null
   spotlightEnabled: boolean | null
   spotlightShortcut: string | null
   autoStartAtLogin: boolean | null
   atlassianIntegrationEnabled: boolean | null
-  syncClaudeTheme: boolean | null
 }
 
 /**
@@ -64,36 +74,30 @@ export interface AdminUserSettings extends UserSettings {
  * can say "par défaut (on)" instead of just "jamais choisi", which tells an operator
  * that a column is null without telling them what the app is therefore doing.
  *
- * Extends `DEFAULTS` (lib/settings.ts) rather than restating it: those ten are the
- * ones the webapp itself can edit, and their defaults are already documented there.
- * The seven below are the admin-only columns, each verified against the line in the
- * desktop app that resolves the unset value — cited, because a default invented here
- * would be a confident lie in the one tool used to answer "why is it behaving like
- * that":
+ * Extends `DEFAULTS` (lib/settings.ts) rather than restating it: those seventeen are
+ * the ones the webapp itself can edit, and their defaults are already documented
+ * there. The five below are the admin-only columns, each verified against the line in
+ * the desktop app that resolves the unset value — cited, because a default invented
+ * here would be a confident lie in the one tool used to answer "why is it behaving
+ * like that":
  *
- *  * usageCardMinimized — `=== true`, so anything else is expanded.
- *    desktop/src/renderer/components/SidebarUsageCard.tsx
  *  * splitActive — the store's initial state.
  *    desktop/src/renderer/store/index.ts
  *  * spotlightEnabled / spotlightShortcut — the `?? true` and `?? 'Control+Space'`
  *    the Application tab reads with. desktop/src/renderer/pages/Config/index.tsx
  *  * autoStartAtLogin — applied only when set, and the OS default for a freshly
  *    installed app is not to open at login. desktop/src/main/index.ts
- *  * syncClaudeTheme — `?? true`.
- *    desktop/src/renderer/pages/Config/AppearancePage.tsx
  *  * atlassianIntegrationEnabled — INFERRED, not read: nothing in the desktop app
  *    defaults it, so an absent flag simply means the integration was never set up.
  *    Stated as false on that basis and not on a `??` somewhere.
  */
 export const SETTING_DEFAULTS: Record<keyof AdminUserSettings, string | number | boolean> = {
   ...DEFAULTS,
-  usageCardMinimized: false,
   splitActive: false,
   spotlightEnabled: true,
   spotlightShortcut: 'Control+Space',
   autoStartAtLogin: false,
   atlassianIntegrationEnabled: false,
-  syncClaudeTheme: true,
 }
 
 export interface SettingGroup {
@@ -140,6 +144,27 @@ export const SETTING_GROUPS: SettingGroup[] = [
     fields: [
       { field: 'usageCardEnabled', label: 'Enabled' },
       { field: 'usageCardMinimized', label: 'Minimized' },
+    ],
+  },
+  {
+    // The right sidebar's counterpart to the usage card. Its own group rather than
+    // rows appended to that one: they are two panels on two sides of the window,
+    // and the Appearance tab shows them side by side without merging them either.
+    title: 'Agent context',
+    fields: [
+      { field: 'agentContextEnabled', label: 'Enabled' },
+      { field: 'agentContextMinimized', label: 'Minimized' },
+    ],
+  },
+  {
+    // The master switch is deliberately first: it is what decides whether the two
+    // below are doing anything at all, and reading them in the other order invites
+    // "agent waiting is on, so why is it silent?".
+    title: 'Notifications',
+    fields: [
+      { field: 'notificationsEnabled', label: 'Enabled' },
+      { field: 'notificationAgentWaiting', label: 'Agent waiting' },
+      { field: 'notificationAgentCompleted', label: 'Agent finished' },
     ],
   },
   {
