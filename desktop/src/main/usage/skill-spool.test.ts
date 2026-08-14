@@ -119,14 +119,29 @@ describe('drainSkillSpool', () => {
     expect(recorded().map((r) => r.skill)).toEqual(['magic-commit', 'magic-pr'])
   })
 
-  it('retries a batch the app died in the middle of', async () => {
-    // A leftover .draining file is a drain that never finished. Its records are not
-    // stranded — retrying is safe because recordSkillInvocation owns the outbox.
+  it('retries a batch an older build died in the middle of', async () => {
+    // `.draining` is the shared working file older builds used. Nothing writes it any
+    // more, but an upgrade must still pick up whatever one of them left behind — and
+    // ahead of the fresh spool, so the older runs are recorded first.
     fs.writeFileSync(DRAINING_FILE, JSON.stringify(start('magic-done')) + '\n')
+    const old = new Date(Date.now() - 120_000)
+    fs.utimesSync(DRAINING_FILE, old, old)
     spool(start('magic-commit'))
 
     expect(await drainSkillSpool()).toBe(2)
     expect(recorded().map((r) => r.skill)).toEqual(['magic-done', 'magic-commit'])
+    expect(fs.existsSync(DRAINING_FILE)).toBe(false)
+  })
+
+  it('leaves a .draining an older build may still be writing alone', async () => {
+    // During an upgrade the previous build can be running right now, mid-drain. Its
+    // working file is only safe to adopt once it has gone untouched — taking it early
+    // would record the same runs twice.
+    fs.writeFileSync(DRAINING_FILE, JSON.stringify(start('magic-done')) + '\n')
+
+    expect(await drainSkillSpool()).toBe(0)
+    expect(recorded()).toEqual([])
+    expect(fs.existsSync(DRAINING_FILE)).toBe(true)
   })
 
   it('skips a torn line rather than discarding the batch', async () => {
