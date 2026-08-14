@@ -123,6 +123,11 @@ export function nextBackoff(attempt: number, retryAtMs?: number, now: number = D
  *  - `status` / `reviewers` move on an approval with an empty body, which touches
  *    no comment bucket at all — and that path also feeds the history entry and the
  *    desktop notification, so swallowing it loses more than a label.
+ *  - `checkStates` covers the counts staying put while the checks behind them
+ *    change: one job going green as another goes red leaves `2 passed, 1 failed`
+ *    identical, and the card now names the individual checks, so without their
+ *    identity in here it would keep listing the one that recovered and never show
+ *    the one that broke.
  *
  * The rule this encodes: everything derived from the snapshot and shown to the
  * user belongs in the key, or it can be silently withheld from them.
@@ -133,12 +138,25 @@ export function snapshotKey(
   rollupState?: string,
   checks?: PRChecksSummary,
   comments?: PRCommentCounts,
-  extras?: { status?: string; state?: PRState; mergeable?: boolean; reviewers?: string[] },
+  extras?: {
+    status?: string
+    state?: PRState
+    mergeable?: boolean
+    reviewers?: string[]
+    /** One `name:state` per check on the head commit. */
+    checkStates?: string[]
+  },
 ): string {
   const c = checks ? `${checks.total}/${checks.passed}/${checks.failed}/${checks.running}/${checks.skipped}` : ''
   const m = comments ? `${comments.inline}/${comments.conversation}/${comments.reviewSummaries}` : ''
   const e = extras
-    ? `${extras.status ?? ''}/${extras.state ?? ''}/${String(extras.mergeable)}/${(extras.reviewers ?? []).join(',')}`
+    ? [
+      extras.status ?? '',
+      extras.state ?? '',
+      String(extras.mergeable),
+      (extras.reviewers ?? []).join(','),
+      (extras.checkStates ?? []).join(','),
+    ].join('/')
     : ''
   return `${headSha}|${updatedAt}|${rollupState ?? ''}|${c}|${m}|${e}`
 }

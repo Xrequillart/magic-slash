@@ -47,9 +47,15 @@ export interface RepositoryMetadata {
   prClosed?: boolean
   prState?: PRState
   prChecks?: PRChecksSummary
-  /** Names only, capped at 5. */
+  /**
+   * Every check on the head commit — name and state, no run URLs — sorted
+   * worst-first and capped, so the card can list them rather than only count them.
+   * `prChecks.total` stays the authority on how many there really are.
+   */
+  prCheckList?: PRCheck[]
+  /** Legacy: running names only, capped at 5. Superseded by `prCheckList`. */
   prRunningChecks?: string[]
-  /** Names only, capped at 5. */
+  /** Legacy: failing names only, capped at 5. Superseded by `prCheckList`. */
   prFailedChecks?: string[]
   prCommentCounts?: PRCommentCounts
   /** Deduped logins, capped at 8. */

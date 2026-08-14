@@ -193,6 +193,30 @@ describe('snapshotKey', () => {
     const after = snapshotKey('abc123', 42, 'SUCCESS', undefined, undefined, { state: 'merged' })
     expect(after).not.toBe(before)
   })
+
+  /**
+   * Two checks swapping outcomes in the same tick: `1 passed, 1 failed` either way,
+   * the same SHA, the same updatedAt, the same rollup. The card names the individual
+   * checks, so a key blind to them would keep listing `lint` as the broken one and
+   * never mention `test`.
+   */
+  it('changes when two checks swap outcomes without moving any count', () => {
+    const checks = { total: 2, passed: 1, failed: 1, running: 0, skipped: 0 }
+    const before = snapshotKey('abc123', 42, 'FAILURE', checks, undefined, {
+      checkStates: ['lint:failed', 'test:passed'],
+    })
+    const after = snapshotKey('abc123', 42, 'FAILURE', checks, undefined, {
+      checkStates: ['lint:passed', 'test:failed'],
+    })
+    expect(after).not.toBe(before)
+  })
+
+  it('is stable when the same checks come back in the same states', () => {
+    const checks = { total: 2, passed: 2, failed: 0, running: 0, skipped: 0 }
+    const extras = { checkStates: ['lint:passed', 'test:passed'] }
+    expect(snapshotKey('abc123', 42, 'SUCCESS', checks, undefined, extras))
+      .toBe(snapshotKey('abc123', 42, 'SUCCESS', checks, undefined, extras))
+  })
 })
 
 describe('clampPollInterval', () => {

@@ -43,8 +43,20 @@ const NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000
  */
 const USER_TICK_THROTTLE_MS = 15_000
 
-/** Names shown on the card are a preview, not a list — the full set lives on GitHub. */
-const CHECK_NAMES_CAP = 5
+/**
+ * How many checks the card is given to list. A monorepo can attach dozens, and this
+ * list is persisted per agent per repo, so it stays a preview — `prChecks.total` is
+ * what says how many there really are, and the card says how many it is not showing.
+ */
+const CHECK_LIST_CAP = 20
+
+/** Worst first, so a list cut at the cap still leads with what needs acting on. */
+const CHECK_STATE_ORDER: Record<PRCheck['state'], number> = {
+  failed: 0,
+  running: 1,
+  passed: 2,
+  skipped: 3,
+}
 
 interface LastKnown {
   status: AggregatedReviewStatus
@@ -72,9 +84,10 @@ interface RetryState {
 
 interface TickOptions {
   /**
-   * Run even when `prReviews.enabled` is false, and ignore the per-PR backoff.
-   * Set only by an explicit user action: the card stays visible when the watcher
-   * is switched off, so its refresh button must not silently no-op.
+   * Run even when `prReviews.enabled` is false, ignore the per-PR backoff, and
+   * stamp the freshness of the read even when nothing moved. Set only by an
+   * explicit user action — the card's refresh button — which is why an unchanged
+   * PR is still worth a write here and never is on the periodic tick.
    */
   force?: boolean
   /** Restrict the tick to a single PR (manual refresh of one card). */
@@ -287,7 +300,12 @@ export class PRReviewWatcher {
 
           this.retries.delete(prUrl)
           for (const target of group) {
-            this.applySnapshot(target.terminalId, target.repoPath, prUrl, target.existing, result, terminals)
+            // `force` is only ever set by the card's refresh button, and a click is
+            // the one case where an unchanged PR still has something to report:
+            // the freshness stamp. See `applySnapshot`.
+            this.applySnapshot(target.terminalId, target.repoPath, prUrl, target.existing, result, terminals, {
+              stampFreshness: options.force === true,
+            })
           }
 
           if (result.rateLimitRemaining < RATE_LIMIT_SAFETY_FLOOR) {
@@ -376,6 +394,15 @@ export class PRReviewWatcher {
     existing: RepositoryMetadata,
     snapshot: PRStatusSnapshot,
     terminals: ReturnType<typeof getAllTerminals>,
+    /**
+     * Persist the read even when the snapshot is byte-for-byte the one already on
+     * the card. Set only for a user-triggered refresh: the click's only visible
+     * outcome on an unchanged PR IS the freshness stamp moving, and a button that
+     * leaves the UI exactly as it was reads as broken. Deliberately NOT set for
+     * the periodic tick, where the same write would queue a Supabase agent write
+     * per agent per poll interval forever — see `noteFailure`.
+     */
+    { stampFreshness }: { stampFreshness: boolean },
   ): void {
     const now = Date.now()
     const key = snapshotKey(
@@ -389,6 +416,9 @@ export class PRReviewWatcher {
         state: snapshot.state,
         mergeable: snapshot.mergeable,
         reviewers: snapshot.reviewers,
+        // The card lists the checks by name now, so their individual outcomes are
+        // part of what a "changed" snapshot means: see `snapshotKey`.
+        checkStates: snapshot.checks.map((check) => `${check.name}:${check.state}`),
       },
     )
     // Keyed by TARGET, not by URL: one PR can feed several cards, and a URL-wide
@@ -398,11 +428,21 @@ export class PRReviewWatcher {
     const targetKey = `${terminalId}|${repoPath}|${prUrl}`
     const previous = this.lastKnownStatus.get(targetKey)
     // A stale error must be cleared even when nothing else moved, otherwise a
-    // transient failure stays on the card forever.
-    if (previous && previous.key === key && existing.prWatchError === undefined) return
+    // transient failure stays on the card forever. Falling through on
+    // `stampFreshness` is safe rather than a special write path: the transition
+    // effects below (history entry, merge event, notification) all compare against
+    // `previous`, and an unchanged key means every one of them is a no-op.
+    if (previous && previous.key === key && existing.prWatchError === undefined && !stampFreshness) return
 
-    const checkNames = (state: PRCheck['state']): string[] =>
-      snapshot.checks.filter(c => c.state === state).map(c => c.name).slice(0, CHECK_NAMES_CAP)
+    // Name and state only, worst first. The run URLs are dropped on purpose: this
+    // object is copied into the `agents` jsonb on every write, and a dozen GitHub
+    // URLs would cost more than the whole rest of the snapshot for a link the card
+    // does not offer. `sort` is stable, so GitHub's own order survives inside each
+    // bucket, and the cut keeps the checks somebody has to act on.
+    const checkList = [...snapshot.checks]
+      .sort((a, b) => CHECK_STATE_ORDER[a.state] - CHECK_STATE_ORDER[b.state])
+      .slice(0, CHECK_LIST_CAP)
+      .map(({ name, state }) => ({ name, state }))
 
     const repoMeta: RepositoryMetadata = {
       ...existing,
@@ -415,8 +455,11 @@ export class PRReviewWatcher {
       prClosed: snapshot.closed,
       prState: snapshot.state,
       prChecks: snapshot.checksSummary,
-      prRunningChecks: checkNames('running'),
-      prFailedChecks: checkNames('failed'),
+      // Supersedes `prRunningChecks`/`prFailedChecks`, which are no longer written:
+      // this carries both, plus the checks that passed. Whatever an older version
+      // left in those two keys stays in the jsonb and is simply ignored — the card
+      // only falls back to them when `prCheckList` is absent altogether.
+      prCheckList: checkList,
       prCommentCounts: snapshot.commentCounts,
       // Already deduped and capped by `mapPullRequestToSnapshot`.
       prCommentAuthors: snapshot.commentAuthors,
