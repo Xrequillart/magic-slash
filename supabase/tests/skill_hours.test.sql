@@ -1,9 +1,10 @@
 -- pgTAP: skill_hours — the caller's own time inside the skills, total and this week.
 --
--- Covers the function as it stands after 20260814120000_skill_hours_last_run.sql, which
--- dropped and replaced 20260814110000's three-column version. One suite for both rather
--- than one per migration: there is a single function, and a test pinned to the
--- superseded shape would only assert that history happened.
+-- Covers the function as it stands after 20260814150000_skill_hours_agent_title.sql —
+-- the fourth version of it, after 110000's three columns, 120000's last_run_at and
+-- 140000's last_run_agent. ONE suite for all of them rather than one per migration:
+-- there is a single function, and a test pinned to a superseded shape would only assert
+-- that history happened.
 --
 -- What is proven, because each is a way this function could be wrong in a way nobody
 -- would notice from the number alone:
@@ -39,6 +40,16 @@
 --      this" is about starting a skill, not finishing one. Proven on a user whose whole
 --      history is one closed run and one later open one, so the two dates must diverge —
 --      on a shared fixture the assertion would pass whether or not the filter was there.
+--  13. last_run_agent is the agent's TITLE, not the generated name the app spawns a
+--      terminal with. Every agent in the fixture carries both, and they differ: a
+--      function returning `name` reads "claude 4" on screen, which names nothing the
+--      person did. It must also be the title of THAT run's agent — u4 has two, one per
+--      run, so naming the older one or "any agent this user has" fails here.
+--  14. An EMPTY title falls back to that generated name. The app writes '' rather than
+--      null for an agent nobody has named, so a plain coalesce would print blank.
+--  15. And the column is NULL when the last run had no agent at all — a skill launched
+--      in a terminal the app did not spawn. The card prints the date alone for it, which
+--      only null gets it to do.
 --
 -- IMPORTANT: `supabase test db` runs as the database OWNER, which BYPASSES RLS. Each
 -- assertion impersonates an authenticated end user via
@@ -47,7 +58,7 @@
 -- and `reset role;` returns to the owner to seed or switch users.
 
 begin;
-select plan(17);
+select plan(20);
 
 -- ---------------------------------------------------------------------------
 -- Seed as the owner.
@@ -143,25 +154,51 @@ values
    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'magic-commit',
    now() - interval '90 days', null, null);
 
+-- u4's two agents, one per run below. PERSONAL agents (org_id null, which is what an
+-- agent on a personal repository derives — see 20260727160000), so they match the org of
+-- the runs that point at them. Two of them, and that is the whole point: an
+-- implementation naming "an agent this user has" rather than "the agent of the last run"
+-- passes with one and fails with two.
+--
+-- Both carry the GENERATED name the app spawns a terminal with ("claude 3") and the
+-- TITLE the skills write as they go. The two differ on purpose: the column has to
+-- report the title, and a fixture where they matched would pass either way.
+insert into public.agents (id, org_id, owner_id, name, metadata)
+values
+  ('60000000-0000-0000-0000-000000000001', null,
+   '44444444-4444-4444-4444-444444444444', 'claude 3',
+   '{"title": "MAGIC-140 hooks"}'::jsonb),
+  ('60000000-0000-0000-0000-000000000002', null,
+   '44444444-4444-4444-4444-444444444444', 'claude 4',
+   '{"title": "184:archiving fails silently"}'::jsonb);
+
+-- u2's agent, with an EMPTY title — what the app writes for an agent nobody has named
+-- yet, and the reason the function nullifs before it coalesces. Assertion 14.
+insert into public.agents (id, org_id, owner_id, name, metadata)
+values
+  ('60000000-0000-0000-0000-000000000020', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+   '22222222-2222-2222-2222-222222222222', 'claude 7', '{"title": ""}'::jsonb);
+
 -- u4's whole history, and the reason it is a separate user: one closed run ten days ago
 -- and one OPEN run an hour ago. Both dates are then unambiguous and neither depends on
 -- what day the suite runs — the durations must come from the first, the last-use date
 -- from the second, and no shared fixture could make those two the same row.
-insert into public.skill_invocations (id, org_id, user_id, skill, occurred_at, ended_at, outcome)
+insert into public.skill_invocations (id, org_id, user_id, agent_id, skill, occurred_at, ended_at, outcome)
 values
   ('50000000-0000-0000-0000-000000000040',
-   null, '44444444-4444-4444-4444-444444444444', 'magic-commit',
+   null, '44444444-4444-4444-4444-444444444444', '60000000-0000-0000-0000-000000000001', 'magic-commit',
    now() - interval '10 days', now() - interval '10 days' + interval '30 minutes', 'success'),
   ('50000000-0000-0000-0000-000000000041',
-   null, '44444444-4444-4444-4444-444444444444', 'magic-resolve',
+   null, '44444444-4444-4444-4444-444444444444', '60000000-0000-0000-0000-000000000002', 'magic-resolve',
    now() - interval '1 hour', null, null);
 
 -- u2's run, in u1's org, closed, this week: 300 minutes. Large enough that if it
 -- leaked into u1's total the arithmetic could not accidentally still add up.
-insert into public.skill_invocations (id, org_id, user_id, skill, occurred_at, ended_at, outcome)
+insert into public.skill_invocations (id, org_id, user_id, agent_id, skill, occurred_at, ended_at, outcome)
 values
   ('50000000-0000-0000-0000-000000000020',
-   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', 'magic-commit',
+   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222',
+   '60000000-0000-0000-0000-000000000020', 'magic-commit',
    date_trunc('week', now() at time zone 'Europe/Paris') at time zone 'Europe/Paris' + interval '2 days 8 hours',
    date_trunc('week', now() at time zone 'Europe/Paris') at time zone 'Europe/Paris' + interval '2 days 13 hours',
    'success');
@@ -334,6 +371,51 @@ select is(
   (select total_seconds from public.skill_hours('Europe/Paris')),
   (300 * 60)::bigint,
   'u2 reads their own five hours, which u1 did not see'
+);
+
+-- u2's agent has an empty title, which is what the app writes for one nobody has named.
+-- The generated name is then all there is to call it, and it is what the team page shows
+-- for the same agent. A plain coalesce would take the empty string and print nothing.
+select is(
+  (select last_run_agent from public.skill_hours('Europe/Paris')),
+  'claude 7',
+  'an empty title falls back to the generated name rather than to blank'
+);
+
+-- ===========================================================================
+-- 14. As u4 again: the agent NAMED is the one on the last run.
+-- ===========================================================================
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"44444444-4444-4444-4444-444444444444"}';
+
+-- u4 owns two agents; the older run belongs to the other one. So this fails both for an
+-- implementation that picks any agent of the caller's and for one that reads the FIRST
+-- run rather than the last. The agent is personal (org_id null), which also exercises
+-- the owner arm of the agents SELECT policy — this function is SECURITY INVOKER, and
+-- without that arm a personal agent would be unreadable and the name would come back
+-- null with nothing to explain why.
+select is(
+  (select last_run_agent from public.skill_hours('Europe/Paris')),
+  '184:archiving fails silently',
+  'last_run_agent is the TITLE of the last run''s agent, not its generated name'
+);
+
+-- ===========================================================================
+-- 15. As u1: no agent on the last run, so no name.
+-- ===========================================================================
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+
+-- Every one of u1's rows was seeded without an agent, which is what a skill run in a
+-- terminal the app did not spawn looks like. NULL rather than an empty string: the card
+-- prints the date alone for it, and only null gets it there.
+select is(
+  (select last_run_agent from public.skill_hours('Europe/Paris')),
+  -- Cast, or `is()` cannot resolve its polymorphic argument from a bare NULL.
+  null::text,
+  'last_run_agent is null when the last run belonged to no agent'
 );
 
 reset role;

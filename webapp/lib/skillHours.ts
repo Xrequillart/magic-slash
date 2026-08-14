@@ -23,6 +23,17 @@ export interface SkillHoursRow {
   first_measured_at: string | null
   /** Last run of ANY kind, closed or not. Null when there has never been one. */
   last_run_at: string | null
+  /**
+   * Name of the agent that last run belonged to. Null when it had none, when the agent
+   * has since been deleted, or when the caller cannot read it (see 20260814140000).
+   *
+   * OPTIONAL, unlike its neighbours, and that is about deployment rather than about the
+   * data: a database still on 20260814120000 answers with a row that has no such key at
+   * all. Typing it as always-present would let the compiler bless a `.last_run_agent`
+   * that is `undefined` at runtime, which is how the em dash bug of 20260814120000
+   * happened. The mapper below turns absent and null into the same thing.
+   */
+  last_run_agent?: string | null
 }
 
 export interface SkillHours {
@@ -40,6 +51,12 @@ export interface SkillHours {
    * durations are. It can therefore be more recent than the period the hours cover.
    */
   lastRunAt: string | null
+  /**
+   * What that last run was working on — the agent's name, or null when there is nobody
+   * to name. A label under the date rather than a figure of its own: it says which piece
+   * of work the date belongs to, which is what makes the date recognisable.
+   */
+  lastRunAgent: string | null
 }
 
 const MINUTE = 60
@@ -54,6 +71,9 @@ export function toSkillHours(row: SkillHoursRow): SkillHours {
     weekSeconds: row.week_seconds ?? 0,
     firstMeasuredAt: row.first_measured_at ?? null,
     lastRunAt: row.last_run_at ?? null,
+    // Absent (a database that has not run 20260814140000 yet) and null (a run with no
+    // readable agent) are the same answer to the caller: there is no name to print.
+    lastRunAgent: row.last_run_agent ?? null,
   }
 }
 

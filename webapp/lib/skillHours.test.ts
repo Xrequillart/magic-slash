@@ -88,19 +88,21 @@ describe('formatLastUsed', () => {
 })
 
 describe('toSkillHours', () => {
-  it('carries the four fields across', () => {
+  it('carries the five fields across', () => {
     expect(
       toSkillHours({
         total_seconds: 1_630_800,
         week_seconds: 126_000,
         first_measured_at: '2026-01-12T08:00:00Z',
         last_run_at: '2026-06-12T09:30:00Z',
+        last_run_agent: 'MAGIC-182 pagination',
       }),
     ).toEqual({
       totalSeconds: 1_630_800,
       weekSeconds: 126_000,
       firstMeasuredAt: '2026-01-12T08:00:00Z',
       lastRunAt: '2026-06-12T09:30:00Z',
+      lastRunAgent: 'MAGIC-182 pagination',
     })
   })
 
@@ -110,10 +112,24 @@ describe('toSkillHours', () => {
       week_seconds: 0,
       first_measured_at: null,
       last_run_at: null,
+      last_run_agent: null,
     })
     expect(hours.firstMeasuredAt).toBeNull()
     expect(hours.lastRunAt).toBeNull()
     expect(hours.totalSeconds).toBe(0)
+  })
+
+  it('reads an absent agent column as no agent, not as undefined', () => {
+    // A database still on 20260814120000 answers without the column at all. The card
+    // must then print the date alone, which it only does for null — `undefined` would
+    // reach the label and render "par undefined".
+    const hours = toSkillHours({
+      total_seconds: 3600,
+      week_seconds: 0,
+      first_measured_at: '2026-01-12T08:00:00Z',
+      last_run_at: '2026-06-12T09:30:00Z',
+    })
+    expect(hours.lastRunAgent).toBeNull()
   })
 
   it('degrades a missing count to zero rather than undefined', () => {
@@ -125,6 +141,7 @@ describe('toSkillHours', () => {
       weekSeconds: 0,
       firstMeasuredAt: null,
       lastRunAt: null,
+      lastRunAgent: null,
     })
   })
 })
@@ -132,7 +149,13 @@ describe('toSkillHours', () => {
 describe('hasNeverRun', () => {
   it('is true only when there is no run of any kind', () => {
     expect(
-      hasNeverRun({ totalSeconds: 0, weekSeconds: 0, firstMeasuredAt: null, lastRunAt: null }),
+      hasNeverRun({
+        totalSeconds: 0,
+        weekSeconds: 0,
+        firstMeasuredAt: null,
+        lastRunAt: null,
+        lastRunAgent: null,
+      }),
     ).toBe(true)
   })
 
@@ -145,6 +168,7 @@ describe('hasNeverRun', () => {
         weekSeconds: 0,
         firstMeasuredAt: null,
         lastRunAt: '2026-06-12T09:30:00Z',
+        lastRunAgent: null,
       }),
     ).toBe(false)
   })
