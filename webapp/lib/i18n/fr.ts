@@ -356,6 +356,10 @@ export const fr: Record<keyof typeof en, string> = {
     'Désactivé par défaut. Une fois activé, vous recevez une notification à 9 h résumant l’activité de votre équipe sur les dernières 24 heures (PR livrées, tickets passés en Terminé). Rien n’est envoyé s’il n’y a eu aucune activité.',
   'settings.split.label': 'Activer la vue divisée',
   'settings.split.help': 'Affiche deux agents côte à côte sur les écrans larges.',
+  'settings.spotlight.label': 'Activer Spotlight',
+  'settings.spotlight.help':
+    'Ouvre le panneau de lancement rapide depuis n’importe où avec un raccourci clavier. Le choix des touches se fait dans l’application : il dépend de ce qui est installé sur cette machine-là.',
+  'settings.usageLogs.section': 'Enregistrement de l’activité',
 
   // ── Réglages · Surveillance des revues de PR ───────────────────────────────
   // ── Réglages · Notifications ───────────────────────────────────────────────
@@ -373,7 +377,6 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.notifications.team.footnote':
     'Une revue qui arrive sur votre PR, et un collègue qui reprend un ticket sur lequel vous avez aussi un agent, suivent l’interrupteur principal ci-dessus — elles sont assez rares pour ne pas mériter le leur.',
 
-  'settings.prWatcher.section': 'Surveillance des revues de PR',
   'settings.prWatcher.label': 'Surveiller les revues de PR',
   'settings.prWatcher.help':
     'Interroge GitHub pour suivre l’état des revues sur les pull requests des agents.',

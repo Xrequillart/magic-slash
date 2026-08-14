@@ -21,10 +21,15 @@ export { DEFAULTS } from './settingsCatalog'
  * Nothing here normalises a null away — reads use the DEFAULTS below for
  * display, and a column is only written once the user touches it.
  *
- * Deliberately absent: the Spotlight shortcut and "launch at login", which are
+ * Deliberately absent: the Spotlight SHORTCUT and "launch at login", which are
  * properties of a machine rather than of an account (and writing
  * auto_start_at_login=false from here would make the app touch the macOS login
  * item on its next start), plus split_active, which is a transient view state.
+ *
+ * `spotlight_enabled` is here even so, and the line between it and the shortcut
+ * next to it is not arbitrary: whether you want a global panel at all travels with
+ * you, while which keys open it is a negotiation with the other software on that
+ * particular machine.
  */
 
 export interface UserSettings {
@@ -41,6 +46,7 @@ export interface UserSettings {
   notificationAgentCompleted: boolean | null
   dailyDigestEnabled: boolean | null
   splitEnabled: boolean | null
+  spotlightEnabled: boolean | null
   prReviewsEnabled: boolean | null
   prReviewsPollIntervalMs: number | null
   prReviewsAutoLaunchSkills: boolean | null
@@ -63,6 +69,7 @@ interface UserSettingsRow {
   notification_agent_completed: boolean | null
   daily_digest_enabled: boolean | null
   split_enabled: boolean | null
+  spotlight_enabled: boolean | null
   pr_reviews_enabled: boolean | null
   pr_reviews_poll_interval_ms: number | null
   pr_reviews_auto_launch_skills: boolean | null
@@ -70,7 +77,7 @@ interface UserSettingsRow {
 }
 
 const COLUMNS =
-  'theme, sync_claude_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, daily_digest_enabled, split_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode'
+  'theme, sync_claude_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, daily_digest_enabled, split_enabled, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
@@ -87,6 +94,7 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   notificationAgentCompleted: 'notification_agent_completed',
   dailyDigestEnabled: 'daily_digest_enabled',
   splitEnabled: 'split_enabled',
+  spotlightEnabled: 'spotlight_enabled',
   prReviewsEnabled: 'pr_reviews_enabled',
   prReviewsPollIntervalMs: 'pr_reviews_poll_interval_ms',
   prReviewsAutoLaunchSkills: 'pr_reviews_auto_launch_skills',
@@ -108,6 +116,7 @@ export const EMPTY_SETTINGS: UserSettings = {
   notificationAgentCompleted: null,
   dailyDigestEnabled: null,
   splitEnabled: null,
+  spotlightEnabled: null,
   prReviewsEnabled: null,
   prReviewsPollIntervalMs: null,
   prReviewsAutoLaunchSkills: null,
@@ -130,6 +139,7 @@ function toSettings(row: UserSettingsRow): UserSettings {
     notificationAgentCompleted: row.notification_agent_completed,
     dailyDigestEnabled: row.daily_digest_enabled,
     splitEnabled: row.split_enabled,
+    spotlightEnabled: row.spotlight_enabled,
     prReviewsEnabled: row.pr_reviews_enabled,
     prReviewsPollIntervalMs: row.pr_reviews_poll_interval_ms,
     prReviewsAutoLaunchSkills: row.pr_reviews_auto_launch_skills,

@@ -346,6 +346,10 @@ export const en = {
     'Off by default. When enabled, you get one notification at 9:00 AM summarizing your team’s activity from the last 24 hours (PRs shipped, tickets moved to Done). Nothing is sent when there was no activity.',
   'settings.split.label': 'Enable split view',
   'settings.split.help': 'Display two agents side by side on wide screens.',
+  'settings.spotlight.label': 'Enable Spotlight',
+  'settings.spotlight.help':
+    'Open the Quick Launch panel from anywhere with a keyboard shortcut. Which keys open it is chosen in the desktop app — it depends on what else is installed on that machine.',
+  'settings.usageLogs.section': 'Activity recording',
 
   // ── Settings · Notifications ───────────────────────────────────────────────
   'settings.notifications.section': 'Notifications',
@@ -363,7 +367,6 @@ export const en = {
     'A review landing on your PR, and a colleague picking up a ticket you also have an agent on, follow the master switch above — they are rare enough not to need one of their own.',
 
   // ── Settings · PR Review Watcher ───────────────────────────────────────────
-  'settings.prWatcher.section': 'PR Review Watcher',
   'settings.prWatcher.label': 'Watch PR reviews',
   'settings.prWatcher.help': 'Poll GitHub to track review status on agents’ pull requests.',
   'settings.prWatcher.intervalLabel': 'Polling interval',

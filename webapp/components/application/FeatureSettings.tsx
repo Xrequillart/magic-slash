@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Check, GitPullRequest, Sparkles, X } from 'lucide-react'
+import { BarChart3, Check, Sparkles, X } from 'lucide-react'
 import { Dropdown } from '@/components/Dropdown'
 import { SettingRow, SettingsCard, Toggle } from '@/components/SettingRow'
 import type { MessageKey, Translate } from '@/lib/i18n'
@@ -11,11 +11,20 @@ import { useAppSettings } from '@/components/application/SettingsContext'
 import { translateOptions } from '@/components/application/options'
 
 /**
- * Features tab: what the desktop app DOES on its own — what it records, how it
- * lays agents out, and the background worker that watches pull requests.
+ * Features tab, in two cards.
  *
- * What it LOOKS like is the Appearance tab, and how loud it is is Notifications:
- * this one is the app's behaviour, and nothing in it is about the window.
+ * The first is what the app DOES: how it lays agents out, how you reach it, and
+ * the background worker that watches pull requests. Three switches you turn on
+ * because you want the feature — the PR watcher's own settings hang off its
+ * switch rather than earning a card, since they are meaningless without it.
+ *
+ * The second is what the app SENDS. It is not a feature you enable, it is a
+ * question about your data, and it carries the two-column breakdown that answers
+ * it — putting that inside the list above would bury three one-line switches
+ * under a wall of text about something else entirely.
+ *
+ * What the app LOOKS like is the Appearance tab, and how loud it is is
+ * Notifications: nothing here is about the window.
  */
 
 /**
@@ -90,6 +99,59 @@ export function FeatureSettings() {
   return (
     <>
       <SettingsCard icon={Sparkles} title={t('settings.features')}>
+        <SettingRow label={t('settings.split.label')} description={t('settings.split.help')}>
+          <Toggle
+            checked={settings.splitEnabled ?? DEFAULTS.splitEnabled}
+            onChange={(splitEnabled) => patch({ splitEnabled })}
+            label={t('settings.split.label')}
+          />
+        </SettingRow>
+        {/* The shortcut itself stays in the desktop app: which keys are free is a
+            property of the machine, where wanting the panel at all is yours. */}
+        <SettingRow label={t('settings.spotlight.label')} description={t('settings.spotlight.help')}>
+          <Toggle
+            checked={settings.spotlightEnabled ?? DEFAULTS.spotlightEnabled}
+            onChange={(spotlightEnabled) => patch({ spotlightEnabled })}
+            label={t('settings.spotlight.label')}
+          />
+        </SettingRow>
+        <SettingRow label={t('settings.prWatcher.label')} description={t('settings.prWatcher.help')}>
+          <Toggle
+            checked={prReviews}
+            onChange={(prReviewsEnabled) => patch({ prReviewsEnabled })}
+            label={t('settings.prWatcher.label')}
+          />
+        </SettingRow>
+        {/* Below the switch they belong to, and gone with it: an interval for a
+            worker that is not running is a question with no answer. */}
+        {prReviews && (
+          <>
+            <SettingRow
+              label={t('settings.prWatcher.intervalLabel')}
+              description={t('settings.prWatcher.intervalHelp')}
+            >
+              <Dropdown
+                value={String(pollInterval)}
+                options={pollIntervalOptions}
+                onChange={(next) => patch({ prReviewsPollIntervalMs: Number(next) })}
+                className="w-52"
+              />
+            </SettingRow>
+            <SettingRow
+              label={t('settings.prWatcher.autoLaunchLabel')}
+              description={t('settings.prWatcher.autoLaunchHelp')}
+            >
+              <Toggle
+                checked={settings.prReviewsAutoLaunchSkills ?? DEFAULTS.prReviewsAutoLaunchSkills}
+                onChange={(prReviewsAutoLaunchSkills) => patch({ prReviewsAutoLaunchSkills })}
+                label={t('settings.prWatcher.autoLaunchLabel')}
+              />
+            </SettingRow>
+          </>
+        )}
+      </SettingsCard>
+
+      <SettingsCard icon={BarChart3} title={t('settings.usageLogs.section')}>
         {/*
           Hand-rolled rather than a SettingRow: the breakdown below has to sit
           INSIDE the row's border, or the two lists read as belonging to the next
@@ -129,48 +191,6 @@ export function FeatureSettings() {
             {t('settings.usageLogs.footnoteAgents')}
           </p>
         </div>
-        <SettingRow label={t('settings.split.label')} description={t('settings.split.help')}>
-          <Toggle
-            checked={settings.splitEnabled ?? DEFAULTS.splitEnabled}
-            onChange={(splitEnabled) => patch({ splitEnabled })}
-            label={t('settings.split.label')}
-          />
-        </SettingRow>
-      </SettingsCard>
-
-      <SettingsCard icon={GitPullRequest} title={t('settings.prWatcher.section')}>
-        <SettingRow label={t('settings.prWatcher.label')} description={t('settings.prWatcher.help')}>
-          <Toggle
-            checked={prReviews}
-            onChange={(prReviewsEnabled) => patch({ prReviewsEnabled })}
-            label={t('settings.prWatcher.label')}
-          />
-        </SettingRow>
-        {prReviews && (
-          <>
-            <SettingRow
-              label={t('settings.prWatcher.intervalLabel')}
-              description={t('settings.prWatcher.intervalHelp')}
-            >
-              <Dropdown
-                value={String(pollInterval)}
-                options={pollIntervalOptions}
-                onChange={(next) => patch({ prReviewsPollIntervalMs: Number(next) })}
-                className="w-52"
-              />
-            </SettingRow>
-            <SettingRow
-              label={t('settings.prWatcher.autoLaunchLabel')}
-              description={t('settings.prWatcher.autoLaunchHelp')}
-            >
-              <Toggle
-                checked={settings.prReviewsAutoLaunchSkills ?? DEFAULTS.prReviewsAutoLaunchSkills}
-                onChange={(prReviewsAutoLaunchSkills) => patch({ prReviewsAutoLaunchSkills })}
-                label={t('settings.prWatcher.autoLaunchLabel')}
-              />
-            </SettingRow>
-          </>
-        )}
       </SettingsCard>
     </>
   )
