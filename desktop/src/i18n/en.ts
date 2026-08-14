@@ -1032,6 +1032,52 @@ export const en = {
   'toast.commandCopied': 'Auto-launch disabled — {command} copied to clipboard',
   'toast.commandFailed': 'Failed to launch command',
 
+  // ── Pull request card (agent info sidebar) ───────────────────────────────
+  // The card renders from `prUrl` alone, so most of these have to read sensibly
+  // against a snapshot with almost nothing in it.
+  'agentInfo.pr.title': 'Pull request',
+  'agentInfo.pr.number': 'PR #{number}',
+  'agentInfo.pr.state.open': 'Open',
+  'agentInfo.pr.state.draft': 'Draft',
+  'agentInfo.pr.state.merged': 'Merged',
+  'agentInfo.pr.state.closed': 'Closed',
+  'agentInfo.pr.checks': 'Checks',
+  'agentInfo.pr.checksPassed': '{passed}/{total} passed',
+  'agentInfo.pr.noChecks': 'no checks',
+  'agentInfo.pr.checkPassed': 'Passed',
+  'agentInfo.pr.checkFailed': 'Failed',
+  'agentInfo.pr.checkRunning': 'Running',
+  'agentInfo.pr.checkSkipped': 'Skipped',
+  'agentInfo.pr.runningChecks': 'running:',
+  'agentInfo.pr.failedChecks': 'failing:',
+  // GitHub computes mergeability lazily and answers UNKNOWN on the first read
+  // after a push, so the absence of an answer is its own state — never a conflict.
+  'agentInfo.pr.mergeable': 'No conflicts',
+  'agentInfo.pr.conflicts': 'Conflicts to resolve',
+  'agentInfo.pr.mergeableUnknown': 'Mergeability unknown',
+  'agentInfo.pr.comments': 'comments',
+  'agentInfo.pr.commentsInline': 'inline',
+  'agentInfo.pr.commentsConversation': 'in conversation',
+  'agentInfo.pr.commentsReviews': 'review summaries',
+  'agentInfo.pr.authors': 'from',
+  'agentInfo.pr.lastChecked': 'checked {time}',
+  'agentInfo.pr.neverChecked': 'never checked',
+  'agentInfo.pr.refresh': 'Refresh now',
+  'agentInfo.pr.refreshFailed': 'Could not refresh the pull request',
+  'agentInfo.pr.refreshThrottled': 'Just checked — try again in a few seconds',
+  // Every failure names its remedy: an error without one leaves the same dead end
+  // as the blank card this replaced.
+  'agentInfo.pr.error.noToken': 'No GitHub token',
+  'agentInfo.pr.error.noTokenFix': 'Run `gh auth login` in a terminal, then refresh.',
+  'agentInfo.pr.error.notFound': 'Pull request not found',
+  'agentInfo.pr.error.notFoundFix': 'It may have been deleted, or the URL points at another repository.',
+  'agentInfo.pr.error.forbidden': 'Access denied',
+  'agentInfo.pr.error.forbiddenFix': 'Your token lacks the `repo` scope — run `gh auth refresh -s repo`.',
+  'agentInfo.pr.error.rateLimited': 'GitHub rate limit reached',
+  'agentInfo.pr.error.rateLimitedFix': 'Wait for the quota to reset, or slow the polling down in Settings.',
+  'agentInfo.pr.error.network': 'GitHub unreachable',
+  'agentInfo.pr.error.networkFix': 'Check your internet connection, then refresh.',
+
   // ── Status picker (agent info sidebar) ───────────────────────────────────
   // Lower-case on purpose — these render inside a small inline pill, not as a
   // sentence, and they are a different register from the `status.*` badges.

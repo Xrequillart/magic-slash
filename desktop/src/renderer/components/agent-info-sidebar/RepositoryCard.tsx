@@ -1,9 +1,9 @@
-import { GitBranch, Copy, Check, ExternalLink, ArrowRight, CheckCircle2, AlertCircle, MessageSquare, Clock, Wrench, CheckCircle, X } from 'lucide-react'
+import { GitBranch, Copy, Check, ExternalLink, ArrowRight, X } from 'lucide-react'
 import { GitHubIcon, VSCodeIcon } from './icons'
 import { ScriptsDropdown } from './ScriptsDropdown'
+import { PRWatchCard } from './PRWatchCard'
 import { formatRelativeDate } from './utils'
-import { useT, type MessageKey, type Translate } from '../../i18n'
-import { showToast } from '../Toast'
+import { useT } from '../../i18n'
 import type { RepoGitData } from './types'
 import type { RepositoryMetadata } from '../../../types'
 import { useStore } from '../../store'
@@ -22,39 +22,6 @@ interface RepositoryCardProps {
   onCopyCommitHash: (hash: string) => void
   onCopyBranchName: (branch: string) => void
   onRemove: () => void
-}
-
-const REVIEW_STATUS_LABELS: Record<NonNullable<RepositoryMetadata['prReviewStatus']>, MessageKey> = {
-  approved: 'prReview.approved',
-  'changes-requested': 'prReview.changesRequested',
-  commented: 'prReview.commented',
-  pending: 'prReview.pending',
-}
-
-function ReviewStatusIcon({ status }: { status: NonNullable<RepositoryMetadata['prReviewStatus']> }) {
-  switch (status) {
-    case 'approved':
-      return <CheckCircle2 className="w-3.5 h-3.5 text-green" />
-    case 'changes-requested':
-      return <AlertCircle className="w-3.5 h-3.5 text-red" />
-    case 'commented':
-      return <MessageSquare className="w-3.5 h-3.5 text-blue" />
-    case 'pending':
-      return <Clock className="w-3.5 h-3.5 text-text-secondary" />
-  }
-}
-
-async function runSlashCommand(terminalId: string, command: string, t: Translate) {
-  try {
-    const result = await window.electronAPI.prWatcher.sendCommand(terminalId, command)
-    if (result.launched) {
-      showToast(t('toast.commandSent', { command }), 'success')
-    } else if (result.copied) {
-      showToast(t('toast.commandCopied', { command }), 'warning')
-    }
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : t('toast.commandFailed'), 'error')
-  }
 }
 
 export function RepositoryCard({
@@ -283,51 +250,10 @@ export function RepositoryCard({
         </button>
       )}
 
-      {/* PR review status block */}
-      {prUrl && repoMetadata?.prReviewStatus && (
-        <div className="mt-2 bg-surface rounded-md p-2 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-xs">
-            <ReviewStatusIcon status={repoMetadata.prReviewStatus} />
-            <span className="text-ink/80 font-medium">
-              {t(REVIEW_STATUS_LABELS[repoMetadata.prReviewStatus])}
-            </span>
-            {repoMetadata.prMerged && (
-              <span className="ml-1 px-1.5 py-0.5 rounded bg-green/10 text-green text-[10px] font-semibold uppercase tracking-wide">
-                merged
-              </span>
-            )}
-            {repoMetadata.prReviewCommentCount !== undefined && repoMetadata.prReviewCommentCount > 0 && (
-              <span className="ml-auto flex items-center gap-1 text-text-secondary/70">
-                <MessageSquare className="w-3 h-3" />
-                {repoMetadata.prReviewCommentCount}
-              </span>
-            )}
-          </div>
-          {repoMetadata.prReviewers && repoMetadata.prReviewers.length > 0 && (
-            <div className="text-[10px] text-text-secondary/60 truncate" title={repoMetadata.prReviewers.join(', ')}>
-              by {repoMetadata.prReviewers.join(', ')}
-            </div>
-          )}
-          {(repoMetadata.prReviewStatus === 'changes-requested' || repoMetadata.prReviewStatus === 'commented') && (
-            <button
-              onClick={() => runSlashCommand(agentId, '/magic:resolve', t)}
-              className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-red/10 hover:bg-red/20 border border-red/20 rounded-md text-red text-xs font-medium transition-colors"
-            >
-              <Wrench className="w-3 h-3" />
-              {t('agentInfo.launchResolve')}
-            </button>
-          )}
-          {repoMetadata.prMerged === true && (
-            <button
-              onClick={() => runSlashCommand(agentId, '/magic:done', t)}
-              className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-green/10 hover:bg-green/20 border border-green/20 rounded-md text-green text-xs font-medium transition-colors"
-            >
-              <CheckCircle className="w-3 h-3" />
-              {t('agentInfo.launchDone')}
-            </button>
-          )}
-        </div>
-      )}
+      {/* Dedicated PR card. Keyed off `prUrl` alone, deliberately: when the watcher
+          is switched off the card still shows the last snapshot, dated, instead of
+          vanishing along with the polling. */}
+      {prUrl && <PRWatchCard prUrl={prUrl} agentId={agentId} metadata={repoMetadata} />}
     </div>
   )
 }
