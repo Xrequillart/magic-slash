@@ -8,6 +8,7 @@ import { Badge, Card, SectionHeader, type BadgeTone } from '@/components/ui'
 import type { MessageKey, Translate } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
 import { SkillStats } from '@/components/SkillStats'
+import { TabStrip } from '@/components/TabStrip'
 
 /**
  * Workflow status → badge tone. Mirrors STATUS_CONFIG in the desktop's Team page
@@ -183,24 +184,23 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
 
   return (
     <>
-      {/* The tabs moved ABOVE both sections: they scope the skill stats as well as
-          the repository list now, so they can no longer sit under the one section
-          they happened to precede. */}
+      {/* The tabs sit ABOVE both sections: they scope the skill stats as well as
+          the repository list, so they can no longer sit under the one section
+          they happened to precede.
+
+          Same strip as the Application page's tabs — one control for "pick a tab"
+          across the app, rather than a second, smaller-looking one here. `null` is a
+          legitimate scope (the personal tab) and cannot be a React key or a callback
+          argument, so 'personal' stands in for it on the way through TabStrip and is
+          resolved back to the scope on the way out. */}
       {tabs.length > 1 && (
-        <div className="mb-4 flex flex-wrap items-center gap-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.scope ?? 'personal'}
-              onClick={() => setScope(tab.scope)}
-              className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                tab.scope === activeScope
-                  ? 'border-accent/30 bg-accent/10 text-accent'
-                  : 'border-black/10 bg-white text-muted hover:bg-black/[0.03] hover:text-ink'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="mb-4">
+          <TabStrip
+            ariaLabel={t('team.repositories')}
+            items={tabs.map((tab) => ({ key: tab.scope ?? 'personal', label: tab.label }))}
+            activeKey={activeScope === undefined ? undefined : (activeScope ?? 'personal')}
+            onSelect={(key) => setScope(key === 'personal' ? null : key)}
+          />
         </div>
       )}
 
