@@ -25,6 +25,10 @@ interface ConfigRow {
 
 interface AgentRow {
   id: string
+  // The app's own agent id ("claude-…"), and the key every write arbitrates on
+  // since 20260814090000. Null on a row no desktop wrote, and on every archived
+  // row — hence the jsonb fallback in fromAgentRow.
+  app_agent_id: string | null
   // DERIVED from the agent's repositories, and null for an agent on personal repos
   // only (or on none yet) — see migration 20260727160000. Selected but never read:
   // the client is not allowed an opinion on it.
@@ -230,7 +234,11 @@ interface CloudContext {
 
 export class CloudStore implements Store {
   private activeOrgId: string | undefined
-  /** app agent id ("claude-…") → agents.id (uuid). Rebuilt on every loadAgents. */
+  /**
+   * app agent id ("claude-…") → agents.id (uuid). Rebuilt on every loadAgents and
+   * refreshed from what each agent upsert returns — never invented here, which is
+   * what used to duplicate rows (see migration 20260814090000).
+   */
   private agentIdMap = new Map<string, string>()
   /** app agent id → digest of its last-synced repository ids (see syncRepoLinks). */
   private agentRepoKey = new Map<string, string>()
@@ -261,13 +269,22 @@ export class CloudStore implements Store {
    *
    * A chain, not a lock: the writes must also stay in the order they were made,
    * since an archive following a save means something different than the reverse.
+   *
+   * loadAgents rides it too, despite the name: it is a read-then-replace of those
+   * same caches, so it belongs in the same order as the writes (see loadAgents).
    */
   private queueAgentWrite<T>(task: () => Promise<T>): Promise<T> {
     const run = this.agentWrites.then(task, task)
     // The chain waits on outcomes, not successes: one failed write must not
     // reject every later one. The caller still gets the real rejection — it
     // awaits `run`, not the swallowed copy the chain holds.
-    this.agentWrites = run.catch(() => {})
+    //
+    // The fulfilment value is dropped as deliberately as the rejection. loadAgents
+    // rides this chain too and returns the whole roster, and a bare `.catch()`
+    // passes that value through — the tail would then hold every hydrated Agent
+    // alive until the next write replaced it, on a store that lives as long as the
+    // process and outlives a sign-out.
+    this.agentWrites = run.then(() => {}, () => {})
     return run
   }
 
@@ -723,8 +740,16 @@ export class CloudStore implements Store {
    * The backend derives it from agent_repositories (see the derive_agent_org
    * trigger), so sending one here would fight the trigger — and on an upsert an
    * omitted column is left untouched, which is exactly what we want.
+   *
+   * `id` is absent for the same reason, and it matters more: the row's uuid is
+   * the database's to mint. Left out, an update keeps the value the row already
+   * has and an insert takes the column's `gen_random_uuid()` default — so no
+   * client can name an identity, and the only key it asserts is `app_agent_id`,
+   * which the unique index arbitrates on (20260814090000). The app id also stays
+   * in the jsonb: rows written before that migration carry it only there, and
+   * readers that predate the column still look for it.
    */
-  private toAgentRow(agent: Agent, id: string, uid: string): Record<string, unknown> {
+  private toAgentRow(agent: Agent, uid: string): Record<string, unknown> {
     // The five fields that HAVE a column are peeled off the metadata rather than
     // copied into it. They used to be written twice — once in the column, once
     // inside the jsonb — while fromAgentRow read only the jsonb, which made every
@@ -734,7 +759,7 @@ export class CloudStore implements Store {
     // admin_list_user_agents already read the columns).
     const { ticketId, description, branchName, baseBranch, status, ...rest } = agent.metadata ?? {}
     return {
-      id,
+      app_agent_id: agent.id,
       owner_id: uid,
       name: agent.name,
       ticket_id: ticketId ?? null,
@@ -744,9 +769,10 @@ export class CloudStore implements Store {
       status: status ?? null,
       repositories: agent.repositories ?? [],
       // What is left has no column of its own: title, fullStackTaskId,
-      // relatedWorktrees, repositoryMetadata, usage — plus __app, the app-side
-      // identity (its local id, creation stamp and pane) that has nowhere else to
-      // live because the row's own id is a uuid the app never sees.
+      // relatedWorktrees, repositoryMetadata, usage — plus __app, which carries
+      // tsCreate and splitPane, neither of which has anywhere else to live. Its
+      // `id` is the one field now duplicated, and only for compatibility: a build
+      // older than 20260814090000 reads the app id from here and nowhere else.
       metadata: { ...rest, __app: { id: agent.id, tsCreate: agent.tsCreate, splitPane: agent.splitPane } },
     }
   }
@@ -757,7 +783,12 @@ export class CloudStore implements Store {
     delete rest.__app
 
     return {
-      id: app?.id ?? row.id,
+      // Column first, jsonb second, uuid last. The jsonb still answers for rows an
+      // older installed build writes — it sends `id` with onConflict 'id' and
+      // leaves the column null — so both levels stay until no such build is in the
+      // field, at which point toAgentRow can stop mirroring the id and this rung
+      // can go. The uuid is the last resort for a row no desktop ever wrote.
+      id: row.app_agent_id ?? app?.id ?? row.id,
       name: row.name,
       repositories: Array.isArray(row.repositories) ? row.repositories : [],
       repositoryIds: [],
@@ -795,32 +826,56 @@ export class CloudStore implements Store {
    * Archived agents are excluded too: they are closed work kept only for the
    * history they are attached to. Without this filter, restoreAgents() would
    * spawn a PTY for every agent ever closed.
+   *
+   * Queued behind the pending agent writes (see queueAgentWrite), like the two
+   * writers: hydrating is a read-then-replace of the very caches saveAgents and
+   * archiveAgent read and update, and interleaving the two is how a save came to
+   * see a half-built map. The cost is real — a hydration now waits for the
+   * writes in flight — and accepted: those writes are single round-trips, and
+   * hydration happens on launch and on org switches, not on the hot path. No
+   * deadlock either: loadAgents has exactly one caller (config/agents.ts), and
+   * nothing on the write chain calls it.
    */
   async loadAgents(): Promise<Agent[]> {
+    return this.queueAgentWrite(() => this.readAgentRows())
+  }
+
+  private async readAgentRows(): Promise<Agent[]> {
     const ctx = await this.context()
     if (!ctx) return []
 
     const { data, error } = await ctx.client
       .from('agents')
-      .select('id, org_id, owner_id, name, ticket_id, description, branch_name, base_branch, status, repositories, metadata, updated_at')
+      .select('id, app_agent_id, org_id, owner_id, name, ticket_id, description, branch_name, base_branch, status, repositories, metadata, updated_at')
       .eq('owner_id', ctx.uid)
       .is('archived_at', null)
 
     if (error || !data) return []
 
-    this.agentIdMap.clear()
-    this.agentRepoKey.clear()
     const rows = data as AgentRow[]
     const linksByAgent = await this.fetchRepoLinks(ctx, rows.map((r) => r.id))
+
+    // Built locally, published at the end. These used to be cleared here, before
+    // the fetchRepoLinks await — so anything reading them in that window (a
+    // write's uuid lookup, an event's agent_id) saw an EMPTY map and concluded
+    // the agents were new. Replacing the maps in one synchronous step means a
+    // reader sees either the previous hydration's answer or this one's, never a
+    // half-filled map. The early returns above leave both intact on purpose: a
+    // failed read is not evidence that the roster is gone.
+    const idMap = new Map<string, string>()
+    const repoKey = new Map<string, string>()
 
     const agents: Agent[] = []
     for (const raw of rows) {
       const agent = this.fromAgentRow(raw)
       agent.repositoryIds = linksByAgent.get(raw.id) ?? []
-      this.agentIdMap.set(agent.id, raw.id)
-      this.agentRepoKey.set(agent.id, agent.repositoryIds.join(','))
+      idMap.set(agent.id, raw.id)
+      repoKey.set(agent.id, agent.repositoryIds.join(','))
       agents.push(agent)
     }
+
+    this.agentIdMap = idMap
+    this.agentRepoKey = repoKey
     return agents
   }
 
@@ -862,6 +917,13 @@ export class CloudStore implements Store {
     )
     if (changed.length === 0) return
 
+    // The assertion holds because of what ran immediately before: writeAgentRows
+    // upserted a row for every one of these app ids and refreshed the map from the
+    // response, which PostgREST returns in full — ON CONFLICT DO UPDATE touches
+    // every row, and agents_select admits them all on `owner_id = auth.uid()`,
+    // which is the owner they were just written with. A guard here would be a
+    // branch nothing can take; if the invariant ever did break, the missing
+    // agent_id fails the insert loudly rather than writing anything wrong.
     const uuidByAppId = new Map(changed.map((a) => [a.id, this.agentIdMap.get(a.id)!]))
     const existing = await this.fetchRepoLinks(ctx, [...uuidByAppId.values()])
 
@@ -938,18 +1000,37 @@ export class CloudStore implements Store {
     const ctx = await this.context()
     if (!ctx) return
 
-    const rows = agents.map((a) => {
-      const uuid = this.agentIdMap.get(a.id) ?? randomUUID()
-      this.agentIdMap.set(a.id, uuid)
-      return this.toAgentRow(a, uuid, ctx.uid)
-    })
+    // One row per app id. `(owner_id, app_agent_id)` is what the upsert arbitrates
+    // on, and Postgres refuses a statement that would hit the same conflict target
+    // twice — 21000, "ON CONFLICT DO UPDATE command cannot affect row a second
+    // time" — which would fail the WHOLE roster over one duplicated cache entry.
+    // The later entry wins: it is the more recent state of the same agent.
+    const byAppId = new Map(agents.map((a) => [a.id, a]))
+    const unique = [...byAppId.values()]
+    const rows = unique.map((a) => this.toAgentRow(a, ctx.uid))
     if (rows.length === 0) return
 
-    const { error } = await ctx.client.from('agents').upsert(rows, { onConflict: 'id' })
+    // The database resolves identity, and says so: an app id it already knows
+    // returns the uuid of the row that holds it, a new one returns the uuid the
+    // column default just minted. Reading the binding back from the response is
+    // what replaced `agentIdMap.get(a.id) ?? randomUUID()` — a local cache miss
+    // used to mint a SECOND identity for an agent that already had one, which is
+    // the duplication migration 20260814090000 exists to end.
+    const { data, error } = await ctx.client
+      .from('agents')
+      .upsert(rows, { onConflict: 'owner_id,app_agent_id' })
+      .select('id, app_agent_id')
     if (error) throw new Error(`saveAgents failed: ${error.message}`)
 
+    for (const row of (data ?? []) as { id: string; app_agent_id: string | null }[]) {
+      if (row.app_agent_id) this.agentIdMap.set(row.app_agent_id, row.id)
+    }
+
     // After the upsert: the link rows reference agents that must already exist.
-    await this.syncRepoLinks(ctx, agents)
+    // The deduplicated list, for the same reason the upsert got it — a repeated app
+    // id would otherwise have its links diffed twice against one uuid, so the stale
+    // entry issues a delete the fresh entry immediately undoes.
+    await this.syncRepoLinks(ctx, unique)
   }
 
   /**
@@ -977,18 +1058,25 @@ export class CloudStore implements Store {
 
     // Scoped by owner, not by org: an agent on a personal repo has no org, and
     // ownership is the real permission boundary anyway.
+    //
+    // app_agent_id is released in the same statement as archived_at, and that is
+    // the whole reason a closed agent cannot be resurrected. App ids are
+    // `claude-${Date.now()}`, so a later agent may carry the same one; with the
+    // id still on the archived row, its upsert would conflict onto it and — since
+    // toAgentRow never sets archived_at — bring back a row the user closed, live
+    // in the database yet filtered out of every read. Null is also what keeps the
+    // unique index total-index-safe: any number of archived rows may share an app
+    // id, because null keys are distinct (see 20260814090000).
     const { error } = await ctx.client
       .from('agents')
-      .update({ archived_at: new Date().toISOString() })
+      .update({ archived_at: new Date().toISOString(), app_agent_id: null })
       .eq('owner_id', ctx.uid)
       .eq('id', uuid)
       .is('archived_at', null)
     if (error) throw new Error(`archiveAgent failed: ${error.message}`)
 
-    // Drop the app id → uuid binding so a future agent reusing this app id
-    // (ids are `claude-${Date.now()}`) mints a fresh row instead of upserting
-    // onto the archived one — which, since toAgentRow never sets archived_at,
-    // would resurrect it as an invisible agent.
+    // The local binding goes too: nothing in this process should keep pointing an
+    // app id at a row that no longer answers to it.
     this.agentIdMap.delete(appId)
     this.agentRepoKey.delete(appId)
   }

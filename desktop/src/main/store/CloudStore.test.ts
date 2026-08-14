@@ -45,6 +45,9 @@ import { CloudStore } from './CloudStore'
 // recorded so tests can assert what was sent.
 
 type QueryResult = { data?: unknown; error?: unknown }
+// A result may be a promise, which is how a test parks a query mid-chain and
+// interleaves another call with it (the builder adopts whatever it is given).
+type PendingResult = QueryResult | PromiseLike<QueryResult>
 
 interface RecordedCall {
   table: string
@@ -53,11 +56,16 @@ interface RecordedCall {
 }
 
 function makeClient(
-  resultsByTable: Record<string, QueryResult>,
+  resultsByTable: Record<string, PendingResult>,
   // Keyed by function name. Separate from the table map because an RPC is not a
   // table and shares no builder chain with one: `client.rpc()` resolves straight
   // to { data, error }.
   resultsByRpc: Record<string, QueryResult> = {},
+  // What an `upsert(...).select(...)` chain resolves to, keyed by table. Separate
+  // from the read map because PostgREST returns the UPSERTED rows there, which is
+  // a different set from what a plain select on the same table yields — and
+  // CloudStore rebuilds its app id → uuid binding from it.
+  resultsByUpsert: Record<string, PendingResult> = {},
 ) {
   const calls: RecordedCall[] = []
   const inserts: Record<string, unknown[]> = {}
@@ -66,6 +74,7 @@ function makeClient(
 
   function builder(table: string) {
     const result = resultsByTable[table] ?? { data: [], error: null }
+    let upserted = false
     const record = (method: string, args: unknown[]) => calls.push({ table, method, args })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const b: any = {
@@ -90,11 +99,12 @@ function makeClient(
       upsert: (payload: unknown, ...args: unknown[]) => {
         record('upsert', [payload, ...args])
         ;(upserts[table] ??= []).push(payload)
+        upserted = true
         return b
       },
       delete: (...args: unknown[]) => { record('delete', args); return b },
       then: (resolve: (v: QueryResult) => unknown, reject?: (e: unknown) => unknown) =>
-        Promise.resolve(result).then(resolve, reject),
+        Promise.resolve(upserted ? resultsByUpsert[table] ?? result : result).then(resolve, reject),
     }
     return b
   }
@@ -306,6 +316,7 @@ describe('appendHistory', () => {
 describe('agents', () => {
   const agentRow = (id: string, appId: string, owner: string) => ({
     id,
+    app_agent_id: appId,
     org_id: ORG,
     owner_id: owner,
     name: `Agent ${appId}`,
@@ -383,8 +394,13 @@ describe('agents', () => {
     await store.loadAgents()
     await store.archiveAgent('claude-1')
 
-    const payload = (updates.agents[0] as { archived_at: string })
+    const payload = (updates.agents[0] as { archived_at: string; app_agent_id: string | null })
     expect(typeof payload.archived_at).toBe('string')
+    // The app id is released in the same statement. App ids are
+    // `claude-${Date.now()}`, so keeping it here would let the next agent that
+    // reuses one conflict onto this row and resurrect it — archived, therefore
+    // invisible in every read path, yet the row every write lands on.
+    expect(payload.app_agent_id).toBeNull()
 
     // Scoped by owner_id so closing an agent can never reach a teammate's row,
     // and by `archived_at is null` so a second close is a no-op.
@@ -410,8 +426,8 @@ describe('agents', () => {
     expect(calls.filter((c) => c.table === 'agents')).toEqual([])
   })
 
-  it('an app id reused after archiving mints a new row instead of resurrecting the old one', async () => {
-    const { client, upserts } = makeClient({
+  it('an app id reused after archiving cannot land on the archived row', async () => {
+    const { client, updates, upserts } = makeClient({
       memberships: membershipsOk,
       agents: { data: [agentRow('uuid-1', 'claude-1', UID)], error: null },
     })
@@ -422,8 +438,178 @@ describe('agents', () => {
     await store.archiveAgent('claude-1')
     await store.saveAgents([{ id: 'claude-1', name: 'Reborn', repositories: [] } as Agent])
 
+    // Two halves of one guarantee, and neither is a uuid the client chose: the
+    // archive released the app id, and the write claims it again with no `id` of
+    // its own. So the conflict target `(owner_id, app_agent_id)` matches nothing
+    // — the archived row no longer holds the id — and the database inserts a new
+    // row rather than reviving a closed agent.
+    expect((updates.agents[0] as Record<string, unknown>).app_agent_id).toBeNull()
+
     const rows = upserts.agents[0] as Array<Record<string, unknown>>
-    expect(rows[0].id).not.toBe('uuid-1')
+    expect(rows[0]).not.toHaveProperty('id')
+    expect(rows[0].app_agent_id).toBe('claude-1')
+  })
+
+  // ── identity lives in the database (issue #179) ────────────────────────────
+  //
+  // The app id used to be bound to a row uuid in this process's memory alone, and
+  // a cache miss minted a fresh uuid for an agent that already had one — so a
+  // second app instance, or a save landing mid-hydration, duplicated the whole
+  // roster. Migration 20260814090000 moves the identity into a column with a
+  // unique index; these tests are what keep the client writing to it.
+
+  it('saveAgents sends no id and conflicts on the app id, not on the primary key', async () => {
+    const { client, calls, upserts } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [], error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().saveAgents([{ id: 'claude-1', name: 'Agent A', repositories: [] } as Agent])
+
+    const rows = upserts.agents[0] as Array<Record<string, unknown>>
+    // Omitted, not null: on an update the row keeps the uuid it has, and on an
+    // insert the column default mints one. A client that names a primary key is
+    // a client that can invent a second identity for one agent.
+    expect(rows[0]).not.toHaveProperty('id')
+    expect(rows[0].app_agent_id).toBe('claude-1')
+
+    const upsert = calls.find((c) => c.table === 'agents' && c.method === 'upsert')
+    expect(upsert?.args[1]).toEqual({ onConflict: 'owner_id,app_agent_id' })
+  })
+
+  it('loadAgents takes the agent id from the column, and only then from the jsonb', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      agents: {
+        data: [
+          // The column is the identity; the jsonb copy is kept for readers that
+          // predate it and must never override it.
+          { ...agentRow('uuid-1', 'claude-1', UID), metadata: { __app: { id: 'claude-stale' } } },
+          // A row written before the column existed, and not re-saved since.
+          { ...agentRow('uuid-2', 'claude-2', UID), app_agent_id: null },
+        ],
+        error: null,
+      },
+    })
+    h.state.client = client
+
+    const agents = await new CloudStore().loadAgents()
+    expect(agents.map((a: Agent) => a.id)).toEqual(['claude-1', 'claude-2'])
+
+    const select = calls.find((c) => c.table === 'agents' && c.method === 'select')
+    expect(select?.args[0]).toContain('app_agent_id')
+  })
+
+  it('saveAgents rebuilds the app id → uuid binding from what the upsert returned', async () => {
+    const { client, inserts } = makeClient(
+      {
+        memberships: membershipsOk,
+        agents: { data: [], error: null },
+        activity_events: { error: null },
+      },
+      {},
+      // What the database answers: the app id already had a row, and this is its
+      // uuid. Nothing else in the process knows it — the store never loaded.
+      { agents: { data: [{ id: 'uuid-1', app_agent_id: 'claude-1' }], error: null } },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.saveAgents([{ id: 'claude-1', name: 'Agent A', repositories: [] } as Agent])
+    await store.appendHistory({
+      agentId: 'claude-1', agentName: 'Agent A', action: 'started', repositories: [], timestamp: 1000,
+    })
+
+    // The event attaches to the row the database resolved. Before this, a store
+    // that had not hydrated attributed the event to a uuid it had invented.
+    expect(inserts.activity_events[0]).toMatchObject({ agent_id: 'uuid-1' })
+  })
+
+  it('saveAgents sends one row per app id, whatever the caller passed', async () => {
+    const { client, upserts } = makeClient({
+      memberships: membershipsOk,
+      agents: { data: [], error: null },
+    })
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.saveAgents([
+      { id: 'claude-1', name: 'Stale', repositories: [] } as Agent,
+      { id: 'claude-1', name: 'Fresh', repositories: [] } as Agent,
+    ])
+
+    // Postgres rejects a whole ON CONFLICT statement that would hit the same
+    // conflict target twice (21000), so one duplicated cache entry would fail the
+    // save of every OTHER agent too. The later entry wins — it is the more recent
+    // state of the same agent.
+    const rows = upserts.agents[0] as Array<Record<string, unknown>>
+    expect(rows).toHaveLength(1)
+    expect(rows[0].name).toBe('Fresh')
+  })
+
+  it('a hydration in flight never hands out an empty id map', async () => {
+    // The single-process half of the duplication: loadAgents used to clear the id
+    // map BEFORE awaiting its links query, so everything running inside that
+    // window — a save, an event — saw an EMPTY map and concluded the agents were
+    // new. The map is now built locally and swapped in after the awaits, so a
+    // reader gets the previous hydration's answer or this one's, never nothing.
+    //
+    // The links query is a gate: `opened` fires the moment CloudStore awaits it —
+    // i.e. once the hydration is past the point where it used to wipe the map —
+    // and it stays parked until `release`. Without that handshake the test would
+    // race the two await chains and pass either way.
+    let release: (() => void) | undefined
+    let opened: (() => void) | undefined
+    const settled = new Promise<QueryResult>((resolve) => {
+      release = () => resolve({ data: [], error: null })
+    })
+    const awaited = new Promise<void>((resolve) => { opened = resolve })
+    const links: PromiseLike<QueryResult> = {
+      then: (onFulfilled, onRejected) => {
+        opened?.()
+        return settled.then(onFulfilled, onRejected)
+      },
+    }
+
+    const results: Record<string, PendingResult> = {
+      memberships: membershipsOk,
+      agents: { data: [agentRow('uuid-1', 'claude-1', UID)], error: null },
+      agent_repositories: { data: [], error: null },
+      activity_events: { error: null },
+    }
+    const { client, upserts, inserts } = makeClient(
+      results,
+      {},
+      { agents: { data: [{ id: 'uuid-1', app_agent_id: 'claude-1' }], error: null } },
+    )
+    h.state.client = client
+
+    const store = new CloudStore()
+    await store.loadAgents()
+
+    // A second hydration (an org switch, a reconnect), parked on its links query.
+    results.agent_repositories = links
+    const rehydrating = store.loadAgents()
+    await awaited
+
+    // Written inside the window. Events are not queued behind the agent writes —
+    // they must not be, they are on the hot path — so this is exactly the read
+    // that used to come back empty and record an unattributable event.
+    await store.appendHistory({
+      agentId: 'claude-1', agentName: 'Agent A', action: 'started', repositories: [], timestamp: 1000,
+    })
+
+    // And a save from the same window: config/agents.ts fires them and forgets.
+    const saving = store.saveAgents([{ id: 'claude-1', name: 'Agent A', repositories: [] } as Agent])
+    release?.()
+    await Promise.all([rehydrating, saving])
+
+    expect(inserts.activity_events[0]).toMatchObject({ agent_id: 'uuid-1' })
+
+    const rows = upserts.agents[0] as Array<Record<string, unknown>>
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).not.toHaveProperty('id')
   })
 
   // ── columns vs jsonb ──────────────────────────────────────────────────────
@@ -536,11 +722,15 @@ describe('agents', () => {
   })
 
   it('saveAgents links the agent to the repositories it resolved, tolerating a link already there', async () => {
-    const { client, calls, upserts } = makeClient({
-      memberships: membershipsOk,
-      agents: { data: [], error: null },
-      agent_repositories: { data: [], error: null },
-    })
+    const { client, calls, upserts } = makeClient(
+      {
+        memberships: membershipsOk,
+        agents: { data: [], error: null },
+        agent_repositories: { data: [], error: null },
+      },
+      {},
+      { agents: { data: [{ id: 'uuid-1', app_agent_id: 'claude-1' }], error: null } },
+    )
     h.state.client = client
 
     await new CloudStore().saveAgents([
@@ -549,6 +739,9 @@ describe('agents', () => {
 
     const rows = upserts.agent_repositories[0] as Array<Record<string, unknown>>
     expect(rows.map((r) => r.repo_id)).toEqual(['r1', 'r2'])
+    // The uuid the agents upsert returned — the link table keys on the row id,
+    // which the client no longer knows until the database answers.
+    expect(rows.map((r) => r.agent_id)).toEqual(['uuid-1', 'uuid-1'])
     // (agent_id, repo_id) is the primary key, so re-creating a link that exists
     // must be a no-op and not a "failed to save your agents" the user cannot act
     // on. ignoreDuplicates and not a merge: the table grants no UPDATE.
@@ -557,11 +750,15 @@ describe('agents', () => {
   })
 
   it('saveAgents serializes concurrent writes instead of diffing the links twice', async () => {
-    const { client, calls } = makeClient({
-      memberships: membershipsOk,
-      agents: { data: [], error: null },
-      agent_repositories: { data: [], error: null },
-    })
+    const { client, calls } = makeClient(
+      {
+        memberships: membershipsOk,
+        agents: { data: [], error: null },
+        agent_repositories: { data: [], error: null },
+      },
+      {},
+      { agents: { data: [{ id: 'uuid-1', app_agent_id: 'claude-1' }], error: null } },
+    )
     h.state.client = client
 
     const store = new CloudStore()
