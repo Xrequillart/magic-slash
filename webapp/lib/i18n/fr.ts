@@ -169,8 +169,21 @@ export const fr: Record<keyof typeof en, string> = {
   'skillHours.label.last': 'Dernière utilisation',
   'skillHours.since': 'depuis le {date}',
   'skillHours.sinceMonday': 'depuis lundi',
+  'skillHours.byAgent': 'sur {name}',
   'skillHours.hint':
     'Seules les exécutions qui ont signalé leur fin sont comptées : une exécution interrompue n’ajoute rien et une exécution compte au maximum quatre heures — le vrai total est donc plus élevé.',
+
+  // ── Heures de skills · enregistrement coupé ────────────────────────────────
+  'skillHours.optIn.title': 'Vos heures, une fois le suivi activé',
+  'skillHours.optIn.body':
+    'L’enregistrement de l’activité est coupé : aucune exécution de skill n’est enregistrée, il n’y a donc rien à compter ici. Activez-le et le total repart à votre prochaine exécution — celles faites entre-temps ne sont pas rattrapées.',
+  'skillHours.optIn.cta': 'Activer le suivi',
+  'skillHours.optIn.saving': 'Activation…',
+  'skillHours.optIn.savedTitle': 'C’est activé.',
+  'skillHours.optIn.savedBody':
+    'Vos heures apparaîtront ici après votre prochaine exécution de skill. L’app desktop suit ce réglage en direct, il n’y a rien à redémarrer.',
+  'skillHours.optIn.note':
+    'Il s’agit du réglage « Partager mon activité avec mon équipe ». Le détail de ce qui est enregistré est dans Application → Fonctionnalités, où vous pouvez le désactiver à nouveau quand vous le souhaitez.',
 
   // ── Compte ─────────────────────────────────────────────────────────────────
   'account.title': 'Compte',

@@ -92,7 +92,9 @@ export default function Dashboard() {
                 viewer's own across every scope, so they must not appear to belong to
                 whichever organization tab happens to be open. Outside it also means
                 the banner does not wait on the team overview to render. Not shown
-                during onboarding — nobody has hours before their first run. */}
+                during onboarding — nobody has hours before their first run, and the
+                opt-in panel it falls back to would be one more thing to decide in the
+                middle of a checklist. */}
             <SkillHoursBanner />
             <TeamRepos overview={team} />
           </>
