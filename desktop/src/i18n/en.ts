@@ -1089,6 +1089,13 @@ export const en = {
   'agentInfo.pr.refresh': 'Refresh now',
   'agentInfo.pr.refreshFailed': 'Could not refresh the pull request',
   'agentInfo.pr.refreshThrottled': 'Just checked — try again in a few seconds',
+  // The watcher being off is a setting, not a failure — so it gets its own band,
+  // and the band carries the switch rather than sending anyone to Settings.
+  'agentInfo.pr.watcherOff': 'PR watching is off',
+  'agentInfo.pr.watcherOffStale': 'Everything below is from the last reading.',
+  'agentInfo.pr.watcherOffEmpty': 'Turn it on to see state, checks and reviews.',
+  'agentInfo.pr.enableWatcher': 'Turn on',
+  'agentInfo.pr.enableWatcherFailed': 'Could not turn PR watching on',
   // Every failure names its remedy: an error without one leaves the same dead end
   // as the blank card this replaced.
   'agentInfo.pr.error.noToken': 'No GitHub token',

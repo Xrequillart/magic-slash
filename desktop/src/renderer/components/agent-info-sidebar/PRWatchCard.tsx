@@ -5,6 +5,7 @@ import {
   CheckCircle,
   CheckCircle2,
   Clock,
+  EyeOff,
   ExternalLink,
   GitMerge,
   GitPullRequest,
@@ -21,12 +22,17 @@ import {
   XCircle,
 } from 'lucide-react'
 import { formatTimestamp } from './utils'
+import { useStore } from '../../store'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 import { showToast } from '../Toast'
 import type { PRChecksSummary, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
 
 interface PRWatchCardProps {
-  /** The card exists as soon as this is set — never gated on `prReviews.enabled`. */
+  /**
+   * The card exists as soon as this is set — never gated on `prReviews.enabled`.
+   * When the watcher IS off, the card says so and offers to switch it back on
+   * rather than quietly showing a snapshot nothing will ever update.
+   */
   prUrl: string
   /** Terminal id the slash commands are typed into. */
   agentId: string
@@ -100,6 +106,31 @@ const MERGEABLE_ROWS = {
   false: { Icon: AlertTriangle, tone: 'text-red', label: 'agentInfo.pr.conflicts' },
   unknown: { Icon: CheckCircle, tone: 'text-text-secondary/60', label: 'agentInfo.pr.mergeableUnknown' },
 } as const satisfies Record<string, { Icon: typeof GitMerge; tone: string; label: MessageKey }>
+
+/**
+ * The fields only the watcher ever writes.
+ *
+ * `/magic:pr` posts `prUrl` and nothing else (`status-server.ts`), so a single one
+ * of these being present is the proof that a read actually landed. Their total
+ * absence means the card has never been anything but a link — and rows that state
+ * a fact ("mergeability unknown") must stay out of that state rather than
+ * describe a snapshot nobody ever took.
+ */
+const WATCHER_WRITTEN_FIELDS = [
+  'prState',
+  'prMerged',
+  'prClosed',
+  'prChecks',
+  'prMergeable',
+  'prReviewStatus',
+  'prReviewCommentCount',
+  'prCommentCounts',
+  'prReviewers',
+  'prCommentAuthors',
+  'prReviewUpdatedAt',
+  'prWatchError',
+  'prLastCheckedAt',
+] as const satisfies readonly Exclude<keyof RepositoryMetadata, 'prUrl'>[]
 
 interface CommentRow {
   label: MessageKey
@@ -183,6 +214,13 @@ function CheckNames({ names, tone, label }: { names: string[]; tone: string; lab
 export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   const t = useT()
   const [refreshing, setRefreshing] = useState(false)
+  const [enabling, setEnabling] = useState(false)
+
+  // Absent means ON — the same reading as the watcher, the IPC handlers and the
+  // Settings toggle. Anything else here would show "switched off" on a fresh
+  // install that has never touched the setting.
+  const watcherOff = useStore((state) => state.config?.prReviews?.enabled) === false
+  const setConfig = useStore((state) => state.setConfig)
 
   // The "checked X ago" label goes stale on its own; re-render every 30s like the
   // usage card does, rather than only when a poll happens to land.
@@ -211,9 +249,16 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   const authors = metadata?.prCommentAuthors ?? metadata?.prReviewers ?? []
   const watchError = metadata?.prWatchError
 
+  // Whether a read has ever landed on this PR. A card built from `prUrl` alone
+  // knows nothing, and must say nothing.
+  const hasSnapshot = metadata !== undefined && WATCHER_WRITTEN_FIELDS.some((field) => metadata[field] !== undefined)
+
   // A PR that is finished has nothing left to merge: the row would only ever say
-  // "unknown" on the old rows and "no conflicts" on the new ones.
-  const showMergeable = state !== 'merged' && state !== 'closed'
+  // "unknown" on the old rows and "no conflicts" on the new ones. Gated on
+  // `hasSnapshot` too — before the first read, "mergeability unknown" is the only
+  // row in the body, and it reads as a verdict about the PR when it is really a
+  // statement about the watcher.
+  const showMergeable = hasSnapshot && state !== 'merged' && state !== 'closed'
 
   // There is something to address only once a reviewer has actually spoken, and
   // something to close out only once the PR is merged.
@@ -249,6 +294,32 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   const checksTone =
     checks && checks.failed > 0 ? 'bg-red' : checks && checks.running > 0 ? 'bg-blue' : 'bg-green'
   const checksProgress = checks && checks.total > 0 ? Math.round((checks.passed / checks.total) * 100) : 0
+
+  // The body is the only part that can end up with nothing to say: an empty
+  // `border-t` band under the header reads as a rendering bug, so it is rendered
+  // only once at least one cell will be.
+  const showBody =
+    watcherOff ||
+    watchError !== undefined ||
+    metadata?.prReviewStatus !== undefined ||
+    checks !== undefined ||
+    showMergeable ||
+    commentRows.length > 0 ||
+    authors.length > 0
+
+  const handleEnableWatcher = async () => {
+    setEnabling(true)
+    try {
+      // The main process starts the watcher with an immediate tick, so there is
+      // nothing to refresh on top: a `refresh()` here would only meet the shared
+      // 15 s throttle and warn about a read already on its way.
+      setConfig(await window.electronAPI.prWatcher.setEnabled(true))
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t('agentInfo.pr.enableWatcherFailed'), 'error')
+    } finally {
+      setEnabling(false)
+    }
+  }
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -310,7 +381,32 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
       </div>
 
       {/* Body — one cell per signal, all sharing the same icon gutter */}
-      <div className="border-t border-line-subtle p-2 space-y-2">
+      {showBody && <div className="border-t border-line-subtle p-2 space-y-2">
+        {/* The setting, not a failure: the watcher is off, so nothing below will
+            ever move. Top of the body and above the errors — an error explains one
+            failed read, this explains why there are no reads at all — and it
+            carries its own fix, the same way each watch error names one. */}
+        {watcherOff && (
+          <div className="flex items-start gap-2 rounded-md bg-surface-sunken px-2 py-1.5">
+            <EyeOff className="w-3.5 h-3.5 text-text-secondary/60 flex-shrink-0 mt-px" />
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] text-ink/80 font-medium">{t('agentInfo.pr.watcherOff')}</div>
+              <div className="text-[10px] text-text-secondary/70">
+                {/* Two different situations behind one setting: a card carrying a
+                    snapshot is dated, one carrying only the link is empty. */}
+                {t(hasSnapshot ? 'agentInfo.pr.watcherOffStale' : 'agentInfo.pr.watcherOffEmpty')}
+              </div>
+            </div>
+            <button
+              onClick={handleEnableWatcher}
+              disabled={enabling}
+              className="flex-shrink-0 px-2 py-1 rounded-md bg-accent/10 hover:bg-accent/20 text-accent text-[11px] font-medium transition-colors disabled:opacity-50"
+            >
+              {t('agentInfo.pr.enableWatcher')}
+            </button>
+          </div>
+        )}
+
         {/* Why the watcher is blind, and how to fix it. Above the verdict on
             purpose: a stale verdict is worth less than the reason it is stale. */}
         {watchError && (
@@ -404,7 +500,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
             </span>
           </Cell>
         )}
-      </div>
+      </div>}
 
       {/* Footer — the actions, with the freshness of everything above them.
           The commands keep the conditions that made them meaningful: offering

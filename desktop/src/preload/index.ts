@@ -424,7 +424,8 @@ const updaterApi = {
 
 // PR Review Watcher API
 const prWatcherApi = {
-  setEnabled: (enabled: boolean) =>
+  /** Resolves to the saved config, so a caller can push it straight into the store. */
+  setEnabled: (enabled: boolean): Promise<Config> =>
     ipcRenderer.invoke('prWatcher:setEnabled', enabled),
   getStatus: (): Promise<{ enabled: boolean; pollIntervalMs: number; watchingCount: number; lastTickAt: number | null }> =>
     ipcRenderer.invoke('prWatcher:getStatus'),

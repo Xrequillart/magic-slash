@@ -1198,10 +1198,14 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.help')}</div>
             </div>
             <button
-              onClick={() => {
+              onClick={async () => {
                 const newValue = !prWatcherEnabled
                 setPrWatcherEnabled(newValue)
-                window.electronAPI.prWatcher.setEnabled(newValue)
+                // Pushed into the store, not just written to disk: the PR card in
+                // the agent sidebar reads this setting to decide whether to say
+                // "watching is off", and it would otherwise keep claiming the
+                // opposite until the next config load.
+                setConfig(await window.electronAPI.prWatcher.setEnabled(newValue))
               }}
               className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
                 prWatcherEnabled ? 'bg-accent' : 'bg-ink/20'
