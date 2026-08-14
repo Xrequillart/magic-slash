@@ -22,13 +22,19 @@ import { closeSkillRun, recordSkillInvocation } from './skill-invocations'
  * both belong. What it DOES own is telling one run seen twice from two runs — see
  * isDuplicateStart.
  *
- * WHY IT READS THE FILE BEFORE DELETING IT
+ * WHY IT RENAMES THE FILE BEFORE READING IT
  * ---------------------------------------------------------------------------
- * The hook appends concurrently, from any number of Claude Code sessions. Reading
- * then truncating would drop whatever landed in between, so the file is RENAMED to a
- * private working copy first: appends after the rename recreate the original and are
- * picked up by the next drain. rename(2) is atomic within a filesystem, so no record
- * is ever visible in both files or in neither.
+ * The hook appends concurrently, from any number of Claude Code sessions — and since
+ * every producer is a separate process, that is true of a single app instance too.
+ * Reading and then deleting would drop whatever landed in between, so the file is
+ * RENAMED out of the way first: appends after the rename recreate the original and are
+ * picked up by the next drain. rename(2) is atomic within a filesystem, so no record is
+ * ever visible in both files or in neither.
+ *
+ * The target is unique per claim rather than DRAINING_FILE itself. Two apps may drain at
+ * once (the installed build and a dev one share this spool by design — see paths.ts) and
+ * a fixed name would let the second rename land on top of the first one's claim, erasing
+ * records it had claimed but not yet recorded.
  */
 
 // STABLE_CONFIG_DIR, never the dev-suffixed one: the producing hook lives in
@@ -36,6 +42,18 @@ import { closeSkillRun, recordSkillInvocation } from './skill-invocations'
 const SPOOL_FILE = path.join(STABLE_CONFIG_DIR, 'pending-skills.ndjson')
 /** Where a drain moves the spool to work on it, out of the hook's way. */
 const DRAINING_FILE = `${SPOOL_FILE}.draining`
+/** Prefix of the short-lived file a drain renames the spool onto — see claim(). */
+const CLAIMING_PREFIX = `${path.basename(SPOOL_FILE)}.claiming.`
+
+/**
+ * How long a `.claiming.` file must sit untouched before another drain adopts it.
+ *
+ * A live claim exists for the duration of a rename, a read and an append — microseconds,
+ * with no await in between. Anything older than this is the debris of a process that died
+ * mid-claim, and adopting it is the only way its records are ever seen again. Generous on
+ * purpose: adopting a claim that is merely slow would double-count it.
+ */
+const STALE_CLAIM_MS = 60_000
 
 /** Refuse to parse a spool larger than this — it is runaway, not a backlog. */
 const MAX_SPOOL_BYTES = 8 * 1024 * 1024
@@ -170,6 +188,40 @@ function parse(line: string): SpooledRun | null {
 }
 
 /**
+ * Fold abandoned `.claiming.` files back into DRAINING_FILE.
+ *
+ * The rename in claim() is atomic, but the copy that follows it is not instantaneous: a
+ * process killed in between leaves a file nothing else knows to look at. Only claims
+ * older than STALE_CLAIM_MS are adopted, so a drain running right now in another app is
+ * never robbed of records it is about to write.
+ */
+function adoptStaleClaims(): void {
+  let entries: string[]
+  try {
+    entries = fs.readdirSync(STABLE_CONFIG_DIR)
+  } catch {
+    return // No config dir yet: there is nothing to adopt.
+  }
+
+  const cutoff = Date.now() - STALE_CLAIM_MS
+  for (const entry of entries) {
+    if (!entry.startsWith(CLAIMING_PREFIX)) continue
+    const orphan = path.join(STABLE_CONFIG_DIR, entry)
+    try {
+      if (fs.statSync(orphan).mtimeMs > cutoff) continue
+      fs.appendFileSync(DRAINING_FILE, fs.readFileSync(orphan, 'utf-8'), {
+        encoding: 'utf-8',
+        mode: 0o600,
+      })
+      fs.rmSync(orphan, { force: true })
+      console.warn(`[skill-spool] Adopted an abandoned claim: ${entry}`)
+    } catch (error) {
+      console.error('[skill-spool] Failed to adopt an abandoned claim:', error)
+    }
+  }
+}
+
+/**
  * Claim the current spool, if any, by moving it aside. Returns the records it held.
  *
  * A leftover `.draining` file means a previous drain died midway (the app was killed
@@ -181,6 +233,8 @@ function parse(line: string): SpooledRun | null {
 function claim(): SpooledRun[] {
   const lines: string[] = []
 
+  adoptStaleClaims()
+
   for (const file of [DRAINING_FILE, SPOOL_FILE]) {
     try {
       if (!fs.existsSync(file)) continue
@@ -190,12 +244,20 @@ function claim(): SpooledRun[] {
         continue
       }
       if (file === SPOOL_FILE) {
-        // Atomic hand-off: concurrent hooks recreate SPOOL_FILE and are drained next
-        // time. Appended to DRAINING_FILE rather than replacing it, so a leftover
-        // from a previous crash is not overwritten.
-        const pending = fs.readFileSync(file, 'utf-8')
+        // The claim itself, and the only atomic step that matters: after this rename
+        // the hook's appends recreate SPOOL_FILE and are drained next time, while
+        // nothing can still be written to what we just took. Reading first and deleting
+        // after would silently discard everything appended in between.
+        const claimed = `${SPOOL_FILE}.claiming.${process.pid}.${Date.now()}`
+        fs.renameSync(file, claimed)
+
+        // Copied to DRAINING_FILE before the working file goes away, so a crash between
+        // here and the last record leaves the runs somewhere a later drain will look.
+        // Appended rather than replacing it: a leftover from a previous crash is still
+        // pending and must not be overwritten.
+        const pending = fs.readFileSync(claimed, 'utf-8')
         fs.appendFileSync(DRAINING_FILE, pending, { encoding: 'utf-8', mode: 0o600 })
-        fs.rmSync(file, { force: true })
+        fs.rmSync(claimed, { force: true })
         lines.push(...pending.split('\n'))
       } else {
         lines.push(...fs.readFileSync(file, 'utf-8').split('\n'))

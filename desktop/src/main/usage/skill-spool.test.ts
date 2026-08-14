@@ -48,9 +48,23 @@ const closed = () => vi.mocked(closeSkillRun).mock.calls.map((c) => c[0] as Skil
 beforeAll(() => fs.mkdirSync(CONFIG_DIR, { recursive: true }))
 afterAll(() => fs.rmSync(TMP_HOME, { recursive: true, force: true }))
 
+/** Every `.claiming.` file currently sitting in the config dir. */
+const claimFiles = () =>
+  fs.readdirSync(CONFIG_DIR).filter((f) => f.startsWith('pending-skills.ndjson.claiming.'))
+
+/** Write an abandoned claim, aged so the drain will or will not adopt it. */
+function abandonedClaim(records: object[], ageMs: number): string {
+  const file = path.join(CONFIG_DIR, `pending-skills.ndjson.claiming.9999.${Date.now()}`)
+  fs.writeFileSync(file, records.map((r) => JSON.stringify(r)).join('\n') + '\n')
+  const when = new Date(Date.now() - ageMs)
+  fs.utimesSync(file, when, when)
+  return file
+}
+
 beforeEach(() => {
   fs.rmSync(SPOOL_FILE, { force: true })
   fs.rmSync(DRAINING_FILE, { force: true })
+  for (const f of claimFiles()) fs.rmSync(path.join(CONFIG_DIR, f), { force: true })
   vi.mocked(recordSkillInvocation).mockClear()
   vi.mocked(recordSkillInvocation).mockImplementation(async () => {})
   vi.mocked(closeSkillRun).mockClear()
@@ -265,6 +279,52 @@ describe('a run seen by both hooks', () => {
     spool(start('magic-done'))
     await drainSkillSpool()
     expect(recorded()).toHaveLength(1)
+  })
+})
+
+describe('claiming the spool', () => {
+  it('leaves no working file behind once the drain is done', async () => {
+    spool(start('magic-commit'))
+
+    await drainSkillSpool()
+
+    // The rename target is short-lived by contract: anything still here after a clean
+    // drain would be adopted a minute later and counted twice.
+    expect(claimFiles()).toEqual([])
+  })
+
+  it('records the spool a hook recreates while the drain is running', async () => {
+    // What the rename buys: the hook writes to a fresh SPOOL_FILE, not to the one being
+    // drained, so the record is still there for the next tick instead of being deleted
+    // unread.
+    spool(start('magic-commit'))
+    vi.mocked(recordSkillInvocation).mockImplementationOnce(async () => {
+      spool(start('magic-pr'))
+    })
+
+    expect(await drainSkillSpool()).toBe(1)
+    expect(recorded().map((r) => r.skill)).toEqual(['magic-commit'])
+
+    expect(await drainSkillSpool()).toBe(1)
+    expect(recorded().map((r) => r.skill)).toEqual(['magic-commit', 'magic-pr'])
+  })
+
+  it('adopts a claim abandoned by a process that died mid-drain', async () => {
+    abandonedClaim([start('magic-review')], 120_000)
+
+    expect(await drainSkillSpool()).toBe(1)
+    expect(recorded().map((r) => r.skill)).toEqual(['magic-review'])
+    expect(claimFiles()).toEqual([])
+  })
+
+  it('leaves a claim another drain is still working on alone', async () => {
+    // Fresh mtime means a live claim in another app. Adopting it would record the same
+    // runs twice — the one failure mode worse than adopting late.
+    const live = abandonedClaim([start('magic-review')], 0)
+
+    expect(await drainSkillSpool()).toBe(0)
+    expect(recorded()).toEqual([])
+    expect(fs.existsSync(live)).toBe(true)
   })
 })
 
