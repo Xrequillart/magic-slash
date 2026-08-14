@@ -1,6 +1,6 @@
 import * as fs from 'fs'
-import * as os from 'os'
 import * as path from 'path'
+import { STABLE_CONFIG_DIR } from '../config/paths'
 import type { SkillRunOutcome } from '../../types'
 import { closeSkillRun, recordSkillInvocation } from './skill-invocations'
 
@@ -22,19 +22,60 @@ import { closeSkillRun, recordSkillInvocation } from './skill-invocations'
  * both belong. What it DOES own is telling one run seen twice from two runs — see
  * isDuplicateStart.
  *
- * WHY IT READS THE FILE BEFORE DELETING IT
+ * WHY IT RENAMES THE FILE BEFORE READING IT
  * ---------------------------------------------------------------------------
- * The hook appends concurrently, from any number of Claude Code sessions. Reading
- * then truncating would drop whatever landed in between, so the file is RENAMED to a
- * private working copy first: appends after the rename recreate the original and are
- * picked up by the next drain. rename(2) is atomic within a filesystem, so no record
- * is ever visible in both files or in neither.
+ * The hook appends concurrently, from any number of Claude Code sessions — and since
+ * every producer is a separate process, that is true of a single app instance too.
+ * Reading and then deleting would drop whatever landed in between, so the file is
+ * RENAMED out of the way first: appends after the rename recreate the original and are
+ * picked up by the next drain. rename(2) is atomic within a filesystem, so no record is
+ * ever visible in both files or in neither.
+ *
+ * The target is unique per claim, and NO file is shared between drains. Two apps may
+ * drain at once — the installed build and a dev one share this spool by design, see
+ * paths.ts — so any file both could read is a file both could record, and one run would
+ * become two rows. Every file a drain touches is therefore one it renamed into its own
+ * name: the losers of that rename get ENOENT and drain nothing, which is the correct
+ * outcome. A drain that dies leaves its working file behind for adoptAbandoned.
  */
 
-const CONFIG_DIR = path.join(os.homedir(), '.config', 'magic-slash')
-const SPOOL_FILE = path.join(CONFIG_DIR, 'pending-skills.ndjson')
-/** Where a drain moves the spool to work on it, out of the hook's way. */
+// STABLE_CONFIG_DIR, never the dev-suffixed one: the producing hook lives in
+// ~/.claude/settings.json with this path baked in, shared by every build.
+const SPOOL_FILE = path.join(STABLE_CONFIG_DIR, 'pending-skills.ndjson')
+/**
+ * The shared working file older builds drained into. Kept only so an upgrade adopts
+ * whatever one of them left behind; nothing writes it any more.
+ */
 const DRAINING_FILE = `${SPOOL_FILE}.draining`
+/** Prefix of the short-lived file a drain renames the spool onto — see claim(). */
+const CLAIMING_PREFIX = `${path.basename(SPOOL_FILE)}.claiming.`
+
+/**
+ * How often a drain in progress stamps the files it owns.
+ *
+ * This is what makes an mtime mean "someone is working on this" rather than "this was
+ * created a while ago". Without it, age cannot tell a dead drain from a slow one — and a
+ * drain is legitimately slow, since it holds its files until the last record reaches the
+ * network.
+ */
+const HEARTBEAT_MS = 15_000
+
+/**
+ * How long a claim must go unstamped before another drain adopts it.
+ *
+ * Four missed beats: long enough that a stalled event loop does not hand a live claim
+ * away, short enough that records are not stranded for long when a process is killed.
+ */
+const STALE_CLAIM_MS = 4 * HEARTBEAT_MS
+
+/**
+ * The same, for the shared `.draining` file older builds used.
+ *
+ * They do not beat, so their mtime says nothing about liveness and only a duration long
+ * enough to outlast a real drain is safe. This exists for the length of an upgrade and
+ * costs nothing afterwards, since nothing writes that file any more.
+ */
+const LEGACY_DRAINING_GRACE_MS = 10 * 60_000
 
 /** Refuse to parse a spool larger than this — it is runaway, not a backlog. */
 const MAX_SPOOL_BYTES = 8 * 1024 * 1024
@@ -168,46 +209,139 @@ function parse(line: string): SpooledRun | null {
   }
 }
 
-/**
- * Claim the current spool, if any, by moving it aside. Returns the records it held.
- *
- * A leftover `.draining` file means a previous drain died midway (the app was killed
- * between the rename and the last record). Its contents are prepended so those runs
- * are retried rather than stranded — a replay is harmless because recordSkillInvocation
- * mints an idempotence key per attempt and the outbox is what guards against loss,
- * not against a second attempt at a row that never landed.
- */
-function claim(): SpooledRun[] {
-  const lines: string[] = []
+let claimCounter = 0
 
-  for (const file of [DRAINING_FILE, SPOOL_FILE]) {
+/** A working-file name no other drain can be using, in this process or another. */
+function newClaimPath(): string {
+  return `${SPOOL_FILE}.claiming.${process.pid}.${Date.now()}.${claimCounter++}`
+}
+
+/**
+ * Take ownership of `file` by renaming it to a private working path.
+ *
+ * rename(2) is atomic and fails if the source is gone, so of any number of processes
+ * racing for the same file exactly one wins — the losers get ENOENT and simply have
+ * nothing to drain. Returns the path now owned, or null if someone else took it first.
+ */
+function takeOver(file: string): string | null {
+  try {
+    if (!fs.existsSync(file)) return null
+    if (fs.statSync(file).size > MAX_SPOOL_BYTES) {
+      console.warn(`[skill-spool] ${file} is oversized, discarding it`)
+      fs.rmSync(file, { force: true })
+      return null
+    }
+    const claimed = newClaimPath()
+    fs.renameSync(file, claimed)
+    return claimed
+  } catch (error) {
+    console.error('[skill-spool] Failed to claim the spool:', error)
+    return null
+  }
+}
+
+/** Stamp the files a drain owns, so no one mistakes them for abandoned. */
+function beat(files: string[]): void {
+  const now = new Date()
+  for (const file of files) {
     try {
-      if (!fs.existsSync(file)) continue
-      if (fs.statSync(file).size > MAX_SPOOL_BYTES) {
-        console.warn(`[skill-spool] ${file} is oversized, discarding it`)
-        fs.rmSync(file, { force: true })
-        continue
-      }
-      if (file === SPOOL_FILE) {
-        // Atomic hand-off: concurrent hooks recreate SPOOL_FILE and are drained next
-        // time. Appended to DRAINING_FILE rather than replacing it, so a leftover
-        // from a previous crash is not overwritten.
-        const pending = fs.readFileSync(file, 'utf-8')
-        fs.appendFileSync(DRAINING_FILE, pending, { encoding: 'utf-8', mode: 0o600 })
-        fs.rmSync(file, { force: true })
-        lines.push(...pending.split('\n'))
-      } else {
-        lines.push(...fs.readFileSync(file, 'utf-8').split('\n'))
-      }
-    } catch (error) {
-      console.error('[skill-spool] Failed to claim the spool:', error)
+      fs.utimesSync(file, now, now)
+    } catch {
+      // Already gone, or unwritable. The drain still holds the records in memory; only
+      // the crash-recovery copy is affected, and there is nothing useful to do here.
+    }
+  }
+}
+
+/**
+ * May this abandoned-looking file be taken over?
+ *
+ * A drain holds its working files until its last record reaches the network, so a claim
+ * being old is not evidence that it was abandoned — deciding on age alone would let one
+ * build steal a live claim and record the same runs twice, the very duplication this
+ * module exists to prevent. What makes age meaningful is the heartbeat: a drain in
+ * progress stamps its files, so an unstamped one really has no owner left.
+ *
+ * The legacy `.draining` file predates the heartbeat and never gets stamped, so it falls
+ * back to a cutoff long enough to outlast any real drain by an older build.
+ */
+function isAdoptable(entry: string, mtimeMs: number): boolean {
+  const grace = entry.startsWith(CLAIMING_PREFIX) ? STALE_CLAIM_MS : LEGACY_DRAINING_GRACE_MS
+  return mtimeMs <= Date.now() - grace
+}
+
+/**
+ * Take over the working files of drains that died, oldest first.
+ *
+ * Two kinds end up here: a `.claiming.` file whose process was killed after the rename,
+ * and the `.draining` file an older build left behind. Both are adopted the same way —
+ * by renaming them, so two apps sweeping at once cannot both win the same file.
+ */
+function adoptAbandoned(): string[] {
+  let entries: string[]
+  try {
+    entries = fs.readdirSync(STABLE_CONFIG_DIR)
+  } catch {
+    return [] // No config dir yet: there is nothing to adopt.
+  }
+
+  const adopted: string[] = []
+
+  for (const entry of entries.sort()) {
+    const isClaim = entry.startsWith(CLAIMING_PREFIX)
+    const isLegacyDraining = entry === path.basename(DRAINING_FILE)
+    if (!isClaim && !isLegacyDraining) continue
+
+    const orphan = path.join(STABLE_CONFIG_DIR, entry)
+    try {
+      if (!isAdoptable(entry, fs.statSync(orphan).mtimeMs)) continue
+      const claimed = takeOver(orphan)
+      if (!claimed) continue
+      adopted.push(claimed)
+      console.warn(`[skill-spool] Adopted an abandoned claim: ${entry}`)
+    } catch {
+      // Gone between readdir and stat — another drain got there first. Nothing to do.
     }
   }
 
-  return lines
+  return adopted
+}
+
+/**
+ * Claim everything there is to drain. Returns the records and the files holding them.
+ *
+ * Every file this returns is owned by this drain alone: it was renamed into a private
+ * path, so no hook can still append to it and no other app can read it. That is the
+ * whole design — there is no shared mutable file left. A drain that dies leaves its
+ * working files behind, and adoptAbandoned hands them to a later one rather than
+ * letting the runs strand.
+ *
+ * The caller deletes the files once every record has been handed over, not before: they
+ * are the only copy while the drain is in flight.
+ */
+function claim(): { runs: SpooledRun[]; files: string[] } {
+  // Abandoned work first, so older runs are recorded before newer ones — closeSkillRun
+  // needs a run's start to land before its end.
+  const files = adoptAbandoned()
+
+  const fresh = takeOver(SPOOL_FILE)
+  if (fresh) files.push(fresh)
+
+  const lines: string[] = []
+  for (const file of files) {
+    try {
+      lines.push(...fs.readFileSync(file, 'utf-8').split('\n'))
+    } catch (error) {
+      console.error('[skill-spool] Failed to read a claimed file:', error)
+    }
+  }
+
+  const runs = lines
     .filter((line) => line.trim() !== '')
     .map(parse)
     .filter((run): run is SpooledRun => run !== null)
+
+  return { runs, files }
 }
 
 let draining: Promise<number> | null = null
@@ -227,34 +361,51 @@ export function drainSkillSpool(): Promise<number> {
   if (draining) return draining
 
   draining = (async () => {
-    const runs = claim()
-    if (runs.length === 0) return 0
-
-    for (const run of runs) {
-      // The hook writes an empty string when MAGIC_SLASH_TERMINAL_ID is unset.
-      const agentId = run.agentId || undefined
-
-      // Sequential, not parallel: a run's close must be applied after its start, or
-      // close_skill_run finds no open run to attach to and the run stays abandoned.
-      // The file preserves that order; this loop must not undo it.
-      if (run.type === 'end') {
-        await closeSkillRun({
-          skill: run.skill,
-          agentId,
-          outcome: run.outcome!,
-          occurredAt: run.occurredAt!,
-        })
-      } else {
-        // Two hooks can see one typed command. Skipped BEFORE the write, not
-        // deduplicated after: the alternative is a row in the database that the
-        // rollups would count, and there is nothing downstream that could tell it
-        // apart from a real second run.
-        if (isDuplicateStart(run, run.occurredAt ?? Date.now())) continue
-        await recordSkillInvocation({ skill: run.skill, agentId, occurredAt: run.occurredAt })
-      }
+    const { runs, files } = claim()
+    if (runs.length === 0) {
+      // Empty, but the files are ours and nothing else will ever look at them.
+      for (const file of files) fs.rmSync(file, { force: true })
+      return 0
     }
 
-    fs.rmSync(DRAINING_FILE, { force: true })
+    // Says "still working" for as long as this takes. Every record below is a network
+    // round-trip, so a real drain can outlast any fixed cutoff — the beat is what keeps
+    // another build from reading the silence as an abandoned claim and recording these
+    // runs a second time. unref'd so it can never hold the process open at quit.
+    const heartbeat = setInterval(() => beat(files), HEARTBEAT_MS)
+    heartbeat.unref?.()
+
+    try {
+      for (const run of runs) {
+        // The hook writes an empty string when MAGIC_SLASH_TERMINAL_ID is unset.
+        const agentId = run.agentId || undefined
+
+        // Sequential, not parallel: a run's close must be applied after its start, or
+        // close_skill_run finds no open run to attach to and the run stays abandoned.
+        // The file preserves that order; this loop must not undo it.
+        if (run.type === 'end') {
+          await closeSkillRun({
+            skill: run.skill,
+            agentId,
+            outcome: run.outcome!,
+            occurredAt: run.occurredAt!,
+          })
+        } else {
+          // Two hooks can see one typed command. Skipped BEFORE the write, not
+          // deduplicated after: the alternative is a row in the database that the
+          // rollups would count, and there is nothing downstream that could tell it
+          // apart from a real second run.
+          if (isDuplicateStart(run, run.occurredAt ?? Date.now())) continue
+          await recordSkillInvocation({ skill: run.skill, agentId, occurredAt: run.occurredAt })
+        }
+      }
+    } finally {
+      clearInterval(heartbeat)
+    }
+
+    // Last, and only now: until every record has been handed over, these files are the
+    // only copy of the runs they hold.
+    for (const file of files) fs.rmSync(file, { force: true })
     console.log(`[skill-spool] Recorded ${runs.length} spooled skill run(s)`)
     return runs.length
   })()

@@ -1,10 +1,12 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import type { UserProfile } from '../../types'
-import { CONFIG_DIR } from './config'
+import { STABLE_CONFIG_DIR } from './paths'
 import { getStore } from '../store/Store'
 
-const PROFILE_PATH = path.join(CONFIG_DIR, 'profile.md')
+// STABLE_CONFIG_DIR, never the dev-suffixed one: the /magic:* skills read this file
+// at ~/.config/magic-slash/profile.md, a path they hardcode.
+const PROFILE_PATH = path.join(STABLE_CONFIG_DIR, 'profile.md')
 
 /**
  * Sync the cloud profile down to the local profile.md file so the /magic:* skills
@@ -39,8 +41,8 @@ export function readProfile(): UserProfile | null {
 }
 
 export function writeProfile(profile: UserProfile): void {
-  if (!fs.existsSync(CONFIG_DIR)) {
-    fs.mkdirSync(CONFIG_DIR, { recursive: true })
+  if (!fs.existsSync(STABLE_CONFIG_DIR)) {
+    fs.mkdirSync(STABLE_CONFIG_DIR, { recursive: true })
   }
 
   const yaml = buildYamlFrontmatter(profile)

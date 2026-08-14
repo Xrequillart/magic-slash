@@ -1,6 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+import { STABLE_CONFIG_DIR } from '../config/paths'
 
 const CLAUDE_SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json')
 const MAGIC_SLASH_HOOK_MARKER = 'magic-slash-desktop'
@@ -8,9 +9,13 @@ const MAGIC_SLASH_HOOK_MARKER = 'magic-slash-desktop'
 // StatusLine integration: a wrapper script captures Claude Code's statusline JSON
 // (cost, context usage, model) and POSTs it to the local status server, then relays
 // the user's original statusline so nothing is lost.
-const MAGIC_SLASH_CONFIG_DIR = path.join(os.homedir(), '.config', 'magic-slash')
-const STATUSLINE_SCRIPT_PATH = path.join(MAGIC_SLASH_CONFIG_DIR, 'statusline.sh')
-const STATUSLINE_BACKUP_PATH = path.join(MAGIC_SLASH_CONFIG_DIR, 'statusline-original.json')
+//
+// Everything this module writes lands in ~/.claude/settings.json, one file shared by
+// every build and by plain `claude` sessions, so every path here is the STABLE one:
+// a dev-suffixed statusline path would stop matching STATUSLINE_MARKER and each build
+// would bake the other's wrapper in as "the user's original", nesting them.
+const STATUSLINE_SCRIPT_PATH = path.join(STABLE_CONFIG_DIR, 'statusline.sh')
+const STATUSLINE_BACKUP_PATH = path.join(STABLE_CONFIG_DIR, 'statusline-original.json')
 const STATUSLINE_MARKER = 'magic-slash/statusline.sh'
 
 // Where the skill-telemetry hook spools its records, for the app to drain later (see
@@ -66,7 +71,7 @@ const MAGIC_SLASH_BASE_PERMISSIONS = [
   // Skill reference files. Absolute, because Claude Code does not expand $HOME here.
   `Read(${path.join(os.homedir(), '.claude', 'skills', 'magic-*')})`,
   // Magic Slash config
-  `Read(${path.join(os.homedir(), '.config', 'magic-slash', '*')})`,
+  `Read(${path.join(STABLE_CONFIG_DIR, '*')})`,
   // Desktop communication
   'Bash(*http://127.0.0.1:*)',
   // GitHub MCP tools
@@ -492,8 +497,8 @@ export function configureClaudeHooks(options?: { atlassian?: boolean }): void {
 export function configureStatusLine(): string {
   try {
     // Ensure config dir exists
-    if (!fs.existsSync(MAGIC_SLASH_CONFIG_DIR)) {
-      fs.mkdirSync(MAGIC_SLASH_CONFIG_DIR, { recursive: true })
+    if (!fs.existsSync(STABLE_CONFIG_DIR)) {
+      fs.mkdirSync(STABLE_CONFIG_DIR, { recursive: true })
     }
 
     const claudeDir = path.dirname(CLAUDE_SETTINGS_PATH)

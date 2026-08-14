@@ -48,9 +48,28 @@ const closed = () => vi.mocked(closeSkillRun).mock.calls.map((c) => c[0] as Skil
 beforeAll(() => fs.mkdirSync(CONFIG_DIR, { recursive: true }))
 afterAll(() => fs.rmSync(TMP_HOME, { recursive: true, force: true }))
 
+/** Every `.claiming.` file currently sitting in the config dir. */
+const claimFiles = () =>
+  fs.readdirSync(CONFIG_DIR).filter((f) => f.startsWith('pending-skills.ndjson.claiming.'))
+
+/**
+ * Write a claim last stamped `sinceLastBeatMs` ago.
+ *
+ * A drain in progress stamps the files it owns every 15s, so the time since the last
+ * stamp — not the file's age — is what says whether anyone still owns it.
+ */
+function claimLastBeat(records: object[], sinceLastBeatMs: number): string {
+  const file = path.join(CONFIG_DIR, `pending-skills.ndjson.claiming.4242.${Date.now()}.0`)
+  fs.writeFileSync(file, records.map((r) => JSON.stringify(r)).join('\n') + '\n')
+  const when = new Date(Date.now() - sinceLastBeatMs)
+  fs.utimesSync(file, when, when)
+  return file
+}
+
 beforeEach(() => {
   fs.rmSync(SPOOL_FILE, { force: true })
   fs.rmSync(DRAINING_FILE, { force: true })
+  for (const f of claimFiles()) fs.rmSync(path.join(CONFIG_DIR, f), { force: true })
   vi.mocked(recordSkillInvocation).mockClear()
   vi.mocked(recordSkillInvocation).mockImplementation(async () => {})
   vi.mocked(closeSkillRun).mockClear()
@@ -105,14 +124,29 @@ describe('drainSkillSpool', () => {
     expect(recorded().map((r) => r.skill)).toEqual(['magic-commit', 'magic-pr'])
   })
 
-  it('retries a batch the app died in the middle of', async () => {
-    // A leftover .draining file is a drain that never finished. Its records are not
-    // stranded — retrying is safe because recordSkillInvocation owns the outbox.
+  it('retries a batch an older build died in the middle of', async () => {
+    // `.draining` is the shared working file older builds used. Nothing writes it any
+    // more, but an upgrade must still pick up whatever one of them left behind — and
+    // ahead of the fresh spool, so the older runs are recorded first.
     fs.writeFileSync(DRAINING_FILE, JSON.stringify(start('magic-done')) + '\n')
+    const old = new Date(Date.now() - 20 * 60_000)
+    fs.utimesSync(DRAINING_FILE, old, old)
     spool(start('magic-commit'))
 
     expect(await drainSkillSpool()).toBe(2)
     expect(recorded().map((r) => r.skill)).toEqual(['magic-done', 'magic-commit'])
+    expect(fs.existsSync(DRAINING_FILE)).toBe(false)
+  })
+
+  it('leaves a .draining an older build may still be writing alone', async () => {
+    // During an upgrade the previous build can be running right now, mid-drain. Its
+    // working file is only safe to adopt once it has gone untouched — taking it early
+    // would record the same runs twice.
+    fs.writeFileSync(DRAINING_FILE, JSON.stringify(start('magic-done')) + '\n')
+
+    expect(await drainSkillSpool()).toBe(0)
+    expect(recorded()).toEqual([])
+    expect(fs.existsSync(DRAINING_FILE)).toBe(true)
   })
 
   it('skips a torn line rather than discarding the batch', async () => {
@@ -265,6 +299,80 @@ describe('a run seen by both hooks', () => {
     spool(start('magic-done'))
     await drainSkillSpool()
     expect(recorded()).toHaveLength(1)
+  })
+})
+
+describe('claiming the spool', () => {
+  it('leaves no working file behind once the drain is done', async () => {
+    spool(start('magic-commit'))
+
+    await drainSkillSpool()
+
+    // The rename target is short-lived by contract: anything still here after a clean
+    // drain would be adopted a minute later and counted twice.
+    expect(claimFiles()).toEqual([])
+  })
+
+  it('records the spool a hook recreates while the drain is running', async () => {
+    // What the rename buys: the hook writes to a fresh SPOOL_FILE, not to the one being
+    // drained, so the record is still there for the next tick instead of being deleted
+    // unread.
+    spool(start('magic-commit'))
+    vi.mocked(recordSkillInvocation).mockImplementationOnce(async () => {
+      spool(start('magic-pr'))
+    })
+
+    expect(await drainSkillSpool()).toBe(1)
+    expect(recorded().map((r) => r.skill)).toEqual(['magic-commit'])
+
+    expect(await drainSkillSpool()).toBe(1)
+    expect(recorded().map((r) => r.skill)).toEqual(['magic-commit', 'magic-pr'])
+  })
+
+  it('adopts a claim that stopped beating', async () => {
+    // Four missed beats: the process that owned this is gone, and nothing else will ever
+    // come back for its runs.
+    claimLastBeat([start('magic-review')], 90_000)
+
+    expect(await drainSkillSpool()).toBe(1)
+    expect(recorded().map((r) => r.skill)).toEqual(['magic-review'])
+    expect(claimFiles()).toEqual([])
+  })
+
+  it('leaves a beating claim alone however old the file is', async () => {
+    // The case an age-only cutoff gets wrong. This claim was opened an hour ago and its
+    // drain is still going — a big backlog is minutes of network round-trips. It beat a
+    // moment ago, so it has an owner, and stealing it would record its runs twice.
+    const live = claimLastBeat([start('magic-review')], 1_000)
+
+    expect(await drainSkillSpool()).toBe(0)
+    expect(recorded()).toEqual([])
+    expect(fs.existsSync(live)).toBe(true)
+  })
+
+  it('keeps its own claims beating while it drains', async () => {
+    // Without this the guarantee above is empty: a slow drain that never stamped its
+    // files would go stale under itself and be adopted by the other build mid-flight.
+    vi.useFakeTimers()
+    try {
+      spool(start('magic-commit'))
+
+      let before = 0
+      let after = 0
+      vi.mocked(recordSkillInvocation).mockImplementationOnce(async () => {
+        const claimed = path.join(CONFIG_DIR, claimFiles()[0])
+        before = fs.statSync(claimed).mtimeMs
+        // Long enough for the interval to fire, while this drain is still going.
+        await vi.advanceTimersByTimeAsync(16_000)
+        after = fs.statSync(claimed).mtimeMs
+      })
+
+      await drainSkillSpool()
+
+      expect(after).toBeGreaterThan(before)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

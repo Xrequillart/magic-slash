@@ -1,7 +1,7 @@
 import * as fs from 'fs'
-import * as os from 'os'
 import * as path from 'path'
 import { randomUUID } from 'crypto'
+import { CONFIG_DIR } from '../config/paths'
 import type { HistoryEntry, SkillInvocationInput, SkillRunEndInput, UsageEventInput } from '../../types'
 import { getStore } from './Store'
 
@@ -40,7 +40,8 @@ import { getStore } from './Store'
  * produced it.
  */
 
-const OUTBOX_FILE = path.join(os.homedir(), '.config', 'magic-slash', 'outbox.ndjson')
+// Per-instance (CONFIG_DIR): two apps draining one queue replay each other's events.
+const OUTBOX_FILE = path.join(CONFIG_DIR, 'outbox.ndjson')
 
 /**
  * How many events the queue keeps. At roughly 200 bytes an entry this caps the file

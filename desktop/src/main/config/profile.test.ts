@@ -31,7 +31,7 @@ describe('readProfile', () => {
   let readProfile: typeof import('./profile').readProfile
 
   beforeEach(async () => {
-    vi.doMock('./config', () => ({ CONFIG_DIR: tmpDir }))
+    vi.doMock('./paths', () => ({ STABLE_CONFIG_DIR: tmpDir }))
     vi.resetModules()
     const mod = await import('./profile')
     readProfile = mod.readProfile
@@ -220,7 +220,7 @@ describe('writeProfile', () => {
   let writeProfile: typeof import('./profile').writeProfile
 
   beforeEach(async () => {
-    vi.doMock('./config', () => ({ CONFIG_DIR: tmpDir }))
+    vi.doMock('./paths', () => ({ STABLE_CONFIG_DIR: tmpDir }))
     vi.resetModules()
     const mod = await import('./profile')
     writeProfile = mod.writeProfile
@@ -274,7 +274,7 @@ describe('writeProfile', () => {
     const nestedDir = path.join(tmpDir, 'nested', 'dir')
 
     // Re-mock with nested dir
-    vi.doMock('./config', () => ({ CONFIG_DIR: nestedDir }))
+    vi.doMock('./paths', () => ({ STABLE_CONFIG_DIR: nestedDir }))
     vi.resetModules()
 
     return import('./profile').then(mod => {
@@ -359,7 +359,7 @@ describe('round-trip writeProfile -> readProfile', () => {
   let writeProfile: typeof import('./profile').writeProfile
 
   beforeEach(async () => {
-    vi.doMock('./config', () => ({ CONFIG_DIR: tmpDir }))
+    vi.doMock('./paths', () => ({ STABLE_CONFIG_DIR: tmpDir }))
     vi.resetModules()
     const mod = await import('./profile')
     readProfile = mod.readProfile
@@ -463,7 +463,7 @@ describe('buildMarkdownBody via writeProfile', () => {
   let writeProfile: typeof import('./profile').writeProfile
 
   beforeEach(async () => {
-    vi.doMock('./config', () => ({ CONFIG_DIR: tmpDir }))
+    vi.doMock('./paths', () => ({ STABLE_CONFIG_DIR: tmpDir }))
     vi.resetModules()
     const mod = await import('./profile')
     writeProfile = mod.writeProfile

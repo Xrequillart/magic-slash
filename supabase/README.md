@@ -208,7 +208,12 @@ the world when it ran.)
   `(org_id, owner_id) → memberships` FK leaves behind when a member is removed —
   so an ex-member's agents stay cleanable and adoptable. The desktop app mirrors
   this on read: `loadAgents()` (local terminal restoration) filters on
-  `owner_id`, and only `loadOrgAgents()` spans members.
+  `owner_id`, and only `loadOrgAgents()` spans members. An agent's identity is
+  `app_agent_id` — the desktop's own `claude-<epoch>` id, unique per owner and the
+  key every agent upsert conflicts on, so a second app instance cannot mint a
+  second row for one agent. Archiving releases it (the column goes null with
+  `archived_at`), which is what lets a reused app id start a new row instead of
+  resurrecting a closed one.
 - Both user-scoped tables added for settings reference `auth.users` with
   `ON DELETE CASCADE`, so `delete_account()` removes them with the user row — no
   change to that RPC was needed.

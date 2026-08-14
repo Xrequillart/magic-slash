@@ -48,6 +48,32 @@ let aggregator: AgentStateAggregator | null = null
 let prReviewWatcher: PRReviewWatcher | null = null
 let dailyDigest: DailyDigestScheduler | null = null
 
+// Electron derives userData from the app name, which both builds resolve to
+// `magic-slash-desktop` (desktop/package.json's `name`; `build.productName` only names
+// the .app bundle). So they share userData AND the instance lock it holds: without
+// moving the dev build first, the lock below would turn `npm run desktop` into a no-op
+// whenever the installed app is running. Must happen before the app is ready.
+if (process.env.VITE_DEV_SERVER_URL) {
+  app.setPath('userData', `${app.getPath('userData')}-dev`)
+}
+
+/**
+ * One instance per build.
+ *
+ * Two of them hydrate the same session and restore the same agent roster, then write
+ * it to the same rows — that is how agents ended up duplicated (issue #179). Claimed
+ * here, at module scope, so the loser quits before whenReady() builds a store or opens
+ * the status server. The dev build has its own userData (above) and so its own lock:
+ * this never stops a developer from running dev alongside the installed app.
+ */
+const hasInstanceLock = app.requestSingleInstanceLock()
+if (!hasInstanceLock) {
+  app.quit()
+} else {
+  // A second launch means the user wants the window, not another process.
+  app.on('second-instance', revealMainWindow)
+}
+
 function createMenu() {
   const isMac = process.platform === 'darwin'
 
@@ -346,6 +372,26 @@ function setupHandlers() {
   })
 }
 
+/**
+ * Bring the app back to the front, rebuilding the window if it is gone.
+ *
+ * The two ways a user asks for that — clicking the dock icon ('activate') and
+ * relaunching an app that already holds the instance lock ('second-instance') —
+ * want exactly the same thing, so they share this rather than each keeping their
+ * own copy of "show it, or create it and re-point the updater at it".
+ */
+function revealMainWindow(): void {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    focusMainWindow()
+    return
+  }
+  createWindow()
+  // Terminal sessions are restored by the connectivity gate once the backend is
+  // reachable + hydrated (see connectivity-handlers.ts), not here.
+  if (mainWindow) setUpdaterMainWindow(mainWindow)
+}
+
 /** Show and focus the main window, then run an optional callback. */
 function focusMainWindow(callback?: (win: BrowserWindow) => void): void {
   if (!mainWindow) return
@@ -471,6 +517,9 @@ function setupQuickLaunchHandlers() {
 }
 
 app.whenReady().then(async () => {
+  // app.quit() above only schedules the exit; nothing here may run in the loser.
+  if (!hasInstanceLock) return
+
   // Wire the single source of truth (Supabase). Config, agents and history are
   // hydrated from the DB after auth + connectivity are established (via the
   // connectivity gate). Nothing is persisted locally.
@@ -540,20 +589,7 @@ app.whenReady().then(async () => {
     console.error('[Init] Failed to initialize hooks and sessions:', err)
   })
 
-  app.on('activate', () => {
-    if (mainWindow) {
-      mainWindow.show()
-      mainWindow.focus()
-    } else {
-      createWindow()
-      // Connect updater to new window
-      if (mainWindow) {
-        setUpdaterMainWindow(mainWindow)
-      }
-      // Terminal sessions are restored by the connectivity gate once the backend
-      // is reachable + hydrated (see connectivity-handlers.ts), not here.
-    }
-  })
+  app.on('activate', revealMainWindow)
 })
 
 // Deferred initialization - runs after window is shown
