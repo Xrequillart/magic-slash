@@ -101,6 +101,63 @@ describe('aggregatePRStatus', () => {
     expect(result.reviewers).toEqual([])
   })
 
+  it('ignores a DISMISSED review instead of letting it undo an approval', () => {
+    // A dismissed review matches neither CHANGES_REQUESTED nor APPROVED: kept as
+    // "the latest", it silently dropped an approved PR back to pending.
+    const result = aggregatePRStatus(
+      pr,
+      [
+        { user: { login: 'alice' }, state: 'APPROVED' },
+        { user: { login: 'alice' }, state: 'DISMISSED' },
+      ],
+      [],
+    )
+    expect(result.status).toBe('approved')
+    expect(result.reviewers).toEqual(['alice'])
+  })
+
+  it('ignores a reviewer whose only review is DISMISSED', () => {
+    const result = aggregatePRStatus(pr, [{ user: { login: 'bob' }, state: 'DISMISSED' }], [])
+    expect(result.status).toBe('pending')
+    expect(result.reviewers).toEqual([])
+  })
+
+  it('ignores an unsubmitted PENDING review', () => {
+    const result = aggregatePRStatus(
+      pr,
+      [
+        { user: { login: 'alice' }, state: 'CHANGES_REQUESTED' },
+        { user: { login: 'alice' }, state: 'PENDING' },
+      ],
+      [],
+    )
+    expect(result.status).toBe('changes-requested')
+    expect(result.reviewers).toEqual(['alice'])
+  })
+
+  it('excludes the PR author’s own review when the author is known', () => {
+    const reviews = [{ user: { login: 'xavier' }, state: 'APPROVED' }]
+    const result = aggregatePRStatus(pr, reviews, [], 'xavier')
+    expect(result.status).toBe('pending')
+    expect(result.reviewers).toEqual([])
+    // Without the 4th argument the three-argument callers keep their old behaviour.
+    expect(aggregatePRStatus(pr, reviews, []).status).toBe('approved')
+  })
+
+  it('keeps other reviewers when the author also reviewed', () => {
+    const result = aggregatePRStatus(
+      pr,
+      [
+        { user: { login: 'xavier' }, state: 'APPROVED' },
+        { user: { login: 'alice' }, state: 'CHANGES_REQUESTED' },
+      ],
+      [],
+      'xavier',
+    )
+    expect(result.status).toBe('changes-requested')
+    expect(result.reviewers).toEqual(['alice'])
+  })
+
   it('propagates merged and closed flags', () => {
     const mergedPR = { state: 'closed', merged: true, updated_at: '2025-01-01T10:00:00Z' }
     const result = aggregatePRStatus(mergedPR, [{ user: { login: 'alice' }, state: 'APPROVED' }], [])

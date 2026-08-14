@@ -59,6 +59,18 @@ type AgentProvider = (terminalId: string) => unknown
  * skills that have not been updated.
  */
 type WorktreeFilesWriter = (files: string[], path: string | null, repo: string | null) => void
+/**
+ * A PR URL was attached to a repository for the first time.
+ *
+ * `/metadata?prUrl=&prRepo=` is the ONLY place a `prUrl` is ever written, and it
+ * is `/magic:pr` that calls it. Without this signal the PR review card stays
+ * empty until the watcher's next scheduled tick — up to a full poll interval
+ * after the PR was created, which is exactly when the user is looking at it.
+ *
+ * Registered by the watcher itself (`pr-review-watcher/watcher.ts`), not by
+ * `main/index.ts`: this module must stay importable without Electron.
+ */
+type PRUrlCallback = (terminalId: string, repoPath: string, prUrl: string) => void
 
 let server: http.Server | null = null
 let serverPort: number = 0
@@ -74,6 +86,13 @@ let skillCallback: SkillCallback | null = null
 let configProvider: ConfigProvider | null = null
 let agentProvider: AgentProvider | null = null
 let worktreeFilesWriter: WorktreeFilesWriter | null = null
+let prUrlCallback: PRUrlCallback | null = null
+/**
+ * Last PR URL seen per `terminalId:repoPath`, so the callback only fires on a
+ * NEW one. `/magic:pr` re-sends the same metadata on later runs, and a tick per
+ * repeat would be a free GraphQL query per repeat.
+ */
+const lastSeenPRUrls = new Map<string, string>()
 
 export function getServerPort(): number {
   return serverPort
@@ -85,6 +104,10 @@ export function setStateCallback(callback: StateCallback) {
 
 export function setMetadataCallback(callback: MetadataCallback) {
   metadataCallback = callback
+}
+
+export function setPRUrlCallback(callback: PRUrlCallback) {
+  prUrlCallback = callback
 }
 
 export function setCommandStartCallback(callback: CommandStartCallback) {
@@ -342,6 +365,21 @@ export function startStatusServer(): Promise<number> {
             }
 
             metadataCallback(terminalId, metadata)
+          }
+
+          // Fired AFTER the metadata is stored, so the tick it triggers reads the
+          // URL it was told about. Only on a URL that changed for this repo: the
+          // same PR re-announced on a later /magic:pr run is not news.
+          if (terminalId && prUrl && prRepo) {
+            const seenKey = `${terminalId}:${prRepo}`
+            if (lastSeenPRUrls.get(seenKey) !== prUrl) {
+              lastSeenPRUrls.set(seenKey, prUrl)
+              try {
+                prUrlCallback?.(terminalId, prRepo, prUrl)
+              } catch (e) {
+                console.error('[Hook Metadata] PR URL callback failed:', e)
+              }
+            }
           }
 
           res.writeHead(200)

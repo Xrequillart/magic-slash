@@ -1,13 +1,108 @@
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
+export type AggregatedReviewStatus = 'approved' | 'changes-requested' | 'commented' | 'pending'
+
+/** Lifecycle state of the PR itself, independent of its review status. */
+export type PRState = 'open' | 'draft' | 'merged' | 'closed'
+
+/**
+ * Why the watcher could not read a PR. Returned instead of throwing into the void,
+ * so the card can name the failure and its fix rather than staying mute.
+ *
+ * `no-token` is now reachable where it never was: GraphQL has no anonymous access,
+ * whereas the old REST path silently degraded to unauthenticated requests.
+ */
+export type PRWatchError = 'no-token' | 'not-found' | 'forbidden' | 'rate-limited' | 'network'
+
+export interface PRChecksSummary {
+  total: number
+  passed: number
+  failed: number
+  running: number
+  skipped: number
+}
+
+export interface PRCommentCounts {
+  /** Comments attached to a diff line, via review threads. */
+  inline: number
+  /** The PR conversation — where Greptile and Claude Code post most of the time. */
+  conversation: number
+  /** Non-empty bodies of the reviews themselves. */
+  reviewSummaries: number
+}
+
+/**
+ * Every field is optional and every reader must tolerate its absence: this object is
+ * persisted inside the `agents.metadata` jsonb and spread back verbatim, so rows
+ * written by older versions carry none of the fields below `prClosed`.
+ */
 export interface RepositoryMetadata {
   prUrl?: string
-  prReviewStatus?: 'approved' | 'changes-requested' | 'commented' | 'pending'
+  prReviewStatus?: AggregatedReviewStatus
+  /** Kept for backward compatibility — sum of the three PRCommentCounts buckets. */
   prReviewCommentCount?: number
   prReviewers?: string[]
   prReviewUpdatedAt?: number
   prMerged?: boolean
   prClosed?: boolean
+  prState?: PRState
+  prChecks?: PRChecksSummary
+  /** Names only, capped at 5. */
+  prRunningChecks?: string[]
+  /** Names only, capped at 5. */
+  prFailedChecks?: string[]
+  prCommentCounts?: PRCommentCounts
+  /** Deduped logins, capped at 8. */
+  prCommentAuthors?: string[]
+  /** Absent while GitHub still reports UNKNOWN — render "unknown", never "conflicts". */
+  prMergeable?: boolean
+  prWatchError?: PRWatchError
+  prLastCheckedAt?: number
+}
+
+/** One CI check or commit status attached to the PR head commit. */
+export interface PRCheck {
+  name: string
+  state: 'running' | 'passed' | 'failed' | 'skipped'
+  url?: string
+}
+
+export interface AggregatedPRStatus {
+  status: AggregatedReviewStatus
+  commentCount: number
+  reviewers: string[]
+  merged: boolean
+  closed: boolean
+  updatedAt: number
+}
+
+export interface PRStatusSnapshot extends AggregatedPRStatus {
+  /** Remaining GraphQL budget (points/hour), NOT the REST header pool. */
+  rateLimitRemaining: number
+  /** `draft` is one of the states here, not a separate flag. */
+  state: PRState
+  /** `undefined` while GitHub computes it asynchronously (UNKNOWN). */
+  mergeable?: boolean
+  checks: PRCheck[]
+  checksSummary: PRChecksSummary
+  commentCounts: PRCommentCounts
+  commentAuthors: string[]
+  headSha: string
+  /** Rollup state, part of the cache key: a check flipping green need not move updatedAt. */
+  rollupState?: string
+}
+
+export interface PRStatusError {
+  error: PRWatchError
+  message: string
+  /** Epoch ms before which the caller should not retry (Retry-After / X-RateLimit-Reset). */
+  retryAtMs?: number
+}
+
+export function isPRStatusError(
+  result: PRStatusSnapshot | PRStatusError
+): result is PRStatusError {
+  return 'error' in result
 }
 
 export interface TerminalUsage {

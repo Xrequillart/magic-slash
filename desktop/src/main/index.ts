@@ -2,7 +2,7 @@ import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell, globalS
 import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorktreeFilesWriter } from './hooks/status-server'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorktreeFilesWriter, setPRUrlCallback } from './hooks/status-server'
 import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion } from './questions/pending-questions'
 import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
@@ -705,6 +705,15 @@ async function initializeHooksAndSessions() {
       // On wake/unlock, kick an immediate tick (suspend is a no-op: the interval pauses naturally).
       powerMonitor.on('resume', () => prReviewWatcher?.onResume())
       powerMonitor.on('unlock-screen', () => prReviewWatcher?.onResume())
+
+      // Coming back to the window is the moment a stale card is most visible.
+      // Throttled inside the watcher (15 s) so alt-tabbing is not a poll storm.
+      app.on('browser-window-focus', () => prReviewWatcher?.onFocus())
+
+      // `/magic:pr` announcing a new PR URL through the `/metadata` hook: read
+      // that one PR straight away instead of leaving the card empty until the
+      // next scheduled tick.
+      setPRUrlCallback((_terminalId, _repoPath, prUrl) => prReviewWatcher?.onPRUrlAnnounced(prUrl))
     }
 
     // Start the daily digest scheduler and re-arm it on wake/unlock (a slept

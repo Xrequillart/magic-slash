@@ -430,6 +430,13 @@ const prWatcherApi = {
     ipcRenderer.invoke('prWatcher:getStatus'),
   setInterval: (ms: number) =>
     ipcRenderer.invoke('prWatcher:setInterval', ms),
+  /**
+   * Re-reads one PR (or all of them when `prUrl` is omitted) right now. Works
+   * even when the watcher is disabled. `refreshed: false` means the 15 s
+   * throttle swallowed the request — nothing was fetched, so leave the UI as is.
+   */
+  refresh: (prUrl?: string): Promise<{ refreshed: boolean }> =>
+    ipcRenderer.invoke('prWatcher:refresh', prUrl),
   setAutoLaunchSkills: (enabled: boolean) =>
     ipcRenderer.invoke('prWatcher:setAutoLaunchSkills', enabled),
   sendCommand: (terminalId: string, command: string): Promise<{ launched: boolean; copied: boolean }> =>

@@ -4,9 +4,9 @@ import { readConfig, writeConfig } from '../config/config'
 import { addConfigChangeListener } from '../config/remote-sync'
 import { writeToTerminal, getTerminal } from '../pty/terminal-manager'
 import type { PRReviewWatcher } from '../pr-review-watcher/watcher'
-
-const MIN_POLL_INTERVAL_MS = 30_000
-const MAX_POLL_INTERVAL_MS = 600_000
+// The bounds live in `scheduling.ts`, which is deliberately Electron-free so every
+// enforcement point can import them instead of restating the numbers.
+import { MIN_POLL_INTERVAL_MS, MAX_POLL_INTERVAL_MS } from '../pr-review-watcher/scheduling'
 
 /** Whether a poll interval is one the watcher may actually be driven with. */
 function isValidPollInterval(ms: unknown): ms is number {
@@ -56,6 +56,19 @@ export function setupPRReviewHandlers(watcher: PRReviewWatcher) {
 
   ipcMain.handle('prWatcher:getStatus', async () => {
     return watcher.getStatus()
+  })
+
+  /**
+   * Manual refresh from the PR card.
+   *
+   * Deliberately bypasses the `prReviews.enabled` guard inside the watcher: the
+   * card stays visible when the watcher is switched off, so a refresh button
+   * that silently did nothing would be a trap. Throttled by the watcher (15 s,
+   * shared with the window-focus tick), and `refreshed: false` says so honestly
+   * rather than pretending a read happened.
+   */
+  ipcMain.handle('prWatcher:refresh', async (_event, prUrl?: string) => {
+    return watcher.refresh(prUrl)
   })
 
   ipcMain.handle('prWatcher:setInterval', async (_event, ms: number) => {

@@ -1,11 +1,34 @@
 import { execFileSync } from 'child_process'
+// These shapes are the shared contract (`src/types.ts`), not this module's own —
+// they used to be declared here as well, and every importer now takes them from
+// there directly.
+import type { AggregatedPRStatus, AggregatedReviewStatus, PRStatusError, PRStatusSnapshot } from '../types'
+import { fetchPRStatusGraphQL } from './github-graphql'
+
+/**
+ * The `gh auth token` result, memoised for the process lifetime.
+ *
+ * `execFileSync` spawns a subprocess, and this used to run on EVERY request — three
+ * spawns per watched PR per tick. Only a real token is memoised: a null means "not
+ * logged in yet", and someone who runs `gh auth login` while the app is open must be
+ * picked up without a restart. Invalidated by `clearGitHubTokenCache()`, which the
+ * GraphQL layer calls on a 401 so a rotated/revoked token is re-read once.
+ */
+let cachedToken: string | null = null
 
 export function getGitHubToken(): string | null {
+  if (cachedToken) return cachedToken
   try {
-    return execFileSync('gh', ['auth', 'token'], { encoding: 'utf-8' }).trim() || null
+    cachedToken = execFileSync('gh', ['auth', 'token'], { encoding: 'utf-8' }).trim() || null
   } catch {
-    return null
+    cachedToken = null
   }
+  return cachedToken
+}
+
+/** Drops the memoised token, so the next read re-runs `gh auth token`. */
+export function clearGitHubTokenCache(): void {
+  cachedToken = null
 }
 
 /** Extract the account handle from `gh auth status` output (either format). */
@@ -57,13 +80,18 @@ export function parsePRUrl(url: string): ParsedPRUrl | null {
   return { owner, repo, number }
 }
 
-interface GitHubReview {
+/**
+ * REST-shaped review. The GraphQL layer normalises its own payload into this
+ * (GraphQL says `author.login`, REST says `user.login`) rather than duplicating
+ * the aggregation rules below.
+ */
+export interface GitHubReview {
   user?: { login?: string } | null
   state?: string
   submitted_at?: string
 }
 
-interface GitHubReviewComment {
+export interface GitHubReviewComment {
   user?: { login?: string } | null
 }
 
@@ -74,76 +102,34 @@ interface GitHubPullRequest {
   updated_at?: string
 }
 
-export interface PRFetchResult<T> {
-  data: T
-  rateLimitRemaining: number
-}
-
-function parseRateLimitRemaining(res: Response): number {
-  const header = res.headers.get('X-RateLimit-Remaining')
-  const parsed = header ? parseInt(header, 10) : NaN
-  return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY
-}
-
-async function ghGet<T>(url: string): Promise<PRFetchResult<T>> {
-  const res = await fetch(url, {
-    headers: githubHeaders({ Accept: 'application/vnd.github+json' }),
-  })
-  if (!res.ok) {
-    throw new Error(`GitHub API ${res.status} for ${url}`)
-  }
-  const data = (await res.json()) as T
-  return { data, rateLimitRemaining: parseRateLimitRemaining(res) }
-}
-
-export async function fetchPullRequest(
-  owner: string,
-  repo: string,
-  number: number,
-): Promise<PRFetchResult<GitHubPullRequest>> {
-  return ghGet<GitHubPullRequest>(`https://api.github.com/repos/${owner}/${repo}/pulls/${number}`)
-}
-
-export async function fetchPRReviews(
-  owner: string,
-  repo: string,
-  number: number,
-): Promise<PRFetchResult<GitHubReview[]>> {
-  return ghGet<GitHubReview[]>(`https://api.github.com/repos/${owner}/${repo}/pulls/${number}/reviews`)
-}
-
-export async function fetchPRReviewComments(
-  owner: string,
-  repo: string,
-  number: number,
-): Promise<PRFetchResult<GitHubReviewComment[]>> {
-  return ghGet<GitHubReviewComment[]>(`https://api.github.com/repos/${owner}/${repo}/pulls/${number}/comments`)
-}
-
-export type AggregatedReviewStatus = 'approved' | 'changes-requested' | 'commented' | 'pending'
-
-export interface AggregatedPRStatus {
-  status: AggregatedReviewStatus
-  commentCount: number
-  reviewers: string[]
-  merged: boolean
-  closed: boolean
-  updatedAt: number
-}
+/** Reviews that say nothing about the PR's health and must never become its status. */
+const IGNORED_REVIEW_STATES = new Set(['DISMISSED', 'PENDING'])
 
 /**
  * Reduces a PR + its reviews + review comments into a single status snapshot.
- * Rule: keep the latest review per reviewer; changes_requested > approved > commented > pending.
+ * Rule: keep the latest MEANINGFUL review per reviewer; changes_requested > approved
+ * > commented > pending.
+ *
+ * DISMISSED and PENDING reviews are skipped outright rather than kept as "the latest":
+ * a dismissed review matches neither CHANGES_REQUESTED nor APPROVED, so letting it win
+ * dropped an approved PR back to `commented`/`pending`, and a PENDING one is a draft
+ * nobody has submitted. Reviews written by `authorLogin` are skipped too — self-reviews
+ * (and the "approved my own PR" case) are not feedback.
+ *
+ * `authorLogin` is optional so the three-argument callers keep working.
  */
 export function aggregatePRStatus(
   pr: GitHubPullRequest,
   reviews: GitHubReview[],
   comments: GitHubReviewComment[],
+  authorLogin?: string,
 ): AggregatedPRStatus {
   const latestByReviewer = new Map<string, GitHubReview>()
   for (const review of reviews) {
     const login = review.user?.login
     if (!login) continue
+    if (authorLogin && login === authorLogin) continue
+    if (IGNORED_REVIEW_STATES.has((review.state || '').toUpperCase())) continue
     // reviews come chronological; overwriting preserves the last one
     latestByReviewer.set(login, review)
   }
@@ -161,9 +147,7 @@ export function aggregatePRStatus(
     status = 'pending'
   }
 
-  const reviewers = Array.from(latestByReviewer.entries())
-    .filter(([, r]) => (r.state || '').toUpperCase() !== 'PENDING')
-    .map(([login]) => login)
+  const reviewers = Array.from(latestByReviewer.keys())
 
   const updatedAtMs = pr.updated_at ? new Date(pr.updated_at).getTime() : 0
 
@@ -177,57 +161,19 @@ export function aggregatePRStatus(
   }
 }
 
-export interface PRStatusSnapshot extends AggregatedPRStatus {
-  rateLimitRemaining: number
-}
-
-interface PRCacheEntry {
-  lastSeenUpdatedAt: number
-  snapshot: PRStatusSnapshot
-}
-
-const prCache = new Map<string, PRCacheEntry>()
-
-/** Returns the cache entry for a PR URL (visible for testing/diagnostics). */
-export function getCachedPRStatus(url: string): PRCacheEntry | undefined {
-  return prCache.get(url)
-}
-
-/** Clears all cache entries (visible for testing). */
-export function clearPRCache(): void {
-  prCache.clear()
-}
-
 /**
- * Orchestrates the 3 fetches and aggregates. Returns null if the URL is invalid.
- * Uses an in-memory cache keyed by URL: if pr.updated_at matches the last snapshot,
- * returns the cached aggregation (still refreshes rateLimitRemaining).
+ * Reads everything the watcher needs about a PR in ONE GraphQL query.
+ *
+ * Returns null for a URL that is not a PR URL, a `PRStatusError` for a failure the
+ * card must be able to name (see `isPRStatusError`), and a snapshot otherwise.
+ *
+ * Deliberately NOT cached here: change detection belongs to the watcher, which keys
+ * it on a composite (updatedAt + head sha + rollup state + counts). A cache keyed on
+ * `updated_at` alone — which is what used to live here — hid every check going from
+ * running to green, since a check flipping does not move the PR's updatedAt.
  */
-export async function fetchPRStatus(url: string): Promise<PRStatusSnapshot | null> {
+export async function fetchPRStatus(url: string): Promise<PRStatusSnapshot | PRStatusError | null> {
   const parsed = parsePRUrl(url)
   if (!parsed) return null
-
-  const { owner, repo, number } = parsed
-  const [prRes, reviewsRes, commentsRes] = await Promise.all([
-    fetchPullRequest(owner, repo, number),
-    fetchPRReviews(owner, repo, number),
-    fetchPRReviewComments(owner, repo, number),
-  ])
-
-  const rateLimitRemaining = Math.min(
-    prRes.rateLimitRemaining,
-    reviewsRes.rateLimitRemaining,
-    commentsRes.rateLimitRemaining,
-  )
-
-  const prUpdatedAtMs = prRes.data.updated_at ? new Date(prRes.data.updated_at).getTime() : 0
-  const cached = prCache.get(url)
-  if (cached && cached.lastSeenUpdatedAt === prUpdatedAtMs && prUpdatedAtMs > 0) {
-    return { ...cached.snapshot, rateLimitRemaining }
-  }
-
-  const aggregated = aggregatePRStatus(prRes.data, reviewsRes.data, commentsRes.data)
-  const snapshot: PRStatusSnapshot = { ...aggregated, rateLimitRemaining }
-  prCache.set(url, { lastSeenUpdatedAt: aggregated.updatedAt, snapshot })
-  return snapshot
+  return fetchPRStatusGraphQL(parsed.owner, parsed.repo, parsed.number)
 }
