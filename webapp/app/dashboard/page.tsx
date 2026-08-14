@@ -12,6 +12,7 @@ import { useT } from '@/lib/i18n/useLanguage'
 import { AppShell } from '@/components/AppShell'
 import { Confetti } from '@/components/Confetti'
 import { GettingStarted } from '@/components/GettingStarted'
+import { SkillHoursBanner } from '@/components/SkillHoursBanner'
 import { TeamRepos } from '@/components/TeamRepos'
 import { FullPageLoader } from '@/components/ui'
 
@@ -86,7 +87,15 @@ export default function Dashboard() {
         {/* The team view is meaningless before the app has run, and it competes with
             the checklist for attention — so it waits until onboarding is behind you. */}
         {isOnboarded(state) ? (
-          <TeamRepos overview={team} />
+          <>
+            {/* Above the tabs inside TeamRepos, and outside it: these hours are the
+                viewer's own across every scope, so they must not appear to belong to
+                whichever organization tab happens to be open. Outside it also means
+                the banner does not wait on the team overview to render. Not shown
+                during onboarding — nobody has hours before their first run. */}
+            <SkillHoursBanner />
+            <TeamRepos overview={team} />
+          </>
         ) : (
           state && (
             <GettingStarted

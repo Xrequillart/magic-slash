@@ -164,6 +164,17 @@ export const en = {
   'skills.emptyPersonal':
     'No run recorded outside an organization yet. A run lands here only when the agent that launched it works on personal repositories alone — one started in a terminal the desktop app did not open is attributed to your organization instead.',
 
+  // ── Skill hours ────────────────────────────────────────────────────────────
+  'skillHours.hours': '{count}h',
+  'skillHours.minutes': '{count} min',
+  'skillHours.label.total': 'Total time',
+  'skillHours.label.week': 'Time spent this week',
+  'skillHours.label.last': 'Last used',
+  'skillHours.since': 'since {date}',
+  'skillHours.sinceMonday': 'since Monday',
+  'skillHours.hint':
+    'Counts runs that reported finishing, so an interrupted run adds nothing and a single run counts at most four hours — the real figure is higher.',
+
   // ── Account page ───────────────────────────────────────────────────────────
   'account.title': 'Account',
 

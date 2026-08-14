@@ -161,6 +161,17 @@ export const fr: Record<keyof typeof en, string> = {
   'skills.emptyPersonal':
     'Aucune exécution enregistrée hors organisation. Une exécution arrive ici uniquement si l’agent qui l’a lancée travaille sur des dépôts personnels seulement — une exécution lancée depuis un terminal que l’application desktop n’a pas ouvert est rattachée à votre organisation.',
 
+  // ── Heures passées sur les skills ──────────────────────────────────────────
+  'skillHours.hours': '{count}h',
+  'skillHours.minutes': '{count} min',
+  'skillHours.label.total': 'Temps total',
+  'skillHours.label.week': 'Temps passé cette semaine',
+  'skillHours.label.last': 'Dernière utilisation',
+  'skillHours.since': 'depuis le {date}',
+  'skillHours.sinceMonday': 'depuis lundi',
+  'skillHours.hint':
+    'Seules les exécutions qui ont signalé leur fin sont comptées : une exécution interrompue n’ajoute rien et une exécution compte au maximum quatre heures — le vrai total est donc plus élevé.',
+
   // ── Compte ─────────────────────────────────────────────────────────────────
   'account.title': 'Compte',
 

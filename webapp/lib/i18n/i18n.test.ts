@@ -218,6 +218,10 @@ describe('message catalogues', () => {
       'repo.resolve.askNoticeAmend',
       'repo.pr.section',
       'repo.issues.section',
+      // Two duration units. "{count}h" is the form the banner was specified with in
+      // both languages, and "min" is the same abbreviation in French.
+      'skillHours.hours',
+      'skillHours.minutes',
       ],
       // The site's list is product vocabulary French borrowed whole. It shrank a lot
       // when the landing page stopped selling the seven skills by name: the command

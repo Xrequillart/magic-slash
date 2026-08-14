@@ -1,4 +1,5 @@
 import { getSupabase } from './supabase'
+import { toSkillHours, type SkillHours, type SkillHoursRow } from './skillHours'
 
 /**
  * Skill-run telemetry: which /magic:* skills a team has actually run, and how often.
@@ -85,4 +86,50 @@ export async function fetchPersonalSkillCounts(): Promise<Map<string, number>> {
   const { data, error } = await getSupabase().rpc('personal_skill_counts')
   if (error || !data) return new Map()
   return new Map((data as SkillCountRow[]).map((row) => [row.skill, row.total]))
+}
+
+/**
+ * The zone the user's week starts in — their own, as the browser reports it.
+ *
+ * Sent to the RPC rather than letting Postgres decide, because a PostgREST session is
+ * UTC: `date_trunc('week', now())` there puts the Monday boundary at 00:00 UTC, so a
+ * user in Paris would see their week begin on Sunday at 21:00 and every Sunday-evening
+ * run counted into the week that had just ended. Falls back to UTC on the rare engine
+ * that cannot name its zone, which is also what the RPC does with a name it does not
+ * recognise.
+ */
+function weekTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
+  }
+}
+
+/**
+ * How long the CALLER has spent running skills — every scope, all time, plus the
+ * current week — and the date their measured history starts.
+ *
+ * Every scope, unlike the two count rollups above, and that is the point rather than
+ * an omission: this answers "how long have I spent on this", and a person's week is
+ * not divided by which repository an agent happened to touch. It is also why there is
+ * no org variant — an organization's hours would be a different question, and one this
+ * function's `user_id = auth.uid()` scoping deliberately cannot be bent into.
+ *
+ * The total is a FLOOR. Only closed runs carry a duration, so an abandoned or
+ * interrupted run weighs nothing, and no single run can contribute more than the four
+ * hours `close_skill_run` will attach an end within. Copy on screen has to be able to
+ * survive that being pointed out.
+ *
+ * `null` is a FAILED read, distinct from a successful read of an empty history (a row
+ * of zeros with a null date). The banner hides itself in the first case and explains
+ * itself in the second, which are different things to show.
+ */
+export async function fetchSkillHours(): Promise<SkillHours | null> {
+  const { data, error } = await getSupabase().rpc('skill_hours', { p_tz: weekTimeZone() })
+  // Always one row, never zero — the RPC aggregates without a GROUP BY precisely so a
+  // user with no runs still has something to read.
+  const row = (data as SkillHoursRow[] | null)?.[0]
+  if (error || !row) return null
+  return toSkillHours(row)
 }
