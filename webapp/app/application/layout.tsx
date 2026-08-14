@@ -10,22 +10,31 @@ import {
 } from '@/lib/settings'
 import { useT } from '@/lib/i18n/useLanguage'
 import { AppShell } from '@/components/AppShell'
-import { AppSettings } from '@/components/AppSettings'
-import { AppStatusSection } from '@/components/AppStatusSection'
+import { AppHeaderCard } from '@/components/application/AppHeaderCard'
+import { ApplicationTabs } from '@/components/application/ApplicationTabs'
+import { SettingsProvider } from '@/components/application/SettingsContext'
 import { Card, FullPageLoader } from '@/components/ui'
 
 /**
- * Application page: the desktop app itself — whether it is running, on what
- * version, and how it behaves. Everything below the status card writes to
- * `user_settings`, the same per-user row the desktop reads at launch.
+ * Application section: the desktop app itself — whether it is running, on what
+ * version, and how it behaves. Everything under the tabs writes to
+ * `user_settings`, the same per-user row the desktop reads at launch and follows
+ * over Realtime, so a change here reaches a running app without a restart.
  *
- * The settings on this page are the *app's*, not the website's: the webapp is a
- * fixed light theme, so picking a theme here changes the desktop and nothing on
- * screen — and the language row below sets the DESKTOP's language, not this page's,
- * which is the account menu's switcher. Repository settings live on
- * /repository/[id]; who you are lives on /account.
+ * The settings here are the APP's, not the website's: the webapp is a fixed light
+ * theme, so picking a theme changes the desktop and nothing on screen — and the
+ * language tab sets the DESKTOP's language, not this page's, which is the account
+ * menu's switcher. Repository settings live on /repository/[id]; who you are lives
+ * on /account.
+ *
+ * WHY THE STATE IS IN THE LAYOUT
+ * ---------------------------------------------------------------------------
+ * One tab is one route, and a Next layout does not remount as its children change.
+ * So the row, the fetch and the write queue live here: switching tabs costs no
+ * request, and a save started on one tab cannot be interrupted by navigating to
+ * another. The pages under it read the settings through context.
  */
-export default function Application() {
+export default function ApplicationLayout({ children }: { children: React.ReactNode }) {
   const { session, pending } = useRequireSession()
   const { t, lang } = useT()
   const userId = session?.user.id
@@ -101,21 +110,23 @@ export default function Application() {
         {t('application.title')}
       </h1>
 
-      <div className="mt-10 space-y-8">
-        <AppStatusSection />
+      <div className="mt-8 space-y-6">
+        {/* Which app these settings belong to, before any of them. */}
+        <AppHeaderCard />
+        <ApplicationTabs />
 
         {settings === null ? (
           <Card className="p-8 text-center text-sm text-muted">{t('common.loading')}</Card>
         ) : (
-          <>
+          <SettingsProvider value={{ settings, patch }}>
             {saveError && (
               <p className="rounded-xl border border-red/20 bg-red/[0.04] px-3.5 py-2.5 text-xs text-red">
                 {saveError}
               </p>
             )}
-            <AppSettings settings={settings} onPatch={patch} />
+            <div className="space-y-8">{children}</div>
             <p className="text-xs text-muted">{t('application.footnote')}</p>
-          </>
+          </SettingsProvider>
         )}
       </div>
     </AppShell>
