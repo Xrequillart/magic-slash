@@ -38,6 +38,7 @@ describe('parseStatusLinePayload', () => {
     const usage = parseStatusLinePayload(fullPayload)
     expect(usage.costUsd).toBe(0.4237)
     expect(usage.model).toBe('Opus 4.8')
+    expect(usage.modelId).toBe('claude-opus-4-8')
     expect(usage.durationMs).toBe(754321)
     expect(usage.linesAdded).toBe(120)
     expect(usage.linesRemoved).toBe(45)
@@ -89,12 +90,13 @@ describe('parseStatusLinePayload', () => {
 
   it('ignores fields with the wrong type', () => {
     const payload = JSON.stringify({
-      model: { display_name: 42 },
+      model: { id: 7, display_name: 42 },
       cost: { total_cost_usd: 'nope' },
       context_window: { used_percentage: null },
     })
     const usage = parseStatusLinePayload(payload)
     expect(usage.model).toBeUndefined()
+    expect(usage.modelId).toBeUndefined()
     expect(usage.costUsd).toBeUndefined()
     expect(usage.contextPercent).toBeUndefined()
   })

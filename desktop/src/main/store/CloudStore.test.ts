@@ -191,6 +191,9 @@ describe('appendUsage', () => {
     await store.appendUsage({
       agentId: 'claude-1',
       model: 'Claude Opus',
+      modelId: 'claude-opus-4-8',
+      contextWindowSize: 200000,
+      modelIds: ['claude-sonnet-4-8', 'claude-opus-4-8'],
       costUsd: 1.23,
       linesAdded: 10,
       linesRemoved: 4,
@@ -209,6 +212,11 @@ describe('appendUsage', () => {
       user_id: UID,
       agent_id: null,
       model: 'Claude Opus',
+      model_id: 'claude-opus-4-8',
+      // A model capacity, not a counter — unlike tokens, which stays null.
+      context_window_size: 200000,
+      // Two ids = a /model switch, so the columns above describe the last one only.
+      model_ids: ['claude-sonnet-4-8', 'claude-opus-4-8'],
       cost_usd: 1.23,
       tokens: null,
       lines_added: 10,
@@ -267,6 +275,10 @@ describe('appendUsage', () => {
     const row = inserts.usage_events[0] as Record<string, unknown>
     expect(row).toMatchObject({
       model: null,
+      // Also the shape of an outbox entry queued before these columns existed.
+      model_id: null,
+      context_window_size: null,
+      model_ids: null,
       cost_usd: null,
       tokens: null,
       lines_added: null,

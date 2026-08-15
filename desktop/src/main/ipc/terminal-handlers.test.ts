@@ -109,7 +109,15 @@ describe('session-end usage flush (terminal:kill)', () => {
       id,
       name: 'Agent',
       metadata: {
-        usage: { model: 'Claude Opus', costUsd: 1.23, linesAdded: 10, linesRemoved: 4, durationMs: 5000 },
+        usage: {
+          model: 'Claude Opus',
+          modelId: 'claude-opus-4-8',
+          contextWindowSize: 200000,
+          costUsd: 1.23,
+          linesAdded: 10,
+          linesRemoved: 4,
+          durationMs: 5000,
+        },
       },
       repositories: [],
     })
@@ -121,6 +129,8 @@ describe('session-end usage flush (terminal:kill)', () => {
       expect.objectContaining({
         agentId: id,
         model: 'Claude Opus',
+        modelId: 'claude-opus-4-8',
+        contextWindowSize: 200000,
         costUsd: 1.23,
         linesAdded: 10,
         linesRemoved: 4,
@@ -131,6 +141,47 @@ describe('session-end usage flush (terminal:kill)', () => {
     // Flush must happen BEFORE archiveAgent so the store can still resolve the uuid.
     expect(recordUsageSnapshot.mock.invocationCallOrder[0]).toBeLessThan(
       archiveAgent.mock.invocationCallOrder[0],
+    )
+  })
+
+  it('keeps every model seen mid-session, in order of first appearance', async () => {
+    const id = 'claude-kill-switch'
+    term.getTerminal.mockReturnValue({
+      id,
+      name: 'Agent',
+      // The gauge holds the LAST model; the set is what says the attribution is approximate.
+      metadata: { usage: { model: 'Sonnet 4.8', modelId: 'claude-sonnet-4-8', costUsd: 2 } },
+      modelIds: new Set(['claude-opus-4-8', 'claude-sonnet-4-8']),
+      repositories: [],
+    })
+
+    await invoke('terminal:kill', { id })
+
+    // An ARRAY, not the Set: the payload is JSON.stringify'd into the outbox on a
+    // failed write, and a Set would serialise to {}. Unsorted — first→last order is the point.
+    expect(recordUsageSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modelId: 'claude-sonnet-4-8',
+        modelIds: ['claude-opus-4-8', 'claude-sonnet-4-8'],
+      }),
+    )
+  })
+
+  it('sends no model ids when the statusLine never reported one', async () => {
+    const id = 'claude-kill-no-model'
+    term.getTerminal.mockReturnValue({
+      id,
+      name: 'Agent',
+      metadata: { usage: { costUsd: 1 } },
+      repositories: [],
+    })
+
+    await invoke('terminal:kill', { id })
+
+    // Undefined, never [] — it lands as NULL, which is what array_length(model_ids, 1)
+    // already returns for an empty array.
+    expect(recordUsageSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({ modelIds: undefined }),
     )
   })
 

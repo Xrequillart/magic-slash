@@ -164,6 +164,12 @@ export interface Terminal {
    *  passed at launch. A session nobody has said anything to holds nothing worth
    *  keeping, which is what makes a silent relaunch safe. */
   hasUserInput?: boolean
+  /** Every model.id the statusLine has reported for this session, in order of
+   *  first appearance (a Set iterates in insertion order). Lives on the terminal
+   *  rather than in a module map so it survives a respawn and dies with the
+   *  object — more than one entry means a /model switch happened mid-session and
+   *  the end-of-session snapshot describes only the last model. */
+  modelIds?: Set<string>
   /** Replaces the running Claude Code with a fresh one in a given directory.
    *  Only set for agents (launchClaude), not for plain shells. */
   respawn?: (cwd: string, notice?: string) => void
@@ -722,6 +728,12 @@ export function updateTerminalUsageFromHook(terminalId: string, usage: TerminalU
   const terminal = terminals.get(terminalId)
   if (!terminal) return
   terminal.metadata = { ...terminal.metadata, usage }
+
+  // Accumulated outside metadata.usage, which is wholly replaced above — see Terminal.modelIds.
+  if (usage.modelId) {
+    if (!terminal.modelIds) terminal.modelIds = new Set()
+    terminal.modelIds.add(usage.modelId)
+  }
 }
 
 // Update terminal repositories from hook callback
