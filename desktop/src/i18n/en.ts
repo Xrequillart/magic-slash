@@ -851,6 +851,21 @@ export const en = {
     'No run recorded for this organization yet. Runs are attributed through the repositories of the agent that launches them, so work on a personal repository is not counted here.',
   'dashboard.skills.emptyPersonal':
     'No run recorded outside an organization yet. A run lands here when the agent that launched it works on personal repositories alone, and when it was started in a terminal the app did not open — one with no agent belongs to no organization.',
+  'dashboard.usage.section': 'Cost & usage',
+  'dashboard.usage.cost': 'Cost',
+  'dashboard.usage.sessions': 'Sessions',
+  'dashboard.usage.lines': 'Lines',
+  'dashboard.usage.duration': 'Time',
+  'dashboard.usage.byMember': 'By member',
+  'dashboard.usage.byModel': 'By model',
+  'dashboard.usage.unknownModel': 'Unknown model',
+  'dashboard.usage.empty': 'No usage to show here.',
+  // `{count}` is the row count actually returned, which IS the cap whenever this line
+  // shows — `loadOrgUsageStats` only sets `capped` when the read came back full. Derived
+  // rather than written out, so raising the limit cannot leave this sentence lying.
+  'dashboard.usage.capped':
+    'Only the {count} most recent sessions are read, so these totals are a floor rather than the whole picture.',
+  'dashboard.usage.failed': 'Usage could not be read.',
 
   // ── Team dashboard · hours spent inside the skills ────────────────────────
   'skillHours.hours': '{count}h',

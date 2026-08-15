@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import type { UsageStatRow } from '../../types'
-import { aggregateUsageTotals, aggregateUsageByMember, computeUsageHeatmap, formatUsd } from './usageStats'
+import type { Translate } from '../i18n'
+import {
+  aggregateUsageTotals,
+  aggregateUsageByMember,
+  aggregateUsageByModel,
+  computeUsageHeatmap,
+  formatUsageDuration,
+  formatUsd,
+} from './usageStats'
 
 function row(overrides: Partial<UsageStatRow> = {}): UsageStatRow {
   return {
@@ -52,6 +60,91 @@ describe('aggregateUsageByMember', () => {
   it('groups null owners under an empty-string key', () => {
     const result = aggregateUsageByMember([row({ userId: null, costUsd: 1 })])
     expect(result[0].userId).toBe('')
+  })
+})
+
+describe('aggregateUsageByModel', () => {
+  it('returns no buckets for no rows', () => {
+    expect(aggregateUsageByModel([])).toEqual([])
+  })
+
+  it('groups by model and sorts by cost descending', () => {
+    const result = aggregateUsageByModel([
+      row({ model: 'Claude Sonnet', costUsd: 1 }),
+      row({ model: 'Claude Opus', costUsd: 5 }),
+      row({ model: 'Claude Sonnet', costUsd: 2 }),
+    ])
+    expect(result).toHaveLength(2)
+    expect(result[0].model).toBe('Claude Opus')
+    expect(result[0].costUsd).toBe(5)
+    expect(result[1].model).toBe('Claude Sonnet')
+    expect(result[1].costUsd).toBe(3)
+    expect(result[1].sessions).toBe(2)
+  })
+
+  it('accumulates lines and duration alongside the cost', () => {
+    const result = aggregateUsageByModel([
+      row({ model: 'Claude Opus', costUsd: 1.5, linesAdded: 10, linesRemoved: 3, durationMs: 1000 }),
+      row({ model: 'Claude Opus', costUsd: 2.25, linesAdded: 4, linesRemoved: 1, durationMs: 2000 }),
+    ])
+    expect(result).toHaveLength(1)
+    // 1.5 and 2.25 are both exact in binary floating point, so their sum is too.
+    expect(result[0]).toEqual({
+      model: 'Claude Opus', costUsd: 3.75, sessions: 2, linesAdded: 14, linesRemoved: 4, durationMs: 3000,
+    })
+  })
+
+  it('buckets a null model under null rather than dropping the row', () => {
+    // Sessions recorded before the statusLine hook landed carry no model. Dropping
+    // them would make this split under-count the totals shown beside it.
+    const result = aggregateUsageByModel([row({ model: null, costUsd: 2 })])
+    expect(result).toEqual([{
+      model: null, costUsd: 2, sessions: 1, linesAdded: 5, linesRemoved: 2, durationMs: 60000,
+    }])
+  })
+
+  it('buckets an empty or whitespace-only model under null too', () => {
+    const result = aggregateUsageByModel([
+      row({ model: '', costUsd: 1 }),
+      row({ model: '   ', costUsd: 1 }),
+      row({ model: null, costUsd: 1 }),
+    ])
+    expect(result).toHaveLength(1)
+    expect(result[0].model).toBeNull()
+    expect(result[0].sessions).toBe(3)
+  })
+
+  it('keeps a model literally named "unknown" apart from the missing-model bucket', () => {
+    // The reason the bucket is `null` and not the string 'unknown': a real name must
+    // never be swallowed by the placeholder for an absent one.
+    const result = aggregateUsageByModel([
+      row({ model: 'unknown', costUsd: 3 }),
+      row({ model: null, costUsd: 1 }),
+    ])
+    expect(result.map((m) => m.model)).toEqual(['unknown', null])
+  })
+})
+
+describe('formatUsageDuration', () => {
+  // Echoes the catalogue's shape without pulling it in — what matters here is which
+  // key is picked and what is passed to it.
+  const t = ((key: string, params?: Record<string, string | number>) =>
+    `${key}:${JSON.stringify(params ?? {})}`) as unknown as Translate
+
+  it('drops to hours and minutes past an hour', () => {
+    expect(formatUsageDuration(3 * 3600_000 + 25 * 60_000, t)).toBe('duration.hoursMinutes:{"hours":3,"minutes":25}')
+  })
+
+  it('uses minutes and seconds under an hour', () => {
+    expect(formatUsageDuration(5 * 60_000 + 30_000, t)).toBe('duration.minutesSeconds:{"minutes":5,"seconds":30}')
+  })
+
+  it('falls back to seconds under a minute', () => {
+    expect(formatUsageDuration(42_000, t)).toBe('relative.seconds:{"count":42}')
+  })
+
+  it('reads zero as zero seconds rather than as no duration', () => {
+    expect(formatUsageDuration(0, t)).toBe('relative.seconds:{"count":0}')
   })
 })
 
