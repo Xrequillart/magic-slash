@@ -203,6 +203,7 @@ export function parseStatusLinePayload(body: string): TerminalUsage {
     contextTokens,
     contextWindowSize,
     model: typeof data?.model?.display_name === 'string' ? data.model.display_name : undefined,
+    modelId: typeof data?.model?.id === 'string' ? data.model.id : undefined,
     durationMs: typeof cost.total_duration_ms === 'number' ? cost.total_duration_ms : undefined,
     linesAdded: typeof cost.total_lines_added === 'number' ? cost.total_lines_added : undefined,
     linesRemoved: typeof cost.total_lines_removed === 'number' ? cost.total_lines_removed : undefined,

@@ -134,12 +134,22 @@ const NOTIFICATION_COOLDOWN = 30000 // 30 seconds between notifications per term
  */
 function flushUsageSnapshot(id: string): void {
   if (usageFlushed.has(id)) return
-  const usage = getTerminal(id)?.metadata?.usage
+  const terminal = getTerminal(id)
+  const usage = terminal?.metadata?.usage
   if (!usage) return
   usageFlushed.add(id)
+  // Materialise the model-id set as an array HERE: on a failed write the payload
+  // goes to the on-disk outbox as JSON, and JSON.stringify(new Set()) is `{}` —
+  // an offline session would replay an empty object into a text[] column. Null
+  // rather than [] when nothing was seen, to match array_length(model_ids, 1),
+  // which is NULL for an empty array anyway.
+  const modelIds = terminal?.modelIds?.size ? Array.from(terminal.modelIds) : undefined
   void recordUsageSnapshot({
     agentId: id,
     model: usage.model,
+    modelId: usage.modelId,
+    contextWindowSize: usage.contextWindowSize,
+    modelIds,
     costUsd: usage.costUsd,
     linesAdded: usage.linesAdded,
     linesRemoved: usage.linesRemoved,

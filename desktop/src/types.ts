@@ -117,6 +117,7 @@ export interface TerminalUsage {
   contextTokens?: number     // tokens currently occupying the context window
   contextWindowSize?: number // context_window.context_window_size
   model?: string             // model.display_name
+  modelId?: string           // model.id
   durationMs?: number        // cost.total_duration_ms
   linesAdded?: number        // cost.total_lines_added
   linesRemoved?: number      // cost.total_lines_removed
@@ -633,7 +634,16 @@ export interface OrgAgentChange {
 export interface UsageEventInput {
   /** app agent id ("claude-…"), mapped to the agents.id uuid by the store. */
   agentId: string
+  /** model.display_name at session end — a label, not something to group on. */
   model?: string
+  /** model.id at session end (e.g. "claude-opus-4-8"), the stable identity. */
+  modelId?: string
+  /** Context window of that model, in tokens — a capacity, not a counter, which is
+   *  why it is recorded while `tokens` stays null (see appendUsage). */
+  contextWindowSize?: number
+  /** Every model.id seen during the session, in order of first appearance. More
+   *  than one means a /model switch, so the fields above describe the last one only. */
+  modelIds?: string[]
   costUsd?: number
   linesAdded?: number
   linesRemoved?: number

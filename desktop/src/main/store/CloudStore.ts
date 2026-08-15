@@ -1401,7 +1401,9 @@ export class CloudStore implements Store {
    * the agents.id uuid via agentIdMap, and attributes the org exactly like
    * appendHistory (see eventOrgId). tokens is left null on purpose:
    * TerminalUsage.contextTokens is a point-in-time context gauge, not a cumulative
-   * session-token count, so it must not be mapped into this row.
+   * session-token count, so it must not be mapped into this row. context_window_size
+   * IS written: it is a capacity of the model, not a counter, so it says nothing
+   * false about the session.
    */
   async appendUsage(event: UsageEventInput): Promise<void> {
     const ctx = await this.eventContext()
@@ -1414,6 +1416,9 @@ export class CloudStore implements Store {
       user_id: ctx.uid,
       agent_id: agentUuid,
       model: event.model ?? null,
+      model_id: event.modelId ?? null,
+      context_window_size: event.contextWindowSize ?? null,
+      model_ids: event.modelIds ?? null,
       cost_usd: event.costUsd ?? null,
       tokens: null,
       lines_added: event.linesAdded ?? null,
