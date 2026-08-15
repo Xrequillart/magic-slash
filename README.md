@@ -54,6 +54,10 @@ You can also invoke skills using natural language:
 [**Download Magic Slash for macOS**](https://github.com/xrequillart/magic-slash/releases/latest) — drag it into
 Applications and open it. There is no install script: the app sets the machine up itself.
 
+Magic Slash is an account-based product. Your settings, repositories, agents and history live in
+a Supabase database rather than on your disk, so the app needs an account and a reachable backend
+to start — see [Accounts, sync and teams](#accounts-sync-and-teams).
+
 ### Prerequisites
 
 - [Claude Code](https://claude.ai/download)
@@ -67,14 +71,77 @@ provide. Settings → Application → Machine setup reports the same thing at an
 
 ### What the app does on first launch
 
-1. Asks where your tickets live (Jira + GitHub, or GitHub only)
-2. Configures the MCP servers for that choice — both over OAuth, so there is no token to
+1. Asks you to sign in — the app renders nothing until it has a session
+2. Asks where your tickets live (Jira + GitHub, or GitHub only)
+3. Configures the MCP servers for that choice — both over OAuth, so there is no token to
    paste or store
-3. Installs the 7 skills into `~/.claude/skills/`
-4. Configures Claude Code's hooks, statusline and permission allowlist
-5. Checks your prerequisites and reports what is missing
+4. Installs the 7 skills into `~/.claude/skills/`
+5. Configures Claude Code's hooks, statusline and permission allowlist
+6. Checks your prerequisites and reports what is missing
 
-Repositories are configured afterwards, in Settings → Repositories.
+Repositories are configured afterwards, in Settings → Repositories, or from the web app —
+they sync either way.
+
+## Accounts, sync and teams
+
+### Signing in is mandatory
+
+The whole app sits behind a cloud gate. It renders only when the backend is reachable **and**
+you are authenticated; every other state is a hard block, with no offline mode and no grace
+period:
+
+| State          | What you see                                                     |
+| -------------- | ---------------------------------------------------------------- |
+| authenticated  | the app                                                          |
+| signed out     | a sign-in wall that cannot be dismissed                          |
+| offline        | a "connection lost" screen with a retry button                   |
+| cloud disabled | a "cloud not configured" screen (a build with no Supabase keys)  |
+
+Sign-in is email + password. Forgotten passwords are reset with a 6-digit code sent by email.
+**Account creation is not offered in the app** — the only in-app path to a new account is the
+invitation wizard, which opens when you arrive through an invite link.
+
+### What lives where
+
+The Supabase database is the single source of truth. There is deliberately no local JSON
+mirror of your settings: the app keeps an in-memory cache, hydrates it on launch, and writes
+through on every change.
+
+| Stored in the cloud                                     | Kept on disk                                                 |
+| ------------------------------------------------------- | ------------------------------------------------------------ |
+| Settings (theme, language, integrations, split, …)      | `cloud-session.enc` — your session, encrypted via the keychain |
+| Repositories, their identity and per-user local paths   | `appearance.json` — theme and language, read before the first paint |
+| Agents and their state                                  | `command-history.json` — the terminal's command history      |
+| Activity, usage and skill-invocation history            | `outbox.ndjson` — telemetry queued while offline             |
+| Your profile                                            | `port` — the port the Claude Code hooks report into          |
+| Organizations, members and invitations                  | `profile.md` — a mirror of the cloud profile, for the skills |
+
+Local files live in `~/.config/magic-slash/` (a dev build gets its own `-dev` copy, so the two
+never share a session or an agent roster).
+
+A change made on another machine, or on the web app, arrives over Realtime and is applied
+live — no restart, no reload.
+
+### Teams
+
+An account can belong to organizations, each with `admin` and `user` members. Within one:
+
+- **Repositories can be shared** with the team. Their identity (name, keywords, settings) is
+  org-wide, while the local folder path stays per-user — everyone binds the repo to wherever
+  they cloned it.
+- **Members are invited by email**, or with a link anyone can open. New teammates land in the
+  invitation wizard, which only asks for their repository paths — the rest is inherited.
+- **The team dashboard** reports activity, agents and skill hours across the org.
+
+### The web app
+
+One Next.js deployment on Vercel answers on three hosts:
+
+| Host                    | Serves                                                  |
+| ----------------------- | -------------------------------------------------------- |
+| `magic-slash.io`        | the public site, the story and the documentation        |
+| `app.magic-slash.io`    | the product — dashboard, team, and `/admin` back-office |
+| `invite.magic-slash.io` | the invitation funnel                                   |
 
 ## Usage
 
@@ -240,7 +307,7 @@ Next steps:
 
 ## Desktop App
 
-Magic Slash ships a native desktop application built with Electron, featuring integrated Claude Code terminals, project management sidebar, and agent tracking. The app checks for updates automatically on launch.
+Magic Slash ships a native desktop application built with Electron, featuring integrated Claude Code terminals, a project management sidebar, and agent tracking. Everything it holds — settings, repositories, agents, history — is synced to your account, so a second machine picks up where the first left off. The app checks for updates automatically on launch.
 
 ```bash
 # Install desktop dependencies
@@ -260,15 +327,22 @@ npm run desktop:package
 
 ### Files
 
-| File                                | Description                           |
-| ----------------------------------- | ------------------------------------- |
-| `~/.claude/settings.json`           | Atlassian & GitHub MCP configuration  |
-| `~/.config/magic-slash/config.json` | Repository paths, keywords, settings  |
-| `~/.config/magic-slash/profile.md`  | User profile (role, level, preferences) |
-| `~/.local/bin/magic-slash`          | CLI command to launch the desktop app |
-| `~/.claude/skills/magic-slash/`     | Installed skills (all 7 skills)       |
+| File                                       | Description                                            |
+| ------------------------------------------ | ------------------------------------------------------ |
+| `~/.claude/settings.json`                  | MCP servers, hooks, statusline and permission allowlist |
+| `~/.claude/skills/magic-start/` (…and 6 more) | The installed skills, one directory each            |
+| `~/.config/magic-slash/profile.md`         | User profile — a local mirror of the cloud profile, read by the skills |
+| `~/.config/magic-slash/appearance.json`    | Theme and language, so a cold start paints correctly   |
+| `~/.config/magic-slash/cloud-session.enc`  | Your session, encrypted with the OS keychain           |
+| `~/.local/bin/magic-slash`                 | CLI command to launch the desktop app                  |
 
-### Configuration schema
+> Settings and repositories are **not** in this list: there is no `config.json` any more.
+> They live in the database and are edited from Settings in the app, or from the web app.
+
+### Settings schema
+
+This is the shape of the settings the app syncs — useful for reading the code, not a file you
+edit by hand:
 
 ```json
 {
@@ -320,11 +394,13 @@ npm run desktop:package
 }
 ```
 
-> The `version` field is managed automatically by the installer.
+> The `version` field is stamped by the app itself.
 
 ### Repository settings
 
-Each repository can be independently configured:
+Each repository can be independently configured, from Settings → Repositories or from the web
+app. A repository shared with an organization keeps these settings org-wide, while its local
+folder path stays yours:
 
 #### Languages
 
@@ -394,7 +470,7 @@ When `testAccounts` is not `off`, `/magic:pr` adds the account a reviewer should
 
 ### User profile
 
-On first launch, the Desktop app presents an onboarding wizard to create a user profile. The profile is stored at `~/.config/magic-slash/profile.md` and contains:
+On first launch, the Desktop app presents an onboarding wizard to create a user profile. The profile is stored in the cloud and mirrored to `~/.config/magic-slash/profile.md`, because the `/magic:*` skills read it from disk. It contains:
 
 | Field                | Type         | Required | Description                                           |
 | -------------------- | ------------ | -------- | ----------------------------------------------------- |
@@ -405,7 +481,7 @@ On first launch, the Desktop app presents an onboarding wizard to create a user 
 | `languages`          | multi-select | no       | Preferred languages (English, Français)               |
 | Free text            | textarea     | no       | Anything else Claude should know                      |
 
-All `/magic:*` skills read this profile to adapt their communication — vocabulary, detail level, and language — based on the user's role and technical level. The profile can be edited anytime from **Settings > Profile** in the Desktop app.
+All `/magic:*` skills read this profile to adapt their communication — vocabulary, detail level, and language — based on the user's role and technical level. The profile can be edited anytime from **Settings > Profile** in the Desktop app, or from the web app; either way the local mirror is refreshed.
 
 ### Keywords
 
@@ -428,7 +504,11 @@ magic-slash/
 │   └── dependabot.yml
 ├── desktop/               # Electron desktop app
 │   ├── src/
-│   │   ├── main/          # Main process (config, PTY, IPC)
+│   │   ├── main/          # Main process (config, PTY, IPC, hooks, updater)
+│   │   │   ├── cloud/     #   Supabase session, encrypted at rest
+│   │   │   ├── config/    #   In-memory caches and their defaults
+│   │   │   ├── setup/     #   Machine setup: prerequisites, MCP servers
+│   │   │   └── store/     #   The persistence contract + telemetry outbox
 │   │   ├── preload/       # Secure bridge
 │   │   └── renderer/      # React UI (pages, components, hooks)
 │   ├── resources/         # App icons & logo
@@ -519,6 +599,9 @@ Magic Slash is built with and for:
 - [Electron](https://www.electronjs.org/) - Desktop application framework
 - [React](https://react.dev/) - UI library for desktop app
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
+- [Supabase](https://supabase.com/) - Auth, database and Realtime sync
+- [Next.js](https://nextjs.org/) - Public site and web product
+- [Vercel](https://vercel.com/) - Hosting for the web app
 
 ## License
 
