@@ -1149,12 +1149,7 @@ export const fr: Record<keyof typeof en, string> = {
   'repoSetup.error': 'Impossible d’utiliser ce dossier',
   'repoSetup.unverified': 'Dossier enregistré, mais son état n’a pas pu être vérifié — réessayez',
 
-  // ── Validation de la config / dépôts invalides ───────────────────────────
-  'toast.invalidConfig.one': 'Configuration invalide : {count} erreur trouvée dans config.json',
-  'toast.invalidConfig.other': 'Configuration invalide : {count} erreurs trouvées dans config.json',
-  'toast.resetToDefaults': 'Rétablir les valeurs par défaut',
-  'toast.configRepaired': 'Configuration réparée',
-  'toast.openInVSCode': 'Ouvrir dans VS Code',
+  // ── Dépôts invalides ─────────────────────────────────────────────────────
   'toast.repoRepointed': '« {name} » repointé',
   'toast.repoRepointFailed': 'Impossible de repointer « {name} »',
   'toast.repoInvalidMissing': 'Le dossier du dépôt « {name} » est introuvable ({path})',

@@ -1,4 +1,4 @@
-import { ipcMain, type BrowserWindow } from 'electron'
+import { ipcMain } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import { execFileSync } from 'child_process'
@@ -6,7 +6,6 @@ import { codeToHtml } from 'shiki'
 import {
   readConfig,
   writeConfig,
-  CONFIG_FILE,
   addRepository,
   updateRepository,
   deleteRepository,
@@ -31,11 +30,9 @@ import {
 } from '../config/config'
 import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
-import { repairConfig } from '../config/migrate'
 import { isValidSpotlightShortcut, isValidLaunchMode } from '../config/defaults'
 import { isValidLanguage, isValidTheme, type Config } from '../../types'
 import { applyLanguage, applyTheme } from '../appearance'
-import { validateConfig } from '../config/schema-validator'
 import {
   validateRepoName,
   validateRepoPath,
@@ -136,23 +133,10 @@ const MIME_MAP: Record<string, string> = {
   '.ico': 'image/x-icon',
 }
 
-export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
-  // Get config (also validates and notifies renderer of any errors)
+export function setupConfigHandlers() {
   ipcMain.handle('config:get', async () => {
     await ensureHydrated()
-    const config = readConfig()
-    try {
-      const validation = validateConfig(config)
-      if (!validation.valid) {
-        getMainWindow()?.webContents.send('config:validationErrors', {
-          errors: validation.errors,
-          configPath: CONFIG_FILE,
-        })
-      }
-    } catch {
-      // Validation failures already handled in readConfig
-    }
-    return config
+    return readConfig()
   })
 
   // Add repository
@@ -437,11 +421,6 @@ export function setupConfigHandlers(getMainWindow: () => BrowserWindow | null) {
   // Update PR template
   ipcMain.handle('config:updatePRTemplate', async (_event, { repoPath, content }) => {
     return updatePRTemplate(repoPath, content)
-  })
-
-  // Repair config (fix invalid values with defaults)
-  ipcMain.handle('config:repair', async () => {
-    return repairConfig()
   })
 
   // Command history handlers

@@ -10,7 +10,6 @@ import { TitleBar } from './components/TitleBar'
 import { Sidebar } from './components/Sidebar'
 import { AgentInfoSidebar } from './components/AgentInfoSidebar'
 import { ToastContainer, showToast } from './components/Toast'
-import { VSCodeIcon } from './components/agent-info-sidebar/icons'
 import { UpdateOverlay } from './components/UpdateOverlay'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { ConfigPage } from './pages/Config'
@@ -253,39 +252,6 @@ export function App() {
   useEffect(() => {
     loadConfig()
   }, [loadConfig])
-
-  // Listen for config validation errors from main process
-  useEffect(() => {
-    const unsubscribe = window.electronAPI.config.onValidationErrors((data) => {
-      const count = data.errors.length
-      showToast(
-        t(count > 1 ? 'toast.invalidConfig.other' : 'toast.invalidConfig.one', { count }),
-        'error',
-        {
-          persistent: true,
-          actions: [
-            {
-              label: t('toast.resetToDefaults'),
-              icon: <RotateCcw className="w-3.5 h-3.5" />,
-              onClick: async () => {
-                await window.electronAPI.config.repair()
-                loadConfig()
-                showToast(t('toast.configRepaired'), 'success')
-              },
-            },
-            {
-              label: t('toast.openInVSCode'),
-              icon: <VSCodeIcon className="w-3.5 h-3.5" />,
-              onClick: () => {
-                window.electronAPI.shell.openInVSCode(data.configPath)
-              },
-            },
-          ],
-        }
-      )
-    })
-    return () => { unsubscribe() }
-  }, [loadConfig, t])
 
   // The repositories the main process reports as unusable. Kept in state rather
   // than consumed on the spot: both the launch modal and the toasts read it, and

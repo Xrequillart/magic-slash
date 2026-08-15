@@ -35,8 +35,6 @@ const isOneOf = (allowed: string[]) => (v: unknown) => typeof v === 'string' && 
 const isBool = (v: unknown) => typeof v === 'boolean'
 const isString = (v: unknown) => typeof v === 'string'
 
-const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
-
 /**
  * Checks if a path should be excluded from repository persistence.
  * Excludes generic paths like Documents, Desktop, Home that are not real project directories.
@@ -715,4 +713,4 @@ export function mergeOrgSharedConfig(shared: OrgSharedConfig, orgId: string): Co
   return config
 }
 
-export { CONFIG_DIR, CONFIG_FILE }
+export { CONFIG_DIR }

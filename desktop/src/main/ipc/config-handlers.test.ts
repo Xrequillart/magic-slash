@@ -18,7 +18,6 @@ vi.mock('../spotlight-shortcut', () => ({
 vi.mock('../config/config', () => ({
   readConfig: vi.fn(),
   writeConfig: vi.fn(),
-  CONFIG_FILE: '/mock/config.json',
   CONFIG_DIR: '/mock',
   addRepository: vi.fn(),
   updateRepository: vi.fn(),
@@ -35,12 +34,6 @@ vi.mock('../config/config', () => ({
   updateSplitActive: vi.fn(),
   updateLaunchMode: vi.fn(),
   updateUsageLogsEnabled: vi.fn(),
-}))
-
-vi.mock('../config/migrate', () => ({ repairConfig: vi.fn() }))
-
-vi.mock('../config/schema-validator', () => ({
-  validateConfig: vi.fn(() => ({ valid: true, errors: [] })),
 }))
 
 vi.mock('../config/defaults', () => ({

@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bug, Download, CheckCircle, Loader2, Play, ScrollText, ShieldAlert, Sparkles } from 'lucide-react'
+import { Bug, Download, CheckCircle, Loader2, Play, ScrollText, Sparkles } from 'lucide-react'
 import { useStore } from '../store'
-import { showToast } from './Toast'
-import { RotateCcw } from 'lucide-react'
-import { VSCodeIcon } from './agent-info-sidebar/icons'
 import { useT } from '../i18n'
 
 type UpdateStatus =
@@ -253,34 +250,6 @@ export function UpdateOverlay() {
                 >
                   <ScrollText className="w-3.5 h-3.5" />
                   Flood terminal
-                </button>
-                <button
-                  onClick={() => {
-                    setDebugMenuOpen(false)
-                    showToast(
-                      'Invalid configuration: 3 errors found in config.json',
-                      'error',
-                      {
-                        persistent: true,
-                        actions: [
-                          {
-                            label: t('toast.resetToDefaults'),
-                            icon: <RotateCcw className="w-3.5 h-3.5" />,
-                            onClick: () => showToast(t('toast.configRepaired'), 'success'),
-                          },
-                          {
-                            label: t('toast.openInVSCode'),
-                            icon: <VSCodeIcon className="w-3.5 h-3.5" />,
-                            onClick: () => {},
-                          },
-                        ],
-                      }
-                    )
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
-                >
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  Config validation toast
                 </button>
               </div>
             )}

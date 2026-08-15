@@ -26,8 +26,8 @@ export function resolveConfigDir(stableDir: string, devServerUrl: string | undef
 
 /**
  * Where this instance keeps the state it must NOT share with another running app:
- * cloud-session.enc, port, outbox.ndjson, command-history.json. (Not config.json —
- * settings live in Supabase; CONFIG_FILE survives only as a path in an error toast.)
+ * cloud-session.enc, port, outbox.ndjson, command-history.json. (No config.json —
+ * settings live in Supabase, and nothing mirrors them to disk any more.)
  *
  * The dev build gets its own copy. Sharing them with the installed app is what made
  * both instances hydrate the same session, restore the same agent roster and write

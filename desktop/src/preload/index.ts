@@ -86,15 +86,6 @@ const configApi = {
   updateLanguage: (language: LanguageId): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:updateLanguage', { language }),
 
-  repair: (): Promise<{ repaired: boolean; fixes: string[] }> =>
-    ipcRenderer.invoke('config:repair'),
-
-  onValidationErrors: (callback: (data: { errors: string[]; configPath: string }) => void) => {
-    const listener = (_event: IpcRendererEvent, data: { errors: string[]; configPath: string }) => callback(data)
-    ipcRenderer.on('config:validationErrors', listener)
-    return () => ipcRenderer.removeListener('config:validationErrors', listener)
-  },
-
   // The config changed WITHOUT this window asking: a setting or a repository was
   // edited on the web app, or on this account's other machine, and reached us over
   // Realtime. The whole config is in the payload, so there is nothing to fetch.

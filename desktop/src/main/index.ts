@@ -235,7 +235,7 @@ function createWindow() {
 
 // Setup IPC handlers
 function setupHandlers() {
-  setupConfigHandlers(() => mainWindow)
+  setupConfigHandlers()
   setupAppearanceHandlers()
   setupSkillsHandlers()
   setupScriptHandlers(() => mainWindow)

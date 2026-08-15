@@ -1169,12 +1169,7 @@ export const en = {
   'repoSetup.error': 'Could not use this folder',
   'repoSetup.unverified': 'Folder saved, but its state could not be checked — try again',
 
-  // ── Config validation / invalid repositories ─────────────────────────────
-  'toast.invalidConfig.one': 'Invalid configuration: {count} error found in config.json',
-  'toast.invalidConfig.other': 'Invalid configuration: {count} errors found in config.json',
-  'toast.resetToDefaults': 'Reset to defaults',
-  'toast.configRepaired': 'Configuration repaired successfully',
-  'toast.openInVSCode': 'Open in VS Code',
+  // ── Invalid repositories ─────────────────────────────────────────────────
   'toast.repoRepointed': 'Re-pointed “{name}”',
   'toast.repoRepointFailed': 'Failed to re-point “{name}”',
   'toast.repoInvalidMissing': 'Repository “{name}” folder is missing ({path})',
