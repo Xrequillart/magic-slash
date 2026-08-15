@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.71.4] - 2026-08-15
+
+### Added
+
+- **Desktop**: Rework the organization settings and its rail entry
+- **Desktop**: Rebuild the empty agents state
+
+### Changed
+
+- **Desktop**: Put every control on the same small size
+- **Webapp**: Raise the file descriptor limit for the dev server
+- **Readme**: Document the cloud architecture
+- **Desktop**: Drop the obsolete config validation toast
+
+### Fixed
+
+- **Desktop**: Play the confetti after a real update
+
 ## [0.71.3] - 2026-08-14
 
 ### Added
@@ -2123,6 +2141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.71.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.71.4
 [0.71.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.71.3
 [0.71.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.71.2
 [0.71.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.71.1
