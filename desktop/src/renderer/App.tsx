@@ -25,6 +25,7 @@ import { RepoSetupWizard } from './components/RepoSetupWizard'
 import { useWindowSplitMode } from './hooks/useWindowSplitMode'
 import FilePreviewPanel from './components/FilePreviewPanel'
 import { useT, type MessageKey } from './i18n'
+import { BTN_PRIMARY } from './theme/controls'
 
 function LoadingScreen() {
   const t = useT()
@@ -46,7 +47,7 @@ function ErrorScreen({ error }: { error: string }) {
         <p className="text-red mb-4">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-brand rounded-lg transition-colors"
+          className={BTN_PRIMARY}
         >
           {t('common.retry')}
         </button>

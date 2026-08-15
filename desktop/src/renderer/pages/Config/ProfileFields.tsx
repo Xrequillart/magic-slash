@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useT, ROLE_LABEL_KEYS, LEVEL_LABEL_KEYS, STYLE_LABEL_KEYS, type MessageKey } from '../../i18n'
 import type { UserProfile } from '../../../types'
+import { INPUT } from '../../theme/controls'
 
 const ROLE_OPTIONS = Object.entries(ROLE_LABEL_KEYS) as [UserProfile['role'], MessageKey][]
 const LEVEL_OPTIONS = Object.entries(LEVEL_LABEL_KEYS) as [UserProfile['technical_level'], MessageKey][]
@@ -128,7 +129,7 @@ function CommittedInput({
       {...bind}
       onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
       placeholder={placeholder}
-      className="w-52 px-3 py-1.5 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+      className={`${INPUT} w-52`}
     />
   )
 }
@@ -251,7 +252,7 @@ function CommittedTextarea({
       {...bind}
       placeholder={placeholder}
       rows={3}
-      className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 resize-none"
+      className={`${INPUT} w-full resize-none`}
     />
   )
 }

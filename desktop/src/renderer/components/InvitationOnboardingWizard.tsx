@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useOrg } from '../hooks/useOrg'
 import { useConfig } from '../hooks/useConfig'
 import { useT } from '../i18n'
+import { INPUT } from '../theme/controls'
 
 interface InvitationOnboardingWizardProps {
   isOpen: boolean
@@ -170,7 +171,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 onChange={(e) => setToken(e.target.value)}
                 placeholder={t('invite.wizard.tokenPlaceholder')}
                 autoFocus
-                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 font-mono"
+                className={`${INPUT} w-full font-mono`}
               />
               <div className="flex gap-2">
                 <button
@@ -191,7 +192,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t('invite.wizard.emailPlaceholder')}
-                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className={`${INPUT} w-full`}
               />
               <input
                 type="password"
@@ -199,7 +200,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t('invite.wizard.passwordPlaceholder')}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAcceptInvitation() }}
-                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className={`${INPUT} w-full`}
               />
             </div>
           )}

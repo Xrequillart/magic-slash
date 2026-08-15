@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Cloud, X, LogIn, Loader2, KeyRound } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useT } from '../i18n'
+import { BTN_PRIMARY, INPUT } from '../theme/controls'
 
 interface LoginScreenProps {
   isOpen: boolean
@@ -157,7 +158,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
                 placeholder={t('login.emailPlaceholder')}
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className={`${INPUT} w-full`}
               />
             )}
 
@@ -170,7 +171,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
                 placeholder={t('login.codePlaceholder')}
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className={`${INPUT} w-full`}
               />
             )}
 
@@ -182,7 +183,7 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={mode === 'reset' ? t('login.newPasswordPlaceholder') : t('login.passwordPlaceholder')}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className={`${INPUT} w-full`}
               />
             )}
 
@@ -202,14 +203,14 @@ export function LoginScreen({ isOpen, onClose, onSignedIn }: LoginScreenProps) {
           <button
             onClick={handleSubmit}
             disabled={busy}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-all disabled:opacity-50"
+            className={`${BTN_PRIMARY} w-full justify-center disabled:opacity-50`}
           >
             {busy ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : mode === 'signin' ? (
-              <LogIn className="w-4 h-4" />
+              <LogIn className="w-3.5 h-3.5" />
             ) : (
-              <KeyRound className="w-4 h-4" />
+              <KeyRound className="w-3.5 h-3.5" />
             )}
             {mode === 'signin'
               ? t('login.signIn')

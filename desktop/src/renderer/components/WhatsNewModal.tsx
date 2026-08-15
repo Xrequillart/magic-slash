@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Modal } from './Modal'
 import whatsNewHero from '../assets/whats-new-hero.png'
 import { useT } from '../i18n'
+import { BTN_PRIMARY } from '../theme/controls'
 
 function filterReleaseNotes(html: string): string {
   const parser = new DOMParser()
@@ -98,7 +99,7 @@ export function WhatsNewModal() {
       footer={
         <button
           onClick={handleClose}
-          className="px-4 py-1.5 text-sm font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-colors"
+          className={BTN_PRIMARY}
         >
           {t('whatsNew.gotIt')}
         </button>

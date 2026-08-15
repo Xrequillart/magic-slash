@@ -20,6 +20,8 @@ import { getProjectColorMap } from '../../utils/projectColors'
 import { formatUsd } from '../../utils/usageStats'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
 import { CHANGELOG_URL } from '../../../urls'
+import { Switch } from '../../components/Switch'
+import { SELECT } from '../../theme/controls'
 
 const SPOTLIGHT_OPTIONS: { label: string; value: string }[] = [
   { label: '\u2303 Space', value: 'Control+Space' },
@@ -918,13 +920,13 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               <select
                 value={launchMode}
                 onChange={(e) => handleLaunchModeChange(e.target.value as LaunchMode)}
-                className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+                className={`${SELECT} w-52`}
               >
                 {LAUNCH_MODE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
             </div>
           </div>
           <div className="text-xs text-text-secondary/50">
@@ -1044,16 +1046,11 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               <div className="text-sm font-medium">{t('settings.application.split.label')}</div>
               <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.split.help')}</div>
             </div>
-            <button
-              onClick={() => { toggleSplitEnabled(); updateSplitEnabled(!splitEnabled) }}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                splitEnabled ? 'bg-accent' : 'bg-ink/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                splitEnabled ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
+            <Switch
+              checked={splitEnabled}
+              onChange={() => { toggleSplitEnabled(); updateSplitEnabled(!splitEnabled) }}
+              label={t('settings.application.split.label')}
+            />
           </div>
         </div>
       </div>
@@ -1067,16 +1064,11 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               <div className="text-sm font-medium">{t('settings.application.spotlight.label')}</div>
               <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.spotlight.help')}</div>
             </div>
-            <button
-              onClick={handleSpotlightToggle}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                spotlightEnabled ? 'bg-accent' : 'bg-ink/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                spotlightEnabled ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
+            <Switch
+              checked={spotlightEnabled}
+              onChange={handleSpotlightToggle}
+              label={t('settings.application.spotlight.label')}
+            />
           </div>
           <div className="border-t border-line-subtle pt-4">
             <div className="flex items-center justify-between">
@@ -1089,13 +1081,13 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                   value={spotlightShortcut}
                   onChange={(e) => handleSpotlightShortcutChange(e.target.value as SpotlightShortcut)}
                   disabled={!spotlightEnabled}
-                  className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
+                  className={`${SELECT} w-52 disabled:opacity-50`}
                 >
                   {SPOTLIGHT_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
               </div>
             </div>
           </div>
@@ -1117,20 +1109,15 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               <div className="text-sm font-medium">{t('settings.application.background.autoStartLabel')}</div>
               <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.background.autoStartHelp')}</div>
             </div>
-            <button
-              onClick={() => {
+            <Switch
+              checked={autoStart}
+              onChange={() => {
                 const newValue = !autoStart
                 setAutoStart(newValue)
                 window.electronAPI.config.setAutoStart(newValue)
               }}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                autoStart ? 'bg-accent' : 'bg-ink/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                autoStart ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
+              label={t('settings.application.background.autoStartLabel')}
+            />
           </div>
           <div className="border-t border-line-subtle pt-4">
             <div className="text-sm font-medium mb-1">{t('settings.application.background.menuBarLabel')}</div>
@@ -1150,8 +1137,9 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               <div className="text-sm font-medium">{t('settings.application.prWatcher.label')}</div>
               <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.help')}</div>
             </div>
-            <button
-              onClick={async () => {
+            <Switch
+              checked={prWatcherEnabled}
+              onChange={async () => {
                 const newValue = !prWatcherEnabled
                 setPrWatcherEnabled(newValue)
                 // Pushed into the store, not just written to disk: the PR card in
@@ -1160,14 +1148,8 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 // opposite until the next config load.
                 setConfig(await window.electronAPI.prWatcher.setEnabled(newValue))
               }}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                prWatcherEnabled ? 'bg-accent' : 'bg-ink/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                prWatcherEnabled ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
+              label={t('settings.application.prWatcher.label')}
+            />
           </div>
           {prWatcherEnabled && (
             <>
@@ -1185,14 +1167,14 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                         setPrWatcherInterval(newInterval)
                         window.electronAPI.prWatcher.setInterval(newInterval)
                       }}
-                      className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+                      className={`${SELECT} w-52`}
                     >
                       <option value={30_000}>{t('settings.application.prWatcher.interval30s')}</option>
                       <option value={60_000}>{t('settings.application.prWatcher.interval1m')}</option>
                       <option value={120_000}>{t('settings.application.prWatcher.interval2m')}</option>
                       <option value={300_000}>{t('settings.application.prWatcher.interval5m')}</option>
                     </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
                   </div>
                 </div>
               </div>
@@ -1202,20 +1184,15 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                     <div className="text-sm font-medium">{t('settings.application.prWatcher.autoLaunchLabel')}</div>
                     <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.application.prWatcher.autoLaunchHelp')}</div>
                   </div>
-                  <button
-                    onClick={() => {
-                      const newValue = !prWatcherAutoLaunch
-                      setPrWatcherAutoLaunch(newValue)
-                      window.electronAPI.prWatcher.setAutoLaunchSkills(newValue)
-                    }}
-                    className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                      prWatcherAutoLaunch ? 'bg-accent' : 'bg-ink/20'
-                    }`}
-                  >
-                    <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                      prWatcherAutoLaunch ? 'translate-x-[18px]' : 'translate-x-0'
-                    }`} />
-                  </button>
+                  <Switch
+              checked={prWatcherAutoLaunch}
+              onChange={() => {
+                const newValue = !prWatcherAutoLaunch
+                setPrWatcherAutoLaunch(newValue)
+                window.electronAPI.prWatcher.setAutoLaunchSkills(newValue)
+              }}
+              label={t('settings.application.prWatcher.autoLaunchLabel')}
+            />
                 </div>
               </div>
             </>
@@ -1234,21 +1211,16 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 {t('settings.application.usageLogs.help')}
               </div>
             </div>
-            <button
-              onClick={async () => {
+            <Switch
+              checked={usageLogsEnabled}
+              onChange={async () => {
                 const newValue = !usageLogsEnabled
                 setUsageLogsEnabled(newValue)
                 const result = await window.electronAPI.config.setUsageLogsEnabled(newValue)
                 setConfig(result.config)
               }}
-              className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-                usageLogsEnabled ? 'bg-accent' : 'bg-ink/20'
-              }`}
-            >
-              <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-                usageLogsEnabled ? 'translate-x-[18px]' : 'translate-x-0'
-              }`} />
-            </button>
+              label={t('settings.application.usageLogs.label')}
+            />
           </div>
           {/*
             The breakdown answers "what am I sharing?", so it goes away with the

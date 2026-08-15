@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { User, ChevronLeft, ChevronRight, X, Check } from 'lucide-react'
 import { useT, ROLE_LABEL_KEYS, LEVEL_LABEL_KEYS, STYLE_LABEL_KEYS, type MessageKey } from '../i18n'
 import type { UserProfile } from '../../types'
+import { INPUT } from '../theme/controls'
 
 interface ProfileOnboardingWizardProps {
   isOpen: boolean
@@ -170,7 +171,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t('profile.form.firstNamePlaceholder')}
                 autoFocus
-                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+                className={`${INPUT} w-full`}
                 onKeyDown={(e) => { if (e.key === 'Enter' && canAdvance()) handleNext() }}
               />
             </div>
@@ -290,7 +291,7 @@ export function ProfileOnboardingWizard({ isOpen, onClose, editMode = false, ini
                 onChange={(e) => setFreeText(e.target.value)}
                 placeholder={t('profile.form.freeTextPlaceholder')}
                 rows={4}
-                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30 resize-none"
+                className={`${INPUT} w-full resize-none`}
               />
             </div>
           )}

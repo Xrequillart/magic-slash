@@ -7,6 +7,7 @@ import { SweepPane } from '../../components/SweepPane'
 import { useTerminals } from '../../hooks/useTerminals'
 import { useStore } from '../../store'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
+import { BTN, BTN_DANGER, BTN_PRIMARY, INPUT } from '../../theme/controls'
 
 const TOKEN_BUDGET = 4000
 const CHAR_BUDGET = 16000
@@ -577,9 +578,9 @@ function SkillEditor({
           <button
             onClick={handleShare}
             disabled={sharing}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-all disabled:opacity-50"
+            className={`${BTN} disabled:opacity-50`}
           >
-            <Share2 className="w-4 h-4" />
+            <Share2 className="w-3.5 h-3.5" />
             {sharing ? t('skills.editor.sharing') : t('skills.editor.share')}
           </button>
         )}
@@ -602,7 +603,7 @@ function SkillEditor({
             onChange={(e) => setName(e.target.value)}
             disabled={!isNew}
             placeholder="my-skill"
-            className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50"
+            className={`${INPUT} w-full disabled:opacity-50`}
           />
           {isNew && (
             <p className="mt-1 text-xs text-text-secondary/60">{t('skills.editor.nameHelp')}</p>
@@ -617,7 +618,7 @@ function SkillEditor({
             onChange={(e) => setDescription(e.target.value)}
             placeholder={t('skills.editor.descriptionPlaceholder')}
             rows={3}
-            className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50 resize-none"
+            className={`${INPUT} w-full disabled:opacity-50 resize-none`}
           />
         </div>
 
@@ -629,7 +630,7 @@ function SkillEditor({
             value={allowedTools}
             onChange={(e) => setAllowedTools(e.target.value)}
             placeholder="Bash(*), Read, Edit, Write, Glob, Grep"
-            className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50"
+            className={`${INPUT} w-full disabled:opacity-50`}
           />
         </div>
 
@@ -658,9 +659,9 @@ function SkillEditor({
             ) : null}
             <button
               onClick={handlePickImage}
-              className="px-3 py-2 text-sm font-medium text-text-secondary border border-line rounded-lg hover:bg-surface hover:text-ink transition-all flex items-center gap-2"
+              className={BTN}
             >
-              <ImagePlus className="w-4 h-4" />
+              <ImagePlus className="w-3.5 h-3.5" />
               {imagePreview || imagePath ? t('skills.editor.change') : t('skills.editor.upload')}
             </button>
           </div>
@@ -676,7 +677,7 @@ function SkillEditor({
             onChange={(e) => setBody(e.target.value)}
             placeholder={t('skills.editor.contentPlaceholder')}
             rows={16}
-            className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-base text-ink font-mono placeholder-text-secondary/50 focus:outline-none focus:border-accent/50 disabled:opacity-50 resize-y"
+            className={`${INPUT} w-full font-mono disabled:opacity-50 resize-y`}
           />
         </div>
       </div>
@@ -686,9 +687,9 @@ function SkillEditor({
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent hover:bg-accent-hover text-on-brand rounded-lg transition-colors disabled:opacity-50"
+          className={`${BTN_PRIMARY} disabled:opacity-50`}
         >
-          <Save className="w-4 h-4" />
+          <Save className="w-3.5 h-3.5" />
           {saving ? t('common.saving') : t('common.save')}
         </button>
 
@@ -696,9 +697,9 @@ function SkillEditor({
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-colors disabled:opacity-50"
+            className={`${BTN_DANGER} disabled:opacity-50`}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
             {deleting ? t('skills.editor.deleting') : t('common.remove')}
           </button>
         )}

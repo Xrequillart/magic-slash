@@ -8,6 +8,7 @@ import { SectionHeader } from './SectionHeader'
 import { InvitationOnboardingWizard } from '../../components/InvitationOnboardingWizard'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
+import { INPUT } from '../../theme/controls'
 
 /**
  * Cloud identity block of the Account tab: sign in / out, change password,
@@ -229,7 +230,7 @@ export function CloudAccountSection() {
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder={t('cloud.password.newPlaceholder')}
             autoFocus
-            className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+            className={`${INPUT} w-full`}
           />
           <input
             type="password"
@@ -237,7 +238,7 @@ export function CloudAccountSection() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder={t('cloud.password.confirmPlaceholder')}
             onKeyDown={(e) => { if (e.key === 'Enter') handleChangePassword() }}
-            className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+            className={`${INPUT} w-full`}
           />
         </div>
       </Modal>
@@ -278,7 +279,7 @@ export function CloudAccountSection() {
               placeholder={t('cloud.email.newPlaceholder')}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
-              className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+              className={`${INPUT} w-full`}
             />
           </div>
         ) : (
@@ -294,7 +295,7 @@ export function CloudAccountSection() {
               placeholder={t('cloud.email.codePlaceholder')}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleChangeEmail() }}
-              className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+              className={`${INPUT} w-full`}
             />
           </div>
         )}

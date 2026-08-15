@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { showToast } from '../../components/Toast'
+import { Switch } from '../../components/Switch'
 
 /**
  * One labelled switch: title, help line, switch on the right.
@@ -60,20 +61,7 @@ export function ToggleRow({
       </div>
       <div className="flex items-center gap-3 flex-shrink-0">
         {trailing?.(enabled)}
-        <button
-          onClick={toggle}
-          role="switch"
-          aria-checked={enabled}
-          aria-label={label}
-          disabled={disabled}
-          className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 ${
-            enabled ? 'bg-accent' : 'bg-ink/20'
-          }`}
-        >
-          <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-on-brand transition-transform duration-200 ${
-            enabled ? 'translate-x-[18px]' : 'translate-x-0'
-          }`} />
-        </button>
+        <Switch checked={enabled} onChange={toggle} label={label} disabled={disabled} />
       </div>
     </div>
   )

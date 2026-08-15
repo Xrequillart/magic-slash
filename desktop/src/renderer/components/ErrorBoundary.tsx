@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { useT } from '../i18n'
+import { BTN_PRIMARY } from '../theme/controls'
 
 /**
  * The fallback is its own function component because the boundary above has to be
@@ -27,7 +28,7 @@ function ErrorFallback({ label, message, onRetry }: {
       </p>
       <button
         onClick={onRetry}
-        className="px-4 py-2 text-sm font-medium text-on-brand bg-accent hover:bg-accent-hover rounded-lg transition-colors"
+        className={BTN_PRIMARY}
       >
         {t('app.errorBoundary.retry')}
       </button>

@@ -5,6 +5,7 @@ import { useConnectivity } from '../hooks/useConnectivity'
 import { useStore } from '../store'
 import { LoginScreen } from './LoginScreen'
 import { useT } from '../i18n'
+import { BTN_PRIMARY } from '../theme/controls'
 
 function FullScreen({ children }: { children: ReactNode }) {
   return (
@@ -52,9 +53,9 @@ function ConnectionLost({ onRetry }: { onRetry: () => void }) {
       </p>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-on-brand rounded-lg text-sm font-medium transition-colors"
+        className={BTN_PRIMARY}
       >
-        <RotateCcw className="w-4 h-4" />
+        <RotateCcw className="w-3.5 h-3.5" />
         {t('common.retry')}
       </button>
     </FullScreen>

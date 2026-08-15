@@ -9,6 +9,8 @@ import { Modal } from '../../components/Modal'
 import { showToast } from '../../components/Toast'
 import { PROJECT_COLORS } from '../../utils/projectColors'
 import { useT } from '../../i18n'
+import { Switch } from '../../components/Switch'
+import { INPUT, SELECT } from '../../theme/controls'
 
 interface RepoPageProps {
   repoName: string
@@ -434,12 +436,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
             value={currentVal}
             disabled={readOnly}
             onChange={(e) => handleLanguageChange(langKey, e.target.value)}
-            className="w-52 px-3 py-2.5 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`${SELECT} w-52 disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <option value="en">English</option>
             <option value="fr">Français</option>
           </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
         </div>
       </div>
     )
@@ -569,14 +571,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <select
                   value=""
                   onChange={(e) => handleShare(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+                  className={`${SELECT} w-full`}
                 >
                   <option value="" disabled>{t('repo.scope.sharePlaceholder')}</option>
                   {orgs.map((o) => (
                     <option key={o.id} value={o.id}>{o.name}</option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
               </div>
             ) : (
               <p className="text-xs text-text-secondary/40 text-right">{t('repo.scope.joinOrg')}</p>
@@ -600,7 +602,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 type="text"
                 value={editedName}
                 onChange={(e) => setEditedName(e.target.value)}
-                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                className={`${INPUT} w-full`}
               />
               {editedName !== repoName && editedName.trim() && (
                 <button onClick={handleRename} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
@@ -625,7 +627,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   type="text"
                   value={path}
                   onChange={(e) => handlePathChange(e.target.value)}
-                  className="flex-1 min-w-0 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                  className={`${INPUT} flex-1 min-w-0`}
                 />
                 <button
                   onClick={handlePickFolder}
@@ -667,7 +669,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 type="text"
                 value={keywords}
                 onChange={(e) => handleKeywordsChange(e.target.value)}
-                className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                className={`${INPUT} w-full`}
               />
               {keywordsChanged && (
                 <button onClick={saveKeywords} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
@@ -719,7 +721,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 value={branchSettings.development || ''}
                 onChange={(e) => handleBranchSettingChange('development', e.target.value)}
                 disabled={branchesLoading}
-                className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
+                className={`${SELECT} w-52 disabled:opacity-50`}
               >
                 <option value="">
                   {branchesLoading ? t('common.loading') : t('repo.branches.select')}
@@ -728,7 +730,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   <option key={branch} value={branch}>{branch}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
             </div>
           </div>
         </fieldset>
@@ -767,7 +769,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 type="text"
                 id="worktree-file-input"
                 placeholder=".env"
-                className="flex-1 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                className={`${INPUT} flex-1`}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const input = e.currentTarget
@@ -814,12 +816,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <select
                 value={styleVal}
                 onChange={(e) => handleCommitSettingChange('style', e.target.value)}
-                className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                className={`${SELECT} w-52`}
               >
                 <option value="single-line">{t('repo.commit.styleSingle')}</option>
                 <option value="multi-line">{t('repo.commit.styleMulti')}</option>
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
             </div>
           </div>
 
@@ -833,14 +835,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <select
                 value={formatVal}
                 onChange={(e) => handleCommitSettingChange('format', e.target.value)}
-                className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                className={`${SELECT} w-52`}
               >
                 <option value="conventional">{t('repo.commit.formatConventional')}</option>
                 <option value="angular">{t('repo.commit.formatAngular')}</option>
                 <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
                 <option value="none">{t('repo.commit.formatNone')}</option>
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
             </div>
           </div>
 
@@ -850,16 +852,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <label className="block text-sm font-medium mb-0.5">{t('repo.commit.coAuthor')}</label>
               <p className="text-xs text-text-secondary/50">{t('repo.commit.coAuthorHelp')}</p>
             </div>
-            <label className="relative inline-block w-11 h-6 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={coAuthorVal}
-                onChange={(e) => handleCommitSettingChange('coAuthor', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
-            </label>
+            <Switch
+              checked={coAuthorVal}
+              onChange={(next) => handleCommitSettingChange('coAuthor', next)}
+              label={t('repo.commit.coAuthor')}
+            />
           </div>
 
           {/* Include Ticket ID Toggle */}
@@ -868,16 +865,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <label className="block text-sm font-medium mb-0.5">{t('repo.commit.ticketId')}</label>
               <p className="text-xs text-text-secondary/50">{t('repo.commit.ticketIdHelp')}</p>
             </div>
-            <label className="relative inline-block w-11 h-6 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includeTicketIdVal}
-                onChange={(e) => handleCommitSettingChange('includeTicketId', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
-            </label>
+            <Switch
+              checked={includeTicketIdVal}
+              onChange={(next) => handleCommitSettingChange('includeTicketId', next)}
+              label={t('repo.commit.ticketId')}
+            />
           </div>
 
           {/* Direct commits on a protected branch. ON means allowed-but-asked; OFF
@@ -892,16 +884,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   : t('repo.commit.protectedBranchHelpOff')}
               </p>
             </div>
-            <label className="relative inline-block w-11 h-6 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={allowOnProtectedBranchVal}
-                onChange={(e) => handleCommitSettingChange('allowOnProtectedBranch', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
-            </label>
+            <Switch
+              checked={allowOnProtectedBranchVal}
+              onChange={(next) => handleCommitSettingChange('allowOnProtectedBranch', next)}
+              label={t('repo.commit.protectedBranch')}
+            />
           </div>
 
           {/* Commit Preview */}
@@ -926,13 +913,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <select
                 value={resolveCommitModeVal}
                 onChange={(e) => handleResolveSettingChange('commitMode', e.target.value)}
-                className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                className={`${SELECT} w-52`}
               >
                 <option value="new">{t('repo.resolve.modeNew')}</option>
                 <option value="amend">{t('repo.resolve.modeAmend')}</option>
                 <option value="ask">{t('repo.resolve.modeAsk')}</option>
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
             </div>
           </div>
 
@@ -947,12 +934,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <select
                   value={resolveUseCommitConfigVal ? 'commit' : 'custom'}
                   onChange={(e) => handleResolveSettingChange('useCommitConfig', e.target.value === 'commit')}
-                  className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                  className={`${SELECT} w-52`}
                 >
                   <option value="commit">{t('repo.resolve.useCommitConfig')}</option>
                   <option value="custom">{t('repo.resolve.customConfig')}</option>
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
               </div>
             </div>
           )}
@@ -969,12 +956,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   <select
                     value={resolveStyleVal}
                     onChange={(e) => handleResolveSettingChange('style', e.target.value)}
-                    className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                    className={`${SELECT} w-52`}
                   >
                     <option value="single-line">{t('repo.commit.styleSingle')}</option>
                     <option value="multi-line">{t('repo.commit.styleMulti')}</option>
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
                 </div>
               </div>
 
@@ -987,14 +974,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   <select
                     value={resolveFormatVal}
                     onChange={(e) => handleResolveSettingChange('format', e.target.value)}
-                    className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                    className={`${SELECT} w-52`}
                   >
                     <option value="conventional">{t('repo.commit.formatConventional')}</option>
                     <option value="angular">{t('repo.commit.formatAngular')}</option>
                     <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
                     <option value="none">{t('repo.commit.formatNone')}</option>
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
                 </div>
               </div>
             </>
@@ -1006,16 +993,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.reply')}</label>
               <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyHelp')}</p>
             </div>
-            <label className="relative inline-block w-11 h-6 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={resolveReplyVal}
-                onChange={(e) => handleResolveSettingChange('replyToComments', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
-            </label>
+            <Switch
+              checked={resolveReplyVal}
+              onChange={(next) => handleResolveSettingChange('replyToComments', next)}
+              label={t('repo.resolve.reply')}
+            />
           </div>
 
           {/* Reply Language - only when reply is enabled */}
@@ -1029,12 +1011,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <select
                   value={resolveReplyLangVal}
                   onChange={(e) => handleResolveSettingChange('replyLanguage', e.target.value)}
-                  className="w-52 px-3 py-2.5 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                  className={`${SELECT} w-52`}
                 >
                   <option value="en">English</option>
                   <option value="fr">Français</option>
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
               </div>
             </div>
           )}
@@ -1073,16 +1055,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <label className="block text-sm font-medium mb-0.5">{t('repo.pr.autoLink')}</label>
               <p className="text-xs text-text-secondary/50">{t('repo.pr.autoLinkHelp')}</p>
             </div>
-            <label className="relative inline-block w-11 h-6 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoLinkTicketsVal}
-                onChange={(e) => handlePRSettingChange('autoLinkTickets', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
-            </label>
+            <Switch
+              checked={autoLinkTicketsVal}
+              onChange={(next) => handlePRSettingChange('autoLinkTickets', next)}
+              label={t('repo.pr.autoLink')}
+            />
           </div>
 
           {/* Watch CI & Review */}
@@ -1091,16 +1068,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <label className="block text-sm font-medium mb-0.5">{t('repo.pr.watchCI')}</label>
               <p className="text-xs text-text-secondary/50">{t('repo.pr.watchCIHelp')}</p>
             </div>
-            <label className="relative inline-block w-11 h-6 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={watchCIVal}
-                onChange={(e) => handlePRSettingChange('watchCI', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
-            </label>
+            <Switch
+              checked={watchCIVal}
+              onChange={(next) => handlePRSettingChange('watchCI', next)}
+              label={t('repo.pr.watchCI')}
+            />
           </div>
 
           {/* Test Accounts */}
@@ -1116,13 +1088,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <select
                 value={testAccountsVal}
                 onChange={(e) => handlePRSettingChange('testAccounts', e.target.value)}
-                className="w-52 px-3 py-2 pr-10 bg-surface border border-line-field rounded-lg text-sm cursor-pointer appearance-none focus:outline-none focus:border-accent transition-colors"
+                className={`${SELECT} w-52`}
               >
                 <option value="off">{t('repo.pr.testAccountsOff')}</option>
                 <option value="reference">{t('repo.pr.testAccountsReference')}</option>
                 <option value="inline">{t('repo.pr.testAccountsInline')}</option>
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
             </div>
           </div>
 
@@ -1140,7 +1112,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 value={testAccountsSourceVal}
                 onChange={(e) => handlePRSettingChange('testAccountsSource', e.target.value)}
                 placeholder="docs/test-accounts.md"
-                className="w-72 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+                className={`${INPUT} w-72`}
               />
             </div>
           )}
@@ -1211,16 +1183,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <label className="block text-sm font-medium mb-0.5">{t('repo.issues.commentOnPR')}</label>
               <p className="text-xs text-text-secondary/50">{t('repo.issues.commentOnPRHelp')}</p>
             </div>
-            <label className="relative inline-block w-11 h-6 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={commentOnPRVal}
-                onChange={(e) => handleIssuesSettingChange('commentOnPR', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-border rounded-full peer peer-checked:bg-accent transition-colors" />
-              <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-text-secondary rounded-full peer-checked:translate-x-5 peer-checked:bg-on-brand transition-all" />
-            </label>
+            <Switch
+              checked={commentOnPRVal}
+              onChange={(next) => handleIssuesSettingChange('commentOnPR', next)}
+              label={t('repo.issues.commentOnPR')}
+            />
           </div>
 
           {/* Jira URL */}
@@ -1236,7 +1203,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               value={issuesSettings.jiraUrl || ''}
               onChange={(e) => handleIssuesSettingChange('jiraUrl', e.target.value)}
               placeholder="https://company.atlassian.net/browse/"
-              className="w-72 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              className={`${INPUT} w-72`}
             />
           </div>
 
@@ -1253,7 +1220,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               value={issuesSettings.githubIssuesUrl || ''}
               onChange={(e) => handleIssuesSettingChange('githubIssuesUrl', e.target.value)}
               placeholder="https://github.com/org/repo/issues/"
-              className="w-72 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors"
+              className={`${INPUT} w-72`}
             />
           </div>
         </fieldset>

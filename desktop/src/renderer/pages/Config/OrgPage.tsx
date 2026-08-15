@@ -10,6 +10,7 @@ import { useT } from '../../i18n'
 import type { MessageKey, Translate } from '../../i18n'
 import type { Invitation, Member, MembershipRole, Org } from '../../../types'
 import { extractInviteToken, inviteLink } from '../../../urls'
+import { INPUT } from '../../theme/controls'
 
 /**
  * Enum values from the database, rendered as-is before: `role` and invitation
@@ -541,7 +542,7 @@ export function OrgPage() {
             placeholder={t('org.inviteModal.emailPlaceholder')}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleInvite() }}
-            className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+            className={`${INPUT} w-full`}
           />
           <div className="flex items-center justify-between">
             <span className="text-xs text-text-secondary/60">{t('org.colRole')}</span>
@@ -585,7 +586,7 @@ export function OrgPage() {
             placeholder={t('org.createModal.namePlaceholder')}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleCreate() }}
-            className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+            className={`${INPUT} w-full`}
           />
         </div>
       </Modal>
@@ -625,7 +626,7 @@ export function OrgPage() {
             placeholder={t('org.joinModal.tokenPlaceholder')}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleJoin() }}
-            className="w-full px-3 py-2 bg-surface border border-line-field rounded-lg text-sm text-ink focus:outline-none focus:border-accent transition-colors placeholder:text-text-secondary/30"
+            className={`${INPUT} w-full`}
           />
         </div>
       </Modal>

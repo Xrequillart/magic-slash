@@ -4,6 +4,7 @@ import { showToast } from '../../components/Toast'
 import { SectionHeader } from './SectionHeader'
 import { useLanguage, useT } from '../../i18n'
 import { LANGUAGE_IDS, type LanguageId } from '../../../types'
+import { SELECT } from '../../theme/controls'
 
 /**
  * Autonyms — each language named in itself. Correct whichever language the app is
@@ -47,13 +48,13 @@ export function LanguagePage() {
             <select
               value={active}
               onChange={(e) => choose(e.target.value as LanguageId)}
-              className="w-52 px-3 py-2 bg-surface border border-line-field rounded-lg text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+              className={`${SELECT} w-52`}
             >
               {LANGUAGE_IDS.map((id) => (
                 <option key={id} value={id}>{LANGUAGE_OPTIONS[id]}</option>
               ))}
             </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary/50 pointer-events-none" />
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
           </div>
         </div>
         {/* Spelled out because the two are constantly confused: this setting is

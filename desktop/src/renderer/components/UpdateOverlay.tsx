@@ -260,14 +260,14 @@ export function UpdateOverlay() {
                 <button
                   onClick={startDebugSequence}
                   disabled={debugRunning}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors disabled:opacity-40"
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors disabled:opacity-40"
                 >
                   <Play className="w-3.5 h-3.5" />
                   Auto update steps
                 </button>
                 <button
                   onClick={toggleEmptyState}
-                  className={`flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors hover:bg-bg-tertiary ${
+                  className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
                     emptyStatePinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
                   }`}
                 >
@@ -277,7 +277,7 @@ export function UpdateOverlay() {
                 </button>
                 <button
                   onClick={showWhatsNew}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   What&apos;s New modal
@@ -285,7 +285,7 @@ export function UpdateOverlay() {
                 <button
                   onClick={floodTerminal}
                   disabled={!activeTerminalId}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors disabled:opacity-40"
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors disabled:opacity-40"
                 >
                   <ScrollText className="w-3.5 h-3.5" />
                   Flood terminal
@@ -361,13 +361,13 @@ export function UpdateOverlay() {
                       setVisible(false)
                       setShowConfetti(false)
                     }}
-                    className="px-4 py-1.5 rounded-lg text-sm text-text-secondary hover:text-ink border border-border/50 hover:border-border transition-colors"
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary hover:text-ink border border-border/50 hover:border-border transition-colors"
                   >
                     {t('app.later')}
                   </button>
                   <button
                     onClick={() => window.electronAPI.updater.install()}
-                    className="px-4 py-1.5 rounded-lg text-sm text-ink bg-[#393BFF] hover:bg-[#393BFF]/80 transition-colors"
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-ink bg-[#393BFF] hover:bg-[#393BFF]/80 transition-colors"
                   >
                     {t('update.restartNow')}
                   </button>

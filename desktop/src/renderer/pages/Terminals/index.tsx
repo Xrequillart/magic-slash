@@ -7,6 +7,7 @@ import { useStore } from '../../store'
 import { TerminalView } from '../../components/TerminalView'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
+import { BTN_PRIMARY } from '../../theme/controls'
 
 const DEFAULT_PATH = '~/Documents'
 const MAX_AGENTS = 12
@@ -286,11 +287,11 @@ export function TerminalsPage() {
           <button
             onClick={handleCreateTerminal}
             disabled={isCreating}
-            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-hover text-on-brand rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+            className={`${BTN_PRIMARY} w-full justify-center disabled:opacity-50`}
           >
-            <Bot className="w-4 h-4" />
+            <Bot className="w-3.5 h-3.5" />
             {isCreating ? t('terminals.launching') : t('terminals.launch')}
-            <span className="ml-1 px-1.5 py-0.5 rounded bg-on-brand/15 text-[11px] font-medium">{shortcutKey}</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded bg-on-brand/15 text-[10px] font-medium">{shortcutKey}</span>
           </button>
         </div>
       </div>
@@ -356,7 +357,7 @@ export function TerminalsPage() {
                     <button
                       onClick={handleCreateTerminalInRightPane}
                       disabled={isCreating}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-purple hover:bg-purple/80 text-on-brand rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      className={`${BTN_PRIMARY} disabled:opacity-50`}
                     >
                       <Bot className="w-3.5 h-3.5" />
                       {isCreating ? t('terminals.launching') : t('sidebar.newAgent')}
