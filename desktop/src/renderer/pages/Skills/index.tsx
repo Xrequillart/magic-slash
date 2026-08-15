@@ -5,9 +5,10 @@ import SkillDocument from './SkillDocument'
 import { VSCodeIcon } from '../../components/agent-info-sidebar/icons'
 import { SweepPane } from '../../components/SweepPane'
 import { useTerminals } from '../../hooks/useTerminals'
-import { useStore, type SkillsContextWindow } from '../../store'
+import { useStore, type SkillsContextWindow, type SkillsContextWindowSetting } from '../../store'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
 import { BTN, BTN_DANGER, BTN_PRIMARY, INPUT } from '../../theme/controls'
+import { DEFAULT_CONTEXT_WINDOW, detectContextWindow, resolveContextWindow, formatWindow } from './contextWindow'
 
 /**
  * The skill listing budget, as Claude Code actually computes it.
@@ -25,8 +26,9 @@ import { BTN, BTN_DANGER, BTN_PRIMARY, INPUT } from '../../theme/controls'
  *
  * The fraction is `skillListingBudgetFraction` in settings.json, and
  * `SLASH_COMMAND_TOOL_CHAR_BUDGET` overrides the whole computation with a fixed
- * character count. We mirror the shipped defaults; the switch above the gauges
- * covers the one input we cannot read from here — which model is running.
+ * character count. We mirror the shipped defaults; the window itself is read off
+ * the running agents (see contextWindow.ts), and the switch above the gauges
+ * forces one of the two presets when you want to size against another model.
  */
 const CHARS_PER_TOKEN = 4
 const BUDGET_FRACTION = 0.01
@@ -39,8 +41,16 @@ const BUDGET_FRACTION = 0.01
  */
 const MAX_DESC_CHARS = 1536
 
-/** The two windows worth comparing. Order is the order of the switch. */
+/** The two windows worth comparing. Order is the order of the switch, after Auto. */
 const CONTEXT_WINDOWS: readonly SkillsContextWindow[] = [200_000, 1_000_000]
+
+// One class per slot the switch's highlight can travel to, in the same order as
+// the segments below (Auto, then CONTEXT_WINDOWS). Indexed rather than derived
+// from a chain of `value === ...` checks, so a slot added or reordered here is
+// the only place that has to change. Written as literal classes, not a computed
+// `translate-x-[${...}%]`: Tailwind's build-time scan only picks up class names
+// that appear verbatim in the source.
+const HIGHLIGHT_OFFSETS = ['translate-x-0', 'translate-x-full', 'translate-x-[200%]'] as const
 
 function charBudgetFor(contextWindow: number): number {
   return Math.max(1, Math.floor(contextWindow * CHARS_PER_TOKEN * BUDGET_FRACTION))
@@ -126,35 +136,74 @@ function sourceLabel(source: string, t: Translate): string {
 }
 
 /**
- * The 200K / 1M choice. Drawn as a segmented control rather than a select: it has
- * exactly two values and both matter enough to stay visible, since the reading of
- * every gauge below depends on which one is active.
+ * Auto / 200K / 1M. Drawn as a segmented control rather than a select: the
+ * reading of every gauge below depends on which one is active, so all three
+ * stay visible.
+ *
+ * `Auto` is not a value, it is a source — so its label carries the window it
+ * resolved to (`Auto · 1M`), and a line under the switch says where that number
+ * came from. Without it, a gauge scaled to a window nobody typed is a surprise
+ * with no explanation on screen.
  */
-function ContextWindowSwitch({ value, onChange }: { value: SkillsContextWindow; onChange: (next: SkillsContextWindow) => void }) {
+function ContextWindowSwitch({
+  value,
+  detected,
+  effectiveWindow,
+  onChange,
+}: {
+  value: SkillsContextWindowSetting
+  /** The window the running agents report, or undefined when none does. */
+  detected: number | undefined
+  /** What the gauges are actually scaled to, once auto and the fallback resolve. */
+  effectiveWindow: number
+  onChange: (next: SkillsContextWindowSetting) => void
+}) {
   const t = useT()
 
+  // One segment per switch position, in the order they are drawn: Auto, then
+  // the two forced presets. Auto's label is not a fixed string — it carries
+  // the window it resolved to (`Auto · 1M`) once `detected` is known.
+  const segments: { value: SkillsContextWindowSetting; label: string }[] = [
+    {
+      value: 'auto',
+      label: detected !== undefined
+        ? t('skills.budget.window.autoValue', { window: formatWindow(detected) })
+        : t('skills.budget.window.auto'),
+    },
+    { value: CONTEXT_WINDOWS[0], label: t('skills.budget.window.small') },
+    { value: CONTEXT_WINDOWS[1], label: t('skills.budget.window.large') },
+  ]
+  const activeIndex = Math.max(0, segments.findIndex((segment) => segment.value === value))
+
+  const hint = value === 'auto'
+    ? detected !== undefined
+      ? t('skills.budget.window.autoDetected')
+      : t('skills.budget.window.autoNoAgent', { window: formatWindow(DEFAULT_CONTEXT_WINDOW) })
+    : t('skills.budget.window.forced', { window: formatWindow(effectiveWindow) })
+
   return (
-    <div className="flex items-center gap-2 flex-shrink-0">
-      <span className="text-[11px] text-text-secondary/50 whitespace-nowrap">{t('skills.budget.window.label')}</span>
-      <div className="relative grid grid-cols-2 bg-surface rounded-full p-px border border-line-subtle" role="group" aria-label={t('skills.budget.window.label')}>
-        <div
-          className={`absolute top-px bottom-px left-px right-1/2 bg-surface-strong rounded-full transition-transform duration-200 ${
-            value === CONTEXT_WINDOWS[1] ? 'translate-x-full' : 'translate-x-0'
-          }`}
-        />
-        {CONTEXT_WINDOWS.map((size) => (
-          <button
-            key={size}
-            onClick={() => onChange(size)}
-            aria-pressed={value === size}
-            className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center whitespace-nowrap ${
-              value === size ? 'text-ink' : 'text-text-secondary/50 hover:text-text-secondary'
-            }`}
-          >
-            {t(size === CONTEXT_WINDOWS[0] ? 'skills.budget.window.small' : 'skills.budget.window.large')}
-          </button>
-        ))}
+    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-text-secondary/50 whitespace-nowrap">{t('skills.budget.window.label')}</span>
+        <div className="relative grid grid-cols-3 bg-surface rounded-full p-px border border-line-subtle" role="group" aria-label={t('skills.budget.window.label')}>
+          <div
+            className={`absolute top-px bottom-px left-px w-[calc((100%_-_2px)/3)] bg-surface-strong rounded-full transition-transform duration-200 ${HIGHLIGHT_OFFSETS[activeIndex]}`}
+          />
+          {segments.map((segment) => (
+            <button
+              key={String(segment.value)}
+              onClick={() => onChange(segment.value)}
+              aria-pressed={value === segment.value}
+              className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center whitespace-nowrap ${
+                value === segment.value ? 'text-ink' : 'text-text-secondary/50 hover:text-text-secondary'
+              }`}
+            >
+              {segment.label}
+            </button>
+          ))}
+        </div>
       </div>
+      <p className="text-[10px] text-text-secondary/40 text-right">{hint}</p>
     </div>
   )
 }
@@ -179,7 +228,19 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
   const contextWindow = useStore((s) => s.skillsContextWindow)
   const setContextWindow = useStore((s) => s.setSkillsContextWindow)
 
-  const charBudget = charBudgetFor(contextWindow)
+  // One selector, resolved to a primitive inside the store rather than in a
+  // useMemo over `terminals`: the terminal array is replaced on every statusline
+  // tick (several times a second, per agent), so selecting it would re-render the
+  // whole gauge continuously. Selecting the number means a re-render only when
+  // the detected window itself moves. The inspected agent is resolved the way the
+  // info sidebar does it, so both panels talk about the same agent.
+  const detected = useStore((s) => detectContextWindow(
+    s.terminals,
+    s.isSplitMode && s.focusedPane === 'secondary' ? s.splitTerminalId : s.activeTerminalId,
+  ))
+
+  const effectiveWindow = resolveContextWindow(contextWindow, detected)
+  const charBudget = charBudgetFor(effectiveWindow)
   const tokenBudget = Math.floor(charBudget / CHARS_PER_TOKEN)
 
   const { totalTokens, totalChars, truncatedCount, breakdown } = useMemo(() => {
@@ -223,7 +284,12 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
           </div>
           <p className="text-xs text-text-secondary/30 mt-0.5">{t('skills.budget.help')}</p>
         </div>
-        <ContextWindowSwitch value={contextWindow} onChange={setContextWindow} />
+        <ContextWindowSwitch
+          value={contextWindow}
+          detected={detected}
+          effectiveWindow={effectiveWindow}
+          onChange={setContextWindow}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -273,7 +339,9 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
               icon={Calculator}
               title={t('skills.budget.card.formula.title')}
               body={t('skills.budget.card.formula.body', {
-                context: n(contextWindow),
+                // Formatted, not grouped: the detected window is whatever the
+                // model reports, so "1M" reads where "1 048 576" would not.
+                context: formatWindow(effectiveWindow),
                 percent: `${BUDGET_FRACTION * 100}`,
                 chars: n(charBudget),
                 tokens: n(tokenBudget),

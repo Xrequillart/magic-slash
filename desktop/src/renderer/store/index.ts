@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, SettingsTab, Org } from '../../types'
+import { migrateSkillsContextWindow } from '../pages/Skills/contextWindow'
 
 interface CloseAgentModalData {
   terminalId: string
@@ -11,15 +12,28 @@ interface CloseAgentModalData {
 export type ModalId = 'settings' | 'skills' | 'team'
 
 /**
+ * The two windows the Skills page offers as presets — the ones worth comparing,
+ * and the two values its switch can force.
+ *
+ * Kept as a closed pair rather than a bare `number`: the switch renders one
+ * segment per member, so widening this type would silently leave a preset
+ * undrawn.
+ */
+export type SkillsContextWindow = 200_000 | 1_000_000
+
+/**
  * The model context window the Skills page sizes its listing budget against.
  *
  * Claude Code derives that budget from the window (1% of it, in characters), so
  * the same set of skills is comfortable on a 1M model and already over budget on
- * a 200k one. The app cannot know which model a given agent will run, so this is
- * the user's answer to that question — a viewing preference, never written back
- * to Claude Code's settings.
+ * a 200k one. On 'auto' — the default — the page reads the window off the agents
+ * actually running, which Claude Code reports through the statusline hook. The
+ * two presets are explicit overrides: what these skills would look like on
+ * another model, and the answer when nothing is running.
+ *
+ * A viewing preference, never written back to Claude Code's settings.
  */
-export type SkillsContextWindow = 200_000 | 1_000_000
+export type SkillsContextWindowSetting = 'auto' | SkillsContextWindow
 
 interface AppState {
   // Config
@@ -60,8 +74,8 @@ interface AppState {
   rightSidebar: 'info' | null
   leftSidebarVisible: boolean
   // Which context window the Skills page's budget gauges are scaled to. See
-  // SkillsContextWindow above.
-  skillsContextWindow: SkillsContextWindow
+  // SkillsContextWindowSetting above.
+  skillsContextWindow: SkillsContextWindowSetting
 
   // Script terminals
   scriptTerminals: ScriptTerminalInfo[]
@@ -107,7 +121,7 @@ interface AppState {
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void
   toggleLeftSidebar: () => void
-  setSkillsContextWindow: (contextWindow: SkillsContextWindow) => void
+  setSkillsContextWindow: (contextWindow: SkillsContextWindowSetting) => void
 
   // Close agent modal actions
   openCloseAgentModal: (data: CloseAgentModalData) => void
@@ -153,7 +167,7 @@ export const useStore = create<AppState>()(
         activeModal: null,
         rightSidebar: null,
         leftSidebarVisible: true,
-        skillsContextWindow: 200_000,
+        skillsContextWindow: 'auto',
 
         scriptTerminals: [],
 
@@ -385,6 +399,22 @@ export const useStore = create<AppState>()(
     // Local storage persist for UI preferences (permanent)
     {
       name: 'magic-slash-storage',
+      // v1 — skillsContextWindow gained an 'auto' state and made it the default.
+      // Without a migration, every user carries a stored `200_000` written by the
+      // old default and keeps overriding the window their agents report; the
+      // point of the feature is precisely that the stored value stops winning
+      // over reality.
+      version: 1,
+      // Annotated: zustand infers the persisted shape from what `migrate` returns,
+      // and an inferred `'auto' | 1_000_000` would then reject the 200K preset in
+      // `partialize` below.
+      migrate: (persistedState): Partial<AppState> => {
+        const state = (persistedState ?? {}) as Partial<AppState>
+        return {
+          ...state,
+          skillsContextWindow: migrateSkillsContextWindow(state.skillsContextWindow),
+        }
+      },
       partialize: (state) => ({
         leftSidebarVisible: state.leftSidebarVisible,
         skillsContextWindow: state.skillsContextWindow,

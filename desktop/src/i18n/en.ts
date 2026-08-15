@@ -887,6 +887,11 @@ export const en = {
   'skills.budget.window.label': 'Context window',
   'skills.budget.window.small': '200K tokens',
   'skills.budget.window.large': '1M tokens',
+  'skills.budget.window.auto': 'Auto',
+  'skills.budget.window.autoValue': 'Auto · {window}',
+  'skills.budget.window.autoDetected': 'Detected from the running agent.',
+  'skills.budget.window.autoNoAgent': 'No agent running — falling back to {window}.',
+  'skills.budget.window.forced': 'Forced to {window}, whatever is running.',
   'skills.budget.over':
     'Over budget by {over} characters. Claude Code is already listing some skills by name only — it can still run them, but it can no longer tell when they apply.',
   'skills.budget.truncated.one':
@@ -907,9 +912,9 @@ export const en = {
   'skills.budget.card.overflow.title': 'Over budget, descriptions vanish',
   'skills.budget.card.overflow.body':
     'The listing is not trimmed evenly. Claude Code drops whole descriptions, starting with the skills you invoke least, and lists those by name only. Claude can still run them if you name them, but it no longer knows when to reach for them on its own.',
-  'skills.budget.card.why.title': 'Why the 200K / 1M switch',
+  'skills.budget.card.why.title': 'Where the window comes from',
   'skills.budget.card.why.body':
-    'Since the budget is a fraction of the context window, the same set of skills is comfortable on a 1M-token model and over budget on a 200K one. This app cannot know which model a given agent will run, so you pick the one to size against — it changes the gauges here and nothing else.',
+    'Since the budget is a fraction of the context window, the same set of skills is comfortable on a 1M-token model and over budget on a 200K one. On Auto, the window is read from the agent you have running — the real one, reported by Claude Code itself. The two presets override it, to see what your skills would look like on another model or when nothing is running. Either way it changes the gauges here and nothing else.',
   'skills.budget.card.override.title': 'Changing the budget itself',
   'skills.budget.card.override.body':
     'In settings.json, skillListingBudgetFraction raises the 1% share and skillListingMaxDescChars the per-skill cap; the SLASH_COMMAND_TOOL_CHAR_BUDGET environment variable replaces the whole computation with a fixed character count. Run /doctor to see what the listing really costs.',

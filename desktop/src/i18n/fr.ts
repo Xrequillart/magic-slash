@@ -892,6 +892,11 @@ export const fr: Record<keyof typeof en, string> = {
   'skills.budget.window.label': 'Fenêtre de contexte',
   'skills.budget.window.small': '200K tokens',
   'skills.budget.window.large': '1M tokens',
+  'skills.budget.window.auto': 'Auto',
+  'skills.budget.window.autoValue': 'Auto · {window}',
+  'skills.budget.window.autoDetected': 'Détectée sur l’agent en cours.',
+  'skills.budget.window.autoNoAgent': 'Aucun agent en cours — repli sur {window}.',
+  'skills.budget.window.forced': 'Forcée à {window}, quoi qu’il tourne.',
   'skills.budget.over':
     'Dépassement de {over} caractères. Claude Code liste déjà certains skills par leur nom seul — il peut encore les lancer, mais il ne sait plus quand ils s’appliquent.',
   'skills.budget.truncated.one':
@@ -912,9 +917,9 @@ export const fr: Record<keyof typeof en, string> = {
   'skills.budget.card.overflow.title': 'En dépassement, les descriptions disparaissent',
   'skills.budget.card.overflow.body':
     'Le catalogue n’est pas rogné uniformément. Claude Code supprime des descriptions entières, en commençant par les skills que vous invoquez le moins, et ne liste plus que leur nom. Claude peut encore les lancer si vous les nommez, mais il ne sait plus y penser tout seul.',
-  'skills.budget.card.why.title': 'Pourquoi le switch 200K / 1M',
+  'skills.budget.card.why.title': 'D’où vient la fenêtre',
   'skills.budget.card.why.body':
-    'Le budget étant une fraction de la fenêtre de contexte, un même ensemble de skills tient à l’aise sur un modèle 1M et déborde sur un 200K. L’app ne peut pas deviner quel modèle tournera : vous choisissez celui sur lequel vous vous calez. Cela ne change que les jauges de cette page.',
+    'Le budget étant une fraction de la fenêtre de contexte, un même ensemble de skills tient à l’aise sur un modèle 1M et déborde sur un 200K. En Auto, la fenêtre est lue sur l’agent que vous avez en cours — la vraie, remontée par Claude Code lui-même. Les deux préréglages la forcent, pour voir ce que donneraient vos skills sur un autre modèle ou quand rien ne tourne. Dans tous les cas, cela ne change que les jauges de cette page.',
   'skills.budget.card.override.title': 'Changer le budget lui-même',
   'skills.budget.card.override.body':
     'Dans settings.json, skillListingBudgetFraction relève la part de 1 % et skillListingMaxDescChars le plafond par skill ; la variable d’environnement SLASH_COMMAND_TOOL_CHAR_BUDGET remplace tout le calcul par un nombre de caractères fixe. Lancez /doctor pour voir ce que le catalogue coûte vraiment.',
