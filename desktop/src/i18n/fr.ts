@@ -856,6 +856,18 @@ export const fr: Record<keyof typeof en, string> = {
     'Aucune exécution enregistrée pour cette organisation. Les exécutions sont rattachées via les dépôts de l’agent qui les lance : le travail sur un dépôt personnel n’est donc pas compté ici.',
   'dashboard.skills.emptyPersonal':
     'Aucune exécution enregistrée hors organisation. Une exécution arrive ici quand l’agent qui l’a lancée travaille uniquement sur des dépôts personnels, et quand elle a été démarrée dans un terminal que l’app n’a pas ouvert : sans agent, elle n’appartient à aucune organisation.',
+  'dashboard.usage.section': 'Coût et usage',
+  'dashboard.usage.cost': 'Coût',
+  'dashboard.usage.sessions': 'Sessions',
+  'dashboard.usage.lines': 'Lignes',
+  'dashboard.usage.duration': 'Temps',
+  'dashboard.usage.byMember': 'Par membre',
+  'dashboard.usage.byModel': 'Par modèle',
+  'dashboard.usage.unknownModel': 'Modèle inconnu',
+  'dashboard.usage.empty': 'Aucun usage à afficher ici.',
+  'dashboard.usage.capped':
+    'Seules les {count} sessions les plus récentes sont lues : ces totaux sont donc un plancher, pas le tableau complet.',
+  'dashboard.usage.failed': 'Impossible de lire l’usage.',
 
   // ── Tableau de bord d'équipe · heures passées sur les skills ──────────────
   'skillHours.hours': '{count}h',
