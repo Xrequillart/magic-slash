@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Archive, Building2, Loader2, Mail, Plus, UserPlus, Users } from 'lucide-react'
 import { useRequireSession } from '@/lib/session'
 import { extractInviteToken } from '@/lib/inviteLink'
@@ -22,6 +22,7 @@ import { useT } from '@/lib/i18n/useLanguage'
 import { AppShell } from '@/components/AppShell'
 import { Modal } from '@/components/Modal'
 import { OrganizationCard } from '@/components/OrganizationCard'
+import { TabStrip } from '@/components/TabStrip'
 import { Button, Card, FullPageLoader, Input, Select, SectionHeader } from '@/components/ui'
 
 type Status = { kind: 'ok' | 'err'; msg: string } | null
@@ -54,6 +55,19 @@ export default function OrganizationPage() {
   const [deletingInvite, setDeletingInvite] = useState<string | null>(null)
   const [leavingOrgId, setLeavingOrgId] = useState<string | null>(null)
   const [pageStatus, setPageStatus] = useState<Status>(null)
+
+  // Which organization's card is open. `undefined` = not chosen yet, so the
+  // fallback below can follow the data once it loads instead of freezing on a
+  // tab that does not exist. Same shape as the dashboard's scope tabs.
+  const [selectedOrgId, setSelectedOrgId] = useState<string | undefined>(undefined)
+
+  // Falls back to the first organization whenever the chosen one is gone — the
+  // user just left it or archived it, and the list re-renders without it. A raw
+  // `selectedOrgId` would leave every card hidden behind a tab nobody can click.
+  const activeOrgId = useMemo(() => {
+    if (selectedOrgId && orgs?.some((o) => o.id === selectedOrgId)) return selectedOrgId
+    return orgs?.[0]?.id
+  }, [selectedOrgId, orgs])
 
   // Each modal holds the org it acts on, so one modal serves every card.
   const [inviteOrg, setInviteOrg] = useState<Org | null>(null)
@@ -208,6 +222,34 @@ export default function OrganizationPage() {
           title={
             orgs ? t('org.yourOrgsCount', { count: orgs.length }) : t('org.yourOrgs')
           }
+          action={
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setCreateName('')
+                  setCreateStatus(null)
+                  setShowCreate(true)
+                }}
+                className="border border-black/10"
+              >
+                <Plus className="h-4 w-4" />
+                {t('org.create')}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setJoinToken('')
+                  setJoinStatus(null)
+                  setShowJoin(true)
+                }}
+                className="border border-black/10"
+              >
+                <UserPlus className="h-4 w-4" />
+                {t('org.join')}
+              </Button>
+            </div>
+          }
         />
 
         {orgs === null ? (
@@ -222,7 +264,18 @@ export default function OrganizationPage() {
           />
         ) : (
           <div className="space-y-4">
-            {orgs.map((o) => (
+            {/* One organization at a time once there are several to choose from.
+                Below two there is nothing to switch between, so the list renders
+                whole — a single tab is a label pretending to be a control. */}
+            {orgs.length > 1 && (
+              <TabStrip
+                ariaLabel={t('org.yourOrgs')}
+                items={orgs.map((o) => ({ key: o.id, label: o.name }))}
+                activeKey={activeOrgId}
+                onSelect={setSelectedOrgId}
+              />
+            )}
+            {(orgs.length > 1 ? orgs.filter((o) => o.id === activeOrgId) : orgs).map((o) => (
               <OrganizationCard
                 key={o.id}
                 org={o}
@@ -252,33 +305,6 @@ export default function OrganizationPage() {
         )}
 
         <Note status={pageStatus} />
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setCreateName('')
-              setCreateStatus(null)
-              setShowCreate(true)
-            }}
-            className="border border-black/10"
-          >
-            <Plus className="h-4 w-4" />
-            {t('org.create')}
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setJoinToken('')
-              setJoinStatus(null)
-              setShowJoin(true)
-            }}
-            className="border border-black/10"
-          >
-            <UserPlus className="h-4 w-4" />
-            {t('org.join')}
-          </Button>
-        </div>
       </div>
 
       {/* Invite a member */}

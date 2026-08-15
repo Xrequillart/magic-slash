@@ -1,16 +1,31 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { Cloud, Users, Mail, LogOut, Copy, Check, Loader2, Building2, Trash2, AlertTriangle, Archive, X, Plus, UserPlus } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useOrg } from '../../hooks/useOrg'
+import { useStore } from '../../store'
 import { Modal } from '../../components/Modal'
 import { RoleSelect } from './RoleSelect'
 import { SectionHeader } from './SectionHeader'
+import { TabStrip } from '../../components/TabStrip'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
 import type { MessageKey, Translate } from '../../i18n'
 import type { Invitation, Member, MembershipRole, Org } from '../../../types'
 import { extractInviteToken, inviteLink } from '../../../urls'
 import { INPUT } from '../../theme/controls'
+
+/**
+ * Which organization is open, given the user's pick and the list as it stands.
+ *
+ * Exported because the settings rail lists the organizations too and has to mark
+ * the same one — and this is a FALLBACK, not a lookup: leaving or archiving the
+ * open organization drops it from the list, and a rule applied in one place but
+ * not the other would light a rail entry the page is not showing.
+ */
+export function resolveActiveOrgId(orgs: Org[], selected: string | null): string | undefined {
+  if (selected && orgs.some((o) => o.id === selected)) return selected
+  return orgs[0]?.id
+}
 
 /**
  * Enum values from the database, rendered as-is before: `role` and invitation
@@ -306,6 +321,19 @@ export function OrgPage() {
   const [joinToken, setJoinToken] = useState('')
   const [joining, setJoining] = useState(false)
 
+  // Which organization's card is open. In the store rather than in this
+  // component: the settings rail lists the organizations as well, and the two
+  // have to agree on which one is showing.
+  const settingsOrgId = useStore((s) => s.settingsOrgId)
+  const setSettingsOrgId = useStore((s) => s.setSettingsOrgId)
+  const activeOrgId = useMemo(() => resolveActiveOrgId(orgs, settingsOrgId), [orgs, settingsOrgId])
+
+
+  // One organization at a time once there are several to choose from. Below two,
+  // there is nothing to switch between, so the list renders whole and no strip
+  // appears — a single tab is a label pretending to be a control.
+  const visibleOrgs = orgs.length > 1 ? orgs.filter((o) => o.id === activeOrgId) : orgs
+
   const currentUserId = status.user?.id
 
   const handleChangeRole = useCallback(async (orgId: string, userId: string, role: MembershipRole) => {
@@ -454,7 +482,29 @@ export function OrgPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <SectionHeader icon={Building2} title={t('org.sectionCount', { count: orgs.length })} spacing="none" />
+      <SectionHeader
+        icon={Building2}
+        title={t('org.sectionCount', { count: orgs.length })}
+        spacing="none"
+        action={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setCreateName(''); setShowCreate(true) }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {t('org.create')}
+            </button>
+            <button
+              onClick={() => { setJoinToken(''); setShowJoin(true) }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              {t('org.join')}
+            </button>
+          </div>
+        }
+      />
 
       {orgLoading && orgs.length === 0 ? (
         <div className="flex items-center justify-center py-8 text-text-secondary/50">
@@ -467,7 +517,16 @@ export function OrgPage() {
           <div className="text-xs text-text-secondary/40 mt-1">{t('org.emptyHint')}</div>
         </div>
       ) : (
-        orgs.map((o) => (
+        <>
+          {orgs.length > 1 && (
+            <TabStrip
+              ariaLabel={t('org.section')}
+              items={orgs.map((o) => ({ key: o.id, label: o.name }))}
+              activeKey={activeOrgId}
+              onSelect={setSettingsOrgId}
+            />
+          )}
+          {visibleOrgs.map((o) => (
           <OrganizationCard
             key={o.id}
             org={o}
@@ -486,26 +545,9 @@ export function OrgPage() {
             onLeave={handleLeave}
             onArchive={setArchiveOrgTarget}
           />
-        ))
+          ))}
+        </>
       )}
-
-      {/* Create / join */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => { setCreateName(''); setShowCreate(true) }}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          {t('org.create')}
-        </button>
-        <button
-          onClick={() => { setJoinToken(''); setShowJoin(true) }}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-        >
-          <UserPlus className="w-3.5 h-3.5" />
-          {t('org.join')}
-        </button>
-      </div>
 
       {/* Invite a member */}
       <Modal

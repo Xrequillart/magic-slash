@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
+import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode } from 'react'
 import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, AppWindow, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
-import { OrgPage } from './OrgPage'
+import { OrgPage, resolveActiveOrgId } from './OrgPage'
 import { AppearancePage } from './AppearancePage'
 import { NotificationsPage } from './NotificationsPage'
 import { LanguagePage } from './LanguagePage'
@@ -14,7 +14,7 @@ import { SweepPane } from '../../components/SweepPane'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
 import { useAuth } from '../../hooks/useAuth'
-import type { SpotlightShortcut, LaunchMode, ClaudeAccount, SpendSummary, SettingsTab, RepositoryConfig } from '../../../types'
+import type { SpotlightShortcut, LaunchMode, ClaudeAccount, SpendSummary, SettingsTab, RepositoryConfig, Org } from '../../../types'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 import { formatUsd } from '../../utils/usageStats'
@@ -313,9 +313,9 @@ function RepoRailItems({ repos, colorMap, activeName }: RepoRailContent) {
  * clears the active name in the same commit, and reading it live would blink the
  * marker off at the very moment the list starts folding.
  */
-function RepoRailDisclosure({ open, ...content }: RepoRailContent & { open: boolean }) {
-  const shownRef = useRef<RepoRailContent>(content)
-  if (open) shownRef.current = content
+function RailDisclosure({ open, children }: { open: boolean; children: ReactNode }) {
+  const shownRef = useRef<ReactNode>(children)
+  if (open) shownRef.current = children
 
   const [mounted, setMounted] = useState(open)
   const [expanded, setExpanded] = useState(open)
@@ -351,9 +351,55 @@ function RepoRailDisclosure({ open, ...content }: RepoRailContent & { open: bool
         expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none'
       }`}
     >
-      <div className="overflow-hidden">
-        <RepoRailItems {...shownRef.current} />
-      </div>
+      <div className="overflow-hidden">{shownRef.current}</div>
+    </div>
+  )
+}
+
+/**
+ * The organizations unfolded under the Organization tab in the rail.
+ *
+ * Same shape as the repositories above — indented under the hairline, one row
+ * each — because they answer the same question in the rail: which of the things
+ * this tab owns am I looking at. The difference is that an organization has no
+ * page of its own: picking one scopes the Organization page, which is why these
+ * are buttons writing to the store rather than links to a hash route.
+ *
+ * Creating and joining live on the page's own header, not here: the rail names
+ * what you have, and a row that makes a new one reads as one of them.
+ */
+function OrgRailItems({
+  orgs,
+  activeOrgId,
+  onSelect,
+}: {
+  orgs: Org[]
+  activeOrgId?: string
+  onSelect: (orgId: string) => void
+}) {
+  return (
+    <div className="ml-[19px] pl-3 py-0.5 border-l border-line-field space-y-0.5">
+      {orgs.map((org) => {
+        const isActive = org.id === activeOrgId
+        return (
+          <button
+            key={org.id}
+            type="button"
+            onClick={() => onSelect(org.id)}
+            aria-current={isActive ? 'true' : undefined}
+            className={`relative w-full flex items-center gap-2 px-2 py-1.5 text-[13px] rounded-lg transition-colors text-left ${
+              isActive ? 'text-ink font-medium' : 'text-text-secondary/70 hover:text-ink hover:bg-surface'
+            }`}
+          >
+            {/* Sits on top of the container's hairline, marking the open org */}
+            {isActive && (
+              <span className="absolute -left-[13px] top-1 bottom-1 w-[2px] rounded-full bg-accent" />
+            )}
+            <Building2 className="w-3 h-3 shrink-0" />
+            <span className="truncate">{org.name}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -362,6 +408,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   const { config, terminals, splitEnabled, toggleSplitEnabled, setConfig, settingsInitialTab, setSettingsInitialTab } = useStore()
   const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode } = useConfig()
   const orgs = useStore((s) => s.orgs)
+  // The rail lists the organizations too, so it needs the same selection the
+  // Organization page reads — and the same fallback rule, hence the shared
+  // resolver rather than a second copy of it here.
+  const settingsOrgId = useStore((s) => s.settingsOrgId)
+  const setSettingsOrgId = useStore((s) => s.setSettingsOrgId)
+  const activeOrgId = useMemo(() => resolveActiveOrgId(orgs, settingsOrgId), [orgs, settingsOrgId])
   const t = useT()
   const locale = useLocale()
   // Deep-link support: another view can request a specific settings tab via the
@@ -738,9 +790,12 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           {SETTINGS_TABS.map((tab) => {
             const Icon = tab.icon
             const isActive = railActiveTab === tab.id
-            // Repositories is the one tab with sub-entries, so it is also the one
-            // that reports an expanded state to assistive tech.
-            const expandable = tab.id === 'repositories' && railRepos.length > 0
+            // The two tabs that own a list are the ones that report an expanded
+            // state to assistive tech — and only while their list has something
+            // in it, since an empty one renders nothing to expand.
+            const expandable =
+              (tab.id === 'repositories' && railRepos.length > 0) ||
+              (tab.id === 'organization' && orgs.length > 0)
             return (
               <Fragment key={tab.id}>
                 <button
@@ -755,13 +810,23 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                   <Icon className="w-4 h-4 shrink-0" />
                   <span className="truncate">{t(tab.labelKey)}</span>
                 </button>
-                {expandable && (
-                  <RepoRailDisclosure
-                    open={isActive}
-                    repos={railRepos}
-                    colorMap={colorMap}
-                    activeName={isRepoRoute ? route.params.name : undefined}
-                  />
+                {tab.id === 'repositories' && railRepos.length > 0 && (
+                  <RailDisclosure open={isActive}>
+                    <RepoRailItems
+                      repos={railRepos}
+                      colorMap={colorMap}
+                      activeName={isRepoRoute ? route.params.name : undefined}
+                    />
+                  </RailDisclosure>
+                )}
+                {tab.id === 'organization' && orgs.length > 0 && (
+                  <RailDisclosure open={isActive}>
+                    <OrgRailItems
+                      orgs={orgs}
+                      activeOrgId={activeOrgId}
+                      onSelect={(id) => { setSettingsOrgId(id); handleSelectTab('organization') }}
+                    />
+                  </RailDisclosure>
                 )}
               </Fragment>
             )

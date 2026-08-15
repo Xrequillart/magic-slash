@@ -39,6 +39,11 @@ interface AppState {
   // When set, the Config page selects this settings tab on mount, then resets it
   // to null. Lets other views (e.g. the sidebar account menu) deep-link a tab.
   settingsInitialTab: SettingsTab | null
+  // Which organization the Organization page is scoped to. Held here rather than
+  // in the page because the settings rail lists the organizations too, and both
+  // it and the page's tab strip have to agree on which one is open. `null` = the
+  // user has not picked one, so the page falls back to the first.
+  settingsOrgId: string | null
   // The overlay currently on screen, if any. Only one can be open at a time.
   activeModal: ModalId | null
   rightSidebar: 'info' | null
@@ -81,6 +86,7 @@ interface AppState {
   moveTerminalToPane: (id: string, pane: 'left' | 'right') => void
 
   setSettingsInitialTab: (tab: SettingsTab | null) => void
+  setSettingsOrgId: (orgId: string | null) => void
   openModal: (modal: ModalId) => void
   closeModal: () => void
   openSettingsModal: (tab?: SettingsTab) => void
@@ -128,6 +134,7 @@ export const useStore = create<AppState>()(
         rightPaneTerminalIds: [],
 
         settingsInitialTab: null,
+        settingsOrgId: null,
         activeModal: null,
         rightSidebar: null,
         leftSidebarVisible: true,
@@ -290,6 +297,7 @@ export const useStore = create<AppState>()(
         },
 
         setSettingsInitialTab: (settingsInitialTab) => set({ settingsInitialTab }),
+        setSettingsOrgId: (settingsOrgId) => set({ settingsOrgId }),
         // Modals are overlays, never destinations: the agents page stays mounted
         // and visible behind them. Two things are normalised on open — the file
         // preview panel is dismissed (it sits above the overlay in the z-order),
