@@ -112,6 +112,7 @@ export function UpdateOverlay() {
   const debugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const debugMenuRef = useRef<HTMLDivElement>(null)
   const confettiRef = useRef<HTMLCanvasElement>(null)
+  const lastStatusTypeRef = useRef<UpdateStatus['type'] | null>(null)
 
   function floodTerminal() {
     if (!activeTerminalId) return
@@ -140,12 +141,18 @@ export function UpdateOverlay() {
     }))
   }
 
-  const triggerConfetti = useCallback(() => {
-    setShowConfetti(true)
-    requestAnimationFrame(() => {
-      if (confettiRef.current) launchConfetti(confettiRef.current)
-    })
-  }, [])
+  const triggerConfetti = useCallback(() => setShowConfetti(true), [])
+
+  // Driven by an effect rather than by the rAF that used to follow setShowConfetti:
+  // the canvas only exists once React has committed `showConfetti`, and an effect is
+  // the one place that is guaranteed to run after that commit AND after layout — so
+  // `canvas.offsetWidth` is the real width rather than 0. Returning launchConfetti's
+  // canceller also stops the animation loop if the overlay unmounts mid-burst, which
+  // the discarded return value never did.
+  useEffect(() => {
+    if (!showConfetti || !confettiRef.current) return
+    return launchConfetti(confettiRef.current)
+  }, [showConfetti])
 
   function startDebugSequence() {
     if (debugRunning) return
@@ -194,9 +201,20 @@ export function UpdateOverlay() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [debugMenuOpen])
 
+  // The REAL update flow. startDebugSequence() below simulates the same statuses,
+  // and the two have to stay in step — the confetti used to be fired from the
+  // simulation only, so it played on every dev test and never once after an actual
+  // update.
   useEffect(() => {
     const unsubscribe = window.electronAPI.updater.onStatus((newStatus) => {
+      // Only the TRANSITION into 'downloaded' celebrates. A manual re-check while an
+      // update is already downloaded makes electron-updater re-emit the event, and
+      // that is not a download finishing.
+      const isFirstDownloaded = newStatus.type === 'downloaded' && lastStatusTypeRef.current !== 'downloaded'
+      lastStatusTypeRef.current = newStatus.type
+
       setStatus(newStatus)
+      if (isFirstDownloaded) triggerConfetti()
 
       // Show overlay for active states
       if (
@@ -226,7 +244,7 @@ export function UpdateOverlay() {
     return () => {
       unsubscribe()
     }
-  }, [])
+  }, [triggerConfetti])
 
   if (!visible || !status) {
     return (
