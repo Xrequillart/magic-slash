@@ -879,12 +879,40 @@ export const en = {
 
   // ── Skills ───────────────────────────────────────────────────────────────
   'skills.budget.section': 'Skills Budget',
-  'skills.budget.tokens': 'Tokens (2% context)',
-  'skills.budget.chars': 'Characters (fallback)',
+  'skills.budget.help': 'What your skill descriptions cost in every single message.',
+  'skills.budget.tokens': 'Tokens (estimate)',
+  'skills.budget.chars': 'Characters (enforced)',
   'skills.budget.unitTokens': 'tokens',
   'skills.budget.unitChars': 'chars',
-  'skills.budget.help':
-    'Skill descriptions are injected into the system prompt on every message. The “2% context” gauge tracks token usage against ~2% of the model’s context window — the recommended ceiling to keep skills from crowding out actual conversation. The “characters (fallback)” gauge is a simpler byte-level check used when a tokenizer is unavailable.',
+  'skills.budget.window.label': 'Context window',
+  'skills.budget.window.small': '200K tokens',
+  'skills.budget.window.large': '1M tokens',
+  'skills.budget.over':
+    'Over budget by {over} characters. Claude Code is already listing some skills by name only — it can still run them, but it can no longer tell when they apply.',
+  'skills.budget.truncated.one':
+    '{count} skill has a description longer than {max} characters. Everything past that is cut before Claude sees it, so it is counted at {max} here.',
+  'skills.budget.truncated.other':
+    '{count} skills have descriptions longer than {max} characters. Everything past that is cut before Claude sees it, so they are counted at {max} here.',
+  'skills.budget.cut': 'cut',
+  'skills.budget.how': 'How this is computed',
+  'skills.budget.card.scope.title': 'Only descriptions are counted',
+  'skills.budget.card.scope.body':
+    'Claude Code injects a listing of every skill — name plus description — into the system prompt on every turn. The body of a SKILL.md is not in it: that loads only when the skill actually runs. So this gauge measures your descriptions, not your instructions.',
+  'skills.budget.card.formula.title': 'The budget follows the model',
+  'skills.budget.card.formula.body':
+    'budget = context window × 4 characters per token × {percent}%. For a {context}-token window that is {chars} characters, or about {tokens} tokens.',
+  'skills.budget.card.cap.title': '{max} characters per skill',
+  'skills.budget.card.cap.body':
+    'Each entry’s description and when_to_use are capped at {max} characters combined (skillListingMaxDescChars). A longer description is truncated before it reaches Claude, which is why this page bills it at the cap and not at its real length. Put the key use case first.',
+  'skills.budget.card.overflow.title': 'Over budget, descriptions vanish',
+  'skills.budget.card.overflow.body':
+    'The listing is not trimmed evenly. Claude Code drops whole descriptions, starting with the skills you invoke least, and lists those by name only. Claude can still run them if you name them, but it no longer knows when to reach for them on its own.',
+  'skills.budget.card.why.title': 'Why the 200K / 1M switch',
+  'skills.budget.card.why.body':
+    'Since the budget is a fraction of the context window, the same set of skills is comfortable on a 1M-token model and over budget on a 200K one. This app cannot know which model a given agent will run, so you pick the one to size against — it changes the gauges here and nothing else.',
+  'skills.budget.card.override.title': 'Changing the budget itself',
+  'skills.budget.card.override.body':
+    'In settings.json, skillListingBudgetFraction raises the 1% share and skillListingMaxDescChars the per-skill cap; the SLASH_COMMAND_TOOL_CHAR_BUDGET environment variable replaces the whole computation with a fixed character count. Run /doctor to see what the listing really costs.',
   'skills.budget.details': 'Details by skill',
   'skills.budget.tok': '{count} tok',
   'skills.weight.high': 'High',

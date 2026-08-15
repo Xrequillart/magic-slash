@@ -1,20 +1,56 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid } from 'lucide-react'
+import { Plus, Trash2, Save, ImagePlus, X, ChevronRight, Image, Share2, FolderInput, Gauge, Info, AlertTriangle, Sparkles, PenTool, GitFork, Wand2, LayoutGrid, FileText, Calculator, Scissors, EyeOff, SlidersHorizontal, type LucideIcon } from 'lucide-react'
 import { useSkills, type SkillInfo, type SkillDetail, type RepoSkillInfo } from '../../hooks/useSkills'
 import SkillDocument from './SkillDocument'
 import { VSCodeIcon } from '../../components/agent-info-sidebar/icons'
 import { SweepPane } from '../../components/SweepPane'
 import { useTerminals } from '../../hooks/useTerminals'
-import { useStore } from '../../store'
+import { useStore, type SkillsContextWindow } from '../../store'
 import { useLocale, useT, type MessageKey, type Translate } from '../../i18n'
 import { BTN, BTN_DANGER, BTN_PRIMARY, INPUT } from '../../theme/controls'
 
-const TOKEN_BUDGET = 4000
-const CHAR_BUDGET = 16000
+/**
+ * The skill listing budget, as Claude Code actually computes it.
+ *
+ * Every turn, Claude Code injects a listing of each skill's name and description
+ * into the system prompt. What that listing may spend is NOT a fixed number — it
+ * is derived from the model's context window:
+ *
+ *   budget_chars = context_window × CHARS_PER_TOKEN × BUDGET_FRACTION
+ *
+ * 200k window → 8 000 chars; 1M window → 40 000 chars. This page used to hardcode
+ * 16 000 chars / 4 000 tokens, which was twice too generous on a 200k model (the
+ * gauge read half-full while Claude Code was already dropping descriptions) and
+ * two and a half times too strict on a 1M one.
+ *
+ * The fraction is `skillListingBudgetFraction` in settings.json, and
+ * `SLASH_COMMAND_TOOL_CHAR_BUDGET` overrides the whole computation with a fixed
+ * character count. We mirror the shipped defaults; the switch above the gauges
+ * covers the one input we cannot read from here — which model is running.
+ */
 const CHARS_PER_TOKEN = 4
+const BUDGET_FRACTION = 0.01
+
+/**
+ * `skillListingMaxDescChars` — the per-skill cap on `description` + `when_to_use`
+ * combined. Text past it never reaches the model, so a 4 000-character
+ * description costs 1 536, not 4 000. Counting the raw length would bill skills
+ * for characters Claude never sees.
+ */
+const MAX_DESC_CHARS = 1536
+
+/** The two windows worth comparing. Order is the order of the switch. */
+const CONTEXT_WINDOWS: readonly SkillsContextWindow[] = [200_000, 1_000_000]
+
+function charBudgetFor(contextWindow: number): number {
+  return Math.max(1, Math.floor(contextWindow * CHARS_PER_TOKEN * BUDGET_FRACTION))
+}
 
 function BudgetBar({ label, value, max, unit, barColor }: { label: string; value: number; max: number; unit: string; barColor: string }) {
   const percentage = Math.min(Math.round((value / max) * 100), 100)
+  // Over budget is not a shade of "nearly full": past the line Claude Code stops
+  // listing descriptions, so the bar changes colour rather than just filling up.
+  const fill = value > max ? 'bg-red' : barColor
   // A bare toLocaleString() follows the OS locale, which is not the language the
   // app is showing — a French UI on an English machine would group with commas.
   const locale = useLocale()
@@ -29,7 +65,7 @@ function BudgetBar({ label, value, max, unit, barColor }: { label: string; value
       </div>
       <div className="w-full h-2 rounded-full bg-surface overflow-hidden">
         <div
-          className={`relative h-full rounded-full transition-all duration-300 overflow-hidden ${barColor}`}
+          className={`relative h-full rounded-full transition-all duration-300 overflow-hidden ${fill}`}
           style={{ width: `${percentage}%` }}
         >
           <div
@@ -49,7 +85,10 @@ function BudgetBar({ label, value, max, unit, barColor }: { label: string; value
 interface SkillTokenEntry {
   name: string
   tokens: number
+  /** What this skill actually spends — its description, capped at MAX_DESC_CHARS. */
   chars: number
+  /** Its description is longer than the cap, so the listing shows a cut version. */
+  truncated: boolean
   source: 'built-in' | 'custom' | 'repo'
   weight: 'high' | 'medium' | 'low'
 }
@@ -59,9 +98,11 @@ interface DuplicateSkillEntry {
   sources: Array<{ source: 'built-in' | 'custom' | 'repo'; repoName?: string }>
 }
 
-function getWeight(tokens: number): 'high' | 'medium' | 'low' {
-  if (tokens >= 400) return 'high'
-  if (tokens >= 200) return 'medium'
+// Anchored to the per-skill cap rather than to round numbers: "high" is a skill
+// spending the entire allowance a single description is allowed.
+function getWeight(chars: number): 'high' | 'medium' | 'low' {
+  if (chars >= MAX_DESC_CHARS) return 'high'
+  if (chars >= MAX_DESC_CHARS / 2) return 'medium'
   return 'low'
 }
 
@@ -84,45 +125,182 @@ function sourceLabel(source: string, t: Translate): string {
   return key ? t(key) : source
 }
 
+/**
+ * The 200K / 1M choice. Drawn as a segmented control rather than a select: it has
+ * exactly two values and both matter enough to stay visible, since the reading of
+ * every gauge below depends on which one is active.
+ */
+function ContextWindowSwitch({ value, onChange }: { value: SkillsContextWindow; onChange: (next: SkillsContextWindow) => void }) {
+  const t = useT()
+
+  return (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <span className="text-[11px] text-text-secondary/50 whitespace-nowrap">{t('skills.budget.window.label')}</span>
+      <div className="relative grid grid-cols-2 bg-surface rounded-full p-px border border-line-subtle" role="group" aria-label={t('skills.budget.window.label')}>
+        <div
+          className={`absolute top-px bottom-px left-px right-1/2 bg-surface-strong rounded-full transition-transform duration-200 ${
+            value === CONTEXT_WINDOWS[1] ? 'translate-x-full' : 'translate-x-0'
+          }`}
+        />
+        {CONTEXT_WINDOWS.map((size) => (
+          <button
+            key={size}
+            onClick={() => onChange(size)}
+            aria-pressed={value === size}
+            className={`relative z-10 px-3 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 text-center whitespace-nowrap ${
+              value === size ? 'text-ink' : 'text-text-secondary/50 hover:text-text-secondary'
+            }`}
+          >
+            {t(size === CONTEXT_WINDOWS[0] ? 'skills.budget.window.small' : 'skills.budget.window.large')}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function InfoCard({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
+  return (
+    <div className="flex flex-col gap-1.5 px-3 py-2.5 rounded-xl bg-surface-subtle border border-line-subtle">
+      <div className="flex items-center gap-1.5">
+        <Icon className="w-3.5 h-3.5 text-text-secondary/50 flex-shrink-0" />
+        <span className="text-[11px] font-medium text-text-secondary">{title}</span>
+      </div>
+      <p className="text-[11px] text-text-secondary/40 leading-relaxed">{body}</p>
+    </div>
+  )
+}
+
 function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSkills: RepoSkillInfo[] }) {
   const [showBreakdown, setShowBreakdown] = useState(false)
+  const [showHow, setShowHow] = useState(false)
   const t = useT()
-  const { totalTokens, totalChars, breakdown } = useMemo(() => {
+  const locale = useLocale()
+  const contextWindow = useStore((s) => s.skillsContextWindow)
+  const setContextWindow = useStore((s) => s.setSkillsContextWindow)
+
+  const charBudget = charBudgetFor(contextWindow)
+  const tokenBudget = Math.floor(charBudget / CHARS_PER_TOKEN)
+
+  const { totalTokens, totalChars, truncatedCount, breakdown } = useMemo(() => {
     const entries: SkillTokenEntry[] = []
-    for (const s of skills) {
-      const chars = (s.description || '').length
-      const tokens = Math.ceil(chars / CHARS_PER_TOKEN)
-      entries.push({ name: s.name, chars, tokens, source: s.isBuiltIn ? 'built-in' : 'custom', weight: getWeight(tokens) })
+    const add = (name: string, description: string, source: SkillTokenEntry['source']) => {
+      const raw = (description || '').length
+      // Only what survives the per-skill cap reaches the model, so only that is
+      // billed here.
+      const chars = Math.min(raw, MAX_DESC_CHARS)
+      entries.push({
+        name,
+        chars,
+        tokens: Math.ceil(chars / CHARS_PER_TOKEN),
+        truncated: raw > MAX_DESC_CHARS,
+        source,
+        weight: getWeight(chars),
+      })
     }
-    for (const rs of repoSkills) {
-      const chars = (rs.description || '').length
-      const tokens = Math.ceil(chars / CHARS_PER_TOKEN)
-      entries.push({ name: rs.name, chars, tokens, source: 'repo', weight: getWeight(tokens) })
-    }
+    for (const s of skills) add(s.name, s.description, s.isBuiltIn ? 'built-in' : 'custom')
+    for (const rs of repoSkills) add(rs.name, rs.description, 'repo')
+
     entries.sort((a, b) => b.tokens - a.tokens)
-    let tc = 0, cc = 0
+    let tc = 0, cc = 0, cut = 0
     for (const e of entries) {
       tc += e.tokens; cc += e.chars
+      if (e.truncated) cut += 1
     }
-    return { totalTokens: tc, totalChars: cc, breakdown: entries }
+    return { totalTokens: tc, totalChars: cc, truncatedCount: cut, breakdown: entries }
   }, [skills, repoSkills])
+
+  const overBudget = totalChars > charBudget
+  const n = (value: number) => value.toLocaleString(locale)
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Gauges side by side */}
-      <div className="flex items-center gap-2 text-sm text-text-secondary">
-        <Gauge className="w-4 h-4" />
-        <span>{t('skills.budget.section')}</span>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            <Gauge className="w-4 h-4" />
+            <span>{t('skills.budget.section')}</span>
+          </div>
+          <p className="text-xs text-text-secondary/30 mt-0.5">{t('skills.budget.help')}</p>
+        </div>
+        <ContextWindowSwitch value={contextWindow} onChange={setContextWindow} />
       </div>
+
       <div className="grid grid-cols-2 gap-3">
-        <BudgetBar label={t('skills.budget.tokens')} value={totalTokens} max={TOKEN_BUDGET} unit={t('skills.budget.unitTokens')} barColor="bg-accent" />
-        <BudgetBar label={t('skills.budget.chars')} value={totalChars} max={CHAR_BUDGET} unit={t('skills.budget.unitChars')} barColor="bg-orange" />
+        <BudgetBar label={t('skills.budget.chars')} value={totalChars} max={charBudget} unit={t('skills.budget.unitChars')} barColor="bg-accent" />
+        <BudgetBar label={t('skills.budget.tokens')} value={totalTokens} max={tokenBudget} unit={t('skills.budget.unitTokens')} barColor="bg-orange" />
       </div>
-      <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-surface-subtle border border-line-subtle">
-        <Info className="w-3.5 h-3.5 text-text-secondary/40 flex-shrink-0 mt-0.5" />
-        <p className="text-[11px] text-text-secondary/40 leading-relaxed">
-          {t('skills.budget.help')}
-        </p>
+
+      {overBudget && (
+        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red/10 border border-red/20">
+          <AlertTriangle className="w-3.5 h-3.5 text-red flex-shrink-0 mt-0.5" />
+          <p className="text-[11px] text-red leading-relaxed">
+            {t('skills.budget.over', { over: n(totalChars - charBudget) })}
+          </p>
+        </div>
+      )}
+
+      {truncatedCount > 0 && (
+        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-orange/10 border border-orange/20">
+          <Scissors className="w-3.5 h-3.5 text-orange flex-shrink-0 mt-0.5" />
+          <p className="text-[11px] text-orange leading-relaxed">
+            {t(truncatedCount > 1 ? 'skills.budget.truncated.other' : 'skills.budget.truncated.one', {
+              count: truncatedCount,
+              max: n(MAX_DESC_CHARS),
+            })}
+          </p>
+        </div>
+      )}
+
+      {/* How this is computed — collapsed by default, because it answers a
+          question you only ask once, but it has to be answerable in place. */}
+      <div>
+        <button
+          onClick={() => setShowHow((v) => !v)}
+          className="flex items-center gap-1.5 text-xs text-text-secondary/50 hover:text-text-secondary transition-colors"
+        >
+          <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showHow ? 'rotate-90' : ''}`} />
+          <span>{t('skills.budget.how')}</span>
+        </button>
+        {showHow && (
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <InfoCard
+              icon={FileText}
+              title={t('skills.budget.card.scope.title')}
+              body={t('skills.budget.card.scope.body')}
+            />
+            <InfoCard
+              icon={Calculator}
+              title={t('skills.budget.card.formula.title')}
+              body={t('skills.budget.card.formula.body', {
+                context: n(contextWindow),
+                percent: `${BUDGET_FRACTION * 100}`,
+                chars: n(charBudget),
+                tokens: n(tokenBudget),
+              })}
+            />
+            <InfoCard
+              icon={Scissors}
+              title={t('skills.budget.card.cap.title', { max: n(MAX_DESC_CHARS) })}
+              body={t('skills.budget.card.cap.body', { max: n(MAX_DESC_CHARS) })}
+            />
+            <InfoCard
+              icon={EyeOff}
+              title={t('skills.budget.card.overflow.title')}
+              body={t('skills.budget.card.overflow.body')}
+            />
+            <InfoCard
+              icon={SlidersHorizontal}
+              title={t('skills.budget.card.why.title')}
+              body={t('skills.budget.card.why.body')}
+            />
+            <InfoCard
+              icon={Info}
+              title={t('skills.budget.card.override.title')}
+              body={t('skills.budget.card.override.body')}
+            />
+          </div>
+        )}
       </div>
 
       {/* Breakdown toggle */}
@@ -145,6 +323,11 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
                     <div key={`${entry.source}-${entry.name}`} className="flex items-center gap-2">
                       <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 ${sourceColor}`}>{sourceLabel(entry.source, t)}</span>
                       <span className="text-xs text-ink truncate min-w-0 flex-1 capitalize">{entry.name}</span>
+                      {entry.truncated && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 bg-orange/10 text-orange">
+                          {t('skills.budget.cut')}
+                        </span>
+                      )}
                       <span className="text-[10px] text-text-secondary/50 w-14 text-right flex-shrink-0">{t('skills.budget.tok', { count: entry.tokens })}</span>
                       <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded flex-shrink-0 w-14 text-center ${ws.className}`}>{t(ws.labelKey)}</span>
                     </div>

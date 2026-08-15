@@ -10,6 +10,17 @@ interface CloseAgentModalData {
 /** Agents is the only page; everything else opens as a centered overlay. */
 export type ModalId = 'settings' | 'skills' | 'team'
 
+/**
+ * The model context window the Skills page sizes its listing budget against.
+ *
+ * Claude Code derives that budget from the window (1% of it, in characters), so
+ * the same set of skills is comfortable on a 1M model and already over budget on
+ * a 200k one. The app cannot know which model a given agent will run, so this is
+ * the user's answer to that question — a viewing preference, never written back
+ * to Claude Code's settings.
+ */
+export type SkillsContextWindow = 200_000 | 1_000_000
+
 interface AppState {
   // Config
   config: Config | null
@@ -48,6 +59,9 @@ interface AppState {
   activeModal: ModalId | null
   rightSidebar: 'info' | null
   leftSidebarVisible: boolean
+  // Which context window the Skills page's budget gauges are scaled to. See
+  // SkillsContextWindow above.
+  skillsContextWindow: SkillsContextWindow
 
   // Script terminals
   scriptTerminals: ScriptTerminalInfo[]
@@ -93,6 +107,7 @@ interface AppState {
   setRightSidebar: (sidebar: 'info' | null) => void
   toggleRightSidebar: (sidebar: 'info') => void
   toggleLeftSidebar: () => void
+  setSkillsContextWindow: (contextWindow: SkillsContextWindow) => void
 
   // Close agent modal actions
   openCloseAgentModal: (data: CloseAgentModalData) => void
@@ -138,6 +153,7 @@ export const useStore = create<AppState>()(
         activeModal: null,
         rightSidebar: null,
         leftSidebarVisible: true,
+        skillsContextWindow: 200_000,
 
         scriptTerminals: [],
 
@@ -321,6 +337,7 @@ export const useStore = create<AppState>()(
           rightSidebar: state.rightSidebar === sidebar ? null : sidebar
         })),
         toggleLeftSidebar: () => set((state) => ({ leftSidebarVisible: !state.leftSidebarVisible })),
+        setSkillsContextWindow: (skillsContextWindow) => set({ skillsContextWindow }),
 
         // Close agent modal actions
         openCloseAgentModal: (data) => set({ closeAgentModal: data }),
@@ -370,6 +387,7 @@ export const useStore = create<AppState>()(
       name: 'magic-slash-storage',
       partialize: (state) => ({
         leftSidebarVisible: state.leftSidebarVisible,
+        skillsContextWindow: state.skillsContextWindow,
       }),
     }
   )

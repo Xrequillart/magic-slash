@@ -884,12 +884,40 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Skills ───────────────────────────────────────────────────────────────
   'skills.budget.section': 'Budget des skills',
-  'skills.budget.tokens': 'Tokens (2 % du contexte)',
-  'skills.budget.chars': 'Caractères (repli)',
+  'skills.budget.help': 'Ce que coûtent les descriptions de vos skills, à chaque message.',
+  'skills.budget.tokens': 'Tokens (estimation)',
+  'skills.budget.chars': 'Caractères (budget réel)',
   'skills.budget.unitTokens': 'tokens',
   'skills.budget.unitChars': 'car.',
-  'skills.budget.help':
-    'Les descriptions des skills sont injectées dans le system prompt à chaque message. La jauge « 2 % du contexte » suit la consommation de tokens face à environ 2 % de la fenêtre de contexte du modèle — le plafond recommandé pour que les skills n’empiètent pas sur la conversation. La jauge « caractères (repli) » est une vérification plus simple, au niveau de l’octet, utilisée quand aucun tokenizer n’est disponible.',
+  'skills.budget.window.label': 'Fenêtre de contexte',
+  'skills.budget.window.small': '200K tokens',
+  'skills.budget.window.large': '1M tokens',
+  'skills.budget.over':
+    'Dépassement de {over} caractères. Claude Code liste déjà certains skills par leur nom seul — il peut encore les lancer, mais il ne sait plus quand ils s’appliquent.',
+  'skills.budget.truncated.one':
+    '{count} skill a une description de plus de {max} caractères. Tout ce qui dépasse est coupé avant que Claude ne le voie : il est donc compté à {max} ici.',
+  'skills.budget.truncated.other':
+    '{count} skills ont une description de plus de {max} caractères. Tout ce qui dépasse est coupé avant que Claude ne le voie : ils sont donc comptés à {max} ici.',
+  'skills.budget.cut': 'coupé',
+  'skills.budget.how': 'Comment c’est calculé',
+  'skills.budget.card.scope.title': 'Seules les descriptions comptent',
+  'skills.budget.card.scope.body':
+    'Claude Code injecte à chaque tour un catalogue de tous les skills — nom et description. Le corps du SKILL.md n’y est pas : il ne se charge qu’au moment où le skill s’exécute. Cette jauge mesure donc vos descriptions, pas vos instructions.',
+  'skills.budget.card.formula.title': 'Le budget suit le modèle',
+  'skills.budget.card.formula.body':
+    'budget = fenêtre de contexte × 4 caractères par token × {percent} %. Pour une fenêtre de {context} tokens, cela fait {chars} caractères, soit environ {tokens} tokens.',
+  'skills.budget.card.cap.title': '{max} caractères par skill',
+  'skills.budget.card.cap.body':
+    'La description et le when_to_use de chaque entrée sont plafonnés à {max} caractères cumulés (skillListingMaxDescChars). Une description plus longue est tronquée avant d’atteindre Claude : c’est pourquoi cette page la facture au plafond et non à sa longueur réelle. Mettez le cas d’usage principal en premier.',
+  'skills.budget.card.overflow.title': 'En dépassement, les descriptions disparaissent',
+  'skills.budget.card.overflow.body':
+    'Le catalogue n’est pas rogné uniformément. Claude Code supprime des descriptions entières, en commençant par les skills que vous invoquez le moins, et ne liste plus que leur nom. Claude peut encore les lancer si vous les nommez, mais il ne sait plus y penser tout seul.',
+  'skills.budget.card.why.title': 'Pourquoi le switch 200K / 1M',
+  'skills.budget.card.why.body':
+    'Le budget étant une fraction de la fenêtre de contexte, un même ensemble de skills tient à l’aise sur un modèle 1M et déborde sur un 200K. L’app ne peut pas deviner quel modèle tournera : vous choisissez celui sur lequel vous vous calez. Cela ne change que les jauges de cette page.',
+  'skills.budget.card.override.title': 'Changer le budget lui-même',
+  'skills.budget.card.override.body':
+    'Dans settings.json, skillListingBudgetFraction relève la part de 1 % et skillListingMaxDescChars le plafond par skill ; la variable d’environnement SLASH_COMMAND_TOOL_CHAR_BUDGET remplace tout le calcul par un nombre de caractères fixe. Lancez /doctor pour voir ce que le catalogue coûte vraiment.',
   'skills.budget.details': 'Détail par skill',
   'skills.budget.tok': '{count} tok',
   'skills.weight.high': 'Élevé',
