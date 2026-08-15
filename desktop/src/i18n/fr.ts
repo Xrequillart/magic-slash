@@ -964,9 +964,9 @@ export const fr: Record<keyof typeof en, string> = {
   'duration.seconds': '{count} s',
 
   // ── Page des terminaux ───────────────────────────────────────────────────
-  'terminals.emptyTitle': 'Aucun agent en cours',
-  'terminals.emptyHint': 'Lancez un agent pour commencer',
-  'terminals.launch': 'Lancer un nouvel agent',
+  'terminals.emptyTitle': 'Prêt à travailler',
+  'terminals.emptyHint': 'Lancez un agent Claude pour démarrer un ticket, ouvrir une pull request ou lancer une revue.',
+  'terminals.launch': 'Nouvel agent',
   'terminals.launching': 'Lancement…',
   'terminals.paneEmpty': 'Faites glisser un agent ici, ou créez-en un',
   'terminals.invalidRepos.one':

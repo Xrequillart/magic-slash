@@ -958,9 +958,9 @@ export const en = {
   'duration.seconds': '{count}s',
 
   // ── Terminals page ───────────────────────────────────────────────────────
-  'terminals.emptyTitle': 'No agents running',
-  'terminals.emptyHint': 'Launch a new agent to get started',
-  'terminals.launch': 'Launch new agent',
+  'terminals.emptyTitle': 'Ready to work',
+  'terminals.emptyHint': 'Launch a Claude agent to start a ticket, open a pull request or run a review.',
+  'terminals.launch': 'New agent',
   'terminals.launching': 'Launching…',
   'terminals.paneEmpty': 'Drag an agent here or create a new one',
   'terminals.invalidRepos.one':

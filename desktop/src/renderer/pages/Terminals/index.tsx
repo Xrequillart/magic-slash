@@ -18,6 +18,11 @@ export function TerminalsPage() {
   const { toggleRightSidebar, closeModal, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane, openSettingsModal } = useStore()
   const t = useT()
   const [isCreating, setIsCreating] = useState(false)
+  // Dev only: the debug menu pins the "no agents" screen while sessions are
+  // still running, so it can be worked on without killing every agent first.
+  // `import.meta.env.DEV` is a compile-time constant, so the whole listener
+  // drops out of a production build along with the menu that fires the event.
+  const [debugEmptyState, setDebugEmptyState] = useState(false)
 
   // Generate terminal name based on count
   const getNextTerminalName = () => {
@@ -92,6 +97,13 @@ export function TerminalsPage() {
       setIsCreating(false)
     }
   }
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const handleDebugEmptyState = (e: Event) => setDebugEmptyState((e as CustomEvent<boolean>).detail)
+    window.addEventListener('debug:empty-state', handleDebugEmptyState)
+    return () => window.removeEventListener('debug:empty-state', handleDebugEmptyState)
+  }, [])
 
   // Listen for new terminal event from sidebar
   useEffect(() => {
@@ -260,21 +272,25 @@ export function TerminalsPage() {
     if (focusedPane !== 'secondary') setFocusedPane('secondary')
   }, [focusedPane, setFocusedPane])
 
-  if (terminals.length === 0) {
+  if (terminals.length === 0 || debugEmptyState) {
     return (
-      <div className="h-full flex items-center justify-center animate-fade-in">
-        <div className="text-center">
-          <Bot className="w-16 h-16 mx-auto mb-4 text-text-secondary opacity-40" />
-          <p className="text-lg mb-2">{t('terminals.emptyTitle')}</p>
-          <p className="text-text-secondary text-sm mb-6">{t('terminals.emptyHint')}</p>
+      // Same sunken wash as the two sidebars: with no terminal painted over it,
+      // the pane reads as part of the chrome rather than as a hole in it.
+      <div className="h-full flex items-center justify-center bg-surface-sunken animate-fade-in">
+        <div className="w-80 max-w-[80%] bg-surface border border-line rounded-2xl px-8 py-9 text-center">
+          <div className="w-14 h-14 mx-auto mb-5 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center">
+            <Bot className="w-7 h-7 text-accent" />
+          </div>
+          <p className="text-lg font-semibold mb-1.5">{t('terminals.emptyTitle')}</p>
+          <p className="text-text-secondary text-sm leading-relaxed mb-6">{t('terminals.emptyHint')}</p>
           <button
             onClick={handleCreateTerminal}
             disabled={isCreating}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple hover:bg-purple/80 text-on-brand rounded-lg font-semibold transition-colors disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-hover text-on-brand rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
           >
             <Bot className="w-4 h-4" />
             {isCreating ? t('terminals.launching') : t('terminals.launch')}
-            <span className="ml-1 text-xs opacity-60">{shortcutKey}</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded bg-on-brand/15 text-[11px] font-medium">{shortcutKey}</span>
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bug, Download, CheckCircle, Loader2, Play, ScrollText, Sparkles } from 'lucide-react'
+import { Bot, Bug, Download, CheckCircle, Loader2, Play, ScrollText, Sparkles } from 'lucide-react'
 import { useStore } from '../store'
 import { useT } from '../i18n'
 
@@ -108,6 +108,7 @@ export function UpdateOverlay() {
   const [showConfetti, setShowConfetti] = useState(false)
   const [debugRunning, setDebugRunning] = useState(false)
   const [debugMenuOpen, setDebugMenuOpen] = useState(false)
+  const [emptyStatePinned, setEmptyStatePinned] = useState(false)
   const debugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const debugMenuRef = useRef<HTMLDivElement>(null)
   const confettiRef = useRef<HTMLCanvasElement>(null)
@@ -117,6 +118,16 @@ export function UpdateOverlay() {
     setDebugMenuOpen(false)
     const prompt = 'Print exactly 200 lines of lorem ipsum text, each line numbered. Do not ask questions, just print.\n'
     window.electronAPI.terminal.write(activeTerminalId, prompt)
+  }
+
+  // Toggle rather than fire-and-forget: the agents page keeps showing its empty
+  // state until this is switched back off, so it can be styled with sessions
+  // still running underneath.
+  function toggleEmptyState() {
+    const next = !emptyStatePinned
+    setEmptyStatePinned(next)
+    setDebugMenuOpen(false)
+    window.dispatchEvent(new CustomEvent('debug:empty-state', { detail: next }))
   }
 
   function showWhatsNew() {
@@ -235,6 +246,16 @@ export function UpdateOverlay() {
                 >
                   <Play className="w-3.5 h-3.5" />
                   Auto update steps
+                </button>
+                <button
+                  onClick={toggleEmptyState}
+                  className={`flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors hover:bg-bg-tertiary ${
+                    emptyStatePinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
+                  }`}
+                >
+                  <Bot className="w-3.5 h-3.5" />
+                  Empty agents state
+                  {emptyStatePinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
                 </button>
                 <button
                   onClick={showWhatsNew}
