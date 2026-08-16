@@ -4,7 +4,7 @@ import * as path from 'path'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import type { CloneErrorCode } from '../../types'
-import { readConfig, updateRepository } from '../config/config'
+import { readConfig, setRepositoryRemoteUrl, updateRepository } from '../config/config'
 import { getCloneDestination, setCloneDestination } from '../config/clone-destination'
 import { GITHUB_REMOTE_URL_PATTERN, getExtendedPath } from '../config/validation'
 import { getGitHubAuthStatus } from '../github'
@@ -180,6 +180,14 @@ export function setupRepoHandlers(): void {
 
   ipcMain.handle('repo:setCloneDestination', async (_event, payload: { destination?: unknown } = {}) => {
     return { destination: setCloneDestination(requireString(payload?.destination, 'destination')) }
+  })
+
+  ipcMain.handle('repo:setRemoteUrl', async (_event, payload: { key?: unknown; remoteUrl?: unknown } = {}) => {
+    const config = await setRepositoryRemoteUrl(
+      requireString(payload?.key, 'key'),
+      requireString(payload?.remoteUrl, 'remoteUrl'),
+    )
+    return { config }
   })
 
   ipcMain.handle(

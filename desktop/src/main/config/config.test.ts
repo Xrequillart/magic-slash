@@ -204,14 +204,70 @@ describe('backfillRepoRemotes', () => {
     expect(readConfig().repositories.api.remoteUrl).toBeUndefined()
   })
 
-  it('accepts an origin whose owner differs, since only the repository half identifies it', async () => {
-    // A fork, a transferred repo or a personal mirror is still the same repository
-    // as far as the record is concerned; the owner is not what the name pins down.
+  it('accepts any owner for the first address an org contributes, having nothing to compare it to', async () => {
+    // The owner rule is consistency, not a whitelist: with no sibling address on
+    // record there is nothing yet to be consistent with, and refusing here would
+    // mean an org could never acquire its first one.
     mockRemoteUrl.mockResolvedValue('https://github.com/someone-else/api')
+
+    await hydrateWith({ api: { id: 'r1', orgId: 'o1', path: '/repo/api', keywords: ['api'] } })
+
+    expect(setRemote).toHaveBeenCalledWith('r1', 'https://github.com/someone-else/api')
+  })
+
+  it('refuses an owner the organization does not already use once one of its repos has an address', async () => {
+    // Name matching alone cannot tell acme/api from evil/api. A team's repos live
+    // under the same account, so once ANY sibling has an address, the owner is a
+    // real signal — and this is the case that would otherwise send every later
+    // invitee to attacker-controlled code.
+    mockRemoteUrl.mockResolvedValue('https://github.com/evil/api')
+
+    await hydrateWith({
+      web: { id: 'r0', orgId: 'o1', path: '/repo/web', remoteUrl: 'https://github.com/acme/web' },
+      api: { id: 'r1', orgId: 'o1', path: '/repo/api', keywords: ['api'] },
+    })
+
+    expect(setRemote).not.toHaveBeenCalled()
+  })
+
+  it('accepts a differing owner that the organization already uses elsewhere', async () => {
+    // Owners are a set, not a single pin: an org spanning two accounts, or a repo
+    // living under a personal one, still resolves.
+    mockRemoteUrl.mockResolvedValue('https://github.com/acme-labs/api')
+
+    await hydrateWith({
+      web: { id: 'r0', orgId: 'o1', path: '/repo/web', remoteUrl: 'https://github.com/acme-labs/web' },
+      api: { id: 'r1', orgId: 'o1', path: '/repo/api', keywords: ['api'] },
+    })
+
+    expect(setRemote).toHaveBeenCalledWith('r1', 'https://github.com/acme-labs/api')
+  })
+
+  it('does not let another organization’s owners vouch for this one', async () => {
+    // Consistency is scoped to the org the repo is shared to; a sibling in a
+    // different org says nothing about this one.
+    mockRemoteUrl.mockResolvedValue('https://github.com/evil/api')
+
+    await hydrateWith({
+      other: { id: 'r0', orgId: 'o2', path: '/repo/other', remoteUrl: 'https://github.com/evil/other' },
+      web: { id: 'r2', orgId: 'o1', path: '/repo/web', remoteUrl: 'https://github.com/acme/web' },
+      api: { id: 'r1', orgId: 'o1', path: '/repo/api', keywords: ['api'] },
+    })
+
+    expect(setRemote).not.toHaveBeenCalled()
+  })
+
+  it('drops the optimistic local address when the backend declines the write', async () => {
+    // The cache is written before the answer so the UI can offer the clone at
+    // once. If the row already held someone else's address, keeping ours would
+    // point this machine's clone somewhere the org never agreed on.
+    setRemote = vi.fn(async () => false)
+    mockRemoteUrl.mockResolvedValue('https://github.com/acme/api')
 
     await hydrateWith({ api: { id: 'r1', path: '/repo/api', keywords: ['api'] } })
 
-    expect(setRemote).toHaveBeenCalledWith('r1', 'https://github.com/someone-else/api')
+    expect(setRemote).toHaveBeenCalledOnce()
+    expect(readConfig().repositories.api.remoteUrl).toBeNull()
   })
 
   it('matches the name past our own org-disambiguation suffix on the record key', async () => {

@@ -329,6 +329,9 @@ const repoApi = {
 
   clone: (key: string, destination?: string): Promise<{ path: string; destination: string }> =>
     ipcRenderer.invoke('repo:clone', { key, destination }),
+
+  setRemoteUrl: (key: string, remoteUrl: string): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('repo:setRemoteUrl', { key, remoteUrl }),
 }
 
 // Skills API

@@ -18,9 +18,12 @@ vi.mock('electron', () => ({
 const mockReadConfig: Mock<() => Config> = vi.fn()
 const mockUpdateRepository: Mock<(name: string, updates: Partial<RepositoryConfig>) => unknown> = vi.fn()
 
+const mockSetRemoteUrl: Mock<(name: string, url: string) => Promise<Config>> = vi.fn()
+
 vi.mock('../config/config', () => ({
   readConfig: () => mockReadConfig(),
   updateRepository: (name: string, updates: Partial<RepositoryConfig>) => mockUpdateRepository(name, updates),
+  setRepositoryRemoteUrl: (name: string, url: string) => mockSetRemoteUrl(name, url),
 }))
 
 // The destination file lives under CONFIG_DIR; the real module is exercised
@@ -307,10 +310,10 @@ describe('cloneRepository', () => {
 })
 
 describe('setupRepoHandlers', () => {
-  it('exposes the three channels the renderer calls', () => {
+  it('exposes the channels the renderer calls', () => {
     setupRepoHandlers()
     expect([...handlers.keys()].sort()).toEqual(
-      ['repo:clone', 'repo:getCloneDestination', 'repo:setCloneDestination'],
+      ['repo:clone', 'repo:getCloneDestination', 'repo:setCloneDestination', 'repo:setRemoteUrl'],
     )
   })
 
@@ -332,6 +335,34 @@ describe('setupRepoHandlers', () => {
     const result = await handlers.get('repo:clone')!(null, { key: 'api', destination: tmpDir })
 
     expect(result).toEqual({ path: path.join(tmpDir, 'api'), destination: tmpDir })
+  })
+
+  it('routes a corrected clone address through the fill-or-correct path and returns the fresh config', async () => {
+    // The correction exists because the capture's guards run on a member's own
+    // machine: a wrong address can get in, and a rename or transfer makes a right
+    // one go stale. Who may actually change it is the backend's call.
+    const config = { version: '1.0.0', repositories: {} } as unknown as Config
+    mockSetRemoteUrl.mockResolvedValue(config)
+    setupRepoHandlers()
+
+    const result = await handlers.get('repo:setRemoteUrl')!(null, {
+      key: 'api',
+      remoteUrl: 'https://github.com/acme/api',
+    })
+
+    expect(mockSetRemoteUrl).toHaveBeenCalledWith('api', 'https://github.com/acme/api')
+    expect(result).toEqual({ config })
+  })
+
+  it('validates the corrected address payload before it reaches the config layer', async () => {
+    setupRepoHandlers()
+    const setRemote = handlers.get('repo:setRemoteUrl')!
+    mockSetRemoteUrl.mockClear()
+
+    await expect(setRemote(null, { key: 'api' })).rejects.toThrow(/"remoteUrl" must be a non-empty string/)
+    await expect(setRemote(null, { remoteUrl: 'https://github.com/acme/api' }))
+      .rejects.toThrow(/"key" must be a non-empty string/)
+    expect(mockSetRemoteUrl).not.toHaveBeenCalled()
   })
 
   it('rejects a payload whose fields are missing or not strings, rather than failing deep inside', async () => {

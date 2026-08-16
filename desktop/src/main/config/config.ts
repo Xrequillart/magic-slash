@@ -3,7 +3,12 @@ import * as os from 'os'
 import { randomUUID } from 'crypto'
 import type { Config, RepositoryConfig, LanguageId, LaunchMode, OrgSharedConfig, ThemeId } from '../../types'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
-import { expandPath, getGitHubRepoUrl, getGitHubRepoUrlAsync } from './validation'
+import {
+  GITHUB_REMOTE_URL_PATTERN,
+  expandPath,
+  getGitHubRepoUrl,
+  getGitHubRepoUrlAsync,
+} from './validation'
 import { CONFIG_DIR } from './paths'
 import { getStore, reportWriteError } from '../store/Store'
 
@@ -230,32 +235,69 @@ function persistRepoIdentity(name: string): void {
 }
 
 /**
+ * Undo an optimistic capture the backend declined.
+ *
+ * Looked up by id rather than by key: the config may have been reloaded between
+ * the write and its answer, so the object we cached onto is not necessarily the
+ * one readConfig serves now. Only clears the exact value we put there — anything
+ * else is a fresher truth arriving from hydration, and ours is the stale one.
+ */
+function revertCapturedRemote(repoId: string, attempted: string): void {
+  const repo = Object.values(readConfig().repositories ?? {}).find((candidate) => candidate.id === repoId)
+  if (repo?.remoteUrl === attempted) repo.remoteUrl = null
+}
+
+/** ` (Acme)` on a record key is our own disambiguation, never GitHub's. */
+const normaliseRepoName = (value: string) =>
+  value.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase()
+
+/** The `owner` half of a canonical `https://github.com/owner/repo`. */
+const remoteOwner = (remoteUrl: string) =>
+  (remoteUrl.split('/').at(-2) ?? '').toLowerCase()
+
+/**
  * Does this origin plausibly belong to the repository we are about to fill?
  *
  * The capture is opportunistic: it takes whatever `origin` the folder a member
- * just bound happens to point at, and that address then becomes the one every
+ * just bound happens to point at, and that address becomes the one every
  * teammate clones. Nothing about "the folder I picked" proves it is the team's
- * repo — a member could bind a checkout of something else entirely, and because
- * the column is fill-only, the wrong address would stick for everyone.
+ * repo — a member could bind a checkout of something else entirely, and every
+ * later invitee would clone that instead.
  *
- * So require the `repo` half of `owner/repo` to match the repository's own name
- * before contributing it. GitHub repo names and our record names use the same
- * alphabet, and the record key may carry an org suffix (`api (Acme)`) that is
- * ours, not GitHub's — hence the light normalisation on both sides.
+ * Two conditions, and neither is sufficient alone:
  *
- * This is a mismatch guard, not an authorization boundary: it stops the accident
- * and the casual case, not a member determined to name their folder correctly.
- * The boundary lives server-side, where the RPC constrains the shape it accepts
- * and refuses to overwrite an address that is already set.
+ *  - the `repo` half of `owner/repo` matches the repository's own name. Catches
+ *    the accident: the wrong folder, a sibling checkout, a stale clone.
+ *  - for a repo shared to an org, the `owner` half matches an owner the org
+ *    already uses. A team's repositories live under the same account, so once
+ *    ANY of them has an address, `evil/api` no longer passes for `acme/api` —
+ *    which name matching alone could not tell apart. Owners are compared as a
+ *    set rather than pinned to one, so an org spanning several accounts still
+ *    works, and a fork or a transfer under a known owner still resolves.
+ *
+ * The owner rule is vacuous for the org's FIRST address, because there is
+ * nothing yet to be consistent with, and for a personal repo, which is shared
+ * with no one. That residue is why this stays a mismatch guard rather than an
+ * authorization boundary: the boundary is server-side, where the RPC constrains
+ * the shape it accepts, and where an owner or org admin can now correct an
+ * address that turns out to be wrong.
  */
-function remoteMatchesRepo(remoteUrl: string, repoName: string): boolean {
-  const originRepo = remoteUrl.split('/').pop() ?? ''
-  const normalise = (value: string) =>
-    value
-      .replace(/\s*\([^)]*\)\s*$/, '') // drop our own ` (Org)` disambiguation suffix
-      .trim()
-      .toLowerCase()
-  return normalise(originRepo) === normalise(repoName)
+function remoteAcceptableFor(
+  remoteUrl: string,
+  repo: RepositoryConfig,
+  key: string,
+  repositories: Record<string, RepositoryConfig>,
+): boolean {
+  const originRepo = remoteUrl.split('/').at(-1) ?? ''
+  if (normaliseRepoName(originRepo) !== normaliseRepoName(repo.name ?? key)) return false
+
+  if (!repo.orgId) return true
+  const knownOwners = new Set(
+    Object.values(repositories)
+      .filter((sibling) => sibling.id !== repo.id && sibling.orgId === repo.orgId && sibling.remoteUrl)
+      .map((sibling) => remoteOwner(sibling.remoteUrl as string)),
+  )
+  return knownOwners.size === 0 || knownOwners.has(remoteOwner(remoteUrl))
 }
 
 /**
@@ -272,17 +314,24 @@ function remoteMatchesRepo(remoteUrl: string, repoName: string): boolean {
  * take the path binding — the thing the user actually asked for — down with it.
  */
 function captureRepoRemote(name: string, repoPath: string): void {
-  const repo = readConfig().repositories?.[name]
+  const repositories = readConfig().repositories ?? {}
+  const repo = repositories[name]
   if (!repo?.id || repo.remoteUrl) return
 
   const remoteUrl = getGitHubRepoUrl(repoPath)
-  if (!remoteUrl || !remoteMatchesRepo(remoteUrl, repo.name ?? name)) return
+  if (!remoteUrl || !remoteAcceptableFor(remoteUrl, repo, name, repositories)) return
 
   // Reflect it locally right away so a second path change doesn't re-derive it,
   // and so the UI can offer the clone without waiting for a re-hydration.
   repo.remoteUrl = remoteUrl
   void getStore()
     .setRepositoryRemoteUrl(repo.id, remoteUrl)
+    .then((accepted) => {
+      // Refused: someone else's address is what the org actually has. Drop the
+      // optimistic value rather than leave the cache asserting an address the
+      // database never took — the clone would use ours and go somewhere else.
+      if (!accepted) revertCapturedRemote(repo.id as string, remoteUrl)
+    })
     .catch((error) => console.error('Error capturing repository remote:', error))
 }
 
@@ -327,15 +376,21 @@ export async function backfillRepoRemotes(): Promise<void> {
 
     try {
       const remoteUrl = await getGitHubRepoUrlAsync(repo.path)
-      if (!remoteUrl || !remoteMatchesRepo(remoteUrl, repo.name ?? name)) continue
+      if (!remoteUrl) continue
 
       // Re-read: the config may have been reloaded, renamed or deleted while git
       // was running, and writing onto a detached object would be writing nowhere.
-      const current = readConfig().repositories?.[name]
+      // The acceptance check runs against THIS snapshot, not the pre-await one:
+      // a sibling filled in the meantime is exactly what the owner rule consults.
+      const repositories = readConfig().repositories ?? {}
+      const current = repositories[name]
       if (current?.id !== repo.id || current.remoteUrl) continue
+      if (!remoteAcceptableFor(remoteUrl, current, name, repositories)) continue
 
       current.remoteUrl = remoteUrl
-      await getStore().setRepositoryRemoteUrl(repo.id, remoteUrl)
+      if (!(await getStore().setRepositoryRemoteUrl(repo.id, remoteUrl))) {
+        revertCapturedRemote(repo.id, remoteUrl)
+      }
     } catch (error) {
       console.error('Error backfilling repository remote:', error)
     }
@@ -439,6 +494,35 @@ export function updateRepository(name: string, updates: Partial<RepositoryConfig
     if (updates.path) captureRepoRemote(name, updates.path)
   }
   if (identityChanged) persistRepoIdentity(name)
+  return config
+}
+
+/**
+ * Correct a repository's clone address.
+ *
+ * The capture is opportunistic and its guards are heuristics running on a
+ * member's own machine, so a wrong address can get in — and a repository that is
+ * renamed or transferred makes a right one go stale later. Without this the
+ * column was write-once and neither case had a way back through the app.
+ *
+ * Unlike the capture, this is NOT fire-and-forget: the user typed this value and
+ * is owed an answer. The backend decides who may change an address that is
+ * already set (owner or org admin), so a refusal here is authoritative and the
+ * local cache is left exactly as it was.
+ */
+export async function setRepositoryRemoteUrl(name: string, remoteUrl: string): Promise<Config> {
+  const config = readConfig()
+  const repo = config.repositories?.[name]
+  if (!repo) throw new Error(`Repository '${name}' not found`)
+  if (!repo.id) throw new Error(`Repository '${name}' has no cloud identity yet`)
+  if (!GITHUB_REMOTE_URL_PATTERN.test(remoteUrl)) {
+    throw new Error('repository remote must be https://github.com/owner/repo')
+  }
+
+  if (!(await getStore().setRepositoryRemoteUrl(repo.id, remoteUrl))) {
+    throw new Error('remote-url-refused')
+  }
+  repo.remoteUrl = remoteUrl
   return config
 }
 

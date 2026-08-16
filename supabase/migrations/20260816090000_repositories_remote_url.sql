@@ -83,8 +83,23 @@ begin
     return false;
   end if;
 
-  -- Fill-only. An address that is already there is an admin's to change.
-  if v_current is not null then
+  -- Filling a blank is open to any member; CHANGING an address that is already
+  -- there is not. The distinction is the whole security model of this column.
+  --
+  -- A member contributes the address their own clone reports, and nothing about
+  -- "the folder I picked" proves it is the team's repo. The client-side guards
+  -- narrow that (the name must match, and the owner must match one the org
+  -- already uses), but they are heuristics running on the member's own machine
+  -- and cannot be the last word. So the answer to a wrong address is not to make
+  -- the first write unforgeable — it is to make it CORRECTABLE, by exactly the
+  -- people who can already rename or delete the repository outright.
+  --
+  -- Without this branch the column was write-once: a mistaken or malicious
+  -- address, or simply a repo that was later renamed or transferred, was frozen
+  -- for the whole org with no path back through the app.
+  if v_current is not null
+     and v_owner is distinct from auth.uid()
+     and not (v_org is not null and public.is_org_admin(v_org)) then
     return false;
   end if;
   -- Validate the shape here too, rather than leaning on the column constraint
@@ -98,12 +113,20 @@ begin
     return false;
   end if;
 
+  -- `remote_url is null` still guards the FILL, so two members racing to
+  -- contribute an address cannot have the second silently overwrite the first —
+  -- that predicate is the race protection, and it is why the fill path re-checks
+  -- a value it already read. A CHANGE has been authorized above and is meant to
+  -- overwrite, so it must not be held back by it.
   update public.repositories
      set remote_url = p_url
    where id = p_repo_id
-     and remote_url is null;
+     and (v_current is not null or remote_url is null);
 
-  return true;
+  -- Report what actually happened rather than a blanket true: on a lost fill
+  -- race the row is untouched and the address in the database is someone else's,
+  -- not the one the caller just cached locally.
+  return found;
 end;
 $$;
 

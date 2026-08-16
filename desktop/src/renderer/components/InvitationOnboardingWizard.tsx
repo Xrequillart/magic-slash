@@ -114,6 +114,13 @@ function OrgRepoBindRow({ row, state = {}, onLink, onClone, onConfirm, onCancel 
               {t(REASON_META['no-local-path'].labelKey)}
             </span>
           )}
+          {canClone && (
+            // Show what Clone will actually fetch. The address is contributed by
+            // whichever teammate first had the repo on disk, so the person about
+            // to run `git clone` on it is entitled to see it beforehand rather
+            // than discover it in their shell history afterwards.
+            <div className="text-[11px] text-text-secondary/50 truncate mt-0.5">{row.remoteUrl}</div>
+          )}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {canClone && (
