@@ -14,9 +14,9 @@ function repo(overrides: Partial<RepositoryConfig> = {}): RepositoryConfig {
 // An invitee's config right after accepting: the org's repositories arrive
 // unbound, and the key of the second `api` carries an org suffix.
 const REPOS: Record<string, RepositoryConfig> = {
-  'web': repo({ orgId: 'org-1', name: 'web', path: '', needsLocalPath: true }),
+  'web': repo({ orgId: 'org-1', name: 'web', path: '', needsLocalPath: true, remoteUrl: 'https://github.com/acme/web' }),
   'api (Acme)': repo({ orgId: 'org-1', name: 'api', path: '', needsLocalPath: true }),
-  'infra': repo({ orgId: 'org-1', name: 'infra', path: '/Users/me/dev/infra' }),
+  'infra': repo({ orgId: 'org-1', name: 'infra', path: '/Users/me/dev/infra', remoteUrl: 'https://github.com/acme/infra' }),
   'notes': repo({ orgId: null }),
   'scratch': repo(),
   'other-org': repo({ orgId: 'org-2', name: 'billing' }),
@@ -39,7 +39,23 @@ describe('listBindableOrgRepos', () => {
   it('shows the org name, not the key, when the two differ', () => {
     const row = listBindableOrgRepos(REPOS, 'org-1').find((r) => r.key === 'api (Acme)')
     // The key is what a config write takes; the name is what the invitee reads.
-    expect(row).toEqual({ key: 'api (Acme)', displayName: 'api', path: '' })
+    expect(row).toEqual({ key: 'api (Acme)', displayName: 'api', path: '', remoteUrl: '' })
+  })
+
+  // The address is what turns "go find your clone" into one Clone button, so it
+  // has to reach the row — the wizard has no other source for it.
+  it('surfaces the repository’s clone address', () => {
+    const rows = listBindableOrgRepos(REPOS, 'org-1')
+    expect(rows.find((r) => r.key === 'web')?.remoteUrl).toBe('https://github.com/acme/web')
+  })
+
+  it('still lists a repository that has no clone address — it is bindable by hand', () => {
+    // A repo created before the capture, or one whose origin is not on GitHub.
+    // The folder picker is the only route for it, never an absence from the list.
+    const rows = listBindableOrgRepos(REPOS, 'org-1')
+    const api = rows.find((r) => r.key === 'api (Acme)')
+    expect(api).toBeDefined()
+    expect(api?.remoteUrl).toBe('')
   })
 
   it('falls back to the key when the repository has no cloud name', () => {

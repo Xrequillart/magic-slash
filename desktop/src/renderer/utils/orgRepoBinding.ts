@@ -17,6 +17,12 @@ export interface OrgRepoRow {
   key: string
   displayName: string
   path: string
+  /**
+   * The repository's shared clone address, when the org knows one. Empty means
+   * there is nothing to clone from and the folder picker is the only route —
+   * a repo predating the capture, or one whose origin is not on GitHub.
+   */
+  remoteUrl: string
 }
 
 /** What a picked folder says about the repository it is about to be bound to. */
@@ -50,6 +56,7 @@ export function listBindableOrgRepos(
       key,
       displayName: repo.name ?? key,
       path: repo.path ?? '',
+      remoteUrl: repo.remoteUrl ?? '',
     }))
 
   rows.sort((a, b) => a.displayName.localeCompare(b.displayName))

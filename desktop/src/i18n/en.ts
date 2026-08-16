@@ -791,6 +791,10 @@ export const en = {
   'invite.wizard.noOrgRepos': 'Your team hasn’t shared any repository yet.',
   'invite.wizard.linkFolder': 'Link folder',
   'invite.wizard.changeFolder': 'Change',
+  'invite.wizard.clone': 'Clone',
+  'invite.wizard.cloning': 'Cloning…',
+  'invite.wizard.cloneDestination': 'Clones go to',
+  'invite.wizard.changeDestination': 'Change',
   'invite.wizard.mismatchWarning':
     'The folder “{folder}” doesn’t look like “{name}”. Link it anyway?',
   'invite.wizard.belongsToOther':
@@ -808,6 +812,17 @@ export const en = {
   'invite.error.acceptFailed': 'Failed to accept invitation',
   'invite.error.repoExists': '“{name}” already added',
   'invite.error.addReposFailed': 'Failed to add repositories',
+
+  // ── Cloning a repository ─────────────────────────────────────────────────
+  // Thrown by the main process as KEYS, not sentences: it has no language of its
+  // own. See CLONE_ERROR_CODES in types.ts — anything not listed there is a git
+  // message shown verbatim.
+  'clone.error.noRemote': 'This repository has no known address — link an existing folder instead.',
+  'clone.error.invalidRemote': 'This repository’s address isn’t a valid GitHub URL.',
+  'clone.error.targetExists': 'A folder of that name already exists there — pick another destination, or link it.',
+  'clone.error.ghMissing': 'The GitHub CLI (gh) isn’t installed. Install it, then run “gh auth login”.',
+  'clone.error.notAuthenticated': 'You’re not signed in to GitHub. Run “gh auth login” in a terminal, then try again.',
+  'clone.error.unknownRepo': 'This repository is no longer in your configuration.',
 
   // ── Durations ────────────────────────────────────────────────────────────
   'duration.lessThanMinute': '< 1 min',

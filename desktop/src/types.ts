@@ -202,6 +202,16 @@ export interface RepositoryConfig {
   orgId?: string | null
   ownerId?: string | null
   needsLocalPath?: boolean
+  /**
+   * Normalised clone address of the repository (`https://github.com/owner/repo`),
+   * derived from `git remote get-url origin` when a local path is bound.
+   *
+   * SHARED, unlike `path`: it is identity, not a machine detail, and it is what
+   * lets a teammate who has no clone yet get one in a click. It is never a
+   * secret — the clone runs locally with the user's own gh/ssh credentials.
+   * Absent when the repo has no GitHub origin, or predates the capture.
+   */
+  remoteUrl?: string | null
   path: string
   keywords: string[]
   color?: string  // hex color, e.g. '#3B82F6'
@@ -275,12 +285,52 @@ export interface StoredRepository {
   issues?: RepositoryConfig['issues']
   branches?: RepositoryConfig['branches']
   worktreeFiles?: string[]
+  /** Shared clone address — see RepositoryConfig.remoteUrl. Null when unknown. */
+  remoteUrl?: string | null
   /** The caller's own local path binding, or null when unbound on this machine. */
   path: string | null
 }
 
-/** Identity fields of a repository (everything except id/owner/path). */
-export type RepositoryIdentity = Omit<StoredRepository, 'id' | 'ownerId' | 'path'>
+/**
+ * Identity fields a repository UPDATE may carry (everything except id/owner/path).
+ *
+ * `remoteUrl` is excluded even though it is shared identity: it has exactly one
+ * writer, `Store.setRepositoryRemoteUrl`, which is fill-only and open to plain
+ * members. Leaving it here would make the generic update a second writer that
+ * silently bypasses that invariant — and fails RLS for the very members the
+ * capture runs on. Creation still carries it, via StoredRepository.
+ */
+export type RepositoryIdentity = Omit<StoredRepository, 'id' | 'ownerId' | 'path' | 'remoteUrl'>
+
+/**
+ * The ways `repo:clone` can refuse, as message catalogue keys.
+ *
+ * The handler stays language-free by design — its errors are the contract its
+ * tests assert on — so it throws the KEY and the renderer, which already holds a
+ * bound `t`, turns it into a sentence. Anything else the handler throws is a git
+ * message, passed through as-is: precisely the failures where a raw git error
+ * still leaves the user with something to act on.
+ */
+export const CLONE_ERROR_CODES = [
+  /** The repository has no known remote — nothing to clone from. */
+  'clone.error.noRemote',
+  /** The stored remote is not a plain `https://github.com/owner/repo`. */
+  'clone.error.invalidRemote',
+  /** The destination folder already exists and is not empty. */
+  'clone.error.targetExists',
+  /** `gh` is not installed, so we cannot even tell whether the user is logged in. */
+  'clone.error.ghMissing',
+  /** No usable GitHub login: the clone would hang or 404 on a private repo. */
+  'clone.error.notAuthenticated',
+  /** The key names no repository in the config. */
+  'clone.error.unknownRepo',
+] as const
+
+export type CloneErrorCode = (typeof CLONE_ERROR_CODES)[number]
+
+export function isCloneErrorCode(value: string): value is CloneErrorCode {
+  return (CLONE_ERROR_CODES as readonly string[]).includes(value)
+}
 
 export interface Agent {
   id: string

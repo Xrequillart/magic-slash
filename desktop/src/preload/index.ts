@@ -311,6 +311,26 @@ const dialogApi = {
   openFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:openFile'),
 }
 
+/**
+ * Repository API — the operations that act on the FILESYSTEM for a repository,
+ * as opposed to `config.*`, which edits its settings.
+ *
+ * `clone` takes the config record key (which may read `api (Acme)`), the same
+ * argument every `config.*Repository` call takes; the folder it creates is named
+ * after the remote instead. It binds the resulting path to that repository, so
+ * the renderer must reload the config after it resolves.
+ */
+const repoApi = {
+  getCloneDestination: (): Promise<{ destination: string }> =>
+    ipcRenderer.invoke('repo:getCloneDestination'),
+
+  setCloneDestination: (destination: string): Promise<{ destination: string }> =>
+    ipcRenderer.invoke('repo:setCloneDestination', { destination }),
+
+  clone: (key: string, destination?: string): Promise<{ path: string; destination: string }> =>
+    ipcRenderer.invoke('repo:clone', { key, destination }),
+}
+
 // Skills API
 const skillsApi = {
   list: () => ipcRenderer.invoke('skills:list'),
@@ -634,6 +654,7 @@ const zoomApi = {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   config: configApi,
+  repo: repoApi,
   terminal: terminalApi,
   history: historyApi,
   window: windowApi,
@@ -661,6 +682,7 @@ declare global {
   interface Window {
     electronAPI: {
       config: typeof configApi
+      repo: typeof repoApi
       terminal: typeof terminalApi
       history: typeof historyApi
       window: typeof windowApi

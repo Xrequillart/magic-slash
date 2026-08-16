@@ -2,10 +2,13 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import { execSync, execFile } from 'child_process'
+import { promisify } from 'util'
 import { getCommonPaths } from '../utils/paths'
 
+const execFileAsync = promisify(execFile)
+
 // Get extended PATH for git commands (GUI apps on macOS don't inherit shell PATH)
-function getExtendedPath(): string {
+export function getExtendedPath(): string {
   return [...getCommonPaths(), process.env.PATH || ''].join(':')
 }
 
@@ -522,29 +525,93 @@ export interface BranchCommitsResult {
   isGitRepo: boolean
 }
 
+/**
+ * The only remote shape the app accepts, and therefore the only one it will hand
+ * to `git clone`. Anchored, https-only and github.com-only: that rules out a
+ * nested path (`…/owner/repo/tree/main`), an `ext::sh -c` remote, and an
+ * argument smuggled in as `…/owner/repo --upload-pack=sh`.
+ *
+ * Exported so the clone handler validates against the very pattern that produced
+ * the stored value — `remote_url` is fill-only once written, so a laxer capture
+ * here would mint addresses the clone can never accept.
+ */
+export const GITHUB_REMOTE_URL_PATTERN = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/
+
+/**
+ * The canonical `https://github.com/owner/repo` form of whatever `git remote
+ * get-url origin` printed — SSH (`git@github.com:owner/repo.git`) or HTTPS
+ * (`https://github.com/owner/repo.git`) alike. Null for anything else: a
+ * self-hosted remote, a `git://` URL, or no remote at all.
+ *
+ * The single place that parsing lives. It feeds both the "open on GitHub" links
+ * and `repositories.remote_url`, which is what a teammate later clones from, so
+ * two implementations drifting apart would mean the app showing one address and
+ * cloning another.
+ */
+export function normalizeGitHubRemote(remoteUrl: string): string | null {
+  const trimmed = remoteUrl.trim()
+
+  // SSH format: git@github.com:owner/repo.git — or HTTPS, which may also be http.
+  const match =
+    trimmed.match(/^git@github\.com:(.+?)(?:\.git)?$/) ??
+    trimmed.match(/^https?:\/\/github\.com\/(.+?)(?:\.git)?$/)
+  if (!match) return null
+
+  // Both captures are lazy but anchored, so they happily swallow slashes and
+  // spaces. Re-checking the assembled URL is what keeps the output to owner/repo.
+  const url = `https://github.com/${match[1]}`
+  return GITHUB_REMOTE_URL_PATTERN.test(url) ? url : null
+}
+
 export function getGitHubRepoUrl(repoPath: string): string | null {
   const expandedPath = expandPath(repoPath)
 
-  if (!fs.existsSync(expandedPath)) {
+  // A folder with no `.git` has no origin either, and asking git anyway costs a
+  // subprocess that is certain to fail — this is the answer for every repo the
+  // app flags as "not a git repository".
+  if (!fs.existsSync(path.join(expandedPath, '.git'))) {
     return null
   }
 
   try {
-    const remoteUrl = execGitSync('git remote get-url origin', expandedPath).trim()
-
-    // Parse SSH format: git@github.com:owner/repo.git
-    const sshMatch = remoteUrl.match(/^git@github\.com:(.+?)(?:\.git)?$/)
-    if (sshMatch) {
-      return `https://github.com/${sshMatch[1]}`
-    }
-
-    // Parse HTTPS format: https://github.com/owner/repo.git
-    const httpsMatch = remoteUrl.match(/^https?:\/\/github\.com\/(.+?)(?:\.git)?$/)
-    if (httpsMatch) {
-      return `https://github.com/${httpsMatch[1]}`
-    }
-
+    return normalizeGitHubRemote(execGitSync('git remote get-url origin', expandedPath))
+  } catch {
     return null
+  }
+}
+
+/**
+ * The same answer as getGitHubRepoUrl, without blocking the main process.
+ *
+ * getGitHubRepoUrl spawns git SYNCHRONOUSLY, which is tolerable for the single
+ * folder a user just picked and is not tolerable for a sweep over every
+ * configured repository: the event loop — every window, every terminal — would
+ * stop for the sum of those subprocesses. This variant is what the remote
+ * backfill uses (see config.ts).
+ *
+ * Same parsing, deliberately: normalizeGitHubRemote is the one place the SSH and
+ * HTTPS forms are understood, so the two entry points can never disagree about
+ * the address they hand to `git clone`.
+ */
+export async function getGitHubRepoUrlAsync(repoPath: string): Promise<string | null> {
+  const expandedPath = expandPath(repoPath)
+
+  // Same shortcut as the sync version: no `.git`, no origin — and no subprocess
+  // spent finding that out. (A worktree's `.git` is a file, hence access, not stat.)
+  try {
+    await fs.promises.access(path.join(expandedPath, '.git'))
+  } catch {
+    return null
+  }
+
+  try {
+    const { stdout } = await execFileAsync('/usr/bin/git', ['remote', 'get-url', 'origin'], {
+      cwd: expandedPath,
+      encoding: 'utf8',
+      timeout: 3000,
+      env: { ...process.env, PATH: getExtendedPath() },
+    })
+    return normalizeGitHubRemote(String(stdout))
   } catch {
     return null
   }

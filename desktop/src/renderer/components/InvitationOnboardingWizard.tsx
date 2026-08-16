@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { Mail, ChevronLeft, ChevronRight, X, Check, Folder, FolderOpen, Loader2 } from 'lucide-react'
+import { Mail, ChevronLeft, ChevronRight, X, Check, Download, Folder, FolderOpen, Loader2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useOrg } from '../hooks/useOrg'
 import { useConfig } from '../hooks/useConfig'
-import { useT } from '../i18n'
+import { useT, type Translate } from '../i18n'
+import { isCloneErrorCode } from '../../types'
 import { INPUT } from '../theme/controls'
 import { repoBasename } from '../../repoMatch'
 import { REASON_META, type RepoSetupReason } from '../utils/repoSetup'
@@ -27,7 +28,12 @@ interface InvitationOnboardingWizardProps {
  * one of these — the states are alternatives, never combined.
  */
 interface RowState {
-  busy?: boolean
+  /**
+   * Work in flight, and which button started it — a clone takes minutes rather
+   * than milliseconds, so its button says "Cloning…" instead of spinning silently
+   * while the other one does the waiting.
+   */
+  busy?: 'link' | 'clone'
   /**
    * A picked folder whose name does not look like the repository's, held until
    * the user confirms. Non-blocking on purpose: a local clone is allowed to be
@@ -49,10 +55,30 @@ interface RowState {
 
 const TOTAL_STEPS = 3
 
+/** The row's two action buttons, which differ only in icon and label. */
+const ROW_ACTION =
+  'flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-accent border border-accent/20 rounded-lg hover:bg-accent/10 transition-all disabled:opacity-40'
+
+/**
+ * What to show for a failed clone.
+ *
+ * `repo:clone` throws a message-catalogue key for every failure it can explain
+ * (see CLONE_ERROR_CODES) and git's own text for the ones it cannot. Translating
+ * only the keys keeps that raw text intact — losing it would replace a precise
+ * git error with a generic apology.
+ */
+function cloneErrorMessage(error: unknown, t: Translate): string {
+  const message = error instanceof Error ? error.message : String(error)
+  // Electron wraps a handler's throw as "Error invoking remote method '…': Error: <message>".
+  const unwrapped = message.replace(/^Error invoking remote method '[^']*': (?:Error: )?/, '')
+  return isCloneErrorCode(unwrapped) ? t(unwrapped) : unwrapped || t('repoSetup.error')
+}
+
 interface OrgRepoBindRowProps {
   row: OrgRepoRow
   state?: RowState
   onLink: () => void
+  onClone: () => void
   onConfirm: (folderPath: string) => void
   onCancel: () => void
 }
@@ -65,9 +91,13 @@ interface OrgRepoBindRowProps {
  * question ("which of your repositories are broken"), and merging the two would
  * make each one carry the other's states.
  */
-function OrgRepoBindRow({ row, state = {}, onLink, onConfirm, onCancel }: OrgRepoBindRowProps) {
+function OrgRepoBindRow({ row, state = {}, onLink, onClone, onConfirm, onCancel }: OrgRepoBindRowProps) {
   const t = useT()
   const pending = state.pending
+  // Only offered for a repo that is BOTH clonable and absent. A repo already on
+  // disk gets "Link folder" alone: cloning it again would either fail on a
+  // non-empty folder or leave the user with a second, unrelated checkout.
+  const canClone = !!row.remoteUrl && !row.path
 
   return (
     <div className="px-3 py-2 bg-surface border border-line-field rounded-lg">
@@ -85,15 +115,20 @@ function OrgRepoBindRow({ row, state = {}, onLink, onConfirm, onCancel }: OrgRep
             </span>
           )}
         </div>
-        <button
-          onClick={onLink}
-          disabled={state.busy}
-          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-accent border border-accent/20 rounded-lg hover:bg-accent/10 transition-all disabled:opacity-40 flex-shrink-0"
-        >
-          {state.busy
-            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            : <><FolderOpen className="w-3.5 h-3.5" />{t(row.path ? 'invite.wizard.changeFolder' : 'invite.wizard.linkFolder')}</>}
-        </button>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {canClone && (
+            <button onClick={onClone} disabled={!!state.busy} className={ROW_ACTION}>
+              {state.busy === 'clone'
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{t('invite.wizard.cloning')}</>
+                : <><Download className="w-3.5 h-3.5" />{t('invite.wizard.clone')}</>}
+            </button>
+          )}
+          <button onClick={onLink} disabled={!!state.busy} className={ROW_ACTION}>
+            {state.busy === 'link'
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <><FolderOpen className="w-3.5 h-3.5" />{t(row.path ? 'invite.wizard.changeFolder' : 'invite.wizard.linkFolder')}</>}
+          </button>
+        </div>
       </div>
 
       {/* Name mismatch — a question, never a wall: the user can link anyway. */}
@@ -169,8 +204,23 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
   // personal, so they never appear among the org rows — listed apart so the
   // user still sees what they just added.
   const [addedKeys, setAddedKeys] = useState<string[]>([])
+  // The parent folder clones land in. Read from the main process — it owns the
+  // default (~/dev) and the memory of a previous choice — so it is null until the
+  // first read answers rather than flashing a guess the app might not use.
+  const [cloneDestination, setCloneDestinationState] = useState<string | null>(null)
 
   useEffect(() => { setToken(initialToken) }, [initialToken])
+
+  // Only once step 2 is reachable: before that there is nothing to clone into,
+  // and the wizard may well be closed again from step 1. Asked once — step 2 is
+  // re-enterable via Back, and the only thing that changes the destination
+  // afterwards is handleChangeDestination, which sets the state itself.
+  useEffect(() => {
+    if (step !== 2 || cloneDestination !== null) return
+    window.electronAPI.repo.getCloneDestination()
+      .then(({ destination }) => setCloneDestinationState(destination))
+      .catch(() => setCloneDestinationState(null))
+  }, [step, cloneDestination])
 
   useEffect(() => {
     if (!isOpen) return
@@ -235,26 +285,17 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
   }, [addedKeys, repositories, orgRows])
 
   /**
-   * Bind a folder to an existing repository, then ask the main process whether
-   * that actually produced a usable repo.
+   * Ask the main process whether the path a row just acquired — picked or cloned —
+   * actually produced a usable repo, and settle the row on the answer.
    *
-   * The re-check is not belt and braces: `config:updateRepository` validates the
-   * path but drops the warning it computes, so without it a folder that is not a
-   * git repository — or one that has since moved — binds silently, which is the
-   * failure this step exists to remove. A failed write keeps the row actionable
-   * and claims nothing.
+   * Not belt and braces: `config:updateRepository` validates the path but drops
+   * the warning it computes, so without this a folder that is not a git repository
+   * — or one that has since moved — binds silently, which is the failure this step
+   * exists to remove. Runs only AFTER the write has landed, which is what makes
+   * its own failure different: the verdict is unknown, the write is not, so the
+   * row stays actionable and claims nothing.
    */
-  const bindFolder = useCallback(async (key: string, folderPath: string) => {
-    setRowStates((prev) => ({ ...prev, [key]: { busy: true } }))
-    try {
-      await updateRepository(key, { path: folderPath })
-    } catch (e) {
-      setRowStates((prev) => ({
-        ...prev,
-        [key]: { error: e instanceof Error ? e.message : t('repoSetup.error') },
-      }))
-      return
-    }
+  const recheck = useCallback(async (key: string) => {
     try {
       const invalid = await window.electronAPI.config.getInvalidRepos()
       const stillInvalid = invalid.find((repo) => repo.name === key)
@@ -266,7 +307,21 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
         [key]: { error: e instanceof Error ? e.message : t('repoSetup.unverified') },
       }))
     }
-  }, [updateRepository, t])
+  }, [t])
+
+  const bindFolder = useCallback(async (key: string, folderPath: string) => {
+    setRowStates((prev) => ({ ...prev, [key]: { busy: 'link' } }))
+    try {
+      await updateRepository(key, { path: folderPath })
+    } catch (e) {
+      setRowStates((prev) => ({
+        ...prev,
+        [key]: { error: e instanceof Error ? e.message : t('repoSetup.error') },
+      }))
+      return
+    }
+    await recheck(key)
+  }, [updateRepository, recheck, t])
 
   /** Pick a folder for one org repo. A name that does not match only warns. */
   const handleLinkFolder = useCallback(async (row: OrgRepoRow) => {
@@ -289,6 +344,43 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
   const handleCancelPending = useCallback((key: string) => {
     setRowStates((prev) => ({ ...prev, [key]: {} }))
   }, [])
+
+  /**
+   * Clone an org repository into the chosen destination and bind it.
+   *
+   * The main process binds the path itself — to the ORG's repository, never to a
+   * new entry — so the config on this side is stale the moment it returns. Hence
+   * the explicit `loadConfig()`: `bindFolder` gets the same refresh for free from
+   * `useConfig.updateRepository`, and without it the row would keep showing "no
+   * folder" and offering to clone what was just cloned.
+   *
+   * It runs alongside the re-check rather than before it: `repos:getInvalid` reads
+   * the main process's own config, which `repo:clone` already updated before it
+   * resolved, so it does not wait on this renderer catching up.
+   */
+  const handleClone = useCallback(async (row: OrgRepoRow) => {
+    setError(null)
+    setRowStates((prev) => ({ ...prev, [row.key]: { busy: 'clone' } }))
+    try {
+      await window.electronAPI.repo.clone(row.key)
+    } catch (e) {
+      setRowStates((prev) => ({ ...prev, [row.key]: { error: cloneErrorMessage(e, t) } }))
+      return
+    }
+    await Promise.all([loadConfig(), recheck(row.key)])
+  }, [loadConfig, recheck, t])
+
+  /** Change where clones land. Remembered by the main process, for every repo. */
+  const handleChangeDestination = useCallback(async () => {
+    const folderPath = await window.electronAPI.dialog.openFolder()
+    if (!folderPath) return
+    try {
+      const { destination } = await window.electronAPI.repo.setCloneDestination(folderPath)
+      setCloneDestinationState(destination)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('repoSetup.error'))
+    }
+  }, [t])
 
   /**
    * Escape hatch: a repository the org does not have. Repositories are keyed by
@@ -436,6 +528,25 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                 </div>
               </div>
 
+              {/* Where clones land. Shown before the rows because it applies to
+                  all of them, and changeable here because otherwise the "chosen
+                  once, remembered after" half of the flow has no way in. */}
+              {cloneDestination && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-surface border border-line-field rounded-lg">
+                  <Folder className="w-3.5 h-3.5 text-text-secondary/60 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] text-text-secondary/60">{t('invite.wizard.cloneDestination')}</div>
+                    <div className="text-xs truncate" title={cloneDestination}>{cloneDestination}</div>
+                  </div>
+                  <button
+                    onClick={handleChangeDestination}
+                    className="px-2.5 py-1 text-xs font-medium text-accent border border-accent/20 rounded-lg hover:bg-accent/10 transition-all flex-shrink-0"
+                  >
+                    {t('invite.wizard.changeDestination')}
+                  </button>
+                </div>
+              )}
+
               {/* Scrollable, so an org with twenty repositories stays usable */}
               <div className="space-y-1.5 max-h-[40vh] overflow-y-auto">
                 {orgRows.length === 0 && addedRows.length === 0 && (
@@ -449,6 +560,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                     row={row}
                     state={rowStates[row.key]}
                     onLink={() => handleLinkFolder(row)}
+                    onClone={() => handleClone(row)}
                     onConfirm={(folderPath) => bindFolder(row.key, folderPath)}
                     onCancel={() => handleCancelPending(row.key)}
                   />

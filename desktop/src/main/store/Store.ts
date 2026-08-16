@@ -40,6 +40,14 @@ export interface Store {
   updateRepository(id: string, patch: Partial<RepositoryIdentity>): Promise<void>
   /** Delete a repo row (owner or org admin, enforced by RLS). */
   deleteRepository(id: string): Promise<void>
+  /**
+   * Fill in the repo's shared clone address, if it has none yet.
+   *
+   * Separate from updateRepository because the capture is done by whoever binds
+   * a local folder — typically a plain member, whom the update policy rejects.
+   * The backend accepts it only while the column is null. Returns whether it wrote.
+   */
+  setRepositoryRemoteUrl(id: string, url: string): Promise<boolean>
   /** Set (or clear, when null) the caller's own local path binding for a repo. */
   setRepositoryPath(id: string, path: string | null): Promise<void>
 
@@ -178,6 +186,7 @@ export const NOOP_STORE: Store = {
   async createRepository() { return null },
   async updateRepository() { /* no-op */ },
   async deleteRepository() { /* no-op */ },
+  async setRepositoryRemoteUrl() { return false },
   async setRepositoryPath() { /* no-op */ },
   async loadAgents() { return [] },
   async saveAgents() { /* no-op */ },

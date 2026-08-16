@@ -3,7 +3,7 @@ import * as os from 'os'
 import { randomUUID } from 'crypto'
 import type { Config, RepositoryConfig, LanguageId, LaunchMode, OrgSharedConfig, ThemeId } from '../../types'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
-import { expandPath } from './validation'
+import { expandPath, getGitHubRepoUrl, getGitHubRepoUrlAsync } from './validation'
 import { CONFIG_DIR } from './paths'
 import { getStore, reportWriteError } from '../store/Store'
 
@@ -151,6 +151,10 @@ export async function hydrateConfig(): Promise<Config> {
   } else if (!configCache) {
     configCache = withDefaults(defaultConfig())
   }
+  // Fill in the clone addresses the repos loaded here are still missing. Not
+  // awaited: it spawns a git per repo, and hydration is what the whole interface
+  // waits on — see backfillRepoRemotes, which never rejects.
+  void backfillRepoRemotes()
   return configCache
 }
 
@@ -174,6 +178,7 @@ export function installRemoteConfig(config: Config): Config {
 export function resetConfigCache(): void {
   configCache = null
   configGeneration++
+  capturedRemoteAttempts.clear()
 }
 
 export function readConfig(): Config {
@@ -224,6 +229,90 @@ function persistRepoIdentity(name: string): void {
     .catch((error) => reportWriteError('config', error))
 }
 
+/**
+ * Capture the repo's clone address from the folder that was just bound, when the
+ * repo has none yet.
+ *
+ * Deliberately NOT part of persistRepoIdentity: that write goes through
+ * `repositories_update`, which only the owner or an org admin may pass — and the
+ * person binding a folder to a team repo is usually neither. The dedicated RPC
+ * accepts a member's contribution while the column is null (20260816090000).
+ *
+ * Fire-and-forget and silent on failure, including the cloud one: this is a bonus
+ * that makes a later one-click clone possible for teammates. Failing it must never
+ * take the path binding — the thing the user actually asked for — down with it.
+ */
+function captureRepoRemote(name: string, repoPath: string): void {
+  const repo = readConfig().repositories?.[name]
+  if (!repo?.id || repo.remoteUrl) return
+
+  const remoteUrl = getGitHubRepoUrl(repoPath)
+  if (!remoteUrl) return
+
+  // Reflect it locally right away so a second path change doesn't re-derive it,
+  // and so the UI can offer the clone without waiting for a re-hydration.
+  repo.remoteUrl = remoteUrl
+  void getStore()
+    .setRepositoryRemoteUrl(repo.id, remoteUrl)
+    .catch((error) => console.error('Error capturing repository remote:', error))
+}
+
+/**
+ * Repo ids this process has already probed for a remote. Hydration runs more than
+ * once per session (a remote edit re-loads the config), and a repo whose folder
+ * has no GitHub origin would otherwise pay for a git subprocess every single time.
+ * Cleared on sign-out along with the cache, so the next user starts fresh.
+ */
+const capturedRemoteAttempts = new Set<string>()
+
+/**
+ * Fill in `remote_url` for the repositories that already have a local folder.
+ *
+ * captureRepoRemote only fires when a path CHANGES, so every repo bound before
+ * the column existed keeps a null address forever — and an invitee, who is
+ * offered the one-click clone precisely on the repos they have no folder for,
+ * would never see one until an admin happened to re-pick a folder. This is the
+ * pass that gives the feature its data: whoever launches the app first and has
+ * the folder contributes the address for everyone else.
+ *
+ * Three properties this must have, and the reasons:
+ *  - through setRepositoryRemoteUrl, never the generic update: that RPC is
+ *    fill-only and open to plain members, while `repositories_update` is
+ *    owner/admin-only, so routing this through it would fail for exactly the
+ *    people it runs for;
+ *  - never invents anything: only a repo with a local path on THIS machine is
+ *    probed, and only git's own `origin` is used;
+ *  - never rejects, never throws: it is called fire-and-forget from hydration,
+ *    and a refusal, an offline backend or a broken git must leave hydration, the
+ *    badge and every user action untouched.
+ *
+ * Serial and asynchronous on purpose. `getGitHubRepoUrlAsync` keeps the git calls
+ * off the main thread, and doing them one at a time keeps a 40-repo org from
+ * launching 40 subprocesses at startup.
+ */
+export async function backfillRepoRemotes(): Promise<void> {
+  for (const [name, repo] of Object.entries(readConfig().repositories ?? {})) {
+    if (!repo.id || repo.remoteUrl || !repo.path) continue
+    if (capturedRemoteAttempts.has(repo.id)) continue
+    capturedRemoteAttempts.add(repo.id)
+
+    try {
+      const remoteUrl = await getGitHubRepoUrlAsync(repo.path)
+      if (!remoteUrl) continue
+
+      // Re-read: the config may have been reloaded, renamed or deleted while git
+      // was running, and writing onto a detached object would be writing nowhere.
+      const current = readConfig().repositories?.[name]
+      if (current?.id !== repo.id || current.remoteUrl) continue
+
+      current.remoteUrl = remoteUrl
+      await getStore().setRepositoryRemoteUrl(repo.id, remoteUrl)
+    } catch (error) {
+      console.error('Error backfilling repository remote:', error)
+    }
+  }
+}
+
 /** Push the caller's local path binding for a repo (or clear it when empty). */
 function persistRepoPath(name: string): void {
   const repo = readConfig().repositories?.[name]
@@ -237,12 +326,17 @@ export function addRepository(name: string, repoPath: string, keywords: string[]
   const config = readConfig()
   config.repositories = config.repositories || {}
   const id = randomUUID()
+  // The repo an admin adds here is the one their invitees will later clone, so
+  // the address is read off the folder at creation time. Null when the folder has
+  // no GitHub origin — the column simply stays empty and the clone is not offered.
+  const remoteUrl = repoPath ? getGitHubRepoUrl(repoPath) : null
   const repo: RepositoryConfig = {
     id,
     orgId: null,
     ownerId: null,
     path: repoPath,
     needsLocalPath: !repoPath,
+    remoteUrl,
     keywords: keywords.length > 0 ? keywords : [name],
     ...DEFAULT_REPOSITORY_FIELDS,
   }
@@ -264,6 +358,7 @@ export function addRepository(name: string, repoPath: string, keywords: string[]
       issues: repo.issues,
       branches: repo.branches,
       worktreeFiles: repo.worktreeFiles,
+      remoteUrl,
       path: repoPath || null,
     })
     // The row is created with the caller as owner. Stamp that owner on the
@@ -307,7 +402,13 @@ export function updateRepository(name: string, updates: Partial<RepositoryConfig
   }
 
   setConfigCache(config)
-  if (pathChanged) persistRepoPath(name)
+  if (pathChanged) {
+    persistRepoPath(name)
+    // A folder was just bound: it knows the repo's remote, and the repo may not.
+    // Every surface that binds a path — both wizards, the repo page, the settings
+    // page — goes through here, so the capture happens once, for all of them.
+    if (updates.path) captureRepoRemote(name, updates.path)
+  }
   if (identityChanged) persistRepoIdentity(name)
   return config
 }

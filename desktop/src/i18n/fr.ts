@@ -795,6 +795,10 @@ export const fr: Record<keyof typeof en, string> = {
   'invite.wizard.noOrgRepos': 'Votre équipe n’a encore partagé aucun dépôt.',
   'invite.wizard.linkFolder': 'Associer un dossier',
   'invite.wizard.changeFolder': 'Changer',
+  'invite.wizard.clone': 'Cloner',
+  'invite.wizard.cloning': 'Clonage…',
+  'invite.wizard.cloneDestination': 'Les clones vont dans',
+  'invite.wizard.changeDestination': 'Changer',
   'invite.wizard.mismatchWarning':
     'Le dossier « {folder} » ne ressemble pas à « {name} ». L’associer quand même ?',
   'invite.wizard.belongsToOther':
@@ -813,6 +817,14 @@ export const fr: Record<keyof typeof en, string> = {
   'invite.error.acceptFailed': 'Impossible d’accepter l’invitation',
   'invite.error.repoExists': '« {name} » est déjà ajouté',
   'invite.error.addReposFailed': 'Impossible d’ajouter les dépôts',
+
+  // ── Clonage d'un dépôt ───────────────────────────────────────────────────
+  'clone.error.noRemote': 'Ce dépôt n’a pas d’adresse connue — associez plutôt un dossier existant.',
+  'clone.error.invalidRemote': 'L’adresse de ce dépôt n’est pas une URL GitHub valide.',
+  'clone.error.targetExists': 'Un dossier de ce nom existe déjà à cet endroit — changez de destination, ou associez-le.',
+  'clone.error.ghMissing': 'GitHub CLI (gh) n’est pas installé. Installez-le, puis lancez « gh auth login ».',
+  'clone.error.notAuthenticated': 'Vous n’êtes pas connecté à GitHub. Lancez « gh auth login » dans un terminal, puis réessayez.',
+  'clone.error.unknownRepo': 'Ce dépôt n’est plus dans votre configuration.',
 
   // ── Durées ───────────────────────────────────────────────────────────────
   'duration.lessThanMinute': '< 1 min',
