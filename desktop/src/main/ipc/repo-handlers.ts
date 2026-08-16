@@ -155,16 +155,45 @@ export async function cloneRepository(key: string, destination?: string): Promis
   return { path: target, destination: parent }
 }
 
+/**
+ * A payload field that must be a non-blank string.
+ *
+ * The types on an `ipcMain.handle` signature describe what the renderer is
+ * SUPPOSED to send; they are erased at runtime and the channel is reachable from
+ * any renderer code. Without this, `undefined` reaches `path.join` or the config
+ * lookup and surfaces as a raw `TypeError` — an unactionable message for the
+ * user and a stack trace in the log instead of a refusal. A missing argument is
+ * a caller bug, so it throws rather than returning a CloneErrorCode: those are
+ * the catalogue of things the USER can act on.
+ */
+function requireString(value: unknown, field: string): string {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(`repo handler: "${field}" must be a non-empty string`)
+  }
+  return value
+}
+
 export function setupRepoHandlers(): void {
   ipcMain.handle('repo:getCloneDestination', async () => {
     return { destination: getCloneDestination() }
   })
 
-  ipcMain.handle('repo:setCloneDestination', async (_event, { destination }: { destination: string }) => {
-    return { destination: setCloneDestination(destination) }
+  ipcMain.handle('repo:setCloneDestination', async (_event, payload: { destination?: unknown } = {}) => {
+    return { destination: setCloneDestination(requireString(payload?.destination, 'destination')) }
   })
 
-  ipcMain.handle('repo:clone', async (_event, { key, destination }: { key: string; destination?: string }) => {
-    return cloneRepository(key, destination)
-  })
+  ipcMain.handle(
+    'repo:clone',
+    async (_event, payload: { key?: unknown; destination?: unknown } = {}) => {
+      const key = requireString(payload?.key, 'key')
+      // Optional: omitted means "use the remembered destination". Present but
+      // not a usable string is a caller bug, not a silent fallback — falling
+      // back would clone into a folder the caller did not ask for.
+      const destination =
+        payload?.destination === undefined
+          ? undefined
+          : requireString(payload.destination, 'destination')
+      return cloneRepository(key, destination)
+    },
+  )
 }

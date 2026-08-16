@@ -191,6 +191,39 @@ describe('backfillRepoRemotes', () => {
     expect(readConfig().repositories.api.remoteUrl).toBe('https://github.com/acme/api')
   })
 
+  it('refuses to publish an origin that points at a different repository than the one being filled', async () => {
+    // The address a member contributes becomes the one every teammate clones, and
+    // the column is fill-only — so a checkout of something else, bound to the org's
+    // repo by accident or otherwise, would send everyone to the wrong code with no
+    // way back. The repo half of owner/repo has to match the repository's name.
+    mockRemoteUrl.mockResolvedValue('https://github.com/attacker/not-the-api')
+
+    await hydrateWith({ api: { id: 'r1', path: '/repo/api', keywords: ['api'] } })
+
+    expect(setRemote).not.toHaveBeenCalled()
+    expect(readConfig().repositories.api.remoteUrl).toBeUndefined()
+  })
+
+  it('accepts an origin whose owner differs, since only the repository half identifies it', async () => {
+    // A fork, a transferred repo or a personal mirror is still the same repository
+    // as far as the record is concerned; the owner is not what the name pins down.
+    mockRemoteUrl.mockResolvedValue('https://github.com/someone-else/api')
+
+    await hydrateWith({ api: { id: 'r1', path: '/repo/api', keywords: ['api'] } })
+
+    expect(setRemote).toHaveBeenCalledWith('r1', 'https://github.com/someone-else/api')
+  })
+
+  it('matches the name past our own org-disambiguation suffix on the record key', async () => {
+    // Two orgs may both have an "api", so the config key carries " (Acme)". That
+    // suffix is ours, never GitHub's, and must not make the names disagree.
+    mockRemoteUrl.mockResolvedValue('https://github.com/acme/api')
+
+    await hydrateWith({ 'api (Acme)': { id: 'r1', path: '/repo/api', keywords: ['api'] } })
+
+    expect(setRemote).toHaveBeenCalledWith('r1', 'https://github.com/acme/api')
+  })
+
   it('writes through the fill-only remote RPC, never the admin-only repository update', async () => {
     // repositories_update is owner-or-admin under RLS, and the member running this
     // pass is usually neither — routing the capture there would refuse them all.

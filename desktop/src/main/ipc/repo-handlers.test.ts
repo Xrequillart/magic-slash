@@ -333,4 +333,31 @@ describe('setupRepoHandlers', () => {
 
     expect(result).toEqual({ path: path.join(tmpDir, 'api'), destination: tmpDir })
   })
+
+  it('rejects a payload whose fields are missing or not strings, rather than failing deep inside', async () => {
+    // The types on the handler signature are erased at runtime and the channel is
+    // reachable from any renderer code, so an absent key would otherwise surface
+    // as a TypeError from path.join — a stack trace where a refusal belongs.
+    setupRepoHandlers()
+    const clone = handlers.get('repo:clone')!
+    const setDestination = handlers.get('repo:setCloneDestination')!
+
+    await expect(clone(null, {})).rejects.toThrow(/"key" must be a non-empty string/)
+    await expect(clone(null, { key: '   ' })).rejects.toThrow(/"key" must be a non-empty string/)
+    await expect(clone(null, { key: 42 })).rejects.toThrow(/"key" must be a non-empty string/)
+    await expect(setDestination(null, {})).rejects.toThrow(/"destination" must be a non-empty string/)
+  })
+
+  it('refuses a present-but-unusable destination instead of silently cloning elsewhere', async () => {
+    // Omitting the destination legitimately means "use the remembered one";
+    // sending null does not, and falling back would clone into a folder the
+    // caller never asked for.
+    mockReadConfig.mockReturnValue(config({ api: { id: 'r1', remoteUrl: 'https://github.com/acme/api' } }))
+    successfulClone()
+    setupRepoHandlers()
+
+    await expect(
+      handlers.get('repo:clone')!(null, { key: 'api', destination: null }),
+    ).rejects.toThrow(/"destination" must be a non-empty string/)
+  })
 })

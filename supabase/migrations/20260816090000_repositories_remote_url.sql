@@ -24,6 +24,25 @@ alter table public.repositories
 comment on column public.repositories.remote_url is
   'Normalised clone address of the repo (https://github.com/owner/repo). SHARED IDENTITY, never a secret: it holds no credential, and the clone runs locally with the member''s own gh/ssh login. NULL = no known remote, the app falls back to picking a folder.';
 
+-- "It holds no credential" is a promise the column has to keep on its own.
+-- Every writer today normalises through the client, but the row is readable by
+-- every member of the org, so a single careless write — `https://user:token@
+-- github.com/owner/repo` — would publish a token to the whole team and there is
+-- no undo: the address is fill-only.
+--
+-- The anchored pattern is the enforcement. It admits exactly the canonical form
+-- and nothing else, which excludes userinfo (`@`), a port, a query string, a
+-- fragment, extra path segments and any non-GitHub host by construction, rather
+-- than by trying to strip them. Same expression as GITHUB_REMOTE_URL_PATTERN in
+-- desktop/src/main/config/validation.ts, so the client and the database agree on
+-- what a remote is. NULL stays allowed: it means "no known remote".
+alter table public.repositories
+  drop constraint if exists repositories_remote_url_canonical;
+
+alter table public.repositories
+  add constraint repositories_remote_url_canonical
+  check (remote_url is null or remote_url ~ '^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$');
+
 -- ---------------------------------------------------------------------------
 -- set_repository_remote_url: let a plain member fill the blank
 -- ---------------------------------------------------------------------------
@@ -68,7 +87,14 @@ begin
   if v_current is not null then
     return false;
   end if;
-  if p_url is null or btrim(p_url) = '' then
+  -- Validate the shape here too, rather than leaning on the column constraint
+  -- alone. A constraint violation raises, and this function is called from a
+  -- fire-and-forget path that treats an exception and a refusal very
+  -- differently; returning false keeps a malformed address a quiet no-op, the
+  -- same as every other refusal above. The pattern is the constraint's, so the
+  -- two can never disagree about what they accept — and neither admits the
+  -- `user:token@host` form that would leak a credential to the whole org.
+  if p_url is null or p_url !~ '^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' then
     return false;
   end if;
 

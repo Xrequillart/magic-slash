@@ -230,6 +230,35 @@ function persistRepoIdentity(name: string): void {
 }
 
 /**
+ * Does this origin plausibly belong to the repository we are about to fill?
+ *
+ * The capture is opportunistic: it takes whatever `origin` the folder a member
+ * just bound happens to point at, and that address then becomes the one every
+ * teammate clones. Nothing about "the folder I picked" proves it is the team's
+ * repo — a member could bind a checkout of something else entirely, and because
+ * the column is fill-only, the wrong address would stick for everyone.
+ *
+ * So require the `repo` half of `owner/repo` to match the repository's own name
+ * before contributing it. GitHub repo names and our record names use the same
+ * alphabet, and the record key may carry an org suffix (`api (Acme)`) that is
+ * ours, not GitHub's — hence the light normalisation on both sides.
+ *
+ * This is a mismatch guard, not an authorization boundary: it stops the accident
+ * and the casual case, not a member determined to name their folder correctly.
+ * The boundary lives server-side, where the RPC constrains the shape it accepts
+ * and refuses to overwrite an address that is already set.
+ */
+function remoteMatchesRepo(remoteUrl: string, repoName: string): boolean {
+  const originRepo = remoteUrl.split('/').pop() ?? ''
+  const normalise = (value: string) =>
+    value
+      .replace(/\s*\([^)]*\)\s*$/, '') // drop our own ` (Org)` disambiguation suffix
+      .trim()
+      .toLowerCase()
+  return normalise(originRepo) === normalise(repoName)
+}
+
+/**
  * Capture the repo's clone address from the folder that was just bound, when the
  * repo has none yet.
  *
@@ -247,7 +276,7 @@ function captureRepoRemote(name: string, repoPath: string): void {
   if (!repo?.id || repo.remoteUrl) return
 
   const remoteUrl = getGitHubRepoUrl(repoPath)
-  if (!remoteUrl) return
+  if (!remoteUrl || !remoteMatchesRepo(remoteUrl, repo.name ?? name)) return
 
   // Reflect it locally right away so a second path change doesn't re-derive it,
   // and so the UI can offer the clone without waiting for a re-hydration.
@@ -298,7 +327,7 @@ export async function backfillRepoRemotes(): Promise<void> {
 
     try {
       const remoteUrl = await getGitHubRepoUrlAsync(repo.path)
-      if (!remoteUrl) continue
+      if (!remoteUrl || !remoteMatchesRepo(remoteUrl, repo.name ?? name)) continue
 
       // Re-read: the config may have been reloaded, renamed or deleted while git
       // was running, and writing onto a detached object would be writing nowhere.
