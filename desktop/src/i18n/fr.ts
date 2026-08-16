@@ -789,10 +789,19 @@ export const fr: Record<keyof typeof en, string> = {
   'invite.wizard.emailPlaceholder': 'E-mail (doit correspondre à l’invitation)',
   'invite.wizard.passwordPlaceholder': 'Mot de passe',
   'invite.wizard.accept': 'Accepter',
-  'invite.wizard.reposTitle': 'Ajouter vos dépôts',
-  'invite.wizard.reposHelp':
-    'C’est la seule chose que vous réglez en local — tout le reste est hérité de votre organisation.',
-  'invite.wizard.addRepo': 'Ajouter un dossier de dépôt',
+  'invite.wizard.orgReposTitle': 'Les dépôts de votre équipe',
+  'invite.wizard.orgReposHelp':
+    'Indiquez pour chacun son dossier sur cette machine — le dossier peut porter n’importe quel nom. C’est la seule chose que vous réglez en local, tout le reste est hérité de votre organisation.',
+  'invite.wizard.noOrgRepos': 'Votre équipe n’a encore partagé aucun dépôt.',
+  'invite.wizard.linkFolder': 'Associer un dossier',
+  'invite.wizard.changeFolder': 'Changer',
+  'invite.wizard.mismatchWarning':
+    'Le dossier « {folder} » ne ressemble pas à « {name} ». L’associer quand même ?',
+  'invite.wizard.belongsToOther':
+    'Le dossier « {folder} » ressemble à « {name} », pas à ce dépôt. L’associer quand même ?',
+  'invite.wizard.linkAnyway': 'Associer quand même',
+  'invite.wizard.linkInvalid': 'Dossier associé, mais inutilisable : {reason}',
+  'invite.wizard.addOtherRepo': 'Ajouter un dépôt que votre équipe n’a pas',
   'invite.wizard.continue': 'Continuer',
   'invite.wizard.doneTitle': 'Tout est prêt !',
   'invite.wizard.doneNamed': 'Vous avez rejoint {name} et hérité de sa configuration.',

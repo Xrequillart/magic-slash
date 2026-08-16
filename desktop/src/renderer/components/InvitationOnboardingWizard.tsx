@@ -1,10 +1,20 @@
-import { useState, useCallback, useEffect } from 'react'
-import { Mail, ChevronLeft, ChevronRight, X, Check, Folder, Trash2, Loader2 } from 'lucide-react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { Mail, ChevronLeft, ChevronRight, X, Check, Folder, FolderOpen, Loader2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useOrg } from '../hooks/useOrg'
 import { useConfig } from '../hooks/useConfig'
 import { useT } from '../i18n'
 import { INPUT } from '../theme/controls'
+import { repoBasename } from '../../repoMatch'
+import { REASON_META, type RepoSetupReason } from '../utils/repoSetup'
+import {
+  detectFolderNameMismatch,
+  isKeyTaken,
+  listBindableOrgRepos,
+  slugifyRepoName,
+  type FolderNameVerdict,
+  type OrgRepoRow,
+} from '../utils/orgRepoBinding'
 
 interface InvitationOnboardingWizardProps {
   isOpen: boolean
@@ -12,22 +22,134 @@ interface InvitationOnboardingWizardProps {
   initialToken?: string
 }
 
-interface PickedRepo {
-  name: string
-  path: string
+/**
+ * Per-row progress on step 2. Absent = untouched, and every writer sets exactly
+ * one of these — the states are alternatives, never combined.
+ */
+interface RowState {
+  busy?: boolean
+  /**
+   * A picked folder whose name does not look like the repository's, held until
+   * the user confirms. Non-blocking on purpose: a local clone is allowed to be
+   * named anything, so this asks rather than refuses. Carries the verdict itself
+   * so 'belongs-to-other' is the only shape that has an `otherRepoName`.
+   */
+  pending?: { path: string } & Exclude<FolderNameVerdict, { kind: 'none' }>
+  /** The re-check's verdict when the bound folder is still not usable. */
+  reason?: RepoSetupReason
+  /**
+   * `config:addRepository` succeeds on a folder that does not exist or is not a
+   * git repository, and reports it as a warning instead. The repository really
+   * was added, so this is not an error — but a row that says nothing would be
+   * the same silent success this step exists to remove.
+   */
+  warning?: string
+  error?: string
 }
 
 const TOTAL_STEPS = 3
 
+interface OrgRepoBindRowProps {
+  row: OrgRepoRow
+  state?: RowState
+  onLink: () => void
+  onConfirm: (folderPath: string) => void
+  onCancel: () => void
+}
+
 /**
- * Invitation onboarding: accept token → sign up/in → accept invitation → ask
- * ONLY for repo paths (everything else is inherited from the org). Skippable —
- * the app never blocks on it. Modeled on ProfileOnboardingWizard.
+ * One repository of the organization, with the folder it is bound to on this
+ * machine — or the yellow "no folder yet" state and the button to bind one.
+ *
+ * Local to this wizard on purpose: the launch modal's row answers a different
+ * question ("which of your repositories are broken"), and merging the two would
+ * make each one carry the other's states.
+ */
+function OrgRepoBindRow({ row, state = {}, onLink, onConfirm, onCancel }: OrgRepoBindRowProps) {
+  const t = useT()
+  const pending = state.pending
+
+  return (
+    <div className="px-3 py-2 bg-surface border border-line-field rounded-lg">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">{row.displayName}</div>
+          {row.path ? (
+            <div className="text-xs text-text-secondary/50 truncate">{row.path}</div>
+          ) : (
+            // The same state the launch modal names, from the same table — one
+            // vocabulary and one tone for "no folder on this machine".
+            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[11px] rounded-full bg-yellow/10 text-yellow">
+              <FolderOpen className="w-3 h-3" />
+              {t(REASON_META['no-local-path'].labelKey)}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={onLink}
+          disabled={state.busy}
+          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-accent border border-accent/20 rounded-lg hover:bg-accent/10 transition-all disabled:opacity-40 flex-shrink-0"
+        >
+          {state.busy
+            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            : <><FolderOpen className="w-3.5 h-3.5" />{t(row.path ? 'invite.wizard.changeFolder' : 'invite.wizard.linkFolder')}</>}
+        </button>
+      </div>
+
+      {/* Name mismatch — a question, never a wall: the user can link anyway. */}
+      {pending && (
+        <div className="mt-2 px-3 py-2 bg-yellow/10 border border-yellow/20 rounded-lg text-xs text-yellow">
+          <p>
+            {pending.kind === 'belongs-to-other'
+              ? t('invite.wizard.belongsToOther', { folder: repoBasename(pending.path), name: pending.otherRepoName })
+              : t('invite.wizard.mismatchWarning', { folder: repoBasename(pending.path), name: row.displayName })}
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              onClick={() => onConfirm(pending.path)}
+              className="px-2.5 py-1 font-medium bg-yellow/15 hover:bg-yellow/25 rounded-lg transition-colors"
+            >
+              {t('invite.wizard.linkAnyway')}
+            </button>
+            <button
+              onClick={onCancel}
+              className="px-2.5 py-1 text-text-secondary hover:text-ink transition-colors"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Added, but the main process flagged the folder — yellow, not red. */}
+      {state.warning && (
+        <div className="mt-2 px-3 py-2 bg-yellow/10 border border-yellow/20 rounded-lg text-xs text-yellow">
+          {state.warning}
+        </div>
+      )}
+
+      {/* A verdict and a failure are alternatives, so they share one block. */}
+      {(state.reason || state.error) && (
+        <div className="mt-2 px-3 py-2 bg-red/10 border border-red/20 rounded-lg text-xs text-red">
+          {state.reason
+            ? t('invite.wizard.linkInvalid', { reason: t(REASON_META[state.reason].labelKey) })
+            : state.error}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Invitation onboarding: accept token → sign up/in → accept invitation → bind
+ * the org's repositories to their local folders (everything else is inherited
+ * from the org). Skippable — the app never blocks on it. Modeled on
+ * ProfileOnboardingWizard.
  */
 export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' }: InvitationOnboardingWizardProps) {
   const { login, signup } = useAuth()
   const { accept } = useOrg()
-  const { loadConfig } = useConfig()
+  const { config, loadConfig, addRepository, updateRepository } = useConfig()
   const t = useT()
 
   const [step, setStep] = useState(1)
@@ -35,10 +157,18 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
   const [isNewAccount, setIsNewAccount] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [repos, setRepos] = useState<PickedRepo[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [orgName, setOrgName] = useState<string | null>(null)
+  // The org the invitation landed in, pinned at accept time: step 2 keeps
+  // listing the repositories of the org just joined even if the active org
+  // changes under it mid-flow.
+  const [orgId, setOrgId] = useState<string | null>(null)
+  const [rowStates, setRowStates] = useState<Record<string, RowState>>({})
+  // Repositories added here that the org does not have. They are created
+  // personal, so they never appear among the org rows — listed apart so the
+  // user still sees what they just added.
+  const [addedKeys, setAddedKeys] = useState<string[]>([])
 
   useEffect(() => { setToken(initialToken) }, [initialToken])
 
@@ -69,11 +199,14 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
         return
       }
 
+      // `accept` resolves with the org it joined — no need to ask again for it.
       const result = await accept(token.trim())
-      const current = await window.electronAPI.org.current()
-      setOrgName(current?.name ?? null)
-      // Reflect any inherited config merge in the UI immediately.
-      if (result?.config) loadConfig()
+      setOrgId(result?.orgId ?? null)
+      setOrgName((await window.electronAPI.org.current())?.name ?? null)
+      // Reflect the inherited config merge in the UI immediately — step 2 lists
+      // the org's repositories straight out of it, so it must not run on the
+      // pre-invitation config.
+      await loadConfig()
       setStep(2)
     } catch (e) {
       setError(e instanceof Error ? e.message : t('invite.error.acceptFailed'))
@@ -82,32 +215,121 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
     }
   }, [busy, token, email, password, isNewAccount, signup, login, accept, loadConfig])
 
-  const handleAddRepo = useCallback(async () => {
+  const repositories = useMemo(() => config?.repositories ?? {}, [config])
+
+  // The org's repositories, by name — what the invitee binds instead of guessing.
+  const orgRows = useMemo(
+    () => listBindableOrgRepos(repositories, orgId),
+    [repositories, orgId],
+  )
+
+  // The extra repositories added from here. They are created personal, so the
+  // personal scope is exactly what builds them — same mapper, same shape as the
+  // org rows. Kept in the order they were added, and anything that has meanwhile
+  // become an org repo is dropped: the org list already has it.
+  const addedRows = useMemo(() => {
+    const personal = new Map(listBindableOrgRepos(repositories, null).map((row) => [row.key, row]))
+    return addedKeys
+      .map((key) => personal.get(key))
+      .filter((row): row is OrgRepoRow => !!row && !orgRows.some((org) => org.key === row.key))
+  }, [addedKeys, repositories, orgRows])
+
+  /**
+   * Bind a folder to an existing repository, then ask the main process whether
+   * that actually produced a usable repo.
+   *
+   * The re-check is not belt and braces: `config:updateRepository` validates the
+   * path but drops the warning it computes, so without it a folder that is not a
+   * git repository — or one that has since moved — binds silently, which is the
+   * failure this step exists to remove. A failed write keeps the row actionable
+   * and claims nothing.
+   */
+  const bindFolder = useCallback(async (key: string, folderPath: string) => {
+    setRowStates((prev) => ({ ...prev, [key]: { busy: true } }))
+    try {
+      await updateRepository(key, { path: folderPath })
+    } catch (e) {
+      setRowStates((prev) => ({
+        ...prev,
+        [key]: { error: e instanceof Error ? e.message : t('repoSetup.error') },
+      }))
+      return
+    }
+    try {
+      const invalid = await window.electronAPI.config.getInvalidRepos()
+      const stillInvalid = invalid.find((repo) => repo.name === key)
+      setRowStates((prev) => ({ ...prev, [key]: stillInvalid ? { reason: stillInvalid.reason } : {} }))
+    } catch (e) {
+      // The write landed; only its verdict is unknown. Say exactly that.
+      setRowStates((prev) => ({
+        ...prev,
+        [key]: { error: e instanceof Error ? e.message : t('repoSetup.unverified') },
+      }))
+    }
+  }, [updateRepository, t])
+
+  /** Pick a folder for one org repo. A name that does not match only warns. */
+  const handleLinkFolder = useCallback(async (row: OrgRepoRow) => {
     const folderPath = await window.electronAPI.dialog.openFolder()
     if (!folderPath) return
-    const folderName = folderPath.split(/[\\/]/).pop() || ''
-    const name = folderName.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase()
-    if (!name) { setError(t('toast.invalidFolderName')); return }
-    if (repos.some(r => r.name === name)) { setError(t('invite.error.repoExists', { name })); return }
     setError(null)
-    setRepos(prev => [...prev, { name, path: folderPath }])
-  }, [repos])
+    // Only the org rows are comparable; a row added from the escape hatch is not
+    // in this list, so it binds without a name check — it has nothing to match.
+    const verdict = detectFolderNameMismatch(folderPath, row.key, orgRows)
+    if (verdict.kind === 'none') {
+      await bindFolder(row.key, folderPath)
+      return
+    }
+    setRowStates((prev) => ({
+      ...prev,
+      [row.key]: { pending: { path: folderPath, ...verdict } },
+    }))
+  }, [orgRows, bindFolder])
 
-  const handleRemoveRepo = useCallback((name: string) => {
-    setRepos(prev => prev.filter(r => r.name !== name))
+  const handleCancelPending = useCallback((key: string) => {
+    setRowStates((prev) => ({ ...prev, [key]: {} }))
   }, [])
 
-  // Step 2 → 3: persist the picked repo paths (inheriting org keywords by name).
+  /**
+   * Escape hatch: a repository the org does not have. Repositories are keyed by
+   * name, so an unchecked add would silently overwrite one of the org's — the
+   * guard runs against the whole config, not against a local list.
+   */
+  const handleAddOtherRepo = useCallback(async () => {
+    const folderPath = await window.electronAPI.dialog.openFolder()
+    if (!folderPath) return
+    const name = slugifyRepoName(repoBasename(folderPath))
+    if (!name) { setError(t('toast.invalidFolderName')); return }
+    if (isKeyTaken(repositories, orgRows, name)) { setError(t('invite.error.repoExists', { name })); return }
+    setError(null)
+    setBusy(true)
+    try {
+      const result = await addRepository(name, folderPath, [])
+      setAddedKeys((prev) => (prev.includes(name) ? prev : [...prev, name]))
+      // Same reasoning as bindFolder's re-check, one round-trip cheaper: this
+      // handler is told about a folder that is not a git repository, so the row
+      // has to say so rather than render as usable.
+      setRowStates((prev) => ({ ...prev, [name]: result?.warning ? { warning: result.warning } : {} }))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('repoSetup.error'))
+    } finally {
+      setBusy(false)
+    }
+  }, [repositories, orgRows, addRepository, t])
+
+  /**
+   * Step 2 → 3. Nothing left to persist — every binding was written as it was
+   * made — so this only re-runs the shared-config merge, best effort, to catch
+   * org repositories that landed after the merge at accept time. It fills only
+   * keys still undefined and never touches `path`, so a repo bound above keeps
+   * both the org's settings and its local folder. Repositories added from the
+   * escape hatch are personal, and `mergeOrgSharedConfig` skips them by design.
+   */
   const handleFinishRepos = useCallback(async () => {
     if (busy) return
     setBusy(true)
     setError(null)
     try {
-      for (const repo of repos) {
-        await window.electronAPI.config.addRepository(repo.name, repo.path, [])
-      }
-      // Newly added repos must also inherit the org's shared config — the merge
-      // at accept time only reached repositories that already existed.
       await window.electronAPI.org.applySharedConfig().catch(() => undefined)
       loadConfig()
       setStep(3)
@@ -116,7 +338,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
     } finally {
       setBusy(false)
     }
-  }, [busy, repos, loadConfig])
+  }, [busy, loadConfig, t])
 
   if (!isOpen) return null
 
@@ -208,36 +430,39 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
           {step === 2 && (
             <div className="space-y-3">
               <div>
-                <div className="text-sm font-medium mb-1">{t('invite.wizard.reposTitle')}</div>
+                <div className="text-sm font-medium mb-1">{t('invite.wizard.orgReposTitle')}</div>
                 <div className="text-xs text-text-secondary/50 mb-3">
-                  {t('invite.wizard.reposHelp')}
+                  {t('invite.wizard.orgReposHelp')}
                 </div>
               </div>
+
+              {/* Scrollable, so an org with twenty repositories stays usable */}
+              <div className="space-y-1.5 max-h-[40vh] overflow-y-auto">
+                {orgRows.length === 0 && addedRows.length === 0 && (
+                  <div className="px-3 py-2 bg-surface border border-line-field rounded-lg text-xs text-text-secondary">
+                    {t('invite.wizard.noOrgRepos')}
+                  </div>
+                )}
+                {[...orgRows, ...addedRows].map((row) => (
+                  <OrgRepoBindRow
+                    key={row.key}
+                    row={row}
+                    state={rowStates[row.key]}
+                    onLink={() => handleLinkFolder(row)}
+                    onConfirm={(folderPath) => bindFolder(row.key, folderPath)}
+                    onCancel={() => handleCancelPending(row.key)}
+                  />
+                ))}
+              </div>
+
               <button
-                onClick={handleAddRepo}
-                className="w-full flex items-center justify-center gap-2 py-3 text-sm border border-dashed border-line-strong rounded-lg text-text-secondary hover:border-accent/40 hover:text-ink transition-colors"
+                onClick={handleAddOtherRepo}
+                disabled={busy}
+                className="w-full flex items-center justify-center gap-2 py-3 text-sm border border-dashed border-line-strong rounded-lg text-text-secondary hover:border-accent/40 hover:text-ink transition-colors disabled:opacity-40"
               >
                 <Folder className="w-4 h-4" />
-                {t('invite.wizard.addRepo')}
+                {t('invite.wizard.addOtherRepo')}
               </button>
-              {repos.length > 0 && (
-                <div className="space-y-1.5">
-                  {repos.map((repo) => (
-                    <div key={repo.name} className="flex items-center gap-2 px-3 py-2 bg-surface border border-line-field rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{repo.name}</div>
-                        <div className="text-xs text-text-secondary/50 truncate">{repo.path}</div>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveRepo(repo.name)}
-                        className="p-1 text-text-secondary/50 hover:text-red transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 

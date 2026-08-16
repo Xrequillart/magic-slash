@@ -785,10 +785,19 @@ export const en = {
   'invite.wizard.emailPlaceholder': 'Email (must match the invitation)',
   'invite.wizard.passwordPlaceholder': 'Password',
   'invite.wizard.accept': 'Accept',
-  'invite.wizard.reposTitle': 'Add your repositories',
-  'invite.wizard.reposHelp':
-    'This is the only thing you set locally — everything else is inherited from your org.',
-  'invite.wizard.addRepo': 'Add a repository folder',
+  'invite.wizard.orgReposTitle': 'Your team’s repositories',
+  'invite.wizard.orgReposHelp':
+    'Point each one at its folder on this machine — the folder can be named anything. This is the only thing you set locally; everything else is inherited from your org.',
+  'invite.wizard.noOrgRepos': 'Your team hasn’t shared any repository yet.',
+  'invite.wizard.linkFolder': 'Link folder',
+  'invite.wizard.changeFolder': 'Change',
+  'invite.wizard.mismatchWarning':
+    'The folder “{folder}” doesn’t look like “{name}”. Link it anyway?',
+  'invite.wizard.belongsToOther':
+    'The folder “{folder}” looks like “{name}”, not this repository. Link it anyway?',
+  'invite.wizard.linkAnyway': 'Link anyway',
+  'invite.wizard.linkInvalid': 'Folder linked, but it can’t be used: {reason}',
+  'invite.wizard.addOtherRepo': 'Add a repository your team doesn’t have',
   'invite.wizard.continue': 'Continue',
   'invite.wizard.doneTitle': 'You’re all set!',
   'invite.wizard.doneNamed': 'You’ve joined {name} and inherited its configuration.',
