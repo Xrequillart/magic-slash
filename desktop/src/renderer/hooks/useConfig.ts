@@ -27,6 +27,15 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  // On repo:*, not config:*, because the write goes through the dedicated
+  // fill-or-correct RPC rather than the admin-only `repositories_update` that
+  // updateRepository uses. Same store refresh, different authority.
+  const setRepositoryRemoteUrl = useCallback(async (name: string, remoteUrl: string) => {
+    const result = await window.electronAPI.repo.setRemoteUrl(name, remoteUrl)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const deleteRepository = useCallback(async (name: string) => {
     const result = await window.electronAPI.config.deleteRepository(name)
     setConfig(result.config)
@@ -196,6 +205,7 @@ export function useConfig() {
     loadConfig,
     addRepository,
     updateRepository,
+    setRepositoryRemoteUrl,
     deleteRepository,
     renameRepository,
     setRepositoryOrg,

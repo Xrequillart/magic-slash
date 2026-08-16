@@ -1799,7 +1799,7 @@ describe('listRepositories', () => {
       memberships: membershipsOk,
       repositories: {
         data: [
-          { id: 'r1', owner_id: UID, org_id: null, name: 'perso', keywords: ['k'], color: '#fff', languages: { commit: 'en' }, commit: {}, pull_request: {}, resolve: {}, issues: {}, branches: {}, worktree_files: [] },
+          { id: 'r1', owner_id: UID, org_id: null, name: 'perso', keywords: ['k'], color: '#fff', languages: { commit: 'en' }, commit: {}, pull_request: {}, resolve: {}, issues: {}, branches: {}, worktree_files: [], remote_url: 'https://github.com/me/perso' },
           { id: 'r2', owner_id: 'someone', org_id: ORG, name: 'team', keywords: [], color: null, languages: null, commit: null, pull_request: null, resolve: null, issues: null, branches: null, worktree_files: null },
           { id: 'r3', owner_id: 'someone', org_id: 'other-org', name: 'foreign', keywords: [], color: null, languages: null, commit: null, pull_request: null, resolve: null, issues: null, branches: null, worktree_files: null },
         ],
@@ -1820,6 +1820,31 @@ describe('listRepositories', () => {
     const team = repos.find((r) => r.id === 'r2')!
     expect(team.path).toBeNull() // caller has no local binding for the team repo
     expect(team.orgId).toBe(ORG)
+  })
+
+  // remote_url is what makes a repo clonable for a teammate who has no folder
+  // for it. A column left out of the explicit select would drop it silently.
+  it('reads the clone address back, and reports null for a repo that has none', async () => {
+    const { client, calls } = makeClient({
+      memberships: membershipsOk,
+      repositories: {
+        data: [
+          { id: 'r1', owner_id: UID, org_id: null, name: 'perso', keywords: [], color: null, languages: null, commit: null, pull_request: null, resolve: null, issues: null, branches: null, worktree_files: null, remote_url: 'https://github.com/me/perso' },
+          { id: 'r2', owner_id: UID, org_id: ORG, name: 'team', keywords: [], color: null, languages: null, commit: null, pull_request: null, resolve: null, issues: null, branches: null, worktree_files: null, remote_url: null },
+        ],
+        error: null,
+      },
+      repository_paths: { data: [], error: null },
+    })
+    h.state.client = client
+
+    const repos = await new CloudStore().listRepositories()
+
+    expect(repos.find((r) => r.id === 'r1')!.remoteUrl).toBe('https://github.com/me/perso')
+    expect(repos.find((r) => r.id === 'r2')!.remoteUrl).toBeNull()
+    // The select is an explicit column list: the column has to be named in it.
+    const select = calls.find((c) => c.table === 'repositories' && c.method === 'select')
+    expect(String(select?.args[0])).toContain('remote_url')
   })
 })
 
@@ -1880,6 +1905,72 @@ describe('updateRepository', () => {
 
     expect(updates.repositories[0]).toEqual({ org_id: ORG })
     expect(updates.repositories[1]).toEqual({ org_id: null })
+  })
+})
+
+describe('createRepository / setRepositoryRemoteUrl', () => {
+  it('writes the clone address on creation, so it round-trips as remote_url', async () => {
+    const { client, inserts } = makeClient({
+      memberships: membershipsOk,
+      repositories: { data: null, error: null },
+      repository_paths: { data: null, error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().createRepository({
+      id: 'new-1', ownerId: null, orgId: null, name: 'demo',
+      keywords: [], worktreeFiles: [],
+      remoteUrl: 'https://github.com/acme/demo',
+      path: '/Users/me/demo',
+    })
+
+    expect(inserts.repositories[0]).toMatchObject({ remote_url: 'https://github.com/acme/demo' })
+  })
+
+  it('records no address rather than an empty one when the folder has no GitHub remote', async () => {
+    const { client, inserts } = makeClient({
+      memberships: membershipsOk,
+      repositories: { data: null, error: null },
+    })
+    h.state.client = client
+
+    await new CloudStore().createRepository({
+      id: 'new-2', ownerId: null, orgId: null, name: 'local-only',
+      keywords: [], worktreeFiles: [], path: null,
+    })
+
+    expect(inserts.repositories[0]).toMatchObject({ remote_url: null })
+  })
+
+  // An RPC, not an UPDATE: the capture is done by whoever binds a folder, and for
+  // a team repo that is an ordinary member, whom `repositories_update` rejects.
+  it('contributes the address through the RPC, never through the admin-only update', async () => {
+    const { client, calls, updates } = makeClient(
+      { memberships: membershipsOk },
+      { set_repository_remote_url: { data: true, error: null } },
+    )
+    h.state.client = client
+
+    const wrote = await new CloudStore().setRepositoryRemoteUrl('r1', 'https://github.com/acme/api')
+
+    expect(wrote).toBe(true)
+    expect(calls).toContainEqual({
+      table: 'rpc:set_repository_remote_url',
+      method: 'rpc',
+      args: [{ p_repo_id: 'r1', p_url: 'https://github.com/acme/api' }],
+    })
+    expect(updates.repositories).toBeUndefined()
+  })
+
+  it('reports that it did not write when the repo already has an address', async () => {
+    const { client } = makeClient(
+      { memberships: membershipsOk },
+      { set_repository_remote_url: { data: false, error: null } },
+    )
+    h.state.client = client
+
+    await expect(new CloudStore().setRepositoryRemoteUrl('r1', 'https://github.com/acme/api'))
+      .resolves.toBe(false)
   })
 })
 

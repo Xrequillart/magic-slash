@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Notification, ipcMain, dialog, Menu, shell, globalShortcut, powerMonitor } from 'electron'
 import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
+import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
 import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorktreeFilesWriter, setPRUrlCallback } from './hooks/status-server'
 import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion } from './questions/pending-questions'
@@ -236,6 +237,9 @@ function createWindow() {
 // Setup IPC handlers
 function setupHandlers() {
   setupConfigHandlers()
+  // Cloning an org repo into place — the other half of "bind a local folder",
+  // for the invitee who does not have one yet.
+  setupRepoHandlers()
   setupAppearanceHandlers()
   setupSkillsHandlers()
   setupScriptHandlers(() => mainWindow)

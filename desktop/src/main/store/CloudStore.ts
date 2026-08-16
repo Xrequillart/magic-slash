@@ -145,6 +145,9 @@ interface RepositoryRow {
   issues: RepositoryConfig['issues'] | null
   branches: RepositoryConfig['branches'] | null
   worktree_files: string[] | null
+  // Absent (not just null) on a database that has not run 20260816090000 yet —
+  // the mapper treats both as "no known remote".
+  remote_url?: string | null
 }
 
 interface RepositoryPathRow {
@@ -590,6 +593,8 @@ export class CloudStore implements Store {
     if (patch.issues !== undefined) row.issues = patch.issues ?? {}
     if (patch.branches !== undefined) row.branches = patch.branches ?? {}
     if (patch.worktreeFiles !== undefined) row.worktree_files = patch.worktreeFiles ?? []
+    // No remote_url branch: RepositoryIdentity excludes it, so setRepositoryRemoteUrl
+    // stays its only writer after creation.
     return row
   }
 
@@ -608,6 +613,7 @@ export class CloudStore implements Store {
       issues: row.issues ?? undefined,
       branches: row.branches ?? undefined,
       worktreeFiles: row.worktree_files ?? undefined,
+      remoteUrl: row.remote_url ?? null,
       path,
     }
   }
@@ -663,6 +669,7 @@ export class CloudStore implements Store {
         issues: r.issues,
         branches: r.branches,
         worktreeFiles: r.worktreeFiles,
+        remoteUrl: r.remoteUrl ?? null,
       }
     }
     return record
@@ -680,7 +687,7 @@ export class CloudStore implements Store {
     const [reposRes, pathsRes] = await Promise.all([
       ctx.client
         .from('repositories')
-        .select('id, owner_id, org_id, name, keywords, color, languages, commit, pull_request, resolve, issues, branches, worktree_files'),
+        .select('id, owner_id, org_id, name, keywords, color, languages, commit, pull_request, resolve, issues, branches, worktree_files, remote_url'),
       ctx.client.from('repository_paths').select('repo_id, path'),
     ])
     if (reposRes.error || !reposRes.data) return []
@@ -725,6 +732,7 @@ export class CloudStore implements Store {
       issues: repo.issues ?? {},
       branches: repo.branches ?? {},
       worktree_files: repo.worktreeFiles ?? [],
+      remote_url: repo.remoteUrl ?? null,
     })
     if (error) throw new Error(`createRepository failed: ${error.message}`)
     if (repo.path) await this.setRepositoryPath(repo.id, repo.path)
@@ -745,6 +753,18 @@ export class CloudStore implements Store {
     if (!ctx) return
     const { error } = await ctx.client.from('repositories').delete().eq('id', id)
     if (error) throw new Error(`deleteRepository failed: ${error.message}`)
+  }
+
+  /** See Store.setRepositoryRemoteUrl. Fill-only, enforced server-side (20260816090000). */
+  async setRepositoryRemoteUrl(id: string, url: string): Promise<boolean> {
+    const ctx = await this.context()
+    if (!ctx) return false
+    const { data, error } = await ctx.client.rpc('set_repository_remote_url', {
+      p_repo_id: id,
+      p_url: url,
+    })
+    if (error) throw new Error(`setRepositoryRemoteUrl failed: ${error.message}`)
+    return data === true
   }
 
   async setRepositoryPath(id: string, path: string | null): Promise<void> {
@@ -791,6 +811,7 @@ export class CloudStore implements Store {
         issues: repo.issues ?? {},
         branches: repo.branches ?? {},
         worktree_files: repo.worktreeFiles ?? [],
+        remote_url: repo.remoteUrl ?? null,
       })
       if (error) {
         // 23505 = already migrated (unique (owner_id, name) where org_id is null).

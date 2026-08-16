@@ -350,6 +350,8 @@ export const fr: Record<keyof typeof en, string> = {
   'toast.repoAddedWarning': 'Dépôt « {name} » ajouté ({warning})',
   'toast.repoAddFailed': 'Impossible d’ajouter le dépôt',
   'toast.pathUpdated': 'Chemin mis à jour',
+  'toast.remoteUrlUpdated': 'Adresse de clonage mise à jour',
+  'toast.remoteUrlUpdateFailed': 'Échec de la mise à jour de l\u2019adresse de clonage',
   'toast.pathUpdateFailed': 'Impossible de mettre à jour le chemin',
   'toast.keywordsUpdated': 'Mots-clés mis à jour',
   'toast.keywordsUpdateFailed': 'Impossible de mettre à jour les mots-clés',
@@ -416,6 +418,11 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.general.path': 'Chemin',
   'repo.general.pathHelp': 'Chemin local vers le dépôt',
   'repo.general.pathHelpReadOnly': 'Chemin local sur cette machine — le vôtre uniquement',
+  'repo.general.remoteUrl': 'Adresse de clonage',
+  'repo.general.remoteUrlHelp': 'Partagée avec l\u2019équipe, sert à cloner ce dépôt en un clic',
+  'repo.general.remoteUrlHelpReadOnly': 'Partagée avec l\u2019équipe — un admin peut la modifier',
+  'repo.general.remoteUrlInvalid': 'Doit être https://github.com/owner/repo',
+  'repo.general.remoteUrlRefused': 'Seul le propriétaire ou un admin de l\u2019organisation peut modifier une adresse déjà définie',
   'repo.general.chooseFolder': 'Choisir un dossier',
   'repo.general.pathValid': 'Dépôt git valide',
   'repo.general.pathNotGit': 'Ce n’est pas un dépôt git',
@@ -795,6 +802,10 @@ export const fr: Record<keyof typeof en, string> = {
   'invite.wizard.noOrgRepos': 'Votre équipe n’a encore partagé aucun dépôt.',
   'invite.wizard.linkFolder': 'Associer un dossier',
   'invite.wizard.changeFolder': 'Changer',
+  'invite.wizard.clone': 'Cloner',
+  'invite.wizard.cloning': 'Clonage…',
+  'invite.wizard.cloneDestination': 'Les clones vont dans',
+  'invite.wizard.changeDestination': 'Changer',
   'invite.wizard.mismatchWarning':
     'Le dossier « {folder} » ne ressemble pas à « {name} ». L’associer quand même ?',
   'invite.wizard.belongsToOther':
@@ -813,6 +824,14 @@ export const fr: Record<keyof typeof en, string> = {
   'invite.error.acceptFailed': 'Impossible d’accepter l’invitation',
   'invite.error.repoExists': '« {name} » est déjà ajouté',
   'invite.error.addReposFailed': 'Impossible d’ajouter les dépôts',
+
+  // ── Clonage d'un dépôt ───────────────────────────────────────────────────
+  'clone.error.noRemote': 'Ce dépôt n’a pas d’adresse connue — associez plutôt un dossier existant.',
+  'clone.error.invalidRemote': 'L’adresse de ce dépôt n’est pas une URL GitHub valide.',
+  'clone.error.targetExists': 'Un dossier de ce nom existe déjà à cet endroit — changez de destination, ou associez-le.',
+  'clone.error.ghMissing': 'GitHub CLI (gh) n’est pas installé. Installez-le, puis lancez « gh auth login ».',
+  'clone.error.notAuthenticated': 'Vous n’êtes pas connecté à GitHub. Lancez « gh auth login » dans un terminal, puis réessayez.',
+  'clone.error.unknownRepo': 'Ce dépôt n’est plus dans votre configuration.',
 
   // ── Durées ───────────────────────────────────────────────────────────────
   'duration.lessThanMinute': '< 1 min',

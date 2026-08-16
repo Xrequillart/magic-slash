@@ -66,6 +66,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const {
     config,
     updateRepository,
+    setRepositoryRemoteUrl: saveRemoteUrlToCloud,
     deleteRepository,
     renameRepository,
     setRepositoryOrg,
@@ -116,6 +117,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const [pathStatus, setPathStatus] = useState<{ isGit?: boolean; exists?: boolean } | null>(null)
   const [pathChanged, setPathChanged] = useState(false)
   const [keywordsChanged, setKeywordsChanged] = useState(false)
+  const [remoteUrl, setRemoteUrl] = useState(repo?.remoteUrl || '')
+  const [remoteUrlChanged, setRemoteUrlChanged] = useState(false)
+  const [remoteUrlError, setRemoteUrlError] = useState<string | null>(null)
 
   // PR Template state
   const [template, setTemplate] = useState<{ exists: boolean; path?: string; content?: string } | null>(null)
@@ -199,6 +203,37 @@ export function RepoPage({ repoName }: RepoPageProps) {
       showToast(t('toast.pathUpdated'))
     } catch (error) {
       showToast(error instanceof Error ? error.message : t('toast.pathUpdateFailed'), 'error')
+    }
+  }
+
+  const handleRemoteUrlChange = (value: string) => {
+    setRemoteUrl(value)
+    setRemoteUrlError(null)
+    setRemoteUrlChanged(value.trim() !== (repo?.remoteUrl || ''))
+  }
+
+  const saveRemoteUrl = async () => {
+    const value = remoteUrl.trim()
+    // Checked here so the user is told before a round-trip, and again in main and
+    // in the database — this one is a courtesy, not the guarantee.
+    if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(value)) {
+      setRemoteUrlError(t('repo.general.remoteUrlInvalid'))
+      return
+    }
+    try {
+      await saveRemoteUrlToCloud(repoName, value)
+      setRemoteUrlChanged(false)
+      setRemoteUrlError(null)
+      showToast(t('toast.remoteUrlUpdated'))
+    } catch (error) {
+      // The backend is the authority on who may change an address that is
+      // already set; say so plainly rather than echoing a raw IPC error.
+      const raw = error instanceof Error ? error.message : ''
+      setRemoteUrlError(
+        raw.includes('remote-url-refused')
+          ? t('repo.general.remoteUrlRefused')
+          : raw || t('toast.remoteUrlUpdateFailed'),
+      )
     }
   }
 
@@ -656,6 +691,39 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Clone address — shared, unlike the path. Any member may CONTRIBUTE
+              it by binding a folder, but only the owner or an org admin may
+              correct one that is already set: the capture runs on a member's own
+              machine, so a wrong address can get in, and a rename or a transfer
+              makes a right one go stale. Read-only members see it, plainly. */}
+          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-0.5">{t('repo.general.remoteUrl')}</label>
+              <p className="text-xs text-text-secondary/50">
+                {readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp')}
+              </p>
+            </div>
+            <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
+              <input
+                type="text"
+                value={remoteUrl}
+                placeholder="https://github.com/owner/repo"
+                onChange={(e) => handleRemoteUrlChange(e.target.value)}
+                className={`${INPUT} w-full`}
+              />
+              {remoteUrlError && (
+                <div className="flex items-center gap-1.5 text-xs text-red">
+                  <AlertTriangle className="w-3 h-3" /> {remoteUrlError}
+                </div>
+              )}
+              {remoteUrlChanged && (
+                <button onClick={saveRemoteUrl} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
+                  {t('common.save')}
+                </button>
+              )}
+            </fieldset>
           </div>
 
           {/* Keywords */}
