@@ -37,6 +37,13 @@ interface RowState {
   pending?: { path: string } & Exclude<FolderNameVerdict, { kind: 'none' }>
   /** The re-check's verdict when the bound folder is still not usable. */
   reason?: RepoSetupReason
+  /**
+   * `config:addRepository` succeeds on a folder that does not exist or is not a
+   * git repository, and reports it as a warning instead. The repository really
+   * was added, so this is not an error — but a row that says nothing would be
+   * the same silent success this step exists to remove.
+   */
+  warning?: string
   error?: string
 }
 
@@ -111,6 +118,13 @@ function OrgRepoBindRow({ row, state = {}, onLink, onConfirm, onCancel }: OrgRep
               {t('common.cancel')}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Added, but the main process flagged the folder — yellow, not red. */}
+      {state.warning && (
+        <div className="mt-2 px-3 py-2 bg-yellow/10 border border-yellow/20 rounded-lg text-xs text-yellow">
+          {state.warning}
         </div>
       )}
 
@@ -290,8 +304,12 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
     setError(null)
     setBusy(true)
     try {
-      await addRepository(name, folderPath, [])
+      const result = await addRepository(name, folderPath, [])
       setAddedKeys((prev) => (prev.includes(name) ? prev : [...prev, name]))
+      // Same reasoning as bindFolder's re-check, one round-trip cheaper: this
+      // handler is told about a folder that is not a git repository, so the row
+      // has to say so rather than render as usable.
+      setRowStates((prev) => ({ ...prev, [name]: result?.warning ? { warning: result.warning } : {} }))
     } catch (e) {
       setError(e instanceof Error ? e.message : t('repoSetup.error'))
     } finally {
