@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.72.0] - 2026-08-16
+
+### Added
+
+- **Desktop**: Clone org repos during invitation onboarding
+- **Desktop**: List org repositories during invitation onboarding
+
+### Fixed
+
+- **Desktop**: Pin the remote owner per org and let admins correct it
+- **Desktop**: Validate the captured remote and the clone payloads
+- **Desktop**: Surface add-repository warnings in the invitation wizard
+
 ## [0.71.5] - 2026-08-15
 
 ### Added
@@ -2153,6 +2166,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.72.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.72.0
 [0.71.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.71.5
 [0.71.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.71.4
 [0.71.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.71.3
