@@ -508,11 +508,29 @@ export class PRReviewWatcher {
       })
     }
 
-    // Notify only if window is not focused, on a real transition, respecting cooldown
+    // Notify only if window is not focused, on a real transition, respecting cooldown.
+    //
+    // `previous` must EXIST for this to count as a transition. Without that test,
+    // the first read of a PR compared `undefined` to whatever GitHub reports and
+    // fired — so switching the watcher on notified once per open PR, and so did
+    // every app restart, since `lastKnownStatus` lives in memory. Nothing changed
+    // in those cases; the app had simply never looked before.
+    //
+    // Opting out is per kind and read here rather than at the sink: the master
+    // switch in main/index.ts silences everything, this one silences only the
+    // watcher — see Settings → Notifications → Pull requests. Absent means never
+    // chosen, which is ON.
     const mainWindow = this.getMainWindow()
     const windowFocused = mainWindow?.isFocused() ?? false
     const lastNotified = this.lastNotifiedAt.get(prUrl) || 0
-    if (!windowFocused && now - lastNotified > NOTIFICATION_COOLDOWN_MS && prevStatus !== snapshot.status) {
+    const notifyAllowed = readConfig().notifications?.prReview !== false
+    if (
+      notifyAllowed
+      && !windowFocused
+      && now - lastNotified > NOTIFICATION_COOLDOWN_MS
+      && previous !== undefined
+      && prevStatus !== snapshot.status
+    ) {
       this.lastNotifiedAt.set(prUrl, now)
       this.showNotification(
         t('notification.prReview.title'),

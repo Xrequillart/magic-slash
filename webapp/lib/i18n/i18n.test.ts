@@ -191,8 +191,11 @@ describe('message catalogues', () => {
       'profile.style.simple',
       'application.title',
       'theme.espresso',
-      // "Notifications" and "Format" are the same word in both languages.
+      // "Notifications" and "Format" are the same word in both languages, and
+      // "Pull requests" is left in English on purpose — it is what the GitHub UI
+      // says, in both.
       'settings.notifications.section',
+      'settings.notifications.pr.section',
       'settings.sidebars.format.label',
       'settings.prWatcher.interval1m',
       'settings.prWatcher.interval2m',

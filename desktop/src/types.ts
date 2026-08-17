@@ -517,14 +517,22 @@ export interface Config {
    * anything.
    *
    * `enabled` is the master and is checked at the single sink in main/index.ts,
-   * which is why it covers kinds that have no switch of their own (PR reviews,
-   * a colleague picking up a ticket, the daily digest). The per-kind flags below
-   * are checked where the notification is produced.
+   * which is why it covers kinds that have no switch of their own (a colleague
+   * picking up a ticket, the daily digest). The per-kind flags below are checked
+   * where the notification is produced.
+   *
+   * The two `pr*` flags cover the two PR notifications, which come from two
+   * different places and are therefore two switches rather than one: `prReview`
+   * is the local watcher reporting a review status change on a PR you have open
+   * in the app, `prChangesRequested` is the team realtime stream telling you a
+   * reviewer asked for changes on one of yours.
    */
   notifications?: {
     enabled?: boolean
     agentWaiting?: boolean
     agentCompleted?: boolean
+    prReview?: boolean
+    prChangesRequested?: boolean
   }
   // Optional daily team digest (opt-in, default OFF): a single OS notification at
   // 9:00 local summarizing yesterday's team activity (merged PRs / tickets done).

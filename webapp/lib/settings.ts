@@ -44,6 +44,8 @@ export interface UserSettings {
   notificationsEnabled: boolean | null
   notificationAgentWaiting: boolean | null
   notificationAgentCompleted: boolean | null
+  notificationPrReview: boolean | null
+  notificationPrChangesRequested: boolean | null
   dailyDigestEnabled: boolean | null
   splitEnabled: boolean | null
   spotlightEnabled: boolean | null
@@ -67,6 +69,8 @@ interface UserSettingsRow {
   notifications_enabled: boolean | null
   notification_agent_waiting: boolean | null
   notification_agent_completed: boolean | null
+  notification_pr_review: boolean | null
+  notification_pr_changes_requested: boolean | null
   daily_digest_enabled: boolean | null
   split_enabled: boolean | null
   spotlight_enabled: boolean | null
@@ -77,7 +81,7 @@ interface UserSettingsRow {
 }
 
 const COLUMNS =
-  'theme, sync_claude_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, daily_digest_enabled, split_enabled, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode'
+  'theme, sync_claude_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_enabled, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
@@ -92,6 +96,8 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   notificationsEnabled: 'notifications_enabled',
   notificationAgentWaiting: 'notification_agent_waiting',
   notificationAgentCompleted: 'notification_agent_completed',
+  notificationPrReview: 'notification_pr_review',
+  notificationPrChangesRequested: 'notification_pr_changes_requested',
   dailyDigestEnabled: 'daily_digest_enabled',
   splitEnabled: 'split_enabled',
   spotlightEnabled: 'spotlight_enabled',
@@ -114,6 +120,8 @@ export const EMPTY_SETTINGS: UserSettings = {
   notificationsEnabled: null,
   notificationAgentWaiting: null,
   notificationAgentCompleted: null,
+  notificationPrReview: null,
+  notificationPrChangesRequested: null,
   dailyDigestEnabled: null,
   splitEnabled: null,
   spotlightEnabled: null,
@@ -137,6 +145,8 @@ function toSettings(row: UserSettingsRow): UserSettings {
     notificationsEnabled: row.notifications_enabled,
     notificationAgentWaiting: row.notification_agent_waiting,
     notificationAgentCompleted: row.notification_agent_completed,
+    notificationPrReview: row.notification_pr_review,
+    notificationPrChangesRequested: row.notification_pr_changes_requested,
     dailyDigestEnabled: row.daily_digest_enabled,
     splitEnabled: row.split_enabled,
     spotlightEnabled: row.spotlight_enabled,

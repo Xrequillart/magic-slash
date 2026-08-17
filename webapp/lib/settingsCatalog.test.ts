@@ -29,6 +29,8 @@ const EVERY_FIELD: (keyof AdminUserSettings)[] = [
   'notificationsEnabled',
   'notificationAgentWaiting',
   'notificationAgentCompleted',
+  'notificationPrReview',
+  'notificationPrChangesRequested',
   'dailyDigestEnabled',
   'splitEnabled',
   'splitActive',

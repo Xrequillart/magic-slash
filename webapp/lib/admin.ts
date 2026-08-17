@@ -244,6 +244,8 @@ interface AdminUserDetailRpcRow {
   notifications_enabled: boolean | null
   notification_agent_waiting: boolean | null
   notification_agent_completed: boolean | null
+  notification_pr_review: boolean | null
+  notification_pr_changes_requested: boolean | null
   split_enabled: boolean | null
   split_active: boolean | null
   pr_reviews_enabled: boolean | null
@@ -395,6 +397,8 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       notificationsEnabled: r.notifications_enabled,
       notificationAgentWaiting: r.notification_agent_waiting,
       notificationAgentCompleted: r.notification_agent_completed,
+      notificationPrReview: r.notification_pr_review,
+      notificationPrChangesRequested: r.notification_pr_changes_requested,
       splitEnabled: r.split_enabled,
       splitActive: r.split_active,
       prReviewsEnabled: r.pr_reviews_enabled,

@@ -2236,6 +2236,8 @@ describe('user settings', () => {
       notifications_enabled: null,
       notification_agent_waiting: null,
       notification_agent_completed: null,
+      notification_pr_review: null,
+      notification_pr_changes_requested: null,
       split_enabled: null,
       split_active: null,
       pr_reviews_enabled: true,

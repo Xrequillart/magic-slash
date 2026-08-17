@@ -1,6 +1,7 @@
 import type { OrgAgent, OrgAgentChange } from '../../types'
 import { t } from '../i18n'
 import { addOrgAgentChangeListener } from '../cloud/realtime'
+import { readConfig } from '../config/config'
 import { loadSession } from '../cloud/session-store'
 import { getStore } from '../store/Store'
 
@@ -110,6 +111,10 @@ export function setupReengagementNotifications(
           (p) => p.repo === review.repo && p.status === 'changes-requested',
         )
         if (wasAlreadyChanges) continue
+        // Per-kind opt-out, read per event so Settings → Notifications takes
+        // effect on the next realtime change with no re-wiring. Absent means
+        // never chosen, which is ON — only an explicit false silences it.
+        if (readConfig().notifications?.prChangesRequested === false) continue
         if (cooldownOk(`changes:${review.prUrl ?? review.repo}`)) {
           showNotification(
             t('notification.changesRequested.title'),

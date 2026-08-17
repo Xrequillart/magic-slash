@@ -390,16 +390,25 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.notifications.section': 'Notifications',
   'settings.notifications.master.label': 'Activer les notifications',
   'settings.notifications.master.help':
-    'Tout ce qui suit, ainsi que celles qui n’ont pas d’interrupteur propre : une revue qui arrive sur votre PR, un relecteur qui demande des modifications, un collègue qui reprend un ticket sur lequel vous êtes. Aucune notification n’apparaît quand la fenêtre de l’app est au premier plan.',
+    'Tout ce qui suit, ainsi que celles qui n’ont pas d’interrupteur propre : un collègue qui reprend un ticket sur lequel vous êtes. Aucune notification n’apparaît quand la fenêtre de l’app est au premier plan.',
+  'settings.notifications.allOff':
+    'Tout est en sourdine. Vos choix par type sont conservés — réactivez pour les revoir.',
   'settings.notifications.agents.section': 'Vos agents',
   'settings.notifications.agentWaiting.label': 'Agent en attente',
   'settings.notifications.agentWaiting.help':
     'Un agent s’est arrêté et attend une réponse ou une autorisation pour continuer.',
   'settings.notifications.agentCompleted.label': 'Agent terminé',
   'settings.notifications.agentCompleted.help': 'Un agent a terminé la tâche qui lui a été confiée.',
+  'settings.notifications.pr.section': 'Pull requests',
+  'settings.notifications.prReview.label': 'Statut de revue modifié',
+  'settings.notifications.prReview.help':
+    'La surveillance des PR a vu le statut de revue d’une de vos PR ouvertes changer : approuvée, modifications demandées, retour en attente. Uniquement sur un vrai changement : activer la surveillance ou redémarrer l’app ne déclenche plus rien.',
+  'settings.notifications.prChangesRequested.label': 'Modifications demandées sur votre PR',
+  'settings.notifications.prChangesRequested.help':
+    'Un relecteur a demandé des modifications sur une de vos PR. Vient de l’activité de votre équipe : elle arrive donc même pour une PR qu’aucun agent de cette machine ne surveille.',
   'settings.notifications.team.section': 'Équipe',
   'settings.notifications.team.footnote':
-    'Une revue qui arrive sur votre PR, et un collègue qui reprend un ticket sur lequel vous avez aussi un agent, suivent l’interrupteur principal ci-dessus — elles sont assez rares pour ne pas mériter le leur.',
+    'Un collègue qui reprend un ticket sur lequel vous avez aussi un agent suit l’interrupteur principal ci-dessus — c’est assez rare pour ne pas mériter le sien.',
 
   'settings.prWatcher.label': 'Surveiller les revues de PR',
   'settings.prWatcher.help':

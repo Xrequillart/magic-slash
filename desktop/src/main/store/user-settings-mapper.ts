@@ -36,6 +36,8 @@ export interface UserSettingsRow {
   notifications_enabled: boolean | null
   notification_agent_waiting: boolean | null
   notification_agent_completed: boolean | null
+  notification_pr_review: boolean | null
+  notification_pr_changes_requested: boolean | null
   pr_reviews_enabled: boolean | null
   pr_reviews_poll_interval_ms: number | null
   pr_reviews_auto_launch_skills: boolean | null
@@ -53,7 +55,8 @@ export const USER_SETTINGS_COLUMNS =
   'usage_card_enabled, usage_card_minimized, agent_context_enabled, ' +
   'agent_context_minimized, usage_logs_enabled, ' +
   'daily_digest_enabled, notifications_enabled, notification_agent_waiting, ' +
-  'notification_agent_completed, split_enabled, split_active, pr_reviews_enabled, ' +
+  'notification_agent_completed, notification_pr_review, ' +
+  'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
   'language, sync_claude_theme'
@@ -112,6 +115,8 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     notifications_enabled: orNull(config.notifications?.enabled),
     notification_agent_waiting: orNull(config.notifications?.agentWaiting),
     notification_agent_completed: orNull(config.notifications?.agentCompleted),
+    notification_pr_review: orNull(config.notifications?.prReview),
+    notification_pr_changes_requested: orNull(config.notifications?.prChangesRequested),
     pr_reviews_enabled: orNull(config.prReviews?.enabled),
     pr_reviews_poll_interval_ms: orNull(config.prReviews?.pollIntervalMs),
     pr_reviews_auto_launch_skills: orNull(config.prReviews?.autoLaunchSkills),
@@ -161,6 +166,10 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   if (isSet(row.notifications_enabled)) notifications.enabled = row.notifications_enabled
   if (isSet(row.notification_agent_waiting)) notifications.agentWaiting = row.notification_agent_waiting
   if (isSet(row.notification_agent_completed)) notifications.agentCompleted = row.notification_agent_completed
+  if (isSet(row.notification_pr_review)) notifications.prReview = row.notification_pr_review
+  if (isSet(row.notification_pr_changes_requested)) {
+    notifications.prChangesRequested = row.notification_pr_changes_requested
+  }
   if (Object.keys(notifications).length > 0) config.notifications = notifications
 
   const prReviews: NonNullable<Config['prReviews']> = {}

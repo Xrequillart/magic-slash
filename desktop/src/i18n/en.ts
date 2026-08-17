@@ -682,19 +682,28 @@ export const en = {
   'settings.notifications.section': 'Notifications',
   'settings.notifications.master.label': 'Enable notifications',
   'settings.notifications.master.help':
-    'Everything below, plus the ones with no switch of their own: a review landing on your PR, a reviewer requesting changes, a colleague picking up a ticket you are on. Notifications never appear while the window is focused.',
+    'Everything below, plus the ones with no switch of their own: a colleague picking up a ticket you are on. Notifications never appear while the window is focused.',
+  'settings.notifications.allOff':
+    'Everything is silenced. Your per-kind choices are kept — turn this back on to see them again.',
   'settings.notifications.agents.section': 'Your agents',
   'settings.notifications.agentWaiting.label': 'Agent waiting for you',
   'settings.notifications.agentWaiting.help':
     'An agent has stopped and needs an answer or a permission before it can carry on.',
   'settings.notifications.agentCompleted.label': 'Agent finished',
   'settings.notifications.agentCompleted.help': 'An agent has finished the task it was given.',
+  'settings.notifications.pr.section': 'Pull requests',
+  'settings.notifications.prReview.label': 'Review status changed',
+  'settings.notifications.prReview.help':
+    'The PR watcher saw the review status of one of your open PRs move — approved, changes requested, back to pending. Only on an actual change: switching the watcher on, or restarting the app, never notifies on its own.',
+  'settings.notifications.prChangesRequested.label': 'Changes requested on your PR',
+  'settings.notifications.prChangesRequested.help':
+    'A reviewer asked for changes on one of your PRs. Comes from your team’s activity, so it arrives even for a PR no agent on this machine is watching.',
   'settings.notifications.team.section': 'Team',
   'settings.notifications.digest.label': 'Daily team digest',
   'settings.notifications.digest.help':
     'Off by default. One notification at 9:00 AM summarizing your team’s last 24 hours (PRs shipped, tickets moved to Done). Nothing is sent when there was no activity.',
   'settings.notifications.team.footnote':
-    'A review landing on your PR, and a colleague picking up a ticket you also have an agent on, follow the master switch above — they are rare enough not to need one of their own.',
+    'A colleague picking up a ticket you also have an agent on follows the master switch above — it is rare enough not to need one of its own.',
   'toast.notificationsFailed': 'Failed to change the notification settings',
 
   // ── Settings → Appearance ────────────────────────────────────────────────

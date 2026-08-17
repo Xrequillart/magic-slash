@@ -36,11 +36,14 @@ export const DEFAULTS = {
   agentContextEnabled: true,
   agentContextMinimized: false,
   usageLogsEnabled: true,
-  // All three read `!== false` at the notification sink in the main process:
-  // absent has to describe the behaviour every existing install already has.
+  // All five read `!== false` where the notification is produced (the master at
+  // the sink in the main process, the four kinds at their sender): absent has to
+  // describe the behaviour every existing install already has.
   notificationsEnabled: true,
   notificationAgentWaiting: true,
   notificationAgentCompleted: true,
+  notificationPrReview: true,
+  notificationPrChangesRequested: true,
   dailyDigestEnabled: false,
   splitEnabled: false,
   // The `?? true` the Application tab reads it with, in
@@ -53,12 +56,12 @@ export const DEFAULTS = {
 } as const
 
 /**
- * All 22 `user_settings` columns, as the desktop app stores them. Every one is
+ * All 24 `user_settings` columns, as the desktop app stores them. Every one is
  * nullable and NULL is a third state distinct from false — it means the user
  * never chose, and the app applies its own default. Nothing here normalises a
  * null away: "never chose" is exactly what a support question needs to see.
  *
- * Extends the 18 fields `lib/settings.ts` already names (the ones the webapp lets
+ * Extends the 20 fields `lib/settings.ts` already names (the ones the webapp lets
  * a user edit) rather than restating them, so a column rename is one edit and not
  * two camelCase lists that must silently agree. The 4 added below are the ones
  * `UserSettings` deliberately omits: per-machine properties and transient view
@@ -76,7 +79,7 @@ export interface AdminUserSettings extends UserSettings {
  * can say "par défaut (on)" instead of just "jamais choisi", which tells an operator
  * that a column is null without telling them what the app is therefore doing.
  *
- * Extends `DEFAULTS` (lib/settings.ts) rather than restating it: those eighteen are
+ * Extends `DEFAULTS` (lib/settings.ts) rather than restating it: those twenty are
  * the ones the webapp itself can edit, and their defaults are already documented
  * there. The four below are the admin-only columns, each verified against the line in
  * the desktop app that resolves the unset value — cited, because a default invented
@@ -108,7 +111,7 @@ export interface SettingGroup {
 }
 
 /**
- * The seventeen settings, grouped by FEATURE, in reading order. Also the field
+ * The twenty-four settings, grouped by FEATURE, in reading order. Also the field
  * allowlist — a column absent from here is a column the console does not show.
  *
  * The groups and their titles are the desktop app's own sections, verbatim and in its
@@ -158,7 +161,7 @@ export const SETTING_GROUPS: SettingGroup[] = [
     ],
   },
   {
-    // The master switch is deliberately first: it is what decides whether the two
+    // The master switch is deliberately first: it is what decides whether the four
     // below are doing anything at all, and reading them in the other order invites
     // "agent waiting is on, so why is it silent?".
     title: 'Notifications',
@@ -166,6 +169,8 @@ export const SETTING_GROUPS: SettingGroup[] = [
       { field: 'notificationsEnabled', label: 'Enabled' },
       { field: 'notificationAgentWaiting', label: 'Agent waiting' },
       { field: 'notificationAgentCompleted', label: 'Agent finished' },
+      { field: 'notificationPrReview', label: 'PR review status changed' },
+      { field: 'notificationPrChangesRequested', label: 'Changes requested on your PR' },
     ],
   },
   {
