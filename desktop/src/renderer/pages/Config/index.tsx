@@ -1060,7 +1060,10 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       <div>
         <SectionHeader icon={Coins} title={t('settings.spend.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4">
-          {spend?.hasData ? (
+          {/* Three states, not two: `spend` is null until the fold comes back, and
+              showing the empty copy during that read said "no history" to users who
+              have plenty of it. */}
+          {spend === null || spend.hasData ? (
             <>
               <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2 text-sm items-baseline">
                 <span className="text-text-secondary/50 text-xs uppercase tracking-wider"></span>
@@ -1068,14 +1071,25 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                 <span className="text-text-secondary/50 text-xs uppercase tracking-wider text-right">{t('settings.spend.estCost')}</span>
 
                 {([
-                  { key: 'settings.spend.today', b: spend.today },
-                  { key: 'settings.spend.week', b: spend.week },
-                  { key: 'settings.spend.allTime', b: spend.allTime },
+                  { key: 'settings.spend.today', b: spend?.today },
+                  { key: 'settings.spend.week', b: spend?.week },
+                  { key: 'settings.spend.allTime', b: spend?.allTime },
                 ] as const).map(({ key, b }) => (
                   <Fragment key={key}>
                     <span className="text-text-secondary">{t(key)}</span>
-                    <span className="font-mono text-right">{formatTokensCompact(b.tokens, locale, t)}</span>
-                    <span className="font-mono text-right text-ink">~{formatUsd(b.costUsd, locale)}</span>
+                    {b ? (
+                      <>
+                        <span className="font-mono text-right">{formatTokensCompact(b.tokens, locale, t)}</span>
+                        <span className="font-mono text-right text-ink">~{formatUsd(b.costUsd, locale)}</span>
+                      </>
+                    ) : (
+                      // Sized to the numbers they stand in for, so nothing shifts
+                      // when the values land.
+                      <>
+                        <span aria-hidden className="block h-4 w-16 justify-self-end rounded bg-surface-strong animate-pulse" />
+                        <span aria-hidden className="block h-4 w-14 justify-self-end rounded bg-surface-strong animate-pulse" />
+                      </>
+                    )}
                   </Fragment>
                 ))}
               </div>
