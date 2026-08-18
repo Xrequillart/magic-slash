@@ -28,21 +28,24 @@ Follow each step in order. Each step builds on the previous one.
 ### 0.1: Check config file exists
 
 ```bash
-CONFIG_FILE=~/.config/magic-slash/config.json
-# Magic Slash Desktop (cloud) is the source of truth. When the app is running, fetch the live
-# config; otherwise fall back to the local file (may be stale, or absent if never installed).
-if [ -n "$MAGIC_SLASH_PORT" ]; then
+# Magic Slash Desktop is the single source of truth (Supabase). The port comes from the
+# environment inside an app terminal, and from the file the app publishes anywhere else —
+# so a Claude started from a plain terminal reaches the same live config.
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+CONFIG_FILE=""
+if [ -n "$MS_PORT" ]; then
   MS_TMP_CONFIG="$(mktemp)"
   trap 'rm -f "$MS_TMP_CONFIG"' EXIT
-  if curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
+  # A published port may name a server that has since died: -sf turns that into a failure.
+  if curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
      && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
     CONFIG_FILE="$MS_TMP_CONFIG"
   fi
 fi
-[ ! -f "$CONFIG_FILE" ] && echo "MISSING" || echo "OK"
+[ -z "$CONFIG_FILE" ] && echo "APP_NOT_RUNNING" || echo "OK"
 ```
 
-If missing, display `MSG_CONFIG_ERROR` and stop.
+If `APP_NOT_RUNNING`, the app is not running and the cloud config is unreachable: display `MSG_APP_NOT_RUNNING` and stop. Never proceed on a guessed config.
 
 ### 0.2: Determine language
 
@@ -53,7 +56,10 @@ Once the repo is identified (step 3), read `.repositories.<name>.languages.discu
 Read `integrations.atlassian` from config. Default: `true` (backward compatibility).
 
 ```bash
-jq -r '.integrations.atlassian // true' "$CONFIG_FILE"
+# Every bash block runs in its own shell: $MS_PORT does not survive from Step 0,
+# so resolve it again here. One line, and it costs nothing to repeat.
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config" | jq -r '.integrations.atlassian // true'
 ```
 
 Store the result as `$ATLASSIAN_ENABLED`. If `false`, only GitHub issue format (`#123`) is accepted in Step 1.
@@ -113,7 +119,7 @@ If the MCP call fails (timeout, auth error), retry once. If it fails again, ask 
 
 ### 2B.1: Read repos configuration
 
-Read `~/.config/magic-slash/config.json` to get the list of configured repos.
+Read the live config fetched in Step 0 (kept in memory — `$CONFIG_FILE` does not survive into later bash blocks) to get the list of configured repos.
 
 ### 2B.2: Identify GitHub repos
 
@@ -400,17 +406,13 @@ for f in "${CANDIDATES[@]}"; do
 done
 ```
 
-If files detected: Use `AskUserQuestion` with `MSG_WORKTREE_FILES_DETECTED` (y/n). If user says yes, save to config via `jq`:
+If files detected: Use `AskUserQuestion` with `MSG_WORKTREE_FILES_DETECTED` (y/n). If user says yes, persist the choice to the cloud:
 
 ```bash
-# Persist to the cloud via the desktop app when running; otherwise write the local config file.
-if [ -n "$MAGIC_SLASH_PORT" ]; then
-  curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/config/worktree-files?path=$(echo -n "$PWD" | jq -sRr @uri)&files=$(echo -n '["file1","file2"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
-else
-  LOCAL_CONFIG=~/.config/magic-slash/config.json
-  [ -f "$LOCAL_CONFIG" ] && jq --arg repo "{REPO_NAME}" --argjson files '["file1", "file2"]' \
-    '.repositories[$repo].worktreeFiles = $files' "$LOCAL_CONFIG" > "$LOCAL_CONFIG.tmp" && mv "$LOCAL_CONFIG.tmp" "$LOCAL_CONFIG"
-fi
+# The app owns the write: it is the only process holding the cloud session. Silent and
+# non-blocking, as every write endpoint is. Its own shell, so resolve the port again.
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -s "http://127.0.0.1:$MS_PORT/config/worktree-files?path=$(echo -n "$PWD" | jq -sRr @uri)&files=$(echo -n '["file1","file2"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
 Then copy the files either way. If no files detected, skip silently.

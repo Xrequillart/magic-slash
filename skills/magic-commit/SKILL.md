@@ -23,25 +23,28 @@ Atomic commits (one commit = one logical unit of change) are a core expectation.
 ### 0.1: Check configuration
 
 ```bash
-CONFIG_FILE=~/.config/magic-slash/config.json
-# Magic Slash Desktop (cloud) is the source of truth. When the app is running, fetch the live
-# config; otherwise fall back to the local file (may be stale, or absent if never installed).
-if [ -n "$MAGIC_SLASH_PORT" ]; then
+# Magic Slash Desktop is the single source of truth (Supabase). The port comes from the
+# environment inside an app terminal, and from the file the app publishes anywhere else —
+# so a Claude started from a plain terminal reaches the same live config.
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+CONFIG_FILE=""
+if [ -n "$MS_PORT" ]; then
   MS_TMP_CONFIG="$(mktemp)"
   trap 'rm -f "$MS_TMP_CONFIG"' EXIT
-  if curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
+  # A published port may name a server that has since died: -sf turns that into a failure.
+  if curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
      && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
     CONFIG_FILE="$MS_TMP_CONFIG"
   fi
 fi
-if [ ! -f "$CONFIG_FILE" ]; then
-  echo "CONFIG_MISSING"
+if [ -z "$CONFIG_FILE" ]; then
+  echo "APP_NOT_RUNNING"
 else
   cat "$CONFIG_FILE"
 fi
 ```
 
-If the config does not exist, display the error message from `references/messages.md` (MSG_CONFIG_ERROR) and stop.
+If the config could not be read, the app is not running: display the error message from `references/messages.md` (MSG_APP_NOT_RUNNING) and stop. Never proceed on a guessed config.
 
 ### 0.2: Determine languages
 

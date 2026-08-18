@@ -24,7 +24,7 @@ The flow is: **verify merge → update tracker → update desktop → clean up �
 
 ## Configuration
 
-Read `~/.config/magic-slash/config.json` and determine the parameters based on the current repo:
+Read the live config fetched in Step 0 (kept in memory — `$CONFIG_FILE` does not survive into later bash blocks) and determine the parameters based on the current repo:
 
 1. Identify the current repo by comparing `$PWD` with the paths in `.repositories`
 2. For each parameter, check the repo config
@@ -48,25 +48,28 @@ Read `~/.config/magic-slash/config.json` and determine the parameters based on t
 Before starting, verify that the Magic Slash configuration exists:
 
 ```bash
-CONFIG_FILE=~/.config/magic-slash/config.json
-# Magic Slash Desktop (cloud) is the source of truth. When the app is running, fetch the live
-# config; otherwise fall back to the local file (may be stale, or absent if never installed).
-if [ -n "$MAGIC_SLASH_PORT" ]; then
+# Magic Slash Desktop is the single source of truth (Supabase). The port comes from the
+# environment inside an app terminal, and from the file the app publishes anywhere else —
+# so a Claude started from a plain terminal reaches the same live config.
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+CONFIG_FILE=""
+if [ -n "$MS_PORT" ]; then
   MS_TMP_CONFIG="$(mktemp)"
   trap 'rm -f "$MS_TMP_CONFIG"' EXIT
-  if curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
+  # A published port may name a server that has since died: -sf turns that into a failure.
+  if curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
      && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
     CONFIG_FILE="$MS_TMP_CONFIG"
   fi
 fi
-if [ ! -f "$CONFIG_FILE" ]; then
-  # Display error based on system language
+if [ -z "$CONFIG_FILE" ]; then
+  # Display MSG_APP_NOT_RUNNING and stop
 fi
 ```
 
-#### If the config does not exist
+#### If the config could not be read (app not running)
 
-Display **MSG_CONFIG_ERROR** (see `references/messages.md`).
+Display **MSG_APP_NOT_RUNNING** (see `references/messages.md`).
 
 ## Step 1: Extract the ticket ID
 
@@ -84,12 +87,12 @@ The worktree name follows the pattern `{repo-name}-{TICKET-ID}` (e.g.: `my-api-P
 
 Extract the TICKET-ID using the pattern:
 
-- **Jira**: Extract the **last** `[A-Z]+-\d+` match from the directory name. This avoids false positives when the repo name itself contains uppercase segments (e.g.: `my-API-PROJ-123` → `PROJ-123`, not `API-PROJ`). You can also cross-reference with the repo name from `config.json` to strip it and isolate the ticket ID.
+- **Jira**: Extract the **last** `[A-Z]+-\d+` match from the directory name. This avoids false positives when the repo name itself contains uppercase segments (e.g.: `my-API-PROJ-123` → `PROJ-123`, not `API-PROJ`). You can also cross-reference with the repo name from the config to strip it and isolate the ticket ID.
 - **GitHub**: the last numeric segment after the repo name (e.g.: `123` in `my-api-123`)
 
 ### Case B: Inside the main repo (not a worktree)
 
-If the current directory matches a repo path from `config.json` directly (no ticket ID in the directory name), extract the ticket ID from the branch name:
+If the current directory matches a configured repo path directly (no ticket ID in the directory name), extract the ticket ID from the branch name:
 
 ```bash
 git branch --show-current
@@ -106,7 +109,10 @@ If still no ticket ID found from either case, ask the user.
 Read the config to identify all configured repos and search for associated worktrees (multi-repo support):
 
 ```bash
-cat ~/.config/magic-slash/config.json
+# Every bash block runs in its own shell: $MS_PORT does not survive from Step 0,
+# so resolve it again here. One line, and it costs nothing to repeat.
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config"
 ```
 
 For each configured repo, build the expected worktree path and check if it exists. The worktree is always a sibling of the repo directory, named `{repo-dir-name}-{TICKET-ID}`:
@@ -163,7 +169,7 @@ If some PRs are merged and others are not, display a warning listing which PRs a
 
 ### Check Atlassian integration
 
-Read `integrations.atlassian` from `~/.config/magic-slash/config.json`. Default: `true`.
+Read `integrations.atlassian` from the live config fetched in Step 0. Default: `true`.
 
 If `integrations.atlassian` is `false`, skip the entire "For Jira tickets" section below. Only execute "For GitHub issues".
 

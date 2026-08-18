@@ -23,7 +23,7 @@ You are an assistant that finalizes a task by pushing commits, creating a PR, up
 
 ## Configuration
 
-Read `~/.config/magic-slash/config.json` **once** at the start and keep it in memory for the entire workflow.
+Read the live config in Step 0 **once** and keep it in memory for the entire workflow. Shell variables do not survive between bash blocks, so a later block must re-fetch it rather than reuse `$CONFIG_FILE`.
 
 Determine the parameters based on the current repo:
 
@@ -41,7 +41,7 @@ Determine the parameters based on the current repo:
 
 ## Branch configuration
 
-Read `~/.config/magic-slash/config.json` to determine the development branch:
+Read the live config fetched in Step 0 (kept in memory — `$CONFIG_FILE` does not survive into later bash blocks) to determine the development branch:
 
 1. Once the repo is identified, read `.repositories.<name>.branches.development`
 2. If an argument is provided (e.g., `/magic:pr develop`), use it directly as `$DEV_BRANCH` and skip confirmation.
@@ -82,23 +82,26 @@ Use `AskUserQuestion` with the text from **`MSG_BRANCH_ASK`**.
 Before starting, verify that the Magic Slash configuration exists:
 
 ```bash
-CONFIG_FILE=~/.config/magic-slash/config.json
-# Magic Slash Desktop (cloud) is the source of truth. When the app is running, fetch the live
-# config; otherwise fall back to the local file (may be stale, or absent if never installed).
-if [ -n "$MAGIC_SLASH_PORT" ]; then
+# Magic Slash Desktop is the single source of truth (Supabase). The port comes from the
+# environment inside an app terminal, and from the file the app publishes anywhere else —
+# so a Claude started from a plain terminal reaches the same live config.
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+CONFIG_FILE=""
+if [ -n "$MS_PORT" ]; then
   MS_TMP_CONFIG="$(mktemp)"
   trap 'rm -f "$MS_TMP_CONFIG"' EXIT
-  if curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
+  # A published port may name a server that has since died: -sf turns that into a failure.
+  if curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
      && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
     CONFIG_FILE="$MS_TMP_CONFIG"
   fi
 fi
-if [ ! -f "$CONFIG_FILE" ]; then
-  # Display MSG_CONFIG_ERROR and stop
+if [ -z "$CONFIG_FILE" ]; then
+  # Display MSG_APP_NOT_RUNNING and stop
 fi
 ```
 
-If the config does not exist, display **`MSG_CONFIG_ERROR`** and stop.
+If the config could not be read, the app is not running: display **`MSG_APP_NOT_RUNNING`** and stop. Never proceed on a guessed config.
 
 ### 0.1: Extract the ticket ID from the current worktree
 
@@ -509,7 +512,7 @@ Use `$TICKET_ID` (extracted in Step 0.1). If `$TICKET_ID` is empty, use `AskUser
 
 ### 7.0: Check Atlassian integration
 
-Read `integrations.atlassian` from `~/.config/magic-slash/config.json`. Default: `true`.
+Read `integrations.atlassian` from the live config fetched in Step 0. Default: `true`.
 
 If `integrations.atlassian` is `false`, skip Step 7.1 entirely (Jira ticket update). Only execute Step 7.2 (GitHub issues).
 

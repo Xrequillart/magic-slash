@@ -3,28 +3,28 @@
 > Select the message variant matching `languages.discussion` config value. Default is `en`.
 > For Jira comments, use `languages.jiraComment` instead.
 
-## MSG_CONFIG_ERROR
+## MSG_APP_NOT_RUNNING
 
 ### en
 
 ```text
-❌ Magic Slash configuration not found
+❌ Magic Slash Desktop is not running
 
-Please create the config file at:
-  ~/.config/magic-slash/config.json
+Your configuration lives in the cloud and only the app can read it, so there is
+nothing reliable to work from until it is open.
 
-See documentation: https://github.com/magic-slash/config
+Launch Magic Slash, then run this command again.
 ```
 
 ### fr
 
 ```text
-❌ Configuration Magic Slash introuvable
+❌ Magic Slash Desktop n'est pas lancé
 
-Veuillez créer le fichier de configuration :
-  ~/.config/magic-slash/config.json
+Ta configuration est dans le cloud et seule l'app peut la lire : sans elle, il n'y a
+rien de fiable sur quoi travailler.
 
-Voir la documentation : https://github.com/magic-slash/config
+Lance Magic Slash, puis relance cette commande.
 ```
 
 ## MSG_PR_NOT_MERGED

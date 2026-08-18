@@ -15,7 +15,7 @@ You are an assistant that addresses code review feedback by fixing the requested
 
 ## Configuration
 
-Read `~/.config/magic-slash/config.json` and determine the parameters based on the current repo:
+Read the live config fetched in Step 0 (kept in memory — `$CONFIG_FILE` does not survive into later bash blocks) and determine the parameters based on the current repo:
 
 1. Identify the current repo by comparing `$PWD` with the paths in `.repositories`
 2. For each parameter, check the repo config
@@ -59,23 +59,26 @@ Read `~/.config/magic-slash/config.json` and determine the parameters based on t
 Before starting, verify that the Magic Slash configuration exists and that required CLI tools are available.
 
 ```bash
-CONFIG_FILE=~/.config/magic-slash/config.json
-# Magic Slash Desktop (cloud) is the source of truth. When the app is running, fetch the live
-# config; otherwise fall back to the local file (may be stale, or absent if never installed).
-if [ -n "$MAGIC_SLASH_PORT" ]; then
+# Magic Slash Desktop is the single source of truth (Supabase). The port comes from the
+# environment inside an app terminal, and from the file the app publishes anywhere else —
+# so a Claude started from a plain terminal reaches the same live config.
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+CONFIG_FILE=""
+if [ -n "$MS_PORT" ]; then
   MS_TMP_CONFIG="$(mktemp)"
   trap 'rm -f "$MS_TMP_CONFIG"' EXIT
-  if curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
+  # A published port may name a server that has since died: -sf turns that into a failure.
+  if curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
      && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
     CONFIG_FILE="$MS_TMP_CONFIG"
   fi
 fi
-if [ ! -f "$CONFIG_FILE" ]; then
-  # Display error based on system language
+if [ -z "$CONFIG_FILE" ]; then
+  # Display MSG_APP_NOT_RUNNING and stop
 fi
 ```
 
-If the config does not exist, display **`MSG_CONFIG_ERROR`** and stop.
+If the config could not be read, the app is not running: display **`MSG_APP_NOT_RUNNING`** and stop. Never proceed on a guessed config.
 
 #### Check `gh` CLI availability
 
@@ -113,7 +116,10 @@ If no ID is detected (you are in a regular repo, not a worktree), skip directly 
 ### 0.3: Read the repos configuration
 
 ```bash
-cat ~/.config/magic-slash/config.json
+# Every bash block runs in its own shell: $MS_PORT does not survive from Step 0,
+# so resolve it again here. One line, and it costs nothing to repeat.
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config"
 ```
 
 Retrieve the list of configured repos with their paths:
@@ -178,12 +184,16 @@ If a worktree fails during its resolve cycle (push error, API failure, etc.):
 The config was already dumped in Step 0.3. Before proceeding, resolve the current repo (compare `$PWD` against each `.repositories.<name>.path`) and **pin every resolve parameter into concrete shell variables now**, using `jq`. Downstream steps (5.5, 6, 7, 7.5) MUST reference these pinned variables — do not re-derive the values later.
 
 ```bash
-CONFIG_FILE=~/.config/magic-slash/config.json
-# Re-resolve against the live config (cloud) when the app is running; else the local file.
-if [ -n "$MAGIC_SLASH_PORT" ]; then
+# Magic Slash Desktop is the single source of truth (Supabase). The port comes from the
+# environment inside an app terminal, and from the file the app publishes anywhere else —
+# so a Claude started from a plain terminal reaches the same live config.
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+CONFIG_FILE=""
+if [ -n "$MS_PORT" ]; then
   MS_TMP_CONFIG="$(mktemp)"
   trap 'rm -f "$MS_TMP_CONFIG"' EXIT
-  if curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
+  # A published port may name a server that has since died: -sf turns that into a failure.
+  if curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
      && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
     CONFIG_FILE="$MS_TMP_CONFIG"
   fi

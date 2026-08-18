@@ -2,18 +2,18 @@
 
 > Select the message variant matching `languages.discussion` config value. Default is `en`.
 
-## MSG_CONFIG_ERROR
+## MSG_APP_NOT_RUNNING
 
 ### en
 
 ```text
-[error] Magic Slash configuration not found. Please create the config file at: ~/.config/magic-slash/config.json. See documentation: https://github.com/magic-slash/config
+[error] Magic Slash Desktop is not running. Your configuration lives in the cloud and only the app can read it. Launch Magic Slash, then run this command again.
 ```
 
 ### fr
 
 ```text
-[error] Configuration Magic Slash introuvable. Veuillez creer le fichier de configuration : ~/.config/magic-slash/config.json. Voir la documentation : https://github.com/magic-slash/config
+[error] Magic Slash Desktop n'est pas lance. Ta configuration est dans le cloud et seule l'app peut la lire. Lance Magic Slash, puis relance cette commande.
 ```
 
 ## MSG_NODE_NO_MANAGER

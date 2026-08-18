@@ -1,23 +1,35 @@
 # API Reference — Magic Slash Desktop
 
-These endpoints talk to the Magic Slash Desktop over `http://127.0.0.1:$MAGIC_SLASH_PORT`. The
+These endpoints talk to the Magic Slash Desktop over `http://127.0.0.1:$MS_PORT`. The
 **write** endpoints update the UI, are silent (`|| true`) and never block the workflow. The
 **read** endpoints let a skill fetch the live config/metadata the app holds — the Supabase cloud
-store is the source of truth, so these return fresher data than the local `~/.config/magic-slash/config.json`
-(which the app no longer keeps in sync). All endpoints require `$MAGIC_SLASH_PORT`; the read
-endpoints keyed to a terminal also need `$MAGIC_SLASH_TERMINAL_ID`.
+store is the single source of truth, and this API is the only way to reach it. There is no local
+config file to fall back on: any `~/.config/magic-slash/config.json` predates the cloud migration
+and the app archives it at launch.
+
+**Resolving the port.** `$MAGIC_SLASH_PORT` is exported only into terminals the app spawned
+itself. Everywhere else, read the port from the file the app publishes while it serves:
+
+```bash
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+```
+
+Each example below repeats that line, because every bash block runs in its own shell and
+`$MS_PORT` does not carry over from an earlier one. An empty `$MS_PORT` — or a `curl` that fails
+against it, since the file can outlive a crashed app — means the app is not running. Stop and say so; never guess the config. The read endpoints
+keyed to a terminal additionally need `$MAGIC_SLASH_TERMINAL_ID`.
 
 ## Read endpoints
 
 ### `GET /config`
 
 Returns the current config as JSON (repositories, integrations, languages, …), served from the
-app's in-memory cache hydrated from the cloud. Skills prefer this over reading the local file, and
-fall back to `~/.config/magic-slash/config.json` when the app is not running (`$MAGIC_SLASH_PORT`
-unset) or the response has no repositories.
+app's in-memory cache hydrated from the cloud. This is the only source of config for a skill.
+Treat an empty `.repositories` as a failure to read it, not as a user with no repositories.
 
 ```bash
-curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/config"
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -sf "http://127.0.0.1:$MS_PORT/config"
 ```
 
 ### `GET /agent?id=<terminalId>`
@@ -26,24 +38,26 @@ Returns the agent/task metadata (title, ticketId, description, status, baseBranc
 repositories, prUrl, …) for the given terminal, or `null` if unknown. `id` is `$MAGIC_SLASH_TERMINAL_ID`.
 
 ```bash
-curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/agent?id=$MAGIC_SLASH_TERMINAL_ID"
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -sf "http://127.0.0.1:$MS_PORT/agent?id=$MAGIC_SLASH_TERMINAL_ID"
 ```
 
 ## Write endpoints
 
-These endpoints update the Magic Slash Desktop UI / cloud store. They are silent (`|| true`) and never block the workflow. All require `$MAGIC_SLASH_PORT`; the terminal-scoped ones (`/metadata`, `/repositories`) additionally require `$MAGIC_SLASH_TERMINAL_ID`, while `/config/worktree-files` identifies the repository by `path=` and needs only the port.
+These endpoints update the Magic Slash Desktop UI / cloud store. They are silent (`|| true`) and never block the workflow. All require `$MS_PORT`; the terminal-scoped ones (`/metadata`, `/repositories`) additionally require `$MAGIC_SLASH_TERMINAL_ID`, while `/config/worktree-files` identifies the repository by `path=` and needs only the port.
 
 ### `GET /config/worktree-files?path=<working directory>&files=<json array>`
 
 Persists a repository's `worktreeFiles` to the cloud store. `files` is a URL-encoded JSON array of
-strings. Replaces the legacy `jq`-into-local-file write when the app is running.
+strings. This is the only way a skill persists config: there is no local file to write.
 
 Identify the repository with `path` — the directory you are in, the repo itself or one of its
 worktrees. A bare `repo=<name>` is still accepted for compatibility, but a name is not unique: two
 organizations can each have an `api`, and the app then keys the second one differently.
 
 ```bash
-curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/config/worktree-files?path=%2FUsers%2Fme%2Fapi&files=%5B%22.env%22%5D"
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -s "http://127.0.0.1:$MS_PORT/config/worktree-files?path=%2FUsers%2Fme%2Fapi&files=%5B%22.env%22%5D"
 ```
 
 ## Endpoint `/metadata`
@@ -66,7 +80,8 @@ Updates the agent metadata in the sidebar.
 
 **Example**:
 ```bash
-curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=PROJ-123%3A%20Add%20login&status=in%20progress"
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -s "http://127.0.0.1:$MS_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=PROJ-123%3A%20Add%20login&status=in%20progress"
 ```
 
 **Note on `branchName`** — every parameter is optional and the server MERGES what it
@@ -91,5 +106,6 @@ Attaches repositories to the agent for grouping in the sidebar.
 
 **Example**:
 ```bash
-curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=%5B%22%2Fpath%2Fto%2Frepo%22%5D"
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -s "http://127.0.0.1:$MS_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=%5B%22%2Fpath%2Fto%2Frepo%22%5D"
 ```

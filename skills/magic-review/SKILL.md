@@ -19,7 +19,7 @@ You are an assistant that performs a thorough code review on a pull request. You
 
 ## Configuration
 
-Read `~/.config/magic-slash/config.json` and determine the parameters based on the current repo:
+Read the live config fetched in Step 0 (kept in memory — `$CONFIG_FILE` does not survive into later bash blocks) and determine the parameters based on the current repo:
 
 1. Identify the current repo by comparing `$PWD` with the paths in `.repositories`
 2. For each parameter, check the repo config
@@ -36,23 +36,26 @@ Read `~/.config/magic-slash/config.json` and determine the parameters based on t
 Before starting, verify that the Magic Slash configuration exists:
 
 ```bash
-CONFIG_FILE=~/.config/magic-slash/config.json
-# Magic Slash Desktop (cloud) is the source of truth. When the app is running, fetch the live
-# config; otherwise fall back to the local file (may be stale, or absent if never installed).
-if [ -n "$MAGIC_SLASH_PORT" ]; then
+# Magic Slash Desktop is the single source of truth (Supabase). The port comes from the
+# environment inside an app terminal, and from the file the app publishes anywhere else —
+# so a Claude started from a plain terminal reaches the same live config.
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+CONFIG_FILE=""
+if [ -n "$MS_PORT" ]; then
   MS_TMP_CONFIG="$(mktemp)"
   trap 'rm -f "$MS_TMP_CONFIG"' EXIT
-  if curl -sf "http://127.0.0.1:$MAGIC_SLASH_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
+  # A published port may name a server that has since died: -sf turns that into a failure.
+  if curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config" -o "$MS_TMP_CONFIG" 2>/dev/null \
      && [ "$(jq '.repositories | length' "$MS_TMP_CONFIG" 2>/dev/null || echo 0)" -gt 0 ]; then
     CONFIG_FILE="$MS_TMP_CONFIG"
   fi
 fi
-if [ ! -f "$CONFIG_FILE" ]; then
-  # Display error and stop
+if [ -z "$CONFIG_FILE" ]; then
+  # Display MSG_APP_NOT_RUNNING and stop
 fi
 ```
 
-If the config does not exist, display `MSG_CONFIG_ERROR` and stop.
+If the config could not be read, the app is not running: display `MSG_APP_NOT_RUNNING` and stop. Never proceed on a guessed config.
 
 ## Step 1: Detect the ticket
 
@@ -208,7 +211,7 @@ Display `MSG_REVIEW_SUMMARY_FULLSTACK` as a combined summary at the end, listing
 
 ### 12.0: Check Atlassian integration
 
-Read `integrations.atlassian` from `~/.config/magic-slash/config.json`. Default: `true`.
+Read `integrations.atlassian` from the live config fetched in Step 0. Default: `true`.
 
 If `integrations.atlassian` is `false`, skip this step entirely.
 
