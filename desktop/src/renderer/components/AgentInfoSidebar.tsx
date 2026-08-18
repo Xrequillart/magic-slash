@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { X, Bot, Layers } from 'lucide-react'
+import { X, Bot } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { TicketHeader } from './agent-info-sidebar/TicketHeader'
@@ -486,37 +486,6 @@ export function AgentInfoSidebar() {
                 {t('agentInfo.addRepository')}
               </div>
             </button>
-
-            {/* Full-Stack Task Section */}
-            {metadata?.fullStackTaskId && metadata?.relatedWorktrees && metadata.relatedWorktrees.length > 1 && (
-              <div className="bg-surface rounded-xl p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Layers className="w-3.5 h-3.5 text-orange" />
-                  <span className="text-[10px] text-text-secondary/50 uppercase tracking-wider">
-                    Full-Stack Task
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {metadata.relatedWorktrees.map((path) => {
-                    const repoName = path.split('/').pop() || path
-                    const isCurrentRepo = attachedRepos.includes(path)
-                    return (
-                      <div
-                        key={path}
-                        className={`text-xs font-mono truncate px-2 py-1 rounded ${
-                          isCurrentRepo
-                            ? 'bg-orange/10 text-orange border border-orange/20'
-                            : 'text-text-secondary/70'
-                        }`}
-                        title={path}
-                      >
-                        {repoName}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
