@@ -69,9 +69,26 @@ npm run desktop:package  # Package for macOS (.dmg, .zip)
 
 ## User Configuration
 
-Config file: `~/.config/magic-slash/config.json`
+**Supabase is the single source of truth. There is no local config file** — the desktop app
+holds the config in memory (hydrated from the cloud) and never mirrors it to disk. Any
+`~/.config/magic-slash/config.json` still on a machine predates that migration; it is archived
+to `config.json.pre-cloud-migration` at launch precisely so nothing reads it. Never read it,
+and never write it.
 
-Contains configured repositories, each with: path, keywords, languages (commit/PR/Jira), commit format (angular), and PR/issues options.
+To read the config, ask the running app over its local HTTP API:
+
+```bash
+# The port comes from the environment inside an app terminal, and from the file the app
+# publishes anywhere else (see desktop/src/main/hooks/status-server.ts).
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -sf "http://127.0.0.1:$MS_PORT/config"
+```
+
+If that yields nothing, the app is not running: say so and stop, rather than falling back to
+a file whose contents are years of releases out of date.
+
+The config contains the configured repositories, each with: path, keywords, languages
+(commit/PR/Jira), commit format (angular), and PR/issues options.
 
 ## User Profile
 
