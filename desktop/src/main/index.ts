@@ -21,6 +21,7 @@ import { setupAppearanceHandlers } from './ipc/appearance-handlers'
 import { setStore } from './store/Store'
 import { CloudStore } from './store/CloudStore'
 import { readConfig, writeConfig, updateRepositoryWorktreeFilesSettings } from './config/config'
+import { archiveLegacyConfig } from './config/legacy-cleanup'
 import { expandPath } from './config/validation'
 import { resolveRepoIds } from '../repoMatch'
 import { readAgents } from './config/agents'
@@ -601,6 +602,10 @@ async function initializeHooksAndSessions() {
   try {
     const port = await startStatusServer()
     setStatusServerPort(port)
+
+    // Retire the pre-cloud config.json so nothing reads settings from it any more
+    const archived = archiveLegacyConfig()
+    if (archived) console.log(`[LegacyCleanup] Archived the legacy config.json to ${archived}`)
 
     // Configure Claude Code hooks (deferred file I/O)
     configureClaudeHooks()
