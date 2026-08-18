@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.73.0] - 2026-08-18
+
+### Added
+
+- **Desktop**: Archive the pre-cloud config.json at launch
+- **Desktop**: Give each pr notification its own switch
+
+### Changed
+
+- **Desktop**: Drop the full-stack task card from the agent sidebar
+- **Deps**: Bump globals from 17.9.0 to 17.11.0
+- **Deps**: Bump the linters group with 4 updates
+- Replace the local config file section with the desktop api
+
+### Fixed
+
+- **Desktop**: Only unpublish the port file the running server owns
+- **Desktop**: Let the PR refresh button bypass the poll throttle
+- **Install**: Read the cli version from the app bundle
+- Read the config from the desktop api instead of the retired local file
+
 ## [0.72.2] - 2026-08-17
 
 ### Changed
@@ -2182,6 +2203,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.73.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.73.0
 [0.72.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.72.2
 [0.72.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.72.1
 [0.72.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.72.0
