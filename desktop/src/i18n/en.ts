@@ -1182,7 +1182,6 @@ export const en = {
   // above carries the "now".
   'agentInfo.pr.refreshAction': 'Refresh',
   'agentInfo.pr.refreshFailed': 'Could not refresh the pull request',
-  'agentInfo.pr.refreshThrottled': 'Just checked — try again in a few seconds',
   // The watcher being off is a setting, not a failure — so it gets its own band,
   // and the band carries the switch rather than sending anyone to Settings.
   'agentInfo.pr.watcherOff': 'PR watching is off',

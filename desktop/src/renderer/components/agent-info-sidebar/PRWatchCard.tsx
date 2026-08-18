@@ -442,12 +442,11 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   const handleRefresh = async () => {
     setRefreshing(true)
     try {
-      // `refreshed: false` means the shared 15 s throttle swallowed the call and no
-      // request was made. Silently ignoring it gives a spinner flash and unchanged
-      // data with no explanation, which reads as "the button is broken" — say so
-      // instead. Not an error, so it goes out as a warning rather than an error toast.
-      const { refreshed } = await window.electronAPI.prWatcher.refresh(prUrl)
-      if (!refreshed) showToast(t('agentInfo.pr.refreshThrottled'), 'warning')
+      // The click always reads now, and the call waits for any tick already in
+      // flight, so by the time it resolves the card is showing fresh data either
+      // way — `refreshed: false` no longer means "nothing happened" and has
+      // nothing to say to the user. Only a real failure gets a toast.
+      await window.electronAPI.prWatcher.refresh(prUrl)
     } catch (err) {
       showToast(err instanceof Error ? err.message : t('agentInfo.pr.refreshFailed'), 'error')
     } finally {

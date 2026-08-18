@@ -64,9 +64,9 @@ export function setupPRReviewHandlers(watcher: PRReviewWatcher) {
    *
    * Deliberately bypasses the `prReviews.enabled` guard inside the watcher: the
    * card stays visible when the watcher is switched off, so a refresh button
-   * that silently did nothing would be a trap. Throttled by the watcher (15 s,
-   * shared with the window-focus tick), and `refreshed: false` says so honestly
-   * rather than pretending a read happened.
+   * that silently did nothing would be a trap. Not throttled either: the 15 s
+   * spacing is for window-focus ticks, and an explicit click is exactly the case
+   * it must not swallow.
    */
   ipcMain.handle('prWatcher:refresh', async (_event, prUrl?: unknown) => {
     // Renderer-supplied, so it is validated here rather than trusted: `undefined`

@@ -1162,7 +1162,6 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.pr.refresh': 'Rafraîchir maintenant',
   'agentInfo.pr.refreshAction': 'Rafraîchir',
   'agentInfo.pr.refreshFailed': 'Impossible de rafraîchir la pull request',
-  'agentInfo.pr.refreshThrottled': 'Vérification déjà faite — réessaie dans quelques secondes',
   'agentInfo.pr.watcherOff': 'Suivi des PR désactivé',
   'agentInfo.pr.watcherOffStale': 'Les infos ci-dessous datent du dernier relevé.',
   'agentInfo.pr.watcherOffEmpty': 'Active-le pour voir l’état, les checks et les revues.',

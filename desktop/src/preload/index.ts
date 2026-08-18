@@ -447,8 +447,9 @@ const prWatcherApi = {
     ipcRenderer.invoke('prWatcher:setInterval', ms),
   /**
    * Re-reads one PR (or all of them when `prUrl` is omitted) right now. Works
-   * even when the watcher is disabled. `refreshed: false` means the 15 s
-   * throttle swallowed the request — nothing was fetched, so leave the UI as is.
+   * even when the watcher is disabled, and is never refused for staleness — it
+   * waits for any tick already in flight, then reads. `refreshed: false` only
+   * means another tick claimed the pass, which wrote fresh data anyway.
    */
   refresh: (prUrl?: string): Promise<{ refreshed: boolean }> =>
     ipcRenderer.invoke('prWatcher:refresh', prUrl),

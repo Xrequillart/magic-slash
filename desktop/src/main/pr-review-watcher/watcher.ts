@@ -37,11 +37,13 @@ const RATE_LIMIT_SAFETY_FLOOR = 500
 const NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000
 
 /**
- * Minimum spacing between two user-triggered ticks (window focus, manual
- * refresh). Alt-tabbing is not a request for fresh data, and without this an
- * alt-tab-heavy minute would issue a GraphQL query per PR per switch.
+ * Minimum spacing between two focus-triggered ticks. Alt-tabbing is not a request
+ * for fresh data, and without this an alt-tab-heavy minute would issue a GraphQL
+ * query per PR per switch. Deliberately NOT applied to the card's refresh button:
+ * a click is an explicit ask, and refusing it because a background poll happened
+ * to land a second earlier makes the button look broken.
  */
-const USER_TICK_THROTTLE_MS = 15_000
+const FOCUS_TICK_THROTTLE_MS = 15_000
 
 /**
  * How many checks the card is given to list. A monorepo can attach dozens, and this
@@ -104,6 +106,11 @@ export class PRReviewWatcher {
   private active = false
   /** Guards against overlapping ticks (a slow tick + a focus tick). */
   private ticking = false
+  /**
+   * Resolves when the in-flight tick has finished, so a manual refresh can queue
+   * behind it instead of being turned away by the guard above. Null when idle.
+   */
+  private inFlight: Promise<void> | null = null
   private pollIntervalMs: number = DEFAULT_POLL_INTERVAL_MS
   private lastTickAt: number | null = null
   private watchingCount: number = 0
@@ -187,29 +194,34 @@ export class PRReviewWatcher {
    * a dozen times is not a dozen requests for fresh data.
    */
   onFocus(): void {
-    if (this.isThrottled()) return
+    if (this.isFocusThrottled()) return
     void this.tick()
   }
 
   /**
-   * Explicit user refresh, from the card's button.
+   * Explicit user refresh, from the card's button. Always reads — no staleness
+   * throttle: the user asking is the whole point, and one scoped read is one
+   * GraphQL query.
    *
-   * Shares the focus throttle rather than tracking an in-flight request per PR:
-   * one clock, one rule, and a double-click cannot double the GraphQL cost.
-   * Returns whether a read was actually issued so the UI can keep the spinner
-   * honest.
+   * Spam is bounded by serialisation rather than by a clock: a click landing while
+   * a tick is in flight waits for it instead of being refused, so a double-click
+   * costs one read plus one read, never two overlapping sweeps, and the card's
+   * spinner stays honest until real data has landed.
    */
   async refresh(prUrl?: string): Promise<{ refreshed: boolean }> {
-    if (this.isThrottled()) return { refreshed: false }
-    // Report what `tick` actually did, not what we asked it to do: it also bails
-    // on the concurrency guard, and claiming success there stops the card's
-    // spinner with no fresh data and no explanation.
+    // Captured before awaiting: `tick`'s `finally` clears the field, and we need
+    // the promise that was in flight when the click arrived.
+    const inFlight = this.inFlight
+    if (inFlight) await inFlight
+    // Report what `tick` actually did, not what we asked it to do: it still bails
+    // on the concurrency guard if yet another tick slipped in, and claiming
+    // success there stops the card's spinner with no fresh data.
     const refreshed = await this.tick({ force: true, prUrl })
     return { refreshed }
   }
 
-  private isThrottled(): boolean {
-    return this.lastTickAt !== null && Date.now() - this.lastTickAt < USER_TICK_THROTTLE_MS
+  private isFocusThrottled(): boolean {
+    return this.lastTickAt !== null && Date.now() - this.lastTickAt < FOCUS_TICK_THROTTLE_MS
   }
 
   /** Arms the next tick, unless the watcher has been switched off meanwhile. */
@@ -226,6 +238,8 @@ export class PRReviewWatcher {
   async tick(options: TickOptions = {}): Promise<boolean> {
     if (this.ticking) return false
     this.ticking = true
+    let tickDone: () => void = () => {}
+    this.inFlight = new Promise<void>((resolve) => { tickDone = resolve })
     this.lastTickAt = Date.now()
 
     // A single-PR refresh must not re-arm the shared timer: the cadence it would
@@ -333,6 +347,8 @@ export class PRReviewWatcher {
       return true
     } finally {
       this.ticking = false
+      this.inFlight = null
+      tickDone()
       if (reschedule) {
         this.scheduleNext(budgetLow ? MAX_POLL_INTERVAL_MS : Math.min(...candidateDelays))
       } else if (this.active && this.timeoutId === null) {
