@@ -30,9 +30,17 @@ function publishPort(port: number): void {
 
 function unpublishPort(): void {
   try {
+    // Remove the file only when it still names OUR port. `server` being set is not
+    // enough to prove we own it: the test suite starts and stops a real server on a
+    // random port, and an unconditional rmSync there deletes the port file of the
+    // installed app that is actually serving — the app then looks unreachable to
+    // every out-of-app skill until its next launch. Same reasoning for two app
+    // instances handing over: the outgoing one must not remove the incoming one's file.
+    if (fs.readFileSync(PORT_FILE, 'utf-8').trim() !== String(serverPort)) return
     fs.rmSync(PORT_FILE, { force: true })
   } catch {
-    // A stale file is harmless: callers just get a connection refused.
+    // Unreadable or already gone: nothing of ours to remove. A leftover file is
+    // harmless anyway — callers just get a connection refused.
   }
 }
 

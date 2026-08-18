@@ -1,5 +1,22 @@
 import * as http from 'http'
-import { afterAll, beforeAll, beforeEach, describe, it, expect } from 'vitest'
+import * as fs from 'fs'
+import * as path from 'path'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, it, expect, vi } from 'vitest'
+
+// Redirect the config dir at the temp dir: the port file lives there, and the real
+// one belongs to the installed app. Without this the suite writes — and used to
+// delete — the port file of a Magic Slash that is actually running.
+// Built without `path`/`os`: vi.hoisted runs before the imports are initialized.
+const { TEST_CONFIG_DIR } = vi.hoisted(() => ({
+  TEST_CONFIG_DIR: `${(process.env.TMPDIR || '/tmp').replace(/\/$/, '')}/magic-slash-status-server-test`,
+}))
+vi.mock('../config/paths', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../config/paths')>()),
+  CONFIG_DIR: TEST_CONFIG_DIR,
+}))
+
+const PORT_FILE = path.join(TEST_CONFIG_DIR, 'port')
+
 import {
   parseStatusLinePayload,
   startStatusServer,
@@ -99,6 +116,49 @@ describe('parseStatusLinePayload', () => {
     expect(usage.modelId).toBeUndefined()
     expect(usage.costUsd).toBeUndefined()
     expect(usage.contextPercent).toBeUndefined()
+  })
+})
+
+describe('the published port file', () => {
+  afterEach(async () => {
+    await stopStatusServer()
+    fs.rmSync(PORT_FILE, { force: true })
+  })
+
+  it('publishes the listening port so processes outside the app can find the server', async () => {
+    const port = await startStatusServer()
+    expect(fs.readFileSync(PORT_FILE, 'utf-8')).toBe(String(port))
+  })
+
+  it('removes the file it published when the server stops', async () => {
+    await startStatusServer()
+    await stopStatusServer()
+    expect(fs.existsSync(PORT_FILE)).toBe(false)
+  })
+
+  it('leaves a file another instance took over alone on stop', async () => {
+    // The regression this guards: stopStatusServer() used to rmSync unconditionally,
+    // so a process that no longer owns the file still deleted it — the instance named
+    // inside kept serving on a port no out-of-app skill could discover any more.
+    // `npm test` was doing exactly that to the installed app, via the real CONFIG_DIR.
+    const port = await startStatusServer()
+    expect(fs.readFileSync(PORT_FILE, 'utf-8')).toBe(String(port))
+
+    // Another instance publishes over us while we are still up.
+    fs.writeFileSync(PORT_FILE, '63789')
+    await stopStatusServer()
+
+    expect(fs.readFileSync(PORT_FILE, 'utf-8')).toBe('63789')
+  })
+
+  it('does not delete a file when it never published one', async () => {
+    fs.mkdirSync(TEST_CONFIG_DIR, { recursive: true })
+    fs.writeFileSync(PORT_FILE, '63789')
+
+    // No server was started: stopStatusServer() returns on the !server guard.
+    await stopStatusServer()
+
+    expect(fs.readFileSync(PORT_FILE, 'utf-8')).toBe('63789')
   })
 })
 
