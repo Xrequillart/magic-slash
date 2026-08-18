@@ -2,15 +2,12 @@
 # Magic Slash CLI
 # Launch the Magic Slash Desktop app
 
-# Config file path
-CONFIG_FILE="$HOME/.config/magic-slash/config.json"
+APP_PATH="/Applications/Magic Slash.app"
 
-# Read version from config file
-if [ -f "$CONFIG_FILE" ]; then
-  VERSION=$(jq -r '.version // "unknown"' "$CONFIG_FILE" 2>/dev/null)
-else
-  VERSION="unknown"
-fi
+# Read the version from the installed bundle. Settings live in the cloud, so the old
+# ~/.config/magic-slash/config.json is no longer written and reported whatever version
+# last wrote it — many releases behind the app it claimed to describe.
+VERSION=$(defaults read "$APP_PATH/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "unknown")
 
 # Check for --help or -h flag
 if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
@@ -25,7 +22,7 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
 fi
 
 # Launch the desktop app
-if [ -d "/Applications/Magic Slash.app" ]; then
+if [ -d "$APP_PATH" ]; then
   open -a "Magic Slash"
 else
   echo "Error: Magic Slash Desktop app not found in /Applications."
