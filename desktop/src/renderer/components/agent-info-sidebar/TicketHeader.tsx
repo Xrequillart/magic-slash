@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { Edit2, Check, ChevronDown } from 'lucide-react'
 import { useClickOutside } from '../../hooks/useClickOutside'
+import { GithubMark, JiraMark } from '../icons/TrackerIcons'
 import type { TerminalMetadata } from '../../../types'
 import { useT, type MessageKey } from '../../i18n'
 
@@ -44,9 +45,20 @@ function getStatusOption(status: string): {
   return STATUS_OPTIONS[0]
 }
 
+/**
+ * Renders nothing for an ID that matches neither tracker — a hand-typed reference is
+ * still a valid ticket ID here, and a wrong mark next to it would be worse than none.
+ */
+function TicketMark({ provider }: { provider: 'github' | 'jira' | null }) {
+  if (provider === 'github') return <GithubMark className="w-3.5 h-3.5 flex-shrink-0" />
+  if (provider === 'jira') return <JiraMark className="w-3.5 h-3.5 flex-shrink-0" />
+  return null
+}
+
 interface TicketHeaderProps {
   metadata: TerminalMetadata | undefined
   ticketLink: string | null
+  ticketProvider: 'github' | 'jira' | null
   isEditingTitle: boolean
   isEditingDescription: boolean
   editTitle: string
@@ -67,6 +79,7 @@ interface TicketHeaderProps {
 export function TicketHeader({
   metadata,
   ticketLink,
+  ticketProvider,
   isEditingTitle,
   isEditingDescription,
   editTitle,
@@ -94,15 +107,23 @@ export function TicketHeader({
       {/* Ticket ID + Status Badge */}
       <div className="flex items-center justify-between mb-3">
         {metadata?.ticketId ? (
+          // The mark hangs off the ticket ID, not off the link: it says which tracker
+          // the ID belongs to, which is worth showing even when no URL could be built
+          // for it. `group-hover:underline` sits on the label alone so the underline
+          // stops at the text instead of running under the mark.
           ticketLink ? (
             <button
               onClick={() => window.electronAPI.shell.openExternal(ticketLink)}
-              className="text-ink text-xs font-semibold hover:underline cursor-pointer bg-transparent border-none p-0"
+              className="group flex items-center gap-1.5 text-ink text-xs font-semibold cursor-pointer bg-transparent border-none p-0"
             >
-              {metadata.ticketId}
+              <TicketMark provider={ticketProvider} />
+              <span className="group-hover:underline">{metadata.ticketId}</span>
             </button>
           ) : (
-            <span className="text-ink text-xs font-semibold">{metadata.ticketId}</span>
+            <span className="flex items-center gap-1.5 text-ink text-xs font-semibold">
+              <TicketMark provider={ticketProvider} />
+              {metadata.ticketId}
+            </span>
           )
         ) : (
           <span className="text-text-secondary/40 text-xs">{t('agentInfo.noTicket')}</span>

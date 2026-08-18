@@ -194,6 +194,17 @@ export function AgentInfoSidebar() {
 
   const ticketLink = getTicketLink()
 
+  // Which tracker the ID belongs to, read from its shape alone — the same two patterns
+  // getTicketLink matches. Deliberately independent of whether a URL could be built, so
+  // the mark still says "this is a Jira ticket" on a repo that has no jiraUrl set.
+  const ticketProvider = useMemo<'github' | 'jira' | null>(() => {
+    const ticketId = metadata?.ticketId
+    if (!ticketId) return null
+    if (ticketId.startsWith('#')) return 'github'
+    if (/^[A-Z]+-\d+$/.test(ticketId)) return 'jira'
+    return null
+  }, [metadata?.ticketId])
+
   // Get PR URL for a specific repository
   const getRepoPrUrl = useCallback((repoPath: string): string | undefined => {
     return metadata?.repositoryMetadata?.[repoPath]?.prUrl
@@ -443,6 +454,7 @@ export function AgentInfoSidebar() {
             <TicketHeader
               metadata={metadata}
               ticketLink={ticketLink}
+              ticketProvider={ticketProvider}
               isEditingTitle={isEditingTitle}
               isEditingDescription={isEditingDescription}
               editTitle={editTitle}
