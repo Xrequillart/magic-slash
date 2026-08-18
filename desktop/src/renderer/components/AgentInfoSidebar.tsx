@@ -151,7 +151,14 @@ export function AgentInfoSidebar() {
   // Get jira/github URL config from first repo (for ticket link)
   const firstRepoConfig = attachedRepos.length > 0 ? getRepoConfig(attachedRepos[0]) : null
   const jiraUrl = firstRepoConfig?.issues?.jiraUrl
+  // `issues.githubIssuesUrl` is an override, not the source of truth. It defaults to ''
+  // and practically nobody fills it in, so a GitHub issue used to render as dead text
+  // while a Jira ticket right next to it linked fine. The repo already knows its own
+  // address — `remoteUrl` is captured at hydration and normalised to
+  // `https://github.com/owner/repo` (types.ts) — so derive the issues URL from it and
+  // keep the configured value as the way to point somewhere else.
   const githubIssuesUrl = firstRepoConfig?.issues?.githubIssuesUrl
+    || (firstRepoConfig?.remoteUrl ? `${firstRepoConfig.remoteUrl.replace(/\/+$/, '')}/issues` : undefined)
 
   // Handle toggling a repository (add or remove)
   const handleToggleRepository = useCallback((repoPath: string) => {
