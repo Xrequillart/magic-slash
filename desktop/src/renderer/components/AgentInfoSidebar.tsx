@@ -85,7 +85,10 @@ export function AgentInfoSidebar() {
     : activeTerminalId
   const activeTerminal = terminals.find(t => t.id === inspectedTerminalId)
   const metadata = activeTerminal?.metadata
-  const canClose = metadata?.status === 'PR merged' || !metadata?.status
+  // `planned` is a terminal state too: a planning agent ends at a spec and never
+  // reaches `PR merged`, so without it the only way to close one would be to clear
+  // its status first.
+  const canClose = metadata?.status === 'PR merged' || metadata?.status === 'planned' || !metadata?.status
 
   // Get all configured repository paths for the dropdown
   const availableRepos = useMemo(() => {

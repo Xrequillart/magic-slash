@@ -28,6 +28,7 @@ import {
   setSkillCallback,
   setQuestionCallback,
   setClearQuestionCallback,
+  setMetadataCallback,
 } from './status-server'
 
 describe('parseStatusLinePayload', () => {
@@ -303,6 +304,36 @@ describe('read-back endpoints', () => {
       const { status } = await httpGet('/skill?id=term-1')
       expect(status).toBe(200)
       expect(calls).toHaveLength(0)
+    })
+  })
+
+  describe('GET /metadata', () => {
+    type Received = { id: string; metadata: Record<string, unknown> }
+    let received: Received[] = []
+
+    beforeEach(() => {
+      received = []
+      setMetadataCallback((id, metadata) => received.push({ id, metadata }))
+    })
+
+    // The path is announced BEFORE the spec is written: a planning agent says where
+    // its output will land, so an existence check here would drop the one message
+    // that tells the app a plan is in flight. This one test covers both "specPath is
+    // forwarded" and "no filesystem check happens" — a separate happy-path test would
+    // just repeat the same assertion against a different string.
+    it('forwards specPath to the metadata callback even when the file does not exist yet', async () => {
+      const spec = path.join(TEST_CONFIG_DIR, 'nothing-here', 'spec-does-not-exist.md')
+      expect(fs.existsSync(spec)).toBe(false)
+
+      const { status } = await httpGet(`/metadata?id=term-1&specPath=${encodeURIComponent(spec)}`)
+      expect(status).toBe(200)
+      expect(received).toEqual([{ id: 'term-1', metadata: { specPath: spec } }])
+    })
+
+    it('leaves specPath out entirely when the caller sends none', async () => {
+      const { status } = await httpGet('/metadata?id=term-1&title=Hello')
+      expect(status).toBe(200)
+      expect(received).toEqual([{ id: 'term-1', metadata: { title: 'Hello' } }])
     })
   })
 

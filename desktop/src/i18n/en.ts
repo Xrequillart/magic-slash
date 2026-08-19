@@ -876,6 +876,8 @@ export const en = {
   'duration.minutesSeconds': '{minutes}m {seconds}s',
 
   // ── Agent workflow status (badges) ───────────────────────────────────────
+  'status.planning': 'Planning',
+  'status.planned': 'Planned',
   'status.inProgress': 'In progress',
   'status.committed': 'Committed',
   'status.readyForPR': 'Ready for PR',
@@ -1233,6 +1235,8 @@ export const en = {
   // Lower-case on purpose — these render inside a small inline pill, not as a
   // sentence, and they are a different register from the `status.*` badges.
   'statusPill.none': 'no status',
+  'statusPill.planning': 'planning',
+  'statusPill.planned': 'planned',
   'statusPill.inProgress': 'in progress',
   'statusPill.committed': 'committed',
   'statusPill.readyForPR': 'ready for PR',

@@ -10,8 +10,17 @@ import { useT, type MessageKey } from '../../i18n'
 // fixed values that do not follow the theme, so on any of the four light themes the
 // pill was pale blue on white and unreadable. The tokens carry a per-theme value
 // (desktop/src/themes.ts), dark on a light window and bright on a dark one.
+//
+// The nine colour tokens were already spent by the nine entries below, so the two
+// planning statuses re-use `orange` and `cyan` at a lower alpha plus a ring: the ring
+// is what keeps them apart from `ready for PR` and `committed`, which hold the same
+// hue at /20. A neutral grey was not an option — that is UNKNOWN_STATUS_STYLE, and a
+// known status must never look like one this version failed to recognise.
 const STATUS_OPTIONS = [
   { value: '',             labelKey: 'statusPill.none',    bg: 'bg-surface-strong',      text: 'text-text-secondary' },
+  // First in the array because it reads as workflow order: planning precedes any code.
+  { value: 'planning',     labelKey: 'statusPill.planning',    bg: 'bg-orange/10 ring-1 ring-orange/40', text: 'text-orange' },
+  { value: 'planned',      labelKey: 'statusPill.planned',     bg: 'bg-cyan/10 ring-1 ring-cyan/40',     text: 'text-cyan' },
   { value: 'in progress',  labelKey: 'statusPill.inProgress',  bg: 'bg-yellow/20',     text: 'text-yellow' },
   { value: 'committed',    labelKey: 'statusPill.committed',     bg: 'bg-cyan/20',       text: 'text-cyan' },
   { value: 'ready for PR', labelKey: 'statusPill.readyForPR',  bg: 'bg-orange/20',     text: 'text-orange' },

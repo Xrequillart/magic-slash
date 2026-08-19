@@ -866,6 +866,8 @@ export const fr: Record<keyof typeof en, string> = {
   'duration.minutesSeconds': '{minutes} min {seconds} s',
 
   // ── État de workflow d'un agent (badges) ─────────────────────────────────
+  'status.planning': 'Planification',
+  'status.planned': 'Planifié',
   'status.inProgress': 'En cours',
   'status.committed': 'Committé',
   'status.readyForPR': 'Prêt pour la PR',
@@ -1195,6 +1197,8 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Sélecteur d'état (barre d'infos de l'agent) ──────────────────────────
   'statusPill.none': 'aucun état',
+  'statusPill.planning': 'planification',
+  'statusPill.planned': 'planifié',
   'statusPill.inProgress': 'en cours',
   'statusPill.committed': 'committé',
   'statusPill.readyForPR': 'prêt pour la PR',

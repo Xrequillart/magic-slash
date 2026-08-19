@@ -113,6 +113,11 @@ function probeFailure(error: unknown): string {
  * what a reader can measure, not what is worth recording.
  */
 const FLOW_ACTIONS: readonly HistoryAction[] = [
+  // Both halves of the planning phase, deliberately: `planned` alone would give a
+  // milestone with no interval, and the pair is what makes "idea → ticket" measurable
+  // (comparable frequency to `agent_created`, already listed below).
+  'planning',
+  'planned',
   'started',
   'ready_for_pr',
   'pr_created',
@@ -864,7 +869,7 @@ export class CloudStore implements Store {
       status: status ?? null,
       repositories: agent.repositories ?? [],
       // What is left has no column of its own: title, fullStackTaskId,
-      // relatedWorktrees, repositoryMetadata, usage — plus __app, which carries
+      // relatedWorktrees, repositoryMetadata, usage, specPath — plus __app, which carries
       // tsCreate and splitPane, neither of which has anywhere else to live. Its
       // `id` is the one field now duplicated, and only for compatibility: a build
       // older than 20260814090000 reads the app id from here and nowhere else.
