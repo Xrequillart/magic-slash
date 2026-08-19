@@ -4,6 +4,8 @@ import { addOrgAgentChangeListener } from '../cloud/realtime'
 import { readConfig } from '../config/config'
 import { loadSession } from '../cloud/session-store'
 import { getStore } from '../store/Store'
+import { parsePRUrl } from '../github'
+import { prReviewNotification } from './pr-review-message'
 
 // ---------------------------------------------------------------------------
 // Re-engagement notifications (main process).
@@ -116,10 +118,15 @@ export function setupReengagementNotifications(
         // never chosen, which is ON — only an explicit false silences it.
         if (readConfig().notifications?.prChangesRequested === false) continue
         if (cooldownOk(`changes:${review.prUrl ?? review.repo}`)) {
-          showNotification(
-            t('notification.changesRequested.title'),
-            t('notification.changesRequested.body', { subject: agent.ticketId ?? agent.name }),
-          )
+          // Worded by the shared composer, so this and the local watcher say the
+          // same sentence about the same event — they used to differ.
+          const { title, body } = prReviewNotification(t, {
+            status: 'changes-requested',
+            reviewers: review.reviewers,
+            label: agent.ticketId ?? agent.name,
+            prNumber: review.prUrl ? parsePRUrl(review.prUrl)?.number : undefined,
+          })
+          showNotification(title, body)
         }
       }
     }

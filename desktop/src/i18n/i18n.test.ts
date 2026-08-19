@@ -68,16 +68,16 @@ describe('translation', () => {
   })
 
   it('substitutes named placeholders', () => {
-    expect(t('notification.completed.body', 'en', { name: 'API refactor' })).toContain('API refactor')
+    expect(t('notification.completed.body', 'en', { subject: 'API refactor' })).toContain('API refactor')
     expect(t('tray.update.downloadingVersion', 'fr', { version: '1.2.3' })).toBe(
       'Téléchargement de la v1.2.3…',
     )
   })
 
   it('leaves a placeholder alone when no value is given for it', () => {
-    // Better a visible `{name}` than the word "undefined" in a notification.
-    expect(t('notification.completed.body', 'en', {})).toContain('{name}')
-    expect(t('notification.completed.body', 'en')).toContain('{name}')
+    // Better a visible `{subject}` than the word "undefined" in a notification.
+    expect(t('notification.completed.body', 'en', {})).toContain('{subject}')
+    expect(t('notification.completed.body', 'en')).toContain('{subject}')
   })
 
   it('falls back to English for a language it has never heard of', () => {

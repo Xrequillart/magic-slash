@@ -2,7 +2,8 @@ import { BrowserWindow } from 'electron'
 import { readConfig } from '../config/config'
 import { getAllTerminals, updateTerminalMetadataFromHook } from '../pty/terminal-manager'
 import { addHistoryEntry } from '../config/activity-history'
-import { fetchPRStatus } from '../github'
+import { fetchPRStatus, parsePRUrl } from '../github'
+import { prReviewNotification } from '../notifications/pr-review-message'
 import { shouldEmitMerged } from './merge-detection'
 import {
   nextInterval,
@@ -548,10 +549,17 @@ export class PRReviewWatcher {
       && prevStatus !== snapshot.status
     ) {
       this.lastNotifiedAt.set(prUrl, now)
-      this.showNotification(
-        t('notification.prReview.title'),
-        t('notification.prReview.body', { url: prUrl, status: snapshot.status }),
-      )
+      // A URL is not a message: this used to read `<pr url>: changes-requested`,
+      // untranslated and unreadable at a glance. The agent's ticket (or its title)
+      // plus the PR number is how the person thinks about the same object.
+      const terminal = terminals.find(t => t.id === terminalId)
+      const { title, body } = prReviewNotification(t, {
+        status: snapshot.status,
+        reviewers: snapshot.reviewers,
+        label: terminal?.metadata?.ticketId || terminal?.metadata?.title || terminal?.name,
+        prNumber: parsePRUrl(prUrl)?.number,
+      })
+      this.showNotification(title, body)
     }
 
     this.lastKnownStatus.set(targetKey, {

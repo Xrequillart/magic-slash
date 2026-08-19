@@ -35,16 +35,41 @@ export const en = {
   'tray.update.checkVersion': 'Check for Updates (v{version})',
 
   // ── OS notifications ─────────────────────────────────────────────────────
-  'notification.waiting.title': 'Claude Code needs attention',
-  'notification.waiting.body': 'Agent "{name}" is waiting for your input',
-  'notification.completed.title': 'Task completed',
-  'notification.completed.body': 'Agent "{name}" has finished',
-  'notification.prReview.title': 'PR review update',
-  'notification.prReview.body': '{url}: {status}',
+  // Every one of these is read on a locked phone or a glanced-at corner of the
+  // screen, by somebody who is not thinking about the app: the title says what
+  // happened, the body says which piece of work it happened to. Nothing here may
+  // interpolate a URL or a raw enum value — see notifications/pr-review-message.ts
+  // for how a review status becomes one of the sentences below.
+  'notification.waiting.title': 'An agent is waiting for you',
+  'notification.waiting.body': '{subject} needs your answer to continue',
+  'notification.completed.title': 'An agent has finished',
+  'notification.completed.body': '{subject} finished its task',
+  /**
+   * How an agent is named in the two bodies above — see notifications/agent-message.ts.
+   * The quotes live in the catalogue because they are not the same character in
+   * every language, and `subject.namedWithRepo` exists because the name an agent is
+   * created with is a generated counter ("Claude 3") that says nothing on its own.
+   */
+  'notification.agent.subject.named': '"{name}"',
+  'notification.agent.subject.namedWithRepo': '"{name}" ({repo})',
+  'notification.agent.subject.unknown': 'An agent',
+  'notification.prReview.approved.title': 'Pull request approved',
+  'notification.prReview.approved.body': '{subject} was approved',
+  'notification.prReview.approved.bodyNamed': '{subject} was approved by {reviewer}',
+  'notification.prReview.changesRequested.title': 'Changes requested',
+  'notification.prReview.changesRequested.body': 'A reviewer requested changes on {subject}',
+  'notification.prReview.changesRequested.bodyNamed': '{reviewer} requested changes on {subject}',
+  'notification.prReview.commented.title': 'New review comment',
+  'notification.prReview.commented.body': 'A new comment was left on {subject}',
+  'notification.prReview.commented.bodyNamed': '{reviewer} commented on {subject}',
+  'notification.prReview.pending.title': 'Review pending',
+  'notification.prReview.pending.body': '{subject} is waiting for a review',
+  /** How a pull request is named inside the sentences above: "MAGIC-202 (PR #204)". */
+  'notification.prReview.subject.withPr': '{label} (PR #{number})',
+  'notification.prReview.subject.prOnly': 'PR #{number}',
+  'notification.prReview.subject.unknown': 'your pull request',
   'notification.pickup.title': 'A colleague picked up {ticket}',
-  'notification.pickup.body': 'A teammate is now working on {ticket} — you also have an agent on it.',
-  'notification.changesRequested.title': 'Changes requested on your PR',
-  'notification.changesRequested.body': '{subject}: a reviewer requested changes.',
+  'notification.pickup.body': 'A teammate is now working on {ticket} — you have an agent on it too',
 
   // ── Daily team digest ────────────────────────────────────────────────────
   // The clauses are whole sentences fragments rather than "{count} PR(s)": the

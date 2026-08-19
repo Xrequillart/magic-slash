@@ -21,6 +21,7 @@ import {
   type TerminalMetadata,
 } from '../pty/terminal-manager'
 import { noteTerminalInput, isUserInput } from '../questions/pending-questions'
+import { agentNotification, type AgentSubjectInput } from '../notifications/agent-message'
 import { resolveAgentCwd } from '../pty/agent-cwd'
 import {
   saveAgent,
@@ -161,7 +162,6 @@ function flushUsageSnapshot(id: string): void {
 // Helper to show notification with cooldown, focus check and per-kind opt-out
 function maybeShowNotification(
   id: string,
-  _name: string,
   title: string,
   body: string,
   kind: 'agentWaiting' | 'agentCompleted',
@@ -224,6 +224,19 @@ export function createBaseCallbacks(id: string, windowGetter: () => BrowserWindo
   }
 }
 
+/**
+ * What a notification needs to name this agent. `name` is the creation name and the
+ * last resort — see agent-message.ts for why it cannot stand on its own.
+ */
+function subjectOf(terminal: ReturnType<typeof getTerminal>, name: string): AgentSubjectInput {
+  return {
+    ticketId: terminal?.metadata?.ticketId,
+    title: terminal?.metadata?.title,
+    name,
+    repositories: terminal?.repositories,
+  }
+}
+
 function createTerminalCallbacks(id: string, name: string) {
   const base = createBaseCallbacks(id, getMainWindow)
   return {
@@ -235,13 +248,8 @@ function createTerminalCallbacks(id: string, name: string) {
       const displayName = t?.metadata?.title || name
 
       if (state === 'waiting' && previousState !== 'waiting') {
-        maybeShowNotification(
-          id,
-          displayName,
-          translate('notification.waiting.title'),
-          translate('notification.waiting.body', { name: displayName }),
-          'agentWaiting',
-        )
+        const waiting = agentNotification(translate, 'waiting', subjectOf(t, name))
+        maybeShowNotification(id, waiting.title, waiting.body, 'agentWaiting')
         addHistoryEntry({
           agentId: id,
           agentName: displayName,
@@ -269,13 +277,8 @@ function createTerminalCallbacks(id: string, name: string) {
       }
 
       if (state === 'completed' && previousState !== 'completed') {
-        maybeShowNotification(
-          id,
-          displayName,
-          translate('notification.completed.title'),
-          translate('notification.completed.body', { name: displayName }),
-          'agentCompleted',
-        )
+        const finished = agentNotification(translate, 'completed', subjectOf(t, name))
+        maybeShowNotification(id, finished.title, finished.body, 'agentCompleted')
         addHistoryEntry({
           agentId: id,
           agentName: displayName,
