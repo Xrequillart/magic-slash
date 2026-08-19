@@ -495,7 +495,7 @@ export const en = {
   'repo.pr.autoLink': 'Auto-link Tickets',
   'repo.pr.autoLinkHelp': 'Add Jira/GitHub ticket links in PR description',
   'repo.pr.watchCI': 'Watch CI & Review',
-  'repo.pr.watchCIHelp': 'After creating the PR, wait for the checks, fix failures automatically, and address review feedback',
+  'repo.pr.watchCIHelp': 'After creating the PR, wait for the checks, fix failures automatically, address review feedback, and add the PR preview URL to the test scenarios when the project publishes one. Without it, the test scenarios stay local-only',
   'repo.pr.testAccounts': 'Test Accounts',
   'repo.pr.testAccountsHelp': 'Whether the PR description mentions the test accounts reviewers can use. Reference is safe on any repository; inline pastes the credentials in the PR body',
   'repo.pr.testAccountsOff': 'Off (never mention)',

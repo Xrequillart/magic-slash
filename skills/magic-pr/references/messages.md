@@ -588,6 +588,88 @@ Prochaines étapes :
 4. Lance /magic:done pour finaliser la tâche
 ```
 
+## MSG_PREVIEW_URL_MULTIPLE
+
+Question text for the `AskUserQuestion` of Step 7.4.2.5 (`references/preview-url.md`, Phase 6),
+used only when two or more distinct preview URLs were found for this PR's **current** head commit —
+a monorepo that deploys several apps produces one preview per app. One option per URL, labelled
+with its environment name, plus a final option to write none of them.
+
+The same key covers both writes, because the question is the same one in both cases: creating the
+preview line, and replacing it after a push changed the head commit's preview URL.
+Never displayed when a single deployment settles it (one candidate from the deployments API, whether
+the line is missing or holds an out-of-date URL), and never when the line already names one of this
+head commit's previews. Asked at most once per head commit, so at most once per round of Step
+7.4.2.5 — a lone `bot-comment` candidate is the one case where it is asked with a single option, as
+a confirmation.
+
+### en
+
+```text
+Several preview deployments were found for this PR's head commit.
+Which one should the test scenarios point at? Only one is written, and only into this PR's body.
+```
+
+### fr
+
+```text
+Plusieurs déploiements de preview ont été trouvés pour le dernier commit de cette PR.
+Lequel les scénarios de test doivent-ils indiquer ? Un seul est écrit, et seulement dans le corps de cette PR.
+```
+
+## MSG_PREVIEW_URL_ADDED
+
+Displayed in Step 7.4.2.5 when a preview deployment was found for this PR's head commit and its URL
+was folded into the PR body **for the first time** — the body carried no preview line before
+(`references/preview-url.md`, Phase 7 case C).
+A later round that swaps an out-of-date URL for the current head's one uses
+`MSG_PREVIEW_URL_UPDATED` instead, and a round that finds the line already correct displays nothing.
+Never displayed when no preview is found, nor when the line was only removed — silence is the
+invariant for every case that does not put a new URL in the body.
+
+### en
+
+```text
+🔗 Preview deployment found — added to the PR body: {url}
+The reviewer can test this PR's actual deployed code there instead of rebuilding locally
+(destructive steps still need local: migrations, deletions, seeding).
+```
+
+### fr
+
+```text
+🔗 Déploiement de preview trouvé — ajouté au corps de la PR : {url}
+Le reviewer peut tester le code réellement déployé de cette PR à cette adresse au lieu de
+reconstruire en local (les étapes destructrices restent en local : migrations, suppressions, seed).
+```
+
+## MSG_PREVIEW_URL_UPDATED
+
+Displayed in Step 7.4.2.5 when the PR body already carried this feature's preview line, but with a
+URL that is none of the **current** head commit's previews — typically after an auto-fix push or a
+`/magic:resolve` round created a new commit with a new deployment. The line is replaced in place
+(`references/preview-url.md`, Phase 7 case B); no second line is ever added.
+A replacement is a different event from a first write: the reviewer may already have clicked the
+previous link, so the message says the pointer moved rather than announcing a discovery.
+Never displayed for a first write (that is `MSG_PREVIEW_URL_ADDED`), never when the line is already
+correct, and never when the line was only removed.
+
+### en
+
+```text
+🔗 Preview deployment updated — the PR body now points at this PR's current commit: {url}
+The previous preview served code this PR no longer has, so that line was replaced (there is only
+ever one preview line, and it always names the current commit).
+```
+
+### fr
+
+```text
+🔗 Déploiement de preview mis à jour — le corps de la PR pointe maintenant vers le commit actuel de cette PR : {url}
+La preview précédente servait du code que cette PR n'a plus, cette ligne a donc été remplacée (il n'y a
+jamais qu'une seule ligne de preview, et elle indique toujours le commit actuel).
+```
+
 ## MSG_CI_ALL_GREEN
 
 Displayed in Step 7.4.3 — the terminal state of a healthy PR.

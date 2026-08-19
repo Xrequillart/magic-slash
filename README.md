@@ -436,13 +436,15 @@ folder path stays yours:
 | Setting              | Description                                                                                             | Default |
 | -------------------- | ------------------------------------------------------------------------------------------------------- | ------- |
 | `autoLinkTickets`    | Add Jira/GitHub ticket links in PR description                                                          | `true`  |
-| `watchCI`            | After creating the PR, watch the checks, auto-fix failures, address review feedback                     | `true`  |
+| `watchCI`            | After creating the PR, watch the checks, auto-fix failures, address review feedback, and add the preview URL to the test scenarios (off: local-only scenarios) | `true`  |
 | `testAccounts`       | `off` (never mention), `reference` (state where the accounts live), or `inline` (paste the credentials) | `off`   |
 | `testAccountsSource` | Explicit file path or project skill name holding the accounts (auto-detected when empty)                | `""`    |
 
 When `testAccounts` is not `off`, `/magic:pr` adds the account a reviewer should log in with to the "How to test" prerequisites of the PR body, and `/magic:start` reports it in its final summary. The accounts are looked up in this order, stopping at the first hit: `testAccountsSource`, a project-local skill under the project's `.claude/skills/`, then documented files (`TESTING.md`, `docs/test*account*`, the test section of `CONTRIBUTING.md`). If nothing is found, the PR says so — no account is ever invented.
 
 > A PR description is readable by anyone with access to the repository, and by everyone on a public one. `reference` is therefore safe everywhere, while `inline` is ignored on public repos and falls back to `reference`. No mode ever reads `.env*` files, `secrets/`, keychains, or git-ignored files as a source.
+
+When `watchCI` finishes and the project publishes a per-PR preview deployment (Vercel, Amplify, Netlify...), `/magic:pr` adds that deployment's URL to the "How to test" prerequisites so the reviewer tests this PR's actual deployed code instead of rebuilding locally — silently skipped when no such preview exists. When one commit deploys several previews (a monorepo with one app per project), it asks which one to write, once per PR. With `watchCI` off, nothing waits for the deployment, so the URL is never looked up and the test scenarios stay local-only.
 
 #### Issues settings
 
