@@ -5,7 +5,7 @@ import { ArrowRight } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
 
 /**
- * Section ⑥: why we built this — the teaser for `/story`.
+ * Section ⑦: why we built this — the teaser for `/story`.
  *
  * Was a three-point grid ("Jira meets Claude Code", "zero context loss", "one command
  * instead of ten"): three arguments, each naming a tool or a command. It is two short

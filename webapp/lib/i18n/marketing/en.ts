@@ -109,7 +109,21 @@ export const marketingEn = {
     'Work arrives finished: nothing half-done, nothing to clean up behind it.',
   'site.yourWay.seeDocs': 'See the docs',
 
-  // ── ⑥ Why we built this (teaser for /story) ────────────────────────────────
+  // ── ⑥ You always know where it stands ──────────────────────────────────────
+  // The section ④ raises the question for: twelve jobs in flight only works if each one
+  // says where it is. The copy names the states out loud — in review, changes requested,
+  // CI — because that is the vocabulary the reader already has for "where is it", and the
+  // panel beside it is showing those exact words.
+  'site.whereItStands.title': 'You always know where it stands.',
+  'site.whereItStands.subtitle':
+    'Every job has its own panel: what it is working on, and how far it has got.',
+  'site.whereItStands.p1':
+    'The ticket, the branch, the commits, the pull request — read from GitHub and Jira as it happens, never typed in by hand.',
+  'site.whereItStands.p2':
+    'Waiting on a review? Changes requested? A red check? You see it without opening a single tab.',
+  'site.whereItStands.cta': 'See the full workflow',
+
+  // ── ⑦ Why we built this (teaser for /story) ────────────────────────────────
   'site.why.title': 'Why we built this.',
   'site.why.p1':
     'We were using Claude Code every day on real projects. And every time, the same routine: read the ticket, rewrite it as a prompt, set up the branch by hand, write the commit, describe the PR. It worked. It was just slow and boring.',
@@ -117,7 +131,7 @@ export const marketingEn = {
     'So we automated the boring parts — and kept going until the whole thing built itself.',
   'site.why.cta': 'Read our story',
 
-  // ── ⑦ FAQ ──────────────────────────────────────────────────────────────────
+  // ── ⑧ FAQ ──────────────────────────────────────────────────────────────────
   'site.faq.title': 'FAQ & Troubleshooting',
   // First on purpose. The page reads wide; this is where it stays honest about who
   // the product actually serves today.
@@ -246,6 +260,36 @@ export const marketingEn = {
   'site.repoCfg.delete': 'Delete this repository',
   'site.repoCfg.deleteHelp': 'Remove this repository from Magic Slash configuration',
   'site.repoCfg.deleteAction': 'Delete repository',
+
+  // ── Agent panel illustration (section ⑥) ────────────────────────────────────
+  // The app's right sidebar, label for label: every entry here is copied from the
+  // desktop catalogue's `agentInfo.*`, `prReview.*` and `statusPill.*` families rather
+  // than rewritten, so the illustration says what the panel it is drawing says. The
+  // VALUES beside them (PROJ-142, stellar-api, the commit subjects, the figures) are
+  // literals in `AgentPanel.tsx`, the way the terminal's log lines are.
+  'site.agentPanel.title': '{name} Info',
+  'site.agentPanel.closeAgent': 'Close agent',
+  'site.agentPanel.ago': '{time} ago',
+  'site.agentPanel.justNow': 'just now',
+  'site.agentPanel.tokens': '{used} tokens',
+  // The ticket's status pill, one label per step the panel walks through.
+  'site.agentPanel.statusPrCreated': 'PR created',
+  'site.agentPanel.statusCiGreen': 'CI green',
+  'site.agentPanel.statusChangesRequested': 'changes requested',
+  'site.agentPanel.statusReviewAddressed': 'review addressed',
+  'site.agentPanel.statusPrMerged': 'PR merged',
+  // The pull request card: its verdict badge, then its checklist.
+  'site.agentPanel.prNumber': 'Pull request #{number}',
+  'site.agentPanel.reviewPending': 'Awaiting review',
+  'site.agentPanel.reviewChanges': 'Changes requested',
+  'site.agentPanel.merged': 'Merged',
+  'site.agentPanel.comments': 'Comments',
+  'site.agentPanel.checks': 'CI checks',
+  'site.agentPanel.checksPassed': '{passed}/{total} passed',
+  'site.agentPanel.noConflicts': 'No conflicts',
+  'site.agentPanel.launchDone': 'Launch magic-done',
+  'site.agentPanel.lastChecked': 'checked {time}',
+  'site.agentPanel.refresh': 'Refresh',
 
   // ── Story page ─────────────────────────────────────────────────────────────
   'site.story.label': 'Our Story',

@@ -4013,7 +4013,7 @@ h1 {
 }
 
 /* ── ⑤ It works your way ──
-   White, between the blue of ④ and the black of ⑥, so three two-column sections in a
+   White, between the blue of ④ and the blue of ⑥, so three two-column sections in a
    row do not read as one block. */
 .yourway-section {
     background: #fff;
@@ -4074,7 +4074,72 @@ h1 {
     opacity: 0.85;
 }
 
-/* ── ⑥ Why we built this ──
+/* ── ⑥ You always know where it stands ──
+   ④'s blue and ④'s two-column shape, because the two sections make ONE argument in two
+   halves — twelve jobs at once, and each one legible — and ⑤'s white between them is what
+   keeps the two blues from reading as a single block. `overflow: hidden` for the same
+   reason ④ has it: the leaning panel's backdrop is wider than its slot. */
+.status-section {
+    background: #D9E8FF;
+    max-width: none;
+    padding: 10rem 2rem;
+    overflow: hidden;
+}
+.status-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 5rem;
+}
+.status-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex: 1;
+}
+.status-title {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #0a0a0a;
+    line-height: 1.2;
+    margin: 0;
+}
+.status-desc {
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 1.05rem;
+    color: rgba(0, 0, 0, 0.55);
+    line-height: 1.7;
+    margin: 0;
+}
+/* The line that names the states out loud. It is the section's claim, so it is not
+   allowed to look like a third paragraph — same treatment as ⑤'s lead line. */
+.status-desc--lead {
+    color: #0a0a0a;
+    font-weight: 600;
+}
+.status-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    align-self: flex-start;
+    margin-top: 0.75rem;
+    font-family: "Cera Pro", system-ui, sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #fff;
+    background: #0a0a0a;
+    padding: 0.6rem 1.4rem;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: opacity 0.15s;
+}
+.status-btn:hover {
+    opacity: 0.85;
+}
+
+/* ── ⑦ Why we built this ──
    The three-point grid became two paragraphs, so the container narrows and centres:
    this is the breath before the closing ask, not another feature block. */
 .why-inner--prose {
@@ -4097,14 +4162,16 @@ h1 {
 
 /* ── Mobile ── */
 @media (max-width: 1024px) {
-    .yourway-inner {
+    .yourway-inner,
+    .status-inner {
         flex-direction: column;
         gap: 3rem;
     }
     .site-visual-placeholder {
         width: 100%;
     }
-    .pj {
+    .pj,
+    .ap {
         width: 100%;
     }
     /* Stacked, the heading has to come first — the side swap was a desktop-only thing. */
@@ -4116,11 +4183,13 @@ h1 {
 
 @media (max-width: 768px) {
     .how-section,
-    .yourway-section {
+    .yourway-section,
+    .status-section {
         padding: 5rem 1.5rem;
     }
     .how-title,
-    .yourway-title {
+    .yourway-title,
+    .status-title {
         font-size: 1.9rem;
     }
     .how-steps {
@@ -4157,7 +4226,7 @@ h1 {
    ════════════════════════════════════════════════════════════════════════════ */
 
 /* The palette, on its own selector so anything else drawing the app can opt in. */
-.mk, .pj, .rs {
+.mk, .pj, .rs, .ap {
     --mk-base: #131030;
     --mk-chrome: rgba(29, 25, 46, 0.72);
     --mk-panel: rgba(28, 22, 46, 0.72);
@@ -4171,6 +4240,9 @@ h1 {
     --mk-cyan: #65D0EA;
     /* The app's accent in the midnight theme, which is what its spinners are drawn in. */
     --mk-indigo: #818CF8;
+    /* The theme's `purpleRgb` (desktop/src/themes.ts): the agent glyph, and the colour
+       GitHub gives a merged pull request, which the app keeps. */
+    --mk-purple: #C084FC;
     --mk-blue: #60A5FA;
     --mk-green: #6AD09D;
     --mk-amber: #F4BF4F;
@@ -4605,7 +4677,13 @@ h1 {
 .mk-faint { color: var(--mk-dimmer); }
 .mk-mono { font-family: var(--mk-mono); font-size: 0.68rem; color: var(--mk-dim); }
 .mk-ctx-pct { font-weight: 500; color: var(--mk-orange); }
-.mk-pill--model { background: #403658; color: var(--mk-cyan); border-radius: 999px; padding: 2px 7px; font-family: inherit; }
+/* `inline-flex` because the app puts a CPU glyph inside this pill; the hero mockup
+   renders the label alone, which a flex container lays out identically. */
+.mk-pill--model {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #403658; color: var(--mk-cyan);
+    border-radius: 999px; padding: 2px 7px; font-family: inherit;
+}
 .mk-open { color: var(--mk-teal); font-weight: 500; }
 .mk-branches {
     display: flex; align-items: center; gap: 7px;
@@ -4617,7 +4695,9 @@ h1 {
 }
 .mk-branches > svg { color: var(--mk-dimmer); }
 .mk-branches i { font-style: normal; }
-.mk-branches b { font-weight: 500; color: var(--mk-cyan); }
+/* Green, which is what the app paints the CURRENT branch — the base branch beside it
+   stays muted. It was cyan until ⑥ drew the same row larger and the difference showed. */
+.mk-branches b { font-weight: 500; color: var(--mk-green); }
 .mk-arrow { color: var(--mk-dimmer); }
 .mk-commit {
     display: flex; align-items: center; gap: 7px;
@@ -4625,7 +4705,10 @@ h1 {
 }
 .mk-commit em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mk-commit i { font-style: normal; color: var(--mk-dimmer); flex-shrink: 0; }
+/* `inline-flex` for the same reason as `.mk-pill--model`: in the app this chip is the
+   copy button, glyph included. */
 .mk-hash {
+    display: inline-flex; align-items: center; gap: 4px;
     font-family: var(--mk-mono); font-size: 0.62rem; font-weight: 400;
     padding: 1px 5px; border-radius: 4px;
     background: rgba(255, 255, 255, 0.07); color: var(--mk-muted);
@@ -5106,3 +5189,282 @@ h1 {
 .mk-pill--state.is-review { background: rgba(96, 165, 250, 0.2); color: var(--mk-blue); }
 .mk-pill--state.is-reviewed { background: rgba(82, 179, 208, 0.2); color: var(--mk-teal); }
 .mk-pill--state.is-done { background: #344660; color: var(--mk-cyan); }
+
+/* ── Section ⑥: the agent info panel, leaning back ──
+   The app's RIGHT sidebar — `AgentInfoSidebar` and the cards under `agent-info-sidebar/`
+   — as one panel standing in space. Same construction as ④ (see `.pj`): the perspective
+   on the wrapper, the rotation on the child, so the vanishing point stays put while the
+   angles move.
+
+   It leans the same way ④ does, -20°, because both sit to the RIGHT of their text and
+   each should face the words it belongs to. ⑤, on the other side, mirrors them.
+
+   Every row inside it that the app also draws elsewhere reuses the shared `.mk-*` rules
+   above; only the frame, the panel's own furniture and the pull request card are here. */
+.ap {
+    position: relative;
+    width: 560px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem 0;
+    perspective: 2000px;
+}
+/* The backdrop, ④'s blob and ⑤'s triangle in a third shape — a ring, so the page's three
+   tilted illustrations never repeat one. Held to a little over the slot width so it reads
+   as a backdrop the panel stands in front of without reaching across the 5rem gap into
+   the text column. Its colour keeps roughly `.pj-blob`'s distance from the background it
+   sits on, which is the same #D9E8FF here. */
+.ap-shape {
+    position: absolute;
+    top: 50%;
+    left: 46%;
+    width: 108%;
+    height: auto;
+    transform: translate(-50%, -50%);
+    fill: #BDD1F0;
+    pointer-events: none;
+}
+.ap-tilt {
+    position: relative;
+    transform-style: preserve-3d;
+    transform: rotateY(calc(-20deg + var(--tilt-ry, 0deg))) rotateX(var(--tilt-rx, 0deg));
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* Its front face's radius plus the 2px the back is grown by, and the shadow falls away
+   from the lean — the same pairing as ④, which leans the same way. See `.mk-slab`. */
+.ap-tilt .mk-slab { --slab-radius: 14px; --slab-shadow-x: -28px; }
+.ap-panel {
+    /* Tall enough for the four cards the app stacks — session, ticket, repository with its
+       pull request, and the dashed add-repo box the panel always ends on — measured on the
+       TALLEST step of the run, the one carrying the commit `/magic:resolve` pushes, with a
+       little room left under it — the app stacks its cards from the top of a sidebar as
+       tall as the window, so that space is part of the picture. Fixed rather than `auto`
+       on purpose: a panel that resized on every step would make the section jump. */
+    width: 356px;
+    height: 788px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding: 11px 11px 10px;
+    border-radius: 12px;
+    /* `--mk-panel` rather than ④'s `--mk-chrome`: this is the info panel's own surface, and
+       the two differ in the app. Composited opaque over the base for the reason
+       `.pj-sidebar` gives — there is no window behind it here. */
+    background-color: var(--mk-base);
+    background-image: linear-gradient(var(--mk-panel), var(--mk-panel));
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    /* Quiet on the edge that meets the slab's side, as in ④. */
+    border-right-color: rgba(255, 255, 255, 0.05);
+    font-family: "Cera Pro", system-ui, sans-serif;
+    color: var(--mk-muted);
+    text-align: left;
+    overflow: hidden;
+}
+
+/* ── Panel header ── */
+.ap-head {
+    display: flex; align-items: center; gap: 7px;
+    padding: 2px 2px 0;
+    font-size: 0.76rem;
+    color: var(--mk-text);
+}
+.ap-head b { font-weight: 500; }
+.ap-head-bot { color: var(--mk-purple); flex-shrink: 0; }
+/* Every quiet square button on the panel: the collapse, the ×, the detach. */
+.ap-icon-btn {
+    display: flex; align-items: center; justify-content: center;
+    padding: 2px;
+    border-radius: 5px;
+    color: var(--mk-dim);
+    flex-shrink: 0;
+}
+/* What the × becomes once there is nothing left to lose — a merged PR, which is the only
+   state the app offers to close the agent in. */
+.ap-close-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 3px 7px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--mk-hair);
+    font-size: 0.64rem; font-weight: 500;
+    color: var(--mk-muted);
+    flex-shrink: 0;
+}
+.ap-close-btn i { font-style: normal; font-size: 0.56rem; color: var(--mk-dimmer); }
+
+/* ── Session card ── */
+.ap-stamp {
+    display: flex; align-items: center; gap: 4px;
+    font-style: normal; font-size: 0.62rem;
+    color: var(--mk-dimmer);
+}
+.ap-row-label {
+    display: flex; align-items: center; gap: 5px;
+    font-style: normal;
+    color: var(--mk-muted);
+}
+.ap-row-label > svg { color: var(--mk-dim); flex-shrink: 0; }
+
+/* ── Ticket card ── */
+.ap-ticket {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--mk-text);
+}
+/* The tracker, editor and forge marks, all drawn at the size the panel shows them. */
+.ap-mark { width: 12px; height: 12px; flex-shrink: 0; }
+/* The status pill, and the pull request's verdict badge below it. Both take a tone from
+   the app's own status palette; both TRANSITION it, because the whole point of the
+   illustration is that these two change under you. */
+.ap-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.64rem; font-weight: 500;
+    flex-shrink: 0;
+    transition: background 0.35s, color 0.35s;
+}
+.ap-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.58rem; font-weight: 600;
+    flex-shrink: 0;
+    transition: background 0.35s, color 0.35s;
+}
+/* One tone per state, tinted the way the app tints them (`STATUS_OPTIONS` in its
+   `TicketHeader`, `REVIEW_BADGE` and `STATE_BADGE` in its `PRWatchCard`). Shared by the
+   pill and the badge so a state cannot end up two colours on one panel. */
+.ap-tone-amber { background: rgba(244, 191, 79, 0.16); color: var(--mk-amber); }
+.ap-tone-green { background: rgba(106, 208, 157, 0.16); color: var(--mk-green); }
+.ap-tone-indigo { background: rgba(129, 140, 248, 0.18); color: var(--mk-indigo); }
+.ap-tone-blue { background: rgba(96, 165, 250, 0.18); color: var(--mk-blue); }
+.ap-tone-red { background: rgba(248, 113, 113, 0.16); color: var(--mk-red); }
+.ap-tone-teal { background: rgba(82, 179, 208, 0.18); color: var(--mk-teal); }
+.ap-tone-purple { background: rgba(192, 132, 252, 0.18); color: var(--mk-purple); }
+/* The same tones as a foreground only, for the glyphs that carry a state on their own. */
+.ap-tone-fg-green { color: var(--mk-green); }
+.ap-tone-fg-blue { color: var(--mk-blue); }
+.ap-tone-fg-red { color: var(--mk-red); }
+.ap-tone-fg-purple { color: var(--mk-purple); }
+
+/* A field the app lets you edit in place: the pencil sits at the end of the line and the
+   text takes the rest of it. */
+.ap-edit-row { display: flex; align-items: flex-start; gap: 7px; }
+/* `em` for the same reason every other row here uses one — the panel is an illustration
+   made of inline elements — so, as everywhere else, it has to be told not to slant. */
+.ap-edit-row em { font-style: normal; }
+.ap-edit-row .mk-desc { flex: 1; }
+.ap-ticket-title { flex: 1; font-size: 0.78rem; line-height: 1.35; }
+.ap-edit { color: rgba(255, 255, 255, 0.16); flex-shrink: 0; margin-top: 3px; }
+
+/* ── Repository card ── */
+/* The dashed chips on the repo header: the scripts menu, and "open in the editor". */
+.ap-chip-btn {
+    display: flex; align-items: center; gap: 4px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px dashed rgba(255, 255, 255, 0.13);
+    font-style: normal; font-size: 0.56rem; font-weight: 600;
+    color: var(--mk-dimmer);
+    flex-shrink: 0;
+}
+.ap-chip-btn .ap-mark { width: 9px; height: 9px; }
+.ap-branch-mark { color: var(--mk-green); flex-shrink: 0; }
+.ap-copy { color: var(--mk-dimmer); flex-shrink: 0; }
+/* A block INSIDE the repository card — the commits, and the uncommitted work before them.
+   One step up from the card, which is how the app separates them. */
+.ap-block {
+    display: flex; flex-direction: column; gap: 5px;
+    padding: 7px 8px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+}
+.ap-block-title { font-style: normal; font-weight: 500; font-size: 0.68rem; color: var(--mk-muted); }
+.ap-gh-btn {
+    display: flex;
+    padding: 2px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--mk-hair);
+    color: var(--mk-dim);
+    flex-shrink: 0;
+}
+.ap-gh-btn .ap-mark { width: 9px; height: 9px; }
+
+/* ── The pull request card ── */
+.ap-pr {
+    display: flex; flex-direction: column;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--mk-hair);
+    overflow: hidden;
+}
+.ap-pr-head { display: flex; align-items: center; gap: 7px; padding: 8px; }
+.ap-pr-id { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.ap-pr-id b { font-size: 0.68rem; font-weight: 500; color: var(--mk-text); }
+.ap-pr-id i { font-style: normal; font-size: 0.56rem; color: var(--mk-dimmer); }
+/* The checklist — everything that has to be true before this PR can ship, one line each.
+   A card per item rather than one panel of rows, because each line is a separate question
+   and giving each its own edge stops them reading as a paragraph of status. */
+.ap-list {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 7px;
+    border-top: 1px solid var(--mk-hair);
+}
+.ap-item {
+    display: flex; align-items: center; gap: 7px;
+    min-height: 25px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.66rem;
+}
+.ap-item > svg { flex-shrink: 0; }
+/* A settled line steps back to grey; an open one keeps its own tone and its weight, so
+   scanning the card means landing on what still needs doing. */
+.ap-item em { font-style: normal; color: var(--mk-muted); }
+.ap-item em.ap-open { font-weight: 500; }
+.ap-count { font-style: normal; font-size: 0.58rem; color: var(--mk-dim); flex-shrink: 0; }
+/* Pointing right: these folds are closed, which is how the app leaves them. */
+.ap-fold { color: var(--mk-dimmer); transform: rotate(-90deg); flex-shrink: 0; }
+/* The one checklist line with a command attached — merged, so all that is left is closing
+   the ticket out. */
+.ap-done-btn {
+    display: flex; align-items: center; gap: 4px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 6px;
+    background: rgba(106, 208, 157, 0.14);
+    color: var(--mk-green);
+    font-size: 0.58rem; font-weight: 500;
+    flex-shrink: 0;
+}
+/* The footer, and the one band that is always there: how old everything above it is, and
+   the button that makes it newer. Reading left, action right. */
+.ap-pr-foot {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 8px;
+    border-top: 1px solid var(--mk-hair);
+}
+.ap-pr-foot i { font-style: normal; font-size: 0.58rem; color: var(--mk-dimmer); }
+.ap-refresh {
+    display: flex; align-items: center; gap: 5px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    border: 1px solid var(--mk-hair);
+    font-size: 0.6rem; font-weight: 500;
+    color: var(--mk-muted);
+    flex-shrink: 0;
+}
+
+/* The two motions the panel has of its own: the CI spinner, borrowed from the terminal's
+   own ring, and a row the workflow brings in. */
+.ap-spin { animation: mk-spin 0.95s linear infinite; }
+.ap-rise { animation: mk-rise 0.34s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+    /* The step run does not start at all under reduced motion (`AgentPanel.tsx` holds it
+       on `changes requested`), so all that is left to stop is the spinner and the rise. */
+    .ap-spin, .ap-rise { animation: none; }
+}

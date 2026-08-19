@@ -91,7 +91,17 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Le travail arrive fini : rien à moitié fait, rien à nettoyer derrière.',
   'site.yourWay.seeDocs': 'Voir la doc',
 
-  // ── ⑥ Pourquoi on a construit ça (teaser vers /story) ──────────────────────
+  // ── ⑥ Vous savez toujours où ça en est ─────────────────────────────────────
+  'site.whereItStands.title': 'Vous savez toujours où ça en est.',
+  'site.whereItStands.subtitle':
+    'Chaque chantier a son panneau : sur quoi il travaille, et où il en est arrivé.',
+  'site.whereItStands.p1':
+    'Le ticket, la branche, les commits, la pull request — lus dans GitHub et Jira en direct, jamais saisis à la main.',
+  'site.whereItStands.p2':
+    'En attente de revue ? Modifications demandées ? Un check rouge ? Vous le voyez sans ouvrir un seul onglet.',
+  'site.whereItStands.cta': 'Voir le workflow complet',
+
+  // ── ⑦ Pourquoi on a construit ça (teaser vers /story) ──────────────────────
   'site.why.title': 'Pourquoi on a construit ça.',
   'site.why.p1':
     'On utilisait Claude Code tous les jours, sur de vrais projets. Et chaque fois, la même routine : lire le ticket, le reformuler en prompt, préparer la branche à la main, écrire le commit, décrire la PR. Ça marchait. C’était juste lent et ennuyeux.',
@@ -99,7 +109,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
     'Alors on a automatisé les parties ennuyeuses — et on a continué jusqu’à ce que l’ensemble se construise tout seul.',
   'site.why.cta': 'Lire notre histoire',
 
-  // ── ⑦ FAQ ──────────────────────────────────────────────────────────────────
+  // ── ⑧ FAQ ──────────────────────────────────────────────────────────────────
   'site.faq.title': 'FAQ & Troubleshooting',
   'site.faq.q1': 'Faut-il être développeur ?',
   'site.faq.a1':
@@ -224,6 +234,29 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.repoCfg.delete': 'Supprimer ce dépôt',
   'site.repoCfg.deleteHelp': 'Retirer ce dépôt de la configuration de Magic Slash',
   'site.repoCfg.deleteAction': 'Supprimer le dépôt',
+
+  // ── Illustration du panneau d'agent (section ⑥) ─────────────────────────────
+  'site.agentPanel.title': 'Infos de {name}',
+  'site.agentPanel.closeAgent': 'Fermer l’agent',
+  'site.agentPanel.ago': 'il y a {time}',
+  'site.agentPanel.justNow': 'à l’instant',
+  'site.agentPanel.tokens': '{used} tokens',
+  'site.agentPanel.statusPrCreated': 'PR créée',
+  'site.agentPanel.statusCiGreen': 'CI verte',
+  'site.agentPanel.statusChangesRequested': 'modifications demandées',
+  'site.agentPanel.statusReviewAddressed': 'revue traitée',
+  'site.agentPanel.statusPrMerged': 'PR mergée',
+  'site.agentPanel.prNumber': 'Pull request #{number}',
+  'site.agentPanel.reviewPending': 'En attente de revue',
+  'site.agentPanel.reviewChanges': 'Modifications demandées',
+  'site.agentPanel.merged': 'Mergée',
+  'site.agentPanel.comments': 'Commentaires',
+  'site.agentPanel.checks': 'Checks CI',
+  'site.agentPanel.checksPassed': '{passed}/{total} réussis',
+  'site.agentPanel.noConflicts': 'Aucun conflit',
+  'site.agentPanel.launchDone': 'Lancer magic-done',
+  'site.agentPanel.lastChecked': 'vérifié {time}',
+  'site.agentPanel.refresh': 'Rafraîchir',
 
   // ── Page histoire ──────────────────────────────────────────────────────────
   'site.story.label': 'Notre histoire',

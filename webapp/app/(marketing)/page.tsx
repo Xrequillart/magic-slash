@@ -4,6 +4,7 @@ import { HowSection } from '@/components/site/home/HowSection'
 import { YourProductSection } from '@/components/site/home/YourProductSection'
 import { ParallelSection } from '@/components/site/home/ParallelSection'
 import { YourWaySection } from '@/components/site/home/YourWaySection'
+import { WhereItStandsSection } from '@/components/site/home/WhereItStandsSection'
 import { WhySection } from '@/components/site/home/WhySection'
 import { FaqSection } from '@/components/site/home/FaqSection'
 import { CtaSection } from '@/components/site/home/CtaSection'
@@ -11,10 +12,14 @@ import { CtaSection } from '@/components/site/home/CtaSection'
 /**
  * magic-slash.io — the landing page.
  *
- * Seven sections, in the order they argue: the promise, then how it actually works,
+ * Eight sections, in the order they argue: the promise, then how it actually works,
  * then that it runs on the product you already have, then that you can run several jobs
- * at once, then that it follows your conventions, then why we built it, then the
- * questions and the ask.
+ * at once, then that it follows your conventions, then that you can see where each job
+ * stands, then why we built it, then the questions and the ask.
+ *
+ * ⑥ was added last and answers the question ④ raises: twelve jobs in flight is only
+ * bearable if each one says where it is, so the panel that says so gets its own section
+ * rather than a bullet inside ④.
  *
  * The order IS the pitch. It opens on the outcome and only reaches the mechanism in ②,
  * where the seven commands live — the page used to lead with them ("7 skills. Entire
@@ -45,6 +50,7 @@ export default function Home() {
       <div className="content-sections">
         <ParallelSection />
         <YourWaySection />
+        <WhereItStandsSection />
         <WhySection />
         <FaqSection />
         <CtaSection />

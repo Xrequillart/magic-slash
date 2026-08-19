@@ -255,6 +255,11 @@ describe('message catalogues', () => {
         'site.repoCfg.resolve',
         'site.repoCfg.pr',
         'site.repoCfg.issues',
+        // The agent panel borrows the app's labels too, and these two are the same string
+        // in the desktop's French catalogue: "Pull request" is what GitHub says in both,
+        // and "tokens" is the same word.
+        'site.agentPanel.prNumber',
+        'site.agentPanel.tokens',
         'site.story.tl9Date',
         'site.footer.configuration',
         'site.footer.changelog',
