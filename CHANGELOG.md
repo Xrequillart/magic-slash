@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.74.1] - 2026-08-19
+
+### Added
+
+- **Desktop**: Write notifications as explicit translated sentences
+- **Landing**: Add the agent info panel section
+
 ## [0.74.0] - 2026-08-19
 
 ### Added
@@ -2214,6 +2221,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.74.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.74.1
 [0.74.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.74.0
 [0.73.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.73.0
 [0.72.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.72.2
