@@ -6,6 +6,7 @@ import { useScriptRunner } from '../hooks/useScriptRunner'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
 import { getProjectColorMap } from '../utils/projectColors'
 import { SidebarUsageCard } from './SidebarUsageCard'
+import { SidebarUpdateButton } from './SidebarUpdateButton'
 import { WaveLoader } from './WaveLoader'
 import { AgentStateBadge } from './AgentStateBadge'
 import { SidebarAccount } from './SidebarAccount'
@@ -520,6 +521,10 @@ export function Sidebar() {
 
       {/* Claude usage card — opt-out: shown unless explicitly disabled. */}
       {config?.usageCardEnabled !== false && <SidebarUsageCard />}
+
+      {/* Renders itself only when there is an update to act on. Not behind the
+          usage card's setting: hiding usage must not hide the update. */}
+      <SidebarUpdateButton />
 
       {/* Footer */}
       <div className="px-4 py-2 text-xs text-text-secondary flex items-center justify-start gap-2">

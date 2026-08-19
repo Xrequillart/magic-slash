@@ -88,11 +88,13 @@ export function setupAutoUpdater() {
     sendStatus({ type: 'checking' })
   })
 
+  // Deliberately does NOT start the download. The check still runs by itself at
+  // launch, but pulling ~150 MB is the person's call: 'available' is what raises
+  // the update button at the bottom of the left sidebar, and that button is the
+  // only thing that calls `updater:download` below.
   autoUpdater.on('update-available', (info: UpdateInfo) => {
     currentPhase = 'download'
     sendStatus({ type: 'available', version: info.version })
-    // Start download automatically
-    autoUpdater.downloadUpdate()
   })
 
   autoUpdater.on('update-not-available', () => {
@@ -129,6 +131,28 @@ export function setupAutoUpdater() {
       console.error('[Updater] Check failed:', err)
       return null
     }
+  })
+
+  ipcMain.handle('updater:download', async () => {
+    // Guarded rather than trusting the caller: downloadUpdate() rejects when
+    // electron-updater has no update info in hand, which is every state but these
+    // two. A failed download stays retryable — the error came from the transfer,
+    // not from the update being gone.
+    if (currentStatus.type !== 'available' && !(currentStatus.type === 'error' && currentStatus.phase === 'download')) {
+      return
+    }
+    try {
+      currentPhase = 'download'
+      await autoUpdater.downloadUpdate()
+    } catch (err) {
+      // The 'error' event has already reported this to the renderer; swallowing the
+      // rejection here only keeps it from surfacing as an unhandled invoke failure.
+      console.error('[Updater] Download failed:', (err as Error).message)
+    }
+  })
+
+  ipcMain.handle('updater:getStatus', () => {
+    return currentStatus
   })
 
   ipcMain.handle('updater:install', async () => {

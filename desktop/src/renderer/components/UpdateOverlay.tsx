@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bot, Bug, Download, CheckCircle, Loader2, Play, ScrollText, Sparkles } from 'lucide-react'
+import { AlertTriangle, Bot, Bug, Download, CheckCircle, Loader2, Play, ScrollText, Sparkles } from 'lucide-react'
 import { useStore } from '../store'
 import { useT } from '../i18n'
 
@@ -109,6 +109,7 @@ export function UpdateOverlay() {
   const [debugRunning, setDebugRunning] = useState(false)
   const [debugMenuOpen, setDebugMenuOpen] = useState(false)
   const [emptyStatePinned, setEmptyStatePinned] = useState(false)
+  const [updateRowPinned, setUpdateRowPinned] = useState(false)
   const debugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const debugMenuRef = useRef<HTMLDivElement>(null)
   const confettiRef = useRef<HTMLCanvasElement>(null)
@@ -129,6 +130,33 @@ export function UpdateOverlay() {
     setEmptyStatePinned(next)
     setDebugMenuOpen(false)
     window.dispatchEvent(new CustomEvent('debug:empty-state', { detail: next }))
+  }
+
+  /**
+   * Hands the sidebar update row a fake status to hold. It is the only way to see
+   * that row in development: checkForUpdatesOnStartup() returns early under the dev
+   * server, so no real status ever reaches it.
+   *
+   * A toggle rather than a scripted playback, because the point is to CLICK it —
+   * the row simulates its own download and restart while pinned, so the whole
+   * offered → transferring → ready path is walked by hand.
+   */
+  function toggleUpdateRow() {
+    const next = !updateRowPinned
+    setUpdateRowPinned(next)
+    setDebugMenuOpen(false)
+    window.dispatchEvent(new CustomEvent('debug:update-sim', {
+      detail: next ? { type: 'available', version: '1.0.0' } : null,
+    }))
+  }
+
+  /** Jumps the pinned row straight to a failed download, so retry can be clicked. */
+  function pinUpdateRowError() {
+    setUpdateRowPinned(true)
+    setDebugMenuOpen(false)
+    window.dispatchEvent(new CustomEvent('debug:update-sim', {
+      detail: { type: 'error', message: 'net::ERR_CONNECTION_RESET (simulated)', phase: 'download' },
+    }))
   }
 
   function showWhatsNew() {
@@ -216,13 +244,13 @@ export function UpdateOverlay() {
       setStatus(newStatus)
       if (isFirstDownloaded) triggerConfetti()
 
-      // Show overlay for active states
-      if (
-        newStatus.type === 'checking' ||
-        newStatus.type === 'available' ||
-        newStatus.type === 'downloading' ||
-        newStatus.type === 'downloaded'
-      ) {
+      // Only the finish line takes the screen. Checking, waiting to be offered, and
+      // transferring are all reported by the sidebar update row instead — those used
+      // to raise this overlay, which meant an automatic startup check blacked out the
+      // app before anyone had asked it for anything, and a download blocked the app
+      // for its whole duration. The download completing is different: it is the one
+      // moment that needs an answer (restart now, or later).
+      if (newStatus.type === 'downloaded') {
         setVisible(true)
       }
 
@@ -264,6 +292,23 @@ export function UpdateOverlay() {
                 >
                   <Play className="w-3.5 h-3.5" />
                   Auto update steps
+                </button>
+                <button
+                  onClick={toggleUpdateRow}
+                  className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
+                    updateRowPinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
+                  }`}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Sidebar update row
+                  {updateRowPinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
+                </button>
+                <button
+                  onClick={pinUpdateRowError}
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Update row: failed
                 </button>
                 <button
                   onClick={toggleEmptyState}

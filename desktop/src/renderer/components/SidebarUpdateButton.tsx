@@ -1,0 +1,190 @@
+import { useEffect, useRef, useState } from 'react'
+import { AlertTriangle, Download, RotateCw } from 'lucide-react'
+import { useT } from '../i18n'
+
+/** Fixture version for the dev-only simulation below. */
+const SIM_VERSION = '1.0.0'
+
+type UpdateStatus =
+  | { type: 'checking' }
+  | { type: 'available'; version: string }
+  | { type: 'not-available' }
+  | { type: 'downloading'; progress: number }
+  | { type: 'downloaded'; version: string; releaseNotes?: string }
+  | { type: 'error'; message: string; phase?: 'check' | 'download' | 'install' }
+
+/**
+ * The update entry point, pinned under the usage card at the bottom of the left
+ * sidebar. It exists because the check is automatic but the download is not: the
+ * app finds a release on its own and then waits here, so a ~150 MB transfer only
+ * ever starts on a click.
+ *
+ * Three states, one row each — offered, transferring, ready to restart — plus a
+ * retryable failure. Everything else (checking, nothing found, an install that
+ * failed) renders nothing: this row is for what the person can act on, and the
+ * install failure has the overlay to itself.
+ *
+ * Progress is drawn in place rather than in a modal, which is the whole point of
+ * the row: the download runs while you keep working.
+ */
+export function SidebarUpdateButton() {
+  const t = useT()
+  const [status, setStatus] = useState<UpdateStatus | null>(null)
+  // The startup check fires a second after launch and can resolve before this
+  // mounts, so the pushed event alone would be missed and the row would never
+  // appear. getStatus() covers that gap — but it must lose to anything the stream
+  // has already delivered, or a slow reply would overwrite fresher news.
+  const streamedRef = useRef(false)
+
+  useEffect(() => {
+    let cancelled = false
+    window.electronAPI.updater.getStatus().then((initial) => {
+      if (cancelled || streamedRef.current) return
+      setStatus(initial)
+    })
+    const unsubscribe = window.electronAPI.updater.onStatus((next) => {
+      streamedRef.current = true
+      setStatus(next)
+    })
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
+  }, [])
+
+  // ── Dev-only simulation ──────────────────────────────────────────────────
+  // The updater short-circuits outside a packaged build, so no real status ever
+  // reaches this row in development. The debug menu in UpdateOverlay pins a fake
+  // one here, and while it is pinned the row's own buttons drive a fake download
+  // instead of the IPC — which is the whole point: the click is what needs testing,
+  // and the real `updater:download` refuses anyway with nothing to fetch.
+  const [simulated, setSimulated] = useState<UpdateStatus | null>(null)
+  const simTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearSimTimer = () => {
+    if (simTimerRef.current) clearTimeout(simTimerRef.current)
+    simTimerRef.current = null
+  }
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const handler = (event: Event) => {
+      clearSimTimer()
+      setSimulated((event as CustomEvent<UpdateStatus | null>).detail)
+    }
+    window.addEventListener('debug:update-sim', handler)
+    return () => {
+      window.removeEventListener('debug:update-sim', handler)
+      clearSimTimer()
+    }
+  }, [])
+
+  function simulateDownload() {
+    let progress = 0
+    setSimulated({ type: 'downloading', progress })
+    const tick = () => {
+      progress = Math.min(100, progress + 7)
+      setSimulated({ type: 'downloading', progress })
+      if (progress >= 100) {
+        // Held at 100% for a beat, the way a real transfer sits there while
+        // electron-updater verifies the signature before emitting 'update-downloaded'.
+        simTimerRef.current = setTimeout(() => setSimulated({ type: 'downloaded', version: SIM_VERSION }), 700)
+        return
+      }
+      simTimerRef.current = setTimeout(tick, 180)
+    }
+    simTimerRef.current = setTimeout(tick, 180)
+  }
+
+  // Nothing to restart into, so the row just leaves — which is what a real install
+  // looks like from here: the window goes away.
+  function simulateInstall() {
+    clearSimTimer()
+    setSimulated(null)
+  }
+
+  const simulating = import.meta.env.DEV && simulated !== null
+  const startDownload = () => (simulating ? simulateDownload() : window.electronAPI.updater.download())
+  const install = () => (simulating ? simulateInstall() : window.electronAPI.updater.install())
+
+  // A pinned simulation wins over the real status, so the row can be exercised in
+  // development without the updater ever having run.
+  const shown = simulating ? simulated : status
+  if (!shown) return null
+
+  if (shown.type === 'available') {
+    return (
+      <Row>
+        <button
+          onClick={startDownload}
+          title={t('sidebar.update.downloadTitle', { version: shown.version })}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-accent/15 border border-accent/30 text-accent hover:bg-accent/25 hover:border-accent/50 transition-colors"
+        >
+          <Download className="w-3.5 h-3.5 shrink-0" />
+          <span className="text-[11px] font-medium truncate">{t('sidebar.update.available')}</span>
+          <span className="ml-auto text-[10px] opacity-60 shrink-0">v{shown.version}</span>
+        </button>
+      </Row>
+    )
+  }
+
+  if (shown.type === 'downloading') {
+    const pct = Math.min(100, Math.max(0, shown.progress))
+    return (
+      <Row>
+        <div className="px-2 py-1.5 rounded-lg bg-surface-subtle border border-line-subtle">
+          <div className="flex items-center justify-between mb-1 text-[10px]">
+            <span className="text-text-secondary/60">{t('sidebar.update.downloading')}</span>
+            <span className="font-semibold text-accent">{Math.round(pct)}%</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-surface overflow-hidden">
+            <div
+              className="h-full rounded-full bg-accent transition-all duration-300 ease-out"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      </Row>
+    )
+  }
+
+  if (shown.type === 'downloaded') {
+    return (
+      <Row>
+        <button
+          onClick={install}
+          title={t('sidebar.update.restartTitle', { version: shown.version })}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-accent text-on-brand hover:bg-accent-hover transition-colors"
+        >
+          <RotateCw className="w-3.5 h-3.5 shrink-0" />
+          <span className="text-[11px] font-medium truncate">{t('sidebar.update.restart')}</span>
+          <span className="ml-auto text-[10px] opacity-70 shrink-0">v{shown.version}</span>
+        </button>
+      </Row>
+    )
+  }
+
+  // A transfer that failed stays offered: the release is still there, only the
+  // download broke. An install failure is the overlay's to report, not this row's.
+  if (shown.type === 'error' && shown.phase === 'download') {
+    return (
+      <Row>
+        <button
+          onClick={startDownload}
+          title={shown.message}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-red/10 border border-red/30 text-red hover:bg-red/20 transition-colors"
+        >
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          <span className="text-[11px] font-medium truncate">{t('sidebar.update.retry')}</span>
+        </button>
+      </Row>
+    )
+  }
+
+  return null
+}
+
+/** Shared gutter, so the row lines up with the usage card sitting above it. */
+function Row({ children }: { children: React.ReactNode }) {
+  return <div className="mx-2 mb-2">{children}</div>
+}

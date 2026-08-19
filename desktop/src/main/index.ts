@@ -405,13 +405,14 @@ function focusMainWindow(callback?: (win: BrowserWindow) => void): void {
   callback?.(mainWindow)
 }
 
-/** Collapse the updater's six states onto the three the panel's header can show. */
+/** Collapse the updater's six states onto the ones the panel's header can show. */
 function trayUpdate(): TrayUpdate {
   const status = getUpdateStatus()
   switch (status.type) {
     case 'checking': return { phase: 'checking' }
-    // "available" means the download just started — same thing to the user.
-    case 'available': return { phase: 'downloading', percent: 0 }
+    // Its own phase, not 'downloading': nothing is being fetched until someone
+    // asks for it, and a spinner at 0% that never moves was the old lie here.
+    case 'available': return { phase: 'available', version: status.version }
     case 'downloading': return { phase: 'downloading', percent: Math.round(status.progress) }
     case 'downloaded': return { phase: 'ready', version: status.version }
     case 'error': return { phase: 'error' }

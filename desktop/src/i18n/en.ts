@@ -27,6 +27,7 @@ export const en = {
   // Documentation, GitHub) took their strings with them.
   'tray.showWindow': 'Show Window',
   'tray.update.checking': 'Checking for updates…',
+  'tray.update.download': '↓ Download v{version}',
   'tray.update.downloadingVersion': 'Downloading v{version}…',
   'tray.update.downloadingProgress': 'Downloading update… {percent}%',
   'tray.update.restart': '↻ Restart to update (v{version})',
@@ -1326,6 +1327,14 @@ export const en = {
   // ── Terminal view ────────────────────────────────────────────────────────
   'terminalView.scrollToBottom': 'Scroll to bottom',
   'terminalView.dropFiles': 'Drop files here',
+
+  // ── Sidebar update row ───────────────────────────────────────────────────
+  'sidebar.update.available': 'Update available',
+  'sidebar.update.downloadTitle': 'Download version {version}',
+  'sidebar.update.downloading': 'Downloading…',
+  'sidebar.update.restart': 'Restart to install',
+  'sidebar.update.restartTitle': 'Restart to install v{version}',
+  'sidebar.update.retry': 'Download failed — retry',
 
   // ── Update overlay & What’s New ──────────────────────────────────────────
   'update.checking': 'Checking for updates…',

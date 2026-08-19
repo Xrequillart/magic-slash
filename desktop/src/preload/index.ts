@@ -422,7 +422,15 @@ export type UpdateStatus =
 // Updater API
 const updaterApi = {
   check: () => ipcRenderer.invoke('updater:check'),
+  /** Starts fetching an update that has been found. No-op in any other state. */
+  download: (): Promise<void> => ipcRenderer.invoke('updater:download'),
   install: () => ipcRenderer.invoke('updater:install'),
+  /**
+   * The status as it stands right now. `onStatus` alone is not enough for anything
+   * mounted after the startup check has already fired — it would never hear that
+   * an update is waiting.
+   */
+  getStatus: (): Promise<UpdateStatus> => ipcRenderer.invoke('updater:getStatus'),
   getVersion: (): Promise<string> => ipcRenderer.invoke('updater:getVersion'),
   getPendingWhatsNew: (): Promise<{ version: string; releaseNotes: string } | null> =>
     ipcRenderer.invoke('updater:getPendingWhatsNew'),

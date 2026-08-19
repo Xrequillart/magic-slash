@@ -22,6 +22,7 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Panneau de la barre de menus ─────────────────────────────────────────
   'tray.showWindow': 'Afficher la fenêtre',
   'tray.update.checking': 'Recherche de mises à jour…',
+  'tray.update.download': '↓ Télécharger la v{version}',
   'tray.update.downloadingVersion': 'Téléchargement de la v{version}…',
   'tray.update.downloadingProgress': 'Téléchargement de la mise à jour… {percent} %',
   'tray.update.restart': '↻ Redémarrer pour mettre à jour (v{version})',
@@ -1288,6 +1289,14 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Vue terminal ─────────────────────────────────────────────────────────
   'terminalView.scrollToBottom': 'Aller en bas',
   'terminalView.dropFiles': 'Déposez des fichiers ici',
+
+  // ── Ligne de mise à jour de la barre latérale ────────────────────────────
+  'sidebar.update.available': 'Mise à jour disponible',
+  'sidebar.update.downloadTitle': 'Télécharger la version {version}',
+  'sidebar.update.downloading': 'Téléchargement…',
+  'sidebar.update.restart': 'Redémarrer pour installer',
+  'sidebar.update.restartTitle': 'Redémarrer pour installer la v{version}',
+  'sidebar.update.retry': 'Téléchargement échoué — réessayer',
 
   // ── Overlay de mise à jour et nouveautés ─────────────────────────────────
   'update.checking': 'Recherche de mises à jour…',
