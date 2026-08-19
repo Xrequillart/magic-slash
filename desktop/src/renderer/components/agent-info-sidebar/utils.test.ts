@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatTimestamp, formatRelativeDate, contextColors } from './utils'
+import { formatTimestamp, formatRelativeDate, contextColors, detectTicketProvider, buildTicketLink } from './utils'
 import { t as translate, type MessageKey } from '../../../i18n'
 
 // Both formatters take a translator; bind English so the expectations below stay
@@ -85,5 +85,63 @@ describe('contextColors', () => {
   it('turns red from 70%', () => {
     expect(contextColors(70)).toEqual({ bar: 'bg-red', text: 'text-red' })
     expect(contextColors(100)).toEqual({ bar: 'bg-red', text: 'text-red' })
+  })
+})
+
+describe('detectTicketProvider', () => {
+  // The regression: /magic:start writes the bare number, because it reuses the same
+  // value for the worktree directory and the branch name. Issues 196 and 197 showed
+  // no mark and no link until this accepted it.
+  it('reads a GitHub issue with or without the #', () => {
+    expect(detectTicketProvider('196')).toBe('github')
+    expect(detectTicketProvider('#196')).toBe('github')
+    expect(detectTicketProvider('1')).toBe('github')
+  })
+
+  it('reads a Jira key', () => {
+    expect(detectTicketProvider('PROJ-123')).toBe('jira')
+    expect(detectTicketProvider('A-1')).toBe('jira')
+  })
+
+  it('returns null for anything it cannot place', () => {
+    expect(detectTicketProvider(undefined)).toBeNull()
+    expect(detectTicketProvider('')).toBeNull()
+    expect(detectTicketProvider('some free text')).toBeNull()
+    // Lower-case is not a Jira key: the skill uppercases before writing, so this
+    // shape only arrives hand-typed and guessing a tracker for it would be wrong.
+    expect(detectTicketProvider('proj-123')).toBeNull()
+    expect(detectTicketProvider('#12a')).toBeNull()
+    expect(detectTicketProvider('12-34-56')).toBeNull()
+  })
+})
+
+describe('buildTicketLink', () => {
+  const urls = {
+    jiraUrl: 'https://acme.atlassian.net/browse/',
+    githubIssuesUrl: 'https://github.com/owner/repo/issues',
+  }
+
+  it('links a GitHub issue whichever form the ID takes', () => {
+    expect(buildTicketLink('196', urls)).toBe('https://github.com/owner/repo/issues/196')
+    expect(buildTicketLink('#196', urls)).toBe('https://github.com/owner/repo/issues/196')
+  })
+
+  it('links a Jira ticket', () => {
+    expect(buildTicketLink('PROJ-123', urls)).toBe('https://acme.atlassian.net/browse/PROJ-123')
+  })
+
+  it('does not double the separator on a base URL that ends with one', () => {
+    expect(buildTicketLink('196', { githubIssuesUrl: 'https://github.com/owner/repo/issues/' }))
+      .toBe('https://github.com/owner/repo/issues/196')
+  })
+
+  it('returns null when the tracker has no base URL', () => {
+    expect(buildTicketLink('196', { jiraUrl: urls.jiraUrl })).toBeNull()
+    expect(buildTicketLink('PROJ-123', { githubIssuesUrl: urls.githubIssuesUrl })).toBeNull()
+  })
+
+  it('returns null for an unrecognised ID', () => {
+    expect(buildTicketLink('some free text', urls)).toBeNull()
+    expect(buildTicketLink(undefined, urls)).toBeNull()
   })
 })

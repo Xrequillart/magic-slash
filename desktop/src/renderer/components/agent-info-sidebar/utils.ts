@@ -85,3 +85,48 @@ export function contextColors(pct: number): { bar: string; text: string } {
   if (pct >= 40) return { bar: 'bg-orange', text: 'text-orange' }
   return { bar: 'bg-green', text: 'text-green' }
 }
+
+/**
+ * Which tracker a ticket ID belongs to, read from its shape alone.
+ *
+ * GitHub accepts the `#` or no `#`: `/magic:start` takes `^#?\d+$` from the person
+ * and then uses the ID verbatim for the worktree directory and the branch name
+ * (`magic-slash-196`, `feature/magic-slash-196-…`), so what it writes to
+ * `/metadata` is the bare number. Requiring the `#` here is what left issues 196
+ * and 197 with no mark and no link while Jira tickets beside them worked. The `#`
+ * cannot simply be added upstream either: unencoded in a URL it opens a fragment,
+ * so curl would drop it along with every parameter after it.
+ *
+ * Pure digits are unambiguous — a Jira key always carries its `ABC-` prefix.
+ *
+ * Returns null for anything else: a hand-typed reference is still a valid ticket
+ * ID, and a wrong mark next to it would be worse than none.
+ */
+export function detectTicketProvider(ticketId: string | undefined): 'github' | 'jira' | null {
+  if (!ticketId) return null
+  if (/^#?\d+$/.test(ticketId)) return 'github'
+  if (/^[A-Z]+-\d+$/.test(ticketId)) return 'jira'
+  return null
+}
+
+/**
+ * The tracker URL for a ticket ID, or null when none can be built — the ID is not
+ * recognised, or the tracker it belongs to has no base URL configured.
+ *
+ * Deliberately separate from `detectTicketProvider`: the mark shows on shape alone,
+ * so an unlinkable ID still says which tracker it came from.
+ */
+export function buildTicketLink(
+  ticketId: string | undefined,
+  urls: { jiraUrl?: string; githubIssuesUrl?: string },
+): string | null {
+  const provider = detectTicketProvider(ticketId)
+  if (!ticketId || !provider) return null
+
+  const base = provider === 'github' ? urls.githubIssuesUrl : urls.jiraUrl
+  if (!base) return null
+
+  // The `#` is display sugar, never part of the path.
+  const segment = provider === 'github' ? ticketId.replace(/^#/, '') : ticketId
+  return `${base.replace(/\/+$/, '')}/${segment}`
+}

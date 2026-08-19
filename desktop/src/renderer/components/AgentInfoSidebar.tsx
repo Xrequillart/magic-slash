@@ -6,6 +6,7 @@ import { TicketHeader } from './agent-info-sidebar/TicketHeader'
 import { UsageCard } from './agent-info-sidebar/UsageCard'
 import { RepositoryCard } from './agent-info-sidebar/RepositoryCard'
 import { RepositorySelector } from './agent-info-sidebar/RepositorySelector'
+import { buildTicketLink, detectTicketProvider } from './agent-info-sidebar/utils'
 import { useT } from '../i18n'
 import type { RepoGitData } from './agent-info-sidebar/types'
 import type { TerminalMetadata } from '../../types'
@@ -172,38 +173,18 @@ export function AgentInfoSidebar() {
     }
   }, [inspectedTerminalId, activeTerminal, updateTerminalRepositories])
 
-  // Detect ticket type and build the full ticket URL
-  const getTicketLink = useCallback(() => {
-    if (!metadata?.ticketId) return null
+  // Both live in utils.ts, where they are unit-tested: the shapes they accept are
+  // the contract between this panel and what /magic:start writes, and that contract
+  // was silently wrong for GitHub issues until it had tests.
+  const ticketLink = useMemo(
+    () => buildTicketLink(metadata?.ticketId, { jiraUrl, githubIssuesUrl }),
+    [metadata?.ticketId, jiraUrl, githubIssuesUrl],
+  )
 
-    const ticketId = metadata.ticketId
-
-    if (ticketId.startsWith('#') && githubIssuesUrl) {
-      const cleanId = ticketId.replace(/^#/, '')
-      const baseUrl = githubIssuesUrl.endsWith('/') ? githubIssuesUrl : githubIssuesUrl + '/'
-      return baseUrl + cleanId
-    }
-
-    if (/^[A-Z]+-\d+$/.test(ticketId) && jiraUrl) {
-      const baseUrl = jiraUrl.endsWith('/') ? jiraUrl : jiraUrl + '/'
-      return baseUrl + ticketId
-    }
-
-    return null
-  }, [metadata?.ticketId, jiraUrl, githubIssuesUrl])
-
-  const ticketLink = getTicketLink()
-
-  // Which tracker the ID belongs to, read from its shape alone — the same two patterns
-  // getTicketLink matches. Deliberately independent of whether a URL could be built, so
-  // the mark still says "this is a Jira ticket" on a repo that has no jiraUrl set.
-  const ticketProvider = useMemo<'github' | 'jira' | null>(() => {
-    const ticketId = metadata?.ticketId
-    if (!ticketId) return null
-    if (ticketId.startsWith('#')) return 'github'
-    if (/^[A-Z]+-\d+$/.test(ticketId)) return 'jira'
-    return null
-  }, [metadata?.ticketId])
+  const ticketProvider = useMemo(
+    () => detectTicketProvider(metadata?.ticketId),
+    [metadata?.ticketId],
+  )
 
   // Get PR URL for a specific repository
   const getRepoPrUrl = useCallback((repoPath: string): string | undefined => {
