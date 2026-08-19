@@ -16,6 +16,8 @@ interface RepositoryCardProps {
   gitData: RepoGitData | undefined
   baseBranch: string | undefined
   prUrl: string | undefined
+  /** GitHub address of the repo — the configured remote URL, or the one read from git. */
+  repoUrl: string | undefined
   repoMetadata?: RepositoryMetadata
   copiedCommitHash: string | null
   copiedBranch: string | null
@@ -32,6 +34,7 @@ export function RepositoryCard({
   gitData,
   baseBranch,
   prUrl,
+  repoUrl,
   repoMetadata,
   copiedCommitHash,
   copiedBranch,
@@ -62,6 +65,17 @@ export function RepositoryCard({
             <VSCodeIcon className="w-3 h-3" />
             {t('agentInfo.openInEditor')}
           </button>
+          {/* Open on GitHub button — hidden when the repo has no known remote */}
+          {repoUrl && (
+            <button
+              onClick={() => window.electronAPI.shell.openExternal(repoUrl)}
+              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary/50 border border-dashed border-border/40 rounded hover:border-ink/50 hover:text-ink hover:bg-ink/5 transition-colors"
+              title={t('agentInfo.openRepoOnGitHub')}
+            >
+              <GitHubIcon className="w-3 h-3" />
+              {t('agentInfo.openOnGitHub')}
+            </button>
+          )}
           {/* Remove repository button */}
           <button
             onClick={onRemove}

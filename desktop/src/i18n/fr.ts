@@ -1139,6 +1139,8 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.addRepository': 'Ajouter un dépôt',
   'agentInfo.noRepositories': 'Aucun dépôt configuré',
   'agentInfo.openInEditor': 'Ouvrir',
+  'agentInfo.openOnGitHub': 'Ouvrir',
+  'agentInfo.openRepoOnGitHub': 'Ouvrir le dépôt sur GitHub',
   'agentInfo.scripts': 'Scripts',
   'agentInfo.launchDone': 'Lancer magic-done',
   'agentInfo.files.one': '{count} fichier',

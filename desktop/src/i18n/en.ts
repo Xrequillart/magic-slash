@@ -1161,6 +1161,8 @@ export const en = {
   'agentInfo.addRepository': 'Add a repository',
   'agentInfo.noRepositories': 'No repositories configured',
   'agentInfo.openInEditor': 'Open',
+  'agentInfo.openOnGitHub': 'Open',
+  'agentInfo.openRepoOnGitHub': 'Open the repository on GitHub',
   'agentInfo.scripts': 'Scripts',
   'agentInfo.launchDone': 'Launch magic-done',
   'agentInfo.files.one': '{count} file',

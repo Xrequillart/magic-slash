@@ -210,6 +210,14 @@ export function AgentInfoSidebar() {
     return metadata?.repositoryMetadata?.[repoPath]?.prUrl
   }, [metadata])
 
+  // GitHub address of a repository. The configured `remoteUrl` comes first — it is the
+  // shared identity of the repo, already normalised to `https://github.com/owner/repo` —
+  // and the URL read from the local git remote is the fallback for a repo configured
+  // before that field existed.
+  const getRepoUrl = useCallback((repoPath: string): string | undefined => {
+    return getRepoConfig(repoPath)?.remoteUrl || repoGitData[repoPath]?.gitHubUrl || undefined
+  }, [getRepoConfig, repoGitData])
+
   // Fetch git data for ALL repositories
   useEffect(() => {
     const repos = activeTerminal?.repositories || []
@@ -485,6 +493,7 @@ export function AgentInfoSidebar() {
                     gitData={repoGitData[repoPath]}
                     baseBranch={metadata?.baseBranch}
                     prUrl={getRepoPrUrl(repoPath)}
+                    repoUrl={getRepoUrl(repoPath)}
                     repoMetadata={metadata?.repositoryMetadata?.[repoPath]}
                     copiedCommitHash={copiedCommitHash}
                     copiedBranch={copiedBranch}
