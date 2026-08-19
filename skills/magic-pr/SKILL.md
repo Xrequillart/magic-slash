@@ -18,6 +18,7 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, Skill, mcp__github
 > - **Step 6.5**: Announce the PR to the user — they need the link before anything long-running starts
 > - **Step 7**: Update the Jira/GitHub ticket — closes the feedback loop with the team
 > - **Step 7.4**: Watch the CI and review feedback — turns the PR from "created" into "actually green"
+> - **Step 7.4.2.5**: Backfill the preview URL — points the reviewer at this PR's deployed code instead of a local rebuild, when the project publishes one, and keeps that one line current as the head commit moves
 
 You are an assistant that finalizes a task by pushing commits, creating a PR, updating the Jira/GitHub ticket, and then watching the PR until its checks are green and its review feedback is handled.
 
@@ -65,7 +66,7 @@ Use `AskUserQuestion` with the text from **`MSG_BRANCH_ASK`**.
 | Parameter            | Repo path                                             | Default | Description                                       |
 | -------------------- | ----------------------------------------------------- | ------- | ------------------------------------------------- |
 | Auto-link tickets    | `.repositories.<name>.pullRequest.autoLinkTickets`    | `true`  | Add Jira/GitHub links in the PR                   |
-| Watch CI             | `.repositories.<name>.pullRequest.watchCI`            | `true`  | Watch checks and review feedback after Step 7     |
+| Watch CI             | `.repositories.<name>.pullRequest.watchCI`            | `true`  | Watch checks and review feedback after Step 7, and keep the preview URL in the test scenarios current (off: local-only) |
 | Test accounts        | `.repositories.<name>.pullRequest.testAccounts`       | `'off'` | Test-account mode: `off` / `reference` / `inline` |
 | Test accounts source | `.repositories.<name>.pullRequest.testAccountsSource` | `''`    | Explicit source file path or project-skill name   |
 
@@ -547,7 +548,7 @@ Display **`MSG_SUMMARY`**, substituting `{branch}`, `{PR_URL}`, `{PR_NUMBER}`, `
 `MSG_SUMMARY` has two variants — pick based on `pullRequest.watchCI` (from the config loaded in the Configuration step, default `true`), taking into account the skip conditions listed in Step 7.4.0:
 
 - **`watchCI` is `true`**: use the **watch** variant, whose next-steps announce that the watch phase is starting. Then continue to Step 7.4.
-- **`watchCI` is `false`**: use the **manual** variant (the classic "wait for CI, then run /magic:review" list) and stop here — skip Step 7.4 entirely.
+- **`watchCI` is `false`**: use the **manual** variant (the classic "wait for CI, then run /magic:review" list), then stop here — skip Step 7.4 entirely. The preview-URL backfill does not run on this path (it needs a settled deployment, and nothing here waits for one), so the test scenarios stay local-only.
 
 ## Step 7.4: Watch the CI and handle review feedback
 
@@ -591,6 +592,61 @@ Keeping the watcher in a sub-agent is deliberate: 30 minutes of polling output s
 
 If the sub-agent returns something that is not parseable as the report schema, do not retry the whole watch — fall back to a single direct snapshot (`gh pr checks "$PR_NUMBER" --json bucket,name,state,link,workflow`) and treat that as the report.
 
+### 7.4.2.5: Backfill the preview URL, if the project publishes one
+
+> This runs in the **main session**, never inside the watcher — the watcher stays a read-only
+> observer (Step 7.4.2). It is a post-creation backfill, not a detection phase: the PR already
+> exists, so this asks GitHub what got deployed for `$HEAD_SHA` and, if the project publishes a
+> per-PR preview, makes the PR body name that URL so the reviewer can test the actual deployed
+> code instead of rebuilding locally.
+>
+> `$HEAD_SHA` must be the **current** head of the branch, re-resolved via Step 7.4.1 on every entry
+> — not the value captured on the first pass. A stale SHA makes this step describe a commit the PR
+> no longer has, which is the same wrong-code failure the whole design exists to avoid.
+>
+> The step owns **exactly one bullet** of the PR body — the `Preview:` / `Aperçu :` bullet inside
+> the testing section — for the whole life of the PR, not one per round. Because the head commit
+> moves between rounds, that bullet's URL legitimately changes: the step keeps the line current by
+> **replacing** it, never by adding a second one, and touches nothing else in the body.
+
+Immediately after the watcher returns its report — regardless of what it says (green, failed,
+timed out, or errored) — read `references/preview-url.md` and follow it exactly to attempt this.
+Do not improvise the discovery logic.
+
+Pass `checks.deploy_checks` from that report through as the reference file's `DEPLOY_CHECKS`
+prerequisite (empty when the report is missing or unparseable): it is what tells the procedure
+whether the bot-comment fallback is worth a call.
+
+When several previews were deployed for the same commit (a monorepo, one per app), the reference
+file's Phase 6 asks the user which one to write, with `MSG_PREVIEW_URL_MULTIPLE` — unless the line
+already names one of them, in which case nothing is asked and nothing is written.
+
+Run this every time the watcher concludes: once here, again after each auto-fix push
+(Step 7.4.4 re-launches the watcher and returns here first), and again after the post-resolve
+re-check (Step 7.4.5) — 1 + up to 3 + 1 = up to **5** rounds per PR, each of which may be a
+different head commit with a different preview URL.
+
+What makes those rounds safe is not "write only once" but the reference file's **three-outcome**
+classification (Phase 5, which reads and classifies the body *before* Phase 6's question):
+
+- the owned bullet already names one of this round's candidates → **no-op**: no question, no write,
+  no chat output, body byte-identical. This is the common repeat case (3 `gh` calls, nothing said)
+- the bullet exists but names a URL that is none of this head commit's candidates → **replaced in
+  place** (`MSG_PREVIEW_URL_UPDATED`), never appended — and with a single candidate, without asking
+- no bullet yet → **created** (`MSG_PREVIEW_URL_ADDED`)
+- the bullet is out of date and no URL may be written (the user answered "none", or the question
+  could not be asked at all) → the bullet is **removed** and nothing is added, silently: a line
+  pointing at code the PR no longer has is worse than no line
+
+So the user is never asked when the body is already right and never asked when a single deployment
+settles it; only a multi-preview repo whose head commit moved can be asked again, at most once per
+head commit (see Phase 6 of the reference file).
+
+If nothing is found (by far the most common case — most projects have no preview deployment),
+say nothing and do nothing: no chat message, no body edit — and an existing bullet is left exactly
+as it is, since a round with no candidate has no evidence against it. Then continue to Step 7.4.3
+as normal.
+
 ### 7.4.3: All green, no feedback — finish here
 
 When `checks.state` is `all_passed` (or `no_checks`) **and** `review.actionable_count` is `0`:
@@ -623,7 +679,7 @@ Then run up to **3** fix rounds. For each round:
 
    Follow the repo's commit `format`/`style` config, as `/magic:commit` does.
 4. **Push**: `git push` (with `$NODE_PREFIX` if set).
-5. **Re-launch the watcher** (Step 7.4.2) against the new head SHA and re-evaluate from Step 7.4.3.
+5. **Re-resolve the watcher inputs** (Step 7.4.1) so `$HEAD_SHA` is the commit you just pushed, then **re-launch the watcher** (Step 7.4.2) against it and re-evaluate from Step 7.4.2.5 — not from 7.4.3. The push created a new head commit, so its deployment is a different one: resuming past 7.4.2.5 would skip the backfill for every commit but the first, which is exactly the case where the preview was not ready on the initial conclusion. Refreshing `$HEAD_SHA` is not optional — Step 7.4.1 captures it once, and reusing the stale value would make Step 7.4.2.5 query the *previous* commit's deployment and write a URL serving code the PR no longer has. When the new commit's preview is a different URL, Step 7.4.2.5 **replaces** the bullet it already owns; the body never ends up carrying both.
 
 Display **`MSG_CI_AUTO_FIX`** at each round, substituting `{attempt}`, `{fixes}` (what was changed), and `{COMMIT_SHA}`.
 
@@ -645,7 +701,7 @@ When the checks are settled (green, or failures explicitly handed back to the us
    - Invoke the `magic-resolve` skill via the `Skill` tool
    - If that is unavailable, read `~/.claude/skills/magic-resolve/SKILL.md` and execute its **Steps 3 to 7.5** (retrieve comments → apply fixes → preview → validate → commit → push → reply → re-request review), reusing the PR number and ticket ID already resolved here instead of re-detecting them
 3. Pass along the watcher's `actionable` list as context so resolve does not re-classify the informational and stale comments the watcher already filtered out
-4. After resolve pushes its fixes, re-launch the watcher once (Step 7.4.2) to confirm the new commit is green and that no new feedback landed. Re-evaluate from Step 7.4.3, but do **not** start another resolve cycle from this skill — if a second round of comments arrives, report it and let the user decide.
+4. After resolve pushes its fixes, re-resolve the watcher inputs (Step 7.4.1) so `$HEAD_SHA` is resolve's new commit — never the stale value from the first pass — then re-launch the watcher once (Step 7.4.2) to confirm the new commit is green and that no new feedback landed. Re-evaluate from Step 7.4.2.5 — not from 7.4.3 — so the preview bullet is brought up to date for resolve's new head commit (replaced in place when its URL changed, left alone when it did not); then continue, but do **not** start another resolve cycle from this skill — if a second round of comments arrives, report it and let the user decide.
 
 ### 7.4.6: Timeout or watcher error
 
@@ -695,3 +751,4 @@ printf '{"type":"end","skill":"magic-pr","agentId":"%s","outcome":"success","occ
 - `references/node-setup.md` — Node.js version manager detection. Read before any Node.js-dependent command (Step 0.6).
 - `references/ci-watch.md` — Watcher contract, `gh` commands, time budget, and report schema. Read before Step 7.4.
 - `references/test-accounts.md` — Test-account modes, discovery cascade, and the credential guardrails. Read before Step 6.1.1, only when `pullRequest.testAccounts` is not `off`.
+- `references/preview-url.md` — Preview-URL discovery (deployments API, bot-comment fallback), the console-URL rejection rules, the multi-candidate question, and the write procedure for the one body line this feature owns — create it, replace it in place when the head commit's preview changed, or leave the body untouched. Read before Step 7.4.2.5.

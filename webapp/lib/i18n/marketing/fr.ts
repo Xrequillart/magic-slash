@@ -211,7 +211,7 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.repoCfg.autoLinkHelp': 'Ajouter les liens de ticket Jira/GitHub dans la description de la PR',
   'site.repoCfg.watchCI': 'Surveiller la CI et la review',
   'site.repoCfg.watchCIHelp':
-    'Après création de la PR, attendre les checks, corriger les échecs automatiquement et traiter les retours de review',
+    'Après création de la PR, attendre les checks, corriger les échecs automatiquement, traiter les retours de review et ajouter l’URL de preview de la PR aux scénarios de test',
   'site.repoCfg.issues': 'Jira / GitHub Issues',
   'site.repoCfg.commentLang': 'Langue des commentaires',
   'site.repoCfg.commentLangHelp': 'Langue des commentaires sur les tickets Jira et GitHub',

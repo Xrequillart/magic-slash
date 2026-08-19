@@ -493,7 +493,7 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.autoLink': 'Lier automatiquement les tickets',
   'repo.pr.autoLinkHelp': 'Ajouter les liens des tickets Jira/GitHub dans la description de la PR',
   'repo.pr.watchCI': 'Surveiller la CI et la review',
-  'repo.pr.watchCIHelp': 'Après création de la PR, attendre les checks, corriger les échecs automatiquement et traiter les retours de review',
+  'repo.pr.watchCIHelp': 'Après création de la PR, attendre les checks, corriger les échecs automatiquement, traiter les retours de review et ajouter l’URL de preview de la PR aux scénarios de test quand le projet en publie une. Sans cela, les scénarios de test restent en local uniquement',
   'repo.pr.testAccounts': 'Comptes de test',
   'repo.pr.testAccountsHelp':
     'Si la description de la PR mentionne les comptes de test utilisables par les relecteurs. La référence est sans risque sur n’importe quel dépôt ; le mode intégré colle les identifiants dans le corps de la PR',

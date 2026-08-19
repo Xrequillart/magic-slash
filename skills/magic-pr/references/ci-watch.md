@@ -73,6 +73,22 @@ gh pr checks "$PR_NUMBER" --repo "$REPO_SLUG" --json bucket,name,state,link,work
 The `bucket` field collapses `state` into `pass` / `fail` / `pending` / `skipping` /
 `cancel`. Count `fail` and `cancel` as failures; `skipping` is not a failure.
 
+That same snapshot is also where `checks.deploy_checks` comes from: the names of the checks that
+look like a deployment or preview provider. Match case-insensitively on the check **name**, keep
+the array empty when nothing matches, and note that the outcome is irrelevant — a *green* deploy
+check is exactly the interesting case, and it appears nowhere else in the report:
+
+```bash
+# "$SNAPSHOT" holds the JSON from the call above; no extra `gh` call is involved.
+jq -c '[.[] | select(.name | ascii_downcase
+  | test("vercel|netlify|amplify|cloudflare|preview|deploy")) | .name]' \
+  <<<"${SNAPSHOT:-[]}" 2>/dev/null || echo '[]'
+```
+
+Verified against real PRs: `["Vercel Preview Comments","Vercel"]` on a Vercel-backed repo, `[]` on
+one whose checks are only CI jobs (lint / test / typecheck). This is still pure observation — the
+watcher reports a name its own snapshot already contained and acts on nothing.
+
 ## Phase 2 — Diagnose the failures
 
 For each failing check, extract the job id from its `link`
@@ -172,7 +188,8 @@ The watcher's final message must be **only** this JSON object — no prose aroun
         "log_excerpt": "…last lines of the failing step…"
       }
     ],
-    "undiagnosed": ["e2e (external check, see link)"]
+    "undiagnosed": ["e2e (external check, see link)"],
+    "deploy_checks": ["Vercel"]
   },
   "review": {
     "reviewers": ["greptile-apps[bot]"],
@@ -199,6 +216,10 @@ The watcher's final message must be **only** this JSON object — no prose aroun
 Rules the watcher must respect:
 
 - Report only what was observed. Never guess a check outcome that never completed.
+- `checks.deploy_checks` carries the deployment/preview-looking check names from the Phase 1
+  snapshot, `[]` when none match — it is a *hint for the main session* (Step 7.4.2.5 uses it to
+  decide whether the preview-URL bot-comment fallback is worth a call) and never something the
+  watcher acts on itself.
 - `path` / `line` are `null` for review-level and conversation-level comments.
 - Truncate every `body` / `request` to 400 characters.
 - If a `gh` call fails, say so in `notes` rather than silently dropping a surface.

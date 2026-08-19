@@ -234,7 +234,7 @@ export const marketingEn = {
   'site.repoCfg.autoLinkHelp': 'Add Jira/GitHub ticket links in PR description',
   'site.repoCfg.watchCI': 'Watch CI & Review',
   'site.repoCfg.watchCIHelp':
-    'After creating the PR, wait for the checks, fix failures automatically, and address review feedback',
+    'After creating the PR, wait for the checks, fix failures automatically, address review feedback, and add the PR preview URL to the test scenarios',
   'site.repoCfg.issues': 'Jira / GitHub Issues',
   'site.repoCfg.commentLang': 'Comment Language',
   'site.repoCfg.commentLangHelp': 'Language used for Jira and GitHub issue comments',
