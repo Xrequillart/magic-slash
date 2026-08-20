@@ -94,7 +94,10 @@ project routinely disagree, which is why this is one call per type rather than o
 
 Five things this response answers that nothing else can, and that later steps depend on. Read them
 all off this one response: every row below is a value `trackers.md` §1.1 carries, so no later step
-calls this again.
+calls this again — with one exception, and only one. When paging stopped early and a row came back
+`unknown`, `trackers.md` §3.4's `unknown` rule finishes that read at Step 7 rather than letting
+"not seen" harden into "absent". Re-reading a half-read screen is not re-deriving what is already
+known; it is the only way that row ever becomes known.
 
 | Question | Answered by | Consumed by |
 | --- | --- | --- |
@@ -199,10 +202,16 @@ things: there, candidate fields by how likely one is to hold a specification; he
 ties. That order no longer decides what is dropped, only what is asked first.
 
 The one real limit is how many questions a single `AskUserQuestion` batch can carry, which is a
-property of that call and not a number configured here. Pack the must-ask set into as few questions
-as will hold it, per `MSG_JIRA_REQUIRED_FIELDS`'s note. **When the packed set still will not fit that
-batch, neither drop a field nor refuse the run**: display `MSG_JIRA_TOO_MANY_FIELDS` — which names
-the count, the fields, and how many of them fit — and let the user choose between
+property of that call and not a number configured here. **That limit is not this pass's to test.**
+This pass runs at Step 2.3, while the batch is packed at Step 4 alongside Step 4's own framing
+questions — and only there is it known how many of the must-ask fields actually fit. So what §3
+hands forward is the *ranked* must-ask set and nothing more; the overflow is detected and surfaced
+at Step 4, per `MSG_JIRA_REQUIRED_FIELDS`'s note, and the ranking above is what decides which fields
+make the cut when it happens.
+
+**When the packed set will not fit that batch, Step 4 neither drops a field nor refuses the run**:
+it displays `MSG_JIRA_TOO_MANY_FIELDS` — which names the count, the fields, and how many of them
+fit — and lets the user choose between
 
 - **asking in more than one round**: the fields that fit ride in Step 4's batch, the rest come as one
   further `AskUserQuestion` straight after it, and the creation runs with every value answered;
@@ -287,7 +296,8 @@ This table is the whole contract; `SKILL.md` restates none of it:
 
 Nothing here is written to the spec: the spec does not exist yet at Step 2.3. The values travel as
 `references/trackers.md` §1.1's carried resolution, which is why no later step calls any of §1's
-three calls again.
+three calls again — except to finish a read that paging left incomplete, per §1.3's `unknown`
+exception and `trackers.md` §3.4's rule.
 
 **If this file is missing on disk**: do not improvise the discovery, and do not proceed as if there
 were no required fields. Say in one line that Jira field discovery cannot run because its reference

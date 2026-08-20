@@ -399,8 +399,15 @@ Rien n'a encore été créé.
 >
 > Options 1 and 2 both continue the run, so this is an `AskUserQuestion` and not a refusal. Option 2
 > is chosen with its consequence already stated: the creation reaches `references/trackers.md` §4
-> with a rejection naming the field, reported as the failure it is. Option 3 stops at Step 2.3,
-> before the brainstorm.
+> with a rejection naming the field, reported as the failure it is. Option 3 stops at **Step 4** —
+> after the framing dialogue, before Step 5 writes `## Proposed tickets`, and long before anything is
+> created.
+>
+> This message fires at Step 4 and **not** at Step 2.3, unlike every other message the discovery pass
+> can raise. `{fit_count}` is how many fields Step 4's batch can carry *alongside its own framing
+> questions*, and that is only knowable there — a count produced at 2.3 would be a guess about a
+> batch not yet composed. What still happens at 2.3 is the detection of the fields themselves, which
+> is what keeps the 400 out of creation time; only the question about how to ask them waits.
 
 ## MSG_JIRA_FIELDS_UNKNOWN
 

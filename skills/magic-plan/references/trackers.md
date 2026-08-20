@@ -75,7 +75,8 @@ This is what makes "asks exactly once" true. A branch that re-derives the tracke
 `MSG_TRACKER_ASK` a second time on a `plan.tracker: ask` repository, which reads as the skill having
 forgotten the answer — and a branch that re-resolves the `cloudId` or the issue-type ids spends
 calls to learn what it already knows. `references/jira-fields.md` owns those calls and the rules
-behind them; §3 spends none of them a second time.
+behind them; §3 spends none of them a second time, with the single exception §3.4's `unknown` rule
+names — a create screen that paging left half-read is finished there rather than guessed at.
 
 ### 1.2 When the resolved tracker cannot receive a ticket
 
@@ -279,7 +280,7 @@ is what decides whether the epic will show a progress bar in the Jira UI.
 | --- | --- | --- | --- |
 | 1 | native `parent` | `story_has_parent_field` is true, or `unknown` | send `parent` with the epic key in the story's create call |
 | 2 | the epic-link custom field | `epic_link_field_id` is set, or `unknown` | send it with the epic key in `additional_fields` |
-| 3 | an issue link | neither of the above | `mcp__atlassian__createIssueLink` once both issues exist |
+| 3 | an issue link | neither of the above, or both were rejected | create the story unparented, then `mcp__atlassian__createIssueLink` |
 
 **`unknown` is not `false`, so the route is attempted rather than skipped.** `jira-fields.md` §4
 reports these values as `unknown` — never as `false`, an empty id or an omitted field — when the
@@ -303,12 +304,19 @@ epic key through it regardless — that is what modern team-managed projects acc
 an epic. On an instance where `parent` really is subtask-only, the call is rejected and route 2
 takes over, which is one of the reasons the cascade has three routes rather than one.
 
-**That rejection is a retry, not a §4 failure.** Re-create the same story with the epic link carried
-in `additional_fields` (route 2), and only if *that* call also fails does §4 apply. Be precise about
-the state this leaves: the rejected route-1 call created nothing, so there is no orphan story to
-delete and nothing to roll back — which is exactly what makes the retry safe and keeps §4's
-never-roll-back rule intact. Reporting a partial creation here would report a failure on a project
-where route 2 was about to work.
+**A rejection advances the cascade; it is not a §4 failure.** Re-create the same story with the
+epic link carried in `additional_fields` (route 2). If *that* call is rejected too, one route is
+left, and reaching it takes a step the other two do not need: **create the story unparented** — no
+`parent`, no epic-link field — and then link it with route 3. Route 3 is the only route whose
+hierarchy is a second call, which is precisely why it is the only one that needs the story to exist
+first. §4 applies only when route 3 itself fails: either its unparented create, or its link call.
+
+Be precise about the state a rejection leaves: a rejected create call created nothing, so there is
+no orphan story to delete and nothing to roll back — which is what makes advancing safe and keeps
+§4's never-roll-back rule intact. Reporting a partial creation on a rejection would report a failure
+on a project where the next route was about to work. The one state that is *not* clean is route 3's
+own window: between the unparented create and the link, the story exists with no parent. If the link
+fails there both issues exist, and that is §4's mildest case — reported, never rolled back.
 
 **Never hardcode a `customfield_` id for route 2.** The epic-link field has a different numeric id
 on every Jira site; a hardcoded one either 400s or, worse, writes into an unrelated field that
@@ -325,17 +333,19 @@ as `skills/magic-start/references/dependencies.md` §2.1 states for the blocker 
 literal string `Relates` and say the link type resolution degraded, per the route-announcement rule
 above.
 
-**Derive the direction from the type you kept, never from a convention.** `createIssueLink` takes an
-`inwardIssue` and an `outwardIssue`, and the link reads *outward → inward*: "`outwardIssue` {the
-type's `outward` label} `inwardIssue`". So read the two labels of the type actually chosen and place
-the issues accordingly, the way `skills/magic-start/references/dependencies.md` §2.1 reasons from
-`type.inward` rather than from a hardcoded name. When the kept type's `outward` label is the
-parent-side one — "is Epic of", "is parent of" — the **epic** is `outwardIssue` and the **story** is
-`inwardIssue`. When its `outward` label is the child-side one — "is child of", "is Story of" — the
-two swap: the story is `outwardIssue` and the epic is `inwardIssue`. Deriving it from the labels is
-what lets a site whose type is named the other way round still get a correct link. On the `Relates`
-last resort both labels say the same thing: the type is symmetric, the order carries no meaning, and
-either one is right.
+**Derive the direction from the type you kept, never from a convention.** `createIssueLink` takes
+an `inwardIssue` and an `outwardIssue`, and the tool's own example fixes which is which: for "A is
+blocked by B" it documents `inwardIssue: B, outwardIssue: A`. On the `Blocks` type `outward` is
+"blocks" and `inward` is "is blocked by", so B — the `inwardIssue` — is the one that *blocks*. The
+rule that follows is **`inwardIssue` {the type's `outward` label} `outwardIssue`**, and
+`skills/magic-start/references/dependencies.md` §2.1 states the same thing for the blocker gate:
+for "A is blocked by B", `inwardIssue` is B, the blocker. Read the two labels of the type actually
+chosen and place the issues by that rule. When the kept type's `outward` label is the parent-side
+one — "is Epic of", "is parent of" — the **epic** is `inwardIssue` and the **story** is
+`outwardIssue`. When its `outward` label is the child-side one — "is child of", "is Story of" — the
+two swap. Deriving it from the labels is what lets a site whose type is named the other way round
+still get a correct link. On the `Relates` last resort both labels say the same thing: the type is
+symmetric, the order carries no meaning, and either one is right.
 
 **A link created in the wrong direction is a silent failure.** `createIssueLink` accepts it, returns
 success, and the response looks exactly like a correct one — the relation simply reads the wrong way
@@ -392,13 +402,20 @@ When `plan.useRepoTemplates` is `false`, use the §3.3 structure.
   `screen_omits` naming `labels` on a screen read to the end. An `unknown` one is not an omission:
   per §3.4's `unknown` rule the labels are sent, and dropped only if the call comes back rejected on
   that field.
-- **Assignee**: §2.6's rule, with `mcp__atlassian__lookupJiraAccountId` in place of
-  `mcp__github__get_me` and the account id in place of the login — resolved once per run, not per
-  issue, and sent as `assignee_account_id`, which is a parameter of its own and not an
-  `additional_fields` entry. As with `labels`, an issue type whose create screen has no `assignee`
-  field is named by the carried `screen_omits`: say so and continue, rather than failing a creation
-  over it — and an `unknown` there reads as §3.4's rule says, the account id sent and dropped only on
-  a rejection.
+- **Assignee**: §2.6's rule, with the account id in place of the login — resolved once per run, not
+  per issue, and sent as `assignee_account_id`, which is a parameter of its own and not an
+  `additional_fields` entry. Resolving "me" takes **two calls, in this order**, because Jira exposes
+  no single equivalent of `mcp__github__get_me`: `mcp__atlassian__atlassianUserInfo` first — it takes
+  no parameters and answers who the authenticated user is — then
+  `mcp__atlassian__lookupJiraAccountId` with that identity as its `searchString`, since that tool is
+  a search and has no current-user mode. Skip the second call when the first already carries an
+  account id. **Never substitute a search term of your own**: §2.6 forbids inferring the identity
+  from `git config user.email`, and a `searchString` invented here is that same guess wearing a Jira
+  parameter. If neither call yields an account id, say so in one line and create the issues
+  unassigned — `plan.assignToMe` is a convenience, never worth failing a creation over. As with
+  `labels`, an issue type whose create screen has no `assignee` field is named by the carried
+  `screen_omits`: say so and continue — and an `unknown` there reads as §3.4's rule says, the account
+  id sent and dropped only on a rejection.
 
 ### 3.7 Manual verification
 
@@ -460,19 +477,21 @@ and which hierarchy links landed. On any failure:
 4. Send the metadata call anyway (Step 7.1 of `SKILL.md`), carrying whatever ticket id does exist.
    A half-created plan is still a plan the sidebar should show.
 
-**One rejection is not a failure here, and the sequence above must not fire on it**: a story create
-call rejected on `parent` (§3.4, route 1). That is the cascade advancing to route 2 — the story is
-re-created with the epic link in `additional_fields` — and the rejected call created nothing, so
-there is no partial state to report and no orphan to clean up. Only if the route-2 call also fails
-is this a failure, and then it is one failure, not two.
+**A rejection on the hierarchy is not a failure here, and the sequence above must not fire on it**:
+a story create call rejected on `parent` (§3.4, route 1) or on the epic-link field (route 2). That
+is the cascade advancing — to route 2, then to route 3, which creates the story unparented and links
+it — and each rejected call created nothing, so there is no partial state to report and no orphan to
+clean up. This becomes a failure only when route 3 fails: its unparented create, or its link call.
+Then it is one failure, not three.
 
 A hierarchy link that fails while both issues exist is the mildest case and still gets reported:
 the tickets are usable, but the epic will show no progress and the story no parent, so someone has
 to link them by hand. Say exactly that, and list the story keys so it takes one edit.
 
-That covers both branches — a failed `mcp__github__sub_issue_write` on GitHub, and on Jira every one
-of §3.4's three routes exhausted or the chosen one rejected. A degraded route that *did* land
-(route 3) is not this case: §3.4 announces that as a success with its route.
+That covers both branches — a failed `mcp__github__sub_issue_write` on GitHub, and on Jira route 3
+failing after routes 1 and 2 were unavailable or rejected, which is what "all three exhausted"
+means. A rejection on route 1 or 2 alone is not this case, per the rule above, and neither is a
+degraded route that *did* land: §3.4 announces route 3 as a success carrying its route.
 
 ## Usage
 

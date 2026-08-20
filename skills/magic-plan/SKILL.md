@@ -360,6 +360,13 @@ forward required fields it cannot fill itself — today only Jira's, as `must_as
 does not break the rule above: neither the code nor the config can answer it, and the tracker
 refuses the creation without it.
 
+When they do not all fit this batch alongside the framing questions, display
+`MSG_JIRA_TOO_MANY_FIELDS` and follow the option the user picks. Its first option asks the overflow
+in one further `AskUserQuestion` immediately after this batch — the only second round this step ever
+makes, and the reason the cap is tested here rather than at Step 2.3, which cannot know what this
+batch will hold. Never drop a field silently: one mandatory field left unasked comes back as a 400
+at creation time, after the whole brainstorm.
+
 It belongs here rather than at Step 2.3 because the spec only exists from Step 2.4, so a value
 collected at 2.3 has nowhere to be recorded — and an unrecorded answer is one nothing keeps once the
 session ends. Detection at 2.3, the question here, and Step 5 is still the first step that writes
