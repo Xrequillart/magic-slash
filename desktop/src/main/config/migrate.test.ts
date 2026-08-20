@@ -44,6 +44,8 @@ describe('migrateConfig — repository defaults', () => {
     migrateConfig('1.0.0')
     const repo = readConfig().repositories['test-repo']
     expect(repo.color).toBe('#3B82F6')
+    // `ticket` is absent on purpose: it heads a fallback chain and a default would
+    // pin every repo to 'en'. See resolveTicketLanguage in desktop/src/languages.ts.
     expect(repo.languages).toEqual({ commit: 'en', pullRequest: 'en', jiraComment: 'en', discussion: 'en' })
     expect(repo.commit).toMatchObject({ style: 'single-line', format: 'angular' })
     // Existing fields are preserved.

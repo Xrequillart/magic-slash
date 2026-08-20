@@ -220,6 +220,17 @@ export interface RepositoryConfig {
     pullRequest?: string
     jiraComment?: string
     discussion?: string
+    /**
+     * The language created tickets are WRITTEN IN — distinct from `discussion`,
+     * which is the language a skill TALKS TO YOU in. A French-speaking developer
+     * filing tickets in English for an international team is the normal case.
+     *
+     * Deliberately absent from DEFAULT_REPOSITORY_FIELDS: it is the head of a
+     * fallback chain (`ticket` -> `jiraComment` -> 'en'), and materialising a
+     * default would pin every repo to 'en' and make the chain unreachable.
+     * Resolve it with resolveTicketLanguage() from `desktop/src/languages.ts`.
+     */
+    ticket?: string
   }
   commit?: {
     style?: string

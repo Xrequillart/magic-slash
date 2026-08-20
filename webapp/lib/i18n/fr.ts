@@ -646,6 +646,9 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.issues.section': 'Jira / GitHub issues',
   'repo.issues.commentLang': 'Langue des commentaires',
   'repo.issues.commentLangHelp': 'Langue des commentaires sur les tickets Jira et GitHub',
+  'repo.issues.ticketLang': 'Langue des tickets',
+  'repo.issues.ticketLangHelp':
+    'Langue de rédaction des nouveaux tickets — suit celle des commentaires tant qu’elle n’est pas définie',
   'repo.issues.commentOnPR': 'Commenter à la création de la PR',
   'repo.issues.commentOnPRHelp':
     'Ajouter un commentaire contenant le lien de la PR sur le ticket',

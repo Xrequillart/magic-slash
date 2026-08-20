@@ -33,6 +33,13 @@ export interface RepoLanguages {
   pullRequest?: string
   jiraComment?: string
   discussion?: string
+  /**
+   * The language created tickets are WRITTEN IN — distinct from `discussion`, which
+   * is the language a skill TALKS TO YOU in. Head of a fallback chain
+   * (`ticket` -> `jiraComment` -> DEFAULTS.language), so it has no entry in DEFAULTS:
+   * materialising one would pin every repo to English and make the chain unreachable.
+   */
+  ticket?: string
 }
 
 export interface RepoCommit {

@@ -19,6 +19,7 @@ import {
   readConfig,
   resetConfigCache,
   updateRepositoryCommitSettings,
+  updateRepositoryLanguages,
   updateUsageLogsEnabled,
 } from './config'
 
@@ -387,5 +388,40 @@ describe('updateRepositoryCommitSettings', () => {
   it('ignores a non-boolean, rather than storing it', () => {
     updateRepositoryCommitSettings('api', { allowOnProtectedBranch: 'yes' as unknown as boolean })
     expect(readConfig().repositories.api.commit?.allowOnProtectedBranch).toBeUndefined()
+  })
+})
+
+describe('updateRepositoryLanguages — ticket', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  // validKeys is a whitelist: an unlisted key is dropped in silence, so the select
+  // in Settings would appear to work and never persist.
+  it('persists the ticket language', () => {
+    updateRepositoryLanguages('api', { ticket: 'fr' })
+    expect(readConfig().repositories.api.languages?.ticket).toBe('fr')
+  })
+
+  it('resets the ticket language back to the fallback chain', () => {
+    updateRepositoryLanguages('api', { ticket: 'fr' })
+    updateRepositoryLanguages('api', { ticket: null })
+    expect(readConfig().repositories.api.languages?.ticket).toBeUndefined()
+  })
+
+  it('leaves the sibling languages alone', () => {
+    updateRepositoryLanguages('api', { jiraComment: 'fr' })
+    updateRepositoryLanguages('api', { ticket: 'en' })
+    expect(readConfig().repositories.api.languages?.jiraComment).toBe('fr')
+  })
+
+  it('ignores an unsupported language, rather than storing it', () => {
+    updateRepositoryLanguages('api', { ticket: 'de' })
+    expect(readConfig().repositories.api.languages?.ticket).toBeUndefined()
   })
 })

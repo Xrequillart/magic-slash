@@ -71,6 +71,11 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
     jiraUrl: '',
     githubIssuesUrl: ''
   },
+  // NOTE: `languages.ticket` is deliberately NOT defaulted here. It heads a
+  // fallback chain (`ticket` -> `jiraComment` -> 'en'), and deepMergeDefaults
+  // would materialise 'en' on every existing repo — pinning them to English and
+  // making the chain unreachable. Resolve it at read time instead, with
+  // resolveTicketLanguage() from `desktop/src/languages.ts`.
   branches: {
     development: ''
   },

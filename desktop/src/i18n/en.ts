@@ -539,6 +539,9 @@ export const en = {
   'repo.issues.section': 'Jira / GitHub Issues',
   'repo.issues.commentLang': 'Comment Language',
   'repo.issues.commentLangHelp': 'Language used for Jira and GitHub issue comments',
+  'repo.issues.ticketLang': 'Ticket Language',
+  'repo.issues.ticketLangHelp':
+    'Language the tickets created by /magic:plan are written in — follows the comment language until you set it',
   'repo.issues.commentOnPR': 'Comment on PR Creation',
   'repo.issues.commentOnPRHelp': 'Add a comment with PR link when creating a pull request',
   'repo.issues.jiraUrl': 'Jira URL',

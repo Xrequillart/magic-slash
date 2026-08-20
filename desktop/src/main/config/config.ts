@@ -532,7 +532,9 @@ export function updateRepositoryLanguages(name: string, languages: Record<string
     throw new Error(`Repository '${name}' not found`)
   }
 
-  const validKeys = ['commit', 'pullRequest', 'jiraComment', 'discussion']
+  // 'ticket' must be listed or the select in Settings appears to work and never
+  // persists — the whitelist drops an unknown key in silence.
+  const validKeys = ['commit', 'pullRequest', 'jiraComment', 'discussion', 'ticket']
   const validValues = ['en', 'fr', null]
 
   config.repositories[name].languages = config.repositories[name].languages || {}

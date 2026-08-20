@@ -631,6 +631,9 @@ export const en = {
   'repo.issues.section': 'Jira / GitHub issues',
   'repo.issues.commentLang': 'Comment language',
   'repo.issues.commentLangHelp': 'Language used for Jira and GitHub issue comments',
+  'repo.issues.ticketLang': 'Ticket language',
+  'repo.issues.ticketLangHelp':
+    'Language new tickets are written in — follows the comment language until you set it',
   'repo.issues.commentOnPR': 'Comment on PR creation',
   'repo.issues.commentOnPRHelp': 'Post a comment with the PR link on the ticket',
   'repo.issues.jiraUrl': 'Jira URL',

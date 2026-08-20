@@ -11,6 +11,7 @@ import { PROJECT_COLORS } from '../../utils/projectColors'
 import { useT } from '../../i18n'
 import { Switch } from '../../components/Switch'
 import { BTN, INPUT, SELECT } from '../../theme/controls'
+import { resolveTicketLanguage } from '../../../languages'
 
 interface RepoPageProps {
   repoName: string
@@ -522,8 +523,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const testAccountsSourceVal = prSettings.testAccountsSource || ''
   const commentOnPRVal = issuesSettings.commentOnPR !== undefined ? issuesSettings.commentOnPR : true
 
-  const LangSelect = ({ langKey, label, description }: { langKey: string; label: string; description?: string }) => {
-    const currentVal = (repoLangs as any)[langKey] || 'en'
+  /**
+   * `resolvedValue` is for the language keys whose effective value is a FALLBACK
+   * CHAIN rather than the key itself: `languages.ticket` inherits `jiraComment`
+   * when unset, so reading `repoLangs.ticket` alone would show English above a
+   * repo whose tickets are written in French. Callers with a plain key omit it.
+   */
+  const LangSelect = ({ langKey, label, description, resolvedValue }: { langKey: string; label: string; description?: string; resolvedValue?: string }) => {
+    const currentVal = resolvedValue || (repoLangs as any)[langKey] || 'en'
 
     return (
       <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
@@ -1264,6 +1271,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.issues.section')}</h2>
         <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
           <LangSelect langKey="jiraComment" label={t('repo.issues.commentLang')} description={t('repo.issues.commentLangHelp')} />
+          <LangSelect
+            langKey="ticket"
+            label={t('repo.issues.ticketLang')}
+            description={t('repo.issues.ticketLangHelp')}
+            resolvedValue={resolveTicketLanguage(repoLangs)}
+          />
 
           {/* Comment on PR */}
           <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">

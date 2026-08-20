@@ -184,6 +184,17 @@ export function RepositoryForm({
   const watchCI = repo.pullRequest.watchCI ?? DEFAULTS.watchCI
   const testAccounts = repo.pullRequest.testAccounts ?? DEFAULTS.testAccounts
   const commentOnPR = repo.issues.commentOnPR ?? DEFAULTS.commentOnPR
+  // The language tickets are WRITTEN IN falls back to the comment language before
+  // English: with only `?? DEFAULTS.language` this row would claim English while
+  // tickets were in fact being written in the comment language.
+  //
+  // `||`, not `??`, and it must stay that way: this block is jsonb written
+  // wholesale with no per-key validation, so '' does reach here, and `??` would
+  // let it win the chain and display a ticket language of nothing at all. The
+  // desktop resolves the same chain the same way — resolveTicketLanguage in
+  // desktop/src/languages.ts, which has a test for exactly this — and the two
+  // surfaces must not disagree about what an empty string means.
+  const ticketLanguage = repo.languages.ticket || repo.languages.jiraComment || DEFAULTS.language
 
   // Patch helpers send only the key that changed. The page merges it into the
   // full jsonb block against the freshest row it holds — merging here instead
@@ -577,6 +588,19 @@ export function RepositoryForm({
             value={lang('jiraComment')}
             options={LANGUAGE_OPTIONS}
             onChange={(v) => setLanguage('jiraComment', v)}
+            width={200}
+            className="w-52"
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t('repo.issues.ticketLang')}
+          description={t('repo.issues.ticketLangHelp')}
+        >
+          <Dropdown
+            value={ticketLanguage}
+            options={LANGUAGE_OPTIONS}
+            onChange={(v) => setLanguage('ticket', v)}
             width={200}
             className="w-52"
           />

@@ -138,6 +138,11 @@
             "discussion": {
               "type": "string",
               "enum": ["en", "fr"]
+            },
+            "ticket": {
+              "type": "string",
+              "enum": ["en", "fr"],
+              "description": "Language created tickets are written in, as opposed to `discussion`, the language the skill talks to you in. Unset falls back to `jiraComment`, then to English — so leaving it out is meaningful, not a gap."
             }
           },
           "additionalProperties": false,
