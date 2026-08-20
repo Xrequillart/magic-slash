@@ -1,8 +1,8 @@
 ---
 name: magic:plan
-description: Turns an idea into tickets — brainstorm, a reviewable spec, then an epic with its sub-issues. Use this skill when nothing has been created yet and the user is floating an idea rather than resuming tracked work. Triggers on "I have an idea", "j'ai une idée", "what if we did", "et si on faisait", "we should add", "on devrait ajouter", "could we", "est-ce qu'on pourrait", "brainstorm", "réfléchir à", "plan a feature", "planifier une feature", "create the tickets for", "créer les tickets pour", "break this down into stories", "découper en stories", "write the spec", "écrire la spec", "je pense à un truc", or any proposal for work that has no ticket behind it yet. Do NOT use this skill when the work already exists in a tracker — "PROJ-123", "#456", "work on X", "travailler sur X", "start", "commencer" all mean the ticket is already there, so use /magic:start instead.
+description: Turns an idea into tickets — brainstorm, a reviewable spec, then an epic and its stories. Use this skill when nothing has been created yet and the user is floating an idea rather than resuming tracked work. Triggers on "I have an idea", "j'ai une idée", "what if we did", "et si on faisait", "we should add", "on devrait ajouter", "could we", "est-ce qu'on pourrait", "brainstorm", "réfléchir à", "plan a feature", "planifier une feature", "create the tickets for", "créer les tickets pour", "break this down into stories", "découper en stories", "write the spec", "écrire la spec", "je pense à un truc", or any proposal for work that has no ticket behind it yet. Do NOT use this skill when the work already exists in a tracker — "PROJ-123", "#456", "work on X", "travailler sur X", "start", "commencer" all mean the ticket is already there, so use /magic:start instead.
 argument-hint: <idea or feature description>
-allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, AskUserQuestion, mcp__github__*
+allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, AskUserQuestion, mcp__github__*, mcp__atlassian__*
 ---
 
 # magic-slash v0.74.3 - /plan
@@ -21,7 +21,8 @@ Follow each step in order. Each step builds on the previous one.
 - `references/messages.md` — All bilingual messages (MSG_*). Read the relevant section as needed (not the whole file at once).
 - `references/spec-template.md` — The spec's filename, structure, progressive-write order and closing append. Read in Step 2, before creating the file.
 - `references/sizing.md` — The single-story-vs-epic heuristic, the breakdown rules and the acceptance-criteria formats. Read in Step 5.
-- `references/trackers.md` — Tracker detection, creation calls, the parent/child hierarchy and partial-failure handling. Read in Step 7, after approval; its §1 documents the detection Step 2 performs.
+- `references/trackers.md` — Tracker detection, creation calls, the parent/child hierarchy and partial-failure handling. Read §1 in Step 2.3 (detection, the carried resolution, and the refusal); read §2-§4 in Step 7, after approval.
+- `references/jira-fields.md` — Jira site, project and issue-type resolution, and the required-field discovery that must happen before the structure is proposed. Read in Step 2.3, only when the tracker resolved to Jira.
 - `references/api.md` — Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`).
 
 ## Step 0: Configuration
@@ -91,7 +92,8 @@ Read `.repositories.<key>.plan` for the repository selected in Step 2. Defaults,
 | Key | Default | Used in |
 | --- | --- | --- |
 | `tracker` | `ask` | Step 2.3 |
-| `jiraProject`, `issueTypes` | `''` / `Epic`+`Story` | reserved for #199 — unused today |
+| `jiraProject` | `''` | Step 2.3, then carried to Step 3.3 and Step 7 — the Jira project key the tickets are filed under |
+| `issueTypes.epic`, `issueTypes.story` | `Epic` / `Story` | Step 2.3, then carried to Step 7 |
 | `useRepoTemplates` | `true` | Step 7 |
 | `splitting` | `balanced` | Step 5 |
 | `acceptanceCriteria` | `checklist` | Step 5, Step 7 |
@@ -105,6 +107,21 @@ plan.
 
 Note what is **not** in that table: the depth of the codebase exploration, and the human review
 before creation. Neither is configurable, by design.
+
+### 0.5: Check the Atlassian integration
+
+Read `integrations.atlassian` from config. Default: `true` (backward compatibility). It is
+account-level, not per-repository, so it is read here rather than with the `plan` block above.
+
+```bash
+# Every bash block runs in its own shell: $MS_PORT does not survive from Step 0.1,
+# so resolve it again here. One line, and it costs nothing to repeat.
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -sf --max-time 5 "http://127.0.0.1:$MS_PORT/config" | jq -r '.integrations.atlassian // true'
+```
+
+Store the result as `$ATLASSIAN_ENABLED` — the same value, read the same way, as Step 0.3 of
+`/magic:start`. Step 2.3 is where it decides anything (`references/trackers.md` §1.2).
 
 ## Step 1: Capture the idea
 
@@ -155,14 +172,20 @@ Follow `references/trackers.md` §1: `plan.tracker` first (`jira` / `github` / `
 repository's `issues.githubIssuesUrl` / `issues.jiraUrl`, then the GitHub remote, asking with
 `MSG_TRACKER_ASK` only when it is still genuinely ambiguous.
 
-**If the tracker resolves to Jira: display `MSG_JIRA_NOT_AVAILABLE` and stop.** Jira creation is
-not implemented (#199).
+Resolve it **once**, at this step, and carry the result: §1.1 of that file defines what to carry and
+which of the three consumers — this step's Jira discovery, Step 3.3's duplicate search, Step 7's
+creation — reads each value. Nothing re-derives it.
 
-The stop happens **here**, before the brainstorm — not at Step 7. An hour of exploration, framing
-and spec-writing that ends on "I cannot create this" is a worse outcome than a refusal on the second
-question, and the user can still redirect the idea at a GitHub-tracked repository or file the Jira
-ticket by hand. Never fall back to creating a GitHub issue for a Jira-tracked repository either:
-that files tickets in a backlog that project's team does not read.
+**If the tracker resolves to Jira**, apply `references/trackers.md` §1.2 before going any further:
+it decides whether Jira can receive a ticket at all and refuses the run with
+`MSG_JIRA_NOT_CONFIGURED` when it cannot.
+
+**If it can**, read `references/jira-fields.md` now and run its pass. Its `## Usage` table is what
+it hands forward, and Step 4 owns the question for whatever it could not fill.
+
+Both of those happen **here**, before the brainstorm — not at Step 7. Anything that would refuse the
+write has to be found before an hour of exploration, framing and spec-writing, not after: a refusal
+on the second question still leaves the user able to redirect the idea or file the ticket by hand.
 
 ### 2.4: Create the spec file
 
@@ -285,15 +308,28 @@ exactly the kind of question that must not be asked.
 ### 3.3: Check for duplicates
 
 When `plan.duplicateCheck` is `true` (the default), search the tracker for existing work before
-proposing anything new. Use `mcp__github__search_issues` with the strongest nouns from the idea,
-across **open and closed** issues: a closed one is often the more valuable find, because it may
-carry the reason this was rejected before.
+proposing anything new — the tracker **carried** from Step 2.3, never re-derived. Search on the
+strongest nouns from the idea, across **open and closed** tickets: a closed one is often the more
+valuable find, because it may carry the reason this was rejected before.
+
+| Tracker | Call | Scope |
+| --- | --- | --- |
+| GitHub | `mcp__github__search_issues` | the `owner/repo` carried from Step 2.3 |
+| Jira | `mcp__atlassian__searchJiraIssuesUsingJql` | `plan.jiraProject`, on the carried `cloudId` |
+
+The Jira call takes the same `{"jql": …, "fields": [...]}` shape `/magic:start` uses, scoped to the
+project and asking only for `summary`, `status` and `issuetype`:
+`project = PROJ AND text ~ "rate limit" ORDER BY updated DESC`. No status clause — `text ~` already
+spans open and closed issues, and filtering on status would drop exactly the closed ticket worth
+finding. Report the issue key (`PROJ-123`), not a `#number`.
 
 - **Matches found** → display `MSG_DUPLICATES_FOUND` and ask. Every entry states *why* it looked
   related; an unexplained list is noise the user has to re-investigate. Write the list into the
   spec's `## Related tickets` whatever the answer is.
-- **Nothing found** → display `MSG_NO_DUPLICATES` and write `None found` into that section.
-- **Search fails twice** → display `MSG_GITHUB_ERROR` and continue with `Not checked` in the spec.
+- **Nothing found** → display `MSG_NO_DUPLICATES`, with `{searched_scope}` = the Scope cell above,
+  and write `None found` into that section.
+- **Search fails twice** → display `MSG_TRACKER_ERROR` — `{tracker}` = the tracker that did not
+  answer, `{operation}` = `duplicate search` — and continue with `Not checked` in the spec.
   A failed duplicate check degrades the run; it does not end it. But `Not checked` and `None found`
   are different facts and must never read the same.
 
@@ -317,8 +353,30 @@ Ask few questions and ask them well. Two questions that change the shape of the 
 confirm what the exploration already showed. If the idea is unambiguous after Step 3 — and small,
 well-specified ideas often are — ask nothing and say so in one line.
 
+**Fields the tracker requires that nothing else can answer.** When Step 2.3's pre-flight handed
+forward required fields it cannot fill itself — today only Jira's, as `must_ask_fields`
+(`references/jira-fields.md` §2) — ask for them inside this same `AskUserQuestion` batch, using
+`MSG_JIRA_REQUIRED_FIELDS`, whose note owns the shape of the question. This is the one addition that
+does not break the rule above: neither the code nor the config can answer it, and the tracker
+refuses the creation without it.
+
+When they do not all fit this batch alongside the framing questions, display
+`MSG_JIRA_TOO_MANY_FIELDS` and follow the option the user picks. Its first option asks the overflow
+in one further `AskUserQuestion` immediately after this batch — the only second round this step ever
+makes, and the reason the cap is tested here rather than at Step 2.3, which cannot know what this
+batch will hold. Never drop a field silently: one mandatory field left unasked comes back as a 400
+at creation time, after the whole brainstorm.
+
+It belongs here rather than at Step 2.3 because the spec only exists from Step 2.4, so a value
+collected at 2.3 has nowhere to be recorded — and an unrecorded answer is one nothing keeps once the
+session ends. Detection at 2.3, the question here, and Step 5 is still the first step that writes
+`## Proposed tickets`.
+
 Write each resolved answer into the spec's `## Framing decisions` table **as it is answered**, with
-its reason. A decision recorded without its reason is a decision nobody can revisit later.
+its reason. A decision recorded without its reason is a decision nobody can revisit later. A Jira
+required-field answer is recorded the same way, its reason naming the issue type that required it —
+that row is the audit trail of what was sent to Jira and why, and it is what makes the spec explain
+the created ticket on its own, to a reader now or to a resume feature later.
 
 ## Step 5: Sizing
 
@@ -375,12 +433,13 @@ rm -f .magic/.mp-title
 
 ## Step 7: Ticket creation
 
-Read `references/trackers.md` and follow it. That file owns the creation calls
-(`mcp__github__issue_write`), the real hierarchy (`mcp__github__sub_issue_write` — the epic becomes
-a parent issue with its stories as sub-issues, never a markdown checklist), the repository issue
-templates under `.github/ISSUE_TEMPLATE/*` when `plan.useRepoTemplates` is on, `plan.defaultLabels`,
-the `plan.assignToMe` assignee, and the partial-failure rules. Its `## Usage` table is the contract
-it returns on.
+Read `references/trackers.md` and follow the branch of the tracker carried from Step 2.3. That file
+owns the creation calls (`mcp__github__issue_write`, `mcp__atlassian__createJiraIssue`), the real
+hierarchy (GitHub sub-issues via `mcp__github__sub_issue_write`; on Jira the native `parent`, the
+`Epic Link` field or an issue link, whichever the project exposes — never a markdown checklist), the
+templates honoured when `plan.useRepoTemplates` is on (`.github/ISSUE_TEMPLATE/*`, or the Jira issue
+type's description template), `plan.defaultLabels`, the `plan.assignToMe` assignee, and the
+partial-failure rules. Its `## Usage` table is the contract it returns on.
 
 Two things this step must get right, whatever the tracker:
 
@@ -438,8 +497,9 @@ there.
 
 ## Step 9: Record the run
 
-**Always run this, as the very last thing you do — including when the workflow stopped early**, on
-the Jira refusal of Step 2.3 as much as on a completed creation.
+**Always run this, as the very last thing you do — including when the workflow stopped early**, on a
+Step 2.3 refusal (`MSG_JIRA_NOT_CONFIGURED`, or a Jira project that does not resolve) as much as on
+a completed creation.
 
 Magic Slash opened a run record when this skill started. This closes it. Without it the run stays
 open and is counted as *abandoned*, so finished work disappears from the usage statistics.
