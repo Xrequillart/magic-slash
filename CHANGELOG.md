@@ -5,11 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.75.0] - 2026-08-20
 
 ### Added
 
-- **Plan**: New `/magic:plan` skill — turn an idea into a spec, then an epic and its stories in Jira or GitHub with a real parent/child hierarchy
+- **Plan**: New `/magic:plan` skill, the eighth in the cycle — turn an idea into a reviewed spec, then an epic and its stories in Jira or GitHub with a real parent/child hierarchy, required-field discovery and assignee resolution
+- **Desktop**: Planning agent statuses and the spec path metadata field
+- **Desktop**: Per-repository settings for `/magic:plan`
+- **Desktop**: Per-repository ticket language setting
+
+### Changed
+
+- **Plan**: Trigger evals with start-boundary cases, and the eight duplicated skill lists pinned to `skills/`
+- **Desktop**: Extract the chip list out of the worktree files row
 
 ## [0.74.3] - 2026-08-19
 
@@ -2247,6 +2255,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.75.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.75.0
 [0.74.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.74.3
 [0.74.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.74.2
 [0.74.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.74.1
