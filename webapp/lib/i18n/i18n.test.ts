@@ -218,7 +218,6 @@ describe('message catalogues', () => {
       // two different things.
       'repo.git.section',
       'repo.tracker.section',
-      'repo.tab.danger',
       // The two trackers, named after the products: "GitHub" and "Jira" in both
       // languages. Every other tab is labelled by its own section key, which is
       // already listed above wherever French borrows it whole.

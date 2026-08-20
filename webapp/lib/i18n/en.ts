@@ -562,7 +562,6 @@ export const en = {
   'repo.tracker.jiraLink': 'Jira link',
   'repo.tracker.jiraLinkHelp': 'Base URL of the Jira tickets (e.g. PROJ-123)',
   'repo.tabs.aria': 'Repository settings',
-  'repo.tab.danger': 'Danger',
   'repo.langs.groupChat': 'Conversation',
   'repo.langs.groupCode': 'Code and pull requests',
   'repo.langs.groupTickets': 'Tickets',

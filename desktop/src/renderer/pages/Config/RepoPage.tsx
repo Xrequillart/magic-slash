@@ -47,8 +47,7 @@ interface RepoPageProps {
  */
 type RepoTab =
   | 'general' | 'tracker' | 'languages' | 'git'
-  | 'plan' | 'commit' | 'resolve' | 'pr'
-  | 'danger'
+  | 'plan' | 'commit' | 'pr' | 'resolve'
 
 const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
   // Labelled with each subject's OWN `*.section` key rather than a parallel
@@ -65,13 +64,13 @@ const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
   // held them longer than the five others put together.
   //
   // In workflow order, which is also the order the skills run in: an idea becomes
-  // tickets, tickets become commits, commits become a pull request, review comments
-  // come back. Plan first, therefore — before Commit, not after Pull request.
+  // tickets, tickets become commits, commits become a pull request, and the review
+  // comments a repo resolves only exist once that pull request does — so Resolve comes
+  // after PR, not before it.
   { id: 'plan', labelKey: 'repo.plan.section', icon: ClipboardList },
   { id: 'commit', labelKey: 'repo.commit.section', icon: GitCommitHorizontal },
-  { id: 'resolve', labelKey: 'repo.resolve.section', icon: MessageSquare },
   { id: 'pr', labelKey: 'repo.pr.section', icon: GitPullRequest },
-  { id: 'danger', labelKey: 'repo.tab.danger', icon: Trash2 },
+  { id: 'resolve', labelKey: 'repo.resolve.section', icon: MessageSquare },
 ]
 
 /**
@@ -1041,6 +1040,30 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
           </div>
         </div>
+
+        {/* Danger last, and inside General rather than behind a tab of its own: a
+            tab is a place you go, and nobody goes looking for the delete button. At the
+            bottom of the page the repo's own settings live on, it is where a destructive
+            action belongs — past everything else, and not one click from anywhere. */}
+        {/* Danger Zone */}
+        <div className="mb-6">
+          <h2 className="text-xs text-red/50 uppercase tracking-wider mb-4">{t('repo.danger.section')}</h2>
+          <fieldset disabled={readOnly} className="bg-red/5 border border-red/10 rounded-xl p-4 w-full min-w-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium mb-0.5">{t('repo.danger.delete')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.danger.deleteHelp')}</p>
+              </div>
+              <button
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all"
+              >
+                <Trash2 className="w-3 h-3" />
+                {t('repo.danger.deleteAction')}
+              </button>
+            </div>
+          </fieldset>
+        </div>
         </>
       )}
 
@@ -1522,132 +1545,6 @@ export function RepoPage({ repoName }: RepoPageProps) {
         </>
       )}
 
-      {tab === 'resolve' && (
-        <>
-        {/* Resolve Section */}
-        <div className="mb-6">
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-            {/* Commit Mode */}
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitMode')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitModeHelp')}</p>
-              </div>
-              <div className="relative">
-                <select
-                  value={resolveCommitModeVal}
-                  onChange={(e) => handleResolveSettingChange('commitMode', e.target.value)}
-                  className={`${SELECT} w-52`}
-                >
-                  <option value="new">{t('repo.resolve.modeNew')}</option>
-                  <option value="amend">{t('repo.resolve.modeAmend')}</option>
-                  <option value="ask">{t('repo.resolve.modeAsk')}</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Commit Format Source - shown when a new commit is possible (new or ask) */}
-            {resolveCommitModeVal !== 'amend' && (
-              <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitFormat')}</label>
-                  <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitFormatHelp')}</p>
-                </div>
-                <div className="relative">
-                  <select
-                    value={resolveUseCommitConfigVal ? 'commit' : 'custom'}
-                    onChange={(e) => handleResolveSettingChange('useCommitConfig', e.target.value === 'commit')}
-                    className={`${SELECT} w-52`}
-                  >
-                    <option value="commit">{t('repo.resolve.useCommitConfig')}</option>
-                    <option value="custom">{t('repo.resolve.customConfig')}</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                </div>
-              </div>
-            )}
-
-            {/* Custom Style & Format - when a new commit is possible (new or ask) and useCommitConfig is false */}
-            {resolveCommitModeVal !== 'amend' && !resolveUseCommitConfigVal && (
-              <>
-                <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
-                    <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={resolveStyleVal}
-                      onChange={(e) => handleResolveSettingChange('style', e.target.value)}
-                      className={`${SELECT} w-52`}
-                    >
-                      <option value="single-line">{t('repo.commit.styleSingle')}</option>
-                      <option value="multi-line">{t('repo.commit.styleMulti')}</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                  </div>
-                </div>
-
-                <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
-                    <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={resolveFormatVal}
-                      onChange={(e) => handleResolveSettingChange('format', e.target.value)}
-                      className={`${SELECT} w-52`}
-                    >
-                      <option value="conventional">{t('repo.commit.formatConventional')}</option>
-                      <option value="angular">{t('repo.commit.formatAngular')}</option>
-                      <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
-                      <option value="none">{t('repo.commit.formatNone')}</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Reply to Comments Toggle */}
-            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.reply')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyHelp')}</p>
-              </div>
-              <Switch
-                checked={resolveReplyVal}
-                onChange={(next) => handleResolveSettingChange('replyToComments', next)}
-                label={t('repo.resolve.reply')}
-              />
-            </div>
-
-            {/* Preview / Info */}
-            {resolveCommitModeVal === 'new' && (
-              <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
-                <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
-                <pre className="text-sm whitespace-pre-wrap text-text-secondary">{resolvePreview}</pre>
-              </div>
-            )}
-            {resolveCommitModeVal === 'amend' && (
-              <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0" />
-                <span className="text-sm text-text-secondary">{t('repo.resolve.amendNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code></span>
-              </div>
-            )}
-            {resolveCommitModeVal === 'ask' && (
-              <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-text-secondary">{t('repo.resolve.askNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
-              </div>
-            )}
-          </fieldset>
-        </div>
-        </>
-      )}
-
       {tab === 'pr' && (
         <>
         {/* Pull Request Section */}
@@ -1777,31 +1674,133 @@ export function RepoPage({ repoName }: RepoPageProps) {
         </>
       )}
 
-
-
-      {tab === 'danger' && (
+      {tab === 'resolve' && (
         <>
-        {/* Danger Zone */}
+        {/* Resolve Section */}
         <div className="mb-6">
-          <h2 className="text-xs text-red/50 uppercase tracking-wider mb-4">{t('repo.danger.section')}</h2>
-          <fieldset disabled={readOnly} className="bg-red/5 border border-red/10 rounded-xl p-4 w-full min-w-0">
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="block text-sm font-medium mb-0.5">{t('repo.danger.delete')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.danger.deleteHelp')}</p>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            {/* Commit Mode */}
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitMode')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitModeHelp')}</p>
               </div>
-              <button
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all"
-              >
-                <Trash2 className="w-3 h-3" />
-                {t('repo.danger.deleteAction')}
-              </button>
+              <div className="relative">
+                <select
+                  value={resolveCommitModeVal}
+                  onChange={(e) => handleResolveSettingChange('commitMode', e.target.value)}
+                  className={`${SELECT} w-52`}
+                >
+                  <option value="new">{t('repo.resolve.modeNew')}</option>
+                  <option value="amend">{t('repo.resolve.modeAmend')}</option>
+                  <option value="ask">{t('repo.resolve.modeAsk')}</option>
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+              </div>
             </div>
+
+            {/* Commit Format Source - shown when a new commit is possible (new or ask) */}
+            {resolveCommitModeVal !== 'amend' && (
+              <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitFormat')}</label>
+                  <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitFormatHelp')}</p>
+                </div>
+                <div className="relative">
+                  <select
+                    value={resolveUseCommitConfigVal ? 'commit' : 'custom'}
+                    onChange={(e) => handleResolveSettingChange('useCommitConfig', e.target.value === 'commit')}
+                    className={`${SELECT} w-52`}
+                  >
+                    <option value="commit">{t('repo.resolve.useCommitConfig')}</option>
+                    <option value="custom">{t('repo.resolve.customConfig')}</option>
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+                </div>
+              </div>
+            )}
+
+            {/* Custom Style & Format - when a new commit is possible (new or ask) and useCommitConfig is false */}
+            {resolveCommitModeVal !== 'amend' && !resolveUseCommitConfigVal && (
+              <>
+                <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
+                    <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={resolveStyleVal}
+                      onChange={(e) => handleResolveSettingChange('style', e.target.value)}
+                      className={`${SELECT} w-52`}
+                    >
+                      <option value="single-line">{t('repo.commit.styleSingle')}</option>
+                      <option value="multi-line">{t('repo.commit.styleMulti')}</option>
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
+                    <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={resolveFormatVal}
+                      onChange={(e) => handleResolveSettingChange('format', e.target.value)}
+                      className={`${SELECT} w-52`}
+                    >
+                      <option value="conventional">{t('repo.commit.formatConventional')}</option>
+                      <option value="angular">{t('repo.commit.formatAngular')}</option>
+                      <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
+                      <option value="none">{t('repo.commit.formatNone')}</option>
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Reply to Comments Toggle */}
+            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.reply')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyHelp')}</p>
+              </div>
+              <Switch
+                checked={resolveReplyVal}
+                onChange={(next) => handleResolveSettingChange('replyToComments', next)}
+                label={t('repo.resolve.reply')}
+              />
+            </div>
+
+            {/* Preview / Info */}
+            {resolveCommitModeVal === 'new' && (
+              <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
+                <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
+                <pre className="text-sm whitespace-pre-wrap text-text-secondary">{resolvePreview}</pre>
+              </div>
+            )}
+            {resolveCommitModeVal === 'amend' && (
+              <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0" />
+                <span className="text-sm text-text-secondary">{t('repo.resolve.amendNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code></span>
+              </div>
+            )}
+            {resolveCommitModeVal === 'ask' && (
+              <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0 mt-0.5" />
+                <span className="text-sm text-text-secondary">{t('repo.resolve.askNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
+              </div>
+            )}
           </fieldset>
         </div>
         </>
       )}
+
+
 
 
       {/* Delete Modal */}

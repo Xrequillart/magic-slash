@@ -162,8 +162,7 @@ function buildOptions(t: Translate) {
  */
 type RepoTab =
   | 'general' | 'tracker' | 'languages' | 'git'
-  | 'plan' | 'commit' | 'resolve' | 'pr'
-  | 'danger'
+  | 'plan' | 'commit' | 'pr' | 'resolve'
 
 const REPO_TABS: { id: RepoTab; labelKey: Parameters<Translate>[0]; icon: LucideIcon }[] = [
   // Labelled with each subject's OWN `*.section` key rather than a parallel
@@ -179,13 +178,13 @@ const REPO_TABS: { id: RepoTab; labelKey: Parameters<Translate>[0]; icon: Lucide
   // five others put together.
   //
   // In workflow order, which is also the order the skills run in: an idea becomes
-  // tickets, tickets become commits, commits become a pull request, review comments
-  // come back. Plan first, therefore — before Commit, not after Pull request.
+  // tickets, tickets become commits, commits become a pull request, and the review
+  // comments a repo resolves only exist once that pull request does — so Resolve comes
+  // after PR, not before it.
   { id: 'plan', labelKey: 'repo.plan.section', icon: ClipboardList },
   { id: 'commit', labelKey: 'repo.commit.section', icon: GitCommitHorizontal },
-  { id: 'resolve', labelKey: 'repo.resolve.section', icon: MessageSquare },
   { id: 'pr', labelKey: 'repo.pr.section', icon: GitPullRequest },
-  { id: 'danger', labelKey: 'repo.tab.danger', icon: Trash2 },
+  { id: 'resolve', labelKey: 'repo.resolve.section', icon: MessageSquare },
 ]
 
 function DraftField({
@@ -535,6 +534,28 @@ export function RepositoryForm({
             </div>
           </SettingRow>
         </SettingsCard>
+
+        {/* Danger last, and inside General rather than behind a tab of its own: a tab
+            is a place you go, and nobody goes looking for the delete button. At the bottom
+            of the page the repo's own settings live on is where a destructive action
+            belongs — past everything else, and not one click from anywhere. */}
+        {/* ── Danger zone ───────────────────────────────────────────────────── */}
+        <SettingsCard icon={Trash2} title={t('repo.danger.section')} tone="danger">
+          <SettingRow
+            label={t('repo.danger.delete')}
+            description={
+              repo.orgId ? t('repo.danger.deleteTeamHelp') : t('repo.danger.deletePersonalHelp')
+            }
+          >
+            <button
+              onClick={onDelete}
+              className="flex items-center gap-2 rounded-full border border-red/25 px-4 py-2 font-display text-xs font-medium text-red transition-colors hover:bg-red/[0.06]"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {t('repo.danger.deleteAction')}
+            </button>
+          </SettingRow>
+        </SettingsCard>
         </>
       )}
 
@@ -850,6 +871,61 @@ export function RepositoryForm({
         </>
       )}
 
+      {tab === 'pr' && (
+        <>
+        {/* ── Pull request ──────────────────────────────────────────────────── */}
+        <SettingsCard icon={GitPullRequest}>
+          <SettingRow label={t('repo.pr.autoLink')} description={t('repo.pr.autoLinkHelp')}>
+            <Toggle
+              label={t('repo.pr.autoLink')}
+              checked={autoLinkTickets}
+              onChange={(autoLinkTickets) => onPatch({ pullRequest: { autoLinkTickets } })}
+            />
+          </SettingRow>
+
+          <SettingRow label={t('repo.pr.watchCI')} description={t('repo.pr.watchCIHelp')}>
+            <Toggle
+              label={t('repo.pr.watchCI')}
+              checked={watchCI}
+              onChange={(watchCI) => onPatch({ pullRequest: { watchCI } })}
+            />
+          </SettingRow>
+
+          <SettingRow label={t('repo.pr.testAccounts')} description={t('repo.pr.testAccountsHelp')}>
+            <Dropdown
+              value={testAccounts}
+              options={options.testAccounts}
+              onChange={(testAccounts) => onPatch({ pullRequest: { testAccounts } })}
+              width={200}
+              className="w-52"
+            />
+          </SettingRow>
+
+          {testAccounts !== 'off' && (
+            <SettingRow
+              label={t('repo.pr.testAccountsSource')}
+              description={t('repo.pr.testAccountsSourceHelp')}
+            >
+              <DraftField
+                persisted={repo.pullRequest.testAccountsSource ?? ''}
+                onSave={(testAccountsSource) => onPatch({ pullRequest: { testAccountsSource } })}
+                placeholder="docs/test-accounts.md"
+                className="w-72"
+              />
+            </SettingRow>
+          )}
+
+          {testAccounts === 'inline' && (
+            <ExamplePanel tone="warning">
+              <p className="text-xs text-ink">{t('repo.pr.testAccountsPublicWarn')}</p>
+            </ExamplePanel>
+          )}
+
+          <SettingRow label={t('repo.pr.template')} description={t('repo.pr.templateHelp')} />
+        </SettingsCard>
+        </>
+      )}
+
       {tab === 'resolve' && (
         <>
         {/* ── Resolve ───────────────────────────────────────────────────────── */}
@@ -936,61 +1012,6 @@ export function RepositoryForm({
               </p>
             </ExamplePanel>
           )}
-        </SettingsCard>
-        </>
-      )}
-
-      {tab === 'pr' && (
-        <>
-        {/* ── Pull request ──────────────────────────────────────────────────── */}
-        <SettingsCard icon={GitPullRequest}>
-          <SettingRow label={t('repo.pr.autoLink')} description={t('repo.pr.autoLinkHelp')}>
-            <Toggle
-              label={t('repo.pr.autoLink')}
-              checked={autoLinkTickets}
-              onChange={(autoLinkTickets) => onPatch({ pullRequest: { autoLinkTickets } })}
-            />
-          </SettingRow>
-
-          <SettingRow label={t('repo.pr.watchCI')} description={t('repo.pr.watchCIHelp')}>
-            <Toggle
-              label={t('repo.pr.watchCI')}
-              checked={watchCI}
-              onChange={(watchCI) => onPatch({ pullRequest: { watchCI } })}
-            />
-          </SettingRow>
-
-          <SettingRow label={t('repo.pr.testAccounts')} description={t('repo.pr.testAccountsHelp')}>
-            <Dropdown
-              value={testAccounts}
-              options={options.testAccounts}
-              onChange={(testAccounts) => onPatch({ pullRequest: { testAccounts } })}
-              width={200}
-              className="w-52"
-            />
-          </SettingRow>
-
-          {testAccounts !== 'off' && (
-            <SettingRow
-              label={t('repo.pr.testAccountsSource')}
-              description={t('repo.pr.testAccountsSourceHelp')}
-            >
-              <DraftField
-                persisted={repo.pullRequest.testAccountsSource ?? ''}
-                onSave={(testAccountsSource) => onPatch({ pullRequest: { testAccountsSource } })}
-                placeholder="docs/test-accounts.md"
-                className="w-72"
-              />
-            </SettingRow>
-          )}
-
-          {testAccounts === 'inline' && (
-            <ExamplePanel tone="warning">
-              <p className="text-xs text-ink">{t('repo.pr.testAccountsPublicWarn')}</p>
-            </ExamplePanel>
-          )}
-
-          <SettingRow label={t('repo.pr.template')} description={t('repo.pr.templateHelp')} />
         </SettingsCard>
         </>
       )}
@@ -1096,28 +1117,6 @@ export function RepositoryForm({
         </>
       )}
 
-
-      {tab === 'danger' && (
-        <>
-        {/* ── Danger zone ───────────────────────────────────────────────────── */}
-        <SettingsCard icon={Trash2} title={t('repo.danger.section')} tone="danger">
-          <SettingRow
-            label={t('repo.danger.delete')}
-            description={
-              repo.orgId ? t('repo.danger.deleteTeamHelp') : t('repo.danger.deletePersonalHelp')
-            }
-          >
-            <button
-              onClick={onDelete}
-              className="flex items-center gap-2 rounded-full border border-red/25 px-4 py-2 font-display text-xs font-medium text-red transition-colors hover:bg-red/[0.06]"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              {t('repo.danger.deleteAction')}
-            </button>
-          </SettingRow>
-        </SettingsCard>
-        </>
-      )}
 
       </fieldset>
 

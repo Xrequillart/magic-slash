@@ -459,7 +459,6 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.tracker.jiraLink': 'Lien Jira',
   'repo.tracker.jiraLinkHelp': 'URL de base des tickets Jira (ex. : PROJ-123)',
   'repo.tabs.aria': 'Réglages du repository',
-  'repo.tab.danger': 'Danger',
   'repo.langs.groupChat': 'Conversation',
   'repo.langs.groupCode': 'Code et pull requests',
   'repo.langs.groupTickets': 'Tickets',

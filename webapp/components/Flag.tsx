@@ -22,7 +22,20 @@ import { useId } from 'react'
  * that has no reason to change on one side only.
  */
 
-/** 3:2, the ratio both flags are drawn at, so neither is stretched. */
+/**
+ * Every flag here is drawn in a 3:2 viewBox, and that is a hard rule rather than a
+ * detail: an SVG whose viewBox ratio differs from the box it is given gets letterboxed
+ * by `preserveAspectRatio`, centred, and rendered SHORTER. The Union Flag's own ratio
+ * is 2:1, so drawn at its natural proportions next to the French 3:2 it came out a
+ * quarter shorter with white gaps above and below — visibly, unpleasantly wrong in a
+ * list where the two sit one under the other.
+ *
+ * So the Union Flag below is redrawn at 3:2 rather than squashed into it: the cross and
+ * saltire widths are the standard fractions OF THE HEIGHT, recomputed for the taller
+ * box, which is what flag icon sets do. Stretching the 2:1 drawing with
+ * `preserveAspectRatio="none"` would have been one line and would have tilted every
+ * diagonal.
+ */
 const BOX = 'shrink-0 rounded-[2px] ring-1 ring-inset ring-black/10'
 
 function FranceFlag({ className }: { className: string }) {
@@ -36,22 +49,29 @@ function FranceFlag({ className }: { className: string }) {
 }
 
 function UnionFlag({ className }: { className: string }) {
-  // The red saltire is COUNTERCHANGED — offset against the white one rather than
-  // centred on it — which is the detail that separates the real flag from the
-  // approximation everyone draws. It needs a clip path, and a clip path needs an id
-  // that is unique in the document: this component renders six times on the
-  // Languages tab alone, and a hardcoded id would have all six clip to the first.
+  // Drawn in 60x40 — 3:2, matching France above — not the flag's own 60x30. Every
+  // width below is the standard fraction of the HEIGHT, so the proportions are the real
+  // ones for this box: white cross a third of the height, red cross a fifth, white
+  // saltire a fifth, red saltire an eighth.
+  //
+  // The red saltire is COUNTERCHANGED — offset against the white one rather than centred
+  // on it — which is the detail that separates the real flag from the approximation
+  // everyone draws. It needs a clip path, and a clip path needs an id that is unique in
+  // the document: this component renders six times on the Languages tab alone, and a
+  // hardcoded id would have all six clip to the first.
   const clip = useId()
   return (
-    <svg viewBox="0 0 60 30" className={className} aria-hidden focusable="false">
+    <svg viewBox="0 0 60 40" className={className} aria-hidden focusable="false">
+      {/* One triangle per quadrant, alternating sides of the diagonal — that selection
+          IS the counterchange. Centre is (30,20). */}
       <clipPath id={clip}>
-        <path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z" />
+        <path d="M30,20 h30 v20 z v20 h-30 z h-30 v-20 z v-20 h30 z" />
       </clipPath>
-      <path d="M0,0 v30 h60 v-30 z" fill="#012169" />
-      <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6" />
-      <path d="M0,0 L60,30 M60,0 L0,30" clipPath={`url(#${clip})`} stroke="#C8102E" strokeWidth="4" />
-      <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10" />
-      <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6" />
+      <path d="M0,0 v40 h60 v-40 z" fill="#012169" />
+      <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" strokeWidth="8" />
+      <path d="M0,0 L60,40 M60,0 L0,40" clipPath={`url(#${clip})`} stroke="#C8102E" strokeWidth="5" />
+      <path d="M30,0 v40 M0,20 h60" stroke="#fff" strokeWidth="13.33" />
+      <path d="M30,0 v40 M0,20 h60" stroke="#C8102E" strokeWidth="8" />
     </svg>
   )
 }
