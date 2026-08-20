@@ -150,6 +150,7 @@ export const fr: Record<keyof typeof en, string> = {
   'common.close': 'Fermer',
   'common.loading': 'Chargement…',
   'common.remove': 'Supprimer',
+  'common.add': 'Ajouter',
   'common.edit': 'Modifier',
   'common.retry': 'Réessayer',
   'common.back': 'Retour',
@@ -456,7 +457,6 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.worktree.files': 'Fichiers à copier',
   'repo.worktree.filesHelp':
     'Fichiers copiés depuis le dépôt principal vers les nouveaux worktrees (ex. : .env, .env.local)',
-  'repo.worktree.add': 'Ajouter',
 
   'repo.commit.section': 'Commit',
   'repo.commit.language': 'Langue',

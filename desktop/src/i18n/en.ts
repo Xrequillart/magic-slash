@@ -173,6 +173,7 @@ export const en = {
   'common.close': 'Close',
   'common.loading': 'Loading…',
   'common.remove': 'Remove',
+  'common.add': 'Add',
   'common.edit': 'Edit',
   'common.retry': 'Retry',
   'common.back': 'Back',
@@ -470,7 +471,6 @@ export const en = {
   'repo.worktree.files': 'Files to copy',
   'repo.worktree.filesHelp':
     'Files copied from the main repo to new worktrees (e.g., .env, .env.local)',
-  'repo.worktree.add': 'Add',
 
   'repo.commit.section': 'Commit',
   'repo.commit.language': 'Language',

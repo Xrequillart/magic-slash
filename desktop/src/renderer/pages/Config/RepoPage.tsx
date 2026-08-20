@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen
 } from 'lucide-react'
@@ -10,10 +10,75 @@ import { showToast } from '../../components/Toast'
 import { PROJECT_COLORS } from '../../utils/projectColors'
 import { useT } from '../../i18n'
 import { Switch } from '../../components/Switch'
-import { INPUT, SELECT } from '../../theme/controls'
+import { BTN, INPUT, SELECT } from '../../theme/controls'
 
 interface RepoPageProps {
   repoName: string
+}
+
+/**
+ * Editable list of short strings shown as removable chips. Twin of the webapp's
+ * ChipList (webapp/components/SettingRow.tsx), down to `inputId`: the id is a
+ * prop precisely so two lists can coexist on this page without colliding.
+ */
+function ChipList({ items, onChange, placeholder, inputId }: {
+  items: string[]
+  onChange: (items: string[]) => void
+  placeholder: string
+  inputId: string
+}) {
+  const t = useT()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const add = () => {
+    const input = inputRef.current
+    const value = input?.value.trim()
+    if (!input || !value || items.includes(value)) return
+    onChange([...items, value])
+    input.value = ''
+  }
+
+  return (
+    <>
+      {items.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {items.map((item) => (
+            <span
+              key={item}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-line-strong rounded-lg text-sm"
+            >
+              {item}
+              <button
+                onClick={() => onChange(items.filter((i) => i !== item))}
+                aria-label={t('common.remove')}
+                className="text-text-secondary hover:text-red transition-colors"
+              >
+                &times;
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          ref={inputRef}
+          type="text"
+          id={inputId}
+          placeholder={placeholder}
+          className={`${INPUT} flex-1`}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return
+            e.preventDefault()
+            add()
+          }}
+        />
+        <button onClick={add} className={BTN}>
+          <Plus className="w-3 h-3" />
+          {t('common.add')}
+        </button>
+      </div>
+    </>
+  )
 }
 
 /**
@@ -813,57 +878,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <label className="block text-sm font-medium mb-0.5">{t('repo.worktree.files')}</label>
               <p className="text-xs text-text-secondary/50">{t('repo.worktree.filesHelp')}</p>
             </div>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {(repo.worktreeFiles || []).map((file, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-line-strong rounded-lg text-sm"
-                >
-                  {file}
-                  <button
-                    onClick={() => {
-                      const newFiles = (repo.worktreeFiles || []).filter((_, i) => i !== index)
-                      handleWorktreeFilesChange(newFiles)
-                    }}
-                    className="text-text-secondary hover:text-red transition-colors"
-                  >
-                    &times;
-                  </button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                id="worktree-file-input"
-                placeholder=".env"
-                className={`${INPUT} flex-1`}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const input = e.currentTarget
-                    const value = input.value.trim()
-                    if (value && !(repo.worktreeFiles || []).includes(value)) {
-                      handleWorktreeFilesChange([...(repo.worktreeFiles || []), value])
-                      input.value = ''
-                    }
-                  }
-                }}
-              />
-              <button
-                onClick={() => {
-                  const input = document.getElementById('worktree-file-input') as HTMLInputElement
-                  const value = input?.value.trim()
-                  if (value && !(repo.worktreeFiles || []).includes(value)) {
-                    handleWorktreeFilesChange([...(repo.worktreeFiles || []), value])
-                    input.value = ''
-                  }
-                }}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-              >
-                <Plus className="w-3 h-3" />
-                {t('repo.worktree.add')}
-              </button>
-            </div>
+            <ChipList
+              items={repo.worktreeFiles || []}
+              onChange={handleWorktreeFilesChange}
+              placeholder=".env"
+              inputId="worktree-file-input"
+            />
           </div>
         </fieldset>
       </div>
