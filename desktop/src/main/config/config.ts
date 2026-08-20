@@ -1,7 +1,8 @@
 import * as path from 'path'
 import * as os from 'os'
 import { randomUUID } from 'crypto'
-import type { Config, RepositoryConfig, LanguageId, LaunchMode, OrgSharedConfig, ThemeId } from '../../types'
+import type { Config, RepositoryConfig, LanguageId, LaunchMode, OrgSharedConfig, PlanSettingsInput, SettingsInput, ThemeId } from '../../types'
+import { PLAN_ACCEPTANCE_CRITERIA_FORMATS, PLAN_SPLITTING_MODES, PLAN_TRACKERS } from '../../types'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
 import {
   GITHUB_REMOTE_URL_PATTERN,
@@ -12,14 +13,18 @@ import {
 import { CONFIG_DIR } from './paths'
 import { getStore, reportWriteError } from '../store/Store'
 
-/** Settings input where each field can be its normal type, 'default', or null (to reset) */
-type SettingsInput<T> = {
-  [K in keyof T]?: T[K] | 'default' | null
-}
-
 /**
  * Applies a single settings field: removes on 'default'/null/resetValue,
  * sets if the value passes the validator.
+ *
+ * Returns true when the value was REJECTED — present, not a reset, and refused by
+ * the validator. Every caller but the plan block ignores it, which is why the
+ * return is additive rather than a signature change: dropping an invalid value on
+ * the floor is the established behaviour here, and it is the right one for a
+ * settings form that can only offer valid values. `plan` is the block that also
+ * has to answer for a value arriving from somewhere else, so it collects these and
+ * hands them back to the renderer to name in a toast — see
+ * updateRepositoryPlanSettings.
  */
 function applySetting<T extends Record<string, unknown>>(
   obj: T,
@@ -27,18 +32,23 @@ function applySetting<T extends Record<string, unknown>>(
   value: unknown,
   validator: (v: unknown) => boolean,
   resetValues: unknown[] = ['default', null],
-): void {
-  if (value === undefined) return
+): boolean {
+  if (value === undefined) return false
   if (resetValues.includes(value)) {
     delete obj[key]
-  } else if (validator(value)) {
-    obj[key] = value as T[keyof T]
+    return false
   }
+  if (validator(value)) {
+    obj[key] = value as T[keyof T]
+    return false
+  }
+  return true
 }
 
-const isOneOf = (allowed: string[]) => (v: unknown) => typeof v === 'string' && allowed.includes(v)
+const isOneOf = (allowed: readonly string[]) => (v: unknown) => typeof v === 'string' && allowed.includes(v)
 const isBool = (v: unknown) => typeof v === 'boolean'
 const isString = (v: unknown) => typeof v === 'string'
+const isStringArray = (v: unknown) => Array.isArray(v) && v.every((item) => typeof item === 'string')
 
 /**
  * Checks if a path should be excluded from repository persistence.
@@ -228,6 +238,7 @@ function persistRepoIdentity(name: string): void {
       pullRequest: repo.pullRequest,
       resolve: repo.resolve,
       issues: repo.issues,
+      plan: repo.plan,
       branches: repo.branches,
       worktreeFiles: repo.worktreeFiles,
     })
@@ -440,6 +451,7 @@ export function addRepository(name: string, repoPath: string, keywords: string[]
       pullRequest: repo.pullRequest,
       resolve: repo.resolve,
       issues: repo.issues,
+      plan: repo.plan,
       branches: repo.branches,
       worktreeFiles: repo.worktreeFiles,
       remoteUrl,
@@ -647,6 +659,75 @@ export function updateRepositoryIssuesSettings(name: string, settings: SettingsI
   setConfigCache(config)
   persistRepoIdentity(name)
   return config
+}
+
+/**
+ * Write the `plan` block, reporting the keys whose value was refused.
+ *
+ * The odd one out among the block writers: it returns `{ config, rejected }` where
+ * its siblings return `Config`. applySetting drops an invalid value silently,
+ * which is right for a form of closed dropdowns but leaves nothing to tell the
+ * user when a value comes from anywhere else — a hand-edited blob, an older build,
+ * the webapp (which writes blocks wholesale with no validation of its own). The
+ * IPC handlers already return an object, so naming the refused keys costs one
+ * additive field and lets the renderer say WHICH setting was rejected instead of
+ * failing mute.
+ */
+export function updateRepositoryPlanSettings(
+  name: string,
+  settings: PlanSettingsInput,
+): { config: Config; rejected: string[] } {
+  const config = readConfig()
+  if (!config.repositories || !config.repositories[name]) {
+    throw new Error(`Repository '${name}' not found`)
+  }
+
+  const plan = config.repositories[name].plan = config.repositories[name].plan || {}
+  const rejected: string[] = []
+  // Takes the key once and reads the value off `settings` itself, so the name
+  // reported to the renderer is always the name that was written.
+  // `defaultLabels` is replaced wholesale, never mutated: the default is a shared
+  // array instance handed to every repo lacking the key (DEFAULT_REPOSITORY_FIELDS).
+  const apply = (
+    key: Exclude<keyof PlanSettingsInput, 'issueTypes'>,
+    validator: (v: unknown) => boolean,
+    resetValues?: unknown[],
+  ): void => {
+    if (applySetting(plan, key, settings[key], validator, resetValues)) rejected.push(key)
+  }
+
+  apply('tracker', isOneOf(PLAN_TRACKERS))
+  apply('jiraProject', isString, ['', null])
+  apply('useRepoTemplates', isBool)
+  apply('splitting', isOneOf(PLAN_SPLITTING_MODES))
+  apply('acceptanceCriteria', isOneOf(PLAN_ACCEPTANCE_CRITERIA_FORMATS))
+  apply('defaultLabels', isStringArray)
+  apply('assignToMe', isBool)
+  apply('duplicateCheck', isBool)
+
+  if (settings.issueTypes !== undefined) {
+    // Copied, not reused in place: DEFAULT_REPOSITORY_FIELDS.plan.issueTypes is
+    // materialised by a one-level spread, so every repo that never set an issue
+    // type shares that one object — mutating it would write into the others too.
+    const nested = settings.issueTypes
+    const issueTypes = plan.issueTypes = { ...plan.issueTypes }
+    for (const key of ['epic', 'story'] as const) {
+      if (applySetting(issueTypes, key, nested[key], isString, ['', null])) {
+        rejected.push(`issueTypes.${key}`)
+      }
+    }
+    if (Object.keys(issueTypes).length === 0) {
+      delete plan.issueTypes
+    }
+  }
+
+  if (Object.keys(plan).length === 0) {
+    delete config.repositories[name].plan
+  }
+
+  setConfigCache(config)
+  persistRepoIdentity(name)
+  return { config, rejected }
 }
 
 export function updateRepositoryBranchSettings(name: string, settings: SettingsInput<NonNullable<RepositoryConfig['branches']>>): Config {

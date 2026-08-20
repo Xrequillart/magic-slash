@@ -76,6 +76,23 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
   // would materialise 'en' on every existing repo — pinning them to English and
   // making the chain unreachable. Resolve it at read time instead, with
   // resolveTicketLanguage() from `desktop/src/languages.ts`.
+  plan: {
+    tracker: 'ask',
+    jiraProject: '',
+    issueTypes: {
+      epic: 'Epic',
+      story: 'Story'
+    },
+    useRepoTemplates: true,
+    splitting: 'balanced',
+    acceptanceCriteria: 'checklist',
+    // deepMergeDefaults copies one level, so this array — and `issueTypes` above —
+    // is the exact instance handed to every repo missing the key. Writers must
+    // REPLACE, never mutate in place; same contract as worktreeFiles below.
+    defaultLabels: [],
+    assignToMe: false,
+    duplicateCheck: true
+  },
   branches: {
     development: ''
   },

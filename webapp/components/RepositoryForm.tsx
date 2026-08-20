@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Building2,
+  ClipboardList,
   GitBranch,
   GitCommitHorizontal,
   GitPullRequest,
@@ -81,7 +82,41 @@ function buildOptions(t: Translate) {
     { value: 'inline', label: t('repo.pr.testAccountsInline'), description: t('repo.pr.testAccountsInlineHelp') },
   ]
 
-  return { style, format, commitMode, formatSource, testAccounts }
+  const tracker: DropdownOption<string>[] = [
+    { value: 'jira', label: t('repo.plan.trackerJira'), description: t('repo.plan.trackerJiraHelp') },
+    { value: 'github', label: t('repo.plan.trackerGithub'), description: t('repo.plan.trackerGithubHelp') },
+    { value: 'ask', label: t('repo.plan.trackerAsk'), description: t('repo.plan.trackerAskHelp') },
+  ]
+
+  const splitting: DropdownOption<string>[] = [
+    {
+      value: 'conservative',
+      label: t('repo.plan.splittingConservative'),
+      description: t('repo.plan.splittingConservativeHelp'),
+    },
+    {
+      value: 'balanced',
+      label: t('repo.plan.splittingBalanced'),
+      description: t('repo.plan.splittingBalancedHelp'),
+    },
+    { value: 'eager', label: t('repo.plan.splittingEager'), description: t('repo.plan.splittingEagerHelp') },
+  ]
+
+  const acceptance: DropdownOption<string>[] = [
+    {
+      value: 'checklist',
+      label: t('repo.plan.acceptanceCriteriaChecklist'),
+      description: t('repo.plan.acceptanceCriteriaChecklistHelp'),
+    },
+    {
+      value: 'gherkin',
+      label: t('repo.plan.acceptanceCriteriaGherkin'),
+      description: t('repo.plan.acceptanceCriteriaGherkinHelp'),
+    },
+    { value: 'none', label: t('repo.plan.acceptanceCriteriaNone'), description: t('repo.plan.acceptanceCriteriaNoneHelp') },
+  ]
+
+  return { style, format, commitMode, formatSource, testAccounts, tracker, splitting, acceptance }
 }
 
 /**
@@ -196,6 +231,17 @@ export function RepositoryForm({
   // surfaces must not disagree about what an empty string means.
   const ticketLanguage = repo.languages.ticket || repo.languages.jiraComment || DEFAULTS.language
 
+  const tracker = repo.plan.tracker ?? DEFAULTS.tracker
+  const jiraProject = repo.plan.jiraProject ?? DEFAULTS.jiraProject
+  const epicType = repo.plan.issueTypes?.epic ?? DEFAULTS.issueTypeEpic
+  const storyType = repo.plan.issueTypes?.story ?? DEFAULTS.issueTypeStory
+  const useRepoTemplates = repo.plan.useRepoTemplates ?? DEFAULTS.useRepoTemplates
+  const splitting = repo.plan.splitting ?? DEFAULTS.splitting
+  const acceptanceCriteria = repo.plan.acceptanceCriteria ?? DEFAULTS.acceptanceCriteria
+  const defaultLabels = repo.plan.defaultLabels ?? DEFAULTS.defaultLabels
+  const assignToMe = repo.plan.assignToMe ?? DEFAULTS.assignToMe
+  const duplicateCheck = repo.plan.duplicateCheck ?? DEFAULTS.duplicateCheck
+
   // Patch helpers send only the key that changed. The page merges it into the
   // full jsonb block against the freshest row it holds — merging here instead
   // would bake in this render's `repo`, and two settings changed back to back
@@ -205,6 +251,9 @@ export function RepositoryForm({
   const setCommit = (patch: Repository['commit']) => onPatch({ commit: patch })
   const setResolve = (patch: Repository['resolve']) => onPatch({ resolve: patch })
   const setIssues = (patch: Repository['issues']) => onPatch({ issues: patch })
+  // `issueTypes` is sent as its own nested object — `setPlan({ issueTypes: { epic } })`
+  // — and expandPatch merges that second level, so writing one type keeps the other.
+  const setPlan = (patch: Repository['plan']) => onPatch({ plan: patch })
 
   const resolvePreview = useCommitConfig
     ? commitExample(commitFormat, commitStyle, includeTicketId)
@@ -635,6 +684,122 @@ export function RepositoryForm({
             onSave={(githubIssuesUrl) => setIssues({ githubIssuesUrl })}
             placeholder="https://github.com/org/repo/issues/"
             className="w-72"
+          />
+        </SettingRow>
+      </SettingsCard>
+
+      {/* ── Plan ──────────────────────────────────────────────────────────── */}
+      <SettingsCard icon={ClipboardList} title={t('repo.plan.section')}>
+        <SettingRow label={t('repo.plan.tracker')} description={t('repo.plan.trackerHelp')}>
+          <Dropdown
+            value={tracker}
+            options={options.tracker}
+            onChange={(tracker) => setPlan({ tracker })}
+            width={240}
+            className="w-52"
+          />
+        </SettingRow>
+
+        {/* Jira-only rows: 'ask' can still land in Jira, so they stay visible there. */}
+        {tracker !== 'github' && (
+          <>
+            <SettingRow
+              label={t('repo.plan.jiraProject')}
+              description={t('repo.plan.jiraProjectHelp')}
+            >
+              <DraftField
+                persisted={jiraProject}
+                onSave={(jiraProject) => setPlan({ jiraProject })}
+                placeholder="PROJ"
+                className="w-52"
+              />
+            </SettingRow>
+
+            <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
+              <DraftField
+                persisted={epicType}
+                onSave={(epic) => setPlan({ issueTypes: { epic } })}
+                placeholder={DEFAULTS.issueTypeEpic}
+                className="w-52"
+                required
+              />
+            </SettingRow>
+
+            <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
+              <DraftField
+                persisted={storyType}
+                onSave={(story) => setPlan({ issueTypes: { story } })}
+                placeholder={DEFAULTS.issueTypeStory}
+                className="w-52"
+                required
+              />
+            </SettingRow>
+          </>
+        )}
+
+        <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
+          <Dropdown
+            value={splitting}
+            options={options.splitting}
+            onChange={(splitting) => setPlan({ splitting })}
+            width={280}
+            className="w-52"
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t('repo.plan.acceptanceCriteria')}
+          description={t('repo.plan.acceptanceCriteriaHelp')}
+        >
+          <Dropdown
+            value={acceptanceCriteria}
+            options={options.acceptance}
+            onChange={(acceptanceCriteria) => setPlan({ acceptanceCriteria })}
+            width={300}
+            className="w-52"
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t('repo.plan.useRepoTemplates')}
+          description={t('repo.plan.useRepoTemplatesHelp')}
+        >
+          <Toggle
+            label={t('repo.plan.useRepoTemplates')}
+            checked={useRepoTemplates}
+            onChange={(useRepoTemplates) => setPlan({ useRepoTemplates })}
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t('repo.plan.duplicateCheck')}
+          description={t('repo.plan.duplicateCheckHelp')}
+        >
+          <Toggle
+            label={t('repo.plan.duplicateCheck')}
+            checked={duplicateCheck}
+            onChange={(duplicateCheck) => setPlan({ duplicateCheck })}
+          />
+        </SettingRow>
+
+        <SettingRow label={t('repo.plan.assignToMe')} description={t('repo.plan.assignToMeHelp')}>
+          <Toggle
+            label={t('repo.plan.assignToMe')}
+            checked={assignToMe}
+            onChange={(assignToMe) => setPlan({ assignToMe })}
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t('repo.plan.defaultLabels')}
+          description={t('repo.plan.defaultLabelsHelp')}
+          stacked
+        >
+          <ChipList
+            items={defaultLabels}
+            onChange={(defaultLabels) => setPlan({ defaultLabels })}
+            placeholder="enhancement"
+            inputId="plan-label-input"
           />
         </SettingRow>
       </SettingsCard>

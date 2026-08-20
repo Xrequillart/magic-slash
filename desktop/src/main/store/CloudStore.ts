@@ -143,6 +143,15 @@ interface RepositoryRow {
   pull_request: RepositoryConfig['pullRequest'] | null
   resolve: RepositoryConfig['resolve'] | null
   issues: RepositoryConfig['issues'] | null
+  // Optional because the mapper must tolerate the key being absent as well as
+  // null, both meaning "nothing chosen" — which resolves to the shipped defaults.
+  //
+  // That tolerance is NOT a safety net for an un-migrated database, and must not
+  // be read as one: the select below names `plan` explicitly, so against a
+  // database that has not run 20260819090000 PostgREST fails the whole query
+  // (42703, undefined column) and fetchRepositories returns [] — every repository
+  // disappears rather than degrading. Deploy the migration before the clients.
+  plan?: RepositoryConfig['plan'] | null
   branches: RepositoryConfig['branches'] | null
   worktree_files: string[] | null
   // Absent (not just null) on a database that has not run 20260816090000 yet —
@@ -591,6 +600,7 @@ export class CloudStore implements Store {
     if (patch.pullRequest !== undefined) row.pull_request = patch.pullRequest ?? {}
     if (patch.resolve !== undefined) row.resolve = patch.resolve ?? {}
     if (patch.issues !== undefined) row.issues = patch.issues ?? {}
+    if (patch.plan !== undefined) row.plan = patch.plan ?? {}
     if (patch.branches !== undefined) row.branches = patch.branches ?? {}
     if (patch.worktreeFiles !== undefined) row.worktree_files = patch.worktreeFiles ?? []
     // No remote_url branch: RepositoryIdentity excludes it, so setRepositoryRemoteUrl
@@ -611,6 +621,7 @@ export class CloudStore implements Store {
       pullRequest: row.pull_request ?? undefined,
       resolve: row.resolve ?? undefined,
       issues: row.issues ?? undefined,
+      plan: row.plan ?? undefined,
       branches: row.branches ?? undefined,
       worktreeFiles: row.worktree_files ?? undefined,
       remoteUrl: row.remote_url ?? null,
@@ -667,6 +678,7 @@ export class CloudStore implements Store {
         pullRequest: r.pullRequest,
         resolve: r.resolve,
         issues: r.issues,
+        plan: r.plan,
         branches: r.branches,
         worktreeFiles: r.worktreeFiles,
         remoteUrl: r.remoteUrl ?? null,
@@ -687,7 +699,7 @@ export class CloudStore implements Store {
     const [reposRes, pathsRes] = await Promise.all([
       ctx.client
         .from('repositories')
-        .select('id, owner_id, org_id, name, keywords, color, languages, commit, pull_request, resolve, issues, branches, worktree_files, remote_url'),
+        .select('id, owner_id, org_id, name, keywords, color, languages, commit, pull_request, resolve, issues, plan, branches, worktree_files, remote_url'),
       ctx.client.from('repository_paths').select('repo_id, path'),
     ])
     if (reposRes.error || !reposRes.data) return []
@@ -730,6 +742,7 @@ export class CloudStore implements Store {
       pull_request: repo.pullRequest ?? {},
       resolve: repo.resolve ?? {},
       issues: repo.issues ?? {},
+      plan: repo.plan ?? {},
       branches: repo.branches ?? {},
       worktree_files: repo.worktreeFiles ?? [],
       remote_url: repo.remoteUrl ?? null,
@@ -809,6 +822,7 @@ export class CloudStore implements Store {
         pull_request: repo.pullRequest ?? {},
         resolve: repo.resolve ?? {},
         issues: repo.issues ?? {},
+        plan: repo.plan ?? {},
         branches: repo.branches ?? {},
         worktree_files: repo.worktreeFiles ?? [],
         remote_url: repo.remoteUrl ?? null,

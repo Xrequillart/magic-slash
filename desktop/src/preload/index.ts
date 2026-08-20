@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult } from '../types'
+import type { TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -44,6 +44,12 @@ const configApi = {
 
   updateRepositoryIssuesSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['issues']>>) =>
     ipcRenderer.invoke('config:updateRepositoryIssuesSettings', { name, settings }),
+
+  // Annotated, unlike its siblings: this is the only config channel whose renderer
+  // branches on a field beyond `config`, so an unannotated `any` would let a rename
+  // in main compile on both sides and fail at runtime.
+  updateRepositoryPlanSettings: (name: string, settings: PlanSettingsInput): Promise<{ config: Config; rejected: string[] }> =>
+    ipcRenderer.invoke('config:updateRepositoryPlanSettings', { name, settings }),
 
   updateRepositoryBranchSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['branches']>>) =>
     ipcRenderer.invoke('config:updateRepositoryBranchSettings', { name, settings }),
