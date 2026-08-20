@@ -491,14 +491,6 @@ export function RepositoryForm({
             />
           </SettingRow>
 
-          {/* Clone address — shared, unlike anything else here. Any member may
-              CONTRIBUTE it by binding a local folder in the app; only the owner or an
-              org admin may correct one already set. */}
-          {remoteUrlRow(
-            t('repo.general.remoteUrl'),
-            readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp'),
-          )}
-
           <SettingRow
             label={t('repo.general.keywords')}
             description={t('repo.general.keywordsHelp')}
@@ -781,6 +773,19 @@ export function RepositoryForm({
             apiece. Both answer the same question — how this repo's git is laid out —
             and neither earned a heading of its own. */}
         <SettingsCard icon={GitBranch}>
+          {/* Clone address — shared, unlike anything else here. Any member may CONTRIBUTE
+              it by binding a local folder in the desktop app; only the owner or an org
+              admin may correct one already set.
+
+              The same row the Tracker tab shows as the GitHub link, and it sits on this
+              tab for the same reason it does on the desktop: here it is the address a
+              teammate clones this repo FROM, there it is the repository the issues are
+              filed IN. */}
+          {remoteUrlRow(
+            t('repo.general.remoteUrl'),
+            readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp'),
+          )}
+
           <SettingRow
             label={t('repo.branches.development')}
             description={t('repo.branches.developmentHelp')}
