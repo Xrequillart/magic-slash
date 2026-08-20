@@ -211,8 +211,17 @@ describe('message catalogues', () => {
       'org.role.admin',
       'org.colActions',
       'org.invitations',
-      'repo.branches.section',
-      'repo.worktree.section',
+      // Section and tab titles French borrows whole. "Git", "Tracker", "Repository",
+      // "Skills" and "Danger" are the words the French UI uses too — translating
+      // "Tracker" to "Outil de suivi" here would disagree with the tracker SETTING
+      // right under it, which is translated, and the row would read as two names for
+      // two different things.
+      'repo.git.section',
+      'repo.tracker.section',
+      'repo.tab.repository',
+      'repo.tab.tracker',
+      'repo.tab.skills',
+      'repo.tab.danger',
       'repo.commit.section',
       'repo.commit.style',
       'repo.commit.format',
@@ -222,7 +231,6 @@ describe('message catalogues', () => {
       'repo.resolve.section',
       'repo.resolve.askNoticeAmend',
       'repo.pr.section',
-      'repo.issues.section',
       // Two duration units. "{count}h" is the form the banner was specified with in
       // both languages, and "min" is the same abbreviation in French.
       'skillHours.hours',

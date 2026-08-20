@@ -450,18 +450,27 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.general.color': 'Couleur',
   'repo.general.colorHelp': 'Couleur du projet dans la barre latérale',
 
-  'repo.branches.section': 'Branches',
+  'repo.tab.repository': 'Repository',
+  'repo.tab.tracker': 'Tracker',
+  'repo.tab.skills': 'Skills',
+  'repo.tab.danger': 'Danger',
+  'repo.langs.section': 'Langues',
+  'repo.langs.commit': 'Langue des commits',
+  'repo.langs.pullRequest': 'Langue des pull requests',
+  'repo.git.section': 'Git',
+  'repo.tracker.section': 'Tracker',
+  'repo.tracker.githubTarget': 'Issues GitHub',
+  'repo.tracker.githubTargetHelp': 'Déduit du remote du repository. À surcharger dans la config seulement si les issues vivent dans un autre repository',
+  'repo.tracker.githubTargetNone': 'Aucun remote GitHub',
   'repo.branches.development': 'Branche de développement',
   'repo.branches.developmentHelp': 'Branche de référence pour comparer les commits',
   'repo.branches.select': 'Choisir une branche',
 
-  'repo.worktree.section': 'Worktree',
   'repo.worktree.files': 'Fichiers à copier',
   'repo.worktree.filesHelp':
     'Fichiers copiés depuis le dépôt principal vers les nouveaux worktrees (ex. : .env, .env.local)',
 
   'repo.commit.section': 'Commit',
-  'repo.commit.language': 'Langue',
   'repo.commit.languageHelp': 'Langue des messages de commit',
   'repo.commit.style': 'Style',
   'repo.commit.styleHelp': 'Une seule ligne, ou plusieurs lignes avec un corps',
@@ -527,7 +536,6 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.templateGenerate': 'Générer un modèle',
   'repo.pr.templatePlaceholder': 'Contenu du modèle de PR…',
 
-  'repo.issues.section': 'Jira / GitHub Issues',
   'repo.issues.commentLang': 'Langue des commentaires',
   'repo.issues.commentLangHelp': 'Langue des commentaires sur les tickets Jira et GitHub',
   'repo.issues.ticketLang': 'Langue des tickets',

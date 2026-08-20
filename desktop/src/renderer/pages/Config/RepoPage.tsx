@@ -18,11 +18,33 @@ import {
   type PlanSettingsInput,
 } from '../../../types'
 import { resolveTicketLanguage } from '../../../languages'
-import { resolveJiraProject, resolveJiraSite } from '../../../tracker'
+import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../../../tracker'
 
 interface RepoPageProps {
   repoName: string
 }
+
+/**
+ * The four tabs the page is cut into, grouped by SUBJECT rather than by skill.
+ *
+ * That regrouping is the point. The tracker used to be spread over three sections
+ * — the remote under General, the Jira URL under Issues, the project key and the
+ * issue types under Plan — and the languages over five, so a single question
+ * ("where do this repo's tickets go?", "what language does it work in?") could not
+ * be answered without reading the whole page and remembering the answers.
+ *
+ * Message KEYS, not labels, like SETTINGS_TABS in Config/index.tsx: module scope
+ * is evaluated once at import, so a `t()` call here would pin the bar to whatever
+ * language the app booted in.
+ */
+type RepoTab = 'repository' | 'tracker' | 'skills' | 'danger'
+
+const REPO_TABS: { id: RepoTab; labelKey: MessageKey }[] = [
+  { id: 'repository', labelKey: 'repo.tab.repository' },
+  { id: 'tracker', labelKey: 'repo.tab.tracker' },
+  { id: 'skills', labelKey: 'repo.tab.skills' },
+  { id: 'danger', labelKey: 'repo.tab.danger' },
+]
 
 /**
  * The label each `plan` enum value wears in the form.
@@ -233,6 +255,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const { orgs } = useOrg()
   const t = useT()
   const { status } = useAuth()
+  const [tab, setTab] = useState<RepoTab>('repository')
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [editedName, setEditedName] = useState(repoName)
@@ -660,6 +683,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
   // with '' on the next save of a neighbouring field.
   const jiraSiteUrlVal = resolveJiraSite(repo)
   const jiraProjectVal = resolveJiraProject(repo)
+  // Derived from the remote, or from an `issues.githubIssuesUrl` override when the
+  // issues live in another repository. Displayed, never edited — see the Tracker tab.
+  const githubIssuesTargetVal = resolveGitHubIssuesUrl(repo)
   // The two free-text Jira issue-type names read '' when unset so the field shows
   // its placeholder — the documented default — rather than a value nobody typed.
   const planEpicTypeVal = planSettings.issueTypes?.epic || ''
@@ -790,803 +816,860 @@ export function RepoPage({ repoName }: RepoPageProps) {
         </div>
       )}
 
-      {/* Scope / Sharing Section */}
-      <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.scope.section')}</h2>
-        <div className="bg-surface border border-line-strong rounded-xl p-4 flex items-start justify-between gap-6">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              {repo?.orgId ? (
-                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-medium">
-                  <Building2 className="w-3.5 h-3.5" />
-                  {scopeOrg ? t('repo.scope.teamNamed', { name: scopeOrg.name }) : t('repo.scope.team')}
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-strong text-text-secondary text-xs font-medium">
-                  <Lock className="w-3.5 h-3.5" />
-                  {t('repo.scope.personal')}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-text-secondary/50">
-              {repo?.orgId ? t('repo.scope.teamHelp') : t('repo.scope.personalHelp')}
-            </p>
-          </div>
-          <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 shrink-0 min-w-0">
-            {repo?.orgId ? (
-              <button
-                onClick={handleMakePersonal}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                {t('repo.scope.makePersonal')}
-              </button>
-            ) : orgs.length > 0 ? (
-              <div className="relative">
-                <select
-                  value=""
-                  onChange={(e) => handleShare(e.target.value)}
-                  className={`${SELECT} w-full`}
-                >
-                  <option value="" disabled>{t('repo.scope.sharePlaceholder')}</option>
-                  {orgs.map((o) => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
-              </div>
-            ) : (
-              <p className="text-xs text-text-secondary/40 text-right">{t('repo.scope.joinOrg')}</p>
-            )}
-          </fieldset>
-        </div>
+      {/* Sub-tabs, INSIDE one entry of the settings rail. Underlined rather than
+          pilled on purpose: the rail on the left already owns the pill, and a second
+          pill at a second level reads as two rails competing. Danger sits apart, at
+          the far end, for the reason it has always had its own section — nothing over
+          there is a setting.
+
+          Local state, not the hash route: `contentKey` in Config/index.tsx keys the
+          content pane on `repo:{name}`, so switching sub-tab does not remount this
+          page and the choice survives. Leaving the repository and coming back does
+          remount it, which lands on Repository — the right default for reopening a
+          repo you have not touched in a while. */}
+      <div className="flex items-center gap-1 mb-6 border-b border-line-subtle">
+        {REPO_TABS.map(({ id, labelKey }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors ${
+              tab === id
+                ? (id === 'danger' ? 'border-red text-red' : 'border-accent text-ink')
+                : 'border-transparent text-text-secondary hover:text-ink'
+            } ${id === 'danger' ? 'ml-auto' : ''}`}
+          >
+            {t(labelKey)}
+          </button>
+        ))}
       </div>
 
-      {/* General Section */}
-      <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.general.section')}</h2>
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          {/* Name */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+
+      {tab === 'repository' && (
+        <>
+        {/* Scope / Sharing Section */}
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.scope.section')}</h2>
+          <div className="bg-surface border border-line-strong rounded-xl p-4 flex items-start justify-between gap-6">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.general.name')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.general.nameHelp')}</p>
+              <div className="flex items-center gap-2 mb-1">
+                {repo?.orgId ? (
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-accent/15 text-accent text-xs font-medium">
+                    <Building2 className="w-3.5 h-3.5" />
+                    {scopeOrg ? t('repo.scope.teamNamed', { name: scopeOrg.name }) : t('repo.scope.team')}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface-strong text-text-secondary text-xs font-medium">
+                    <Lock className="w-3.5 h-3.5" />
+                    {t('repo.scope.personal')}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-text-secondary/50">
+                {repo?.orgId ? t('repo.scope.teamHelp') : t('repo.scope.personalHelp')}
+              </p>
             </div>
-            <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
-              <input
-                type="text"
-                value={editedName}
-                onChange={(e) => setEditedName(e.target.value)}
-                className={`${INPUT} w-full`}
-              />
-              {editedName !== repoName && editedName.trim() && (
-                <button onClick={handleRename} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                  {t('common.save')}
+            <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 shrink-0 min-w-0">
+              {repo?.orgId ? (
+                <button
+                  onClick={handleMakePersonal}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  {t('repo.scope.makePersonal')}
                 </button>
+              ) : orgs.length > 0 ? (
+                <div className="relative">
+                  <select
+                    value=""
+                    onChange={(e) => handleShare(e.target.value)}
+                    className={`${SELECT} w-full`}
+                  >
+                    <option value="" disabled>{t('repo.scope.sharePlaceholder')}</option>
+                    {orgs.map((o) => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+                </div>
+              ) : (
+                <p className="text-xs text-text-secondary/40 text-right">{t('repo.scope.joinOrg')}</p>
               )}
             </fieldset>
           </div>
+        </div>
 
-          {/* Path — always editable: the folder is this machine's, private to
-              you, and a read-only member still needs to point the repo at it. */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.general.path')}</label>
-              <p className="text-xs text-text-secondary/50">
-                {readOnly ? t('repo.general.pathHelpReadOnly') : t('repo.general.pathHelp')}
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 w-72">
-              <div className="flex items-center gap-2">
+        {/* General Section */}
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.general.section')}</h2>
+          <div className="bg-surface border border-line-strong rounded-xl p-4">
+            {/* Name */}
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.general.name')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.general.nameHelp')}</p>
+              </div>
+              <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
                 <input
                   type="text"
-                  value={path}
-                  onChange={(e) => handlePathChange(e.target.value)}
-                  className={`${INPUT} flex-1 min-w-0`}
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  className={`${INPUT} w-full`}
                 />
-                <button
-                  onClick={handlePickFolder}
-                  title={t('repo.general.chooseFolder')}
-                  className="p-2 bg-surface border border-line rounded-lg text-text-secondary hover:text-ink transition-colors shrink-0"
-                >
-                  <FolderOpen className="w-4 h-4" />
-                </button>
-              </div>
-              {pathStatus && (
-                <div className={`flex items-center gap-1.5 text-xs ${
-                  pathStatus.isGit ? 'text-green' : 'text-yellow'
-                }`}>
-                  {pathStatus.isGit ? (
-                    <><Check className="w-3 h-3" /> {t('repo.general.pathValid')}</>
-                  ) : pathStatus.exists ? (
-                    <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathNotGit')}</>
-                  ) : (
-                    <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathMissing')}</>
-                  )}
-                </div>
-              )}
-              {pathChanged && (
-                <button onClick={savePath} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                  {t('common.save')}
-                </button>
-              )}
+                {editedName !== repoName && editedName.trim() && (
+                  <button onClick={handleRename} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
+                    {t('common.save')}
+                  </button>
+                )}
+              </fieldset>
             </div>
-          </div>
 
-          {/* Clone address — shared, unlike the path. Any member may CONTRIBUTE
-              it by binding a folder, but only the owner or an org admin may
-              correct one that is already set: the capture runs on a member's own
-              machine, so a wrong address can get in, and a rename or a transfer
-              makes a right one go stale. Read-only members see it, plainly. */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.general.remoteUrl')}</label>
-              <p className="text-xs text-text-secondary/50">
-                {readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp')}
-              </p>
-            </div>
-            <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
-              <input
-                type="text"
-                value={remoteUrl}
-                placeholder="https://github.com/owner/repo"
-                onChange={(e) => handleRemoteUrlChange(e.target.value)}
-                className={`${INPUT} w-full`}
-              />
-              {remoteUrlError && (
-                <div className="flex items-center gap-1.5 text-xs text-red">
-                  <AlertTriangle className="w-3 h-3" /> {remoteUrlError}
-                </div>
-              )}
-              {remoteUrlChanged && (
-                <button onClick={saveRemoteUrl} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                  {t('common.save')}
-                </button>
-              )}
-            </fieldset>
-          </div>
-
-          {/* Keywords */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.general.keywords')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.general.keywordsHelp')}</p>
-            </div>
-            <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
-              <input
-                type="text"
-                value={keywords}
-                onChange={(e) => handleKeywordsChange(e.target.value)}
-                className={`${INPUT} w-full`}
-              />
-              {keywordsChanged && (
-                <button onClick={saveKeywords} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                  {t('common.save')}
-                </button>
-              )}
-            </fieldset>
-          </div>
-
-          {/* Discussion Language */}
-          <LangSelect langKey="discussion" label={t('repo.general.discussionLang')} description={t('repo.general.discussionLangHelp')} />
-
-          {/* Color */}
-          <div className="flex items-start justify-between gap-6 py-3">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.general.color')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.general.colorHelp')}</p>
-            </div>
-            <fieldset disabled={readOnly} className="flex gap-2 min-w-0">
-              {PROJECT_COLORS.map((color) => (
-                <button
-                  key={color}
-                  onClick={() => handleColorChange(color)}
-                  className={`w-6 h-6 rounded-full transition-all ${
-                    repo?.color === color
-                      ? 'ring-2 ring-offset-2 ring-offset-bg-secondary ring-ink'
-                      : 'hover:scale-110'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  title={color}
-                />
-              ))}
-            </fieldset>
-          </div>
-        </div>
-      </div>
-
-      {/* Branches Section */}
-      <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.branches.section')}</h2>
-        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-          <div className="flex items-start justify-between gap-6 py-3">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.branches.development')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.branches.developmentHelp')}</p>
-            </div>
-            <div className="relative">
-              <select
-                value={branchSettings.development || ''}
-                onChange={(e) => handleBranchSettingChange('development', e.target.value)}
-                disabled={branchesLoading}
-                className={`${SELECT} w-52 disabled:opacity-50`}
-              >
-                <option value="">
-                  {branchesLoading ? t('common.loading') : t('repo.branches.select')}
-                </option>
-                {remoteBranches.map((branch) => (
-                  <option key={branch} value={branch}>{branch}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
-            </div>
-          </div>
-        </fieldset>
-      </div>
-
-      {/* Worktree Files Section */}
-      <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.worktree.section')}</h2>
-        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-          <div className="py-3">
-            <div className="flex-1 mb-3">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.worktree.files')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.worktree.filesHelp')}</p>
-            </div>
-            <ChipList
-              items={repo.worktreeFiles || []}
-              onChange={handleWorktreeFilesChange}
-              placeholder=".env"
-              inputId="worktree-file-input"
-            />
-          </div>
-        </fieldset>
-      </div>
-
-      {/* Commit Section */}
-      <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.commit.section')}</h2>
-        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-          <LangSelect langKey="commit" label={t('repo.commit.language')} description={t('repo.commit.languageHelp')} />
-
-          {/* Style */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
-            </div>
-            <div className="relative">
-              <select
-                value={styleVal}
-                onChange={(e) => handleCommitSettingChange('style', e.target.value)}
-                className={`${SELECT} w-52`}
-              >
-                <option value="single-line">{t('repo.commit.styleSingle')}</option>
-                <option value="multi-line">{t('repo.commit.styleMulti')}</option>
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Format */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
-            </div>
-            <div className="relative">
-              <select
-                value={formatVal}
-                onChange={(e) => handleCommitSettingChange('format', e.target.value)}
-                className={`${SELECT} w-52`}
-              >
-                <option value="conventional">{t('repo.commit.formatConventional')}</option>
-                <option value="angular">{t('repo.commit.formatAngular')}</option>
-                <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
-                <option value="none">{t('repo.commit.formatNone')}</option>
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Co-Author Toggle */}
-          <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.commit.coAuthor')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.commit.coAuthorHelp')}</p>
-            </div>
-            <Switch
-              checked={coAuthorVal}
-              onChange={(next) => handleCommitSettingChange('coAuthor', next)}
-              label={t('repo.commit.coAuthor')}
-            />
-          </div>
-
-          {/* Include Ticket ID Toggle */}
-          <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.commit.ticketId')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.commit.ticketIdHelp')}</p>
-            </div>
-            <Switch
-              checked={includeTicketIdVal}
-              onChange={(next) => handleCommitSettingChange('includeTicketId', next)}
-              label={t('repo.commit.ticketId')}
-            />
-          </div>
-
-          {/* Direct commits on a protected branch. ON means allowed-but-asked; OFF
-              means /magic:commit branches off first. The help text has to say which
-              way round it is, because both states do something. */}
-          <div className="flex items-center justify-between gap-6 py-3">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.commit.protectedBranch')}</label>
-              <p className="text-xs text-text-secondary/50">
-                {allowOnProtectedBranchVal
-                  ? t('repo.commit.protectedBranchHelpOn')
-                  : t('repo.commit.protectedBranchHelpOff')}
-              </p>
-            </div>
-            <Switch
-              checked={allowOnProtectedBranchVal}
-              onChange={(next) => handleCommitSettingChange('allowOnProtectedBranch', next)}
-              label={t('repo.commit.protectedBranch')}
-            />
-          </div>
-
-          {/* Commit Preview */}
-          <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
-            <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
-            <pre className="text-sm whitespace-pre-wrap text-text-secondary">{commitPreview}</pre>
-          </div>
-        </fieldset>
-      </div>
-
-      {/* Resolve Section */}
-      <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.resolve.section')}</h2>
-        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-          {/* Commit Mode */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitMode')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitModeHelp')}</p>
-            </div>
-            <div className="relative">
-              <select
-                value={resolveCommitModeVal}
-                onChange={(e) => handleResolveSettingChange('commitMode', e.target.value)}
-                className={`${SELECT} w-52`}
-              >
-                <option value="new">{t('repo.resolve.modeNew')}</option>
-                <option value="amend">{t('repo.resolve.modeAmend')}</option>
-                <option value="ask">{t('repo.resolve.modeAsk')}</option>
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Commit Format Source - shown when a new commit is possible (new or ask) */}
-          {resolveCommitModeVal !== 'amend' && (
+            {/* Path — always editable: the folder is this machine's, private to
+                you, and a read-only member still needs to point the repo at it. */}
             <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
               <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitFormat')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitFormatHelp')}</p>
-              </div>
-              <div className="relative">
-                <select
-                  value={resolveUseCommitConfigVal ? 'commit' : 'custom'}
-                  onChange={(e) => handleResolveSettingChange('useCommitConfig', e.target.value === 'commit')}
-                  className={`${SELECT} w-52`}
-                >
-                  <option value="commit">{t('repo.resolve.useCommitConfig')}</option>
-                  <option value="custom">{t('repo.resolve.customConfig')}</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-              </div>
-            </div>
-          )}
-
-          {/* Custom Style & Format - when a new commit is possible (new or ask) and useCommitConfig is false */}
-          {resolveCommitModeVal !== 'amend' && !resolveUseCommitConfigVal && (
-            <>
-              <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
-                  <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
-                </div>
-                <div className="relative">
-                  <select
-                    value={resolveStyleVal}
-                    onChange={(e) => handleResolveSettingChange('style', e.target.value)}
-                    className={`${SELECT} w-52`}
-                  >
-                    <option value="single-line">{t('repo.commit.styleSingle')}</option>
-                    <option value="multi-line">{t('repo.commit.styleMulti')}</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
-                  <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
-                </div>
-                <div className="relative">
-                  <select
-                    value={resolveFormatVal}
-                    onChange={(e) => handleResolveSettingChange('format', e.target.value)}
-                    className={`${SELECT} w-52`}
-                  >
-                    <option value="conventional">{t('repo.commit.formatConventional')}</option>
-                    <option value="angular">{t('repo.commit.formatAngular')}</option>
-                    <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
-                    <option value="none">{t('repo.commit.formatNone')}</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Reply to Comments Toggle */}
-          <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.reply')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyHelp')}</p>
-            </div>
-            <Switch
-              checked={resolveReplyVal}
-              onChange={(next) => handleResolveSettingChange('replyToComments', next)}
-              label={t('repo.resolve.reply')}
-            />
-          </div>
-
-          {/* Reply Language - only when reply is enabled */}
-          {resolveReplyVal && (
-            <div className="flex items-start justify-between gap-6 py-3">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.replyLang')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyLangHelp')}</p>
-              </div>
-              <div className="relative">
-                <select
-                  value={resolveReplyLangVal}
-                  onChange={(e) => handleResolveSettingChange('replyLanguage', e.target.value)}
-                  className={`${SELECT} w-52`}
-                >
-                  <option value="en">English</option>
-                  <option value="fr">Français</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-              </div>
-            </div>
-          )}
-
-          {/* Preview / Info */}
-          {resolveCommitModeVal === 'new' && (
-            <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
-              <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
-              <pre className="text-sm whitespace-pre-wrap text-text-secondary">{resolvePreview}</pre>
-            </div>
-          )}
-          {resolveCommitModeVal === 'amend' && (
-            <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0" />
-              <span className="text-sm text-text-secondary">{t('repo.resolve.amendNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code></span>
-            </div>
-          )}
-          {resolveCommitModeVal === 'ask' && (
-            <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0 mt-0.5" />
-              <span className="text-sm text-text-secondary">{t('repo.resolve.askNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
-            </div>
-          )}
-        </fieldset>
-      </div>
-
-      {/* Pull Request Section */}
-      <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.pr.section')}</h2>
-        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-          <LangSelect langKey="pullRequest" label={t('repo.commit.language')} description={t('repo.pr.languageHelp')} />
-
-          {/* Auto-link Tickets */}
-          <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.pr.autoLink')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.pr.autoLinkHelp')}</p>
-            </div>
-            <Switch
-              checked={autoLinkTicketsVal}
-              onChange={(next) => handlePRSettingChange('autoLinkTickets', next)}
-              label={t('repo.pr.autoLink')}
-            />
-          </div>
-
-          {/* Watch CI & Review */}
-          <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.pr.watchCI')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.pr.watchCIHelp')}</p>
-            </div>
-            <Switch
-              checked={watchCIVal}
-              onChange={(next) => handlePRSettingChange('watchCI', next)}
-              label={t('repo.pr.watchCI')}
-            />
-          </div>
-
-          {/* Test Accounts */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.pr.testAccounts')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.pr.testAccountsHelp')}</p>
-              {testAccountsVal === 'inline' && (
-                <p className="text-xs text-yellow mt-1">{t('repo.pr.testAccountsPublicWarn')}</p>
-              )}
-            </div>
-            <div className="relative">
-              <select
-                value={testAccountsVal}
-                onChange={(e) => handlePRSettingChange('testAccounts', e.target.value)}
-                className={`${SELECT} w-52`}
-              >
-                <option value="off">{t('repo.pr.testAccountsOff')}</option>
-                <option value="reference">{t('repo.pr.testAccountsReference')}</option>
-                <option value="inline">{t('repo.pr.testAccountsInline')}</option>
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Test Accounts Source - only when test accounts are surfaced */}
-          {testAccountsVal !== 'off' && (
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.pr.testAccountsSource')}</label>
+                <label className="block text-sm font-medium mb-0.5">{t('repo.general.path')}</label>
                 <p className="text-xs text-text-secondary/50">
-                  {t('repo.pr.testAccountsSourceHelp')}
+                  {readOnly ? t('repo.general.pathHelpReadOnly') : t('repo.general.pathHelp')}
                 </p>
               </div>
-              <input
-                type="text"
-                value={testAccountsSourceVal}
-                onChange={(e) => handlePRSettingChange('testAccountsSource', e.target.value)}
-                placeholder="docs/test-accounts.md"
-                className={`${INPUT} w-72`}
-              />
-            </div>
-          )}
-
-          {/* PR Template */}
-          <div className="py-3">
-            <div className="flex items-start justify-between gap-6 mb-3">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.pr.template')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.pr.templateHelp')}</p>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                {templateLoading ? (
-                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('repo.pr.templateChecking')}</>
-                ) : template?.exists ? (
-                  <><Check className="w-3.5 h-3.5 text-green" /> {t('repo.pr.templateFound')}</>
-                ) : (
+              <div className="flex flex-col gap-2 w-72">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={path}
+                    onChange={(e) => handlePathChange(e.target.value)}
+                    className={`${INPUT} flex-1 min-w-0`}
+                  />
                   <button
-                    onClick={handleGenerateTemplate}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
+                    onClick={handlePickFolder}
+                    title={t('repo.general.chooseFolder')}
+                    className="p-2 bg-surface border border-line rounded-lg text-text-secondary hover:text-ink transition-colors shrink-0"
                   >
-                    <Plus className="w-3 h-3" />
-                    {t('repo.pr.templateGenerate')}
+                    <FolderOpen className="w-4 h-4" />
+                  </button>
+                </div>
+                {pathStatus && (
+                  <div className={`flex items-center gap-1.5 text-xs ${
+                    pathStatus.isGit ? 'text-green' : 'text-yellow'
+                  }`}>
+                    {pathStatus.isGit ? (
+                      <><Check className="w-3 h-3" /> {t('repo.general.pathValid')}</>
+                    ) : pathStatus.exists ? (
+                      <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathNotGit')}</>
+                    ) : (
+                      <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathMissing')}</>
+                    )}
+                  </div>
+                )}
+                {pathChanged && (
+                  <button onClick={savePath} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
+                    {t('common.save')}
                   </button>
                 )}
               </div>
             </div>
 
-            {template?.exists && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-text-secondary/50 bg-surface px-2 py-1 rounded">
-                    {template.path}
-                  </span>
-                  {templateChanged && (
-                    <button
-                      onClick={handleSaveTemplate}
-                      className="px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors"
-                    >
-                      {t('common.save')}
-                    </button>
-                  )}
+            {/* Clone address — shared, unlike the path. Any member may CONTRIBUTE
+                it by binding a folder, but only the owner or an org admin may
+                correct one that is already set: the capture runs on a member's own
+                machine, so a wrong address can get in, and a rename or a transfer
+                makes a right one go stale. Read-only members see it, plainly. */}
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.general.remoteUrl')}</label>
+                <p className="text-xs text-text-secondary/50">
+                  {readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp')}
+                </p>
+              </div>
+              <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
+                <input
+                  type="text"
+                  value={remoteUrl}
+                  placeholder="https://github.com/owner/repo"
+                  onChange={(e) => handleRemoteUrlChange(e.target.value)}
+                  className={`${INPUT} w-full`}
+                />
+                {remoteUrlError && (
+                  <div className="flex items-center gap-1.5 text-xs text-red">
+                    <AlertTriangle className="w-3 h-3" /> {remoteUrlError}
+                  </div>
+                )}
+                {remoteUrlChanged && (
+                  <button onClick={saveRemoteUrl} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
+                    {t('common.save')}
+                  </button>
+                )}
+              </fieldset>
+            </div>
+
+            {/* Keywords */}
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.general.keywords')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.general.keywordsHelp')}</p>
+              </div>
+              <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
+                <input
+                  type="text"
+                  value={keywords}
+                  onChange={(e) => handleKeywordsChange(e.target.value)}
+                  className={`${INPUT} w-full`}
+                />
+                {keywordsChanged && (
+                  <button onClick={saveKeywords} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
+                    {t('common.save')}
+                  </button>
+                )}
+              </fieldset>
+            </div>
+
+
+            {/* Color */}
+            <div className="flex items-start justify-between gap-6 py-3">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.general.color')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.general.colorHelp')}</p>
+              </div>
+              <fieldset disabled={readOnly} className="flex gap-2 min-w-0">
+                {PROJECT_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => handleColorChange(color)}
+                    className={`w-6 h-6 rounded-full transition-all ${
+                      repo?.color === color
+                        ? 'ring-2 ring-offset-2 ring-offset-bg-secondary ring-ink'
+                        : 'hover:scale-110'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  />
+                ))}
+              </fieldset>
+            </div>
+          </div>
+        </div>
+
+        {/* Languages — one block for every language this repo works in.
+            They used to be one row per skill section: discussion under General,
+            commits under Commit, titles under Pull Request, two more under Issues and
+            review replies under Resolve. Each was next to what it affected, which
+            sounds right and meant that answering "what language does this repo work
+            in?" required visiting five sections and remembering all five answers. */}
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.langs.section')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            <LangSelect langKey="discussion" label={t('repo.general.discussionLang')} description={t('repo.general.discussionLangHelp')} />
+            <LangSelect langKey="commit" label={t('repo.langs.commit')} description={t('repo.commit.languageHelp')} />
+            <LangSelect langKey="pullRequest" label={t('repo.langs.pullRequest')} description={t('repo.pr.languageHelp')} />
+            <LangSelect langKey="jiraComment" label={t('repo.issues.commentLang')} description={t('repo.issues.commentLangHelp')} />
+            <LangSelect
+              langKey="ticket"
+              label={t('repo.issues.ticketLang')}
+              description={t('repo.issues.ticketLangHelp')}
+              resolvedValue={resolveTicketLanguage(repoLangs)}
+            />
+
+            {/* Not a LangSelect: review replies live in `resolve.replyLanguage`, not in
+                the `languages` block, and they fall back to the discussion language
+                rather than to English. Shown only when replies are enabled — a language
+                for something switched off is a setting with no effect. Styled like its
+                neighbours so the block still reads as one list. */}
+            {resolveReplyVal && (
+              <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
+                <div className="flex-1">
+                  <label className="block text-sm font-semibold mb-1">{t('repo.resolve.replyLang')}</label>
+                  <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyLangHelp')}</p>
                 </div>
-                <textarea
-                  value={templateContent}
-                  onChange={(e) => {
-                    setTemplateContent(e.target.value)
-                    setTemplateChanged(e.target.value !== template.content)
-                  }}
-                  className="w-full h-64 p-4 bg-surface border border-line-field rounded-lg text-sm resize-y focus:outline-none focus:border-accent transition-colors"
-                  placeholder={t('repo.pr.templatePlaceholder')}
+                <div className="relative">
+                  <select
+                    value={resolveReplyLangVal}
+                    onChange={(e) => handleResolveSettingChange('replyLanguage', e.target.value)}
+                    className={`${SELECT} w-52`}
+                  >
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+                </div>
+              </div>
+            )}
+          </fieldset>
+        </div>
+
+        {/* Git — the development branch and the worktree files, which were two
+            sections of one row each. Both answer the same question, how this repo's
+            git is laid out, and neither needed a heading of its own. */}
+        {/* Git Section */}
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.git.section')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.branches.development')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.branches.developmentHelp')}</p>
+              </div>
+              <div className="relative">
+                <select
+                  value={branchSettings.development || ''}
+                  onChange={(e) => handleBranchSettingChange('development', e.target.value)}
+                  disabled={branchesLoading}
+                  className={`${SELECT} w-52 disabled:opacity-50`}
+                >
+                  <option value="">
+                    {branchesLoading ? t('common.loading') : t('repo.branches.select')}
+                  </option>
+                  {remoteBranches.map((branch) => (
+                    <option key={branch} value={branch}>{branch}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+              </div>
+            </div>
+
+            <div className="py-3">
+              <div className="flex-1 mb-3">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.worktree.files')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.worktree.filesHelp')}</p>
+              </div>
+              <ChipList
+                items={repo.worktreeFiles || []}
+                onChange={handleWorktreeFilesChange}
+                placeholder=".env"
+                inputId="worktree-file-input"
+              />
+            </div>
+          </fieldset>
+        </div>
+        </>
+      )}
+
+
+      {tab === 'tracker' && (
+        <>
+        {/* Tracker — everything about WHERE this repo's tickets live, and nothing else.
+            It was three sections: the remote under General, the Jira URL under Issues,
+            the project key and the issue types under Plan. */}
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.section')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            <SettingRow label={t('repo.plan.tracker')} description={t('repo.plan.trackerHelp')}>
+              <EnumSelect
+                value={planTrackerVal}
+                values={PLAN_TRACKERS}
+                labels={PLAN_TRACKER_LABELS}
+                onChange={(v) => handlePlanSettingChange('tracker', v)}
+              />
+            </SettingRow>
+
+            {/* Read-only, and that is the point: the GitHub target is DERIVED from the
+                remote on the Repository tab, so there is nothing to fill in here. It is
+                still shown, because "where do my issues go" is the one question this tab
+                exists to answer, and a derived answer left invisible is indistinguishable
+                from no answer at all. resolveGitHubIssuesUrl() honours an existing
+                `issues.githubIssuesUrl` override, which is what a value pointing at
+                another repository means here. */}
+            <SettingRow label={t('repo.tracker.githubTarget')} description={t('repo.tracker.githubTargetHelp')}>
+              <span className={`w-72 text-sm ${githubIssuesTargetVal ? 'text-text-secondary' : 'text-text-secondary/40 italic'} truncate`}>
+                {githubIssuesTargetVal || t('repo.tracker.githubTargetNone')}
+              </span>
+            </SettingRow>
+
+            {/* The Jira site is NOT hidden when the tracker is GitHub, unlike the three
+                rows below it. It is the base of every ticket link /magic:start, :pr and
+                :done display, so a repo that plans on GitHub and tracks work in Jira
+                still needs it — whereas a project key and Jira issue-type names have no
+                meaning at all outside Jira. */}
+            <SettingRow label={t('repo.issues.jiraUrl')} description={t('repo.issues.jiraUrlHelp')}>
+              <input
+                type="text"
+                value={jiraSiteUrlVal}
+                onChange={(e) => handleJiraSettingChange('siteUrl', e.target.value)}
+                placeholder="https://company.atlassian.net/browse/"
+                className={`${INPUT} w-72`}
+              />
+            </SettingRow>
+
+            {/* 'ask' can still land in Jira, so these stay visible there. */}
+            {planTrackerVal !== 'github' && (
+              <>
+                <SettingRow label={t('repo.plan.jiraProject')} description={t('repo.plan.jiraProjectHelp')}>
+                  <input
+                    type="text"
+                    value={jiraProjectVal}
+                    onChange={(e) => handleJiraSettingChange('projectKey', e.target.value)}
+                    placeholder="PROJ"
+                    className={`${INPUT} w-72`}
+                  />
+                </SettingRow>
+
+                <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
+                  <input
+                    type="text"
+                    value={planEpicTypeVal}
+                    onChange={(e) => handlePlanIssueTypeChange('epic', e.target.value)}
+                    placeholder="Epic"
+                    className={`${INPUT} w-72`}
+                  />
+                </SettingRow>
+
+                <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
+                  <input
+                    type="text"
+                    value={planStoryTypeVal}
+                    onChange={(e) => handlePlanIssueTypeChange('story', e.target.value)}
+                    placeholder="Story"
+                    className={`${INPUT} w-72`}
+                  />
+                </SettingRow>
+              </>
+            )}
+
+            <SettingRow align="center" label={t('repo.issues.commentOnPR')} description={t('repo.issues.commentOnPRHelp')}>
+              <Switch
+                checked={commentOnPRVal}
+                onChange={(next) => handleIssuesSettingChange('commentOnPR', next)}
+                label={t('repo.issues.commentOnPR')}
+              />
+            </SettingRow>
+          </fieldset>
+        </div>
+        </>
+      )}
+
+
+      {tab === 'skills' && (
+        <>
+        {/* Commit Section */}
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.commit.section')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            {/* Style */}
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
+              </div>
+              <div className="relative">
+                <select
+                  value={styleVal}
+                  onChange={(e) => handleCommitSettingChange('style', e.target.value)}
+                  className={`${SELECT} w-52`}
+                >
+                  <option value="single-line">{t('repo.commit.styleSingle')}</option>
+                  <option value="multi-line">{t('repo.commit.styleMulti')}</option>
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Format */}
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
+              </div>
+              <div className="relative">
+                <select
+                  value={formatVal}
+                  onChange={(e) => handleCommitSettingChange('format', e.target.value)}
+                  className={`${SELECT} w-52`}
+                >
+                  <option value="conventional">{t('repo.commit.formatConventional')}</option>
+                  <option value="angular">{t('repo.commit.formatAngular')}</option>
+                  <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
+                  <option value="none">{t('repo.commit.formatNone')}</option>
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Co-Author Toggle */}
+            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.commit.coAuthor')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.commit.coAuthorHelp')}</p>
+              </div>
+              <Switch
+                checked={coAuthorVal}
+                onChange={(next) => handleCommitSettingChange('coAuthor', next)}
+                label={t('repo.commit.coAuthor')}
+              />
+            </div>
+
+            {/* Include Ticket ID Toggle */}
+            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.commit.ticketId')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.commit.ticketIdHelp')}</p>
+              </div>
+              <Switch
+                checked={includeTicketIdVal}
+                onChange={(next) => handleCommitSettingChange('includeTicketId', next)}
+                label={t('repo.commit.ticketId')}
+              />
+            </div>
+
+            {/* Direct commits on a protected branch. ON means allowed-but-asked; OFF
+                means /magic:commit branches off first. The help text has to say which
+                way round it is, because both states do something. */}
+            <div className="flex items-center justify-between gap-6 py-3">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.commit.protectedBranch')}</label>
+                <p className="text-xs text-text-secondary/50">
+                  {allowOnProtectedBranchVal
+                    ? t('repo.commit.protectedBranchHelpOn')
+                    : t('repo.commit.protectedBranchHelpOff')}
+                </p>
+              </div>
+              <Switch
+                checked={allowOnProtectedBranchVal}
+                onChange={(next) => handleCommitSettingChange('allowOnProtectedBranch', next)}
+                label={t('repo.commit.protectedBranch')}
+              />
+            </div>
+
+            {/* Commit Preview */}
+            <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
+              <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
+              <pre className="text-sm whitespace-pre-wrap text-text-secondary">{commitPreview}</pre>
+            </div>
+          </fieldset>
+        </div>
+
+        {/* Resolve Section */}
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.resolve.section')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            {/* Commit Mode */}
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitMode')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitModeHelp')}</p>
+              </div>
+              <div className="relative">
+                <select
+                  value={resolveCommitModeVal}
+                  onChange={(e) => handleResolveSettingChange('commitMode', e.target.value)}
+                  className={`${SELECT} w-52`}
+                >
+                  <option value="new">{t('repo.resolve.modeNew')}</option>
+                  <option value="amend">{t('repo.resolve.modeAmend')}</option>
+                  <option value="ask">{t('repo.resolve.modeAsk')}</option>
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Commit Format Source - shown when a new commit is possible (new or ask) */}
+            {resolveCommitModeVal !== 'amend' && (
+              <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitFormat')}</label>
+                  <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitFormatHelp')}</p>
+                </div>
+                <div className="relative">
+                  <select
+                    value={resolveUseCommitConfigVal ? 'commit' : 'custom'}
+                    onChange={(e) => handleResolveSettingChange('useCommitConfig', e.target.value === 'commit')}
+                    className={`${SELECT} w-52`}
+                  >
+                    <option value="commit">{t('repo.resolve.useCommitConfig')}</option>
+                    <option value="custom">{t('repo.resolve.customConfig')}</option>
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+                </div>
+              </div>
+            )}
+
+            {/* Custom Style & Format - when a new commit is possible (new or ask) and useCommitConfig is false */}
+            {resolveCommitModeVal !== 'amend' && !resolveUseCommitConfigVal && (
+              <>
+                <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
+                    <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={resolveStyleVal}
+                      onChange={(e) => handleResolveSettingChange('style', e.target.value)}
+                      className={`${SELECT} w-52`}
+                    >
+                      <option value="single-line">{t('repo.commit.styleSingle')}</option>
+                      <option value="multi-line">{t('repo.commit.styleMulti')}</option>
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
+                    <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={resolveFormatVal}
+                      onChange={(e) => handleResolveSettingChange('format', e.target.value)}
+                      className={`${SELECT} w-52`}
+                    >
+                      <option value="conventional">{t('repo.commit.formatConventional')}</option>
+                      <option value="angular">{t('repo.commit.formatAngular')}</option>
+                      <option value="gitmoji">{t('repo.commit.formatGitmoji')}</option>
+                      <option value="none">{t('repo.commit.formatNone')}</option>
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Reply to Comments Toggle */}
+            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.reply')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyHelp')}</p>
+              </div>
+              <Switch
+                checked={resolveReplyVal}
+                onChange={(next) => handleResolveSettingChange('replyToComments', next)}
+                label={t('repo.resolve.reply')}
+              />
+            </div>
+
+            {/* Preview / Info */}
+            {resolveCommitModeVal === 'new' && (
+              <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
+                <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
+                <pre className="text-sm whitespace-pre-wrap text-text-secondary">{resolvePreview}</pre>
+              </div>
+            )}
+            {resolveCommitModeVal === 'amend' && (
+              <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0" />
+                <span className="text-sm text-text-secondary">{t('repo.resolve.amendNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code></span>
+              </div>
+            )}
+            {resolveCommitModeVal === 'ask' && (
+              <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0 mt-0.5" />
+                <span className="text-sm text-text-secondary">{t('repo.resolve.askNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
+              </div>
+            )}
+          </fieldset>
+        </div>
+
+        {/* Pull Request Section */}
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.pr.section')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            {/* Auto-link Tickets */}
+            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.pr.autoLink')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.pr.autoLinkHelp')}</p>
+              </div>
+              <Switch
+                checked={autoLinkTicketsVal}
+                onChange={(next) => handlePRSettingChange('autoLinkTickets', next)}
+                label={t('repo.pr.autoLink')}
+              />
+            </div>
+
+            {/* Watch CI & Review */}
+            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.pr.watchCI')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.pr.watchCIHelp')}</p>
+              </div>
+              <Switch
+                checked={watchCIVal}
+                onChange={(next) => handlePRSettingChange('watchCI', next)}
+                label={t('repo.pr.watchCI')}
+              />
+            </div>
+
+            {/* Test Accounts */}
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.pr.testAccounts')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.pr.testAccountsHelp')}</p>
+                {testAccountsVal === 'inline' && (
+                  <p className="text-xs text-yellow mt-1">{t('repo.pr.testAccountsPublicWarn')}</p>
+                )}
+              </div>
+              <div className="relative">
+                <select
+                  value={testAccountsVal}
+                  onChange={(e) => handlePRSettingChange('testAccounts', e.target.value)}
+                  className={`${SELECT} w-52`}
+                >
+                  <option value="off">{t('repo.pr.testAccountsOff')}</option>
+                  <option value="reference">{t('repo.pr.testAccountsReference')}</option>
+                  <option value="inline">{t('repo.pr.testAccountsInline')}</option>
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Test Accounts Source - only when test accounts are surfaced */}
+            {testAccountsVal !== 'off' && (
+              <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-0.5">{t('repo.pr.testAccountsSource')}</label>
+                  <p className="text-xs text-text-secondary/50">
+                    {t('repo.pr.testAccountsSourceHelp')}
+                  </p>
+                </div>
+                <input
+                  type="text"
+                  value={testAccountsSourceVal}
+                  onChange={(e) => handlePRSettingChange('testAccountsSource', e.target.value)}
+                  placeholder="docs/test-accounts.md"
+                  className={`${INPUT} w-72`}
                 />
               </div>
             )}
-          </div>
-        </fieldset>
-      </div>
 
-      {/* Jira / GitHub Issues Section */}
-      <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.issues.section')}</h2>
-        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-          <LangSelect langKey="jiraComment" label={t('repo.issues.commentLang')} description={t('repo.issues.commentLangHelp')} />
-          <LangSelect
-            langKey="ticket"
-            label={t('repo.issues.ticketLang')}
-            description={t('repo.issues.ticketLangHelp')}
-            resolvedValue={resolveTicketLanguage(repoLangs)}
-          />
+            {/* PR Template */}
+            <div className="py-3">
+              <div className="flex items-start justify-between gap-6 mb-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-0.5">{t('repo.pr.template')}</label>
+                  <p className="text-xs text-text-secondary/50">{t('repo.pr.templateHelp')}</p>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  {templateLoading ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('repo.pr.templateChecking')}</>
+                  ) : template?.exists ? (
+                    <><Check className="w-3.5 h-3.5 text-green" /> {t('repo.pr.templateFound')}</>
+                  ) : (
+                    <button
+                      onClick={handleGenerateTemplate}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
+                    >
+                      <Plus className="w-3 h-3" />
+                      {t('repo.pr.templateGenerate')}
+                    </button>
+                  )}
+                </div>
+              </div>
 
-          {/* Comment on PR */}
-          <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.issues.commentOnPR')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.issues.commentOnPRHelp')}</p>
+              {template?.exists && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-text-secondary/50 bg-surface px-2 py-1 rounded">
+                      {template.path}
+                    </span>
+                    {templateChanged && (
+                      <button
+                        onClick={handleSaveTemplate}
+                        className="px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors"
+                      >
+                        {t('common.save')}
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    value={templateContent}
+                    onChange={(e) => {
+                      setTemplateContent(e.target.value)
+                      setTemplateChanged(e.target.value !== template.content)
+                    }}
+                    className="w-full h-64 p-4 bg-surface border border-line-field rounded-lg text-sm resize-y focus:outline-none focus:border-accent transition-colors"
+                    placeholder={t('repo.pr.templatePlaceholder')}
+                  />
+                </div>
+              )}
             </div>
-            <Switch
-              checked={commentOnPRVal}
-              onChange={(next) => handleIssuesSettingChange('commentOnPR', next)}
-              label={t('repo.issues.commentOnPR')}
-            />
-          </div>
+          </fieldset>
+        </div>
 
-          {/* Jira site URL — writes `jira.siteUrl`, read back through the chain that
-              still reaches the legacy `issues.jiraUrl`.
-
-              No GitHub issues URL field any more: for everyone without a separate
-              tracker repository it asked a second time for the address already given
-              as the remote in General, which is what made this section read as two
-              places wanting the same thing. resolveGitHubIssuesUrl() derives it from
-              `remoteUrl` instead, and an override someone already set is still
-              honoured — it is simply no longer a blank anyone has to fill.
-
-              Last row of the fieldset now, hence no bottom border. */}
-          <div className="flex items-start justify-between gap-6 py-3">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.issues.jiraUrl')}</label>
-              <p className="text-xs text-text-secondary/50">
-                {t('repo.issues.jiraUrlHelp')}
-              </p>
-            </div>
-            <input
-              type="text"
-              value={jiraSiteUrlVal}
-              onChange={(e) => handleJiraSettingChange('siteUrl', e.target.value)}
-              placeholder="https://company.atlassian.net/browse/"
-              className={`${INPUT} w-72`}
-            />
-          </div>
-        </fieldset>
-      </div>
-      {/* Plan Section */}
-      <div className="mb-6">
-        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.section')}</h2>
-        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-          <SettingRow label={t('repo.plan.tracker')} description={t('repo.plan.trackerHelp')}>
-            <EnumSelect
-              value={planTrackerVal}
-              values={PLAN_TRACKERS}
-              labels={PLAN_TRACKER_LABELS}
-              onChange={(v) => handlePlanSettingChange('tracker', v)}
-            />
-          </SettingRow>
-
-          {/* Writes `jira.projectKey`, not `plan.jiraProject`: this key and the site URL
-              in the section above are one address, and holding them in two blocks under
-              two writers is how a repo ends up with one half filled in. Phase 2 brings
-              both rows into a single Tracker tab; the storage is already joined. */}
-          <SettingRow label={t('repo.plan.jiraProject')} description={t('repo.plan.jiraProjectHelp')}>
-            <input
-              type="text"
-              value={jiraProjectVal}
-              onChange={(e) => handleJiraSettingChange('projectKey', e.target.value)}
-              placeholder="PROJ"
-              className={`${INPUT} w-72`}
-            />
-          </SettingRow>
-
-          <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
-            <input
-              type="text"
-              value={planEpicTypeVal}
-              onChange={(e) => handlePlanIssueTypeChange('epic', e.target.value)}
-              placeholder="Epic"
-              className={`${INPUT} w-72`}
-            />
-          </SettingRow>
-
-          <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
-            <input
-              type="text"
-              value={planStoryTypeVal}
-              onChange={(e) => handlePlanIssueTypeChange('story', e.target.value)}
-              placeholder="Story"
-              className={`${INPUT} w-72`}
-            />
-          </SettingRow>
-
-          <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
-            <EnumSelect
-              value={planSplittingVal}
-              values={PLAN_SPLITTING_MODES}
-              labels={PLAN_SPLITTING_LABELS}
-              onChange={(v) => handlePlanSettingChange('splitting', v)}
-            />
-          </SettingRow>
-
-          <SettingRow label={t('repo.plan.acceptanceCriteria')} description={t('repo.plan.acceptanceCriteriaHelp')}>
-            <EnumSelect
-              value={planAcceptanceCriteriaVal}
-              values={PLAN_ACCEPTANCE_CRITERIA_FORMATS}
-              labels={PLAN_ACCEPTANCE_CRITERIA_LABELS}
-              onChange={(v) => handlePlanSettingChange('acceptanceCriteria', v)}
-            />
-          </SettingRow>
-
-          {/* The three switches differ only by key, and their message keys are
-              mechanically `repo.plan.<key>` / `<key>Help`. */}
-          {([
-            ['useRepoTemplates', planUseRepoTemplatesVal],
-            ['duplicateCheck', planDuplicateCheckVal],
-            ['assignToMe', planAssignToMeVal],
-          ] as const).map(([key, checked]) => (
-            <SettingRow
-              key={key}
-              align="center"
-              label={t(`repo.plan.${key}`)}
-              description={t(`repo.plan.${key}Help`)}
-            >
-              <Switch
-                checked={checked}
-                onChange={(next) => handlePlanSettingChange(key, next)}
-                label={t(`repo.plan.${key}`)}
+        {/* Plan Section */}
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.section')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
+              <EnumSelect
+                value={planSplittingVal}
+                values={PLAN_SPLITTING_MODES}
+                labels={PLAN_SPLITTING_LABELS}
+                onChange={(v) => handlePlanSettingChange('splitting', v)}
               />
             </SettingRow>
-          ))}
 
-          <div className="py-3">
-            <div className="flex-1 mb-3">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.plan.defaultLabels')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.plan.defaultLabelsHelp')}</p>
-            </div>
-            <ChipList
-              items={planDefaultLabelsVal}
-              onChange={(labels) => handlePlanSettingChange('defaultLabels', labels)}
-              placeholder="enhancement"
-              inputId="plan-default-label-input"
-            />
-          </div>
-        </fieldset>
-      </div>
+            <SettingRow label={t('repo.plan.acceptanceCriteria')} description={t('repo.plan.acceptanceCriteriaHelp')}>
+              <EnumSelect
+                value={planAcceptanceCriteriaVal}
+                values={PLAN_ACCEPTANCE_CRITERIA_FORMATS}
+                labels={PLAN_ACCEPTANCE_CRITERIA_LABELS}
+                onChange={(v) => handlePlanSettingChange('acceptanceCriteria', v)}
+              />
+            </SettingRow>
 
-      {/* Danger Zone */}
-      <div className="mb-6">
-        <h2 className="text-xs text-red/50 uppercase tracking-wider mb-4">{t('repo.danger.section')}</h2>
-        <fieldset disabled={readOnly} className="bg-red/5 border border-red/10 rounded-xl p-4 w-full min-w-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="block text-sm font-medium mb-0.5">{t('repo.danger.delete')}</label>
-              <p className="text-xs text-text-secondary/50">{t('repo.danger.deleteHelp')}</p>
+            {/* The three switches differ only by key, and their message keys are
+                mechanically `repo.plan.<key>` / `<key>Help`. */}
+            {([
+              ['useRepoTemplates', planUseRepoTemplatesVal],
+              ['duplicateCheck', planDuplicateCheckVal],
+              ['assignToMe', planAssignToMeVal],
+            ] as const).map(([key, checked]) => (
+              <SettingRow
+                key={key}
+                align="center"
+                label={t(`repo.plan.${key}`)}
+                description={t(`repo.plan.${key}Help`)}
+              >
+                <Switch
+                  checked={checked}
+                  onChange={(next) => handlePlanSettingChange(key, next)}
+                  label={t(`repo.plan.${key}`)}
+                />
+              </SettingRow>
+            ))}
+
+            <div className="py-3">
+              <div className="flex-1 mb-3">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.plan.defaultLabels')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.plan.defaultLabelsHelp')}</p>
+              </div>
+              <ChipList
+                items={planDefaultLabelsVal}
+                onChange={(labels) => handlePlanSettingChange('defaultLabels', labels)}
+                placeholder="enhancement"
+                inputId="plan-default-label-input"
+              />
             </div>
-            <button
-              onClick={() => setIsDeleteModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all"
-            >
-              <Trash2 className="w-3 h-3" />
-              {t('repo.danger.deleteAction')}
-            </button>
-          </div>
-        </fieldset>
-      </div>
+          </fieldset>
+        </div>
+        </>
+      )}
+
+
+      {tab === 'danger' && (
+        <>
+        {/* Danger Zone */}
+        <div className="mb-6">
+          <h2 className="text-xs text-red/50 uppercase tracking-wider mb-4">{t('repo.danger.section')}</h2>
+          <fieldset disabled={readOnly} className="bg-red/5 border border-red/10 rounded-xl p-4 w-full min-w-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium mb-0.5">{t('repo.danger.delete')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.danger.deleteHelp')}</p>
+              </div>
+              <button
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red border border-red/20 rounded-lg hover:bg-red/10 transition-all"
+              >
+                <Trash2 className="w-3 h-3" />
+                {t('repo.danger.deleteAction')}
+              </button>
+            </div>
+          </fieldset>
+        </div>
+        </>
+      )}
+
 
       {/* Delete Modal */}
       <Modal

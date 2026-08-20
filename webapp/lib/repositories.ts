@@ -155,6 +155,14 @@ export interface Repository {
   jira: RepoJira
   branches: RepoBranches
   worktreeFiles: string[]
+  /**
+   * Normalised clone address (`https://github.com/owner/repo`), or null when the
+   * repo has no GitHub origin. READ-ONLY on this surface: the column has exactly
+   * one writer, the desktop's fill-only `set_repository_remote_url`, so nothing
+   * here may patch it. It is selected because the Tracker settings derive the
+   * GitHub issues target from it — see resolveGitHubIssuesUrl.
+   */
+  remoteUrl: string | null
   createdAt: string | null
 }
 
@@ -177,12 +185,14 @@ interface RepositoryRow {
   // every repository disappears. Deploy the migration before this code.
   jira?: RepoJira | null
   branches: RepoBranches | null
+  // Absent, not just null, on a database that has not run 20260816090000.
+  remote_url?: string | null
   worktree_files: string[] | null
   created_at: string | null
 }
 
 const COLUMNS =
-  'id, org_id, owner_id, name, keywords, color, languages, commit, resolve, pull_request, issues, plan, jira, branches, worktree_files, created_at'
+  'id, org_id, owner_id, name, keywords, color, languages, commit, resolve, pull_request, issues, plan, jira, branches, worktree_files, remote_url, created_at'
 
 function toRepository(r: RepositoryRow): Repository {
   return {
@@ -201,6 +211,7 @@ function toRepository(r: RepositoryRow): Repository {
     jira: r.jira ?? {},
     branches: r.branches ?? {},
     worktreeFiles: r.worktree_files ?? [],
+    remoteUrl: r.remote_url ?? null,
     createdAt: r.created_at,
   }
 }
@@ -444,6 +455,22 @@ export function resolveJiraSite(repo: Pick<Repository, 'jira' | 'issues'>): stri
 /** The Jira project key: `jira.projectKey`, else the legacy `plan.jiraProject`. */
 export function resolveJiraProject(repo: Pick<Repository, 'jira' | 'plan'>): string {
   return repo.jira?.projectKey || repo.plan?.jiraProject || ''
+}
+
+/**
+ * The GitHub issues base URL, or '' when nothing can be built:
+ * `issues.githubIssuesUrl` if set, else derived from `remoteUrl`.
+ *
+ * The configured key wins because it means "the issues are NOT in the repo the code
+ * lives in", and deriving anyway would point at the wrong repository. It is no
+ * longer a field either form offers, so a value found here is always a deliberate
+ * override rather than a leftover default.
+ *
+ * Returned without a trailing slash; consumers append `/{number}`.
+ */
+export function resolveGitHubIssuesUrl(repo: Pick<Repository, 'issues' | 'remoteUrl'>): string {
+  const base = repo.issues?.githubIssuesUrl || (repo.remoteUrl ? `${repo.remoteUrl}/issues` : '')
+  return base.replace(/\/+$/, '')
 }
 
 /**

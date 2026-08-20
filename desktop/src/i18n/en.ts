@@ -466,18 +466,27 @@ export const en = {
   'repo.general.color': 'Color',
   'repo.general.colorHelp': 'Project color in sidebar',
 
-  'repo.branches.section': 'Branches',
+  'repo.tab.repository': 'Repository',
+  'repo.tab.tracker': 'Tracker',
+  'repo.tab.skills': 'Skills',
+  'repo.tab.danger': 'Danger',
+  'repo.langs.section': 'Languages',
+  'repo.langs.commit': 'Commit Language',
+  'repo.langs.pullRequest': 'Pull Request Language',
+  'repo.git.section': 'Git',
+  'repo.tracker.section': 'Tracker',
+  'repo.tracker.githubTarget': 'GitHub Issues',
+  'repo.tracker.githubTargetHelp': 'Derived from the repository remote. Set an override in the config only when the issues live in another repository',
+  'repo.tracker.githubTargetNone': 'No GitHub remote',
   'repo.branches.development': 'Development Branch',
   'repo.branches.developmentHelp': 'Base branch for comparing commits',
   'repo.branches.select': 'Select branch',
 
-  'repo.worktree.section': 'Worktree',
   'repo.worktree.files': 'Files to copy',
   'repo.worktree.filesHelp':
     'Files copied from the main repo to new worktrees (e.g., .env, .env.local)',
 
   'repo.commit.section': 'Commit',
-  'repo.commit.language': 'Language',
   'repo.commit.languageHelp': 'Language used for commit messages',
   'repo.commit.style': 'Style',
   'repo.commit.styleHelp': 'Single line or multi-line with body',
@@ -540,7 +549,6 @@ export const en = {
   'repo.pr.templateGenerate': 'Generate template',
   'repo.pr.templatePlaceholder': 'PR template content…',
 
-  'repo.issues.section': 'Jira / GitHub Issues',
   'repo.issues.commentLang': 'Comment Language',
   'repo.issues.commentLangHelp': 'Language used for Jira and GitHub issue comments',
   'repo.issues.ticketLang': 'Ticket Language',
