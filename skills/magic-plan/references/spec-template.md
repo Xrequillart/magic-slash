@@ -102,8 +102,10 @@ afterwards — what the user asked for and what we concluded are two different r
 | --- | --- | --- |
 | {the ambiguity} | {what was decided} | {the reason, in one line} |
 
-{One row per question actually resolved with the user in Step 4. A decision with no reason is a
-decision nobody can revisit six weeks later.}
+{One row per question actually resolved with the user in Step 4, plus — on a Jira run — one row per
+mandatory custom field answered there, its reason naming the issue type that required it. A decision
+with no reason is a decision nobody can revisit six weeks later, and that Jira row is the record of
+which value was sent to Jira and why, so the spec explains the created ticket on its own.}
 
 ### Non-goals
 
@@ -120,7 +122,7 @@ the plan belongs here — this is what makes the sizing verdict auditable.}
 
 ## Related tickets
 
-- #{number}: {title} ({state}) — {relation: duplicate / overlaps / prior art / rejected before}
+- {id}: {title} ({state}) — {relation: duplicate / overlaps / prior art / rejected before}
 
 {`None found` when the duplicate check ran and found nothing. `Not checked` when
 `plan.duplicateCheck` is off or the search failed — those are different facts and must not read
@@ -152,11 +154,15 @@ the format is `none`.}
 
 | Ticket | Kind | Title | URL |
 | --- | --- | --- | --- |
-| #{number} | epic \| story | {title} | {url} |
+| {id} | epic \| story | {title} | {url} |
 
 {Appended in Step 7, after creation. Absent until then — an empty table implies a failure that did
 not happen.}
 ```
+
+`{id}` is whatever the tracker issues: `#{number}` on GitHub, an issue key like `PROJ-123` on Jira.
+The column is `Ticket` rather than `Number` because half the trackers this skill writes to do not
+issue one.
 
 On a single-story verdict, `## Proposed tickets` holds exactly one entry and there is no epic. Keep
 the section heading plural anyway: the format is frozen, and Step 7 looks for it by name.
@@ -167,7 +173,7 @@ indistinguishable from a duplicate check that never ran.
 ## 5. The append after creation
 
 Once the tickets exist, fill `## Created tickets` and set `Status: tickets created`. Do this even on
-a partial failure — especially then, since the created numbers are the only thing that cannot be
+a partial failure — especially then, since the created identifiers are the only thing that cannot be
 regenerated from the rest of the file. List what exists; the failures are reported to the user by
 `MSG_PARTIAL_CREATION` and belong in the spec only as an absence.
 

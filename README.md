@@ -29,7 +29,7 @@
 
 | Skill             | Description                                       |
 | ----------------- | ------------------------------------------------- |
-| `/magic:plan`     | Turn an idea into a spec and GitHub tickets       |
+| `/magic:plan`     | Turn an idea into a spec and tracker tickets      |
 | `/magic:start`    | Start a task from a Jira ticket or GitHub issue   |
 | `/magic:continue` | Resume work on an existing ticket                 |
 | `/magic:commit`   | Create an atomic commit with conventional message |
@@ -158,7 +158,7 @@ One Next.js deployment on Vercel answers on three hosts:
 2. Writes a spec you can read and correct: scope, approach, open questions
 3. Proposes an epic and its stories, split at the granularity `plan.splitting` sets
 4. Waits for your approval — nothing is filed until you accept the structure
-5. Creates the epic and its stories, with labels, acceptance criteria and assignee
+5. Creates the epic and its stories in Jira or GitHub, with a real parent/child hierarchy, labels, acceptance criteria and assignee
 
 > **Note:** Use this when the ticket does not exist yet. Once it does, `/magic:start` is what picks
 > it up — `/magic:plan` runs before it in the cycle, never instead of it.

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Plan**: New `/magic:plan` skill — turn an idea into a spec and GitHub tickets
+- **Plan**: New `/magic:plan` skill — turn an idea into a spec, then an epic and its stories in Jira or GitHub with a real parent/child hierarchy
 
 ## [0.74.3] - 2026-08-19
 
