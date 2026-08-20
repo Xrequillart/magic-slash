@@ -218,15 +218,12 @@ describe('message catalogues', () => {
       // two different things.
       'repo.git.section',
       'repo.tracker.section',
-      'repo.tab.general',
-      'repo.tab.tracker',
-      'repo.tab.languages',
-      'repo.tab.git',
-      'repo.tab.skills',
       'repo.tab.danger',
-      // Product nouns: "Jira + GitHub" and "Jira" name the tools, in both languages.
+      // The two trackers, named after the products: "GitHub" and "Jira" in both
+      // languages. Every other tab is labelled by its own section key, which is
+      // already listed above wherever French borrows it whole.
+      'repo.tracker.modeGithub',
       'repo.tracker.modeJira',
-      'repo.tracker.planTargetJira',
       'repo.commit.section',
       'repo.commit.style',
       'repo.commit.format',

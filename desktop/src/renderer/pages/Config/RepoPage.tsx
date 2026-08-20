@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react'
 import {
   Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen,
-  Ticket, Sparkles, Settings2, Languages, GitBranch, type LucideIcon
+  Ticket, Settings2, Languages, GitBranch, GitCommitHorizontal, MessageSquare, GitPullRequest,
+  ClipboardList, type LucideIcon
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useConfig } from '../../hooks/useConfig'
@@ -43,14 +44,28 @@ interface RepoPageProps {
  * icon because the strip styles every pill alike: Danger has no red of its own
  * there, and the bin is what keeps it from reading as a fourth ordinary tab.
  */
-type RepoTab = 'general' | 'tracker' | 'languages' | 'git' | 'skills' | 'danger'
+type RepoTab =
+  | 'general' | 'tracker' | 'languages' | 'git'
+  | 'commit' | 'resolve' | 'pr' | 'plan'
+  | 'danger'
 
 const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
-  { id: 'general', labelKey: 'repo.tab.general', icon: Settings2 },
-  { id: 'tracker', labelKey: 'repo.tab.tracker', icon: Ticket },
-  { id: 'languages', labelKey: 'repo.tab.languages', icon: Languages },
-  { id: 'git', labelKey: 'repo.tab.git', icon: GitBranch },
-  { id: 'skills', labelKey: 'repo.tab.skills', icon: Sparkles },
+  // Labelled with each subject's OWN `*.section` key rather than a parallel
+  // `repo.tab.*` family: a tab and the thing it holds have one name, so there is
+  // nowhere for two spellings of it to drift apart — and no second string to forget
+  // to translate. Danger is the exception: its section is headed "Danger Zone",
+  // which is a warning, where a pill wants one word.
+  { id: 'general', labelKey: 'repo.general.section', icon: Settings2 },
+  { id: 'tracker', labelKey: 'repo.tracker.section', icon: Ticket },
+  { id: 'languages', labelKey: 'repo.langs.section', icon: Languages },
+  { id: 'git', labelKey: 'repo.git.section', icon: GitBranch },
+  // One tab per skill rather than one "Skills" tab holding four sections: each of
+  // these is a workflow with its own vocabulary, and stacking them made the tab that
+  // held them longer than the five others put together.
+  { id: 'commit', labelKey: 'repo.commit.section', icon: GitCommitHorizontal },
+  { id: 'resolve', labelKey: 'repo.resolve.section', icon: MessageSquare },
+  { id: 'pr', labelKey: 'repo.pr.section', icon: GitPullRequest },
+  { id: 'plan', labelKey: 'repo.plan.section', icon: ClipboardList },
   { id: 'danger', labelKey: 'repo.tab.danger', icon: Trash2 },
 ]
 
@@ -63,14 +78,14 @@ const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
  * without a label here is a tsc error rather than a blank option.
  */
 /**
- * The two ANSWERS to "which trackers does this repository use", and the two to "where
- * do new tickets go" when both are in play.
+ * The two trackers a repository can file into.
  *
- * Neither list is a config value: both are views onto `plan.tracker`, which the skills
- * read and which keeps its three values (`github` / `jira` / `ask`). Splitting one
- * three-way select into two two-way ones is what makes each question answerable on its
- * own — the old single row asked people to pick "Ask each time" as if it were a
- * tracker, next to a Jira project key that only mattered for two of the three answers.
+ * Not a config value: a view onto `plan.tracker`, which the skills read and which keeps
+ * its three values (`github` / `jira` / `ask`). The third is not a tracker — it is the
+ * instruction to ask at runtime — so it is a toggle beside this select rather than an
+ * option inside it. Naming a behaviour as if it were a tool is what made the old
+ * single three-way row hard to answer: "Ask each time" sat next to a Jira project key
+ * that mattered for only two of its three values.
  */
 const TRACKER_MODES = ['github', 'jira'] as const
 
@@ -79,12 +94,7 @@ const TRACKER_MODE_LABELS: Record<(typeof TRACKER_MODES)[number], MessageKey> = 
   jira: 'repo.tracker.modeJira',
 }
 
-const PLAN_TARGETS = ['jira', 'ask'] as const
 
-const PLAN_TARGET_LABELS: Record<(typeof PLAN_TARGETS)[number], MessageKey> = {
-  jira: 'repo.tracker.planTargetJira',
-  ask: 'repo.tracker.planTargetAsk',
-}
 
 const PLAN_SPLITTING_LABELS: Record<(typeof PLAN_SPLITTING_MODES)[number], MessageKey> = {
   conservative: 'repo.plan.splittingConservative',
@@ -1042,7 +1052,6 @@ export function RepoPage({ repoName }: RepoPageProps) {
             It was three sections: the remote under General, the Jira URL under Issues,
             the project key and the issue types under Plan. */}
         <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.section')}</h2>
           <div className="bg-surface border border-line-strong rounded-xl p-4">
             <fieldset disabled={readOnly} className="w-full min-w-0">
             {/* Which trackers this repo uses, as the question a person actually has:
@@ -1066,17 +1075,16 @@ export function RepoPage({ repoName }: RepoPageProps) {
               />
             </SettingRow>
 
-            {/* Only in the two-tracker mode is there a question to ask: with GitHub
-                alone the answer is GitHub, and a select with one real option is noise.
-                `github` is absent from the values for the same reason — choosing it here
-                would contradict the mode above. */}
+            {/* Only reachable in Jira mode, because it is a question about a CHOICE:
+                with GitHub alone there is nothing to ask about. On means `ask`, off means
+                the tracker named above — so switching it off leaves a repo filing into
+                Jira, never into nothing. */}
             {trackerModeVal === 'jira' && (
-              <SettingRow label={t('repo.tracker.planTarget')} description={t('repo.tracker.planTargetHelp')}>
-                <EnumSelect
-                  value={planTrackerVal === 'ask' ? 'ask' : 'jira'}
-                  values={PLAN_TARGETS}
-                  labels={PLAN_TARGET_LABELS}
-                  onChange={(v) => handlePlanSettingChange('tracker', v)}
+              <SettingRow align="center" label={t('repo.tracker.askEachTime')} description={t('repo.tracker.askEachTimeHelp')}>
+                <Switch
+                  checked={planTrackerVal === 'ask'}
+                  onChange={(next) => handlePlanSettingChange('tracker', next ? 'ask' : 'jira')}
+                  label={t('repo.tracker.askEachTime')}
                 />
               </SettingRow>
             )}
@@ -1172,7 +1180,6 @@ export function RepoPage({ repoName }: RepoPageProps) {
             sounds right and meant that answering "what language does this repo work
             in?" required visiting five sections and remembering all five answers. */}
         <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.langs.section')}</h2>
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
             <LangSelect langKey="discussion" label={t('repo.general.discussionLang')} description={t('repo.general.discussionLangHelp')} />
             <LangSelect langKey="commit" label={t('repo.langs.commit')} description={t('repo.commit.languageHelp')} />
@@ -1221,7 +1228,6 @@ export function RepoPage({ repoName }: RepoPageProps) {
             rows that were spread over General, Branches and Worktree. */}
         {/* Git Section */}
         <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.git.section')}</h2>
           <div className="bg-surface border border-line-strong rounded-xl p-4">
             {/* Path — always editable: the folder is this machine's, private to
                 you, and a read-only member still needs to point the repo at it. */}
@@ -1325,11 +1331,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
         </>
       )}
 
-      {tab === 'skills' && (
+      {tab === 'commit' && (
         <>
         {/* Commit Section */}
         <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.commit.section')}</h2>
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
             {/* Style */}
             <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
@@ -1423,10 +1428,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
           </fieldset>
         </div>
+        </>
+      )}
 
+      {tab === 'resolve' && (
+        <>
         {/* Resolve Section */}
         <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.resolve.section')}</h2>
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
             {/* Commit Mode */}
             <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
@@ -1546,10 +1554,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
             )}
           </fieldset>
         </div>
+        </>
+      )}
 
+      {tab === 'pr' && (
+        <>
         {/* Pull Request Section */}
         <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.pr.section')}</h2>
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
             {/* Auto-link Tickets */}
             <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
@@ -1672,10 +1683,13 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
           </fieldset>
         </div>
+        </>
+      )}
 
+      {tab === 'plan' && (
+        <>
         {/* Plan Section */}
         <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.section')}</h2>
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
             <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
               <EnumSelect
@@ -1732,6 +1746,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
         </div>
         </>
       )}
+
 
 
       {tab === 'danger' && (

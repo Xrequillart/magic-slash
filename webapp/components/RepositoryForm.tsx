@@ -91,17 +91,13 @@ function buildOptions(t: Translate) {
     { value: 'inline', label: t('repo.pr.testAccountsInline'), description: t('repo.pr.testAccountsInlineHelp') },
   ]
 
-  // Which trackers the repo uses, and — when both are in play — where new tickets go.
-  // Two questions, two selects, both views onto the single `plan.tracker` the skills
-  // read. See the desktop's TRACKER_MODES for the mapping and why it is derived.
+  // The two trackers a repo can file into — a view onto `plan.tracker`, which the
+  // skills read and which keeps its third value, `ask`. That one is not a tracker but
+  // an instruction to ask at runtime, so it is a toggle beside this select rather than
+  // an option inside it. See the desktop's TRACKER_MODES.
   const trackerMode: DropdownOption<string>[] = [
     { value: 'github', label: t('repo.tracker.modeGithub'), description: t('repo.plan.trackerGithubHelp') },
     { value: 'jira', label: t('repo.tracker.modeJira'), description: t('repo.plan.trackerJiraHelp') },
-  ]
-
-  const planTarget: DropdownOption<string>[] = [
-    { value: 'jira', label: t('repo.tracker.planTargetJira'), description: t('repo.plan.trackerJiraHelp') },
-    { value: 'ask', label: t('repo.tracker.planTargetAsk'), description: t('repo.plan.trackerAskHelp') },
   ]
 
   const splitting: DropdownOption<string>[] = [
@@ -132,7 +128,7 @@ function buildOptions(t: Translate) {
     { value: 'none', label: t('repo.plan.acceptanceCriteriaNone'), description: t('repo.plan.acceptanceCriteriaNoneHelp') },
   ]
 
-  return { style, format, commitMode, formatSource, testAccounts, trackerMode, planTarget, splitting, acceptance }
+  return { style, format, commitMode, formatSource, testAccounts, trackerMode, splitting, acceptance }
 }
 
 /**
@@ -160,14 +156,27 @@ function buildOptions(t: Translate) {
  * Message KEYS, not labels: module scope is evaluated once at import, so a `t()`
  * here would pin the strip to the language the page first rendered in.
  */
-type RepoTab = 'general' | 'tracker' | 'languages' | 'git' | 'skills' | 'danger'
+type RepoTab =
+  | 'general' | 'tracker' | 'languages' | 'git'
+  | 'commit' | 'resolve' | 'pr' | 'plan'
+  | 'danger'
 
 const REPO_TABS: { id: RepoTab; labelKey: Parameters<Translate>[0]; icon: LucideIcon }[] = [
-  { id: 'general', labelKey: 'repo.tab.general', icon: Settings2 },
-  { id: 'tracker', labelKey: 'repo.tab.tracker', icon: Ticket },
-  { id: 'languages', labelKey: 'repo.tab.languages', icon: Languages },
-  { id: 'git', labelKey: 'repo.tab.git', icon: GitBranch },
-  { id: 'skills', labelKey: 'repo.tab.skills', icon: Sparkles },
+  // Labelled with each subject's OWN `*.section` key rather than a parallel
+  // `repo.tab.*` family: a tab and the thing it holds have one name, so there is
+  // nowhere for two spellings of it to drift apart. Danger is the exception — its card
+  // is headed "Danger zone", a warning, where a pill wants one word.
+  { id: 'general', labelKey: 'repo.general.section', icon: Settings2 },
+  { id: 'tracker', labelKey: 'repo.tracker.section', icon: Ticket },
+  { id: 'languages', labelKey: 'repo.langs.section', icon: Languages },
+  { id: 'git', labelKey: 'repo.git.section', icon: GitBranch },
+  // One tab per skill rather than one "Skills" tab holding four cards: each is a
+  // workflow with its own vocabulary, and stacking them made that tab longer than the
+  // five others put together.
+  { id: 'commit', labelKey: 'repo.commit.section', icon: GitCommitHorizontal },
+  { id: 'resolve', labelKey: 'repo.resolve.section', icon: MessageSquare },
+  { id: 'pr', labelKey: 'repo.pr.section', icon: GitPullRequest },
+  { id: 'plan', labelKey: 'repo.plan.section', icon: ClipboardList },
   { id: 'danger', labelKey: 'repo.tab.danger', icon: Trash2 },
 ]
 
@@ -527,7 +536,7 @@ export function RepositoryForm({
             Everything about WHERE this repo's tickets live, and nothing else. It was
             three cards: the remote under General, the Jira URL under Issues, the
             project key and issue types under Plan. */}
-        <SettingsCard icon={Ticket} title={t('repo.tracker.section')}>
+        <SettingsCard icon={Ticket}>
           {/* Which trackers this repo uses, as the question a person actually has: is
               there a Jira in the picture, or is it GitHub alone? Not quite
               `plan.tracker`, which answers something narrower — where /magic:plan FILES
@@ -549,16 +558,16 @@ export function RepositoryForm({
             />
           </SettingRow>
 
-          {/* Only in the two-tracker mode is there a question to ask: with GitHub alone
-              the answer is GitHub, and a select with one real option is noise. */}
+          {/* Only reachable in Jira mode, because it is a question about a CHOICE: with
+              GitHub alone there is nothing to ask about. On means `ask`, off means the
+              tracker named above — so switching it off leaves a repo filing into Jira,
+              never into nothing. */}
           {trackerMode === 'jira' && (
-            <SettingRow label={t('repo.tracker.planTarget')} description={t('repo.tracker.planTargetHelp')}>
-              <Dropdown
-                value={tracker === 'ask' ? 'ask' : 'jira'}
-                options={options.planTarget}
-                onChange={(target) => setPlan({ tracker: target })}
-                width={240}
-                className="w-52"
+            <SettingRow label={t('repo.tracker.askEachTime')} description={t('repo.tracker.askEachTimeHelp')}>
+              <Toggle
+                label={t('repo.tracker.askEachTime')}
+                checked={tracker === 'ask'}
+                onChange={(next) => setPlan({ tracker: next ? 'ask' : 'jira' })}
               />
             </SettingRow>
           )}
@@ -653,7 +662,7 @@ export function RepositoryForm({
             Pull request, two more under Issues, review replies under Resolve. Each sat
             next to what it affected, which sounds right and meant that answering "what
             language does this repo work in?" took five cards and five memories. */}
-        <SettingsCard icon={Languages} title={t('repo.langs.section')}>
+        <SettingsCard icon={Languages}>
           <SettingRow
             label={t('repo.general.discussionLang')}
             description={t('repo.general.discussionLangHelp')}
@@ -741,7 +750,7 @@ export function RepositoryForm({
             The development branch and the worktree files were a card each, one row
             apiece. Both answer the same question — how this repo's git is laid out —
             and neither earned a heading of its own. */}
-        <SettingsCard icon={GitBranch} title={t('repo.git.section')}>
+        <SettingsCard icon={GitBranch}>
           <SettingRow
             label={t('repo.branches.development')}
             description={t('repo.branches.developmentHelp')}
@@ -770,10 +779,10 @@ export function RepositoryForm({
         </>
       )}
 
-      {tab === 'skills' && (
+      {tab === 'commit' && (
         <>
         {/* ── Commit ────────────────────────────────────────────────────────── */}
-        <SettingsCard icon={GitCommitHorizontal} title={t('repo.commit.section')}>
+        <SettingsCard icon={GitCommitHorizontal}>
           <SettingRow label={t('repo.commit.style')} description={t('repo.commit.styleHelp')}>
             <Dropdown
               value={commitStyle}
@@ -832,9 +841,13 @@ export function RepositoryForm({
             </pre>
           </ExamplePanel>
         </SettingsCard>
+        </>
+      )}
 
+      {tab === 'resolve' && (
+        <>
         {/* ── Resolve ───────────────────────────────────────────────────────── */}
-        <SettingsCard icon={MessageSquare} title={t('repo.resolve.section')}>
+        <SettingsCard icon={MessageSquare}>
           <SettingRow
             label={t('repo.resolve.commitMode')}
             description={t('repo.resolve.commitModeHelp')}
@@ -918,9 +931,13 @@ export function RepositoryForm({
             </ExamplePanel>
           )}
         </SettingsCard>
+        </>
+      )}
 
+      {tab === 'pr' && (
+        <>
         {/* ── Pull request ──────────────────────────────────────────────────── */}
-        <SettingsCard icon={GitPullRequest} title={t('repo.pr.section')}>
+        <SettingsCard icon={GitPullRequest}>
           <SettingRow label={t('repo.pr.autoLink')} description={t('repo.pr.autoLinkHelp')}>
             <Toggle
               label={t('repo.pr.autoLink')}
@@ -969,9 +986,13 @@ export function RepositoryForm({
 
           <SettingRow label={t('repo.pr.template')} description={t('repo.pr.templateHelp')} />
         </SettingsCard>
+        </>
+      )}
 
+      {tab === 'plan' && (
+        <>
         {/* ── Plan ──────────────────────────────────────────────────────────── */}
-        <SettingsCard icon={ClipboardList} title={t('repo.plan.section')}>
+        <SettingsCard icon={ClipboardList}>
           <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
             <Dropdown
               value={splitting}
@@ -1040,6 +1061,7 @@ export function RepositoryForm({
         </SettingsCard>
         </>
       )}
+
 
       {tab === 'danger' && (
         <>

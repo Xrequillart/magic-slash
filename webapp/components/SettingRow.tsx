@@ -9,7 +9,13 @@ import { useT } from '@/lib/i18n/useLanguage'
  * app's settings pages, in the webapp's light palette.
  */
 
-/** A titled group of rows. Rows separate themselves with a top border. */
+/**
+ * A group of rows, titled or not. Rows separate themselves with a top border.
+ *
+ * `title` is optional because a card that is the ONLY one on its tab would repeat the
+ * name already on the tab's pill. The icon goes with it: alone above a panel it would
+ * be decoration with nothing to decorate.
+ */
 export function SettingsCard({
   icon: Icon,
   title,
@@ -17,17 +23,19 @@ export function SettingsCard({
   children,
 }: {
   icon: LucideIcon
-  title: string
+  title?: string
   tone?: 'neutral' | 'danger'
   children: React.ReactNode
 }) {
   const danger = tone === 'danger'
   return (
     <section>
-      <div className="mb-3 flex items-center gap-2.5">
-        <Icon className={`h-4 w-4 shrink-0 ${danger ? 'text-red' : 'text-muted'}`} />
-        <h2 className={`font-display text-sm font-bold ${danger ? 'text-red' : 'text-ink'}`}>{title}</h2>
-      </div>
+      {title && (
+        <div className="mb-3 flex items-center gap-2.5">
+          <Icon className={`h-4 w-4 shrink-0 ${danger ? 'text-red' : 'text-muted'}`} />
+          <h2 className={`font-display text-sm font-bold ${danger ? 'text-red' : 'text-ink'}`}>{title}</h2>
+        </div>
+      )}
       <div
         className={`rounded-2xl border px-5 ${danger ? 'border-red/20 bg-red/[0.03]' : 'border-black/5 bg-white'}`}
       >
