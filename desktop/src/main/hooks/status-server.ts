@@ -354,6 +354,10 @@ export function startStatusServer(): Promise<number> {
           const prRepo = url.searchParams.get('prRepo')  // Repository path for the PR
           const fullStackTaskId = url.searchParams.get('fullStackTaskId')
           const relatedWorktreesRaw = url.searchParams.get('relatedWorktrees')
+          // Absolute path to the spec the planning phase writes. Taken raw, and NOT
+          // checked against the filesystem: the writer announces where the spec will
+          // be, so it legitimately arrives before the file exists.
+          const specPath = url.searchParams.get('specPath')
 
           if (terminalId && metadataCallback) {
             const metadata: Record<string, string | string[] | Record<string, { prUrl?: string }>> = {}
@@ -363,6 +367,7 @@ export function startStatusServer(): Promise<number> {
             if (description) metadata.description = description
             if (status) metadata.status = status
             if (baseBranch) metadata.baseBranch = baseBranch
+            if (specPath) metadata.specPath = specPath
             if (prUrl && prRepo) {
               // Store PR URL per repository
               metadata.repositoryMetadata = { [prRepo]: { prUrl } }

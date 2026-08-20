@@ -165,9 +165,21 @@ export interface TerminalMetadata {
    * months: magic-pr sent it, it landed in agents.status as an off-enum value, and it
    * produced no activity event at all — so "the CI went green" was a thing the product
    * knew and never recorded. A test now locks both directions of that contract.
+   *
+   * `planning` / `planned` are the planning phase that PRECEDES any code: an idea
+   * being turned into a spec, then a spec ready to become a ticket. They are declared
+   * here BEFORE anything sends them, on purpose — the union is closed, so the contract
+   * has to exist before a skill can honour it.
    */
-  status?: '' | 'in progress' | 'committed' | 'ready for PR' | 'PR created' | 'CI green' | 'in review' | 'changes requested' | 'Review addressed' | 'PR merged'
+  status?: '' | 'planning' | 'planned' | 'in progress' | 'committed' | 'ready for PR' | 'PR created' | 'CI green' | 'in review' | 'changes requested' | 'Review addressed' | 'PR merged'
   baseBranch?: string
+  /**
+   * Path to the spec file the planning phase writes. ABSOLUTE: an agent can hold
+   * several repositories, so the renderer has no single root to resolve a relative
+   * path against and must never try. May arrive BEFORE the file exists — the writer
+   * announces where the spec will be, and nothing here checks the filesystem.
+   */
+  specPath?: string
   fullStackTaskId?: string
   relatedWorktrees?: string[]
   repositoryMetadata?: Record<string, RepositoryMetadata>
@@ -942,6 +954,10 @@ export interface CommandHistoryEntry {
 }
 
 export type HistoryAction =
+  /** A planning session opened on an idea (status 'planning'). */
+  | 'planning'
+  /** The plan reached a spec ready to become a ticket (status 'planned'). */
+  | 'planned'
   | 'started'
   | 'committed'
   | 'pr_created'

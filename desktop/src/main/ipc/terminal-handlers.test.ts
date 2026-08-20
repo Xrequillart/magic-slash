@@ -262,8 +262,8 @@ describe('the status contract with the skills', () => {
     // `done` sat in HistoryAction with zero producers. A value in the union that no
     // status maps to is a metric someone will one day try to chart and find empty.
     const produced = new Set(Object.values(STATUS_TO_ACTION).filter(Boolean))
-    const fromStatuses: string[] = ['started', 'committed', 'ready_for_pr', 'pr_created',
-      'ci_green', 'review', 'review_changes_requested', 'review_addressed', 'merged']
+    const fromStatuses: string[] = ['planning', 'planned', 'started', 'committed', 'ready_for_pr',
+      'pr_created', 'ci_green', 'review', 'review_changes_requested', 'review_addressed', 'merged']
     expect([...produced].sort()).toEqual([...fromStatuses].sort())
   })
 })

@@ -86,6 +86,10 @@ const previousStatus = new Map<string, string>()
  */
 export const STATUS_TO_ACTION: Record<NonNullable<TerminalMetadata['status']>, HistoryAction | null> = {
   '': null, // cleared status: an absence, not an event
+  // The pair, not just the end: `planned` alone says a spec exists, the two together
+  // say how long the idea took to become one.
+  'planning': 'planning',
+  'planned': 'planned',
   'in progress': 'started',
   'committed': 'committed',
   'ready for PR': 'ready_for_pr',

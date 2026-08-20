@@ -11,6 +11,11 @@ import type { MessageKey } from '../../i18n'
 // Workflow-status → label + badge color. Statuses mirror
 // TerminalMetadata.status; anything unrecognized falls through to a neutral pill.
 export const STATUS_CONFIG: Record<string, { labelKey: MessageKey; className: string }> = {
+  // Planning first: it precedes any code. `orange` and `cyan` are the two tokens this
+  // map had not spent yet, so unlike the sidebar picker — where both hues were already
+  // taken and the pills need a ring to stay distinct — plain tints are enough here.
+  planning:             { labelKey: 'status.planning',         className: 'bg-orange/15 text-orange' },
+  planned:              { labelKey: 'status.planned',          className: 'bg-cyan/15 text-cyan' },
   'in progress':        { labelKey: 'status.inProgress',       className: 'bg-accent/15 text-accent' },
   committed:            { labelKey: 'status.committed',        className: 'bg-yellow/15 text-yellow' },
   'ready for PR':       { labelKey: 'status.readyForPR',       className: 'bg-blue/15 text-blue' },
