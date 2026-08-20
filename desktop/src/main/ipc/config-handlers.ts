@@ -16,6 +16,7 @@ import {
   updateRepositoryResolveSettings,
   updateRepositoryPullRequestSettings,
   updateRepositoryIssuesSettings,
+  updateRepositoryPlanSettings,
   updateRepositoryBranchSettings,
   updateRepositoryWorktreeFilesSettings,
   updateSplitEnabled,
@@ -217,6 +218,14 @@ export function setupConfigHandlers() {
   ipcMain.handle('config:updateRepositoryPullRequestSettings', async (_event, { name, settings }) => {
     const config = updateRepositoryPullRequestSettings(name, settings)
     return { config }
+  })
+
+  // Update repository plan settings.
+  // Returns `rejected` alongside the config: unlike its siblings, the plan writer
+  // names the keys whose value it refused so the renderer can say which one.
+  ipcMain.handle('config:updateRepositoryPlanSettings', async (_event, { name, settings }) => {
+    const { config, rejected } = updateRepositoryPlanSettings(name, settings)
+    return { config, rejected }
   })
 
   // Update repository issues settings

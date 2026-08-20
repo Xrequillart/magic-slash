@@ -646,6 +646,9 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.issues.section': 'Jira / GitHub issues',
   'repo.issues.commentLang': 'Langue des commentaires',
   'repo.issues.commentLangHelp': 'Langue des commentaires sur les tickets Jira et GitHub',
+  'repo.issues.ticketLang': 'Langue des tickets',
+  'repo.issues.ticketLangHelp':
+    'Langue de rédaction des nouveaux tickets — suit celle des commentaires tant qu’elle n’est pas définie',
   'repo.issues.commentOnPR': 'Commenter à la création de la PR',
   'repo.issues.commentOnPRHelp':
     'Ajouter un commentaire contenant le lien de la PR sur le ticket',
@@ -653,6 +656,55 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.issues.jiraUrlHelp': 'URL de base des tickets Jira (ex. : PROJ-123)',
   'repo.issues.githubUrl': 'URL des issues GitHub',
   'repo.issues.githubUrlHelp': 'URL de base des issues GitHub (ex. : #456)',
+  'repo.plan.section': 'Planification',
+  'repo.plan.tracker': 'Où créer les tickets',
+  'repo.plan.trackerHelp': 'Où /magic:plan crée l’epic et ses stories',
+  'repo.plan.trackerJira': 'Tickets Jira',
+  'repo.plan.trackerJiraHelp': 'Créer l’epic et ses stories dans Jira',
+  'repo.plan.trackerGithub': 'Issues GitHub',
+  'repo.plan.trackerGithubHelp': 'Les créer comme issues sur ce dépôt',
+  'repo.plan.trackerAsk': 'Demander chaque fois',
+  'repo.plan.trackerAskHelp': 'Choisir au moment de l’exécution, à chaque plan',
+  'repo.plan.jiraProject': 'Projet Jira',
+  'repo.plan.jiraProjectHelp': 'Clé du projet dans lequel les tickets sont créés (ex. : PROJ)',
+  'repo.plan.epicType': 'Type d’issue pour l’epic',
+  'repo.plan.epicTypeHelp': 'Nom que votre projet Jira donne au type d’issue utilisé pour l’epic',
+  'repo.plan.storyType': 'Type d’issue pour les stories',
+  'repo.plan.storyTypeHelp':
+    'Nom que votre projet Jira donne au type d’issue utilisé pour chaque story',
+  'repo.plan.splitting': 'Niveau de découpage',
+  'repo.plan.splittingHelp':
+    'À quel point une idée devient un epic avec plusieurs stories plutôt qu’un seul ticket',
+  'repo.plan.splittingConservative': 'Prudent',
+  'repo.plan.splittingConservativeHelp':
+    'Un seul ticket, sauf si l’idée couvre clairement des travaux distincts',
+  'repo.plan.splittingBalanced': 'Équilibré',
+  'repo.plan.splittingBalancedHelp':
+    'Découper quand les parties pourraient être terminées des jours différents',
+  'repo.plan.splittingEager': 'Volontaire',
+  'repo.plan.splittingEagerHelp':
+    'Préférer plusieurs petites stories, chacune livrable indépendamment',
+  'repo.plan.acceptanceCriteria': 'Critères d’acceptation',
+  'repo.plan.acceptanceCriteriaHelp':
+    'Format de la liste « comment sait-on que c’est terminé » ajoutée à chaque story',
+  'repo.plan.acceptanceCriteriaChecklist': 'Liste à cocher',
+  'repo.plan.acceptanceCriteriaChecklistHelp': 'Des cases à cocher, écrites en langage courant',
+  'repo.plan.acceptanceCriteriaGherkin': 'Gherkin (Étant donné / Quand / Alors)',
+  'repo.plan.acceptanceCriteriaGherkinHelp':
+    'Un scénario par cas : la situation de départ, l’action, le résultat attendu',
+  'repo.plan.acceptanceCriteriaNone': 'Aucun',
+  'repo.plan.acceptanceCriteriaNoneHelp':
+    'Pas de liste — la description seule dit ce qui est attendu',
+  'repo.plan.useRepoTemplates': 'Utiliser les modèles du dépôt',
+  'repo.plan.useRepoTemplatesHelp':
+    'Remplir les nouveaux tickets à partir des modèles d’issue du dépôt quand il en a',
+  'repo.plan.duplicateCheck': 'Vérifier les doublons',
+  'repo.plan.duplicateCheckHelp':
+    'Chercher dans les tickets existants avant de proposer une structure',
+  'repo.plan.assignToMe': 'M’assigner les tickets',
+  'repo.plan.assignToMeHelp': 'Mettre votre nom sur chaque ticket créé',
+  'repo.plan.defaultLabels': 'Labels par défaut',
+  'repo.plan.defaultLabelsHelp': 'Labels ajoutés à chaque ticket créé par /magic:plan',
   'repo.danger.section': 'Zone sensible',
   'repo.danger.delete': 'Supprimer ce dépôt',
   'repo.danger.deleteTeamHelp': 'Le retire pour tous les membres de l’organisation.',

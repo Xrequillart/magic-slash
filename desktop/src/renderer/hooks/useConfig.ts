@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
-import type { Config, LanguageId, RepositoryConfig, ThemeId } from '../../types'
+import type { Config, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -74,6 +74,12 @@ export function useConfig() {
 
   const updateRepositoryPullRequestSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['pullRequest']>>) => {
     const result = await window.electronAPI.config.updateRepositoryPullRequestSettings(name, settings)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
+  const updateRepositoryPlanSettings = useCallback(async (name: string, settings: PlanSettingsInput) => {
+    const result = await window.electronAPI.config.updateRepositoryPlanSettings(name, settings)
     setConfig(result.config)
     return result
   }, [setConfig])
@@ -214,6 +220,7 @@ export function useConfig() {
     updateRepositoryResolveSettings,
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
+    updateRepositoryPlanSettings,
     updateRepositoryBranchSettings,
     updateRepositoryWorktreeFilesSettings,
     updateSplitEnabled,

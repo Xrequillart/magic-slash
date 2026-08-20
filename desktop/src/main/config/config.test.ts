@@ -19,6 +19,8 @@ import {
   readConfig,
   resetConfigCache,
   updateRepositoryCommitSettings,
+  updateRepositoryLanguages,
+  updateRepositoryPlanSettings,
   updateUsageLogsEnabled,
 } from './config'
 
@@ -387,5 +389,146 @@ describe('updateRepositoryCommitSettings', () => {
   it('ignores a non-boolean, rather than storing it', () => {
     updateRepositoryCommitSettings('api', { allowOnProtectedBranch: 'yes' as unknown as boolean })
     expect(readConfig().repositories.api.commit?.allowOnProtectedBranch).toBeUndefined()
+  })
+})
+
+describe('updateRepositoryLanguages — ticket', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  // validKeys is a whitelist: an unlisted key is dropped in silence, so the select
+  // in Settings would appear to work and never persist.
+  it('persists the ticket language', () => {
+    updateRepositoryLanguages('api', { ticket: 'fr' })
+    expect(readConfig().repositories.api.languages?.ticket).toBe('fr')
+  })
+
+  it('resets the ticket language back to the fallback chain', () => {
+    updateRepositoryLanguages('api', { ticket: 'fr' })
+    updateRepositoryLanguages('api', { ticket: null })
+    expect(readConfig().repositories.api.languages?.ticket).toBeUndefined()
+  })
+
+  it('leaves the sibling languages alone', () => {
+    updateRepositoryLanguages('api', { jiraComment: 'fr' })
+    updateRepositoryLanguages('api', { ticket: 'en' })
+    expect(readConfig().repositories.api.languages?.jiraComment).toBe('fr')
+  })
+
+  it('ignores an unsupported language, rather than storing it', () => {
+    updateRepositoryLanguages('api', { ticket: 'de' })
+    expect(readConfig().repositories.api.languages?.ticket).toBeUndefined()
+  })
+})
+
+describe('updateRepositoryPlanSettings', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  it('persists every key in both directions', () => {
+    const { config } = updateRepositoryPlanSettings('api', {
+      tracker: 'jira',
+      jiraProject: 'PROJ',
+      useRepoTemplates: false,
+      splitting: 'eager',
+      acceptanceCriteria: 'gherkin',
+      defaultLabels: ['needs-triage'],
+      assignToMe: true,
+      duplicateCheck: false,
+    })
+    expect(config.repositories.api.plan).toMatchObject({
+      tracker: 'jira',
+      jiraProject: 'PROJ',
+      useRepoTemplates: false,
+      splitting: 'eager',
+      acceptanceCriteria: 'gherkin',
+      defaultLabels: ['needs-triage'],
+      assignToMe: true,
+      duplicateCheck: false,
+    })
+    expect(readConfig().repositories.api.plan?.tracker).toBe('jira')
+
+    updateRepositoryPlanSettings('api', { tracker: 'github', assignToMe: false })
+    expect(readConfig().repositories.api.plan?.tracker).toBe('github')
+    expect(readConfig().repositories.api.plan?.assignToMe).toBe(false)
+  })
+
+  it('leaves the other plan settings alone', () => {
+    updateRepositoryPlanSettings('api', { splitting: 'eager', jiraProject: 'PROJ' })
+    updateRepositoryPlanSettings('api', { tracker: 'jira' })
+
+    const plan = readConfig().repositories.api.plan
+    expect(plan?.splitting).toBe('eager')
+    expect(plan?.jiraProject).toBe('PROJ')
+  })
+
+  // issueTypes is the first two-level nesting inside an option block. A whole-object
+  // assignment would take both keys; patching one must leave its sibling standing.
+  it('merges issueTypes instead of replacing it', () => {
+    updateRepositoryPlanSettings('api', { issueTypes: { epic: 'Feature', story: 'Task' } })
+    updateRepositoryPlanSettings('api', { issueTypes: { epic: 'Initiative' } })
+
+    expect(readConfig().repositories.api.plan?.issueTypes).toEqual({
+      epic: 'Initiative',
+      story: 'Task',
+    })
+  })
+
+  it('clears one issue type without taking its sibling', () => {
+    updateRepositoryPlanSettings('api', { issueTypes: { epic: 'Feature', story: 'Task' } })
+    updateRepositoryPlanSettings('api', { issueTypes: { epic: null } })
+
+    expect(readConfig().repositories.api.plan?.issueTypes).toEqual({ story: 'Task' })
+  })
+
+  it('reports an invalid enum value as rejected, rather than storing it', () => {
+    const { rejected } = updateRepositoryPlanSettings('api', {
+      tracker: 'gitlab' as unknown as string,
+      splitting: 'aggressive' as unknown as string,
+      acceptanceCriteria: 'checklist',
+    })
+
+    expect(rejected).toEqual(['tracker', 'splitting'])
+    expect(readConfig().repositories.api.plan?.tracker).toBeUndefined()
+    expect(readConfig().repositories.api.plan?.splitting).toBeUndefined()
+    // A valid sibling in the same call still lands.
+    expect(readConfig().repositories.api.plan?.acceptanceCriteria).toBe('checklist')
+  })
+
+  it('reports a wrongly typed value as rejected', () => {
+    const { rejected } = updateRepositoryPlanSettings('api', {
+      assignToMe: 'yes' as unknown as boolean,
+      defaultLabels: ['ok', 7] as unknown as string[],
+    })
+
+    expect(rejected).toEqual(['defaultLabels', 'assignToMe'])
+    expect(readConfig().repositories.api.plan?.assignToMe).toBeUndefined()
+    expect(readConfig().repositories.api.plan?.defaultLabels).toBeUndefined()
+  })
+
+  it('reports nothing rejected on a clean write', () => {
+    expect(updateRepositoryPlanSettings('api', { tracker: 'ask' }).rejected).toEqual([])
+  })
+
+  it('accepts an empty label list', () => {
+    updateRepositoryPlanSettings('api', { defaultLabels: [] })
+    expect(readConfig().repositories.api.plan?.defaultLabels).toEqual([])
+  })
+
+  it('throws on an unknown repository', () => {
+    expect(() => updateRepositoryPlanSettings('nope', { tracker: 'jira' }))
+      .toThrow("Repository 'nope' not found")
   })
 })

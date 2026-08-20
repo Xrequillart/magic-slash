@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen
 } from 'lucide-react'
@@ -8,12 +8,156 @@ import { useOrg } from '../../hooks/useOrg'
 import { Modal } from '../../components/Modal'
 import { showToast } from '../../components/Toast'
 import { PROJECT_COLORS } from '../../utils/projectColors'
-import { useT } from '../../i18n'
+import { useT, type MessageKey } from '../../i18n'
 import { Switch } from '../../components/Switch'
-import { INPUT, SELECT } from '../../theme/controls'
+import { BTN, INPUT, SELECT } from '../../theme/controls'
+import {
+  PLAN_TRACKERS,
+  PLAN_SPLITTING_MODES,
+  PLAN_ACCEPTANCE_CRITERIA_FORMATS,
+  type PlanSettingsInput,
+} from '../../../types'
+import { resolveTicketLanguage } from '../../../languages'
 
 interface RepoPageProps {
   repoName: string
+}
+
+/**
+ * The label each `plan` enum value wears in the form.
+ *
+ * Total records over the value lists exported by types.ts, which are the same
+ * lists `updateRepositoryPlanSettings` validates against — so the dropdowns can
+ * only ever offer a value the write path accepts, and adding a value there
+ * without a label here is a tsc error rather than a blank option.
+ */
+const PLAN_TRACKER_LABELS: Record<(typeof PLAN_TRACKERS)[number], MessageKey> = {
+  jira: 'repo.plan.trackerJira',
+  github: 'repo.plan.trackerGithub',
+  ask: 'repo.plan.trackerAsk',
+}
+
+const PLAN_SPLITTING_LABELS: Record<(typeof PLAN_SPLITTING_MODES)[number], MessageKey> = {
+  conservative: 'repo.plan.splittingConservative',
+  balanced: 'repo.plan.splittingBalanced',
+  eager: 'repo.plan.splittingEager',
+}
+
+const PLAN_ACCEPTANCE_CRITERIA_LABELS: Record<(typeof PLAN_ACCEPTANCE_CRITERIA_FORMATS)[number], MessageKey> = {
+  checklist: 'repo.plan.acceptanceCriteriaChecklist',
+  gherkin: 'repo.plan.acceptanceCriteriaGherkin',
+  none: 'repo.plan.acceptanceCriteriaNone',
+}
+
+/**
+ * One label-plus-help row with its control on the right — the shape every setting
+ * in this page wears. Module scope, not inside RepoPage like LangSelect below: a
+ * component redeclared each render is a new type each render, so React would
+ * remount it and the text fields inside would lose focus on every keystroke.
+ */
+function SettingRow({ label, description, align = 'start', children }: {
+  label: string
+  description: string
+  align?: 'start' | 'center'
+  children: React.ReactNode
+}) {
+  // Written out rather than interpolated: Tailwind only emits classes it can see
+  // as whole strings in the source.
+  const items = align === 'center' ? 'items-center' : 'items-start'
+  return (
+    <div className={`flex ${items} justify-between gap-6 py-3 border-b border-line-subtle`}>
+      <div className="flex-1">
+        <label className="block text-sm font-medium mb-0.5">{label}</label>
+        <p className="text-xs text-text-secondary/50">{description}</p>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+/** Native select over a closed value list, with its label map. */
+function EnumSelect<T extends string>({ value, values, labels, onChange }: {
+  value: string
+  values: readonly T[]
+  labels: Record<T, MessageKey>
+  onChange: (value: string) => void
+}) {
+  const t = useT()
+  return (
+    <div className="relative">
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={`${SELECT} w-52`}>
+        {values.map((v) => (
+          <option key={v} value={v}>{t(labels[v])}</option>
+        ))}
+      </select>
+      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
+    </div>
+  )
+}
+
+/**
+ * Editable list of short strings shown as removable chips. Twin of the webapp's
+ * ChipList (webapp/components/SettingRow.tsx), down to `inputId`: the id is a
+ * prop precisely so two lists can coexist on this page without colliding.
+ */
+function ChipList({ items, onChange, placeholder, inputId }: {
+  items: string[]
+  onChange: (items: string[]) => void
+  placeholder: string
+  inputId: string
+}) {
+  const t = useT()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const add = () => {
+    const input = inputRef.current
+    const value = input?.value.trim()
+    if (!input || !value || items.includes(value)) return
+    onChange([...items, value])
+    input.value = ''
+  }
+
+  return (
+    <>
+      {items.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {items.map((item) => (
+            <span
+              key={item}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-line-strong rounded-lg text-sm"
+            >
+              {item}
+              <button
+                onClick={() => onChange(items.filter((i) => i !== item))}
+                aria-label={t('common.remove')}
+                className="text-text-secondary hover:text-red transition-colors"
+              >
+                &times;
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          ref={inputRef}
+          type="text"
+          id={inputId}
+          placeholder={placeholder}
+          className={`${INPUT} flex-1`}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return
+            e.preventDefault()
+            add()
+          }}
+        />
+        <button onClick={add} className={BTN}>
+          <Plus className="w-3 h-3" />
+          {t('common.add')}
+        </button>
+      </div>
+    </>
+  )
 }
 
 /**
@@ -75,6 +219,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
     updateRepositoryResolveSettings,
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
+    updateRepositoryPlanSettings,
     updateRepositoryBranchSettings,
     updateRepositoryWorktreeFilesSettings,
     validatePath,
@@ -338,6 +483,39 @@ export function RepoPage({ repoName }: RepoPageProps) {
     }
   }
 
+  /**
+   * The one writer of the `plan` block.
+   *
+   * Unlike its siblings, `updateRepositoryPlanSettings` does not throw on a bad
+   * value: it applies the fields it accepts and answers with the names of the ones
+   * it REFUSED, so one stale value can never discard the rest of an object. That
+   * makes a plain success toast a lie, hence the branch — a refused write has to
+   * say so, and say which setting, or the form silently shows a value the config
+   * does not hold.
+   */
+  const writePlanSettings = async (settings: PlanSettingsInput) => {
+    try {
+      const { rejected } = await updateRepositoryPlanSettings(repoName, settings)
+      if (rejected.length > 0) {
+        showToast(t('toast.settingRejected', { keys: rejected.join(', ') }), 'error')
+        return
+      }
+      showToast(t('toast.settingUpdated'))
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
+    }
+  }
+
+  // Booleans go over as themselves, deliberately unlike handlePRSettingChange's
+  // `value ? null : false`: `true` is a value here, not the absence of one.
+  const handlePlanSettingChange = (key: keyof PlanSettingsInput, value: string | boolean | string[]) =>
+    writePlanSettings({ [key]: value === 'default' ? null : value })
+
+  // `issueTypes` sits one level deeper, and its two names reset independently —
+  // sending `{ issueTypes: { epic } }` leaves `story` alone.
+  const handlePlanIssueTypeChange = (key: 'epic' | 'story', value: string) =>
+    writePlanSettings({ issueTypes: { [key]: value } })
+
   const handleBranchSettingChange = async (key: string, value: string) => {
     try {
       await updateRepositoryBranchSettings(repoName, { [key]: value })
@@ -436,6 +614,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const resolveSettings = repo.resolve || {}
   const prSettings = repo.pullRequest || {}
   const issuesSettings = repo.issues || {}
+  const planSettings = repo.plan || {}
   const branchSettings = repo.branches || {}
 
   const styleVal = commitSettings.style || 'single-line'
@@ -456,9 +635,27 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const testAccountsVal = prSettings.testAccounts || 'off'
   const testAccountsSourceVal = prSettings.testAccountsSource || ''
   const commentOnPRVal = issuesSettings.commentOnPR !== undefined ? issuesSettings.commentOnPR : true
+  const planTrackerVal = planSettings.tracker || 'ask'
+  // The three free-text Jira names read '' when unset so the field shows its
+  // placeholder — the documented default — rather than a value nobody typed.
+  const planJiraProjectVal = planSettings.jiraProject || ''
+  const planEpicTypeVal = planSettings.issueTypes?.epic || ''
+  const planStoryTypeVal = planSettings.issueTypes?.story || ''
+  const planUseRepoTemplatesVal = planSettings.useRepoTemplates ?? true
+  const planSplittingVal = planSettings.splitting || 'balanced'
+  const planAcceptanceCriteriaVal = planSettings.acceptanceCriteria || 'checklist'
+  const planDefaultLabelsVal = planSettings.defaultLabels || []
+  const planAssignToMeVal = planSettings.assignToMe ?? false
+  const planDuplicateCheckVal = planSettings.duplicateCheck ?? true
 
-  const LangSelect = ({ langKey, label, description }: { langKey: string; label: string; description?: string }) => {
-    const currentVal = (repoLangs as any)[langKey] || 'en'
+  /**
+   * `resolvedValue` is for the language keys whose effective value is a FALLBACK
+   * CHAIN rather than the key itself: `languages.ticket` inherits `jiraComment`
+   * when unset, so reading `repoLangs.ticket` alone would show English above a
+   * repo whose tickets are written in French. Callers with a plain key omit it.
+   */
+  const LangSelect = ({ langKey, label, description, resolvedValue }: { langKey: string; label: string; description?: string; resolvedValue?: string }) => {
+    const currentVal = resolvedValue || (repoLangs as any)[langKey] || 'en'
 
     return (
       <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
@@ -813,57 +1010,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
               <label className="block text-sm font-medium mb-0.5">{t('repo.worktree.files')}</label>
               <p className="text-xs text-text-secondary/50">{t('repo.worktree.filesHelp')}</p>
             </div>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {(repo.worktreeFiles || []).map((file, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-line-strong rounded-lg text-sm"
-                >
-                  {file}
-                  <button
-                    onClick={() => {
-                      const newFiles = (repo.worktreeFiles || []).filter((_, i) => i !== index)
-                      handleWorktreeFilesChange(newFiles)
-                    }}
-                    className="text-text-secondary hover:text-red transition-colors"
-                  >
-                    &times;
-                  </button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                id="worktree-file-input"
-                placeholder=".env"
-                className={`${INPUT} flex-1`}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const input = e.currentTarget
-                    const value = input.value.trim()
-                    if (value && !(repo.worktreeFiles || []).includes(value)) {
-                      handleWorktreeFilesChange([...(repo.worktreeFiles || []), value])
-                      input.value = ''
-                    }
-                  }
-                }}
-              />
-              <button
-                onClick={() => {
-                  const input = document.getElementById('worktree-file-input') as HTMLInputElement
-                  const value = input?.value.trim()
-                  if (value && !(repo.worktreeFiles || []).includes(value)) {
-                    handleWorktreeFilesChange([...(repo.worktreeFiles || []), value])
-                    input.value = ''
-                  }
-                }}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-text-secondary bg-surface border border-line-strong rounded-lg hover:bg-surface-strong hover:text-ink transition-all"
-              >
-                <Plus className="w-3 h-3" />
-                {t('repo.worktree.add')}
-              </button>
-            </div>
+            <ChipList
+              items={repo.worktreeFiles || []}
+              onChange={handleWorktreeFilesChange}
+              placeholder=".env"
+              inputId="worktree-file-input"
+            />
           </div>
         </fieldset>
       </div>
@@ -1244,6 +1396,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
         <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.issues.section')}</h2>
         <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
           <LangSelect langKey="jiraComment" label={t('repo.issues.commentLang')} description={t('repo.issues.commentLangHelp')} />
+          <LangSelect
+            langKey="ticket"
+            label={t('repo.issues.ticketLang')}
+            description={t('repo.issues.ticketLangHelp')}
+            resolvedValue={resolveTicketLanguage(repoLangs)}
+          />
 
           {/* Comment on PR */}
           <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
@@ -1289,6 +1447,102 @@ export function RepoPage({ repoName }: RepoPageProps) {
               onChange={(e) => handleIssuesSettingChange('githubIssuesUrl', e.target.value)}
               placeholder="https://github.com/org/repo/issues/"
               className={`${INPUT} w-72`}
+            />
+          </div>
+        </fieldset>
+      </div>
+      {/* Plan Section */}
+      <div className="mb-6">
+        <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.section')}</h2>
+        <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <SettingRow label={t('repo.plan.tracker')} description={t('repo.plan.trackerHelp')}>
+            <EnumSelect
+              value={planTrackerVal}
+              values={PLAN_TRACKERS}
+              labels={PLAN_TRACKER_LABELS}
+              onChange={(v) => handlePlanSettingChange('tracker', v)}
+            />
+          </SettingRow>
+
+          <SettingRow label={t('repo.plan.jiraProject')} description={t('repo.plan.jiraProjectHelp')}>
+            <input
+              type="text"
+              value={planJiraProjectVal}
+              onChange={(e) => handlePlanSettingChange('jiraProject', e.target.value)}
+              placeholder="PROJ"
+              className={`${INPUT} w-72`}
+            />
+          </SettingRow>
+
+          <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
+            <input
+              type="text"
+              value={planEpicTypeVal}
+              onChange={(e) => handlePlanIssueTypeChange('epic', e.target.value)}
+              placeholder="Epic"
+              className={`${INPUT} w-72`}
+            />
+          </SettingRow>
+
+          <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
+            <input
+              type="text"
+              value={planStoryTypeVal}
+              onChange={(e) => handlePlanIssueTypeChange('story', e.target.value)}
+              placeholder="Story"
+              className={`${INPUT} w-72`}
+            />
+          </SettingRow>
+
+          <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
+            <EnumSelect
+              value={planSplittingVal}
+              values={PLAN_SPLITTING_MODES}
+              labels={PLAN_SPLITTING_LABELS}
+              onChange={(v) => handlePlanSettingChange('splitting', v)}
+            />
+          </SettingRow>
+
+          <SettingRow label={t('repo.plan.acceptanceCriteria')} description={t('repo.plan.acceptanceCriteriaHelp')}>
+            <EnumSelect
+              value={planAcceptanceCriteriaVal}
+              values={PLAN_ACCEPTANCE_CRITERIA_FORMATS}
+              labels={PLAN_ACCEPTANCE_CRITERIA_LABELS}
+              onChange={(v) => handlePlanSettingChange('acceptanceCriteria', v)}
+            />
+          </SettingRow>
+
+          {/* The three switches differ only by key, and their message keys are
+              mechanically `repo.plan.<key>` / `<key>Help`. */}
+          {([
+            ['useRepoTemplates', planUseRepoTemplatesVal],
+            ['duplicateCheck', planDuplicateCheckVal],
+            ['assignToMe', planAssignToMeVal],
+          ] as const).map(([key, checked]) => (
+            <SettingRow
+              key={key}
+              align="center"
+              label={t(`repo.plan.${key}`)}
+              description={t(`repo.plan.${key}Help`)}
+            >
+              <Switch
+                checked={checked}
+                onChange={(next) => handlePlanSettingChange(key, next)}
+                label={t(`repo.plan.${key}`)}
+              />
+            </SettingRow>
+          ))}
+
+          <div className="py-3">
+            <div className="flex-1 mb-3">
+              <label className="block text-sm font-medium mb-0.5">{t('repo.plan.defaultLabels')}</label>
+              <p className="text-xs text-text-secondary/50">{t('repo.plan.defaultLabelsHelp')}</p>
+            </div>
+            <ChipList
+              items={planDefaultLabelsVal}
+              onChange={(labels) => handlePlanSettingChange('defaultLabels', labels)}
+              placeholder="enhancement"
+              inputId="plan-default-label-input"
             />
           </div>
         </fieldset>

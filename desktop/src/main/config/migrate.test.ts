@@ -44,8 +44,23 @@ describe('migrateConfig — repository defaults', () => {
     migrateConfig('1.0.0')
     const repo = readConfig().repositories['test-repo']
     expect(repo.color).toBe('#3B82F6')
+    // `ticket` is absent on purpose: it heads a fallback chain and a default would
+    // pin every repo to 'en'. See resolveTicketLanguage in desktop/src/languages.ts.
     expect(repo.languages).toEqual({ commit: 'en', pullRequest: 'en', jiraComment: 'en', discussion: 'en' })
     expect(repo.commit).toMatchObject({ style: 'single-line', format: 'angular' })
+    // deepMergeDefaults fills the nested level too, which is what lets the plan
+    // block ship without a migrate.ts branch of its own.
+    expect(repo.plan).toEqual({
+      tracker: 'ask',
+      jiraProject: '',
+      issueTypes: { epic: 'Epic', story: 'Story' },
+      useRepoTemplates: true,
+      splitting: 'balanced',
+      acceptanceCriteria: 'checklist',
+      defaultLabels: [],
+      assignToMe: false,
+      duplicateCheck: true,
+    })
     // Existing fields are preserved.
     expect(repo.path).toBe('/home/user/test-repo')
     expect(repo.keywords).toEqual(['test'])

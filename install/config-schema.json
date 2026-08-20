@@ -138,6 +138,11 @@
             "discussion": {
               "type": "string",
               "enum": ["en", "fr"]
+            },
+            "ticket": {
+              "type": "string",
+              "enum": ["en", "fr"],
+              "description": "Language created tickets are written in, as opposed to `discussion`, the language the skill talks to you in. Unset falls back to `jiraComment`, then to English — so leaving it out is meaningful, not a gap."
             }
           },
           "additionalProperties": false,
@@ -232,6 +237,66 @@
           },
           "additionalProperties": false,
           "description": "Issue tracking settings"
+        },
+        "plan": {
+          "type": "object",
+          "properties": {
+            "tracker": {
+              "type": "string",
+              "enum": ["jira", "github", "ask"],
+              "description": "Which tracker /magic:plan creates tickets in. Defaults to asking."
+            },
+            "jiraProject": {
+              "type": "string",
+              "description": "Jira project key tickets are created under, e.g. PROJ"
+            },
+            "issueTypes": {
+              "type": "object",
+              "properties": {
+                "epic": {
+                  "type": "string",
+                  "description": "Jira issue type name for epics. Names vary per instance, so this is configurable rather than hardcoded."
+                },
+                "story": {
+                  "type": "string",
+                  "description": "Jira issue type name for stories"
+                }
+              },
+              "additionalProperties": false,
+              "description": "Jira issue type names, per instance"
+            },
+            "useRepoTemplates": {
+              "type": "boolean",
+              "description": "Honour .github/ISSUE_TEMPLATE/* and Jira description templates. Defaults to true."
+            },
+            "splitting": {
+              "type": "string",
+              "enum": ["conservative", "balanced", "eager"],
+              "description": "How readily an idea becomes an epic with several stories rather than one ticket"
+            },
+            "acceptanceCriteria": {
+              "type": "string",
+              "enum": ["checklist", "gherkin", "none"],
+              "description": "Format of the generated acceptance criteria, in the spec and in the tickets"
+            },
+            "defaultLabels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Labels applied to every created ticket"
+            },
+            "assignToMe": {
+              "type": "boolean",
+              "description": "Auto-assign created tickets to the current user. Defaults to false."
+            },
+            "duplicateCheck": {
+              "type": "boolean",
+              "description": "Search existing tickets before proposing a structure. Defaults to true."
+            }
+          },
+          "additionalProperties": false,
+          "description": "Settings for /magic:plan — turning an idea into an epic and its stories"
         },
         "branches": {
           "type": "object",

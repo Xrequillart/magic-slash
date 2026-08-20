@@ -33,6 +33,13 @@ export interface RepoLanguages {
   pullRequest?: string
   jiraComment?: string
   discussion?: string
+  /**
+   * The language created tickets are WRITTEN IN — distinct from `discussion`, which
+   * is the language a skill TALKS TO YOU in. Head of a fallback chain
+   * (`ticket` -> `jiraComment` -> DEFAULTS.language), so it has no entry in DEFAULTS:
+   * materialising one would pin every repo to English and make the chain unreachable.
+   */
+  ticket?: string
 }
 
 export interface RepoCommit {
@@ -68,6 +75,36 @@ export interface RepoIssues {
   githubIssuesUrl?: string
 }
 
+/**
+ * Settings for /magic:plan — turning an idea into an epic and its stories.
+ *
+ * The human validation step before ticket creation and the depth of codebase
+ * exploration are deliberately not settings: the skill judges the latter from the
+ * size of the idea, and the former is not a knob anyone should be able to switch off.
+ */
+export interface RepoPlan {
+  /** 'jira' | 'github' | 'ask' */
+  tracker?: string
+  /** Jira project key, e.g. 'PROJ' */
+  jiraProject?: string
+  /** Jira issue type NAMES, as the project spells them. */
+  issueTypes?: {
+    epic?: string
+    story?: string
+  }
+  /** Honour .github/ISSUE_TEMPLATE/* and Jira description templates. */
+  useRepoTemplates?: boolean
+  /** 'conservative' | 'balanced' | 'eager' */
+  splitting?: string
+  /** 'checklist' | 'gherkin' | 'none' */
+  acceptanceCriteria?: string
+  /** Labels applied to every created ticket. */
+  defaultLabels?: string[]
+  assignToMe?: boolean
+  /** Search existing tickets before proposing a structure. */
+  duplicateCheck?: boolean
+}
+
 export interface RepoBranches {
   development?: string
 }
@@ -84,6 +121,7 @@ export interface Repository {
   resolve: RepoResolve
   pullRequest: RepoPullRequest
   issues: RepoIssues
+  plan: RepoPlan
   branches: RepoBranches
   worktreeFiles: string[]
   createdAt: string | null
@@ -101,13 +139,14 @@ interface RepositoryRow {
   resolve: RepoResolve | null
   pull_request: RepoPullRequest | null
   issues: RepoIssues | null
+  plan: RepoPlan | null
   branches: RepoBranches | null
   worktree_files: string[] | null
   created_at: string | null
 }
 
 const COLUMNS =
-  'id, org_id, owner_id, name, keywords, color, languages, commit, resolve, pull_request, issues, branches, worktree_files, created_at'
+  'id, org_id, owner_id, name, keywords, color, languages, commit, resolve, pull_request, issues, plan, branches, worktree_files, created_at'
 
 function toRepository(r: RepositoryRow): Repository {
   return {
@@ -122,6 +161,7 @@ function toRepository(r: RepositoryRow): Repository {
     resolve: r.resolve ?? {},
     pullRequest: r.pull_request ?? {},
     issues: r.issues ?? {},
+    plan: r.plan ?? {},
     branches: r.branches ?? {},
     worktreeFiles: r.worktree_files ?? [],
     createdAt: r.created_at,
@@ -190,6 +230,7 @@ export interface RepositoryPatch {
   resolve?: RepoResolve
   pullRequest?: RepoPullRequest
   issues?: RepoIssues
+  plan?: RepoPlan
   branches?: RepoBranches
   worktreeFiles?: string[]
 }
@@ -216,6 +257,16 @@ export function expandPatch(repo: Repository, patch: RepositoryPatch): Repositor
   if (patch.pullRequest) out.pullRequest = { ...repo.pullRequest, ...patch.pullRequest }
   if (patch.issues) out.issues = { ...repo.issues, ...patch.issues }
   if (patch.branches) out.branches = { ...repo.branches, ...patch.branches }
+  // `plan.issueTypes` is the first two-level nesting inside an option block, and the
+  // merges above are one level deep. `{ plan: { issueTypes: { epic } } }` would
+  // therefore replace the whole `issueTypes` object and silently drop `story`, so that
+  // second level is merged explicitly. The levels reset independently.
+  if (patch.plan) {
+    out.plan = { ...repo.plan, ...patch.plan }
+    if (patch.plan.issueTypes) {
+      out.plan.issueTypes = { ...repo.plan.issueTypes, ...patch.plan.issueTypes }
+    }
+  }
   return out
 }
 
@@ -249,6 +300,7 @@ export async function updateRepository(
   if (patch.resolve !== undefined) row.resolve = patch.resolve
   if (patch.pullRequest !== undefined) row.pull_request = patch.pullRequest
   if (patch.issues !== undefined) row.issues = patch.issues
+  if (patch.plan !== undefined) row.plan = patch.plan
   if (patch.branches !== undefined) row.branches = patch.branches
   if (patch.worktreeFiles !== undefined) row.worktree_files = patch.worktreeFiles
   if (Object.keys(row).length === 0) return null
@@ -309,6 +361,20 @@ export const DEFAULTS = {
   watchCI: true,
   testAccounts: 'off',
   commentOnPR: true,
+  // /magic:plan. `issueTypes` is nested, so the level above supplies the prefix here
+  // (`issueTypeEpic`) the way the block name does elsewhere; nothing else collides, so
+  // the other keys stay bare. `languages.ticket` deliberately has NO entry: it is the
+  // head of a fallback chain, and a default here would make the chain unreachable.
+  tracker: 'ask',
+  jiraProject: '',
+  issueTypeEpic: 'Epic',
+  issueTypeStory: 'Story',
+  useRepoTemplates: true,
+  splitting: 'balanced',
+  acceptanceCriteria: 'checklist',
+  defaultLabels: [] as string[],
+  assignToMe: false,
+  duplicateCheck: true,
 } as const
 
 /**

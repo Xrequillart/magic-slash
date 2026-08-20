@@ -197,6 +197,44 @@ export interface TerminalInfo {
   metadata?: TerminalMetadata
 }
 
+/**
+ * Allowed values for the enum settings of the `plan` block.
+ *
+ * Exported as single source of truth: `updateRepositoryPlanSettings` validates
+ * against these, and both settings forms build their dropdowns from them, so a
+ * value can never be offered by a form and rejected by the write path.
+ */
+export const PLAN_TRACKERS = ['jira', 'github', 'ask'] as const
+export const PLAN_SPLITTING_MODES = ['conservative', 'balanced', 'eager'] as const
+export const PLAN_ACCEPTANCE_CRITERIA_FORMATS = ['checklist', 'gherkin', 'none'] as const
+
+/**
+ * A settings field as the renderer sends it: its own value, or 'default'/null to
+ * clear the key and fall back to the documented default.
+ */
+export type SettingsField<T> = T | 'default' | null
+
+/** An option block as the renderer sends it: every field a SettingsField. */
+export type SettingsInput<T> = {
+  [K in keyof T]?: SettingsField<T[K]>
+}
+
+/**
+ * The shape the renderer sends to write the `plan` block.
+ *
+ * Lives here rather than beside the writer because all three processes need it —
+ * main validates against it, preload types the bridge, the renderer types the hook.
+ *
+ * Derived from the block itself so the two cannot drift, with `issueTypes` lifted
+ * out of the mapping: it is the first two-level nesting inside an option block,
+ * and the levels reset independently — `issueTypes: { epic: null }` must clear
+ * `epic` and LEAVE `story` alone, where a whole-object assignment would take both.
+ */
+type PlanBlock = NonNullable<RepositoryConfig['plan']>
+export type PlanSettingsInput = Omit<SettingsInput<PlanBlock>, 'issueTypes'> & {
+  issueTypes?: SettingsInput<NonNullable<PlanBlock['issueTypes']>>
+}
+
 export interface RepositoryConfig {
   // Cloud identity. `id` is the repositories table PK (client-generated on add).
   // `orgId` null/absent = personal repo; set = shared to that org (team repo).
@@ -232,6 +270,17 @@ export interface RepositoryConfig {
     pullRequest?: string
     jiraComment?: string
     discussion?: string
+    /**
+     * The language created tickets are WRITTEN IN — distinct from `discussion`,
+     * which is the language a skill TALKS TO YOU in. A French-speaking developer
+     * filing tickets in English for an international team is the normal case.
+     *
+     * Deliberately absent from DEFAULT_REPOSITORY_FIELDS: it is the head of a
+     * fallback chain (`ticket` -> `jiraComment` -> 'en'), and materialising a
+     * default would pin every repo to 'en' and make the chain unreachable.
+     * Resolve it with resolveTicketLanguage() from `desktop/src/languages.ts`.
+     */
+    ticket?: string
   }
   commit?: {
     style?: string
@@ -271,6 +320,32 @@ export interface RepositoryConfig {
     jiraUrl?: string
     githubIssuesUrl?: string
   }
+  /**
+   * Settings for /magic:plan — turning an idea into an epic and its stories.
+   *
+   * Nothing consumes this block until the plan skill lands, so a partial rollout
+   * is inert rather than broken. The human validation step before ticket creation
+   * and the depth of codebase exploration are deliberately NOT configurable: the
+   * skill judges the latter from the size of the idea, and the former is not a
+   * knob anyone should be able to switch off.
+   */
+  plan?: {
+    // The three enum fields stay `string`: this block is jsonb the webapp writes
+    // wholesale, so an unknown value can arrive and updateRepositoryPlanSettings
+    // is what refuses it. Allowed values are PLAN_* above, never re-listed here.
+    tracker?: string             // see PLAN_TRACKERS
+    jiraProject?: string         // Jira project key, e.g. 'PROJ'
+    issueTypes?: {
+      epic?: string              // Jira issue type name for epics, e.g. 'Epic'
+      story?: string             // Jira issue type name for stories, e.g. 'Story'
+    }
+    useRepoTemplates?: boolean   // honour .github/ISSUE_TEMPLATE/* and Jira description templates
+    splitting?: string           // see PLAN_SPLITTING_MODES
+    acceptanceCriteria?: string  // see PLAN_ACCEPTANCE_CRITERIA_FORMATS
+    defaultLabels?: string[]     // labels applied to every created ticket
+    assignToMe?: boolean         // auto-assign created tickets to the current user
+    duplicateCheck?: boolean     // search existing tickets before proposing a structure
+  }
   branches?: {
     development?: string  // e.g., "develop", "dev" - defaults to "develop"
   }
@@ -295,6 +370,7 @@ export interface StoredRepository {
   pullRequest?: RepositoryConfig['pullRequest']
   resolve?: RepositoryConfig['resolve']
   issues?: RepositoryConfig['issues']
+  plan?: RepositoryConfig['plan']
   branches?: RepositoryConfig['branches']
   worktreeFiles?: string[]
   /** Shared clone address — see RepositoryConfig.remoteUrl. Null when unknown. */

@@ -151,6 +151,7 @@ export const fr: Record<keyof typeof en, string> = {
   'common.close': 'Fermer',
   'common.loading': 'Chargement…',
   'common.remove': 'Supprimer',
+  'common.add': 'Ajouter',
   'common.edit': 'Modifier',
   'common.retry': 'Réessayer',
   'common.back': 'Retour',
@@ -379,6 +380,7 @@ export const fr: Record<keyof typeof en, string> = {
   'toast.languageUpdateFailed': 'Impossible de mettre à jour la langue',
   'toast.settingUpdated': 'Réglage mis à jour',
   'toast.settingUpdateFailed': 'Impossible de mettre à jour le réglage',
+  'toast.settingRejected': 'Certains réglages n’ont pas été enregistrés : {keys}',
   'toast.branchSettingUpdated': 'Réglage de branche mis à jour',
   'toast.branchSettingUpdateFailed': 'Impossible de mettre à jour le réglage de branche',
   'toast.worktreeFilesUpdated': 'Fichiers de worktree mis à jour',
@@ -457,7 +459,6 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.worktree.files': 'Fichiers à copier',
   'repo.worktree.filesHelp':
     'Fichiers copiés depuis le dépôt principal vers les nouveaux worktrees (ex. : .env, .env.local)',
-  'repo.worktree.add': 'Ajouter',
 
   'repo.commit.section': 'Commit',
   'repo.commit.language': 'Langue',
@@ -529,6 +530,9 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.issues.section': 'Jira / GitHub Issues',
   'repo.issues.commentLang': 'Langue des commentaires',
   'repo.issues.commentLangHelp': 'Langue des commentaires sur les tickets Jira et GitHub',
+  'repo.issues.ticketLang': 'Langue des tickets',
+  'repo.issues.ticketLangHelp':
+    'Langue de rédaction des tickets créés par /magic:plan — suit la langue des commentaires tant que vous ne la définissez pas',
   'repo.issues.commentOnPR': 'Commenter à la création de la PR',
   'repo.issues.commentOnPRHelp':
     'Ajouter un commentaire contenant le lien de la PR au moment de sa création',
@@ -536,6 +540,44 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.issues.jiraUrlHelp': 'URL de base des tickets Jira (ex. : PROJ-123)',
   'repo.issues.githubUrl': 'URL des issues GitHub',
   'repo.issues.githubUrlHelp': 'URL de base des issues GitHub (ex. : #456)',
+
+  'repo.plan.section': 'Plan',
+  'repo.plan.tracker': 'Outil de suivi',
+  'repo.plan.trackerHelp': 'Où /magic:plan crée l’epic et ses stories',
+  'repo.plan.trackerJira': 'Jira',
+  'repo.plan.trackerGithub': 'GitHub Issues',
+  'repo.plan.trackerAsk': 'Demander chaque fois',
+  'repo.plan.jiraProject': 'Projet Jira',
+  'repo.plan.jiraProjectHelp':
+    'Clé du projet dans lequel créer les tickets, ex. : PROJ (demandée si vide)',
+  'repo.plan.epicType': 'Type d’issue de l’epic',
+  'repo.plan.epicTypeHelp': 'Le nom que votre projet Jira donne au type d’issue utilisé pour l’epic',
+  'repo.plan.storyType': 'Type d’issue des stories',
+  'repo.plan.storyTypeHelp':
+    'Le nom que votre projet Jira donne au type d’issue utilisé pour chaque story',
+  'repo.plan.splitting': 'Découpage',
+  'repo.plan.splittingHelp':
+    'À quel point une idée devient un epic avec plusieurs stories plutôt qu’un seul ticket',
+  'repo.plan.splittingConservative': 'Prudent (peu de tickets, plus gros)',
+  'repo.plan.splittingBalanced': 'Équilibré (découper quand le travail a des parties distinctes)',
+  'repo.plan.splittingEager': 'Généreux (beaucoup de petits tickets)',
+  'repo.plan.acceptanceCriteria': 'Critères d’acceptation',
+  'repo.plan.acceptanceCriteriaHelp':
+    'La forme que prend la liste « comment sait-on que c’est terminé ? » au bas de chaque ticket',
+  'repo.plan.acceptanceCriteriaChecklist': 'Liste à cocher (une case par condition)',
+  'repo.plan.acceptanceCriteriaGherkin': 'Gherkin (Étant donné / Quand / Alors)',
+  'repo.plan.acceptanceCriteriaNone': 'Aucun (description seule)',
+  'repo.plan.useRepoTemplates': 'Utiliser les modèles du dépôt',
+  'repo.plan.useRepoTemplatesHelp':
+    'Remplir les modèles d’issue déjà fournis par le projet au lieu d’écrire un ticket générique',
+  'repo.plan.duplicateCheck': 'Recherche de doublons',
+  'repo.plan.duplicateCheckHelp':
+    'Chercher des tickets qui couvrent déjà l’idée avant de proposer une structure',
+  'repo.plan.assignToMe': 'M’assigner les tickets',
+  'repo.plan.assignToMeHelp':
+    'Mettre votre nom sur les tickets créés au lieu de les laisser sans responsable',
+  'repo.plan.defaultLabels': 'Labels par défaut',
+  'repo.plan.defaultLabelsHelp': 'Labels ajoutés à chaque ticket créé par /magic:plan',
 
   'repo.danger.section': 'Zone sensible',
   'repo.danger.delete': 'Supprimer ce dépôt',
