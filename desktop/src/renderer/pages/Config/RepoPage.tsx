@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import {
   Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen,
   FolderGit, Ticket, Sparkles, type LucideIcon
@@ -735,6 +735,48 @@ export function RepoPage({ repoName }: RepoPageProps) {
     )
   }
 
+  /**
+   * The clone address row, rendered on BOTH the Repository and the Tracker tab.
+   *
+   * One row, one piece of state, one save button: the two tabs never render at the
+   * same time, so sharing them is what makes it impossible for the field to hold two
+   * different answers depending on where you opened it. Only the label and the help
+   * line differ — on Repository it is the address the team clones from, on Tracker it
+   * is the repository the issues are filed in.
+   *
+   * A FUNCTION returning JSX, deliberately not a component: a component declared
+   * inside RepoPage is a new type on every render, so React remounts it and the text
+   * input loses focus on every keystroke. That is the reason SettingRow sits at module
+   * scope, and it applies to anything holding an input.
+   */
+  const remoteUrlRow = (label: string, description: ReactNode) => (
+    <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+      <div className="flex-1">
+        <label className="block text-sm font-medium mb-0.5">{label}</label>
+        <p className="text-xs text-text-secondary/50">{description}</p>
+      </div>
+      <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
+        <input
+          type="text"
+          value={remoteUrl}
+          placeholder="https://github.com/owner/repo"
+          onChange={(e) => handleRemoteUrlChange(e.target.value)}
+          className={`${INPUT} w-full`}
+        />
+        {remoteUrlError && (
+          <div className="flex items-center gap-1.5 text-xs text-red">
+            <AlertTriangle className="w-3 h-3" /> {remoteUrlError}
+          </div>
+        )}
+        {remoteUrlChanged && (
+          <button onClick={saveRemoteUrl} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
+            {t('common.save')}
+          </button>
+        )}
+      </fieldset>
+    </div>
+  )
+
   const resolvePreviewFormat = resolveUseCommitConfigVal
     ? (formatVal === 'default' ? 'angular' : formatVal)
     : (resolveFormatVal === 'default' ? 'angular' : resolveFormatVal)
@@ -969,38 +1011,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               </div>
             </div>
 
-            {/* Clone address — shared, unlike the path. Any member may CONTRIBUTE
-                it by binding a folder, but only the owner or an org admin may
-                correct one that is already set: the capture runs on a member's own
-                machine, so a wrong address can get in, and a rename or a transfer
-                makes a right one go stale. Read-only members see it, plainly. */}
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.general.remoteUrl')}</label>
-                <p className="text-xs text-text-secondary/50">
-                  {readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp')}
-                </p>
-              </div>
-              <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
-                <input
-                  type="text"
-                  value={remoteUrl}
-                  placeholder="https://github.com/owner/repo"
-                  onChange={(e) => handleRemoteUrlChange(e.target.value)}
-                  className={`${INPUT} w-full`}
-                />
-                {remoteUrlError && (
-                  <div className="flex items-center gap-1.5 text-xs text-red">
-                    <AlertTriangle className="w-3 h-3" /> {remoteUrlError}
-                  </div>
-                )}
-                {remoteUrlChanged && (
-                  <button onClick={saveRemoteUrl} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                    {t('common.save')}
-                  </button>
-                )}
-              </fieldset>
-            </div>
+            {remoteUrlRow(t('repo.general.remoteUrl'), readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp'))}
 
             {/* Keywords */}
             <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
@@ -1161,18 +1172,22 @@ export function RepoPage({ repoName }: RepoPageProps) {
               />
             </SettingRow>
 
-            {/* Read-only, and that is the point: the GitHub target is DERIVED from the
-                remote on the Repository tab, so there is nothing to fill in here. It is
-                still shown, because "where do my issues go" is the one question this tab
-                exists to answer, and a derived answer left invisible is indistinguishable
-                from no answer at all. resolveGitHubIssuesUrl() honours an existing
-                `issues.githubIssuesUrl` override, which is what a value pointing at
-                another repository means here. */}
-            <SettingRow label={t('repo.tracker.githubTarget')} description={t('repo.tracker.githubTargetHelp')}>
-              <span className={`w-72 text-sm ${githubIssuesTargetVal ? 'text-text-secondary' : 'text-text-secondary/40 italic'} truncate`}>
-                {githubIssuesTargetVal || t('repo.tracker.githubTargetNone')}
-              </span>
-            </SettingRow>
+            {/* The same clone-address row as the Repository tab — same state, same save
+                button; see remoteUrlRow. It was read-only here at first, on the grounds
+                that the address is "derived". True of the issues URL, and no answer at
+                all to someone standing on the tab that exists to say where tickets go
+                and finding the one address on it uneditable.
+
+                The help line names the RESOLVED target rather than repeating the field,
+                because the two differ exactly when it matters: an
+                `issues.githubIssuesUrl` override points the issues at another repository
+                while the remote still points at the code. */}
+            {remoteUrlRow(
+              t('repo.tracker.githubRepo'),
+              githubIssuesTargetVal
+                ? t('repo.tracker.issuesGoTo', { target: githubIssuesTargetVal })
+                : t('repo.tracker.githubTargetNone'),
+            )}
 
             {/* The Jira site is NOT hidden when the tracker is GitHub, unlike the three
                 rows below it. It is the base of every ticket link /magic:start, :pr and

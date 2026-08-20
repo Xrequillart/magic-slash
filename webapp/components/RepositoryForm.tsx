@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import {
+  AlertTriangle,
   Building2,
   ClipboardList,
   FolderGit,
@@ -26,6 +27,7 @@ import type { Org } from '@/lib/orgs'
 import {
   commitExample,
   DEFAULTS,
+  GITHUB_REMOTE_URL_PATTERN,
   REPO_COLORS,
   resolveGitHubIssuesUrl,
   resolveJiraProject,
@@ -209,6 +211,7 @@ export function RepositoryForm({
   repo,
   orgs,
   onPatch,
+  onSaveRemoteUrl,
   onDelete,
   saveError,
   readOnly = false,
@@ -217,6 +220,13 @@ export function RepositoryForm({
   /** Orgs the current user belongs to — the share targets. */
   orgs: Org[]
   onPatch: (patch: RepositoryPatch) => void
+  /**
+   * Saves the repository remote, answering false when the backend refused it on
+   * permissions. Separate from `onPatch` because the column has a single writer and
+   * its own rule about who may CHANGE an address already set — see
+   * setRepositoryRemoteUrl in lib/repositories.ts.
+   */
+  onSaveRemoteUrl: (url: string) => Promise<boolean>
   onDelete: () => void
   saveError: string | null
   /**
@@ -233,6 +243,10 @@ export function RepositoryForm({
   const { t } = useT()
   const options = useMemo(() => buildOptions(t), [t])
   const [tab, setTab] = useState<RepoTab>('repository')
+  // Draft state for the remote, held here rather than in a DraftField: the row is
+  // rendered on two tabs and both must show the same draft and the same error.
+  const [remoteUrl, setRemoteUrl] = useState(repo.remoteUrl ?? '')
+  const [remoteUrlError, setRemoteUrlError] = useState<string | null>(null)
 
   // Resolved values: absent means "use the default", same as the desktop.
   const lang = (key: keyof Repository['languages']) => repo.languages[key] ?? DEFAULTS.language
@@ -273,6 +287,80 @@ export function RepositoryForm({
   // Derived from the remote, or from an `issues.githubIssuesUrl` override when the
   // issues live in another repository. Displayed, never edited — see the Tracker card.
   const githubIssuesTarget = resolveGitHubIssuesUrl(repo)
+
+  // Follows the stored value whenever THAT changes — after a refusal the page re-reads
+  // the row, and the field has to drop the rejected text rather than present it as
+  // current. Keyed on the value, not on `repo`, so typing never trips it.
+  useEffect(() => {
+    setRemoteUrl(repo.remoteUrl ?? '')
+    setRemoteUrlError(null)
+  }, [repo.remoteUrl])
+
+  const remoteUrlChanged = remoteUrl.trim() !== (repo.remoteUrl ?? '')
+
+  const saveRemoteUrl = async () => {
+    const value = remoteUrl.trim()
+    // Checked here so the answer is immediate, and again by the RPC and by the
+    // column's CHECK. This one is a courtesy, not the guarantee.
+    if (!GITHUB_REMOTE_URL_PATTERN.test(value)) {
+      setRemoteUrlError(t('repo.general.remoteUrlInvalid'))
+      return
+    }
+    try {
+      const accepted = await onSaveRemoteUrl(value)
+      setRemoteUrlError(accepted ? null : t('repo.general.remoteUrlRefused'))
+    } catch (err) {
+      setRemoteUrlError(err instanceof Error ? err.message : t('common.saveFailed'))
+    }
+  }
+
+  /**
+   * The remote row, rendered on BOTH the Repository and the Tracker tab.
+   *
+   * One row, one draft, one error: the two tabs never render together, so sharing them
+   * is what makes it impossible for the field to hold two different answers depending
+   * on where it was opened. Only the label and the help line differ — on Repository it
+   * is the address the team clones from, on Tracker it is the repository the issues are
+   * filed in.
+   *
+   * A function returning JSX rather than a component, like the desktop's remoteUrlRow:
+   * a component declared in here is a new type on every render, so React would remount
+   * it and the input would lose focus on every keystroke.
+   */
+  const remoteUrlRow = (label: string, description: string) => (
+    <SettingRow label={label} description={description}>
+      <div className="flex flex-col items-end gap-2">
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            value={remoteUrl}
+            onChange={(e) => {
+              setRemoteUrl(e.target.value)
+              setRemoteUrlError(null)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && remoteUrlChanged) {
+                e.preventDefault()
+                void saveRemoteUrl()
+              }
+            }}
+            placeholder="https://github.com/owner/repo"
+            className="w-72"
+          />
+          {remoteUrlChanged && (
+            <Button onClick={saveRemoteUrl} className="shrink-0">
+              {t('common.save')}
+            </Button>
+          )}
+        </div>
+        {remoteUrlError && (
+          <p className="flex items-center gap-1.5 text-xs text-red">
+            <AlertTriangle className="h-3 w-3 shrink-0" /> {remoteUrlError}
+          </p>
+        )}
+      </div>
+    </SettingRow>
+  )
   const epicType = repo.plan.issueTypes?.epic ?? DEFAULTS.issueTypeEpic
   const storyType = repo.plan.issueTypes?.story ?? DEFAULTS.issueTypeStory
   const useRepoTemplates = repo.plan.useRepoTemplates ?? DEFAULTS.useRepoTemplates
@@ -372,6 +460,14 @@ export function RepositoryForm({
               required
             />
           </SettingRow>
+
+          {/* Clone address — shared, unlike anything else here. Any member may
+              CONTRIBUTE it by binding a local folder in the app; only the owner or an
+              org admin may correct one already set. */}
+          {remoteUrlRow(
+            t('repo.general.remoteUrl'),
+            readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp'),
+          )}
 
           <SettingRow
             label={t('repo.general.keywords')}
@@ -548,18 +644,22 @@ export function RepositoryForm({
             />
           </SettingRow>
 
-          {/* Read-only, and that is the point: the GitHub target is DERIVED from the
-              remote, so there is nothing to fill in. It is still shown, because "where
-              do my issues go" is the question this card exists to answer, and a derived
-              answer left invisible is indistinguishable from no answer at all. */}
-          <SettingRow
-            label={t('repo.tracker.githubTarget')}
-            description={t('repo.tracker.githubTargetHelp')}
-          >
-            <span className={`w-72 truncate text-sm ${githubIssuesTarget ? 'text-muted' : 'italic text-muted/60'}`}>
-              {githubIssuesTarget || t('repo.tracker.githubTargetNone')}
-            </span>
-          </SettingRow>
+          {/* The same remote row as the Repository tab — same draft, same save button.
+              It was read-only here at first, on the grounds that the address is
+              "derived". True of the issues URL, and no answer at all to someone
+              standing on the card that exists to say where tickets go and finding the
+              one address on it uneditable.
+
+              The help line names the RESOLVED target rather than repeating the field,
+              because the two differ exactly when it matters: an `issues.githubIssuesUrl`
+              override points the issues at another repository while the remote still
+              points at the code. */}
+          {remoteUrlRow(
+            t('repo.tracker.githubRepo'),
+            githubIssuesTarget
+              ? t('repo.tracker.issuesGoTo', { target: githubIssuesTarget })
+              : t('repo.tracker.githubTargetNone'),
+          )}
 
           {/* The Jira site is NOT hidden when the tracker is GitHub, unlike the three
               rows below. It is the base of every ticket link /magic:start, :pr and :done

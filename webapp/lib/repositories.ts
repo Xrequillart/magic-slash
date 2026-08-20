@@ -391,6 +391,41 @@ export async function deleteRepository(
   }
 }
 
+/**
+ * The canonical shape of a repository remote, and the ONLY form the database
+ * accepts: `repositories_remote_url_canonical` (migration 20260816090000) checks the
+ * same expression, which is what keeps `user:token@github.com/...` — a credential
+ * published to a whole org, with no undo — out of a column every member can read.
+ *
+ * Three copies of one expression now exist — here, the desktop's
+ * GITHUB_REMOTE_URL_PATTERN, and the column's CHECK — because they live in three
+ * builds that cannot import from each other. The database's is the one that counts;
+ * these two exist to tell the user before a round trip.
+ */
+export const GITHUB_REMOTE_URL_PATTERN = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/
+
+/**
+ * Set the repository's remote, through the RPC that owns that column.
+ *
+ * NOT a `RepositoryPatch` field, and it must not become one: `repositories_update`
+ * is admin-or-owner only, while FILLING a blank remote is deliberately open to any
+ * member — the address is contributed by whoever first binds a local clone. The
+ * split lives in `set_repository_remote_url`, which fills for a member and only lets
+ * the owner or an org admin CHANGE one that is already set.
+ *
+ * Returns false when the function refused, rather than throwing: a refusal is an
+ * answer about permissions, and the caller shows it next to the field instead of as
+ * a failed save. A thrown error means the call itself did not happen.
+ */
+export async function setRepositoryRemoteUrl(id: string, url: string): Promise<boolean> {
+  const { data, error } = await getSupabase().rpc('set_repository_remote_url', {
+    p_repo_id: id,
+    p_url: url,
+  })
+  if (error) throw new Error(error.message)
+  return data === true
+}
+
 // ── Defaults ─────────────────────────────────────────────────────────────────
 // The desktop stores null/absent to mean "use the default" and resolves it at
 // read time. These mirror those fallbacks so both surfaces agree on what an

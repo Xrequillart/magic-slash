@@ -10,6 +10,7 @@ import {
   deleteRepository,
   expandPatch,
   fetchRepository,
+  setRepositoryRemoteUrl,
   updateRepository,
   type Repository,
   type RepositoryPatch,
@@ -132,6 +133,27 @@ export default function RepositoryPage() {
     [id, store, lang, t],
   )
 
+  /**
+   * The remote goes through its own RPC, not through `patch`: the column has one
+   * writer by design (see setRepositoryRemoteUrl), and a member who may fill a blank
+   * one is not necessarily allowed to change one already set. So this is awaited and
+   * answers — false means the backend refused on permissions, which the form shows
+   * next to the field rather than as a failed save.
+   *
+   * On success the row is re-read instead of guessed at: `set_repository_remote_url`
+   * can lose a fill race with another member, in which case the stored address is
+   * theirs and not the one just typed.
+   */
+  const saveRemoteUrl = useCallback(
+    async (url: string): Promise<boolean> => {
+      if (!id) return false
+      const accepted = await setRepositoryRemoteUrl(id, url)
+      if (accepted) store(await fetchRepository(id))
+      return accepted
+    },
+    [id, store],
+  )
+
   const remove = async () => {
     if (!id || deleting) return
     setDeleting(true)
@@ -216,6 +238,7 @@ export default function RepositoryPage() {
             repo={repo}
             orgs={orgs}
             onPatch={patch}
+            onSaveRemoteUrl={saveRemoteUrl}
             onDelete={() => {
               setDeleteError(null)
               setConfirmDelete(true)
