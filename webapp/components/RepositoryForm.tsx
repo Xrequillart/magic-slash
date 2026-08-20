@@ -20,6 +20,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Dropdown, type DropdownOption } from '@/components/Dropdown'
+import { Flag } from '@/components/Flag'
 import { TabStrip } from '@/components/TabStrip'
 import { ChipList, ExamplePanel, SettingRow, SettingsCard, Toggle } from '@/components/SettingRow'
 import { Button, Input } from '@/components/ui'
@@ -52,9 +53,11 @@ import { useT } from '@/lib/i18n/useLanguage'
  * Autonyms, untranslated: these pick the language CLAUDE writes a commit or a PR in,
  * so the choice has to read the same whatever language the form is in.
  */
+// The flags are real SVG, not emoji — see Flag.tsx for why, and for which flag stands
+// for English. Module scope: a fixed drawing, built once at import.
 const LANGUAGE_OPTIONS: DropdownOption<string>[] = [
-  { value: 'en', label: 'English' },
-  { value: 'fr', label: 'Français' },
+  { value: 'en', label: 'English', leading: <Flag code="en" /> },
+  { value: 'fr', label: 'Français', leading: <Flag code="fr" /> },
 ]
 
 /**

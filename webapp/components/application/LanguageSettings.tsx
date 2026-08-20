@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Languages } from 'lucide-react'
 import { Dropdown } from '@/components/Dropdown'
+import { Flag } from '@/components/Flag'
 import { SettingRow, SettingsCard } from '@/components/SettingRow'
 import { useT } from '@/lib/i18n/useLanguage'
 import { DEFAULTS, LANGUAGE_OPTIONS } from '@/lib/settings'
@@ -23,9 +24,12 @@ export function LanguageSettings() {
   return (
     <SettingsCard icon={Languages} title={t('settings.language.section')}>
       <SettingRow label={t('settings.language.label')} description={t('settings.language.help')}>
+        {/* The flags are attached here rather than in lib/settings.ts, which is a .ts
+            file and cannot hold JSX. Built inline: two static nodes, and this card
+            renders once. */}
         <Dropdown
           value={settings.language ?? DEFAULTS.language}
-          options={LANGUAGE_OPTIONS}
+          options={LANGUAGE_OPTIONS.map((o) => ({ ...o, leading: <Flag code={o.value} /> }))}
           onChange={(language) => patch({ language })}
           className="w-52"
         />

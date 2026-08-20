@@ -1,6 +1,7 @@
-import { useRef, useState, useEffect, useCallback, useLayoutEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Shield, User } from 'lucide-react'
+import { useAnchoredPanel } from '../../components/useAnchoredPanel'
 import { useT } from '../../i18n'
 import type { MessageKey } from '../../i18n'
 import type { MembershipRole } from '../../../types'
@@ -13,7 +14,6 @@ const ROLE_OPTIONS: { value: MembershipRole; labelKey: MessageKey; descriptionKe
 ]
 
 const PANEL_WIDTH = 240
-const VIEWPORT_MARGIN = 8
 
 /**
  * Role picker for a member row. Replaces the native <select>, which macOS
@@ -34,63 +34,8 @@ export function RoleSelect({
 }) {
   const t = useT()
   const [open, setOpen] = useState(false)
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
-
   const close = useCallback(() => setOpen(false), [])
-
-  // Anchor the panel to the trigger, flipping above when it would overflow the
-  // bottom of the viewport. Measured before paint so it never renders misplaced.
-  useLayoutEffect(() => {
-    if (!open) return
-    const trigger = triggerRef.current
-    if (!trigger) return
-
-    const rect = trigger.getBoundingClientRect()
-    const panelHeight = panelRef.current?.offsetHeight ?? 0
-    const spaceBelow = window.innerHeight - rect.bottom
-
-    const top = panelHeight > 0 && spaceBelow < panelHeight + VIEWPORT_MARGIN
-      ? rect.top - panelHeight - 4
-      : rect.bottom + 4
-
-    const left = Math.max(
-      VIEWPORT_MARGIN,
-      Math.min(rect.right - PANEL_WIDTH, window.innerWidth - PANEL_WIDTH - VIEWPORT_MARGIN),
-    )
-
-    setPosition({ top, left })
-  }, [open])
-
-  // Close on outside click, Escape, or anything that would detach the panel from
-  // its trigger (scrolling an ancestor, resizing). The portalled panel is NOT a
-  // DOM descendant of the trigger, so it needs its own containment check.
-  useEffect(() => {
-    if (!open) return
-
-    const onPointerDown = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (triggerRef.current?.contains(target)) return
-      if (panelRef.current?.contains(target)) return
-      close()
-    }
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
-    }
-
-    document.addEventListener('mousedown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    window.addEventListener('resize', close)
-    // capture: catches scrolls on any ancestor, not just the window.
-    window.addEventListener('scroll', close, true)
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('resize', close)
-      window.removeEventListener('scroll', close, true)
-    }
-  }, [open, close])
+  const { triggerRef, panelRef, style } = useAnchoredPanel(open, close, PANEL_WIDTH)
 
   const selected = ROLE_OPTIONS.find((o) => o.value === value) ?? ROLE_OPTIONS[0]
   const SelectedIcon = selected.icon
@@ -120,14 +65,7 @@ export function RoleSelect({
       {open && createPortal(
         <div
           ref={panelRef}
-          style={{
-            position: 'fixed',
-            top: position?.top ?? -9999,
-            left: position?.left ?? -9999,
-            width: PANEL_WIDTH,
-            // Hidden until measured, so the first paint never flashes at 0,0.
-            visibility: position ? 'visible' : 'hidden',
-          }}
+          style={style()}
           className="bg-bg-secondary border border-line rounded-xl shadow-2xl overflow-hidden z-[60]"
         >
           {ROLE_OPTIONS.map((opt) => {

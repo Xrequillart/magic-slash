@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { useT } from '@/lib/i18n/useLanguage'
 
@@ -21,6 +22,16 @@ export interface DropdownOption<T extends string> {
   /** Optional second line in the panel — not shown on the trigger. */
   description?: string
   icon?: LucideIcon
+  /**
+   * Anything to draw before the label, on the trigger AND in the panel — a flag, for
+   * the language pickers.
+   *
+   * A node rather than a component, unlike `icon`: an icon is tinted by the row it
+   * sits in (`text-accent` when selected), which is exactly wrong for a flag, whose
+   * colours are the point. What goes here brings its own size and its own colours and
+   * is painted as given.
+   */
+  leading?: ReactNode
 }
 
 const VIEWPORT_MARGIN = 8
@@ -150,6 +161,7 @@ export function Dropdown<T extends string>({
         className={`flex items-center justify-between gap-2 border border-black/10 bg-white text-left transition-colors hover:border-black/20 disabled:cursor-not-allowed disabled:opacity-50 ${TRIGGER_SIZES[size]} ${open ? 'border-accent' : ''} ${className}`}
       >
         <span className={`flex min-w-0 items-center gap-2 ${selected ? 'text-ink' : 'text-muted'}`}>
+          {selected?.leading}
           {TriggerIcon && <TriggerIcon className="h-3.5 w-3.5 shrink-0" />}
           <span className="truncate">{selected?.label ?? placeholder ?? t('common.select')}</span>
         </span>
@@ -192,6 +204,7 @@ export function Dropdown<T extends string>({
                     isSelected ? 'bg-canvas' : 'hover:bg-canvas'
                   }`}
                 >
+                  {opt.leading}
                   {Icon && (
                     <Icon
                       className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${isSelected ? 'text-accent' : 'text-muted'}`}

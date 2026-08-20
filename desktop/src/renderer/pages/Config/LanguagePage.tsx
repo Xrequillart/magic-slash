@@ -1,20 +1,10 @@
-import { ChevronDown, Languages } from 'lucide-react'
+import { Languages } from 'lucide-react'
 import { useConfig } from '../../hooks/useConfig'
+import { LanguageSelect } from '../../components/LanguageSelect'
 import { showToast } from '../../components/Toast'
 import { SectionHeader } from './SectionHeader'
 import { useLanguage, useT } from '../../i18n'
-import { LANGUAGE_IDS, type LanguageId } from '../../../types'
-import { SELECT } from '../../theme/controls'
-
-/**
- * Autonyms — each language named in itself. Correct whichever language the app is
- * showing, so this list needs no translation, and it is immune to the module-scope
- * freeze that would pin a `t()` call here to the language the app booted in.
- */
-const LANGUAGE_OPTIONS: Record<LanguageId, string> = {
-  en: 'English',
-  fr: 'Français',
-}
+import { type LanguageId } from '../../../types'
 
 /**
  * Language & Region. Its own section rather than a row under Appearance: the
@@ -44,17 +34,12 @@ export function LanguagePage() {
             <div className="text-sm font-medium mb-0.5">{t('settings.language.label')}</div>
             <p className="text-xs text-text-secondary/50">{t('settings.language.help')}</p>
           </div>
-          <div className="relative shrink-0">
-            <select
-              value={active}
-              onChange={(e) => choose(e.target.value as LanguageId)}
-              className={`${SELECT} w-52`}
-            >
-              {LANGUAGE_IDS.map((id) => (
-                <option key={id} value={id}>{LANGUAGE_OPTIONS[id]}</option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+          {/* The same picker the repository language rows use, so the app's own
+              language is chosen the same way as the ones Claude writes in — flag
+              included. LANGUAGE_OPTIONS above is now only read by nothing else here:
+              the picker carries its own autonyms, for the same module-scope reason. */}
+          <div className="shrink-0">
+            <LanguageSelect value={active} onChange={(id) => choose(id as LanguageId)} />
           </div>
         </div>
         {/* Spelled out because the two are constantly confused: this setting is

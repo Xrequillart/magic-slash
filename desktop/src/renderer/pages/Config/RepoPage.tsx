@@ -12,6 +12,7 @@ import { showToast } from '../../components/Toast'
 import { PROJECT_COLORS } from '../../utils/projectColors'
 import { useT, type MessageKey } from '../../i18n'
 import { Switch } from '../../components/Switch'
+import { LanguageSelect } from '../../components/LanguageSelect'
 import { TabStrip } from '../../components/TabStrip'
 import { BTN, INPUT, SELECT } from '../../theme/controls'
 import {
@@ -755,18 +756,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
           <label className="block text-sm font-semibold mb-1">{label}</label>
           {description && <p className="text-xs text-text-secondary/50">{description}</p>}
         </div>
-        <div className="relative">
-          <select
-            value={currentVal}
-            disabled={readOnly}
-            onChange={(e) => handleLanguageChange(langKey, e.target.value)}
-            className={`${SELECT} w-52 disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            <option value="en">English</option>
-            <option value="fr">Français</option>
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-        </div>
+        <LanguageSelect
+          value={currentVal}
+          disabled={readOnly}
+          onChange={(next) => handleLanguageChange(langKey, next)}
+        />
       </div>
     )
   }
@@ -1201,17 +1195,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   <label className="block text-sm font-semibold mb-1">{t('repo.resolve.replyLang')}</label>
                   <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyLangHelp')}</p>
                 </div>
-                <div className="relative">
-                  <select
-                    value={resolveReplyLangVal}
-                    onChange={(e) => handleResolveSettingChange('replyLanguage', e.target.value)}
-                    className={`${SELECT} w-52`}
-                  >
-                    <option value="en">English</option>
-                    <option value="fr">Français</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none" />
-                </div>
+                <LanguageSelect
+                  value={resolveReplyLangVal}
+                  onChange={(next) => handleResolveSettingChange('replyLanguage', next)}
+                />
               </div>
             )}
           </fieldset>
