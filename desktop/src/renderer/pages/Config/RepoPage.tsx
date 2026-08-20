@@ -1173,30 +1173,35 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {tab === 'languages' && (
         <>
-        {/* Languages — one block for every language this repo works in.
-            They used to be one row per skill section: discussion under General,
-            commits under Commit, titles under Pull Request, two more under Issues and
-            review replies under Resolve. Each was next to what it affected, which
-            sounds right and meant that answering "what language does this repo work
-            in?" required visiting five sections and remembering all five answers. */}
+        {/* Languages, in three groups — BY WHO READS THEM, not by which skill writes
+            them. Grouping by skill is what this tab was created to undo: the six rows
+            were one per skill section, and answering "what language does this repo work
+            in?" meant visiting five of them.
+
+            The audience is the useful axis because it is what a wrong answer costs. The
+            discussion language is between you and Claude and nobody else ever sees it;
+            everything in the second group is read by whoever opens the repository; the
+            third is read by whoever opens the ticket — often a different set of people,
+            which is exactly why a French-speaking developer filing English tickets is
+            the normal case rather than an inconsistency. */}
         <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.langs.groupChat')}</h2>
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
             <LangSelect langKey="discussion" label={t('repo.general.discussionLang')} description={t('repo.general.discussionLangHelp')} />
+          </fieldset>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.langs.groupCode')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
             <LangSelect langKey="commit" label={t('repo.langs.commit')} description={t('repo.commit.languageHelp')} />
             <LangSelect langKey="pullRequest" label={t('repo.langs.pullRequest')} description={t('repo.pr.languageHelp')} />
-            <LangSelect langKey="jiraComment" label={t('repo.issues.commentLang')} description={t('repo.issues.commentLangHelp')} />
-            <LangSelect
-              langKey="ticket"
-              label={t('repo.issues.ticketLang')}
-              description={t('repo.issues.ticketLangHelp')}
-              resolvedValue={resolveTicketLanguage(repoLangs)}
-            />
 
             {/* Not a LangSelect: review replies live in `resolve.replyLanguage`, not in
                 the `languages` block, and they fall back to the discussion language
                 rather than to English. Shown only when replies are enabled — a language
                 for something switched off is a setting with no effect. Styled like its
-                neighbours so the block still reads as one list. */}
+                neighbours so the group still reads as one list. */}
             {resolveReplyVal && (
               <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
                 <div className="flex-1">
@@ -1216,6 +1221,23 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 </div>
               </div>
             )}
+          </fieldset>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.langs.groupTickets')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            {/* The ticket BODY sits under the comments it inherits from: absent, it
+                resolves to the row above (`ticket` -> `jiraComment` -> 'en'), and
+                LangSelect is handed that resolved value so the row shows what is
+                actually in force rather than a blank. */}
+            <LangSelect langKey="jiraComment" label={t('repo.issues.commentLang')} description={t('repo.issues.commentLangHelp')} />
+            <LangSelect
+              langKey="ticket"
+              label={t('repo.issues.ticketLang')}
+              description={t('repo.issues.ticketLangHelp')}
+              resolvedValue={resolveTicketLanguage(repoLangs)}
+            />
           </fieldset>
         </div>
         </>

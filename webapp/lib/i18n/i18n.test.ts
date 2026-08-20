@@ -224,6 +224,10 @@ describe('message catalogues', () => {
       // already listed above wherever French borrows it whole.
       'repo.tracker.modeGithub',
       'repo.tracker.modeJira',
+      // Two of the three Languages groups: "Conversation" and "Tickets" are the same
+      // word either way. The third, "Code et pull requests", is not.
+      'repo.langs.groupChat',
+      'repo.langs.groupTickets',
       'repo.commit.section',
       'repo.commit.style',
       'repo.commit.format',

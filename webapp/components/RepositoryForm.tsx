@@ -657,12 +657,18 @@ export function RepositoryForm({
       {tab === 'languages' && (
         <>
         {/* ── Languages ─────────────────────────────────────────────────────────
-            One card for every language this repo works in. They used to be one row per
-            skill card — discussion under General, commits under Commit, titles under
-            Pull request, two more under Issues, review replies under Resolve. Each sat
-            next to what it affected, which sounds right and meant that answering "what
-            language does this repo work in?" took five cards and five memories. */}
-        <SettingsCard icon={Languages}>
+            Three groups, BY WHO READS THEM, not by which skill writes them. Grouping by
+            skill is what this tab was created to undo: the six rows were one per skill
+            card, and answering "what language does this repo work in?" took five cards
+            and five memories.
+
+            The audience is the useful axis because it is what a wrong answer costs. The
+            discussion language is between you and Claude and nobody else ever sees it;
+            everything in the second group is read by whoever opens the repository; the
+            third by whoever opens the ticket — often a different set of people, which is
+            why a French-speaking developer filing English tickets is the normal case
+            rather than an inconsistency. */}
+        <SettingsCard icon={MessageSquare} title={t('repo.langs.groupChat')}>
           <SettingRow
             label={t('repo.general.discussionLang')}
             description={t('repo.general.discussionLangHelp')}
@@ -675,7 +681,9 @@ export function RepositoryForm({
               className="w-52"
             />
           </SettingRow>
+        </SettingsCard>
 
+        <SettingsCard icon={GitPullRequest} title={t('repo.langs.groupCode')}>
           <SettingRow label={t('repo.langs.commit')} description={t('repo.commit.languageHelp')}>
             <Dropdown
               value={lang('commit')}
@@ -696,6 +704,31 @@ export function RepositoryForm({
             />
           </SettingRow>
 
+          {/* Review replies live in `resolve.replyLanguage`, not in the `languages`
+              block, and they inherit the discussion language rather than English. Shown
+              only when replies are on: a language for something switched off is a
+              setting with no effect. */}
+          {replyToComments && (
+            <SettingRow
+              label={t('repo.resolve.replyLang')}
+              description={t('repo.resolve.replyLangHelp')}
+            >
+              <Dropdown
+                value={replyLanguage}
+                options={LANGUAGE_OPTIONS}
+                onChange={(replyLanguage) => setResolve({ replyLanguage })}
+                width={200}
+                className="w-52"
+              />
+            </SettingRow>
+          )}
+        </SettingsCard>
+
+        <SettingsCard icon={Ticket} title={t('repo.langs.groupTickets')}>
+          {/* The ticket BODY sits under the comments it inherits from: absent, it
+              resolves to the row above (`ticket` -> `jiraComment` -> 'en'), and the row
+              is handed that resolved value so it shows what is actually in force rather
+              than a blank. */}
           <SettingRow
             label={t('repo.issues.commentLang')}
             description={t('repo.issues.commentLangHelp')}
@@ -721,25 +754,6 @@ export function RepositoryForm({
               className="w-52"
             />
           </SettingRow>
-
-          {/* Review replies live in `resolve.replyLanguage`, not in the `languages`
-              block, and they inherit the discussion language rather than English. Shown
-              only when replies are on: a language for something switched off is a
-              setting with no effect. */}
-          {replyToComments && (
-            <SettingRow
-              label={t('repo.resolve.replyLang')}
-              description={t('repo.resolve.replyLangHelp')}
-            >
-              <Dropdown
-                value={replyLanguage}
-                options={LANGUAGE_OPTIONS}
-                onChange={(replyLanguage) => setResolve({ replyLanguage })}
-                width={200}
-                className="w-52"
-              />
-            </SettingRow>
-          )}
         </SettingsCard>
         </>
       )}
