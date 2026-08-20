@@ -218,10 +218,15 @@ describe('message catalogues', () => {
       // two different things.
       'repo.git.section',
       'repo.tracker.section',
-      'repo.tab.repository',
+      'repo.tab.general',
       'repo.tab.tracker',
+      'repo.tab.languages',
+      'repo.tab.git',
       'repo.tab.skills',
       'repo.tab.danger',
+      // Product nouns: "Jira + GitHub" and "Jira" name the tools, in both languages.
+      'repo.tracker.modeJira',
+      'repo.tracker.planTargetJira',
       'repo.commit.section',
       'repo.commit.style',
       'repo.commit.format',

@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   Building2,
   ClipboardList,
-  FolderGit,
   GitBranch,
   Languages,
   GitCommitHorizontal,
@@ -92,10 +91,17 @@ function buildOptions(t: Translate) {
     { value: 'inline', label: t('repo.pr.testAccountsInline'), description: t('repo.pr.testAccountsInlineHelp') },
   ]
 
-  const tracker: DropdownOption<string>[] = [
-    { value: 'jira', label: t('repo.plan.trackerJira'), description: t('repo.plan.trackerJiraHelp') },
-    { value: 'github', label: t('repo.plan.trackerGithub'), description: t('repo.plan.trackerGithubHelp') },
-    { value: 'ask', label: t('repo.plan.trackerAsk'), description: t('repo.plan.trackerAskHelp') },
+  // Which trackers the repo uses, and — when both are in play — where new tickets go.
+  // Two questions, two selects, both views onto the single `plan.tracker` the skills
+  // read. See the desktop's TRACKER_MODES for the mapping and why it is derived.
+  const trackerMode: DropdownOption<string>[] = [
+    { value: 'github', label: t('repo.tracker.modeGithub'), description: t('repo.plan.trackerGithubHelp') },
+    { value: 'jira', label: t('repo.tracker.modeJira'), description: t('repo.plan.trackerJiraHelp') },
+  ]
+
+  const planTarget: DropdownOption<string>[] = [
+    { value: 'jira', label: t('repo.tracker.planTargetJira'), description: t('repo.plan.trackerJiraHelp') },
+    { value: 'ask', label: t('repo.tracker.planTargetAsk'), description: t('repo.plan.trackerAskHelp') },
   ]
 
   const splitting: DropdownOption<string>[] = [
@@ -126,7 +132,7 @@ function buildOptions(t: Translate) {
     { value: 'none', label: t('repo.plan.acceptanceCriteriaNone'), description: t('repo.plan.acceptanceCriteriaNoneHelp') },
   ]
 
-  return { style, format, commitMode, formatSource, testAccounts, tracker, splitting, acceptance }
+  return { style, format, commitMode, formatSource, testAccounts, trackerMode, planTarget, splitting, acceptance }
 }
 
 /**
@@ -154,11 +160,13 @@ function buildOptions(t: Translate) {
  * Message KEYS, not labels: module scope is evaluated once at import, so a `t()`
  * here would pin the strip to the language the page first rendered in.
  */
-type RepoTab = 'repository' | 'tracker' | 'skills' | 'danger'
+type RepoTab = 'general' | 'tracker' | 'languages' | 'git' | 'skills' | 'danger'
 
 const REPO_TABS: { id: RepoTab; labelKey: Parameters<Translate>[0]; icon: LucideIcon }[] = [
-  { id: 'repository', labelKey: 'repo.tab.repository', icon: FolderGit },
+  { id: 'general', labelKey: 'repo.tab.general', icon: Settings2 },
   { id: 'tracker', labelKey: 'repo.tab.tracker', icon: Ticket },
+  { id: 'languages', labelKey: 'repo.tab.languages', icon: Languages },
+  { id: 'git', labelKey: 'repo.tab.git', icon: GitBranch },
   { id: 'skills', labelKey: 'repo.tab.skills', icon: Sparkles },
   { id: 'danger', labelKey: 'repo.tab.danger', icon: Trash2 },
 ]
@@ -242,7 +250,7 @@ export function RepositoryForm({
 }) {
   const { t } = useT()
   const options = useMemo(() => buildOptions(t), [t])
-  const [tab, setTab] = useState<RepoTab>('repository')
+  const [tab, setTab] = useState<RepoTab>('general')
   // Draft state for the remote, held here rather than in a DraftField: the row is
   // rendered on two tabs and both must show the same draft and the same error.
   const [remoteUrl, setRemoteUrl] = useState(repo.remoteUrl ?? '')
@@ -287,6 +295,9 @@ export function RepositoryForm({
   // Derived from the remote, or from an `issues.githubIssuesUrl` override when the
   // issues live in another repository. Displayed, never edited — see the Tracker card.
   const githubIssuesTarget = resolveGitHubIssuesUrl(repo)
+  // `ask` counts as "there is a Jira": it can only mean anything if Jira is one of the
+  // two answers. Only `github` states that there is not one.
+  const trackerMode = tracker === 'github' ? 'github' : 'jira'
 
   // Follows the stored value whenever THAT changes — after a refusal the page re-reads
   // the row, and the field has to drop the rejected text rather than present it as
@@ -416,7 +427,7 @@ export function RepositoryForm({
 
       <fieldset disabled={readOnly} className="w-full min-w-0 space-y-8">
 
-      {tab === 'repository' && (
+      {tab === 'general' && (
         <>
         {/* ── Scope ─────────────────────────────────────────────────────────── */}
         <SettingsCard icon={Users} title={t('repo.scope.section')}>
@@ -507,7 +518,135 @@ export function RepositoryForm({
             </div>
           </SettingRow>
         </SettingsCard>
+        </>
+      )}
 
+      {tab === 'tracker' && (
+        <>
+        {/* ── Tracker ───────────────────────────────────────────────────────────
+            Everything about WHERE this repo's tickets live, and nothing else. It was
+            three cards: the remote under General, the Jira URL under Issues, the
+            project key and issue types under Plan. */}
+        <SettingsCard icon={Ticket} title={t('repo.tracker.section')}>
+          {/* Which trackers this repo uses, as the question a person actually has: is
+              there a Jira in the picture, or is it GitHub alone? Not quite
+              `plan.tracker`, which answers something narrower — where /magic:plan FILES
+              what it creates — and has three values to this one's two, so the mode is
+              derived rather than stored.
+
+              Picking Jira + GitHub lands on `jira` rather than `ask`, because someone
+              who has just declared a Jira most likely wants tickets in it; the row below
+              is where they say otherwise. Going the other way writes `github` and leaves
+              every Jira value in storage untouched, so the switch cannot lose a project
+              key by accident. */}
+          <SettingRow label={t('repo.tracker.mode')} description={t('repo.tracker.modeHelp')}>
+            <Dropdown
+              value={trackerMode}
+              options={options.trackerMode}
+              onChange={(mode) => setPlan({ tracker: mode === 'github' ? 'github' : 'jira' })}
+              width={240}
+              className="w-52"
+            />
+          </SettingRow>
+
+          {/* Only in the two-tracker mode is there a question to ask: with GitHub alone
+              the answer is GitHub, and a select with one real option is noise. */}
+          {trackerMode === 'jira' && (
+            <SettingRow label={t('repo.tracker.planTarget')} description={t('repo.tracker.planTargetHelp')}>
+              <Dropdown
+                value={tracker === 'ask' ? 'ask' : 'jira'}
+                options={options.planTarget}
+                onChange={(target) => setPlan({ tracker: target })}
+                width={240}
+                className="w-52"
+              />
+            </SettingRow>
+          )}
+
+          {/* The same remote row as the Repository tab — same draft, same save button.
+              It was read-only here at first, on the grounds that the address is
+              "derived". True of the issues URL, and no answer at all to someone
+              standing on the card that exists to say where tickets go and finding the
+              one address on it uneditable.
+
+              The help line names the RESOLVED target rather than repeating the field,
+              because the two differ exactly when it matters: an `issues.githubIssuesUrl`
+              override points the issues at another repository while the remote still
+              points at the code. */}
+          {remoteUrlRow(
+            t('repo.tracker.githubRepo'),
+            githubIssuesTarget
+              ? t('repo.tracker.issuesGoTo', { target: githubIssuesTarget })
+              : t('repo.tracker.githubTargetNone'),
+          )}
+
+          {/* Every Jira row hides in GitHub-only mode, the site URL included. It used
+              to stay visible on the grounds that ticket links are shown by /magic:start,
+              :pr and :done whatever /magic:plan does — true, and beside the point now
+              that the mode is an explicit statement about whether this repo has a Jira at
+              all. Nothing is cleared, so switching back brings the values straight
+              back. */}
+          {trackerMode === 'jira' && (
+            <>
+              <SettingRow label={t('repo.tracker.jiraLink')} description={t('repo.tracker.jiraLinkHelp')}>
+                <DraftField
+                  persisted={jiraSiteUrl}
+                  onSave={(siteUrl) => setJira({ siteUrl })}
+                  placeholder="https://company.atlassian.net/browse/"
+                  className="w-72"
+                />
+              </SettingRow>
+
+              <SettingRow
+                label={t('repo.plan.jiraProject')}
+                description={t('repo.plan.jiraProjectHelp')}
+              >
+                <DraftField
+                  persisted={jiraProjectKey}
+                  onSave={(projectKey) => setJira({ projectKey })}
+                  placeholder="PROJ"
+                  className="w-52"
+                />
+              </SettingRow>
+
+              <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
+                <DraftField
+                  persisted={epicType}
+                  onSave={(epic) => setPlan({ issueTypes: { epic } })}
+                  placeholder={DEFAULTS.issueTypeEpic}
+                  className="w-52"
+                  required
+                />
+              </SettingRow>
+
+              <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
+                <DraftField
+                  persisted={storyType}
+                  onSave={(story) => setPlan({ issueTypes: { story } })}
+                  placeholder={DEFAULTS.issueTypeStory}
+                  className="w-52"
+                  required
+                />
+              </SettingRow>
+            </>
+          )}
+
+          <SettingRow
+            label={t('repo.issues.commentOnPR')}
+            description={t('repo.issues.commentOnPRHelp')}
+          >
+            <Toggle
+              label={t('repo.issues.commentOnPR')}
+              checked={commentOnPR}
+              onChange={(commentOnPR) => setIssues({ commentOnPR })}
+            />
+          </SettingRow>
+        </SettingsCard>
+        </>
+      )}
+
+      {tab === 'languages' && (
+        <>
         {/* ── Languages ─────────────────────────────────────────────────────────
             One card for every language this repo works in. They used to be one row per
             skill card — discussion under General, commits under Commit, titles under
@@ -593,7 +732,11 @@ export function RepositoryForm({
             </SettingRow>
           )}
         </SettingsCard>
+        </>
+      )}
 
+      {tab === 'git' && (
+        <>
         {/* ── Git ───────────────────────────────────────────────────────────────
             The development branch and the worktree files were a card each, one row
             apiece. Both answer the same question — how this repo's git is laid out —
@@ -621,105 +764,6 @@ export function RepositoryForm({
               onChange={(worktreeFiles) => onPatch({ worktreeFiles })}
               placeholder=".env"
               inputId="worktree-file-input"
-            />
-          </SettingRow>
-        </SettingsCard>
-        </>
-      )}
-
-      {tab === 'tracker' && (
-        <>
-        {/* ── Tracker ───────────────────────────────────────────────────────────
-            Everything about WHERE this repo's tickets live, and nothing else. It was
-            three cards: the remote under General, the Jira URL under Issues, the
-            project key and issue types under Plan. */}
-        <SettingsCard icon={Ticket} title={t('repo.tracker.section')}>
-          <SettingRow label={t('repo.plan.tracker')} description={t('repo.plan.trackerHelp')}>
-            <Dropdown
-              value={tracker}
-              options={options.tracker}
-              onChange={(tracker) => setPlan({ tracker })}
-              width={240}
-              className="w-52"
-            />
-          </SettingRow>
-
-          {/* The same remote row as the Repository tab — same draft, same save button.
-              It was read-only here at first, on the grounds that the address is
-              "derived". True of the issues URL, and no answer at all to someone
-              standing on the card that exists to say where tickets go and finding the
-              one address on it uneditable.
-
-              The help line names the RESOLVED target rather than repeating the field,
-              because the two differ exactly when it matters: an `issues.githubIssuesUrl`
-              override points the issues at another repository while the remote still
-              points at the code. */}
-          {remoteUrlRow(
-            t('repo.tracker.githubRepo'),
-            githubIssuesTarget
-              ? t('repo.tracker.issuesGoTo', { target: githubIssuesTarget })
-              : t('repo.tracker.githubTargetNone'),
-          )}
-
-          {/* The Jira site is NOT hidden when the tracker is GitHub, unlike the three
-              rows below. It is the base of every ticket link /magic:start, :pr and :done
-              display, so a repo that plans on GitHub and tracks work in Jira still needs
-              it — whereas a project key and Jira issue-type names mean nothing outside
-              Jira. */}
-          <SettingRow label={t('repo.issues.jiraUrl')} description={t('repo.issues.jiraUrlHelp')}>
-            <DraftField
-              persisted={jiraSiteUrl}
-              onSave={(siteUrl) => setJira({ siteUrl })}
-              placeholder="https://company.atlassian.net/browse/"
-              className="w-72"
-            />
-          </SettingRow>
-
-          {/* Jira-only rows: 'ask' can still land in Jira, so they stay visible there. */}
-          {tracker !== 'github' && (
-            <>
-              <SettingRow
-                label={t('repo.plan.jiraProject')}
-                description={t('repo.plan.jiraProjectHelp')}
-              >
-                <DraftField
-                  persisted={jiraProjectKey}
-                  onSave={(projectKey) => setJira({ projectKey })}
-                  placeholder="PROJ"
-                  className="w-52"
-                />
-              </SettingRow>
-
-              <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
-                <DraftField
-                  persisted={epicType}
-                  onSave={(epic) => setPlan({ issueTypes: { epic } })}
-                  placeholder={DEFAULTS.issueTypeEpic}
-                  className="w-52"
-                  required
-                />
-              </SettingRow>
-
-              <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
-                <DraftField
-                  persisted={storyType}
-                  onSave={(story) => setPlan({ issueTypes: { story } })}
-                  placeholder={DEFAULTS.issueTypeStory}
-                  className="w-52"
-                  required
-                />
-              </SettingRow>
-            </>
-          )}
-
-          <SettingRow
-            label={t('repo.issues.commentOnPR')}
-            description={t('repo.issues.commentOnPRHelp')}
-          >
-            <Toggle
-              label={t('repo.issues.commentOnPR')}
-              checked={commentOnPR}
-              onChange={(commentOnPR) => setIssues({ commentOnPR })}
             />
           </SettingRow>
         </SettingsCard>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react'
 import {
   Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen,
-  FolderGit, Ticket, Sparkles, type LucideIcon
+  Ticket, Sparkles, Settings2, Languages, GitBranch, type LucideIcon
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useConfig } from '../../hooks/useConfig'
@@ -14,7 +14,6 @@ import { Switch } from '../../components/Switch'
 import { TabStrip } from '../../components/TabStrip'
 import { BTN, INPUT, SELECT } from '../../theme/controls'
 import {
-  PLAN_TRACKERS,
   PLAN_SPLITTING_MODES,
   PLAN_ACCEPTANCE_CRITERIA_FORMATS,
   type PlanSettingsInput,
@@ -44,11 +43,13 @@ interface RepoPageProps {
  * icon because the strip styles every pill alike: Danger has no red of its own
  * there, and the bin is what keeps it from reading as a fourth ordinary tab.
  */
-type RepoTab = 'repository' | 'tracker' | 'skills' | 'danger'
+type RepoTab = 'general' | 'tracker' | 'languages' | 'git' | 'skills' | 'danger'
 
 const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
-  { id: 'repository', labelKey: 'repo.tab.repository', icon: FolderGit },
+  { id: 'general', labelKey: 'repo.tab.general', icon: Settings2 },
   { id: 'tracker', labelKey: 'repo.tab.tracker', icon: Ticket },
+  { id: 'languages', labelKey: 'repo.tab.languages', icon: Languages },
+  { id: 'git', labelKey: 'repo.tab.git', icon: GitBranch },
   { id: 'skills', labelKey: 'repo.tab.skills', icon: Sparkles },
   { id: 'danger', labelKey: 'repo.tab.danger', icon: Trash2 },
 ]
@@ -61,10 +62,28 @@ const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
  * only ever offer a value the write path accepts, and adding a value there
  * without a label here is a tsc error rather than a blank option.
  */
-const PLAN_TRACKER_LABELS: Record<(typeof PLAN_TRACKERS)[number], MessageKey> = {
-  jira: 'repo.plan.trackerJira',
-  github: 'repo.plan.trackerGithub',
-  ask: 'repo.plan.trackerAsk',
+/**
+ * The two ANSWERS to "which trackers does this repository use", and the two to "where
+ * do new tickets go" when both are in play.
+ *
+ * Neither list is a config value: both are views onto `plan.tracker`, which the skills
+ * read and which keeps its three values (`github` / `jira` / `ask`). Splitting one
+ * three-way select into two two-way ones is what makes each question answerable on its
+ * own — the old single row asked people to pick "Ask each time" as if it were a
+ * tracker, next to a Jira project key that only mattered for two of the three answers.
+ */
+const TRACKER_MODES = ['github', 'jira'] as const
+
+const TRACKER_MODE_LABELS: Record<(typeof TRACKER_MODES)[number], MessageKey> = {
+  github: 'repo.tracker.modeGithub',
+  jira: 'repo.tracker.modeJira',
+}
+
+const PLAN_TARGETS = ['jira', 'ask'] as const
+
+const PLAN_TARGET_LABELS: Record<(typeof PLAN_TARGETS)[number], MessageKey> = {
+  jira: 'repo.tracker.planTargetJira',
+  ask: 'repo.tracker.planTargetAsk',
 }
 
 const PLAN_SPLITTING_LABELS: Record<(typeof PLAN_SPLITTING_MODES)[number], MessageKey> = {
@@ -262,7 +281,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const { orgs } = useOrg()
   const t = useT()
   const { status } = useAuth()
-  const [tab, setTab] = useState<RepoTab>('repository')
+  const [tab, setTab] = useState<RepoTab>('general')
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [editedName, setEditedName] = useState(repoName)
@@ -693,6 +712,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
   // Derived from the remote, or from an `issues.githubIssuesUrl` override when the
   // issues live in another repository. Displayed, never edited — see the Tracker tab.
   const githubIssuesTargetVal = resolveGitHubIssuesUrl(repo)
+  // `ask` counts as "there is a Jira": it can only mean anything if Jira is one of the
+  // two answers. Only `github` states that there is not one.
+  const trackerModeVal = planTrackerVal === 'github' ? 'github' : 'jira'
   // The two free-text Jira issue-type names read '' when unset so the field shows
   // its placeholder — the documented default — rather than a value nobody typed.
   const planEpicTypeVal = planSettings.issueTypes?.epic || ''
@@ -886,7 +908,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
       </div>
 
 
-      {tab === 'repository' && (
+      {tab === 'general' && (
         <>
         {/* Scope / Sharing Section */}
         <div className="mb-6">
@@ -965,54 +987,6 @@ export function RepoPage({ repoName }: RepoPageProps) {
               </fieldset>
             </div>
 
-            {/* Path — always editable: the folder is this machine's, private to
-                you, and a read-only member still needs to point the repo at it. */}
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.general.path')}</label>
-                <p className="text-xs text-text-secondary/50">
-                  {readOnly ? t('repo.general.pathHelpReadOnly') : t('repo.general.pathHelp')}
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 w-72">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={path}
-                    onChange={(e) => handlePathChange(e.target.value)}
-                    className={`${INPUT} flex-1 min-w-0`}
-                  />
-                  <button
-                    onClick={handlePickFolder}
-                    title={t('repo.general.chooseFolder')}
-                    className="p-2 bg-surface border border-line rounded-lg text-text-secondary hover:text-ink transition-colors shrink-0"
-                  >
-                    <FolderOpen className="w-4 h-4" />
-                  </button>
-                </div>
-                {pathStatus && (
-                  <div className={`flex items-center gap-1.5 text-xs ${
-                    pathStatus.isGit ? 'text-green' : 'text-yellow'
-                  }`}>
-                    {pathStatus.isGit ? (
-                      <><Check className="w-3 h-3" /> {t('repo.general.pathValid')}</>
-                    ) : pathStatus.exists ? (
-                      <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathNotGit')}</>
-                    ) : (
-                      <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathMissing')}</>
-                    )}
-                  </div>
-                )}
-                {pathChanged && (
-                  <button onClick={savePath} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                    {t('common.save')}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {remoteUrlRow(t('repo.general.remoteUrl'), readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp'))}
-
             {/* Keywords */}
             <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
               <div className="flex-1">
@@ -1059,7 +1033,138 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
           </div>
         </div>
+        </>
+      )}
 
+      {tab === 'tracker' && (
+        <>
+        {/* Tracker — everything about WHERE this repo's tickets live, and nothing else.
+            It was three sections: the remote under General, the Jira URL under Issues,
+            the project key and the issue types under Plan. */}
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.section')}</h2>
+          <div className="bg-surface border border-line-strong rounded-xl p-4">
+            <fieldset disabled={readOnly} className="w-full min-w-0">
+            {/* Which trackers this repo uses, as the question a person actually has:
+                is there a Jira in the picture, or is it GitHub alone? That is not quite
+                `plan.tracker`, which answers something narrower — where /magic:plan
+                FILES what it creates — and has three values to this one's two. So the
+                mode is derived from it rather than stored: `github` means GitHub only,
+                and `jira` or `ask` both mean a Jira is configured.
+
+                Picking Jira + GitHub lands on `jira` rather than `ask`, because someone
+                who has just declared a Jira most likely wants tickets in it; the row
+                below is where they say otherwise. Going the other way writes `github`
+                and leaves every Jira value in storage untouched, so the switch is not a
+                way to lose a project key by accident. */}
+            <SettingRow label={t('repo.tracker.mode')} description={t('repo.tracker.modeHelp')}>
+              <EnumSelect
+                value={trackerModeVal}
+                values={TRACKER_MODES}
+                labels={TRACKER_MODE_LABELS}
+                onChange={(mode) => handlePlanSettingChange('tracker', mode === 'github' ? 'github' : 'jira')}
+              />
+            </SettingRow>
+
+            {/* Only in the two-tracker mode is there a question to ask: with GitHub
+                alone the answer is GitHub, and a select with one real option is noise.
+                `github` is absent from the values for the same reason — choosing it here
+                would contradict the mode above. */}
+            {trackerModeVal === 'jira' && (
+              <SettingRow label={t('repo.tracker.planTarget')} description={t('repo.tracker.planTargetHelp')}>
+                <EnumSelect
+                  value={planTrackerVal === 'ask' ? 'ask' : 'jira'}
+                  values={PLAN_TARGETS}
+                  labels={PLAN_TARGET_LABELS}
+                  onChange={(v) => handlePlanSettingChange('tracker', v)}
+                />
+              </SettingRow>
+            )}
+            </fieldset>
+
+            {/* The GitHub link is the repo's own remote — the same row the Git tab shows
+                as a clone address, same state and same save button (see remoteUrlRow).
+                Outside the fieldset above because that row carries its own.
+
+                Its help line names the RESOLVED issues target rather than repeating the
+                field, because the two differ exactly when it matters: an
+                `issues.githubIssuesUrl` override points the issues at another repository
+                while the remote still points at the code. */}
+            {remoteUrlRow(
+              t('repo.tracker.githubRepo'),
+              readOnly
+                ? t('repo.general.remoteUrlHelpReadOnly')
+                : githubIssuesTargetVal
+                  ? t('repo.tracker.issuesGoTo', { target: githubIssuesTargetVal })
+                  : t('repo.tracker.githubTargetNone'),
+            )}
+
+            <fieldset disabled={readOnly} className="w-full min-w-0">
+            {/* Every Jira row hides in GitHub-only mode, the site URL included. It used
+                to stay visible on the grounds that ticket links are shown by
+                /magic:start, :pr and :done whatever /magic:plan does — true, and beside
+                the point now that the mode is an explicit statement about whether this
+                repo has a Jira at all. Nothing is cleared, so switching back brings the
+                values straight back. */}
+            {trackerModeVal === 'jira' && (
+              <>
+                <SettingRow label={t('repo.tracker.jiraLink')} description={t('repo.tracker.jiraLinkHelp')}>
+                  <input
+                    type="text"
+                    value={jiraSiteUrlVal}
+                    onChange={(e) => handleJiraSettingChange('siteUrl', e.target.value)}
+                    placeholder="https://company.atlassian.net/browse/"
+                    className={`${INPUT} w-72`}
+                  />
+                </SettingRow>
+
+                <SettingRow label={t('repo.plan.jiraProject')} description={t('repo.plan.jiraProjectHelp')}>
+                  <input
+                    type="text"
+                    value={jiraProjectVal}
+                    onChange={(e) => handleJiraSettingChange('projectKey', e.target.value)}
+                    placeholder="PROJ"
+                    className={`${INPUT} w-72`}
+                  />
+                </SettingRow>
+
+                <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
+                  <input
+                    type="text"
+                    value={planEpicTypeVal}
+                    onChange={(e) => handlePlanIssueTypeChange('epic', e.target.value)}
+                    placeholder="Epic"
+                    className={`${INPUT} w-72`}
+                  />
+                </SettingRow>
+
+                <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
+                  <input
+                    type="text"
+                    value={planStoryTypeVal}
+                    onChange={(e) => handlePlanIssueTypeChange('story', e.target.value)}
+                    placeholder="Story"
+                    className={`${INPUT} w-72`}
+                  />
+                </SettingRow>
+              </>
+            )}
+
+            <SettingRow align="center" label={t('repo.issues.commentOnPR')} description={t('repo.issues.commentOnPRHelp')}>
+              <Switch
+                checked={commentOnPRVal}
+                onChange={(next) => handleIssuesSettingChange('commentOnPR', next)}
+                label={t('repo.issues.commentOnPR')}
+              />
+            </SettingRow>
+            </fieldset>
+          </div>
+        </div>
+        </>
+      )}
+
+      {tab === 'languages' && (
+        <>
         {/* Languages — one block for every language this repo works in.
             They used to be one row per skill section: discussion under General,
             commits under Commit, titles under Pull Request, two more under Issues and
@@ -1106,14 +1211,79 @@ export function RepoPage({ repoName }: RepoPageProps) {
             )}
           </fieldset>
         </div>
+        </>
+      )}
 
-        {/* Git — the development branch and the worktree files, which were two
-            sections of one row each. Both answer the same question, how this repo's
-            git is laid out, and neither needed a heading of its own. */}
+      {tab === 'git' && (
+        <>
+        {/* Git — how this repo's git is laid out: the folder on this machine, the branch
+            features start from, and the files a worktree needs copied into it. Three
+            rows that were spread over General, Branches and Worktree. */}
         {/* Git Section */}
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.git.section')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <div className="bg-surface border border-line-strong rounded-xl p-4">
+            {/* Path — always editable: the folder is this machine's, private to
+                you, and a read-only member still needs to point the repo at it. */}
+            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.general.path')}</label>
+                <p className="text-xs text-text-secondary/50">
+                  {readOnly ? t('repo.general.pathHelpReadOnly') : t('repo.general.pathHelp')}
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 w-72">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={path}
+                    onChange={(e) => handlePathChange(e.target.value)}
+                    className={`${INPUT} flex-1 min-w-0`}
+                  />
+                  <button
+                    onClick={handlePickFolder}
+                    title={t('repo.general.chooseFolder')}
+                    className="p-2 bg-surface border border-line rounded-lg text-text-secondary hover:text-ink transition-colors shrink-0"
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                  </button>
+                </div>
+                {pathStatus && (
+                  <div className={`flex items-center gap-1.5 text-xs ${
+                    pathStatus.isGit ? 'text-green' : 'text-yellow'
+                  }`}>
+                    {pathStatus.isGit ? (
+                      <><Check className="w-3 h-3" /> {t('repo.general.pathValid')}</>
+                    ) : pathStatus.exists ? (
+                      <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathNotGit')}</>
+                    ) : (
+                      <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathMissing')}</>
+                    )}
+                  </div>
+                )}
+                {pathChanged && (
+                  <button onClick={savePath} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
+                    {t('common.save')}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* The same remote row the Tracker tab shows — same state, same save button
+                (see remoteUrlRow). It appears twice because the address answers two
+                different questions: here it is where a teammate clones this repo FROM,
+                there it is the repository the issues are filed IN. One row shared
+                between them is what keeps the two from drifting apart. */}
+            {remoteUrlRow(
+              t('repo.general.remoteUrl'),
+              readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp'),
+            )}
+
+            {/* The two rows above are OUTSIDE the fieldset on purpose. The path is this
+                machine's own, private to you, and a read-only member of a team repo still
+                has to point the repo at their clone; the remote row carries its own
+                fieldset. Everything below is shared config, so it follows `readOnly`. */}
+            <fieldset disabled={readOnly} className="w-full min-w-0">
             <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.branches.development')}</label>
@@ -1149,108 +1319,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 inputId="worktree-file-input"
               />
             </div>
-          </fieldset>
+            </fieldset>
+          </div>
         </div>
         </>
       )}
-
-
-      {tab === 'tracker' && (
-        <>
-        {/* Tracker — everything about WHERE this repo's tickets live, and nothing else.
-            It was three sections: the remote under General, the Jira URL under Issues,
-            the project key and the issue types under Plan. */}
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.section')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-            <SettingRow label={t('repo.plan.tracker')} description={t('repo.plan.trackerHelp')}>
-              <EnumSelect
-                value={planTrackerVal}
-                values={PLAN_TRACKERS}
-                labels={PLAN_TRACKER_LABELS}
-                onChange={(v) => handlePlanSettingChange('tracker', v)}
-              />
-            </SettingRow>
-
-            {/* The same clone-address row as the Repository tab — same state, same save
-                button; see remoteUrlRow. It was read-only here at first, on the grounds
-                that the address is "derived". True of the issues URL, and no answer at
-                all to someone standing on the tab that exists to say where tickets go
-                and finding the one address on it uneditable.
-
-                The help line names the RESOLVED target rather than repeating the field,
-                because the two differ exactly when it matters: an
-                `issues.githubIssuesUrl` override points the issues at another repository
-                while the remote still points at the code. */}
-            {remoteUrlRow(
-              t('repo.tracker.githubRepo'),
-              githubIssuesTargetVal
-                ? t('repo.tracker.issuesGoTo', { target: githubIssuesTargetVal })
-                : t('repo.tracker.githubTargetNone'),
-            )}
-
-            {/* The Jira site is NOT hidden when the tracker is GitHub, unlike the three
-                rows below it. It is the base of every ticket link /magic:start, :pr and
-                :done display, so a repo that plans on GitHub and tracks work in Jira
-                still needs it — whereas a project key and Jira issue-type names have no
-                meaning at all outside Jira. */}
-            <SettingRow label={t('repo.issues.jiraUrl')} description={t('repo.issues.jiraUrlHelp')}>
-              <input
-                type="text"
-                value={jiraSiteUrlVal}
-                onChange={(e) => handleJiraSettingChange('siteUrl', e.target.value)}
-                placeholder="https://company.atlassian.net/browse/"
-                className={`${INPUT} w-72`}
-              />
-            </SettingRow>
-
-            {/* 'ask' can still land in Jira, so these stay visible there. */}
-            {planTrackerVal !== 'github' && (
-              <>
-                <SettingRow label={t('repo.plan.jiraProject')} description={t('repo.plan.jiraProjectHelp')}>
-                  <input
-                    type="text"
-                    value={jiraProjectVal}
-                    onChange={(e) => handleJiraSettingChange('projectKey', e.target.value)}
-                    placeholder="PROJ"
-                    className={`${INPUT} w-72`}
-                  />
-                </SettingRow>
-
-                <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
-                  <input
-                    type="text"
-                    value={planEpicTypeVal}
-                    onChange={(e) => handlePlanIssueTypeChange('epic', e.target.value)}
-                    placeholder="Epic"
-                    className={`${INPUT} w-72`}
-                  />
-                </SettingRow>
-
-                <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
-                  <input
-                    type="text"
-                    value={planStoryTypeVal}
-                    onChange={(e) => handlePlanIssueTypeChange('story', e.target.value)}
-                    placeholder="Story"
-                    className={`${INPUT} w-72`}
-                  />
-                </SettingRow>
-              </>
-            )}
-
-            <SettingRow align="center" label={t('repo.issues.commentOnPR')} description={t('repo.issues.commentOnPRHelp')}>
-              <Switch
-                checked={commentOnPRVal}
-                onChange={(next) => handleIssuesSettingChange('commentOnPR', next)}
-                label={t('repo.issues.commentOnPR')}
-              />
-            </SettingRow>
-          </fieldset>
-        </div>
-        </>
-      )}
-
 
       {tab === 'skills' && (
         <>
