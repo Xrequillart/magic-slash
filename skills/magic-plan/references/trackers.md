@@ -432,26 +432,39 @@ When `plan.useRepoTemplates` is `false`, use the §3.3 structure.
   per §3.4's `unknown` rule the labels are sent, and dropped only if the call comes back rejected on
   that field.
 - **Assignee**: §2.6's rule, with the account id in place of the login — resolved once per run, not
-  per issue, and sent as `assignee_account_id`, which is a parameter of its own and not an
-  `additional_fields` entry. **Read the carried `assignee_account_id` first**: on a required
-  `assignee` the pre-flight already resolved it (`jira-fields.md` §2), and re-resolving here would
-  spend the same two calls again to learn the same answer. It is empty in every other case, and only
-  then does the resolution below run. Resolving "me" takes **two calls, in this order**, because Jira exposes
-  no single equivalent of `mcp__github__get_me`: `mcp__atlassian__atlassianUserInfo` first — it takes
-  no parameters and answers who the authenticated user is — then
-  `mcp__atlassian__lookupJiraAccountId` with that identity as its `searchString`, since that tool is
-  a search and has no current-user mode. Skip the second call when the first already carries an
-  account id. **Never substitute a search term of your own**: §2.6 forbids inferring the identity
-  from `git config user.email`, and a `searchString` invented here is that same guess wearing a Jira
-  parameter. If neither call yields an account id, say so in one line and create the issues
-  unassigned — `plan.assignToMe` is a convenience, never worth failing a creation over. **That
-  fallback is unavailable when the screen makes `assignee` required**: there, unassigned *is* the
-  rejection, so `jira-fields.md` §2 has already classified the field must-ask — whether because
-  `plan.assignToMe` is false or because no account id resolved — and its value arrives through
-  `required_field_answers`. As with
-  `labels`, an issue type whose create screen has no `assignee` field is named by the carried
-  `screen_omits`: say so and continue — and an `unknown` there reads as §3.4's rule says, the account
-  id sent and dropped only on a rejection.
+  per issue, and sent as `assignee_account_id`, a parameter of its own and never an
+  `additional_fields` entry (§3.2). The value has three possible sources, **tried in this order**.
+  The first that yields an id wins, and no later source is consulted:
+
+  1. **The carried `assignee_account_id`** (`jira-fields.md`'s `## Usage`). Set when `assignee` is
+     required and `plan.assignToMe` is true: the pre-flight already resolved it, and re-resolving
+     here would spend the same two calls to learn the same answer.
+  2. **The `assignee` entry of `required_field_answers`.** Set when `assignee` is required and the
+     pre-flight did *not* fill it — `plan.assignToMe` false, or its lookup failed — so
+     `jira-fields.md` §2 classified the field must-ask and Step 4 asked for it. **That answer is a
+     specific person the user chose, not you.** Falling through to source 3 here assigns the issue
+     to the authenticated user instead, and Jira *accepts* that: the creation succeeds, the wrong
+     person is assigned, and nothing downstream ever reports it. This source is the whole reason the
+     order is written down rather than left to read naturally.
+  3. **The current user**, and only when `plan.assignToMe` is true — the ordinary `assignToMe` path,
+     on a project where `assignee` is optional.
+
+  Source 3 takes **two calls, in this order**, because Jira exposes no single equivalent of
+  `mcp__github__get_me`: `mcp__atlassian__atlassianUserInfo` first — it takes no parameters and
+  answers who the authenticated user is — then `mcp__atlassian__lookupJiraAccountId` with that
+  identity as its `searchString`, since that tool is a search with no current-user mode. Skip the
+  second call when the first already carries an account id. **Never substitute a search term of your
+  own**: §2.6 forbids inferring the identity from `git config user.email`, and a `searchString`
+  invented here is that same guess wearing a Jira parameter.
+
+  When no source yields an id, the field's own status decides. **Optional**: say so in one line and
+  create the issues unassigned — `plan.assignToMe` is a convenience, never worth failing a creation
+  over. **Required**: unassigned *is* the rejection, and sources 1 and 2 are precisely the two paths
+  `jira-fields.md` §2 guarantees for that case, so arriving here empty on a required field is a
+  defect in the discovery pass — report it as §3.2's closing rule says, and do not send a call whose
+  only possible answer is a 400. As with `labels`, an issue type whose create screen has no
+  `assignee` field is named by the carried `screen_omits`: say so and continue — and an `unknown`
+  there reads as §3.4's rule says, the account id sent and dropped only on a rejection.
 
 ### 3.7 Manual verification
 
@@ -480,8 +493,10 @@ be observed.
 - A create screen that makes `labels` **required**, with `plan.defaultLabels` left at its `[]`
   default — then the same with `assignee` required and `plan.assignToMe` left at `false`.
   - Expected: both reach Step 4's question as must-ask fields, per `jira-fields.md` §2, and creation
-    succeeds with the answered values. What must **not** happen is the field being treated as
-    config-filled and the creation rejected on it after the approval.
+    succeeds with the answered values. Two things must **not** happen: the field being treated as
+    config-filled and the creation rejected on it after the approval, and — for `assignee` — the
+    answer being ignored in favour of §3.6 source 3, which would assign the issue to *you* and
+    succeed. Check who the created issues are actually assigned to, not just that they were created.
 - The same required `assignee`, this time with `plan.assignToMe` **true** — the other provenance.
   - Expected: no question at all; the pre-flight resolves the account id, carries it as
     `assignee_account_id`, and the created issues are assigned to you. What must **not** happen is
