@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Building2,
   ClipboardList,
+  FolderGit2,
   GitBranch,
   Languages,
   GitCommitHorizontal,
@@ -158,7 +159,7 @@ function buildOptions(t: Translate) {
  */
 type RepoTab =
   | 'general' | 'tracker' | 'languages' | 'git'
-  | 'commit' | 'resolve' | 'pr' | 'plan'
+  | 'plan' | 'commit' | 'resolve' | 'pr'
   | 'danger'
 
 const REPO_TABS: { id: RepoTab; labelKey: Parameters<Translate>[0]; icon: LucideIcon }[] = [
@@ -173,10 +174,14 @@ const REPO_TABS: { id: RepoTab; labelKey: Parameters<Translate>[0]; icon: Lucide
   // One tab per skill rather than one "Skills" tab holding four cards: each is a
   // workflow with its own vocabulary, and stacking them made that tab longer than the
   // five others put together.
+  //
+  // In workflow order, which is also the order the skills run in: an idea becomes
+  // tickets, tickets become commits, commits become a pull request, review comments
+  // come back. Plan first, therefore — before Commit, not after Pull request.
+  { id: 'plan', labelKey: 'repo.plan.section', icon: ClipboardList },
   { id: 'commit', labelKey: 'repo.commit.section', icon: GitCommitHorizontal },
   { id: 'resolve', labelKey: 'repo.resolve.section', icon: MessageSquare },
   { id: 'pr', labelKey: 'repo.pr.section', icon: GitPullRequest },
-  { id: 'plan', labelKey: 'repo.plan.section', icon: ClipboardList },
   { id: 'danger', labelKey: 'repo.tab.danger', icon: Trash2 },
 ]
 
@@ -533,21 +538,17 @@ export function RepositoryForm({
       {tab === 'tracker' && (
         <>
         {/* ── Tracker ───────────────────────────────────────────────────────────
-            Everything about WHERE this repo's tickets live, and nothing else. It was
-            three cards: the remote under General, the Jira URL under Issues, the
-            project key and issue types under Plan. */}
-        <SettingsCard icon={Ticket}>
-          {/* Which trackers this repo uses, as the question a person actually has: is
-              there a Jira in the picture, or is it GitHub alone? Not quite
-              `plan.tracker`, which answers something narrower — where /magic:plan FILES
-              what it creates — and has three values to this one's two, so the mode is
-              derived rather than stored.
-
-              Picking Jira + GitHub lands on `jira` rather than `ask`, because someone
-              who has just declared a Jira most likely wants tickets in it; the row below
-              is where they say otherwise. Going the other way writes `github` and leaves
-              every Jira value in storage untouched, so the switch cannot lose a project
-              key by accident. */}
+            In groups that answer one question each: WHERE do tickets go, and what is
+            each tracker's address. It was one flat card of seven rows mixing the two
+            with Jira issue-type names, and it read as a form rather than as an answer —
+            those type names have moved to the Plan tab, the only skill that reads
+            them. */}
+        <SettingsCard icon={Ticket} title={t('repo.tracker.groupDestination')}>
+          {/* Which tracker this repo files into. Not quite `plan.tracker`, which has a
+              third value, `ask`: that one is not a tracker but an instruction to choose
+              at runtime, so it is the toggle below rather than an option here. Switching
+              to GitHub writes `github` and leaves every Jira value in storage untouched,
+              so it cannot lose a project key by accident. */}
           <SettingRow label={t('repo.tracker.mode')} description={t('repo.tracker.modeHelp')}>
             <Dropdown
               value={trackerMode}
@@ -571,75 +572,63 @@ export function RepositoryForm({
               />
             </SettingRow>
           )}
+        </SettingsCard>
 
-          {/* The same remote row as the Repository tab — same draft, same save button.
-              It was read-only here at first, on the grounds that the address is
-              "derived". True of the issues URL, and no answer at all to someone
-              standing on the card that exists to say where tickets go and finding the
-              one address on it uneditable.
+        <SettingsCard icon={FolderGit2} title={t('repo.tracker.groupGithub')}>
+          {/* The same remote row the Git tab shows as a clone address — same draft, same
+              save button.
 
-              The help line names the RESOLVED target rather than repeating the field,
-              because the two differ exactly when it matters: an `issues.githubIssuesUrl`
-              override points the issues at another repository while the remote still
-              points at the code. */}
+              Its help line depends on the tracker, and that is the whole point: it used
+              to claim "issues are filed in …/issues" even when the tracker was Jira,
+              contradicting the row above it. In Jira mode the remote is still needed —
+              pull requests and clones use it — but it is not where tickets go, so it
+              says so. */}
           {remoteUrlRow(
             t('repo.tracker.githubRepo'),
-            githubIssuesTarget
-              ? t('repo.tracker.issuesGoTo', { target: githubIssuesTarget })
-              : t('repo.tracker.githubTargetNone'),
+            readOnly
+              ? t('repo.general.remoteUrlHelpReadOnly')
+              : trackerMode !== 'github'
+                ? t('repo.tracker.githubRepoHelpPr')
+                : githubIssuesTarget
+                  ? t('repo.tracker.issuesGoTo', { target: githubIssuesTarget })
+                  : t('repo.tracker.githubTargetNone'),
           )}
+        </SettingsCard>
 
-          {/* Every Jira row hides in GitHub-only mode, the site URL included. It used
-              to stay visible on the grounds that ticket links are shown by /magic:start,
-              :pr and :done whatever /magic:plan does — true, and beside the point now
-              that the mode is an explicit statement about whether this repo has a Jira at
-              all. Nothing is cleared, so switching back brings the values straight
-              back. */}
-          {trackerMode === 'jira' && (
-            <>
-              <SettingRow label={t('repo.tracker.jiraLink')} description={t('repo.tracker.jiraLinkHelp')}>
-                <DraftField
-                  persisted={jiraSiteUrl}
-                  onSave={(siteUrl) => setJira({ siteUrl })}
-                  placeholder="https://company.atlassian.net/browse/"
-                  className="w-72"
-                />
-              </SettingRow>
+        {trackerMode === 'jira' && (
+          <SettingsCard icon={Ticket} title={t('repo.tracker.groupJira')}>
+            {/* Two halves of one address, which is why they share a config block: the
+                site says where Jira is, the key says which project inside it receives the
+                tickets. Only the key is needed to WRITE one — the site decides whether a
+                ticket can be shown as a link (trackers.md §3.1). */}
+            <SettingRow label={t('repo.tracker.jiraLink')} description={t('repo.tracker.jiraLinkHelp')}>
+              <DraftField
+                persisted={jiraSiteUrl}
+                onSave={(siteUrl) => setJira({ siteUrl })}
+                placeholder="https://company.atlassian.net/browse/"
+                className="w-72"
+              />
+            </SettingRow>
 
-              <SettingRow
-                label={t('repo.plan.jiraProject')}
-                description={t('repo.plan.jiraProjectHelp')}
-              >
-                <DraftField
-                  persisted={jiraProjectKey}
-                  onSave={(projectKey) => setJira({ projectKey })}
-                  placeholder="PROJ"
-                  className="w-52"
-                />
-              </SettingRow>
+            <SettingRow
+              label={t('repo.plan.jiraProject')}
+              description={t('repo.plan.jiraProjectHelp')}
+            >
+              <DraftField
+                persisted={jiraProjectKey}
+                onSave={(projectKey) => setJira({ projectKey })}
+                placeholder="PROJ"
+                className="w-52"
+              />
+            </SettingRow>
+          </SettingsCard>
+        )}
 
-              <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
-                <DraftField
-                  persisted={epicType}
-                  onSave={(epic) => setPlan({ issueTypes: { epic } })}
-                  placeholder={DEFAULTS.issueTypeEpic}
-                  className="w-52"
-                  required
-                />
-              </SettingRow>
-
-              <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
-                <DraftField
-                  persisted={storyType}
-                  onSave={(story) => setPlan({ issueTypes: { story } })}
-                  placeholder={DEFAULTS.issueTypeStory}
-                  className="w-52"
-                  required
-                />
-              </SettingRow>
-            </>
-          )}
-
+        <SettingsCard icon={MessageSquare} title={t('repo.tracker.groupComments')}>
+          {/* Read by /magic:pr, :review and :done — three skills, so it belongs to the
+              repo's relationship with its tracker rather than to any one skill's tab. The
+              comment lands on the TICKET and carries the PR link, which the old label
+              ("Comment on PR creation") left ambiguous. */}
           <SettingRow
             label={t('repo.issues.commentOnPR')}
             description={t('repo.issues.commentOnPRHelp')}
@@ -1007,6 +996,34 @@ export function RepositoryForm({
         <>
         {/* ── Plan ──────────────────────────────────────────────────────────── */}
         <SettingsCard icon={ClipboardList}>
+          {/* Jira issue-type NAMES, as that project spells them — read by this skill and
+              nothing else (jira-fields.md §1.2), which is why they sit here rather than
+              with the Jira address on the Tracker tab. Hidden when the repo files into
+              GitHub, where an "Epic" issue type does not exist. */}
+          {trackerMode === 'jira' && (
+            <>
+              <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
+                <DraftField
+                  persisted={epicType}
+                  onSave={(epic) => setPlan({ issueTypes: { epic } })}
+                  placeholder={DEFAULTS.issueTypeEpic}
+                  className="w-52"
+                  required
+                />
+              </SettingRow>
+
+              <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
+                <DraftField
+                  persisted={storyType}
+                  onSave={(story) => setPlan({ issueTypes: { story } })}
+                  placeholder={DEFAULTS.issueTypeStory}
+                  className="w-52"
+                  required
+                />
+              </SettingRow>
+            </>
+          )}
+
           <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
             <Dropdown
               value={splitting}

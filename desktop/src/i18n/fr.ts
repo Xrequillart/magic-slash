@@ -451,7 +451,7 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.general.colorHelp': 'Couleur du projet dans la barre latérale',
 
   'repo.tracker.mode': 'Outils de suivi',
-  'repo.tracker.modeHelp': 'L’outil de suivi qui reçoit les tickets de ce repository',
+  'repo.tracker.modeHelp': 'Là où /magic:plan crée les tickets, et où /magic:start va les chercher',
   'repo.tracker.modeGithub': 'GitHub',
   'repo.tracker.modeJira': 'Jira',
   'repo.tracker.askEachTime': 'Demander à chaque plan',
@@ -467,6 +467,11 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.langs.commit': 'Langue des commits',
   'repo.langs.pullRequest': 'Langue des pull requests',
   'repo.git.section': 'Git',
+  'repo.tracker.groupDestination': 'Destination des tickets',
+  'repo.tracker.groupGithub': 'GitHub',
+  'repo.tracker.groupJira': 'Jira',
+  'repo.tracker.groupComments': 'Commentaires',
+  'repo.tracker.githubRepoHelpPr': 'Adresse du repository — sert aux pull requests et au clonage, pas aux tickets',
   'repo.tracker.section': 'Tracker',
   'repo.tracker.githubRepo': 'Repository GitHub',
   'repo.tracker.issuesGoTo': 'Les issues sont créées dans {target}',
@@ -550,11 +555,11 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.issues.ticketLang': 'Langue des tickets',
   'repo.issues.ticketLangHelp':
     'Langue de rédaction des tickets créés par /magic:plan — suit la langue des commentaires tant que vous ne la définissez pas',
-  'repo.issues.commentOnPR': 'Commenter à la création de la PR',
+  'repo.issues.commentOnPR': 'Commenter le ticket',
   'repo.issues.commentOnPRHelp':
-    'Ajouter un commentaire contenant le lien de la PR au moment de sa création',
+    'Publie sur le ticket un commentaire contenant le lien de la pull request, à sa création',
 
-  'repo.plan.section': 'Plan',
+  'repo.plan.section': 'Planification',
   'repo.plan.jiraProject': 'Projet Jira',
   'repo.plan.jiraProjectHelp':
     'Clé du projet dans lequel créer les tickets, ex. : PROJ (demandée si vide)',

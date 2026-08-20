@@ -584,6 +584,11 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.langs.commit': 'Langue des commits',
   'repo.langs.pullRequest': 'Langue des pull requests',
   'repo.git.section': 'Git',
+  'repo.tracker.groupDestination': 'Destination des tickets',
+  'repo.tracker.groupGithub': 'GitHub',
+  'repo.tracker.groupJira': 'Jira',
+  'repo.tracker.groupComments': 'Commentaires',
+  'repo.tracker.githubRepoHelpPr': 'Adresse du repository — sert aux pull requests et au clonage, pas aux tickets',
   'repo.tracker.section': 'Tracker',
   'repo.tracker.githubRepo': 'Repository GitHub',
   'repo.tracker.issuesGoTo': 'Les issues sont créées dans {target}',
@@ -670,9 +675,9 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.issues.ticketLang': 'Langue des tickets',
   'repo.issues.ticketLangHelp':
     'Langue de rédaction des nouveaux tickets — suit celle des commentaires tant qu’elle n’est pas définie',
-  'repo.issues.commentOnPR': 'Commenter à la création de la PR',
+  'repo.issues.commentOnPR': 'Commenter le ticket',
   'repo.issues.commentOnPRHelp':
-    'Ajouter un commentaire contenant le lien de la PR sur le ticket',
+    'Publie sur le ticket un commentaire contenant le lien de la pull request, à sa création',
   'repo.plan.section': 'Planification',
   'repo.plan.trackerJiraHelp': 'Créer l’epic et ses stories dans Jira',
   'repo.plan.trackerGithubHelp': 'Les créer comme issues sur ce dépôt',
