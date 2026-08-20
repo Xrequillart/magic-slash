@@ -398,7 +398,11 @@ When `plan.useRepoTemplates` is `false`, use the §3.3 structure.
   that does happen is the `labels` field being absent from that issue type's create screen, which
   company-managed projects do configure — and the carried `screen_omits` already names it, *before*
   any call. Drop the labels then, say in one line that the issue type carries no `labels` field, and
-  create the issue without them. Never discover this as an error. That is the `false` reading —
+  create the issue without them. Never discover this as an error. **A `labels` field the screen makes
+  *required* while `plan.defaultLabels` is empty is a different case and is not dropped**:
+  `jira-fields.md` §2 classified it must-ask, so its value comes from `required_field_answers` and
+  rides in `additional_fields` like any other answer. Dropping it here would be the 400 that pass
+  exists to prevent. That is the `false` reading —
   `screen_omits` naming `labels` on a screen read to the end. An `unknown` one is not an omission:
   per §3.4's `unknown` rule the labels are sent, and dropped only if the call comes back rejected on
   that field.
@@ -412,7 +416,11 @@ When `plan.useRepoTemplates` is `false`, use the §3.3 structure.
   account id. **Never substitute a search term of your own**: §2.6 forbids inferring the identity
   from `git config user.email`, and a `searchString` invented here is that same guess wearing a Jira
   parameter. If neither call yields an account id, say so in one line and create the issues
-  unassigned — `plan.assignToMe` is a convenience, never worth failing a creation over. As with
+  unassigned — `plan.assignToMe` is a convenience, never worth failing a creation over. **That
+  fallback is unavailable when the screen makes `assignee` required**: there, unassigned *is* the
+  rejection, so `jira-fields.md` §2 has already classified the field must-ask — whether because
+  `plan.assignToMe` is false or because no account id resolved — and its value arrives through
+  `required_field_answers`. As with
   `labels`, an issue type whose create screen has no `assignee` field is named by the carried
   `screen_omits`: say so and continue — and an `unknown` there reads as §3.4's rule says, the account
   id sent and dropped only on a rejection.
@@ -441,6 +449,11 @@ be observed.
     that answer.
 - `plan.tracker: jira`, `plan.jiraProject` empty.
   - Expected: `MSG_JIRA_NOT_CONFIGURED` before the brainstorm, no GitHub fallback.
+- A create screen that makes `labels` **required**, with `plan.defaultLabels` left at its `[]`
+  default — then the same with `assignee` required and `plan.assignToMe` left at `false`.
+  - Expected: both reach Step 4's question as must-ask fields, per `jira-fields.md` §2, and creation
+    succeeds with the answered values. What must **not** happen is the field being treated as
+    config-filled and the creation rejected on it after the approval.
 - The story type uncreatable for the user, the epic type creatable.
   - Expected: the epic survives; the report names its key and URL plus every story that did not
     land, with its reason; `## Created tickets` holds the epic; nothing is rolled back.

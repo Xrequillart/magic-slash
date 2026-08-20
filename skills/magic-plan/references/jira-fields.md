@@ -152,11 +152,39 @@ Then split the required ones of each type into two lists. Only the second reache
 | `reporter` | the calling user; Jira defaults it, so send nothing unless the field rejects that |
 | `parent` | the epic key, on a story — `trackers.md` §3.4 route 1, not a value to ask for |
 | anything carrying a usable default | that default, stated in one line so a silent choice is visible |
-| `labels`, `assignee` | `plan.defaultLabels`, `plan.assignToMe` — config, not a question |
+| `labels` | `plan.defaultLabels` — but **only when it is non-empty**, see below |
+| `assignee` | the resolved account id — **only when `plan.assignToMe` is true**, see below |
 
 "A usable default" means the response's `hasDefaultValue` is true and the default is a real value.
 A default that is an empty string, an empty array or a placeholder option is not usable — treat the
 field as must-ask.
+
+**Config auto-fills a field only when it actually carries a value**, and the same test applies to it.
+`plan.defaultLabels` defaults to `[]` and `plan.assignToMe` to `false`, so on a project whose create
+screen makes `labels` or `assignee` **required** those two rows auto-fill nothing — and a field
+classified as auto-filled that nothing fills is refused by Jira at creation, after the brainstorm and
+after the approval. That is exactly the 400 this pass exists to move earlier, arriving through the
+classification instead of through a missed field:
+
+| Required field | Config | Classification |
+| --- | --- | --- |
+| `labels` | `plan.defaultLabels` non-empty | auto-filled |
+| `labels` | `plan.defaultLabels` empty — its default | **must-ask** |
+| `assignee` | `plan.assignToMe` true **and** an account id resolved | auto-filled |
+| `assignee` | `plan.assignToMe` false — its default | **must-ask** |
+| `assignee` | `plan.assignToMe` true but no account id resolves | **must-ask** |
+
+`assignee` is the harder of the two, because whether it auto-fills is only knowable once
+`trackers.md` §3.6's `atlassianUserInfo` → `lookupJiraAccountId` pair has run. When the field is
+**required**, run that resolution here, in this pass, and carry the account id — §3.6 resolves it
+once per run anyway, so this spends no extra call, it only moves it earlier. §3.6's "create the
+issues unassigned" fallback is not available on a required `assignee`: unassigned is the rejection.
+When the field is optional, nothing changes — §3.6 keeps resolving it at creation time and drops it
+on a rejection.
+
+Neither field stops being config-driven. `plan.defaultLabels` and `plan.assignToMe` still decide what
+is *sent* whenever they hold a value; the rule above only decides what happens when they hold none
+and Jira insists.
 
 **Must-ask — everything else that is `required`**, which in practice means the project's mandatory
 custom fields: a required "Team", "Component", "Sprint", "Severity", "Business value". Carry, per
