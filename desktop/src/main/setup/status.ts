@@ -14,7 +14,7 @@ import { allMcpServerStatuses } from './mcp'
  * that rots six months later is diagnosable without reinstalling anything).
  */
 
-const SKILLS = ['magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
+const SKILLS = ['magic-plan', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
 
 /**
  * Which skills are actually on disk.

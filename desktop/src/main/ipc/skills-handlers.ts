@@ -7,7 +7,7 @@ import { expandPath } from '../config/validation'
 import AdmZip from 'adm-zip'
 import { t } from '../i18n'
 
-const BUILT_IN_SKILLS = ['magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
+const BUILT_IN_SKILLS = ['magic-plan', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
 
 interface SkillInfo {
   name: string

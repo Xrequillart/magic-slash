@@ -85,10 +85,11 @@ Cherche la ligne contenant `"version":` dans le bloc de configuration JSON du RE
 
 ## Etape 4 : Mettre a jour les skills et l'interface desktop
 
-### 4.1 : Fichiers SKILL.md (7 fichiers)
+### 4.1 : Fichiers SKILL.md (8 fichiers)
 
-Mets a jour le titre de version dans les 7 fichiers de skills :
+Mets a jour le titre de version dans les 8 fichiers de skills :
 
+- `skills/magic-plan/SKILL.md`
 - `skills/magic-start/SKILL.md`
 - `skills/magic-continue/SKILL.md`
 - `skills/magic-commit/SKILL.md`
@@ -276,7 +277,7 @@ for f in package.json desktop/package.json README.md; do
     ERRORS=$((ERRORS+1))
   fi
 done && \
-for f in skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md skills/magic-pr/SKILL.md skills/magic-review/SKILL.md skills/magic-resolve/SKILL.md skills/magic-done/SKILL.md; do
+for f in skills/magic-plan/SKILL.md skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md skills/magic-pr/SKILL.md skills/magic-review/SKILL.md skills/magic-resolve/SKILL.md skills/magic-done/SKILL.md; do
   if grep -q "magic-slash vX.Y.Z" "$f"; then
     echo "  OK  $f"
   else
@@ -311,6 +312,7 @@ Resume des modifications pour la version X.Y.Z :
   package.json                                  {VERSION_ACTUELLE} -> X.Y.Z
   desktop/package.json                          {VERSION_ACTUELLE} -> X.Y.Z
   README.md                                     {VERSION_ACTUELLE} -> X.Y.Z
+  skills/magic-plan/SKILL.md                    v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-start/SKILL.md                   v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-continue/SKILL.md                v{VERSION_ACTUELLE} -> vX.Y.Z
   skills/magic-commit/SKILL.md                  v{VERSION_ACTUELLE} -> vX.Y.Z
@@ -358,9 +360,10 @@ Si l'utilisateur a confirme, enchaine les 3 operations sans poser de questions s
 
 ```bash
 git add package.json desktop/package.json README.md \
-  skills/magic-start/SKILL.md skills/magic-continue/SKILL.md skills/magic-commit/SKILL.md \
-  skills/magic-pr/SKILL.md skills/magic-review/SKILL.md skills/magic-resolve/SKILL.md \
-  skills/magic-done/SKILL.md desktop/src/renderer/components/Sidebar.tsx \
+  skills/magic-plan/SKILL.md skills/magic-start/SKILL.md skills/magic-continue/SKILL.md \
+  skills/magic-commit/SKILL.md skills/magic-pr/SKILL.md skills/magic-review/SKILL.md \
+  skills/magic-resolve/SKILL.md skills/magic-done/SKILL.md \
+  desktop/src/renderer/components/Sidebar.tsx \
   webapp/lib/desktopRelease.ts CHANGELOG.md
 ```
 

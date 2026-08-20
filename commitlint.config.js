@@ -29,6 +29,7 @@ module.exports = {
         'review',
         'resolve',
         'done',
+        'plan',
         'install',
         'docs',
         'deps',

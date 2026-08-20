@@ -31,6 +31,7 @@ echo ""
 # ============================================
 echo "This script will remove:"
 echo ""
+echo "  • ~/.claude/skills/magic-plan/"
 echo "  • ~/.claude/skills/magic-start/"
 echo "  • ~/.claude/skills/magic-continue/"
 echo "  • ~/.claude/skills/magic-commit/"
@@ -63,7 +64,7 @@ echo ""
 
 SKILLS_DIR="$HOME/.claude/skills"
 
-for skill in magic-start magic-continue magic-commit magic-pr magic-review magic-resolve magic-done; do
+for skill in magic-plan magic-start magic-continue magic-commit magic-pr magic-review magic-resolve magic-done; do
   if [ -d "$SKILLS_DIR/$skill" ]; then
     rm -rf "${SKILLS_DIR:?}/${skill:?}"
     echo "   ✓ Removed: $SKILLS_DIR/$skill/"

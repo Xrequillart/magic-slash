@@ -230,7 +230,7 @@ describe('session-end usage flush (terminal:kill)', () => {
 // types cannot see: that no SKILL.md sends a status the union has never heard of.
 
 describe('the status contract with the skills', () => {
-  /** Every `status=` value the seven SKILL.md files actually send. */
+  /** Every `status=` value the eight SKILL.md files actually send. */
   function statusesSentBySkills(): { skill: string; status: string }[] {
     const skillsDir = join(__dirname, '..', '..', '..', '..', 'skills')
     return readdirSync(skillsDir)

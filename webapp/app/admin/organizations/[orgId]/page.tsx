@@ -17,7 +17,7 @@ import {
 import { formatAbsoluteDate } from '@/lib/installations'
 // The list itself is shared with the user-space Organizations page: the console
 // shares DATA with the user space and never components, and two copies of these
-// seven rows would eventually disagree about what a team is shown.
+// eight rows would eventually disagree about what a team is shown.
 import { TRACKED_SKILLS, totalTrackedRuns } from '@/lib/skills'
 import { useConsoleData } from '@/components/regie/ConsoleData'
 import { PageHead } from '@/components/regie/ConsoleShell'
@@ -380,9 +380,10 @@ export default function AdminOrgRecord() {
             label="Skills"
             action={
               skills && (
-                // The sum of the SEVEN shown, not of every skill logged: it is the
+                // The sum of the EIGHT shown, not of every skill logged: it is the
                 // total of what is on screen, so it always adds up to the tiles
-                // below it. An org running /magic:plan heavily is not counted here.
+                // below it. An org leaning on a custom skill of its own is not
+                // counted here.
                 <SectionLabel>{`${totalTrackedRuns(skills)} runs`}</SectionLabel>
               )
             }
@@ -391,14 +392,14 @@ export default function AdminOrgRecord() {
               <Empty>Chargement…</Empty>
             ) : (
               <>
-                {/* Boxed tiles rather than cells divided by rules: seven items over a
-                    grid that is 2, 4 then 7 columns wide leaves a partly filled last
-                    row at two of those three widths, and a gap-px separator grid draws
-                    those empty cells as solid blocks. Tiles carry their own border and
-                    an empty grid area is simply panel background.
+                {/* Boxed tiles rather than cells divided by rules: the count is even at
+                    every width today, but it has changed twice and a gap-px separator
+                    grid draws the empty cells of a partly filled last row as solid
+                    blocks. Tiles carry their own border and an empty grid area is
+                    simply panel background.
                     Same box as the feature groups on the user record — the console's
                     established "section inside a card" shape. */}
-                <dl className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-4 lg:grid-cols-7">
+                <dl className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-4 lg:grid-cols-8">
                   {TRACKED_SKILLS.map(({ skill, label }) => {
                     // Absent from the map means never run. `?? 0` is where absence
                     // becomes the number to print — the RPC returns no row at all

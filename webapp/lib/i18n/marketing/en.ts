@@ -13,9 +13,9 @@
  * ── The pitch this catalogue carries ──
  * The site used to sell the MECHANISM: "7 skills", "from ticket to merge", slash
  * commands in every headline. It now sells the OUTCOME — you describe what's next, it
- * gets built — on the product you already have. The seven commands did not go away;
- * they moved from the headline into `site.how.*`, where they belong as the concrete
- * "how", with the reference living in the documentation.
+ * gets built — on the product you already have. The commands did not go away; they
+ * moved from the headline into `site.how.*`, where they belong as the concrete "how",
+ * with the reference living in the documentation.
  *
  * The one thing deliberately NOT promised anywhere: that a non-developer can use this.
  * `site.faq.q1` says so outright. The page is meant to read wide and stay honest — a
@@ -69,8 +69,9 @@ export const marketingEn = {
     'You get finished work to review, not a pile of code to sort out.',
   // The commands, kept on the page on purpose: they are the actual surface a user
   // types, so hiding them entirely would leave "it gets built" unexplained.
-  'site.how.commandsTitle': 'The seven commands',
+  'site.how.commandsTitle': 'The eight commands',
   'site.how.commandsIntro': 'Type <strong>/magic:</strong> to find them all at once.',
+  'site.how.planDesc': '<strong>/magic:plan</strong> turns an idea into tickets, ready to build.',
   'site.how.startDesc': '<strong>/magic:start</strong> picks up a task and starts building it.',
   'site.how.continueDesc': '<strong>/magic:continue</strong> resumes a job you left open.',
   'site.how.commitDesc': '<strong>/magic:commit</strong> saves the work with a clear message.',

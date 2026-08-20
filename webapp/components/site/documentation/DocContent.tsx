@@ -143,6 +143,42 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                         <p>{t('site.doc.skills.2')}</p>
                         <RichText k="site.doc.skills.3" as="p" />
 
+                        {/* First in the section because it runs first in the cycle: /magic:plan
+                            is what happens before a ticket exists.
+
+                            NO `doc-skill-img`: there is no `skill-plan.png` and no source for
+                            one in `design/`, and an <img> pointing at a 404 is worse than none.
+                            `.doc-skill h3` is a flex row, so the header simply loses the 48px
+                            icon and its indent — the same shape the "create your own" block and
+                            the workflow cards below already have. Add the element back the day
+                            the artwork lands. */}
+                        <div className="doc-skill">
+                            <h3><span className="doc-skill-name">/magic:plan</span> <span className="doc-skill-tag">{t('site.doc.tag.lifecycle')}</span> <a href="https://github.com/xrequillart/magic-slash/blob/main/skills/magic-plan/SKILL.md" target="_blank" className="doc-skill-source"><ExternalLink size={16} /> {t('site.doc.skillSource')}</a></h3>
+                            <RichText k="site.doc.skills.109" as="p" className="doc-skill-desc" />
+                            <div className="doc-skill-details">
+                                <div className="doc-skill-col">
+                                    <h4>{t('site.doc.skills.110')}</h4>
+                                    <ul>
+                                        <li>{t('site.doc.skills.111')}</li>
+                                        <li>{t('site.doc.skills.112')}</li>
+                                        <li>{t('site.doc.skills.113')}</li>
+                                        <li>{t('site.doc.skills.114')}</li>
+                                        <li>{t('site.doc.skills.115')}</li>
+                                    </ul>
+                                </div>
+                                <div className="doc-skill-col">
+                                    <h4>{t('site.doc.skills.116')}</h4>
+                                    <ul>
+                                        <RichText k="site.doc.skills.117" as="li" />
+                                        <li>{t('site.doc.skills.118')}</li>
+                                        <li>{t('site.doc.skills.119')}</li>
+                                    </ul>
+                                    <h4>{t('site.doc.skills.120')}</h4>
+                                    <RichText k="site.doc.skills.121" as="p" />
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="doc-skill">
                             <h3><img src="/img/skill-start.png" alt="skill /magic:start icon" className="doc-skill-img" /><span className="doc-skill-name">/magic:start</span> <span className="doc-skill-tag">{t('site.doc.tag.lifecycle')}</span> <a href="https://github.com/xrequillart/magic-slash/blob/main/skills/magic-start/SKILL.md" target="_blank" className="doc-skill-source"><ExternalLink size={16} /> {t('site.doc.skillSource')}</a></h3>
                             <RichText k="site.doc.skills.4" as="p" className="doc-skill-desc" />
@@ -879,6 +915,7 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
 
                         <h3>{t('site.doc.configuration.54')}</h3>
                         <pre><code>~/.config/magic-slash/config.json   # Main configuration
+    ~/.claude/skills/magic-plan/SKILL.md       # /magic:plan skill definition
     ~/.claude/skills/magic-start/SKILL.md      # /magic:start skill definition
     ~/.claude/skills/magic-continue/SKILL.md   # /magic:continue skill definition
     ~/.claude/skills/magic-commit/SKILL.md     # /magic:commit skill definition

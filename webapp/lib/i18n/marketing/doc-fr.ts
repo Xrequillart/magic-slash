@@ -25,7 +25,7 @@ export const docFr: Record<keyof typeof docEn, string> = {
   'site.doc.quickStart.1': 'Démarrage rapide',
   'site.doc.quickStart.2': 'Téléchargez l\'application, glissez-la dans Applications et ouvrez-la :',
   'site.doc.quickStart.download': 'Télécharger Magic Slash pour macOS',
-  'site.doc.quickStart.3': 'Au premier lancement, l\'application vérifie les prérequis, configure les serveurs MCP (Jira &amp; GitHub) et installe les sept skills de base dans <code>~/.claude/skills/</code>. Aucun script à lancer.',
+  'site.doc.quickStart.3': 'Au premier lancement, l\'application vérifie les prérequis, configure les serveurs MCP (Jira &amp; GitHub) et installe les huit skills de base dans <code>~/.claude/skills/</code>. Aucun script à lancer.',
   'site.doc.quickStart.4': 'Prérequis',
   'site.doc.quickStart.5': 'Claude Code',
   'site.doc.quickStart.6': 'Le CLI d\'Anthropic doit être installé et authentifié.',
@@ -33,7 +33,7 @@ export const docFr: Record<keyof typeof docEn, string> = {
   'site.doc.quickStart.8': 'Nécessaire aux serveurs MCP (Atlassian &amp; GitHub).',
   'site.doc.quickStart.9': 'Git + jq',
   'site.doc.quickStart.10': 'Git pour le versionnage, jq pour le traitement du JSON.',
-  'site.doc.quickStart.11': 'L\'installeur met en place les 7 skills de base, configure les serveurs MCP (Jira &amp; GitHub) et installe l\'application desktop magic-slash.',
+  'site.doc.quickStart.11': 'L\'installeur met en place les 8 skills de base, configure les serveurs MCP (Jira &amp; GitHub) et installe l\'application desktop magic-slash.',
 
   // ── Usage ───────────────────────────────────────────────────────────────
   'site.doc.usage.1': 'Utilisation',
@@ -51,8 +51,8 @@ export const docFr: Record<keyof typeof docEn, string> = {
 
   // ── Skills reference ────────────────────────────────────────────────────
   'site.doc.skills.1': 'Référence des skills intégrés',
-  'site.doc.skills.2': 'magic-slash embarque sept skills intégrés qui couvrent tout le cycle de développement — du ticket au merge. Chaque skill s\'invoque comme une commande slash dans Claude Code et gère automatiquement les worktrees multi-dépôts.',
-  'site.doc.skills.3': 'Tous les skills partagent le préfixe <code>magic:</code> (<code>/magic:start</code>, <code>/magic:continue</code>, <code>/magic:commit</code>, <code>/magic:pr</code>, <code>/magic:review</code>, <code>/magic:resolve</code>, <code>/magic:done</code>) : tapez <code>/magic:</code> pour tous les retrouver d\'un coup.',
+  'site.doc.skills.2': 'magic-slash embarque huit skills intégrés qui couvrent tout le cycle de développement — de l\'idée au merge. Chaque skill s\'invoque comme une commande slash dans Claude Code et gère automatiquement les worktrees multi-dépôts.',
+  'site.doc.skills.3': 'Tous les skills partagent le préfixe <code>magic:</code> (<code>/magic:plan</code>, <code>/magic:start</code>, <code>/magic:continue</code>, <code>/magic:commit</code>, <code>/magic:pr</code>, <code>/magic:review</code>, <code>/magic:resolve</code>, <code>/magic:done</code>) : tapez <code>/magic:</code> pour tous les retrouver d\'un coup.',
   'site.doc.skills.4': 'Démarre une tâche de développement depuis un ticket Jira ou une issue GitHub. Dites <code>/magic:start PROJ-123</code> ou <code>/magic:start #456</code>.',
   'site.doc.skills.5': 'Ce qu\'il fait',
   'site.doc.skills.6': 'Détecte le type de ticket (Jira ou GitHub) et récupère ses métadonnées',
@@ -159,6 +159,21 @@ export const docFr: Record<keyof typeof docEn, string> = {
   'site.doc.skills.106': '<code>allowed tools</code> — les outils auxquels le skill a droit (ex. <code>Bash(*), Read, Edit</code>)',
   'site.doc.skills.107': '<code>content</code> — le prompt d\'instructions, en Markdown',
   'site.doc.skills.108': '<code>image</code> — une icône facultative pour la carte du skill (png, jpg, svg, webp)',
+
+  // /magic:plan — numéroté à la suite de la famille, voir doc-en.ts.
+  'site.doc.skills.109': 'Transforme une idée en tickets. Réfléchit à partir de votre codebase, rédige une spec que vous relisez, puis crée l\'epic et ses stories une fois la structure validée. Dites <code>/magic:plan</code> et décrivez ce que vous voulez construire.',
+  'site.doc.skills.110': 'Ce qu\'il fait',
+  'site.doc.skills.111': 'Explore le dépôt cible pour ancrer l\'idée dans le code qui existe déjà',
+  'site.doc.skills.112': 'Rédige une spec relisible &mdash; périmètre, approche, questions ouvertes &mdash; avant que le moindre ticket ne soit créé',
+  'site.doc.skills.113': 'Propose un epic et ses stories, découpés selon la granularité que vous avez configurée',
+  'site.doc.skills.114': 'Attend votre validation : aucun ticket n\'est créé avant que vous acceptiez la structure',
+  'site.doc.skills.115': 'Crée l\'epic et les stories, avec labels, critères d\'acceptation et assignation',
+  'site.doc.skills.116': 'Phrases déclencheuses',
+  'site.doc.skills.117': '<code>/magic:plan</code>',
+  'site.doc.skills.118': '"I have an idea", "we should add", "plan this out"',
+  'site.doc.skills.119': '"j\'ai une idée", "on devrait ajouter", "prépare les tickets"',
+  'site.doc.skills.120': 'À noter',
+  'site.doc.skills.121': 'À utiliser quand le ticket n\'existe <strong>pas</strong> encore. Dès qu\'il existe, c\'est <code>/magic:start</code> qui le prend en charge &mdash; <code>/magic:plan</code> passe avant lui dans le cycle, jamais à sa place.',
 
   // ── Workflows ───────────────────────────────────────────────────────────
   'site.doc.workflows.1': 'Exemples de workflows',
@@ -477,7 +492,7 @@ export const docFr: Record<keyof typeof docEn, string> = {
 
   // ── Updates ─────────────────────────────────────────────────────────────
   'site.doc.updates.1': 'Mises à jour & auto-update',
-  'site.doc.updates.2': 'magic-slash maintient à jour automatiquement l\'application desktop et les 7 skills de base.',
+  'site.doc.updates.2': 'magic-slash maintient à jour automatiquement l\'application desktop et les 8 skills de base.',
   'site.doc.updates.3': 'Mises à jour de l\'application desktop',
   'site.doc.updates.4': 'L\'application desktop utilise <code>electron-updater</code> pour vérifier les nouvelles versions via les GitHub Releases.',
   'site.doc.updates.5': 'Déroulement',
@@ -497,7 +512,7 @@ export const docFr: Record<keyof typeof docEn, string> = {
   'site.doc.updates.19': 'Supprime les fichiers locaux obsolètes qui n\'existent plus dans le dépôt',
   'site.doc.updates.20': 'Nettoie les répertoires vides',
   'site.doc.updates.21': 'Périmètre',
-  'site.doc.updates.22': 'Les 7 skills intégrés sont vérifiés : <code>magic-start</code>, <code>magic-continue</code>, <code>magic-commit</code>, <code>magic-pr</code>, <code>magic-review</code>, <code>magic-resolve</code>, <code>magic-done</code>.',
+  'site.doc.updates.22': 'Les 8 skills intégrés sont vérifiés : <code>magic-plan</code>, <code>magic-start</code>, <code>magic-continue</code>, <code>magic-commit</code>, <code>magic-pr</code>, <code>magic-review</code>, <code>magic-resolve</code>, <code>magic-done</code>.',
   'site.doc.updates.23': 'Les skills que vous créez ne sont jamais modifiés ni supprimés par la mise à jour automatique.',
   'site.doc.updates.24': 'Vérification manuelle',
   'site.doc.updates.25': 'Vous pouvez déclencher une vérification à tout moment depuis l\'application desktop.',
@@ -620,7 +635,7 @@ export const docFr: Record<keyof typeof docEn, string> = {
   'site.doc.troubleshooting.63': 'Puis-je utiliser magic-slash sans l\'application desktop ?',
   'site.doc.troubleshooting.64': 'Oui ! Les skills fonctionnent partout où Claude Code tourne. Vous pouvez lancer les commandes <code>/magic:</code> depuis n\'importe quel terminal &mdash; l\'application desktop n\'est pas nécessaire au workflow de base.',
   'site.doc.troubleshooting.65': 'Sans l\'application desktop',
-  'site.doc.troubleshooting.66': 'Les 7 skills fonctionnent dans tout terminal doté de Claude Code',
+  'site.doc.troubleshooting.66': 'Les 8 skills fonctionnent dans tout terminal doté de Claude Code',
   'site.doc.troubleshooting.67': 'Intégration complète Jira &amp; GitHub via les serveurs MCP',
   'site.doc.troubleshooting.68': 'Fonctionne dans VS Code, les IDE JetBrains ou un terminal seul',
   'site.doc.troubleshooting.69': 'Ce que l\'application desktop apporte en plus',
@@ -721,7 +736,7 @@ export const docFr: Record<keyof typeof docEn, string> = {
   'site.doc.troubleshooting.163': 'Après confirmation, l\'application redémarre sur la nouvelle version',
   'site.doc.troubleshooting.164': 'Ce qui est mis à jour',
   'site.doc.troubleshooting.165': 'L\'application desktop (le binaire Electron)',
-  'site.doc.troubleshooting.166': 'Les 7 skills (rafraîchis à chaque démarrage)',
+  'site.doc.troubleshooting.166': 'Les 8 skills (rafraîchis à chaque démarrage)',
   'site.doc.troubleshooting.167': 'Votre configuration est préservée d\'une mise à jour à l\'autre',
 
   // ── Changelog ───────────────────────────────────────────────────────────

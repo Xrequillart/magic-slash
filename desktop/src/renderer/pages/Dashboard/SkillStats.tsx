@@ -6,10 +6,10 @@ import { useT } from '../../i18n'
 
 /**
  * The skills this row reports, in the order the development cycle runs them —
- * start, pick back up, commit, ship, review, fix the review, close.
+ * plan, start, pick back up, commit, ship, review, fix the review, close.
  *
  * A FIXED list, though the RPCs return every skill that has ever run. The point is
- * that the same seven tiles sit in the same seven places whichever tab is open, so a
+ * that the same eight tiles sit in the same eight places whichever tab is open, so a
  * hole in the cycle ("plenty of commits, no PRs") is visible as a shape rather than
  * as a number to compare by hand.
  *
@@ -22,6 +22,7 @@ import { useT } from '../../i18n'
  * together is the `skill` strings, which are the database's own values.
  */
 const TRACKED_SKILLS: { skill: string; label: string }[] = [
+  { skill: 'magic-plan', label: 'plan' },
   { skill: 'magic-start', label: 'start' },
   { skill: 'magic-continue', label: 'continue' },
   { skill: 'magic-commit', label: 'commit' },
@@ -124,7 +125,7 @@ export function SkillStats({ scope }: { scope: RepoScope | undefined }) {
         )}
       </div>
 
-      <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+      <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
         {TRACKED_SKILLS.map(({ skill, label }) => {
           // Absent means never run: the RPC returns no row rather than a zero, so
           // this is where absence becomes the number to print.

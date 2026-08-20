@@ -111,7 +111,7 @@ export interface Store {
    *
    * Aggregated by the DATABASE, unlike loadOrgUsageStats which pulls raw rows and sums
    * them here: skill_invocations gets one row per skill run and an active team reaches
-   * thousands, of which the page needs seven numbers. The org is an explicit argument
+   * thousands, of which the page needs eight numbers. The org is an explicit argument
    * rather than the resolved active one, because the Team page has a tab per org and
    * asks for whichever is open.
    */

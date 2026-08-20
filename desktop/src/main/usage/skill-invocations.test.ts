@@ -119,8 +119,8 @@ describe('skill filtering', () => {
   })
 
   it('counts a magic skill that has no dashboard tile', async () => {
-    // The rule is the prefix, not a list of the seven: a list would silently stop
-    // counting the next skill this project ships.
+    // The rule is the prefix, not a list of the shipped skills: a list would silently
+    // stop counting the next skill this project ships.
     await recordSkillInvocation({ agentId: 'claude-1', skill: 'magic-release' })
     expect(recorded).toHaveLength(1)
   })

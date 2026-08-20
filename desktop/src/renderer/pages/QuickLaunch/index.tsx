@@ -5,6 +5,7 @@ import { useT, type MessageKey } from '../../i18n'
 // Message keys, not descriptions: this list is module scope, so a literal here
 // would be resolved once at import and pin the palette to the boot language.
 const COMMANDS: { name: string; descriptionKey: MessageKey }[] = [
+  { name: '/magic:plan', descriptionKey: 'quickLaunch.cmd.plan' },
   { name: '/magic:start', descriptionKey: 'quickLaunch.cmd.start' },
   { name: '/magic:continue', descriptionKey: 'quickLaunch.cmd.continue' },
   { name: '/magic:commit', descriptionKey: 'quickLaunch.cmd.commit' },

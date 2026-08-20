@@ -10,15 +10,17 @@ import { enqueue, newClientEventId } from '../store/outbox'
  * skill Claude Code runs, which is not what this product measures. Left unfiltered it
  * collected the names of skills we have nothing to do with — a user's own, their
  * employer's internal ones — and stored them in a table other members of their org
- * can read, while the dashboards only ever plot the seven magic ones. Collecting what
+ * can read, while the dashboards only ever plot the shipped magic ones. Collecting what
  * is never displayed is the definition of what the recording opt-in promises not to
  * do, so the filter belongs here, at the write.
  *
- * A PREFIX and not a fixed list of seven: a list would silently stop counting the
- * next skill this project ships, and a stat that quietly goes missing is the failure
- * mode this whole area is being fixed for. The cost is that our own internal skills
- * (magic-plan, magic-audit, magic-release) are counted too, which is accurate — they
- * are magic-slash runs — and they simply have no tile.
+ * A PREFIX and not a fixed list of the shipped skills: a list would silently stop
+ * counting the next skill this project ships, and a stat that quietly goes missing is
+ * the failure mode this whole area is being fixed for. magic-plan was the last one to
+ * make that crossing — internal, counted, untiled, and now shipped with a tile of its
+ * own without a line of this file changing. The cost is that the internal skills still
+ * on that side (magic-audit, magic-release) are counted too, which is accurate — they
+ * are magic-slash runs — and they simply have no tile yet.
  *
  * Folds the plugin prefix exactly as the rollup RPCs do (regexp_replace(skill,
  * '^.*:', '')), so a plugin install reporting "magic-slash:magic-pr" is the same
