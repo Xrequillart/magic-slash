@@ -538,8 +538,6 @@ export const fr: Record<keyof typeof en, string> = {
     'Ajouter un commentaire contenant le lien de la PR au moment de sa création',
   'repo.issues.jiraUrl': 'URL Jira',
   'repo.issues.jiraUrlHelp': 'URL de base des tickets Jira (ex. : PROJ-123)',
-  'repo.issues.githubUrl': 'URL des issues GitHub',
-  'repo.issues.githubUrlHelp': 'URL de base des issues GitHub (ex. : #456)',
 
   'repo.plan.section': 'Plan',
   'repo.plan.tracker': 'Outil de suivi',

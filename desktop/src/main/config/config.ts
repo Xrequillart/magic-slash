@@ -239,6 +239,7 @@ function persistRepoIdentity(name: string): void {
       resolve: repo.resolve,
       issues: repo.issues,
       plan: repo.plan,
+      jira: repo.jira,
       branches: repo.branches,
       worktreeFiles: repo.worktreeFiles,
     })
@@ -452,6 +453,7 @@ export function addRepository(name: string, repoPath: string, keywords: string[]
       resolve: repo.resolve,
       issues: repo.issues,
       plan: repo.plan,
+      jira: repo.jira,
       branches: repo.branches,
       worktreeFiles: repo.worktreeFiles,
       remoteUrl,
@@ -648,12 +650,50 @@ export function updateRepositoryIssuesSettings(name: string, settings: SettingsI
 
   const issues = config.repositories[name].issues = config.repositories[name].issues || {}
 
+  // `commentOnPR` is all this block still owns. `jiraUrl` moved to `jira.siteUrl`
+  // and `githubIssuesUrl` is no longer offered by any form (types.ts) — both stay
+  // READABLE, and this writer is where "never written again" is enforced. A
+  // settings payload naming either is ignored rather than refused: the forms do
+  // not send them, and an older renderer that still does must not have its whole
+  // save rejected over a key whose value is now frozen by design.
   applySetting(issues, 'commentOnPR', settings.commentOnPR, isBool)
-  applySetting(issues, 'jiraUrl', settings.jiraUrl, isString, ['', null])
-  applySetting(issues, 'githubIssuesUrl', settings.githubIssuesUrl, isString, ['', null])
 
   if (Object.keys(issues).length === 0) {
     delete config.repositories[name].issues
+  }
+
+  setConfigCache(config)
+  persistRepoIdentity(name)
+  return config
+}
+
+/**
+ * Write the `jira` block — the repository's Jira site and project key.
+ *
+ * Its own writer rather than a corner of the `issues` or `plan` ones, for the
+ * reason the block exists at all: where a repo's tickets live is a property of the
+ * REPOSITORY that every skill reads, not one skill's behaviour. See
+ * supabase/migrations/20260820090000_repositories_jira.sql.
+ *
+ * Both keys reset on '' as well as on 'default'/null: a cleared text input sends
+ * '', and storing that would make `jira.siteUrl = ''` an explicit answer shadowing
+ * the legacy `issues.jiraUrl` this chain still falls back to. Deleting the key
+ * instead is what keeps resolveJiraSite() (desktop/src/tracker.ts) able to reach
+ * the second link.
+ */
+export function updateRepositoryJiraSettings(name: string, settings: SettingsInput<NonNullable<RepositoryConfig['jira']>>): Config {
+  const config = readConfig()
+  if (!config.repositories || !config.repositories[name]) {
+    throw new Error(`Repository '${name}' not found`)
+  }
+
+  const jira = config.repositories[name].jira = config.repositories[name].jira || {}
+
+  applySetting(jira, 'siteUrl', settings.siteUrl, isString, ['', null])
+  applySetting(jira, 'projectKey', settings.projectKey, isString, ['', null])
+
+  if (Object.keys(jira).length === 0) {
+    delete config.repositories[name].jira
   }
 
   setConfigCache(config)
@@ -697,7 +737,8 @@ export function updateRepositoryPlanSettings(
   }
 
   apply('tracker', isOneOf(PLAN_TRACKERS))
-  apply('jiraProject', isString, ['', null])
+  // No `jiraProject` line: it moved to `jira.projectKey`, and this block only reads
+  // it now as the tail of resolveJiraProject()'s chain. See updateRepositoryJiraSettings.
   apply('useRepoTemplates', isBool)
   apply('splitting', isOneOf(PLAN_SPLITTING_MODES))
   apply('acceptanceCriteria', isOneOf(PLAN_ACCEPTANCE_CRITERIA_FORMATS))

@@ -10,6 +10,7 @@ import { buildTicketLink, detectTicketProvider } from './agent-info-sidebar/util
 import { useT } from '../i18n'
 import type { RepoGitData } from './agent-info-sidebar/types'
 import type { TerminalMetadata } from '../../types'
+import { resolveGitHubIssuesUrl, resolveJiraSite } from '../../tracker'
 
 const MIN_WIDTH = 288 // w-72
 const DEFAULT_WIDTH = 500
@@ -153,16 +154,15 @@ export function AgentInfoSidebar() {
   }, [setConfig])
 
   // Get jira/github URL config from first repo (for ticket link)
+  //
+  // Both answers are fallback chains — the Jira site moved to its own block and is
+  // still read from the legacy key, and the GitHub issues URL is an override that
+  // derives from `remoteUrl` when unset — so they are resolved in tracker.ts rather
+  // than here. That derivation used to live inline in this file, which is exactly
+  // why a GitHub issue rendered as dead text everywhere else.
   const firstRepoConfig = attachedRepos.length > 0 ? getRepoConfig(attachedRepos[0]) : null
-  const jiraUrl = firstRepoConfig?.issues?.jiraUrl
-  // `issues.githubIssuesUrl` is an override, not the source of truth. It defaults to ''
-  // and practically nobody fills it in, so a GitHub issue used to render as dead text
-  // while a Jira ticket right next to it linked fine. The repo already knows its own
-  // address — `remoteUrl` is captured at hydration and normalised to
-  // `https://github.com/owner/repo` (types.ts) — so derive the issues URL from it and
-  // keep the configured value as the way to point somewhere else.
-  const githubIssuesUrl = firstRepoConfig?.issues?.githubIssuesUrl
-    || (firstRepoConfig?.remoteUrl ? `${firstRepoConfig.remoteUrl.replace(/\/+$/, '')}/issues` : undefined)
+  const jiraUrl = resolveJiraSite(firstRepoConfig)
+  const githubIssuesUrl = resolveGitHubIssuesUrl(firstRepoConfig)
 
   // Handle toggling a repository (add or remove)
   const handleToggleRepository = useCallback((repoPath: string) => {

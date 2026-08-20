@@ -71,8 +71,35 @@ export interface RepoPullRequest {
 
 export interface RepoIssues {
   commentOnPR?: boolean
+  /**
+   * @deprecated Superseded by `RepoJira.siteUrl`. Read as the second link of that
+   * chain so a repo configured before the move keeps its browse URL; never written.
+   */
   jiraUrl?: string
+  /**
+   * The repository whose GitHub issues this repo files into, when that is not the
+   * repo the code lives in. No longer offered by either settings form — for
+   * everyone else it duplicated the remote — but still honoured when set.
+   */
   githubIssuesUrl?: string
+}
+
+/**
+ * Where this repository's Jira lives — the site, and the project key inside it.
+ *
+ * A property of the repository, not of one skill: /magic:start resolves ticket ids
+ * against it, /magic:pr links them, /magic:plan files them. It was split across
+ * `issues.jiraUrl` and `plan.jiraProject` until
+ * supabase/migrations/20260820090000_repositories_jira.sql joined the two halves.
+ *
+ * Both keys still fall back to the legacy ones, so read them through
+ * resolveJiraSite / resolveJiraProject below rather than field-by-field.
+ */
+export interface RepoJira {
+  /** Jira site, as a browse base URL: `https://acme.atlassian.net/browse/`. */
+  siteUrl?: string
+  /** Jira project key the tickets are filed under, e.g. `PROJ`. */
+  projectKey?: string
 }
 
 /**
@@ -85,7 +112,10 @@ export interface RepoIssues {
 export interface RepoPlan {
   /** 'jira' | 'github' | 'ask' */
   tracker?: string
-  /** Jira project key, e.g. 'PROJ' */
+  /**
+   * @deprecated Superseded by `RepoJira.projectKey`. Read as the second link of
+   * that chain; never written.
+   */
   jiraProject?: string
   /** Jira issue type NAMES, as the project spells them. */
   issueTypes?: {
@@ -122,6 +152,7 @@ export interface Repository {
   pullRequest: RepoPullRequest
   issues: RepoIssues
   plan: RepoPlan
+  jira: RepoJira
   branches: RepoBranches
   worktreeFiles: string[]
   createdAt: string | null
@@ -140,13 +171,18 @@ interface RepositoryRow {
   pull_request: RepoPullRequest | null
   issues: RepoIssues | null
   plan: RepoPlan | null
+  // Optional so the mapper tolerates the key being absent as well as null. That is
+  // NOT a safety net for an un-migrated database: COLUMNS names `jira`, so against
+  // one that has not run 20260820090000 PostgREST fails the whole query (42703) and
+  // every repository disappears. Deploy the migration before this code.
+  jira?: RepoJira | null
   branches: RepoBranches | null
   worktree_files: string[] | null
   created_at: string | null
 }
 
 const COLUMNS =
-  'id, org_id, owner_id, name, keywords, color, languages, commit, resolve, pull_request, issues, plan, branches, worktree_files, created_at'
+  'id, org_id, owner_id, name, keywords, color, languages, commit, resolve, pull_request, issues, plan, jira, branches, worktree_files, created_at'
 
 function toRepository(r: RepositoryRow): Repository {
   return {
@@ -162,6 +198,7 @@ function toRepository(r: RepositoryRow): Repository {
     pullRequest: r.pull_request ?? {},
     issues: r.issues ?? {},
     plan: r.plan ?? {},
+    jira: r.jira ?? {},
     branches: r.branches ?? {},
     worktreeFiles: r.worktree_files ?? [],
     createdAt: r.created_at,
@@ -231,6 +268,7 @@ export interface RepositoryPatch {
   pullRequest?: RepoPullRequest
   issues?: RepoIssues
   plan?: RepoPlan
+  jira?: RepoJira
   branches?: RepoBranches
   worktreeFiles?: string[]
 }
@@ -256,6 +294,7 @@ export function expandPatch(repo: Repository, patch: RepositoryPatch): Repositor
   if (patch.resolve) out.resolve = { ...repo.resolve, ...patch.resolve }
   if (patch.pullRequest) out.pullRequest = { ...repo.pullRequest, ...patch.pullRequest }
   if (patch.issues) out.issues = { ...repo.issues, ...patch.issues }
+  if (patch.jira) out.jira = { ...repo.jira, ...patch.jira }
   if (patch.branches) out.branches = { ...repo.branches, ...patch.branches }
   // `plan.issueTypes` is the first two-level nesting inside an option block, and the
   // merges above are one level deep. `{ plan: { issueTypes: { epic } } }` would
@@ -301,6 +340,7 @@ export async function updateRepository(
   if (patch.pullRequest !== undefined) row.pull_request = patch.pullRequest
   if (patch.issues !== undefined) row.issues = patch.issues
   if (patch.plan !== undefined) row.plan = patch.plan
+  if (patch.jira !== undefined) row.jira = patch.jira
   if (patch.branches !== undefined) row.branches = patch.branches
   if (patch.worktreeFiles !== undefined) row.worktree_files = patch.worktreeFiles
   if (Object.keys(row).length === 0) return null
@@ -366,7 +406,12 @@ export const DEFAULTS = {
   // the other keys stay bare. `languages.ticket` deliberately has NO entry: it is the
   // head of a fallback chain, and a default here would make the chain unreachable.
   tracker: 'ask',
-  jiraProject: '',
+  // `jiraProject` has no entry any more, and neither does `githubIssuesUrl`: the
+  // first moved to `jira.projectKey` and the second is derived from the remote.
+  // Both are now read-only fallbacks, and a default is what would have the form
+  // write one back — see resolveJiraProject / resolveGitHubIssuesUrl below.
+  jiraSiteUrl: '',
+  jiraProjectKey: '',
   issueTypeEpic: 'Epic',
   issueTypeStory: 'Story',
   useRepoTemplates: true,
@@ -376,6 +421,30 @@ export const DEFAULTS = {
   assignToMe: false,
   duplicateCheck: true,
 } as const
+
+// ── Tracker resolution ───────────────────────────────────────────────────────
+// The Jira coordinates moved into their own block (see
+// supabase/migrations/20260820090000_repositories_jira.sql) and the keys they came
+// from are still read so a repo configured before the move keeps working. That
+// makes both values fallback CHAINS, and a form that read the new key alone would
+// show a blank next to a configured repo — then write that blank back on the next
+// save of a neighbouring field.
+//
+// `||`, not `??`, for the same reason resolveTicketLanguage uses it: these blocks
+// are jsonb written wholesale with no per-key validation, so '' does arrive here,
+// and `??` would let it win the chain. The desktop resolves the same two chains the
+// same way in desktop/src/tracker.ts, which has the tests; the two surfaces must
+// not disagree about what an empty string means.
+
+/** The Jira browse base URL: `jira.siteUrl`, else the legacy `issues.jiraUrl`. */
+export function resolveJiraSite(repo: Pick<Repository, 'jira' | 'issues'>): string {
+  return repo.jira?.siteUrl || repo.issues?.jiraUrl || ''
+}
+
+/** The Jira project key: `jira.projectKey`, else the legacy `plan.jiraProject`. */
+export function resolveJiraProject(repo: Pick<Repository, 'jira' | 'plan'>): string {
+  return repo.jira?.projectKey || repo.plan?.jiraProject || ''
+}
 
 /**
  * Renders the commit message a given format/style produces, for the live example

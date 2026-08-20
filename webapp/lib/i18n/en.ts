@@ -638,8 +638,6 @@ export const en = {
   'repo.issues.commentOnPRHelp': 'Post a comment with the PR link on the ticket',
   'repo.issues.jiraUrl': 'Jira URL',
   'repo.issues.jiraUrlHelp': 'Base URL for Jira tickets (e.g. PROJ-123)',
-  'repo.issues.githubUrl': 'GitHub issues URL',
-  'repo.issues.githubUrlHelp': 'Base URL for GitHub issues (e.g. #456)',
   'repo.plan.section': 'Planning',
   'repo.plan.tracker': 'Where tickets go',
   'repo.plan.trackerHelp': 'Where /magic:plan files the epic and its stories',

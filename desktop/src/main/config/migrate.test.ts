@@ -50,9 +50,12 @@ describe('migrateConfig — repository defaults', () => {
     expect(repo.commit).toMatchObject({ style: 'single-line', format: 'angular' })
     // deepMergeDefaults fills the nested level too, which is what lets the plan
     // block ship without a migrate.ts branch of its own.
+    // `jiraProject` is absent for the reason `ticket` above is: it is now the tail
+    // of resolveJiraProject()'s chain (`jira.projectKey` first), and a default here
+    // would materialise a key the app has stopped writing. Its replacement is
+    // defaulted instead — see the `jira` expectation below.
     expect(repo.plan).toEqual({
       tracker: 'ask',
-      jiraProject: '',
       issueTypes: { epic: 'Epic', story: 'Story' },
       useRepoTemplates: true,
       splitting: 'balanced',
@@ -61,6 +64,11 @@ describe('migrateConfig — repository defaults', () => {
       assignToMe: false,
       duplicateCheck: true,
     })
+    expect(repo.jira).toEqual({ siteUrl: '', projectKey: '' })
+    // '' rather than absent, and that is safe here where it would not be for
+    // `languages.ticket`: both Jira keys are resolved with `||`, so an empty default
+    // falls through to the legacy key instead of shadowing it.
+    expect(repo.issues).toEqual({ commentOnPR: true })
     // Existing fields are preserved.
     expect(repo.path).toBe('/home/user/test-repo')
     expect(repo.keywords).toEqual(['test'])

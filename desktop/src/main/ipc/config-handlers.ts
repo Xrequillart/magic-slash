@@ -16,6 +16,7 @@ import {
   updateRepositoryResolveSettings,
   updateRepositoryPullRequestSettings,
   updateRepositoryIssuesSettings,
+  updateRepositoryJiraSettings,
   updateRepositoryPlanSettings,
   updateRepositoryBranchSettings,
   updateRepositoryWorktreeFilesSettings,
@@ -231,6 +232,12 @@ export function setupConfigHandlers() {
   // Update repository issues settings
   ipcMain.handle('config:updateRepositoryIssuesSettings', async (_event, { name, settings }) => {
     const config = updateRepositoryIssuesSettings(name, settings)
+    return { config }
+  })
+
+  // Update repository jira settings (site URL + project key)
+  ipcMain.handle('config:updateRepositoryJiraSettings', async (_event, { name, settings }) => {
+    const config = updateRepositoryJiraSettings(name, settings)
     return { config }
   })
 

@@ -90,6 +90,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateRepositoryJiraSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['jira']>>) => {
+    const result = await window.electronAPI.config.updateRepositoryJiraSettings(name, settings)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   const updateRepositoryBranchSettings = useCallback(async (name: string, settings: Partial<NonNullable<RepositoryConfig['branches']>>) => {
     const result = await window.electronAPI.config.updateRepositoryBranchSettings(name, settings)
     setConfig(result.config)
@@ -220,6 +226,7 @@ export function useConfig() {
     updateRepositoryResolveSettings,
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
+    updateRepositoryJiraSettings,
     updateRepositoryPlanSettings,
     updateRepositoryBranchSettings,
     updateRepositoryWorktreeFilesSettings,

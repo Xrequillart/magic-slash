@@ -51,6 +51,9 @@ const configApi = {
   updateRepositoryPlanSettings: (name: string, settings: PlanSettingsInput): Promise<{ config: Config; rejected: string[] }> =>
     ipcRenderer.invoke('config:updateRepositoryPlanSettings', { name, settings }),
 
+  updateRepositoryJiraSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['jira']>>) =>
+    ipcRenderer.invoke('config:updateRepositoryJiraSettings', { name, settings }),
+
   updateRepositoryBranchSettings: (name: string, settings: Partial<NonNullable<RepositoryConfig['branches']>>) =>
     ipcRenderer.invoke('config:updateRepositoryBranchSettings', { name, settings }),
 

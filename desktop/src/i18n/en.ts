@@ -550,8 +550,6 @@ export const en = {
   'repo.issues.commentOnPRHelp': 'Add a comment with PR link when creating a pull request',
   'repo.issues.jiraUrl': 'Jira URL',
   'repo.issues.jiraUrlHelp': 'Base URL for Jira tickets (e.g., PROJ-123)',
-  'repo.issues.githubUrl': 'GitHub Issues URL',
-  'repo.issues.githubUrlHelp': 'Base URL for GitHub issues (e.g., #456)',
 
   'repo.plan.section': 'Plan',
   'repo.plan.tracker': 'Tracker',

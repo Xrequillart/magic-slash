@@ -67,9 +67,30 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
     testAccountsSource: ''
   },
   issues: {
-    commentOnPR: true,
-    jiraUrl: '',
-    githubIssuesUrl: ''
+    commentOnPR: true
+  },
+  // The repo's Jira coordinates, in one place — see types.ts and
+  // supabase/migrations/20260820090000_repositories_jira.sql.
+  //
+  // `issues.jiraUrl` and `plan.jiraProject`, the keys these two replaced, are
+  // deliberately NOT defaulted any more. They are read-only fallbacks now, and a
+  // default is precisely what would materialise them onto every repo at first
+  // launch — persistRepoIdentity writes each block wholesale, so defaulting a key
+  // IS writing it, and the app has promised to stop touching those two.
+  //
+  // '' here is safe where 'en' would not have been: both resolvers chain with `||`,
+  // so an empty default falls through to the legacy key instead of shadowing it.
+  // A truthy default would win the chain and silently discard the old value —
+  // that is the trap `languages.ticket` avoids by staying absent entirely.
+  //
+  // `githubIssuesUrl` goes for a third reason: it is an override meaning "the
+  // issues are NOT in this repo", and defaulting it to '' made it look like a
+  // field waiting to be filled. resolveGitHubIssuesUrl() derives it from
+  // `remoteUrl` when it is absent, which is the answer for everyone who never
+  // needed the override.
+  jira: {
+    siteUrl: '',
+    projectKey: ''
   },
   // NOTE: `languages.ticket` is deliberately NOT defaulted here. It heads a
   // fallback chain (`ticket` -> `jiraComment` -> 'en'), and deepMergeDefaults
@@ -78,7 +99,6 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
   // resolveTicketLanguage() from `desktop/src/languages.ts`.
   plan: {
     tracker: 'ask',
-    jiraProject: '',
     issueTypes: {
       epic: 'Epic',
       story: 'Story'

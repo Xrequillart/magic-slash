@@ -117,13 +117,13 @@ donc à toi de décider.
 ```text
 ❌ **{repo}** has no backlog to file into
 
-No GitHub remote, no `issues.githubIssuesUrl`, and no `plan.jiraProject` — so there
-is nowhere for these tickets to go, and nothing worth asking either: every option I
-could offer leads to the same dead end.
+No GitHub remote and no Jira project key — so there is nowhere for these tickets to
+go, and nothing worth asking either: every option I could offer leads to the same
+dead end.
 
-Give it one of the two and run this again — `plan.jiraProject`, the Jira project
-key, in the repository's Plan settings, or `issues.githubIssuesUrl`, the repository
-that holds the issues. Nothing was explored and nothing was created.
+Give it one of the two and run this again — a Jira project key in the repository's
+Jira settings, or a GitHub remote on the repository itself. Nothing was explored and
+nothing was created.
 ```
 
 ### fr
@@ -131,13 +131,13 @@ that holds the issues. Nothing was explored and nothing was created.
 ```text
 ❌ **{repo}** n'a aucun backlog où déposer les tickets
 
-Pas de remote GitHub, pas de `issues.githubIssuesUrl`, pas de `plan.jiraProject` :
-il n'y a nulle part où créer ces tickets, et rien à te demander non plus — toutes
-les options que je pourrais proposer mènent à la même impasse.
+Pas de remote GitHub et pas de clé de projet Jira : il n'y a nulle part où créer ces
+tickets, et rien à te demander non plus — toutes les options que je pourrais
+proposer mènent à la même impasse.
 
-Renseigne l'un des deux et relance — `plan.jiraProject`, la clé du projet Jira,
-dans les réglages Plan du repository, ou `issues.githubIssuesUrl`, le repository
-qui héberge les issues. Rien n'a été exploré et rien n'a été créé.
+Renseigne l'un des deux et relance — la clé du projet Jira dans les réglages Jira du
+repository, ou un remote GitHub sur le repository lui-même. Rien n'a été exploré et
+rien n'a été créé.
 ```
 
 > `{repo}` is the repository resolved at Step 2.1. This is a refusal, not a question:
@@ -185,11 +185,11 @@ et tu l'attaques avec `/magic:start {JIRA-KEY}`.
 ```
 
 > `{reason}` names the exact blocker, in one line — `the Atlassian integration is off for this
-> account`, `plan.jiraProject is empty`, `PROJ resolves on none of the sites I can reach`, `the
+> account`, `the Jira project key is empty`, `PROJ resolves on none of the sites I can reach`, `the
 > project has no issue type named "Story"`, `Jira did not answer`. The first two are
 > `references/trackers.md` §1.2's conditions; the rest are `references/jira-fields.md` §4's stops,
 > which this message also carries. `{fix}` names where each is fixed: the integrations toggle, the
-> repository's Plan settings, the Jira project itself, or nothing at all when Jira is simply down.
+> repository's Jira settings, the Jira project itself, or nothing at all when Jira is simply down.
 > Never merge them into a vague "Jira is not configured" — they are fixed in different places, and
 > one of them is not the user's fault.
 >

@@ -18,6 +18,7 @@ import {
   type PlanSettingsInput,
 } from '../../../types'
 import { resolveTicketLanguage } from '../../../languages'
+import { resolveJiraProject, resolveJiraSite } from '../../../tracker'
 
 interface RepoPageProps {
   repoName: string
@@ -219,6 +220,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
     updateRepositoryResolveSettings,
     updateRepositoryPullRequestSettings,
     updateRepositoryIssuesSettings,
+    updateRepositoryJiraSettings,
     updateRepositoryPlanSettings,
     updateRepositoryBranchSettings,
     updateRepositoryWorktreeFilesSettings,
@@ -484,6 +486,22 @@ export function RepoPage({ repoName }: RepoPageProps) {
   }
 
   /**
+   * The one writer of the `jira` block — the repo's Jira site and project key.
+   *
+   * Two fields that used to live in two different sections, under two different
+   * writers (`issues.jiraUrl` and `plan.jiraProject`). They are one address, so
+   * they now share a block and this writer; see tracker.ts for the read side.
+   */
+  const handleJiraSettingChange = async (key: 'siteUrl' | 'projectKey', value: string) => {
+    try {
+      await updateRepositoryJiraSettings(repoName, { [key]: value })
+      showToast(t('toast.settingUpdated'))
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('toast.settingUpdateFailed'), 'error')
+    }
+  }
+
+  /**
    * The one writer of the `plan` block.
    *
    * Unlike its siblings, `updateRepositoryPlanSettings` does not throw on a bad
@@ -636,9 +654,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const testAccountsSourceVal = prSettings.testAccountsSource || ''
   const commentOnPRVal = issuesSettings.commentOnPR !== undefined ? issuesSettings.commentOnPR : true
   const planTrackerVal = planSettings.tracker || 'ask'
-  // The three free-text Jira names read '' when unset so the field shows its
-  // placeholder — the documented default — rather than a value nobody typed.
-  const planJiraProjectVal = planSettings.jiraProject || ''
+  // Resolved, not read: both keys fall back to the legacy `issues.jiraUrl` /
+  // `plan.jiraProject` they replaced, and a form that showed the raw new key would
+  // display a blank next to a repo that is in fact configured — then overwrite it
+  // with '' on the next save of a neighbouring field.
+  const jiraSiteUrlVal = resolveJiraSite(repo)
+  const jiraProjectVal = resolveJiraProject(repo)
+  // The two free-text Jira issue-type names read '' when unset so the field shows
+  // its placeholder — the documented default — rather than a value nobody typed.
   const planEpicTypeVal = planSettings.issueTypes?.epic || ''
   const planStoryTypeVal = planSettings.issueTypes?.story || ''
   const planUseRepoTemplatesVal = planSettings.useRepoTemplates ?? true
@@ -1416,8 +1439,18 @@ export function RepoPage({ repoName }: RepoPageProps) {
             />
           </div>
 
-          {/* Jira URL */}
-          <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
+          {/* Jira site URL — writes `jira.siteUrl`, read back through the chain that
+              still reaches the legacy `issues.jiraUrl`.
+
+              No GitHub issues URL field any more: for everyone without a separate
+              tracker repository it asked a second time for the address already given
+              as the remote in General, which is what made this section read as two
+              places wanting the same thing. resolveGitHubIssuesUrl() derives it from
+              `remoteUrl` instead, and an override someone already set is still
+              honoured — it is simply no longer a blank anyone has to fill.
+
+              Last row of the fieldset now, hence no bottom border. */}
+          <div className="flex items-start justify-between gap-6 py-3">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-0.5">{t('repo.issues.jiraUrl')}</label>
               <p className="text-xs text-text-secondary/50">
@@ -1426,26 +1459,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
             <input
               type="text"
-              value={issuesSettings.jiraUrl || ''}
-              onChange={(e) => handleIssuesSettingChange('jiraUrl', e.target.value)}
+              value={jiraSiteUrlVal}
+              onChange={(e) => handleJiraSettingChange('siteUrl', e.target.value)}
               placeholder="https://company.atlassian.net/browse/"
-              className={`${INPUT} w-72`}
-            />
-          </div>
-
-          {/* GitHub Issues URL */}
-          <div className="flex items-start justify-between gap-6 py-3">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-0.5">{t('repo.issues.githubUrl')}</label>
-              <p className="text-xs text-text-secondary/50">
-                {t('repo.issues.githubUrlHelp')}
-              </p>
-            </div>
-            <input
-              type="text"
-              value={issuesSettings.githubIssuesUrl || ''}
-              onChange={(e) => handleIssuesSettingChange('githubIssuesUrl', e.target.value)}
-              placeholder="https://github.com/org/repo/issues/"
               className={`${INPUT} w-72`}
             />
           </div>
@@ -1464,11 +1480,15 @@ export function RepoPage({ repoName }: RepoPageProps) {
             />
           </SettingRow>
 
+          {/* Writes `jira.projectKey`, not `plan.jiraProject`: this key and the site URL
+              in the section above are one address, and holding them in two blocks under
+              two writers is how a repo ends up with one half filled in. Phase 2 brings
+              both rows into a single Tracker tab; the storage is already joined. */}
           <SettingRow label={t('repo.plan.jiraProject')} description={t('repo.plan.jiraProjectHelp')}>
             <input
               type="text"
-              value={planJiraProjectVal}
-              onChange={(e) => handlePlanSettingChange('jiraProject', e.target.value)}
+              value={jiraProjectVal}
+              onChange={(e) => handleJiraSettingChange('projectKey', e.target.value)}
               placeholder="PROJ"
               className={`${INPUT} w-72`}
             />

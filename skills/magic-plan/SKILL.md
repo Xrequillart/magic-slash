@@ -85,14 +85,13 @@ technical depth to `technical_level`, the level of detail to `role`, the respons
 This matters more here than in the coding skills. A product manager planning a feature and a staff
 engineer planning the same feature need the same tickets out of very different conversations.
 
-### 0.4: Read the `plan` block
+### 0.4: Read the `plan` and `jira` blocks
 
 Read `.repositories.<key>.plan` for the repository selected in Step 2. Defaults, applied per key:
 
 | Key | Default | Used in |
 | --- | --- | --- |
 | `tracker` | `ask` | Step 2.3 |
-| `jiraProject` | `''` | Step 2.3, then carried to Step 3.3 and Step 7 — the Jira project key the tickets are filed under |
 | `issueTypes.epic`, `issueTypes.story` | `Epic` / `Story` | Step 2.3, then carried to Step 7 |
 | `useRepoTemplates` | `true` | Step 7 |
 | `splitting` | `balanced` | Step 5 |
@@ -163,14 +162,20 @@ the reason next to each pre-selected entry. Keep the answer as the repository's 
 key under `.repositories`, which is not always the directory name, since two organizations can each
 have an `api` and the second one's key carries a suffix.
 
-Now resolve Step 0.2's two languages and Step 0.4's `plan` block for that key, and switch the
-conversation into the discussion language.
+Read `.repositories.<key>.jira` for the same repository — `projectKey`, the Jira project the tickets
+are filed under, and `siteUrl`, the browse base URL used to link them. Both are chains, not plain
+keys: `references/trackers.md` §1.0 gives the fallbacks onto the two config keys they replaced, and
+reading either raw would make a repository configured before that move look like it has no Jira.
+
+Now resolve Step 0.2's two languages and Step 0.4's blocks for that key, and switch the conversation
+into the discussion language.
 
 ### 2.3: Resolve the tracker — here, not at Step 7
 
 Follow `references/trackers.md` §1: `plan.tracker` first (`jira` / `github` / `ask`), then the
-repository's `issues.githubIssuesUrl` / `issues.jiraUrl`, then the GitHub remote, asking with
-`MSG_TRACKER_ASK` only when it is still genuinely ambiguous.
+repository's own coordinates — the Jira project or site, the GitHub target — then the GitHub remote,
+asking with `MSG_TRACKER_ASK` only when it is still genuinely ambiguous. §1.0 of that file names the
+three config values and their fallbacks; read them there rather than reaching for a key directly.
 
 Resolve it **once**, at this step, and carry the result: §1.1 of that file defines what to carry and
 which of the three consumers — this step's Jira discovery, Step 3.3's duplicate search, Step 7's
@@ -315,7 +320,7 @@ valuable find, because it may carry the reason this was rejected before.
 | Tracker | Call | Scope |
 | --- | --- | --- |
 | GitHub | `mcp__github__search_issues` | the `owner/repo` carried from Step 2.3 |
-| Jira | `mcp__atlassian__searchJiraIssuesUsingJql` | `plan.jiraProject`, on the carried `cloudId` |
+| Jira | `mcp__atlassian__searchJiraIssuesUsingJql` | the carried Jira project, on the carried `cloudId` |
 
 The Jira call takes the same `{"jql": …, "fields": [...]}` shape `/magic:start` uses, scoped to the
 project and asking only for `summary`, `status` and `issuetype`:

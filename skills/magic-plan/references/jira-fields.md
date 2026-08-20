@@ -27,15 +27,18 @@ Call `mcp__atlassian__getAccessibleAtlassianResources` and take the `cloudId` of
 the project.
 
 Resolve it **within the run**, every run, exactly as every other skill in this repository does.
-Never persist it, and never derive it from `issues.jiraUrl`: a site can be reached through a vanity
-domain, and no URL contains a `cloudId`. With several accessible sites and no way to tell which one
-holds `plan.jiraProject`, the project lookup in §1.2 is what settles it — try the sites in the order
-returned and keep the one where the project resolves.
+Never persist it, and never derive it from `jira.siteUrl`: a site can be reached through a vanity
+domain, and no URL contains a `cloudId`. The two keys sitting in one block now makes that worth
+repeating — the site URL is for showing a human a link, never for addressing a call. With several
+accessible sites and no way to tell which one holds the Jira project (`trackers.md` §1.0), the
+project lookup in §1.2 is what settles it — try the sites in the order returned and keep the one
+where the project resolves.
 
 ### 1.2 The project's issue types — and the names in `plan.issueTypes`
 
-Call `mcp__atlassian__getJiraProjectIssueTypesMetadata` for `plan.jiraProject`. It returns the issue
-types that project actually offers, each with an **id** and a **name**.
+Call `mcp__atlassian__getJiraProjectIssueTypesMetadata` for the Jira project (`jira.projectKey`,
+else the legacy `plan.jiraProject` — `trackers.md` §1.0). It returns the issue types that project
+actually offers, each with an **id** and a **name**.
 
 That list is **paged**, and its `maxResults` defaults to 50: page with `startAt` until the response
 is exhausted before concluding anything about a name, exactly as §1.3 does. A project with more than
@@ -145,7 +148,7 @@ Then split the required ones of each type into two lists. Only the second reache
 
 | Field | Filled with |
 | --- | --- |
-| `project` | `plan.jiraProject` |
+| `project` | the Jira project (`trackers.md` §1.0) |
 | `issuetype` | the **name** resolved in §1.2, sent as `issueTypeName` |
 | `summary` | the ticket title from the spec's breakdown |
 | `description` | the body composed per `trackers.md` §3.3 |
@@ -317,7 +320,7 @@ the user was told the check had run.
 | Failure | Behaviour |
 | --- | --- |
 | `getAccessibleAtlassianResources` fails or returns no site | stop; no site is reachable, so no brainstorm |
-| `plan.jiraProject` resolves on no accessible site | stop; name the key and the sites checked |
+| the Jira project resolves on no accessible site | stop; name the key and the sites checked |
 | `getJiraProjectIssueTypesMetadata` fails | stop; no issue type can be resolved, and creation needs one |
 | a configured issue-type name is absent | stop the pass, never ask — see below |
 | `getJiraIssueTypeMetaWithFields` fails for one type | the pass continues **degraded** — see below |
@@ -367,7 +370,7 @@ This table is the whole contract; `SKILL.md` restates none of it:
 | Returned | Shape | Consumer |
 | --- | --- | --- |
 | `cloudId` | the resolved site id | Step 3.3's JQL, `trackers.md` §3.3's create calls |
-| `project_key` | `plan.jiraProject`, confirmed to resolve | same |
+| `project_key` | the Jira project, confirmed to resolve | same |
 | `issue_types` | `{epic, story}` → `{id, name}` — the id for §1.3, the name for the create call | `trackers.md` §3.2 |
 | `must_ask_fields` | per field: id, name, requiring types, cardinality, its `schema`, and `allowedValues` **with their ids** | `MSG_JIRA_REQUIRED_FIELDS`, then §3's conversion |
 | `story_has_parent_field` | true when the story type's create screen carries `parent` | `trackers.md` §3.4 route 1 |

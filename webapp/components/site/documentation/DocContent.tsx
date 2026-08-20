@@ -711,8 +711,9 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
           &#34;branches&#34;: &#123;
             &#34;development&#34;: &#34;develop&#34;
           &#125;,
-          &#34;issues&#34;: &#123;
-            &#34;jiraUrl&#34;: &#34;https://myteam.atlassian.net/browse/&#34;
+          &#34;jira&#34;: &#123;
+            &#34;siteUrl&#34;: &#34;https://myteam.atlassian.net/browse/&#34;,
+            &#34;projectKey&#34;: &#34;PROJ&#34;
           &#125;
         &#125;,
         &#34;my-api&#34;: &#123;
@@ -731,8 +732,9 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
           &#34;branches&#34;: &#123;
             &#34;development&#34;: &#34;develop&#34;
           &#125;,
-          &#34;issues&#34;: &#123;
-            &#34;jiraUrl&#34;: &#34;https://myteam.atlassian.net/browse/&#34;
+          &#34;jira&#34;: &#123;
+            &#34;siteUrl&#34;: &#34;https://myteam.atlassian.net/browse/&#34;,
+            &#34;projectKey&#34;: &#34;PROJ&#34;
           &#125;
         &#125;,
         &#34;my-tools&#34;: &#123;
@@ -749,8 +751,7 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
             &#34;development&#34;: &#34;main&#34;
           &#125;,
           &#34;issues&#34;: &#123;
-            &#34;commentOnPR&#34;: false,
-            &#34;githubIssuesUrl&#34;: &#34;https://github.com/myorg/my-tools&#34;
+            &#34;commentOnPR&#34;: false
           &#125;
         &#125;
       &#125;,

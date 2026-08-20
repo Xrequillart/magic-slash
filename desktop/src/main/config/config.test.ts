@@ -19,6 +19,7 @@ import {
   readConfig,
   resetConfigCache,
   updateRepositoryCommitSettings,
+  updateRepositoryJiraSettings,
   updateRepositoryLanguages,
   updateRepositoryPlanSettings,
   updateUsageLogsEnabled,
@@ -427,6 +428,57 @@ describe('updateRepositoryLanguages — ticket', () => {
   })
 })
 
+describe('updateRepositoryJiraSettings', () => {
+  beforeEach(async () => {
+    resetConfigCache()
+    setStore(storeLoading(async () => ({
+      version: '1.0.0',
+      repositories: { api: { path: '/repo/api', keywords: ['api'] } },
+    } as unknown as Config)))
+    await hydrateConfig()
+  })
+
+  it('persists both halves of the address', () => {
+    const config = updateRepositoryJiraSettings('api', {
+      siteUrl: 'https://acme.atlassian.net/browse/',
+      projectKey: 'PROJ',
+    })
+    expect(config.repositories.api.jira).toEqual({
+      siteUrl: 'https://acme.atlassian.net/browse/',
+      projectKey: 'PROJ',
+    })
+    expect(readConfig().repositories.api.jira?.projectKey).toBe('PROJ')
+  })
+
+  it('patches one key without taking the other', () => {
+    updateRepositoryJiraSettings('api', { siteUrl: 'https://acme.atlassian.net/browse/', projectKey: 'PROJ' })
+    updateRepositoryJiraSettings('api', { projectKey: 'OTHER' })
+
+    const jira = readConfig().repositories.api.jira
+    expect(jira?.siteUrl).toBe('https://acme.atlassian.net/browse/')
+    expect(jira?.projectKey).toBe('OTHER')
+  })
+
+  // A cleared field must DELETE the key, not store ''. Storing it would make the
+  // empty string an explicit answer that shadows the legacy key resolveJiraSite()
+  // still falls back to — the repo would look unconfigured while `issues.jiraUrl`
+  // sat right there holding the answer.
+  it('deletes the key when the field is cleared', () => {
+    updateRepositoryJiraSettings('api', { siteUrl: 'https://acme.atlassian.net/browse/' })
+    updateRepositoryJiraSettings('api', { siteUrl: '' })
+    expect(readConfig().repositories.api.jira?.siteUrl).toBeUndefined()
+
+    updateRepositoryJiraSettings('api', { projectKey: 'PROJ' })
+    updateRepositoryJiraSettings('api', { projectKey: null })
+    expect(readConfig().repositories.api.jira).toBeUndefined()
+  })
+
+  it('throws on an unknown repository', () => {
+    expect(() => updateRepositoryJiraSettings('nope', { projectKey: 'PROJ' }))
+      .toThrow("Repository 'nope' not found")
+  })
+})
+
 describe('updateRepositoryPlanSettings', () => {
   beforeEach(async () => {
     resetConfigCache()
@@ -440,7 +492,6 @@ describe('updateRepositoryPlanSettings', () => {
   it('persists every key in both directions', () => {
     const { config } = updateRepositoryPlanSettings('api', {
       tracker: 'jira',
-      jiraProject: 'PROJ',
       useRepoTemplates: false,
       splitting: 'eager',
       acceptanceCriteria: 'gherkin',
@@ -450,7 +501,6 @@ describe('updateRepositoryPlanSettings', () => {
     })
     expect(config.repositories.api.plan).toMatchObject({
       tracker: 'jira',
-      jiraProject: 'PROJ',
       useRepoTemplates: false,
       splitting: 'eager',
       acceptanceCriteria: 'gherkin',
@@ -466,12 +516,27 @@ describe('updateRepositoryPlanSettings', () => {
   })
 
   it('leaves the other plan settings alone', () => {
-    updateRepositoryPlanSettings('api', { splitting: 'eager', jiraProject: 'PROJ' })
+    updateRepositoryPlanSettings('api', { splitting: 'eager', acceptanceCriteria: 'gherkin' })
     updateRepositoryPlanSettings('api', { tracker: 'jira' })
 
     const plan = readConfig().repositories.api.plan
     expect(plan?.splitting).toBe('eager')
-    expect(plan?.jiraProject).toBe('PROJ')
+    expect(plan?.acceptanceCriteria).toBe('gherkin')
+  })
+
+  // `jiraProject` moved to `jira.projectKey`. The key stays in the block's TYPE
+  // because it is still read as a fallback, which is exactly what makes this test
+  // necessary: a payload naming it must be a no-op, not a write, or the app keeps
+  // two writable copies of one project key and they drift.
+  it('ignores the moved jiraProject key instead of writing it', () => {
+    const { rejected } = updateRepositoryPlanSettings('api', {
+      tracker: 'jira',
+      jiraProject: 'PROJ',
+    })
+
+    expect(rejected).toEqual([])
+    expect(readConfig().repositories.api.plan?.tracker).toBe('jira')
+    expect(readConfig().repositories.api.plan?.jiraProject).toBeUndefined()
   })
 
   // issueTypes is the first two-level nesting inside an option block. A whole-object

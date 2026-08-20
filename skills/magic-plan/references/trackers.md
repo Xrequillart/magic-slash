@@ -18,31 +18,62 @@ not re-detect it and do not re-ask: §1.1's carried resolution is the only sourc
 ## 1. Detection — owned by Step 2, documented here
 
 Detection runs in Step 2 rather than here because a tracker that cannot be served must stop the
-skill *before* the brainstorm, not after it. The resolution order:
+skill *before* the brainstorm, not after it.
+
+### 1.0 The three config values it reads, and where they moved
+
+Read these three, and read them ONCE, at the top of Step 2.3 — everything below refers to them by
+the short names in the last column:
+
+| Config | Fallback, in order | Short name |
+| --- | --- | --- |
+| `jira.projectKey` | then the legacy `plan.jiraProject` | **the Jira project** |
+| `jira.siteUrl` | then the legacy `issues.jiraUrl` | **the Jira site** |
+| `issues.githubIssuesUrl` | then `{remoteUrl}/issues`, else `git remote get-url origin` | **the GitHub target** |
+
+The Jira half of a repository's configuration used to live in two different blocks — the browse URL
+under `issues`, the project key under `plan` — because each landed with whichever skill needed it
+first. They are one address, so they now share one block, `jira`. The old keys are still READ, as
+the second link of each chain above, so a repository configured before the move resolves exactly as
+it did; they are never written again. Treat an empty string as unset in every one of these chains:
+that is what a cleared field stores, and '' winning a chain is how a repo with a perfectly good
+project key reads as having none.
+
+**The GitHub target is no longer a field anyone fills in.** `issues.githubIssuesUrl` means "the
+issues are NOT in the repository the code lives in" — a separate tracker repository, which is a real
+configuration and is why it still wins when set (§2.1). For everyone else it duplicated the remote,
+so it is now derived from it and the settings forms stopped asking.
+
+The resolution order:
 
 | Order | Source | Outcome |
 | --- | --- | --- |
 | 1 | `plan.tracker` is `github` or `jira` | that tracker, no question asked |
-| 2 | `plan.tracker` is `ask` and only one of `issues.githubIssuesUrl` / `issues.jiraUrl` is set | the one that is set |
-| 3 | `plan.tracker` is `ask`, and both are set | ask with `MSG_TRACKER_ASK` |
-| 4 | `plan.tracker` is `ask`, and neither is set, but `git remote get-url origin` is a GitHub remote | GitHub |
+| 2 | `plan.tracker` is `ask` and only one of the GitHub target / the repo's Jira coordinates is configured | the one that is |
+| 3 | `plan.tracker` is `ask`, and both are | ask with `MSG_TRACKER_ASK` |
+| 4 | `plan.tracker` is `ask`, and neither is, but `git remote get-url origin` is a GitHub remote | GitHub |
 | 5 | nothing resolves | ask with `MSG_TRACKER_ASK`, offering every tracker that can actually receive a ticket |
 
-Row 4 is what makes the common case silent: a repository cloned from GitHub with no `issues.*`
-configured at all still plans without a question. Row 2 beats row 4 deliberately — an explicitly
-configured Jira project outranks the fact that the code happens to live on GitHub.
+"Jira coordinates are configured" in rows 2 and 3 means **either** the Jira project **or** the Jira
+site is set — not both. A repository with a site and no project key is still Jira-destined, and
+sending it down row 4 would file its tickets in a GitHub backlog instead of refusing at §1.2, which
+is precisely the outcome that section exists to prevent.
+
+Row 4 is what makes the common case silent: a repository cloned from GitHub with nothing configured
+at all still plans without a question. Row 2 beats row 4 deliberately — an explicitly configured
+Jira project outranks the fact that the code happens to live on GitHub.
 
 Rows 3 and 5 offer **every tracker that could actually receive the tickets, and only those**. Jira
-qualifies when `integrations.atlassian` is on and `plan.jiraProject` is set — the project key alone
-is enough, even with `issues.jiraUrl` empty, because the key is what a write needs while that URL
-only decides whether a browse link can be displayed (§3.1). GitHub qualifies when
-`issues.githubIssuesUrl` is set, or the `origin` remote is a GitHub one.
+qualifies when `integrations.atlassian` is on and the Jira **project** is set — the project key alone
+is enough, even with no Jira site, because the key is what a write needs while the site only decides
+whether a browse link can be displayed (§3.1). GitHub qualifies when the GitHub target resolves at
+all, whether from the configured override or from the `origin` remote.
 
-When **neither** qualifies — no GitHub remote, no `issues.githubIssuesUrl`, no `plan.jiraProject` —
-there is nothing to ask: a question whose only options lead nowhere is worse than a refusal. Refuse
-the run with `MSG_TRACKER_NONE`, which names the two settings that would give this repository a
-backlog, at Step 2.3, before the brainstorm, for §1.2's reason. A repository added by path and never
-cloned reaches this legitimately.
+When **neither** qualifies — no GitHub remote, no `issues.githubIssuesUrl`, no Jira project — there
+is nothing to ask: a question whose only options lead nowhere is worse than a refusal. Refuse the run
+with `MSG_TRACKER_NONE`, which names the two settings that would give this repository a backlog, at
+Step 2.3, before the brainstorm, for §1.2's reason. A repository added by path and never cloned
+reaches this legitimately.
 
 An unknown value in `plan.tracker` (the field is `string`-typed jsonb the webapp writes wholesale,
 so it can hold anything) is treated as `ask`, never as a failure.
@@ -80,8 +111,12 @@ names — a create screen that paging left half-read is finished there rather th
 
 ### 1.2 When the resolved tracker cannot receive a ticket
 
-Jira resolves (row 1, 2, 3 or 5) but `integrations.atlassian` is `false`, or `plan.jiraProject` is
-empty: **refuse the run** with `MSG_JIRA_NOT_CONFIGURED`, at Step 2.3, before the brainstorm.
+Jira resolves (row 1, 2, 3 or 5) but `integrations.atlassian` is `false`, or the Jira project
+(§1.0) is empty: **refuse the run** with `MSG_JIRA_NOT_CONFIGURED`, at Step 2.3, before the
+brainstorm.
+
+A repository whose Jira site is set and whose project key is not reaches this on purpose — row 2
+sends it here rather than to GitHub, for the first of the two reasons below.
 
 Two things that refusal must not become:
 
@@ -93,7 +128,7 @@ Two things that refusal must not become:
   create this" is the outcome the Step 2.3 placement exists to avoid.
 
 `MSG_JIRA_NOT_CONFIGURED` names which of the two conditions fired, because they are fixed in
-different places — the integrations toggle and the repository's Plan settings.
+different places — the integrations toggle, and the repository's own Jira settings.
 
 ## 2. GitHub — implemented
 
@@ -107,6 +142,10 @@ Parse `owner/repo` from either `git@github.com:owner/repo.git` or
 `https://github.com/owner/repo.git`. Prefer `issues.githubIssuesUrl` when it is set and names a
 different repository — a repo whose issues live in a separate tracker repository is a real
 configuration, and the remote would silently file the tickets in the wrong place.
+
+That override is no longer offered by the settings forms (§1.0), which is exactly why it must keep
+winning here: the only repositories still carrying one are the ones that deliberately set it, so a
+value found in the config is a decision, never a leftover default.
 
 ### 2.2 Required fields
 
@@ -204,16 +243,17 @@ third tracker arrives, the shared rules move up into a preamble and both branche
 
 ### 3.1 Resolving the target
 
-The destination is `plan.jiraProject` — the project **key**, e.g. `PROJ` — on the site named by the
-`cloudId` carried in §1.1.
+The destination is the Jira project (§1.0) — the project **key**, e.g. `PROJ` — on the site named by
+the `cloudId` carried in §1.1.
 
-`issues.jiraUrl` is **not** the target. It is the base of the browse URL shown to the user
-(`{jiraUrl}/browse/PROJ-123`) and nothing else — one site hosts many projects, so the project key
-comes from `plan.jiraProject` and the site from the carried `cloudId`, never from that URL.
+The Jira site is **not** the target. It is the base of the browse URL shown to the user
+(`{jira.siteUrl}/PROJ-123`) and nothing else — one site hosts many projects, so the project key comes
+from `jira.projectKey` and the site from the carried `cloudId`, never from that URL. The two keys
+sharing a block does not make them interchangeable: one is where a write lands, the other is only
+how a human is shown the result.
 
-When `issues.jiraUrl` is empty, the issues are still created and still reported — use the `self`
-link the create response returns and say the browse URL is unconfigured, rather than inventing a
-host.
+When the Jira site is empty, the issues are still created and still reported — use the `self` link
+the create response returns and say the browse URL is unconfigured, rather than inventing a host.
 
 ### 3.2 Required fields
 
@@ -483,12 +523,12 @@ be observed.
   select.
   - Expected: Step 4 asks once, inside the framing batch, offering its `allowedValues`; the answer
     lands in `## Framing decisions`; creation succeeds; the epic is never asked.
-- Both `issues.jiraUrl` and `issues.githubIssuesUrl`, `plan.tracker: jira`.
+- Both a Jira site and an `issues.githubIssuesUrl`, `plan.tracker: jira`.
   - Expected: no tracker question, tickets in Jira.
 - The same repository, `plan.tracker: ask`.
   - Expected: exactly **one** question, at Step 2.3 — the duplicate check and the creation reuse
     that answer.
-- `plan.tracker: jira`, `plan.jiraProject` empty.
+- `plan.tracker: jira`, the Jira project empty.
   - Expected: `MSG_JIRA_NOT_CONFIGURED` before the brainstorm, no GitHub fallback.
 - A create screen that makes `labels` **required**, with `plan.defaultLabels` left at its `[]`
   default — then the same with `assignee` required and `plan.assignToMe` left at `false`.
@@ -568,7 +608,7 @@ return these values — this table is the whole contract; `SKILL.md` restates no
 | Returned | Shape | Consumer |
 | --- | --- | --- |
 | `tracker` | `github` or `jira` | Step 7 metadata, `MSG_TICKETS_CREATED` |
-| `tracker_target` | concrete destination — `github.com/acme/api`, or `PROJ` on `{jiraUrl}` / on the resolved site when that URL is unset | `MSG_APPROVAL`, `MSG_TICKETS_CREATED` |
+| `tracker_target` | concrete destination — `github.com/acme/api`, or `PROJ` on `{jira.siteUrl}` / on the resolved site when that URL is unset | `MSG_APPROVAL`, `MSG_TICKETS_CREATED` |
 | `created` | ordered list of `{id, title, url, kind}`, `kind` ∈ `epic` / `story`; `id` is `#412` or `PROJ-1234` | spec append, metadata, `MSG_NEXT_STEPS` |
 | `failed` | list of `{title, reason}`, empty on success | `MSG_PARTIAL_CREATION` |
 | `hierarchy_ok` | true when every parent/child link landed | `MSG_TICKETS_CREATED` / `MSG_PARTIAL_CREATION` |

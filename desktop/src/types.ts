@@ -317,8 +317,49 @@ export interface RepositoryConfig {
   }
   issues?: {
     commentOnPR?: boolean
+    /**
+     * @deprecated Superseded by `jira.siteUrl`. Still READ, as the second link of
+     * the chain resolveJiraSite() walks, so a repo configured before the move keeps
+     * its browse URL — never written again. See desktop/src/tracker.ts and
+     * supabase/migrations/20260820090000_repositories_jira.sql.
+     */
     jiraUrl?: string
+    /**
+     * The repository whose GitHub issues this repo files into, when that is NOT the
+     * repo the code lives in — issues kept in a separate tracker repository is a
+     * real configuration, and `remoteUrl` would silently file them in the wrong
+     * place (skills/magic-plan/references/trackers.md §2.1).
+     *
+     * No longer offered by the settings forms: for everyone else it duplicated
+     * `remoteUrl`, which is what asking for it a second time made people believe
+     * they had to fill in. Still READ — resolveGitHubIssuesUrl() prefers it and
+     * derives from `remoteUrl` when it is unset — so an existing override keeps
+     * working; it is simply no longer a field anyone has to answer.
+     */
     githubIssuesUrl?: string
+  }
+  /**
+   * Where this repository's Jira lives — the site, and the project key inside it.
+   *
+   * A property of the REPOSITORY, not of one skill: /magic:start resolves ticket
+   * ids against it, /magic:pr and /magic:done link to it, /magic:plan files into
+   * it. That is why it is a block of its own rather than a corner of `plan`, whose
+   * settings are one skill's behaviour. `plan.tracker` stays in `plan` for the same
+   * reason inverted — choosing which tracker receives new tickets IS a planning
+   * decision, and it can be `github` on a repo that keeps a Jira site for links.
+   *
+   * Read it through resolveJiraSite() / resolveJiraProject() (desktop/src/tracker.ts),
+   * never field-by-field: both keys are the head of a fallback chain onto the
+   * legacy `issues.jiraUrl` / `plan.jiraProject` they replaced.
+   *
+   * Never a credential. The URL and the key are what every member of the project
+   * reads in their address bar; the Atlassian calls use the user's own login.
+   */
+  jira?: {
+    /** Jira site, as a browse base URL: `https://acme.atlassian.net/browse/`. */
+    siteUrl?: string
+    /** Jira project key the tickets are filed under, e.g. `PROJ`. */
+    projectKey?: string
   }
   /**
    * Settings for /magic:plan — turning an idea into an epic and its stories.
@@ -334,7 +375,11 @@ export interface RepositoryConfig {
     // wholesale, so an unknown value can arrive and updateRepositoryPlanSettings
     // is what refuses it. Allowed values are PLAN_* above, never re-listed here.
     tracker?: string             // see PLAN_TRACKERS
-    jiraProject?: string         // Jira project key, e.g. 'PROJ'
+    /**
+     * @deprecated Superseded by `jira.projectKey`. Still READ, as the second link
+     * of the chain resolveJiraProject() walks — never written again.
+     */
+    jiraProject?: string
     issueTypes?: {
       epic?: string              // Jira issue type name for epics, e.g. 'Epic'
       story?: string             // Jira issue type name for stories, e.g. 'Story'
@@ -371,6 +416,7 @@ export interface StoredRepository {
   resolve?: RepositoryConfig['resolve']
   issues?: RepositoryConfig['issues']
   plan?: RepositoryConfig['plan']
+  jira?: RepositoryConfig['jira']
   branches?: RepositoryConfig['branches']
   worktreeFiles?: string[]
   /** Shared clone address — see RepositoryConfig.remoteUrl. Null when unknown. */

@@ -22,6 +22,8 @@ import {
   commitExample,
   DEFAULTS,
   REPO_COLORS,
+  resolveJiraProject,
+  resolveJiraSite,
   type Repository,
   type RepositoryPatch,
 } from '@/lib/repositories'
@@ -232,7 +234,10 @@ export function RepositoryForm({
   const ticketLanguage = repo.languages.ticket || repo.languages.jiraComment || DEFAULTS.language
 
   const tracker = repo.plan.tracker ?? DEFAULTS.tracker
-  const jiraProject = repo.plan.jiraProject ?? DEFAULTS.jiraProject
+  // Resolved, not read: both keys chain onto the legacy `issues.jiraUrl` /
+  // `plan.jiraProject` they replaced. See resolveJiraSite in lib/repositories.ts.
+  const jiraSiteUrl = resolveJiraSite(repo)
+  const jiraProjectKey = resolveJiraProject(repo)
   const epicType = repo.plan.issueTypes?.epic ?? DEFAULTS.issueTypeEpic
   const storyType = repo.plan.issueTypes?.story ?? DEFAULTS.issueTypeStory
   const useRepoTemplates = repo.plan.useRepoTemplates ?? DEFAULTS.useRepoTemplates
@@ -251,6 +256,10 @@ export function RepositoryForm({
   const setCommit = (patch: Repository['commit']) => onPatch({ commit: patch })
   const setResolve = (patch: Repository['resolve']) => onPatch({ resolve: patch })
   const setIssues = (patch: Repository['issues']) => onPatch({ issues: patch })
+  // The Jira site and project key are one address, so they share a block and a
+  // setter — they used to sit in `issues` and `plan`, two sections apart, which is
+  // how a repo ended up with one half filled in.
+  const setJira = (patch: Repository['jira']) => onPatch({ jira: patch })
   // `issueTypes` is sent as its own nested object — `setPlan({ issueTypes: { epic } })`
   // — and expandPatch merges that second level, so writing one type keeps the other.
   const setPlan = (patch: Repository['plan']) => onPatch({ plan: patch })
@@ -666,23 +675,18 @@ export function RepositoryForm({
           />
         </SettingRow>
 
+        {/* Writes `jira.siteUrl`, read back through the chain that still reaches the
+            legacy `issues.jiraUrl`.
+
+            No GitHub issues URL row any more: for everyone without a separate
+            tracker repository it asked a second time for the address the repo
+            already carries as its remote. An override someone already set is still
+            honoured — it is simply no longer a blank anyone has to fill. */}
         <SettingRow label={t('repo.issues.jiraUrl')} description={t('repo.issues.jiraUrlHelp')}>
           <DraftField
-            persisted={repo.issues.jiraUrl ?? ''}
-            onSave={(jiraUrl) => setIssues({ jiraUrl })}
+            persisted={jiraSiteUrl}
+            onSave={(siteUrl) => setJira({ siteUrl })}
             placeholder="https://company.atlassian.net/browse/"
-            className="w-72"
-          />
-        </SettingRow>
-
-        <SettingRow
-          label={t('repo.issues.githubUrl')}
-          description={t('repo.issues.githubUrlHelp')}
-        >
-          <DraftField
-            persisted={repo.issues.githubIssuesUrl ?? ''}
-            onSave={(githubIssuesUrl) => setIssues({ githubIssuesUrl })}
-            placeholder="https://github.com/org/repo/issues/"
             className="w-72"
           />
         </SettingRow>
@@ -708,8 +712,8 @@ export function RepositoryForm({
               description={t('repo.plan.jiraProjectHelp')}
             >
               <DraftField
-                persisted={jiraProject}
-                onSave={(jiraProject) => setPlan({ jiraProject })}
+                persisted={jiraProjectKey}
+                onSave={(projectKey) => setJira({ projectKey })}
                 placeholder="PROJ"
                 className="w-52"
               />
