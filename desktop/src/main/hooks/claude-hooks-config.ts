@@ -85,6 +85,18 @@ const MAGIC_SLASH_BASE_PERMISSIONS = [
   'mcp__github__get_pull_request_reviews',
   'mcp__github__create_pull_request',
   'mcp__github__create_pull_request_review',
+  // /magic:plan turns an idea into tickets: it searches for duplicates, then creates the
+  // epic and its stories as real sub-issues, and reads the current user to self-assign
+  // them. Granted here rather than left to a prompt because they land mid-session — the
+  // duplicate search runs before the brainstorm and creation right after the approval, so
+  // a prompt would interrupt precisely the two moments the user is waiting on. The write
+  // ones are safe to pre-approve for the same reason update_issue above is: /magic:plan
+  // cannot reach them until a human has approved the structure, a step the skill states is
+  // not configurable.
+  'mcp__github__search_issues',
+  'mcp__github__issue_write',
+  'mcp__github__sub_issue_write',
+  'mcp__github__get_me',
   // Common Bash commands used by skills
   'Bash(git *)',
   'Bash(npm *)',

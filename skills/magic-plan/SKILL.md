@@ -216,16 +216,30 @@ it fills, and an interrupted session must leave behind everything that was settl
 
 ### 2.5: Metadata — first write
 
-```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(echo -n '["{REPO_PATH}"]' | jq -sRr @uri)" > /dev/null 2>&1 || true
-```
+Substitute the free text into a **quoted** heredoc, never into the command line — see
+`## Metadata contract` for why this shape is mandatory rather than stylistic.
 
 ```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(echo -n '{IDEA_SHORT}' | jq -sRr @uri)&status=planning&specPath=$(echo -n '{SPEC_ABS_PATH}' | jq -sRr @uri)" > /dev/null 2>&1 || true
+IDEA_SHORT=$(cat <<'MS_EOF'
+{IDEA_SHORT}
+MS_EOF
+)
+REPO_PATH=$(cat <<'MS_EOF'
+{REPO_PATH}
+MS_EOF
+)
+SPEC_ABS_PATH=$(cat <<'MS_EOF'
+{SPEC_ABS_PATH}
+MS_EOF
+)
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(jq -nc --arg p "$REPO_PATH" '[$p]' | jq -sRr @uri)" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(printf '%s' "$IDEA_SHORT" | jq -sRr @uri)&status=planning&specPath=$(printf '%s' "$SPEC_ABS_PATH" | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
 `{IDEA_SHORT}` is a short form of the idea (max 30 chars). `{SPEC_ABS_PATH}` is the **absolute**
-path of the file created in 2.4, in the main checkout.
+path of the file created in 2.4, in the main checkout. The `repos` array is built by `jq -nc --arg`
+rather than by pasting the path between literal brackets, so a path containing a quote produces
+valid JSON instead of a broken payload.
 
 `specPath` is sent **now**, at creation time, before the brainstorm starts. Consumers tolerate the
 file not existing yet — the writer announces where the spec will be, and nothing checks the
@@ -349,7 +363,11 @@ Once the structure is approved, refine the title to the agreed wording — the e
 breakdown, the story's on a single.
 
 ```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(echo -n '{AGREED_TITLE}' | jq -sRr @uri)" > /dev/null 2>&1 || true
+AGREED_TITLE=$(cat <<'MS_EOF'
+{AGREED_TITLE}
+MS_EOF
+)
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(printf '%s' "$AGREED_TITLE" | jq -sRr @uri)" > /dev/null 2>&1 || true
 ```
 
 ## Step 7: Ticket creation
@@ -382,7 +400,15 @@ and becomes the record: months later it is the only place holding why the epic w
 ### 7.1: Metadata — third write
 
 ```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&ticketId={TICKET_ID}&title=$(echo -n '{TICKET_ID}: {TICKET_TITLE}' | jq -sRr @uri)&description=$(echo -n '{DESCRIPTION}' | jq -sRr @uri)&status=planned" > /dev/null 2>&1 || true
+AGENT_TITLE=$(cat <<'MS_EOF'
+{TICKET_ID}: {TICKET_TITLE}
+MS_EOF
+)
+DESCRIPTION=$(cat <<'MS_EOF'
+{DESCRIPTION}
+MS_EOF
+)
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&ticketId={TICKET_ID}&title=$(printf '%s' "$AGENT_TITLE" | jq -sRr @uri)&description=$(printf '%s' "$DESCRIPTION" | jq -sRr @uri)&status=planned" > /dev/null 2>&1 || true
 ```
 
 `{TICKET_ID}` is the **epic** on a breakdown: the epic is what this agent planned, and it is what
@@ -444,6 +470,25 @@ Three writes, and nothing between them:
 Every call is guarded by `[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ]`, sends
 every value through `jq -sRr @uri`, and ends in `|| true`. The skill must work with the desktop app
 closed — a plan is still a plan without a sidebar to show it in.
+
+**Free text never touches the command line.** Every value that originates from the user — the idea,
+the agreed title, the description — is bound to a shell variable through a **quoted** heredoc
+(`<<'MS_EOF'`) and then used as `"$VAR"`. This is a correctness requirement, not a style preference,
+and it is the one part of these blocks that must survive any later tidying:
+
+- A quoted heredoc performs **no** expansion, so an apostrophe, a double quote, a `$`, a backtick or
+  a newline in the idea is data. Pasting the same text between single quotes on the command line
+  instead lets the first apostrophe close the string — and `/magic:plan` is a skill whose input is
+  prose a human just typed, in a product used in French, where `j'ai une idée d'export` is the
+  *normal* case, not the adversarial one. The mildest outcome is a silently truncated title; the
+  worst is the remainder of the line being handed to the shell as syntax.
+- `jq -sRr @uri` does not help here, and it is worth being precise about why: it encodes the value it
+  *receives*. A literal that broke apart before `jq` ever ran is not a value it can protect.
+- `printf '%s'` rather than `echo -n`: `echo -n` is not portable, and a value beginning with `-`
+  would be read as a flag.
+
+Where a value must become JSON rather than a bare string, build it with `jq -nc --arg` — never by
+pasting it between literal brackets or braces.
 
 `status=planning` and `status=planned` are already members of the `TerminalMetadata.status` union and
 already have `statusToAction` entries: the contract was declared before anything sent them, so
