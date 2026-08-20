@@ -1562,7 +1562,7 @@ export class CloudStore implements Store {
    * Three things worth naming:
    *
    * 1. THE DATABASE AGGREGATES. `org_skill_counts` groups and counts server-side, so
-   *    this pulls seven-ish rows instead of the thousands loadOrgUsageStats has to
+   *    this pulls eight-ish rows instead of the thousands loadOrgUsageStats has to
    *    pull and sum here. There is no row cap for the same reason — the count is
    *    exact however long the team has been running, where a capped raw read would
    *    silently start under-reporting.

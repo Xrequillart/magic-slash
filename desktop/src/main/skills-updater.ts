@@ -3,7 +3,7 @@ import * as path from 'path'
 import * as os from 'os'
 import { githubHeaders } from './github'
 
-const SKILLS = ['magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
+const SKILLS = ['magic-plan', 'magic-start', 'magic-continue', 'magic-commit', 'magic-pr', 'magic-review', 'magic-resolve', 'magic-done']
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/xrequillart/magic-slash/main/skills'
 const GITHUB_TREE_URL = 'https://api.github.com/repos/xrequillart/magic-slash/git/trees/main?recursive=1'
 

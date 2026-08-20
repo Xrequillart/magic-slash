@@ -47,9 +47,11 @@ export const marketingFr: Record<keyof typeof marketingEn, string> = {
   'site.how.step3Title': 'Vous validez',
   'site.how.step3Desc':
     'Vous recevez du travail fini à relire, pas un tas de code à trier.',
-  'site.how.commandsTitle': 'Les sept commandes',
+  'site.how.commandsTitle': 'Les huit commandes',
   'site.how.commandsIntro':
     'Tapez <strong>/magic:</strong> pour les retrouver toutes d’un coup.',
+  'site.how.planDesc':
+    '<strong>/magic:plan</strong> transforme une idée en tickets, prêts à construire.',
   'site.how.startDesc':
     '<strong>/magic:start</strong> prend une tâche et commence à la construire.',
   'site.how.continueDesc':

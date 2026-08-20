@@ -28,9 +28,14 @@ import { MkLoader } from './MkLoader'
  * old `terminalAnimation.ts` played — start, commit, pr, review, resolve, done — with
  * the same beats and the same side effects in the panels.
  *
- * `/magic:continue` is deliberately absent, as it was before: it is the one skill that
- * does not demonstrate linearly, because resuming a task looks identical to starting one
- * unless you already know a previous session existed.
+ * Two of the eight skills are deliberately absent, for the same reason: they do not
+ * demonstrate LINEARLY. `/magic:continue` was already out — resuming a task looks
+ * identical to starting one unless you already know a previous session existed — and
+ * `/magic:plan` joins it, because its whole shape is a conversation that pauses on a
+ * spec and waits for a human to approve it, which is the one beat a timeline that
+ * cannot be answered has nothing to show. So this stays a six-phase run: `PHASES`
+ * here, `CONTEXT_BY_PHASE` and the `switch (index)` in `mockupAnimation.ts` are all
+ * indexed by the same six positions, and shifting them buys nothing.
  *
  * WHY HTML AND NOT A VIDEO OR A LOTTIE: the text stays real text, so it is translatable
  * through the catalogues, selectable, and readable by a screen reader; it is crisp at any

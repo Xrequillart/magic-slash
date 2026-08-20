@@ -22,8 +22,9 @@ import { CtaSection } from '@/components/site/home/CtaSection'
  * rather than a bullet inside ④.
  *
  * The order IS the pitch. It opens on the outcome and only reaches the mechanism in ②,
- * where the seven commands live — the page used to lead with them ("7 skills. Entire
- * workflow.") and that is what made it read as a tool for engineers only. `/skills` and
+ * where the eight commands live — the page used to lead with them ("7 skills. Entire
+ * workflow.", as it was then) and that is what made it read as a tool for engineers
+ * only. `/skills` and
  * `/desktop` are gone; what they said that still needed saying is folded into ② and ④,
  * and the reference is in the documentation.
  *

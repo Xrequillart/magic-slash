@@ -28,7 +28,7 @@ export const docEn = {
   'site.doc.quickStart.1': 'Quick Start',
   'site.doc.quickStart.2': 'Download the desktop app, drag it into Applications, and open it:',
   'site.doc.quickStart.download': 'Download Magic Slash for macOS',
-  'site.doc.quickStart.3': 'On first launch the app checks your prerequisites, configures the MCP servers (Jira &amp; GitHub) and installs the seven core skills into <code>~/.claude/skills/</code>. There is no script to run.',
+  'site.doc.quickStart.3': 'On first launch the app checks your prerequisites, configures the MCP servers (Jira &amp; GitHub) and installs the eight core skills into <code>~/.claude/skills/</code>. There is no script to run.',
   'site.doc.quickStart.4': 'Prerequisites',
   'site.doc.quickStart.5': 'Claude Code',
   'site.doc.quickStart.6': 'The Anthropic CLI must be installed and authenticated.',
@@ -36,7 +36,7 @@ export const docEn = {
   'site.doc.quickStart.8': 'Required for MCP servers (Atlassian &amp; GitHub).',
   'site.doc.quickStart.9': 'Git + jq',
   'site.doc.quickStart.10': 'Git for version control, jq for JSON processing.',
-  'site.doc.quickStart.11': 'The installer sets up the 7 core skills, configures MCP servers (Jira &amp; GitHub), and installs the magic-slash Desktop app.',
+  'site.doc.quickStart.11': 'The installer sets up the 8 core skills, configures MCP servers (Jira &amp; GitHub), and installs the magic-slash Desktop app.',
 
   // ── Usage ───────────────────────────────────────────────────────────────
   'site.doc.usage.1': 'Usage',
@@ -54,8 +54,8 @@ export const docEn = {
 
   // ── Skills reference ────────────────────────────────────────────────────
   'site.doc.skills.1': 'Built-in Skills Reference',
-  'site.doc.skills.2': 'magic-slash ships with seven built-in skills that cover the full development lifecycle — from ticket to merge. Each skill is invoked as a slash command inside Claude Code and handles multi-repo worktrees automatically.',
-  'site.doc.skills.3': 'All skills share the <code>magic:</code> prefix (<code>/magic:start</code>, <code>/magic:continue</code>, <code>/magic:commit</code>, <code>/magic:pr</code>, <code>/magic:review</code>, <code>/magic:resolve</code>, <code>/magic:done</code>) so you can type <code>/magic:</code> to quickly find them all.',
+  'site.doc.skills.2': 'magic-slash ships with eight built-in skills that cover the full development lifecycle — from idea to merge. Each skill is invoked as a slash command inside Claude Code and handles multi-repo worktrees automatically.',
+  'site.doc.skills.3': 'All skills share the <code>magic:</code> prefix (<code>/magic:plan</code>, <code>/magic:start</code>, <code>/magic:continue</code>, <code>/magic:commit</code>, <code>/magic:pr</code>, <code>/magic:review</code>, <code>/magic:resolve</code>, <code>/magic:done</code>) so you can type <code>/magic:</code> to quickly find them all.',
   'site.doc.skills.4': 'Bootstraps a development task from a Jira ticket or GitHub issue. Say <code>/magic:start PROJ-123</code> or <code>/magic:start #456</code>.',
   'site.doc.skills.5': 'What it does',
   'site.doc.skills.6': 'Detects ticket type (Jira or GitHub) and fetches metadata',
@@ -162,6 +162,23 @@ export const docEn = {
   'site.doc.skills.106': '<code>allowed tools</code> — which tools the skill can use (e.g. <code>Bash(*), Read, Edit</code>)',
   'site.doc.skills.107': '<code>content</code> — the instruction prompt in Markdown',
   'site.doc.skills.108': '<code>image</code> — an optional icon for the skill card (png, jpg, svg, webp)',
+
+  // /magic:plan, added after the page was written and therefore numbered from the end
+  // of the family rather than inserted at its position. The keys are identifiers, not
+  // an ordering — `DocContent` reads each one literally and nothing iterates a range.
+  'site.doc.skills.109': 'Turns an idea into tickets. Brainstorms against your codebase, writes a spec you can review, then creates the epic and its stories once you approve the structure. Say <code>/magic:plan</code> and describe what you want built.',
+  'site.doc.skills.110': 'What it does',
+  'site.doc.skills.111': 'Explores the target repository so the idea is grounded in the code that already exists',
+  'site.doc.skills.112': 'Writes a reviewable spec &mdash; scope, approach, open questions &mdash; before anything is filed',
+  'site.doc.skills.113': 'Proposes an epic and its stories, split at the granularity you configured',
+  'site.doc.skills.114': 'Waits for your approval: no ticket is created until you accept the structure',
+  'site.doc.skills.115': 'Creates the epic and the stories, with labels, acceptance criteria and assignee',
+  'site.doc.skills.116': 'Trigger phrases',
+  'site.doc.skills.117': '<code>/magic:plan</code>',
+  'site.doc.skills.118': '"I have an idea", "we should add", "plan this out"',
+  'site.doc.skills.119': '"j\'ai une idée", "on devrait ajouter", "prépare les tickets"',
+  'site.doc.skills.120': 'Note',
+  'site.doc.skills.121': 'Use this when the ticket does <strong>not</strong> exist yet. Once it does, <code>/magic:start</code> is what picks it up &mdash; <code>/magic:plan</code> runs before it in the cycle, never instead of it.',
 
   // ── Workflows ───────────────────────────────────────────────────────────
   'site.doc.workflows.1': 'Workflow Examples',
@@ -480,7 +497,7 @@ export const docEn = {
 
   // ── Updates ─────────────────────────────────────────────────────────────
   'site.doc.updates.1': 'Updates & Auto-Update',
-  'site.doc.updates.2': 'magic-slash keeps both the Desktop app and the 7 core skills up to date automatically.',
+  'site.doc.updates.2': 'magic-slash keeps both the Desktop app and the 8 core skills up to date automatically.',
   'site.doc.updates.3': 'Desktop app updates',
   'site.doc.updates.4': 'The Desktop app uses <code>electron-updater</code> to check for new versions via GitHub Releases.',
   'site.doc.updates.5': 'Update flow',
@@ -500,7 +517,7 @@ export const docEn = {
   'site.doc.updates.19': 'Removes obsolete local files that no longer exist in the repository',
   'site.doc.updates.20': 'Cleans up empty directories',
   'site.doc.updates.21': 'Scope',
-  'site.doc.updates.22': 'All 7 built-in skills are checked: <code>magic-start</code>, <code>magic-continue</code>, <code>magic-commit</code>, <code>magic-pr</code>, <code>magic-review</code>, <code>magic-resolve</code>, <code>magic-done</code>.',
+  'site.doc.updates.22': 'All 8 built-in skills are checked: <code>magic-plan</code>, <code>magic-start</code>, <code>magic-continue</code>, <code>magic-commit</code>, <code>magic-pr</code>, <code>magic-review</code>, <code>magic-resolve</code>, <code>magic-done</code>.',
   'site.doc.updates.23': 'Custom skills you create are never modified or removed by the auto-updater.',
   'site.doc.updates.24': 'Manual update check',
   'site.doc.updates.25': 'You can trigger an update check at any time from the Desktop app.',
@@ -623,7 +640,7 @@ export const docEn = {
   'site.doc.troubleshooting.63': 'Can I use magic-slash without the Desktop App?',
   'site.doc.troubleshooting.64': 'Yes! The skills work anywhere Claude Code runs. You can invoke <code>/magic:</code> commands directly from any terminal &mdash; the Desktop app is not required to use the core workflow.',
   'site.doc.troubleshooting.65': 'Without the Desktop app',
-  'site.doc.troubleshooting.66': 'All 7 skills work in any terminal with Claude Code',
+  'site.doc.troubleshooting.66': 'All 8 skills work in any terminal with Claude Code',
   'site.doc.troubleshooting.67': 'Full Jira &amp; GitHub integration via MCP servers',
   'site.doc.troubleshooting.68': 'Works in VS Code, JetBrains, or a standalone terminal',
   'site.doc.troubleshooting.69': 'What the Desktop app adds',
@@ -724,7 +741,7 @@ export const docEn = {
   'site.doc.troubleshooting.163': 'On confirmation, the app restarts with the new version',
   'site.doc.troubleshooting.164': 'What gets updated',
   'site.doc.troubleshooting.165': 'The Desktop app (Electron binary)',
-  'site.doc.troubleshooting.166': 'All 7 skills (refreshed on each startup)',
+  'site.doc.troubleshooting.166': 'All 8 skills (refreshed on each startup)',
   'site.doc.troubleshooting.167': 'Your configuration is preserved across updates',
 
   // ── Changelog ───────────────────────────────────────────────────────────

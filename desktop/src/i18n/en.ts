@@ -336,7 +336,7 @@ export const en = {
   'setup.wizard.integrations.githubOnly': 'GitHub only',
   'setup.wizard.integrations.githubOnlyHelp': 'Issues, pull requests and reviews. No Jira access is requested.',
   'setup.wizard.integrations.changeable': 'You can change this later in Settings.',
-  'setup.wizard.done.skills': 'The seven /magic: skills are installed',
+  'setup.wizard.done.skills': 'The eight /magic: skills are installed',
   'setup.wizard.done.mcp': 'Jira and GitHub access is configured',
   'setup.wizard.done.permissions': 'Permissions and hooks are configured',
   'setup.wizard.allSet': 'Nothing else to do — sign in to Jira and GitHub happens in your browser the first time a skill needs it.',
@@ -1130,6 +1130,7 @@ export const en = {
 
   // ── Quick launch ─────────────────────────────────────────────────────────
   'quickLaunch.placeholder': 'PROJ-123 /start',
+  'quickLaunch.cmd.plan': 'Turn an idea into tickets',
   'quickLaunch.cmd.start': 'Start a new task',
   'quickLaunch.cmd.continue': 'Resume work on a task',
   'quickLaunch.cmd.commit': 'Create a commit',

@@ -98,6 +98,8 @@ describe('message catalogues', () => {
       'site.doc.skills.80',
       'site.doc.skills.90',
       'site.doc.skills.91',
+      'site.doc.skills.118',
+      'site.doc.skills.119',
       // Config values, commit-format examples and API field values.
       'site.doc.skills.38',
       'site.doc.configuration.22',

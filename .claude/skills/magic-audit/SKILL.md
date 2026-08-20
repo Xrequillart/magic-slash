@@ -194,7 +194,7 @@ grep -Eo 'src="[^"]*\.(png|jpg|svg|gif)"' docs/skills.html | sed 's/src="//;s/"$
 Verify each image exists in `docs/`.
 
 Check each item from the checklist:
-- [ ] All 7 skills are listed (no missing, no extra)
+- [ ] All 8 skills are listed (no missing, no extra)
 - [ ] Each skill name matches the actual skill name in `skills/*/SKILL.md`
 - [ ] Each skill description is consistent with what the SKILL.md says
 - [ ] Feature highlights for each skill match the actual steps in the SKILL.md
@@ -298,7 +298,7 @@ This file is ~2900 lines. Do NOT read the whole file. Use `Grep` for targeted ch
 grep -Eo '/magic:[a-z]+' docs/documentation.html | sort -u
 ```
 
-Compare against the 7 skills from Step 2.1. Flag missing or extra skills as ERROR.
+Compare against the 8 skills from Step 2.1. Flag missing or extra skills as ERROR.
 
 #### 3.3b: Version consistency
 
@@ -490,7 +490,7 @@ echo "=== Keys in FR but missing from EN ==="
 comm -13 /tmp/audit_en_keys.txt /tmp/audit_fr_keys.txt
 ```
 
-Also spot-check that skill-related keys in EN and FR refer to the same skills (e.g., both mention the same 7 skill names).
+Also spot-check that skill-related keys in EN and FR refer to the same skills (e.g., both mention the same 8 skill names).
 
 For pages in scope, verify that `data-i18n` attributes used in the HTML have corresponding keys in both EN and FR:
 

@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Desktop app with 7 Claude Code skills to automate your entire dev cycle — from Jira ticket to merged PR.
+  Desktop app with 8 Claude Code skills to automate your entire dev cycle — from an idea to a merged PR.
 </p>
 
 <p align="center">
@@ -29,6 +29,7 @@
 
 | Skill             | Description                                       |
 | ----------------- | ------------------------------------------------- |
+| `/magic:plan`     | Turn an idea into a spec and GitHub tickets       |
 | `/magic:start`    | Start a task from a Jira ticket or GitHub issue   |
 | `/magic:continue` | Resume work on an existing ticket                 |
 | `/magic:commit`   | Create an atomic commit with conventional message |
@@ -41,6 +42,7 @@
 
 You can also invoke skills using natural language:
 
+- "j'ai une idée" or "I have an idea" → `/magic:plan`
 - "démarre PROJ-123" or "work on PROJ-123" → `/magic:start`
 - "je reprends PROJ-123" or "continue PROJ-123" → `/magic:continue`
 - "je suis prêt à committer" or "ready to commit" → `/magic:commit`
@@ -75,7 +77,7 @@ provide. Settings → Application → Machine setup reports the same thing at an
 2. Asks where your tickets live (Jira + GitHub, or GitHub only)
 3. Configures the MCP servers for that choice — both over OAuth, so there is no token to
    paste or store
-4. Installs the 7 skills into `~/.claude/skills/`
+4. Installs the 8 skills into `~/.claude/skills/`
 5. Configures Claude Code's hooks, statusline and permission allowlist
 6. Checks your prerequisites and reports what is missing
 
@@ -144,6 +146,22 @@ One Next.js deployment on Vercel answers on three hosts:
 | `invite.magic-slash.io` | the invitation funnel                                   |
 
 ## Usage
+
+### /magic:plan - Turn an idea into tickets
+
+```bash
+/magic:plan                                 # Describe the idea when it asks
+/magic:plan "rate limit the auth endpoints" # Or state it up front
+```
+
+1. Brainstorms the idea against the target repository's codebase — what already exists, what it touches
+2. Writes a spec you can read and correct: scope, approach, open questions
+3. Proposes an epic and its stories, split at the granularity `plan.splitting` sets
+4. Waits for your approval — nothing is filed until you accept the structure
+5. Creates the epic and its stories, with labels, acceptance criteria and assignee
+
+> **Note:** Use this when the ticket does not exist yet. Once it does, `/magic:start` is what picks
+> it up — `/magic:plan` runs before it in the cycle, never instead of it.
 
 ### /magic:start - Start a task
 
@@ -404,14 +422,20 @@ folder path stays yours:
 
 #### Languages
 
-| Setting       | Description                           | Default |
-| ------------- | ------------------------------------- | ------- |
-| `commit`      | Language for commit messages          | `en`    |
-| `pullRequest` | Language for PR title and description | `en`    |
-| `jiraComment` | Language for Jira comments            | `en`    |
-| `discussion`  | Language for Claude Code interactions | `en`    |
+| Setting       | Description                             | Default |
+| ------------- | --------------------------------------- | ------- |
+| `commit`      | Language for commit messages            | `en`    |
+| `pullRequest` | Language for PR title and description   | `en`    |
+| `jiraComment` | Language for Jira comments              | `en`    |
+| `discussion`  | Language for Claude Code interactions   | `en`    |
+| `ticket`      | Language created tickets are written in | —       |
 
 > Supported languages: `en` (English) and `fr` (French).
+
+> `ticket` is the language a ticket is WRITTEN IN, which is not `discussion` — the language a
+> skill talks to you in. Filing tickets in English while working in French is the normal case, so
+> it has no default of its own: it falls back to `jiraComment`, then to `en`. `/magic:plan` is its
+> first consumer.
 
 #### Commit settings
 
@@ -453,6 +477,27 @@ When `watchCI` finishes and the project publishes a per-PR preview deployment (V
 | `commentOnPR`     | Add comment with PR link when creating the PR | `true`  |
 | `jiraUrl`         | Base URL for Jira instance                    | `""`    |
 | `githubIssuesUrl` | URL for GitHub Issues                         | `""`    |
+
+#### Plan settings
+
+Settings for `/magic:plan`. The human validation step before any ticket is created is
+deliberately not a setting, and neither is how deeply the skill explores the codebase — it judges
+that from the size of the idea.
+
+| Setting              | Description                                                          | Default     |
+| -------------------- | -------------------------------------------------------------------- | ----------- |
+| `tracker`            | Where tickets are created: `jira`, `github`, or `ask` (ask each run) | `ask`       |
+| `jiraProject`        | Jira project key the epic and stories are filed under, e.g. `PROJ`   | `""`        |
+| `issueTypes.epic`    | Jira issue type name to use for the epic                             | `Epic`      |
+| `issueTypes.story`   | Jira issue type name to use for the stories                          | `Story`     |
+| `useRepoTemplates`   | Honour `.github/ISSUE_TEMPLATE/*` and Jira description templates     | `true`      |
+| `splitting`          | How finely the epic is split: `conservative`, `balanced`, or `eager` | `balanced`  |
+| `acceptanceCriteria` | Format for acceptance criteria: `checklist`, `gherkin`, or `none`    | `checklist` |
+| `defaultLabels`      | Labels applied to every created ticket                               | `[]`        |
+| `assignToMe`         | Assign the created tickets to you                                    | `false`     |
+| `duplicateCheck`     | Search existing tickets before proposing a structure                 | `true`      |
+
+> The language the tickets are written in comes from `languages.ticket` above, not from this block.
 
 #### Branches settings
 
@@ -515,7 +560,10 @@ magic-slash/
 │   │   └── renderer/      # React UI (pages, components, hooks)
 │   ├── resources/         # App icons & logo
 │   └── package.json
-├── skills/                        # Claude Code skills (7 skills)
+├── skills/                        # Claude Code skills (8 skills)
+│   ├── magic-plan/               # Turn an idea into an epic and its stories
+│   │   ├── SKILL.md
+│   │   └── references/
 │   ├── magic-start/              # Start a task
 │   │   ├── SKILL.md
 │   │   └── references/           # Messages, glossary, API docs, templates

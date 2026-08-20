@@ -71,7 +71,7 @@ export function SkillStats({ scope }: { scope: RepoScope | undefined }) {
       />
 
       <Card className="p-4">
-        <dl className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+        <dl className="grid grid-cols-4 gap-2 sm:grid-cols-8">
           {TRACKED_SKILLS.map(({ skill, label }) => {
             // Absent means never run: the RPC returns no row rather than a zero, so
             // this is where absence becomes the number to print.
@@ -83,7 +83,7 @@ export function SkillStats({ scope }: { scope: RepoScope | undefined }) {
                 className="min-w-0 rounded-xl border border-black/[0.07] bg-black/[0.015] px-2.5 py-2"
               >
                 {/* The `/magic:` prefix is dropped: it is the same seven characters on
-                    all seven tiles, and at this width it pushes the part that differs
+                    all eight tiles, and at this width it pushes the part that differs
                     out of view. The full command stays in the title attribute. */}
                 <dt className="truncate text-[10px] uppercase tracking-wider text-muted">
                   {label.replace('/magic:', '')}

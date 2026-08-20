@@ -6,7 +6,7 @@
 
 | ID | Check | Source of truth | Severity |
 |----|-------|----------------|----------|
-| SK-01 | All 7 skills are listed | `ls skills/*/SKILL.md` | ERROR |
+| SK-01 | All 8 skills are listed | `ls skills/*/SKILL.md` | ERROR |
 | SK-02 | No extra/removed skills listed | `ls skills/*/SKILL.md` | ERROR |
 | SK-03 | Each skill name matches SKILL.md frontmatter `name` | `skills/*/SKILL.md` YAML | ERROR |
 | SK-04 | Each skill description is consistent with SKILL.md | `skills/*/SKILL.md` first section | WARNING |
@@ -64,7 +64,7 @@ Each renderer page and key component must have a corresponding section in the do
 | ID | Check | Source of truth | Severity |
 |----|-------|----------------|----------|
 | DOC-01 | Prerequisites match what the app checks | `desktop/src/main/setup/prerequisites.ts` (PROBES) | ERROR |
-| DOC-02 | All 7 skills documented in reference section | `ls skills/*/SKILL.md` | ERROR |
+| DOC-02 | All 8 skills documented in reference section | `ls skills/*/SKILL.md` | ERROR |
 | DOC-03 | Version numbers match package.json | `package.json` version field | ERROR |
 
 ### Desktop section — feature coverage (docs -> code)

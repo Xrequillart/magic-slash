@@ -21,8 +21,12 @@ import { RichText } from '../RichText'
  * `id="how"` is the hero's secondary CTA target.
  */
 
-/** The seven commands, in the order a job goes through them. */
+/**
+ * The eight commands, in the order a job goes through them — `plan` first, because it
+ * runs before there is a ticket to start.
+ */
 const COMMANDS = [
+  { name: 'plan', k: 'site.how.planDesc' },
   { name: 'start', k: 'site.how.startDesc' },
   { name: 'continue', k: 'site.how.continueDesc' },
   { name: 'commit', k: 'site.how.commitDesc' },
