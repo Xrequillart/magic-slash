@@ -1358,8 +1358,49 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {tab === 'plan' && (
         <>
-        {/* Plan Section */}
+        {/* Plan, in the three phases the skill itself runs in: it looks for what already
+            exists, it decides how to cut the work up, then it creates the tickets. The
+            settings were one list of seven rows in which "search for duplicates" sat
+            between "acceptance criteria" and "assign to me" — three different moments of
+            one run, in no particular order. */}
         <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.groupBefore')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            <SettingRow align="center" label={t('repo.plan.duplicateCheck')} description={t('repo.plan.duplicateCheckHelp')}>
+              <Switch
+                checked={planDuplicateCheckVal}
+                onChange={(next) => handlePlanSettingChange('duplicateCheck', next)}
+                label={t('repo.plan.duplicateCheck')}
+              />
+            </SettingRow>
+          </fieldset>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.groupBreakdown')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
+              <EnumSelect
+                value={planSplittingVal}
+                values={PLAN_SPLITTING_MODES}
+                labels={PLAN_SPLITTING_LABELS}
+                onChange={(v) => handlePlanSettingChange('splitting', v)}
+              />
+            </SettingRow>
+
+            <SettingRow label={t('repo.plan.acceptanceCriteria')} description={t('repo.plan.acceptanceCriteriaHelp')}>
+              <EnumSelect
+                value={planAcceptanceCriteriaVal}
+                values={PLAN_ACCEPTANCE_CRITERIA_FORMATS}
+                labels={PLAN_ACCEPTANCE_CRITERIA_LABELS}
+                onChange={(v) => handlePlanSettingChange('acceptanceCriteria', v)}
+              />
+            </SettingRow>
+          </fieldset>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.groupTickets')}</h2>
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
             {/* Jira issue-type NAMES, as that project spells them — read by this skill
                 and nothing else (jira-fields.md §1.2), which is why they sit here rather
@@ -1389,29 +1430,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
               </>
             )}
 
-            <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
-              <EnumSelect
-                value={planSplittingVal}
-                values={PLAN_SPLITTING_MODES}
-                labels={PLAN_SPLITTING_LABELS}
-                onChange={(v) => handlePlanSettingChange('splitting', v)}
-              />
-            </SettingRow>
-
-            <SettingRow label={t('repo.plan.acceptanceCriteria')} description={t('repo.plan.acceptanceCriteriaHelp')}>
-              <EnumSelect
-                value={planAcceptanceCriteriaVal}
-                values={PLAN_ACCEPTANCE_CRITERIA_FORMATS}
-                labels={PLAN_ACCEPTANCE_CRITERIA_LABELS}
-                onChange={(v) => handlePlanSettingChange('acceptanceCriteria', v)}
-              />
-            </SettingRow>
-
-            {/* The three switches differ only by key, and their message keys are
-                mechanically `repo.plan.<key>` / `<key>Help`. */}
+            {/* Two switches that differ only by key, and whose message keys are
+                mechanically `repo.plan.<key>` / `<key>Help`. `duplicateCheck` used to
+                ride along here; it belongs to the phase before any of this. */}
             {([
               ['useRepoTemplates', planUseRepoTemplatesVal],
-              ['duplicateCheck', planDuplicateCheckVal],
               ['assignToMe', planAssignToMeVal],
             ] as const).map(([key, checked]) => (
               <SettingRow
@@ -1447,8 +1470,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {tab === 'commit' && (
         <>
-        {/* Commit Section */}
+        {/* Commit — what the message looks like, then the one rule about which branch
+            it may land on. The protected-branch guard was the last row of a list of
+            five, reading as a fifth property of the message; it is not, it is the only
+            setting here that can move your work to another branch. */}
         <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.commit.groupMessage')}</h2>
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
             {/* Style */}
             <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
@@ -1503,8 +1530,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
               />
             </div>
 
-            {/* Include Ticket ID Toggle */}
-            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
+            {/* Include Ticket ID Toggle — last row of the group, hence no bottom border. */}
+            <div className="flex items-center justify-between gap-6 py-3">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.commit.ticketId')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.commit.ticketIdHelp')}</p>
@@ -1516,6 +1543,17 @@ export function RepoPage({ repoName }: RepoPageProps) {
               />
             </div>
 
+            {/* Commit Preview — inside the message group, which is what it previews. */}
+            <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
+              <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
+              <pre className="text-sm whitespace-pre-wrap text-text-secondary">{commitPreview}</pre>
+            </div>
+          </fieldset>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.commit.groupBranches')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
             {/* Direct commits on a protected branch. ON means allowed-but-asked; OFF
                 means /magic:commit branches off first. The help text has to say which
                 way round it is, because both states do something. */}
@@ -1534,12 +1572,6 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 label={t('repo.commit.protectedBranch')}
               />
             </div>
-
-            {/* Commit Preview */}
-            <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
-              <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
-              <pre className="text-sm whitespace-pre-wrap text-text-secondary">{commitPreview}</pre>
-            </div>
           </fieldset>
         </div>
         </>
@@ -1547,8 +1579,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {tab === 'pr' && (
         <>
-        {/* Pull Request Section */}
+        {/* Pull request — what goes INTO it, then what happens once it is open. Those
+            are two moments, and watching the checks was sitting second in a list whose
+            other rows all described the body of the PR. */}
         <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.pr.groupDescription')}</h2>
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
             {/* Auto-link Tickets */}
             <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
@@ -1560,19 +1595,6 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 checked={autoLinkTicketsVal}
                 onChange={(next) => handlePRSettingChange('autoLinkTickets', next)}
                 label={t('repo.pr.autoLink')}
-              />
-            </div>
-
-            {/* Watch CI & Review */}
-            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.pr.watchCI')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.pr.watchCIHelp')}</p>
-              </div>
-              <Switch
-                checked={watchCIVal}
-                onChange={(next) => handlePRSettingChange('watchCI', next)}
-                label={t('repo.pr.watchCI')}
               />
             </div>
 
@@ -1671,13 +1693,33 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
           </fieldset>
         </div>
+
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.pr.groupAfter')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            <div className="flex items-center justify-between gap-6 py-3">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.pr.watchCI')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.pr.watchCIHelp')}</p>
+              </div>
+              <Switch
+                checked={watchCIVal}
+                onChange={(next) => handlePRSettingChange('watchCI', next)}
+                label={t('repo.pr.watchCI')}
+              />
+            </div>
+          </fieldset>
+        </div>
         </>
       )}
 
       {tab === 'resolve' && (
         <>
-        {/* Resolve Section */}
+        {/* Resolve — the commits that carry the fixes, then what is written back to the
+            reviewer. The reply switch was wedged between the commit format and the
+            commit preview, which is the one place it does not belong. */}
         <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.resolve.groupCommits')}</h2>
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
             {/* Commit Mode */}
             <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle">
@@ -1763,19 +1805,6 @@ export function RepoPage({ repoName }: RepoPageProps) {
               </>
             )}
 
-            {/* Reply to Comments Toggle */}
-            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.reply')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyHelp')}</p>
-              </div>
-              <Switch
-                checked={resolveReplyVal}
-                onChange={(next) => handleResolveSettingChange('replyToComments', next)}
-                label={t('repo.resolve.reply')}
-              />
-            </div>
-
             {/* Preview / Info */}
             {resolveCommitModeVal === 'new' && (
               <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
@@ -1795,6 +1824,26 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 <span className="text-sm text-text-secondary">{t('repo.resolve.askNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
               </div>
             )}
+          </fieldset>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.resolve.groupReplies')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            {/* The language these replies are written in lives on the Languages tab, with
+                every other language — this switch decides whether they are written at
+                all, which is a different question. */}
+            <div className="flex items-center justify-between gap-6 py-3">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.reply')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyHelp')}</p>
+              </div>
+              <Switch
+                checked={resolveReplyVal}
+                onChange={(next) => handleResolveSettingChange('replyToComments', next)}
+                label={t('repo.resolve.reply')}
+              />
+            </div>
           </fieldset>
         </div>
         </>

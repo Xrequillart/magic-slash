@@ -3,15 +3,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
+  Activity,
   Building2,
   ClipboardList,
   FolderGit2,
   GitBranch,
   Languages,
+  ListTree,
   GitCommitHorizontal,
   GitPullRequest,
   Lock,
   MessageSquare,
+  Search,
   Settings2,
   Sparkles,
   Ticket,
@@ -806,10 +809,124 @@ export function RepositoryForm({
         </>
       )}
 
+      {tab === 'plan' && (
+        <>
+        {/* ── Plan ──────────────────────────────────────────────────────────────
+            In the three phases the skill itself runs in: it looks for what already
+            exists, it decides how to cut the work up, then it creates the tickets. The
+            settings were one card of seven rows in which "search for duplicates" sat
+            between "acceptance criteria" and "assign to me" — three different moments of
+            one run, in no particular order. */}
+        <SettingsCard icon={Search} title={t('repo.plan.groupBefore')}>
+          <SettingRow
+            label={t('repo.plan.duplicateCheck')}
+            description={t('repo.plan.duplicateCheckHelp')}
+          >
+            <Toggle
+              label={t('repo.plan.duplicateCheck')}
+              checked={duplicateCheck}
+              onChange={(duplicateCheck) => setPlan({ duplicateCheck })}
+            />
+          </SettingRow>
+        </SettingsCard>
+
+        <SettingsCard icon={ListTree} title={t('repo.plan.groupBreakdown')}>
+          <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
+            <Dropdown
+              value={splitting}
+              options={options.splitting}
+              onChange={(splitting) => setPlan({ splitting })}
+              width={280}
+              className="w-52"
+            />
+          </SettingRow>
+
+          <SettingRow
+            label={t('repo.plan.acceptanceCriteria')}
+            description={t('repo.plan.acceptanceCriteriaHelp')}
+          >
+            <Dropdown
+              value={acceptanceCriteria}
+              options={options.acceptance}
+              onChange={(acceptanceCriteria) => setPlan({ acceptanceCriteria })}
+              width={300}
+              className="w-52"
+            />
+          </SettingRow>
+        </SettingsCard>
+
+        <SettingsCard icon={ClipboardList} title={t('repo.plan.groupTickets')}>
+          {/* Jira issue-type NAMES, as that project spells them — read by this skill and
+              nothing else (jira-fields.md §1.2), which is why they sit here rather than
+              with the Jira address on the Tracker tab. Hidden when the repo files into
+              GitHub, where an "Epic" issue type does not exist. */}
+          {trackerMode === 'jira' && (
+            <>
+              <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
+                <DraftField
+                  persisted={epicType}
+                  onSave={(epic) => setPlan({ issueTypes: { epic } })}
+                  placeholder={DEFAULTS.issueTypeEpic}
+                  className="w-52"
+                  required
+                />
+              </SettingRow>
+
+              <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
+                <DraftField
+                  persisted={storyType}
+                  onSave={(story) => setPlan({ issueTypes: { story } })}
+                  placeholder={DEFAULTS.issueTypeStory}
+                  className="w-52"
+                  required
+                />
+              </SettingRow>
+            </>
+          )}
+
+          <SettingRow
+            label={t('repo.plan.useRepoTemplates')}
+            description={t('repo.plan.useRepoTemplatesHelp')}
+          >
+            <Toggle
+              label={t('repo.plan.useRepoTemplates')}
+              checked={useRepoTemplates}
+              onChange={(useRepoTemplates) => setPlan({ useRepoTemplates })}
+            />
+          </SettingRow>
+
+          <SettingRow label={t('repo.plan.assignToMe')} description={t('repo.plan.assignToMeHelp')}>
+            <Toggle
+              label={t('repo.plan.assignToMe')}
+              checked={assignToMe}
+              onChange={(assignToMe) => setPlan({ assignToMe })}
+            />
+          </SettingRow>
+
+          <SettingRow
+            label={t('repo.plan.defaultLabels')}
+            description={t('repo.plan.defaultLabelsHelp')}
+            stacked
+          >
+            <ChipList
+              items={defaultLabels}
+              onChange={(defaultLabels) => setPlan({ defaultLabels })}
+              placeholder="enhancement"
+              inputId="plan-label-input"
+            />
+          </SettingRow>
+        </SettingsCard>
+        </>
+      )}
+
       {tab === 'commit' && (
         <>
-        {/* ── Commit ────────────────────────────────────────────────────────── */}
-        <SettingsCard icon={GitCommitHorizontal}>
+        {/* ── Commit ────────────────────────────────────────────────────────────
+            What the message looks like, then the one rule about which branch it may land
+            on. The protected-branch guard was the last row of a list of five, reading as
+            a fifth property of the message; it is not, it is the only setting here that
+            can move your work to another branch. */}
+        <SettingsCard icon={GitCommitHorizontal} title={t('repo.commit.groupMessage')}>
           <SettingRow label={t('repo.commit.style')} description={t('repo.commit.styleHelp')}>
             <Dropdown
               value={commitStyle}
@@ -847,6 +964,14 @@ export function RepositoryForm({
 
           {/* Both positions of this switch do something, so the description says which
               one you are looking at rather than describing the setting in the abstract. */}
+          <ExamplePanel title={t('repo.example')}>
+            <pre className="whitespace-pre-wrap font-mono text-xs text-ink">
+              {commitExample(commitFormat, commitStyle, includeTicketId)}
+            </pre>
+          </ExamplePanel>
+        </SettingsCard>
+
+        <SettingsCard icon={GitBranch} title={t('repo.commit.groupBranches')}>
           <SettingRow
             label={t('repo.commit.protectedBranch')}
             description={
@@ -861,33 +986,22 @@ export function RepositoryForm({
               onChange={(allowOnProtectedBranch) => setCommit({ allowOnProtectedBranch })}
             />
           </SettingRow>
-
-          <ExamplePanel title={t('repo.example')}>
-            <pre className="whitespace-pre-wrap font-mono text-xs text-ink">
-              {commitExample(commitFormat, commitStyle, includeTicketId)}
-            </pre>
-          </ExamplePanel>
         </SettingsCard>
         </>
       )}
 
       {tab === 'pr' && (
         <>
-        {/* ── Pull request ──────────────────────────────────────────────────── */}
-        <SettingsCard icon={GitPullRequest}>
+        {/* ── Pull request ──────────────────────────────────────────────────────
+            What goes INTO it, then what happens once it is open. Those are two moments,
+            and watching the checks was sitting second in a list whose other rows all
+            described the body of the PR. */}
+        <SettingsCard icon={GitPullRequest} title={t('repo.pr.groupDescription')}>
           <SettingRow label={t('repo.pr.autoLink')} description={t('repo.pr.autoLinkHelp')}>
             <Toggle
               label={t('repo.pr.autoLink')}
               checked={autoLinkTickets}
               onChange={(autoLinkTickets) => onPatch({ pullRequest: { autoLinkTickets } })}
-            />
-          </SettingRow>
-
-          <SettingRow label={t('repo.pr.watchCI')} description={t('repo.pr.watchCIHelp')}>
-            <Toggle
-              label={t('repo.pr.watchCI')}
-              checked={watchCI}
-              onChange={(watchCI) => onPatch({ pullRequest: { watchCI } })}
             />
           </SettingRow>
 
@@ -923,13 +1037,26 @@ export function RepositoryForm({
 
           <SettingRow label={t('repo.pr.template')} description={t('repo.pr.templateHelp')} />
         </SettingsCard>
+
+        <SettingsCard icon={Activity} title={t('repo.pr.groupAfter')}>
+          <SettingRow label={t('repo.pr.watchCI')} description={t('repo.pr.watchCIHelp')}>
+            <Toggle
+              label={t('repo.pr.watchCI')}
+              checked={watchCI}
+              onChange={(watchCI) => onPatch({ pullRequest: { watchCI } })}
+            />
+          </SettingRow>
+        </SettingsCard>
         </>
       )}
 
       {tab === 'resolve' && (
         <>
-        {/* ── Resolve ───────────────────────────────────────────────────────── */}
-        <SettingsCard icon={MessageSquare}>
+        {/* ── Resolve ───────────────────────────────────────────────────────────
+            The commits that carry the fixes, then what is written back to the reviewer.
+            The reply switch was wedged between the commit format and the commit preview,
+            which is the one place it does not belong. */}
+        <SettingsCard icon={GitCommitHorizontal} title={t('repo.resolve.groupCommits')}>
           <SettingRow
             label={t('repo.resolve.commitMode')}
             description={t('repo.resolve.commitModeHelp')}
@@ -980,14 +1107,6 @@ export function RepositoryForm({
             </>
           )}
 
-          <SettingRow label={t('repo.resolve.reply')} description={t('repo.resolve.replyHelp')}>
-            <Toggle
-              label={t('repo.resolve.reply')}
-              checked={replyToComments}
-              onChange={(replyToComments) => setResolve({ replyToComments })}
-            />
-          </SettingRow>
-
 
           {commitMode === 'new' && (
             <ExamplePanel title={t('repo.example')}>
@@ -1013,110 +1132,21 @@ export function RepositoryForm({
             </ExamplePanel>
           )}
         </SettingsCard>
-        </>
-      )}
 
-      {tab === 'plan' && (
-        <>
-        {/* ── Plan ──────────────────────────────────────────────────────────── */}
-        <SettingsCard icon={ClipboardList}>
-          {/* Jira issue-type NAMES, as that project spells them — read by this skill and
-              nothing else (jira-fields.md §1.2), which is why they sit here rather than
-              with the Jira address on the Tracker tab. Hidden when the repo files into
-              GitHub, where an "Epic" issue type does not exist. */}
-          {trackerMode === 'jira' && (
-            <>
-              <SettingRow label={t('repo.plan.epicType')} description={t('repo.plan.epicTypeHelp')}>
-                <DraftField
-                  persisted={epicType}
-                  onSave={(epic) => setPlan({ issueTypes: { epic } })}
-                  placeholder={DEFAULTS.issueTypeEpic}
-                  className="w-52"
-                  required
-                />
-              </SettingRow>
-
-              <SettingRow label={t('repo.plan.storyType')} description={t('repo.plan.storyTypeHelp')}>
-                <DraftField
-                  persisted={storyType}
-                  onSave={(story) => setPlan({ issueTypes: { story } })}
-                  placeholder={DEFAULTS.issueTypeStory}
-                  className="w-52"
-                  required
-                />
-              </SettingRow>
-            </>
-          )}
-
-          <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
-            <Dropdown
-              value={splitting}
-              options={options.splitting}
-              onChange={(splitting) => setPlan({ splitting })}
-              width={280}
-              className="w-52"
-            />
-          </SettingRow>
-
-          <SettingRow
-            label={t('repo.plan.acceptanceCriteria')}
-            description={t('repo.plan.acceptanceCriteriaHelp')}
-          >
-            <Dropdown
-              value={acceptanceCriteria}
-              options={options.acceptance}
-              onChange={(acceptanceCriteria) => setPlan({ acceptanceCriteria })}
-              width={300}
-              className="w-52"
-            />
-          </SettingRow>
-
-          <SettingRow
-            label={t('repo.plan.useRepoTemplates')}
-            description={t('repo.plan.useRepoTemplatesHelp')}
-          >
+        <SettingsCard icon={MessageSquare} title={t('repo.resolve.groupReplies')}>
+          {/* The language these replies are written in lives on the Languages tab, with
+              every other language — this switch decides whether they are written at all,
+              which is a different question. */}
+          <SettingRow label={t('repo.resolve.reply')} description={t('repo.resolve.replyHelp')}>
             <Toggle
-              label={t('repo.plan.useRepoTemplates')}
-              checked={useRepoTemplates}
-              onChange={(useRepoTemplates) => setPlan({ useRepoTemplates })}
-            />
-          </SettingRow>
-
-          <SettingRow
-            label={t('repo.plan.duplicateCheck')}
-            description={t('repo.plan.duplicateCheckHelp')}
-          >
-            <Toggle
-              label={t('repo.plan.duplicateCheck')}
-              checked={duplicateCheck}
-              onChange={(duplicateCheck) => setPlan({ duplicateCheck })}
-            />
-          </SettingRow>
-
-          <SettingRow label={t('repo.plan.assignToMe')} description={t('repo.plan.assignToMeHelp')}>
-            <Toggle
-              label={t('repo.plan.assignToMe')}
-              checked={assignToMe}
-              onChange={(assignToMe) => setPlan({ assignToMe })}
-            />
-          </SettingRow>
-
-          <SettingRow
-            label={t('repo.plan.defaultLabels')}
-            description={t('repo.plan.defaultLabelsHelp')}
-            stacked
-          >
-            <ChipList
-              items={defaultLabels}
-              onChange={(defaultLabels) => setPlan({ defaultLabels })}
-              placeholder="enhancement"
-              inputId="plan-label-input"
+              label={t('repo.resolve.reply')}
+              checked={replyToComments}
+              onChange={(replyToComments) => setResolve({ replyToComments })}
             />
           </SettingRow>
         </SettingsCard>
         </>
       )}
-
 
       </fieldset>
 

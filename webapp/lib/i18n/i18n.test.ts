@@ -230,6 +230,11 @@ describe('message catalogues', () => {
       // word either way. The third, "Code et pull requests", is not.
       'repo.langs.groupChat',
       'repo.langs.groupTickets',
+      // Same again for three of the skill-tab groups: "Message", "Branches" and
+      // "Description" are spelled identically in both languages.
+      'repo.commit.groupMessage',
+      'repo.commit.groupBranches',
+      'repo.pr.groupDescription',
       'repo.commit.section',
       'repo.commit.style',
       'repo.commit.format',

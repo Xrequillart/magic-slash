@@ -499,6 +499,15 @@ export const en = {
   'repo.worktree.filesHelp':
     'Files copied from the main repo to new worktrees (e.g., .env, .env.local)',
 
+  'repo.plan.groupBefore': 'Before proposing',
+  'repo.plan.groupBreakdown': 'Breakdown',
+  'repo.plan.groupTickets': 'Created tickets',
+  'repo.commit.groupMessage': 'Message',
+  'repo.commit.groupBranches': 'Branches',
+  'repo.pr.groupDescription': 'Description',
+  'repo.pr.groupAfter': 'Once open',
+  'repo.resolve.groupCommits': 'Fix commits',
+  'repo.resolve.groupReplies': 'Replies',
   'repo.commit.section': 'Commit',
   'repo.commit.languageHelp': 'Language used for commit messages',
   'repo.commit.style': 'Style',
