@@ -615,8 +615,8 @@ export const en = {
   'repo.resolve.customConfig': 'Custom',
   'repo.resolve.reply': 'Reply to comments',
   'repo.resolve.replyHelp': 'Reply in-thread on resolved GitHub comments',
-  'repo.resolve.replyLang': 'Reply language',
-  'repo.resolve.replyLangHelp': 'Language for replies posted on GitHub',
+  'repo.resolve.replyLang': 'Review reply language',
+  'repo.resolve.replyLangHelp': 'Language of the replies /magic:resolve posts in the review threads of the pull request',
   'repo.resolve.amendNotice': 'Push will use',
   'repo.resolve.askNoticeBefore': 'You’ll be asked to choose',
   'repo.resolve.askNoticeNew': 'new commit',
@@ -647,8 +647,8 @@ export const en = {
   'repo.pr.template': 'PR template',
   'repo.pr.templateHelp':
     'Edited in the desktop app — the template is a file in the repository (.github/pull_request_template.md), not a setting.',
-  'repo.issues.commentLang': 'Comment language',
-  'repo.issues.commentLangHelp': 'Language used for Jira and GitHub issue comments',
+  'repo.issues.commentLang': 'Ticket comment language',
+  'repo.issues.commentLangHelp': 'Language of the comments /magic:pr and /magic:done post on the ticket',
   'repo.issues.ticketLang': 'Ticket language',
   'repo.issues.ticketLangHelp':
     'Language new tickets are written in — follows the comment language until you set it',

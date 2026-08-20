@@ -527,8 +527,8 @@ export const en = {
   'repo.resolve.customConfig': 'Custom',
   'repo.resolve.reply': 'Reply to Comments',
   'repo.resolve.replyHelp': 'Reply in-thread on resolved GitHub comments',
-  'repo.resolve.replyLang': 'Reply Language',
-  'repo.resolve.replyLangHelp': 'Language for reply messages on GitHub',
+  'repo.resolve.replyLang': 'Review Reply Language',
+  'repo.resolve.replyLangHelp': 'Language of the replies /magic:resolve posts in the review threads of the pull request',
   // Both notices end on the literal git flag, rendered as <code> after the text.
   'repo.resolve.amendNotice': 'Push will use',
   'repo.resolve.askNotice':
@@ -555,8 +555,8 @@ export const en = {
   'repo.pr.templateGenerate': 'Generate template',
   'repo.pr.templatePlaceholder': 'PR template content…',
 
-  'repo.issues.commentLang': 'Comment Language',
-  'repo.issues.commentLangHelp': 'Language used for Jira and GitHub issue comments',
+  'repo.issues.commentLang': 'Ticket Comment Language',
+  'repo.issues.commentLangHelp': 'Language of the comments /magic:pr and /magic:done post on the ticket',
   'repo.issues.ticketLang': 'Ticket Language',
   'repo.issues.ticketLangHelp':
     'Language the tickets created by /magic:plan are written in — follows the comment language until you set it',

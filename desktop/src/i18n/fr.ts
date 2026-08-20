@@ -512,8 +512,8 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.resolve.customConfig': 'Personnalisé',
   'repo.resolve.reply': 'Répondre aux commentaires',
   'repo.resolve.replyHelp': 'Répondre dans le fil des commentaires GitHub résolus',
-  'repo.resolve.replyLang': 'Langue des réponses',
-  'repo.resolve.replyLangHelp': 'Langue des réponses publiées sur GitHub',
+  'repo.resolve.replyLang': 'Langue des réponses de review',
+  'repo.resolve.replyLangHelp': 'Langue des réponses que /magic:resolve publie dans les fils de review de la pull request',
   'repo.resolve.amendNotice': 'Le push utilisera',
   'repo.resolve.askNotice':
     'À chaque resolve, il vous sera demandé de choisir entre un nouveau commit et un amend. Choisir l’amend poussera avec',
@@ -542,8 +542,8 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.pr.templateGenerate': 'Générer un modèle',
   'repo.pr.templatePlaceholder': 'Contenu du modèle de PR…',
 
-  'repo.issues.commentLang': 'Langue des commentaires',
-  'repo.issues.commentLangHelp': 'Langue des commentaires sur les tickets Jira et GitHub',
+  'repo.issues.commentLang': 'Langue des commentaires de ticket',
+  'repo.issues.commentLangHelp': 'Langue des commentaires que /magic:pr et /magic:done publient sur le ticket',
   'repo.issues.ticketLang': 'Langue des tickets',
   'repo.issues.ticketLangHelp':
     'Langue de rédaction des tickets créés par /magic:plan — suit la langue des commentaires tant que vous ne la définissez pas',
