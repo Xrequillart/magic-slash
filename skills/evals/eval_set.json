@@ -306,5 +306,103 @@
     "expected_skill": null,
     "notes": "Pure status question about a dependency, with no intent to start anything — blocker vocabulary plus issue numbers must not fire magic:start. Routing only: nothing here asserts what the dependency gate would have concluded",
     "difficulty": "hard"
+  },
+  {
+    "id": 45,
+    "query": "j'ai une idée pour améliorer l'onboarding",
+    "expected_skill": "magic:plan",
+    "notes": "Canonical FR plan opener — an idea with nothing behind it in any tracker. Must not fall through to magic:start, which needs an existing ticket",
+    "difficulty": "easy"
+  },
+  {
+    "id": 46,
+    "query": "I have an idea: we should add a dark mode toggle",
+    "expected_skill": "magic:plan",
+    "notes": "Canonical EN plan opener, combining 'I have an idea' with 'we should add'. Routing only: nothing here asserts the repo question, the spec file or that approval preceded creation",
+    "difficulty": "easy"
+  },
+  {
+    "id": 47,
+    "query": "what if we let users export their data as CSV?",
+    "expected_skill": "magic:plan",
+    "notes": "Hypothetical framing with no ticket reference — the 'what if we' half of the plan/start boundary",
+    "difficulty": "medium"
+  },
+  {
+    "id": 48,
+    "query": "et si on découpait le dashboard en plusieurs onglets ?",
+    "expected_skill": "magic:plan",
+    "notes": "FR hypothetical ('et si on faisait'). The word 'découper' also appears in the sizing vocabulary, which must not change the routing",
+    "difficulty": "medium"
+  },
+  {
+    "id": 49,
+    "query": "on devrait ajouter un système de notifications",
+    "expected_skill": "magic:plan",
+    "notes": "FR proposal for work that does not exist yet. Compare id 55: the same 'on devrait / we should' opener routes nowhere when it is an aside about work already underway",
+    "difficulty": "medium"
+  },
+  {
+    "id": 50,
+    "query": "brainstorm the migration to the new auth provider",
+    "expected_skill": "magic:plan",
+    "notes": "Explicit brainstorm request. Inherited from the internal magic-plan skill's trigger list, kept because it is the least ambiguous plan utterance there is",
+    "difficulty": "easy"
+  },
+  {
+    "id": 51,
+    "query": "créer les tickets pour la refonte du calendrier",
+    "expected_skill": "magic:plan",
+    "notes": "Explicit ticket-creation intent with no ticket id — creation is what /magic:plan does, so this must not route to magic:start. Routing only: whether an epic or a single story came out is a sizing decision no utterance can assert",
+    "difficulty": "medium"
+  },
+  {
+    "id": 52,
+    "query": "break this down into stories: a billing portal with invoices and payment methods",
+    "expected_skill": "magic:plan",
+    "notes": "Explicit epic-breakdown request. Routing only: the eval cannot check that the stories were independently shippable rather than horizontal slices",
+    "difficulty": "easy"
+  },
+  {
+    "id": 53,
+    "query": "je veux bosser sur PROJ-142",
+    "expected_skill": "magic:start",
+    "notes": "The riskiest boundary in the set: work intent on a ticket that ALREADY EXISTS. 'bosser sur' is a magic:start trigger and the ticket id settles it — plan must not capture this",
+    "difficulty": "hard"
+  },
+  {
+    "id": 54,
+    "query": "start working on the export feature, it's #211",
+    "expected_skill": "magic:start",
+    "notes": "Feature vocabulary plus an issue number. 'feature' leans plan-ward but #211 exists, so start wins. Mirror of id 53 in English",
+    "difficulty": "hard"
+  },
+  {
+    "id": 55,
+    "query": "we should add tests to the parser before we ship",
+    "expected_skill": null,
+    "notes": "Sibling of id 34. 'we should add' is a magic:plan trigger phrase, but this is an aside about work already in flight, not an idea to turn into tickets — nothing should fire. The discriminator is that no deliverable is being proposed",
+    "difficulty": "hard"
+  },
+  {
+    "id": 56,
+    "query": "on devrait refactorer le module d'auth, tu peux me faire les tickets ?",
+    "expected_skill": "magic:plan",
+    "notes": "The other side of id 34: the same refactor subject, but with an explicit ticket ask, so plan fires. Kept adjacent to id 34 on purpose — together they pin where the boundary actually is",
+    "difficulty": "medium"
+  },
+  {
+    "id": 57,
+    "query": "add a null check in the parser",
+    "expected_skill": null,
+    "notes": "Bare small code request — no idea to plan, no ticket to start. Guards against magic:plan widening to any imperative about future code",
+    "difficulty": "easy"
+  },
+  {
+    "id": 58,
+    "query": "réfléchis à comment on pourrait accélérer le build",
+    "expected_skill": "magic:plan",
+    "notes": "FR 'réfléchir à' plus a hypothetical. No tracker reference anywhere, so plan is the only skill that applies",
+    "difficulty": "medium"
   }
 ]
