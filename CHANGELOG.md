@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.75.1] - 2026-08-20
+
+### Added
+
+- **Desktop**: Real SVG flags in every language picker, drawn at one ratio so they line up — the pickers are no longer native selects, which cannot hold anything but text
+- **Desktop**: The GitHub remote is editable from the Tracker tab and, for the first time, from the webapp
+
+### Changed
+
+- **Desktop**: Repository settings regrouped into eight subject tabs — General, Tracker, Languages, Git, then one tab per skill in workflow order — each cut into sub-sections, with the danger zone folded into General
+- **Desktop**: Language settings gathered in one tab and grouped by who reads them, and the ticket-comment and review-reply settings renamed apart
+- **Plan**: The repository's Jira coordinates moved out of `issues.jiraUrl` and `plan.jiraProject` into their own `jira` block. **Requires migration `20260820090000_repositories_jira.sql`: both clients name the column in their select, so a database that has not run it returns no repositories at all**
+- **Plan**: Skill description trimmed to 110 words
+
+### Fixed
+
+- **Desktop**: The same internal padding on every settings card, and no hairline left hanging under the last row of one
+
 ## [0.75.0] - 2026-08-20
 
 ### Added
@@ -2255,6 +2273,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.75.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.75.1
 [0.75.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.75.0
 [0.74.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.74.3
 [0.74.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.74.2
