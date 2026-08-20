@@ -128,7 +128,7 @@ function SettingRow({ label, description, align = 'start', children }: {
   // as whole strings in the source.
   const items = align === 'center' ? 'items-center' : 'items-start'
   return (
-    <div className={`flex ${items} justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0`}>
+    <div className={`flex ${items} justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0`}>
       <div className="flex-1">
         <label className="block text-sm font-medium mb-0.5">{label}</label>
         <p className="text-xs text-text-secondary/50">{description}</p>
@@ -752,7 +752,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
     return (
       <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
         <div className="flex-1">
-          <label className="block text-sm font-semibold mb-1">{label}</label>
+          <label className="block text-sm font-medium mb-0.5">{label}</label>
           {description && <p className="text-xs text-text-secondary/50">{description}</p>}
         </div>
         <LanguageSelect
@@ -779,7 +779,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
    * scope, and it applies to anything holding an input.
    */
   const remoteUrlRow = (label: string, description: ReactNode) => (
-    <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+    <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
       <div className="flex-1">
         <label className="block text-sm font-medium mb-0.5">{label}</label>
         <p className="text-xs text-text-secondary/50">{description}</p>
@@ -972,9 +972,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
         {/* General Section */}
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.general.section')}</h2>
-          <div className="bg-surface border border-line-strong rounded-xl p-4">
+          <div className="bg-surface border border-line-strong rounded-xl px-4">
             {/* Name */}
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.general.name')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.general.nameHelp')}</p>
@@ -995,7 +995,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
 
             {/* Keywords */}
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.general.keywords')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.general.keywordsHelp')}</p>
@@ -1017,7 +1017,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
 
             {/* Color */}
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.general.color')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.general.colorHelp')}</p>
@@ -1076,7 +1076,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             skill that reads them. */}
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.groupDestination')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             {/* Which tracker this repo files into. Not quite `plan.tracker`, which has a
                 third value, `ask`: that one is not a tracker but an instruction to
                 choose at runtime, so it is the toggle below rather than an option here.
@@ -1109,7 +1109,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.groupGithub')}</h2>
-          <div className="bg-surface border border-line-strong rounded-xl p-4">
+          <div className="bg-surface border border-line-strong rounded-xl px-4">
             {/* The same remote row the Git tab shows as a clone address — same state,
                 same save button (see remoteUrlRow).
 
@@ -1134,7 +1134,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
         {trackerModeVal === 'jira' && (
           <div className="mb-6">
             <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.groupJira')}</h2>
-            <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+            <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
               {/* Two halves of one address, which is why they share a config block: the
                   site says where Jira is, the key says which project inside it receives
                   the tickets. Only the key is needed to WRITE one — the site decides
@@ -1164,7 +1164,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.groupComments')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             {/* Read by /magic:pr, :review and :done — three skills, so it belongs to the
                 repo's relationship with its tracker rather than to any one skill's tab.
                 The comment lands on the TICKET and carries the PR link, which the old
@@ -1196,14 +1196,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
             the normal case rather than an inconsistency. */}
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.langs.groupChat')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             <LangSelect langKey="discussion" label={t('repo.general.discussionLang')} description={t('repo.general.discussionLangHelp')} />
           </fieldset>
         </div>
 
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.langs.groupCode')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             <LangSelect langKey="commit" label={t('repo.langs.commit')} description={t('repo.commit.languageHelp')} />
             <LangSelect langKey="pullRequest" label={t('repo.langs.pullRequest')} description={t('repo.pr.languageHelp')} />
 
@@ -1215,7 +1215,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             {resolveReplyVal && (
               <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
                 <div className="flex-1">
-                  <label className="block text-sm font-semibold mb-1">{t('repo.resolve.replyLang')}</label>
+                  <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.replyLang')}</label>
                   <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyLangHelp')}</p>
                 </div>
                 <LanguageSelect
@@ -1229,7 +1229,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.langs.groupTickets')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             {/* The ticket BODY sits under the comments it inherits from: absent, it
                 resolves to the row above (`ticket` -> `jiraComment` -> 'en'), and
                 LangSelect is handed that resolved value so the row shows what is
@@ -1253,10 +1253,10 @@ export function RepoPage({ repoName }: RepoPageProps) {
             rows that were spread over General, Branches and Worktree. */}
         {/* Git Section */}
         <div className="mb-6">
-          <div className="bg-surface border border-line-strong rounded-xl p-4">
+          <div className="bg-surface border border-line-strong rounded-xl px-4">
             {/* Path — always editable: the folder is this machine's, private to
                 you, and a read-only member still needs to point the repo at it. */}
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.general.path')}</label>
                 <p className="text-xs text-text-secondary/50">
@@ -1315,7 +1315,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                 has to point the repo at their clone; the remote row carries its own
                 fieldset. Everything below is shared config, so it follows `readOnly`. */}
             <fieldset disabled={readOnly} className="w-full min-w-0">
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.branches.development')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.branches.developmentHelp')}</p>
@@ -1338,7 +1338,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               </div>
             </div>
 
-            <div className="py-3">
+            <div className="py-4">
               <div className="flex-1 mb-3">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.worktree.files')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.worktree.filesHelp')}</p>
@@ -1365,7 +1365,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             one run, in no particular order. */}
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.groupBefore')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             <SettingRow align="center" label={t('repo.plan.duplicateCheck')} description={t('repo.plan.duplicateCheckHelp')}>
               <Switch
                 checked={planDuplicateCheckVal}
@@ -1378,7 +1378,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.groupBreakdown')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             <SettingRow label={t('repo.plan.splitting')} description={t('repo.plan.splittingHelp')}>
               <EnumSelect
                 value={planSplittingVal}
@@ -1401,7 +1401,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.plan.groupTickets')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             {/* Jira issue-type NAMES, as that project spells them — read by this skill
                 and nothing else (jira-fields.md §1.2), which is why they sit here rather
                 than with the Jira address on the Tracker tab. Hidden when the repo files
@@ -1451,7 +1451,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
               </SettingRow>
             ))}
 
-            <div className="py-3">
+            <div className="py-4">
               <div className="flex-1 mb-3">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.plan.defaultLabels')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.plan.defaultLabelsHelp')}</p>
@@ -1476,9 +1476,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
             setting here that can move your work to another branch. */}
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.commit.groupMessage')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             {/* Style */}
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
@@ -1497,7 +1497,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
 
             {/* Format */}
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
@@ -1518,7 +1518,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
 
             {/* Co-Author Toggle */}
-            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.commit.coAuthor')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.commit.coAuthorHelp')}</p>
@@ -1531,7 +1531,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
 
             {/* Include Ticket ID Toggle */}
-            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.commit.ticketId')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.commit.ticketIdHelp')}</p>
@@ -1544,7 +1544,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
 
             {/* Commit Preview — inside the message group, which is what it previews. */}
-            <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
+            <div className="my-4 p-3 bg-surface border border-line-subtle rounded-lg">
               <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
               <pre className="text-sm whitespace-pre-wrap text-text-secondary">{commitPreview}</pre>
             </div>
@@ -1553,11 +1553,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.commit.groupBranches')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             {/* Direct commits on a protected branch. ON means allowed-but-asked; OFF
                 means /magic:commit branches off first. The help text has to say which
                 way round it is, because both states do something. */}
-            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.commit.protectedBranch')}</label>
                 <p className="text-xs text-text-secondary/50">
@@ -1584,9 +1584,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
             other rows all described the body of the PR. */}
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.pr.groupDescription')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             {/* Auto-link Tickets */}
-            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.pr.autoLink')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.pr.autoLinkHelp')}</p>
@@ -1599,7 +1599,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             </div>
 
             {/* Test Accounts */}
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.pr.testAccounts')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.pr.testAccountsHelp')}</p>
@@ -1623,7 +1623,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
             {/* Test Accounts Source - only when test accounts are surfaced */}
             {testAccountsVal !== 'off' && (
-              <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+              <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
                 <div className="flex-1">
                   <label className="block text-sm font-medium mb-0.5">{t('repo.pr.testAccountsSource')}</label>
                   <p className="text-xs text-text-secondary/50">
@@ -1641,7 +1641,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             )}
 
             {/* PR Template */}
-            <div className="py-3">
+            <div className="py-4">
               <div className="flex items-start justify-between gap-6 mb-3">
                 <div className="flex-1">
                   <label className="block text-sm font-medium mb-0.5">{t('repo.pr.template')}</label>
@@ -1696,8 +1696,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.pr.groupAfter')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
-            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
+            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.pr.watchCI')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.pr.watchCIHelp')}</p>
@@ -1720,9 +1720,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
             commit preview, which is the one place it does not belong. */}
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.resolve.groupCommits')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             {/* Commit Mode */}
-            <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitMode')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitModeHelp')}</p>
@@ -1743,7 +1743,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
             {/* Commit Format Source - shown when a new commit is possible (new or ask) */}
             {resolveCommitModeVal !== 'amend' && (
-              <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+              <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
                 <div className="flex-1">
                   <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.commitFormat')}</label>
                   <p className="text-xs text-text-secondary/50">{t('repo.resolve.commitFormatHelp')}</p>
@@ -1765,7 +1765,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
             {/* Custom Style & Format - when a new commit is possible (new or ask) and useCommitConfig is false */}
             {resolveCommitModeVal !== 'amend' && !resolveUseCommitConfigVal && (
               <>
-                <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+                <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
                   <div className="flex-1">
                     <label className="block text-sm font-medium mb-0.5">{t('repo.commit.style')}</label>
                     <p className="text-xs text-text-secondary/50">{t('repo.commit.styleHelp')}</p>
@@ -1783,7 +1783,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                   </div>
                 </div>
 
-                <div className="flex items-start justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+                <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
                   <div className="flex-1">
                     <label className="block text-sm font-medium mb-0.5">{t('repo.commit.format')}</label>
                     <p className="text-xs text-text-secondary/50">{t('repo.commit.formatHelp')}</p>
@@ -1807,19 +1807,19 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
             {/* Preview / Info */}
             {resolveCommitModeVal === 'new' && (
-              <div className="mt-4 p-3 bg-surface border border-line-subtle rounded-lg">
+              <div className="my-4 p-3 bg-surface border border-line-subtle rounded-lg">
                 <div className="text-[10px] text-text-secondary/50 uppercase tracking-wider mb-2">{t('repo.example')}</div>
                 <pre className="text-sm whitespace-pre-wrap text-text-secondary">{resolvePreview}</pre>
               </div>
             )}
             {resolveCommitModeVal === 'amend' && (
-              <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-center gap-2">
+              <div className="my-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0" />
                 <span className="text-sm text-text-secondary">{t('repo.resolve.amendNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code></span>
               </div>
             )}
             {resolveCommitModeVal === 'ask' && (
-              <div className="mt-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-start gap-2">
+              <div className="my-4 p-3 bg-yellow/10 border border-yellow/20 rounded-lg flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-yellow flex-shrink-0 mt-0.5" />
                 <span className="text-sm text-text-secondary">{t('repo.resolve.askNotice')} <code className="text-xs bg-surface-strong px-1.5 py-0.5 rounded">--force-with-lease</code>.</span>
               </div>
@@ -1829,11 +1829,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.resolve.groupReplies')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl p-4 w-full min-w-0">
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             {/* The language these replies are written in lives on the Languages tab, with
                 every other language — this switch decides whether they are written at
                 all, which is a different question. */}
-            <div className="flex items-center justify-between gap-6 py-3 border-b border-line-subtle last:border-b-0">
+            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.resolve.reply')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.resolve.replyHelp')}</p>
