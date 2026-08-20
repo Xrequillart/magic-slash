@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Building2,
   ClipboardList,
+  FolderGit,
   GitBranch,
   Languages,
   GitCommitHorizontal,
@@ -11,11 +12,14 @@ import {
   Lock,
   MessageSquare,
   Settings2,
+  Sparkles,
   Ticket,
   Trash2,
   Users,
+  type LucideIcon,
 } from 'lucide-react'
 import { Dropdown, type DropdownOption } from '@/components/Dropdown'
+import { TabStrip } from '@/components/TabStrip'
 import { ChipList, ExamplePanel, SettingRow, SettingsCard, Toggle } from '@/components/SettingRow'
 import { Button, Input } from '@/components/ui'
 import type { Org } from '@/lib/orgs'
@@ -136,20 +140,25 @@ function buildOptions(t: Translate) {
  */
 /**
  * The four tabs the form is cut into, grouped by SUBJECT rather than by skill —
- * the same four, in the same order, as the desktop's RepoPage. Two surfaces writing
- * the same config that disagree about where a setting lives is worse than either
- * layout on its own.
+ * the same four, in the same order, with the same icons, as the desktop's RepoPage.
+ * Two surfaces writing the same config that disagree about where a setting lives is
+ * worse than either layout on its own.
+ *
+ * Rendered by the shared `TabStrip`, which the dashboard and the Application page
+ * already use here. Each tab carries an icon because the strip styles every pill
+ * alike: Danger gets no red of its own, and the bin is what keeps it from reading as
+ * a fourth ordinary tab.
  *
  * Message KEYS, not labels: module scope is evaluated once at import, so a `t()`
- * here would pin the bar to the language the page first rendered in.
+ * here would pin the strip to the language the page first rendered in.
  */
 type RepoTab = 'repository' | 'tracker' | 'skills' | 'danger'
 
-const REPO_TABS: { id: RepoTab; labelKey: Parameters<Translate>[0] }[] = [
-  { id: 'repository', labelKey: 'repo.tab.repository' },
-  { id: 'tracker', labelKey: 'repo.tab.tracker' },
-  { id: 'skills', labelKey: 'repo.tab.skills' },
-  { id: 'danger', labelKey: 'repo.tab.danger' },
+const REPO_TABS: { id: RepoTab; labelKey: Parameters<Translate>[0]; icon: LucideIcon }[] = [
+  { id: 'repository', labelKey: 'repo.tab.repository', icon: FolderGit },
+  { id: 'tracker', labelKey: 'repo.tab.tracker', icon: Ticket },
+  { id: 'skills', labelKey: 'repo.tab.skills', icon: Sparkles },
+  { id: 'danger', labelKey: 'repo.tab.danger', icon: Trash2 },
 ]
 
 function DraftField({
@@ -306,28 +315,16 @@ export function RepositoryForm({
       )}
 
       {/* Outside the fieldset below, deliberately: `disabled` on a fieldset disables
-          every control it contains, so a tab bar inside it would leave a read-only
-          viewer stuck on whichever tab happened to be open. Danger sits at the far
-          end, apart, for the reason it has always had its own card — nothing over
-          there is a setting. */}
-      <div className="flex items-center gap-1 border-b border-black/5">
-        {REPO_TABS.map(({ id, labelKey }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors ${
-              tab === id
-                ? id === 'danger'
-                  ? 'border-red text-red'
-                  : 'border-accent text-ink'
-                : 'border-transparent text-muted hover:text-ink'
-            } ${id === 'danger' ? 'ml-auto' : ''}`}
-          >
-            {t(labelKey)}
-          </button>
-        ))}
-      </div>
+          every control it contains, so a strip inside it would leave a read-only
+          viewer stuck on whichever tab happened to be open. */}
+      <TabStrip
+        ariaLabel={t('repo.tabs.aria')}
+        items={REPO_TABS.map(({ id, labelKey, icon }) => ({ key: id, label: t(labelKey), icon }))}
+        activeKey={tab}
+        // The cast holds because TabStrip only ever reports back a key it was
+        // handed, and every key here comes from REPO_TABS.
+        onSelect={(key) => setTab(key as RepoTab)}
+      />
 
       <fieldset disabled={readOnly} className="w-full min-w-0 space-y-8">
 

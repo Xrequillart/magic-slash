@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
-  Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen
+  Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen,
+  FolderGit, Ticket, Sparkles, type LucideIcon
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useConfig } from '../../hooks/useConfig'
@@ -10,6 +11,7 @@ import { showToast } from '../../components/Toast'
 import { PROJECT_COLORS } from '../../utils/projectColors'
 import { useT, type MessageKey } from '../../i18n'
 import { Switch } from '../../components/Switch'
+import { TabStrip } from '../../components/TabStrip'
 import { BTN, INPUT, SELECT } from '../../theme/controls'
 import {
   PLAN_TRACKERS,
@@ -34,16 +36,21 @@ interface RepoPageProps {
  * be answered without reading the whole page and remembering the answers.
  *
  * Message KEYS, not labels, like SETTINGS_TABS in Config/index.tsx: module scope
- * is evaluated once at import, so a `t()` call here would pin the bar to whatever
+ * is evaluated once at import, so a `t()` call here would pin the strip to whatever
  * language the app booted in.
+ *
+ * Rendered by the shared `TabStrip`, the same control the Team page switches
+ * organizations with and the dashboard switches scopes with. Each tab carries an
+ * icon because the strip styles every pill alike: Danger has no red of its own
+ * there, and the bin is what keeps it from reading as a fourth ordinary tab.
  */
 type RepoTab = 'repository' | 'tracker' | 'skills' | 'danger'
 
-const REPO_TABS: { id: RepoTab; labelKey: MessageKey }[] = [
-  { id: 'repository', labelKey: 'repo.tab.repository' },
-  { id: 'tracker', labelKey: 'repo.tab.tracker' },
-  { id: 'skills', labelKey: 'repo.tab.skills' },
-  { id: 'danger', labelKey: 'repo.tab.danger' },
+const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
+  { id: 'repository', labelKey: 'repo.tab.repository', icon: FolderGit },
+  { id: 'tracker', labelKey: 'repo.tab.tracker', icon: Ticket },
+  { id: 'skills', labelKey: 'repo.tab.skills', icon: Sparkles },
+  { id: 'danger', labelKey: 'repo.tab.danger', icon: Trash2 },
 ]
 
 /**
@@ -816,31 +823,24 @@ export function RepoPage({ repoName }: RepoPageProps) {
         </div>
       )}
 
-      {/* Sub-tabs, INSIDE one entry of the settings rail. Underlined rather than
-          pilled on purpose: the rail on the left already owns the pill, and a second
-          pill at a second level reads as two rails competing. Danger sits apart, at
-          the far end, for the reason it has always had its own section — nothing over
-          there is a setting.
+      {/* Sub-tabs, INSIDE one entry of the settings rail — the shared TabStrip, so a
+          second level of navigation looks like every other tab row in the app rather
+          than like something this page invented.
 
           Local state, not the hash route: `contentKey` in Config/index.tsx keys the
           content pane on `repo:{name}`, so switching sub-tab does not remount this
           page and the choice survives. Leaving the repository and coming back does
           remount it, which lands on Repository — the right default for reopening a
           repo you have not touched in a while. */}
-      <div className="flex items-center gap-1 mb-6 border-b border-line-subtle">
-        {REPO_TABS.map(({ id, labelKey }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors ${
-              tab === id
-                ? (id === 'danger' ? 'border-red text-red' : 'border-accent text-ink')
-                : 'border-transparent text-text-secondary hover:text-ink'
-            } ${id === 'danger' ? 'ml-auto' : ''}`}
-          >
-            {t(labelKey)}
-          </button>
-        ))}
+      <div className="mb-6">
+        <TabStrip
+          ariaLabel={t('repo.tabs.aria')}
+          items={REPO_TABS.map(({ id, labelKey, icon }) => ({ key: id, label: t(labelKey), icon }))}
+          activeKey={tab}
+          // The cast holds because TabStrip only ever reports back a key it was
+          // handed, and every key here comes from REPO_TABS.
+          onSelect={(key) => setTab(key as RepoTab)}
+        />
       </div>
 
 

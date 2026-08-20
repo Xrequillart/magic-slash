@@ -548,6 +548,7 @@ export const en = {
   'repo.general.color': 'Color',
   'repo.general.colorHelp': 'Project color in the app sidebar',
   'repo.general.setColor': 'Set color {color}',
+  'repo.tabs.aria': 'Repository settings',
   'repo.tab.repository': 'Repository',
   'repo.tab.tracker': 'Tracker',
   'repo.tab.skills': 'Skills',

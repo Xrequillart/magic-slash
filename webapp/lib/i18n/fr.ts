@@ -562,6 +562,7 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.general.color': 'Couleur',
   'repo.general.colorHelp': 'Couleur du projet dans la barre latérale',
   'repo.general.setColor': 'Choisir la couleur {color}',
+  'repo.tabs.aria': 'Réglages du repository',
   'repo.tab.repository': 'Repository',
   'repo.tab.tracker': 'Tracker',
   'repo.tab.skills': 'Skills',
