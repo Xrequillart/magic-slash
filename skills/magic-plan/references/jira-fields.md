@@ -176,11 +176,25 @@ classification instead of through a missed field:
 
 `assignee` is the harder of the two, because whether it auto-fills is only knowable once
 `trackers.md` §3.6's `atlassianUserInfo` → `lookupJiraAccountId` pair has run. When the field is
-**required**, run that resolution here, in this pass, and carry the account id — §3.6 resolves it
-once per run anyway, so this spends no extra call, it only moves it earlier. §3.6's "create the
-issues unassigned" fallback is not available on a required `assignee`: unassigned is the rejection.
-When the field is optional, nothing changes — §3.6 keeps resolving it at creation time and drops it
-on a rejection.
+**required**, run that resolution here, in this pass, and return the account id as the
+`assignee_account_id` row of `## Usage` — that row is the only thing that carries it forward, and a
+value this paragraph resolves but the contract does not return is a value Step 7 never sees. §3.6
+resolves it once per run anyway, so this spends no extra call, it only moves it earlier. §3.6's
+"create the issues unassigned" fallback is not available on a required `assignee`: unassigned *is*
+the rejection. When the field is optional, nothing changes — §3.6 keeps resolving it at creation time
+and drops it on a rejection.
+
+So a required `assignee` has **two possible provenances and one destination**, and both provenances
+end up in the same parameter:
+
+| Case | Value comes from | Travels as |
+| --- | --- | --- |
+| `plan.assignToMe` true, id resolved | this pass | the `assignee_account_id` row of `## Usage` |
+| `plan.assignToMe` false, or no id resolved | Step 4's answer | a `required_field_answers` entry, converted per §3 |
+
+Whichever provenance applies, the value is sent as `createJiraIssue`'s `assignee_account_id`
+parameter and **never** through `additional_fields` — `trackers.md` §3.2 owns that routing rule and
+states the exception explicitly.
 
 Neither field stops being config-driven. `plan.defaultLabels` and `plan.assignToMe` still decide what
 is *sent* whenever they hold a value; the rule above only decides what happens when they hold none
@@ -360,6 +374,7 @@ This table is the whole contract; `SKILL.md` restates none of it:
 | `epic_link_field_id` | the epic-link `customfield_XXXXX` on the **story** type's screen, empty when none | `trackers.md` §3.4 route 2 |
 | `description_template` | per type, the `description` field's default, empty when it has none | `trackers.md` §3.5 |
 | `screen_omits` | which of `labels` / `assignee` are absent, per type | `trackers.md` §3.6 |
+| `assignee_account_id` | the account id resolved by §2 for a **required** `assignee` when `plan.assignToMe` is true; empty in every other case | `trackers.md` §3.2, §3.6 |
 | `degraded` | what could not be read, empty when everything resolved | `MSG_JIRA_FIELDS_UNKNOWN` (§4), never silent |
 
 Nothing here is written to the spec: the spec does not exist yet at Step 2.3. The values travel as

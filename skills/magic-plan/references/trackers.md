@@ -236,8 +236,26 @@ the run before the brainstorm rather than producing a guess.
 **`additional_fields` is the only channel for a field with no parameter of its own.** It takes a
 JSON object keyed by field name or field id, and it is how three things reach the create call: the
 epic-link custom field (§3.4 route 2), `labels` (§3.6), and every answer in the carried
-`required_field_answers`. `summary`, `description` with `contentFormat`, `assignee_account_id` and
-`parent` each have their own parameter — they never go through `additional_fields`.
+`required_field_answers` — **except `assignee`**. `summary`, `description` with `contentFormat`,
+`assignee_account_id` and `parent` each have their own parameter, so they never go through
+`additional_fields`.
+
+**`assignee` is the one field that is both.** It can be a `required_field_answers` entry — a project
+that makes it mandatory while `plan.assignToMe` is false sends the user to Step 4 like any other
+must-ask field (`jira-fields.md` §2) — *and* it has its own `createJiraIssue` parameter. The two
+rules above would send it to both places, so the exception wins: whichever of its two provenances
+applies, the value goes in `assignee_account_id`.
+
+| Provenance | Carried as | Sent as |
+| --- | --- | --- |
+| the pre-flight resolved it (`plan.assignToMe` true) | `jira-fields.md`'s `assignee_account_id` | `assignee_account_id` |
+| Step 4 answered it (must-ask) | a `required_field_answers` entry | `assignee_account_id`, **not** `additional_fields` |
+
+And it is a **bare account id string** in both cases, not the `{"accountId": …}` object other
+user-picker fields use — `jira-fields.md` §3's conversion table states that exception at the shape
+level; this is the routing half of it. An `assignee` answer left in `additional_fields` is either
+rejected or, worse, accepted while the issue stays unassigned — a silent miss on a field the project
+declared mandatory.
 
 **The answers travel already converted.** `required_field_answers` holds each value in the shape
 `createJiraIssue` accepts — an option object, an array of them, an account id object — never the
@@ -415,7 +433,10 @@ When `plan.useRepoTemplates` is `false`, use the §3.3 structure.
   that field.
 - **Assignee**: §2.6's rule, with the account id in place of the login — resolved once per run, not
   per issue, and sent as `assignee_account_id`, which is a parameter of its own and not an
-  `additional_fields` entry. Resolving "me" takes **two calls, in this order**, because Jira exposes
+  `additional_fields` entry. **Read the carried `assignee_account_id` first**: on a required
+  `assignee` the pre-flight already resolved it (`jira-fields.md` §2), and re-resolving here would
+  spend the same two calls again to learn the same answer. It is empty in every other case, and only
+  then does the resolution below run. Resolving "me" takes **two calls, in this order**, because Jira exposes
   no single equivalent of `mcp__github__get_me`: `mcp__atlassian__atlassianUserInfo` first — it takes
   no parameters and answers who the authenticated user is — then
   `mcp__atlassian__lookupJiraAccountId` with that identity as its `searchString`, since that tool is
@@ -461,6 +482,10 @@ be observed.
   - Expected: both reach Step 4's question as must-ask fields, per `jira-fields.md` §2, and creation
     succeeds with the answered values. What must **not** happen is the field being treated as
     config-filled and the creation rejected on it after the approval.
+- The same required `assignee`, this time with `plan.assignToMe` **true** — the other provenance.
+  - Expected: no question at all; the pre-flight resolves the account id, carries it as
+    `assignee_account_id`, and the created issues are assigned to you. What must **not** happen is
+    the id being resolved and then lost between the pass and the create call.
 - A required single-select custom field, then a required user-picker one — a "Severity" with
   `allowedValues`, and a "Reviewer" naming a person.
   - Expected: the select is asked with its options and sent as `{"id": …}` resolved from the picked
