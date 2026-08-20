@@ -239,6 +239,13 @@ epic-link custom field (§3.4 route 2), `labels` (§3.6), and every answer in th
 `required_field_answers`. `summary`, `description` with `contentFormat`, `assignee_account_id` and
 `parent` each have their own parameter — they never go through `additional_fields`.
 
+**The answers travel already converted.** `required_field_answers` holds each value in the shape
+`createJiraIssue` accepts — an option object, an array of them, an account id object — never the
+display string the user answered with. `jira-fields.md` §3 owns that conversion and the table that
+drives it; what §3.2 owns is only putting the converted value in the right channel. A display value
+arriving here unconverted is the same defect as a missing one, and gets the same treatment as the
+rule below: name the field, and do not send a call whose only possible answer is a 400.
+
 **Send a per-type field only on the type that required it.** `jira-fields.md` §2 deliberately keeps
 which issue type made each field mandatory: a "Team" required on the story type is not on the epic's
 create screen, and sending it there is a rejection on a field that project never asked for.
@@ -454,6 +461,12 @@ be observed.
   - Expected: both reach Step 4's question as must-ask fields, per `jira-fields.md` §2, and creation
     succeeds with the answered values. What must **not** happen is the field being treated as
     config-filled and the creation rejected on it after the approval.
+- A required single-select custom field, then a required user-picker one — a "Severity" with
+  `allowedValues`, and a "Reviewer" naming a person.
+  - Expected: the select is asked with its options and sent as `{"id": …}` resolved from the picked
+    `allowedValues` entry, not as its label; the user-picker answer goes through
+    `lookupJiraAccountId` and is sent as `{"accountId": …}`. Creation succeeds. What must **not**
+    happen is the displayed string reaching `additional_fields` verbatim.
 - The story type uncreatable for the user, the epic type creatable.
   - Expected: the epic survives; the report names its key and URL plus every story that did not
     land, with its reason; `## Created tickets` holds the epic; nothing is rolled back.

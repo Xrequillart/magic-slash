@@ -219,6 +219,46 @@ Three things it does not cover, because it renders a ticket where this renders a
   without, so a mandatory field is always listed however short its rendering — a silently dropped
   one is §4's forbidden false "nothing required", arriving by another route.
 
+**Rendering the question is only half of it — the answer has to be converted back.** Everything
+above turns a Jira field into something a person can answer. Nothing above turns what they answered
+into something `createJiraIssue` accepts, and the two shapes are not the same: a select rendered as
+the options `P1 / P2 / P3` comes back as the string `P1`, while the API wants an object. Sending the
+display value straight through is the same 400 this pass exists to move earlier, arriving one step
+later. So carry each field's `schema` from §1.3 alongside its `allowedValues`, and convert by it:
+
+| Field `schema` | Answered as | Sent as |
+| --- | --- | --- |
+| `type: string` | free text | the string |
+| `type: number` | free text | a number, unquoted |
+| `type: date` / `datetime` | free text | `YYYY-MM-DD` / ISO 8601 |
+| `type: option` | one option | `{"id": "<option id>"}` |
+| `type: array`, `items: option` | one or more options | `[{"id": "<option id>"}, …]` |
+| `type: array`, `items: string` | free text | `["a", "b"]` |
+| `type: user` | a name or email, in plain words | `{"accountId": "<id>"}` |
+| `type: array`, `items: user` | the same, one or more | `[{"accountId": "<id>"}, …]` |
+| `type: group` | free text | `{"name": "<group>"}` |
+| `type: array`, `items: version` / `component` | one or more options | `[{"id": "<id>"}, …]` |
+| `type: priority` | one option | `{"id": "<option id>"}` |
+
+Two rules are what make that table safe:
+
+- **Resolve an option to the `id` of the `allowedValues` entry the user picked** — never re-type its
+  label into `{"value": …}`. The label is what was displayed; the id is what the project stores.
+  Labels get renamed and can repeat across contexts, ids do not. This is why `allowedValues` must
+  travel **with their ids** rather than as a list of strings: a question built from labels alone
+  cannot be converted back. `{"value": …}` is a legitimate fallback only for an entry that carries
+  no id.
+- **A user field's answer is not an account id yet.** It arrives as a name or an email in plain
+  words, so it goes through `mcp__atlassian__lookupJiraAccountId` — the same call `trackers.md` §3.6
+  uses — before being sent. If it resolves to nothing, or to several people, ask again rather than
+  sending a guess: a wrong assignee is worse than a rejected creation, because it succeeds.
+
+One destination rule goes with them: **`assignee` is the exception that takes no object.** It has its
+own `createJiraIssue` parameter, `assignee_account_id`, carrying the bare account id string;
+`{"accountId": …}` is for the *other* user-picker fields, which travel in `additional_fields`.
+`trackers.md` §3.2 already states that `assignee_account_id` never goes through `additional_fields` —
+this is the shape half of that same statement.
+
 **That file's field cap does not transfer here; its ranking does.** Its cap is a context-volume
 guard on a *read*, where the fields are candidates and dropping one past the limit costs nothing —
 so the number is deliberately not restated here, because it is not a threshold this file has. Every
@@ -315,7 +355,7 @@ This table is the whole contract; `SKILL.md` restates none of it:
 | `cloudId` | the resolved site id | Step 3.3's JQL, `trackers.md` §3.3's create calls |
 | `project_key` | `plan.jiraProject`, confirmed to resolve | same |
 | `issue_types` | `{epic, story}` → `{id, name}` — the id for §1.3, the name for the create call | `trackers.md` §3.2 |
-| `must_ask_fields` | per field: id, name, requiring types, cardinality, `allowedValues` | `MSG_JIRA_REQUIRED_FIELDS` |
+| `must_ask_fields` | per field: id, name, requiring types, cardinality, its `schema`, and `allowedValues` **with their ids** | `MSG_JIRA_REQUIRED_FIELDS`, then §3's conversion |
 | `story_has_parent_field` | true when the story type's create screen carries `parent` | `trackers.md` §3.4 route 1 |
 | `epic_link_field_id` | the epic-link `customfield_XXXXX` on the **story** type's screen, empty when none | `trackers.md` §3.4 route 2 |
 | `description_template` | per type, the `description` field's default, empty when it has none | `trackers.md` §3.5 |
