@@ -216,25 +216,29 @@ it fills, and an interrupted session must leave behind everything that was settl
 
 ### 2.5: Metadata — first write
 
-Substitute the free text into a **quoted** heredoc, never into the command line — see
-`## Metadata contract` for why this shape is mandatory rather than stylistic.
+**Put each composed value on disk with the `Write` tool, then let the shell read the file.** Never
+substitute the text into the command itself — see `## Metadata contract` for why this shape is
+mandatory rather than stylistic. Write these three files under the `.magic/` directory created in
+2.4 (it is git-excluded, so nothing here can be committed):
+
+| File | Content |
+| --- | --- |
+| `.magic/.mp-title` | `{IDEA_SHORT}` — a short form of the idea, max 30 chars |
+| `.magic/.mp-spec-path` | `{SPEC_ABS_PATH}` — the **absolute** path of the file created in 2.4 |
+| `.magic/.mp-repo-path` | `{REPO_PATH}` — the target repository root |
+
+Then run the calls. The only thing the command line ever contains is a fixed literal path:
 
 ```bash
-IDEA_SHORT=$(cat <<'MS_EOF'
-{IDEA_SHORT}
-MS_EOF
-)
-REPO_PATH=$(cat <<'MS_EOF'
-{REPO_PATH}
-MS_EOF
-)
-SPEC_ABS_PATH=$(cat <<'MS_EOF'
-{SPEC_ABS_PATH}
-MS_EOF
-)
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(jq -nc --arg p "$REPO_PATH" '[$p]' | jq -sRr @uri)" > /dev/null 2>&1 || true
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(printf '%s' "$IDEA_SHORT" | jq -sRr @uri)&status=planning&specPath=$(printf '%s' "$SPEC_ABS_PATH" | jq -sRr @uri)" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(jq -Rs -c '[sub("\n$";"")]' < .magic/.mp-repo-path | jq -sRr 'sub("\n$";"") | @uri')" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&status=planning&specPath=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-spec-path)" > /dev/null 2>&1 || true
+rm -f .magic/.mp-title .magic/.mp-spec-path .magic/.mp-repo-path
 ```
+
+`specPath` is the absolute path, in the main checkout. `sub("\n$";"")` drops the single trailing
+newline the file carries. The `repos` value is built as a real JSON array by `jq -c` and then
+URI-encoded **once** — not `@json`, which would encode the array into a JSON *string* and make the
+server receive `"[\"…\"]"` instead of `["…"]`.
 
 `{IDEA_SHORT}` is a short form of the idea (max 30 chars). `{SPEC_ABS_PATH}` is the **absolute**
 path of the file created in 2.4, in the main checkout. The `repos` array is built by `jq -nc --arg`
@@ -362,12 +366,11 @@ someone else owns. The review is the one thing standing between a good brainstor
 Once the structure is approved, refine the title to the agreed wording — the epic's title on a
 breakdown, the story's on a single.
 
+Write `{AGREED_TITLE}` to `.magic/.mp-title` with the `Write` tool, then:
+
 ```bash
-AGREED_TITLE=$(cat <<'MS_EOF'
-{AGREED_TITLE}
-MS_EOF
-)
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(printf '%s' "$AGREED_TITLE" | jq -sRr @uri)" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)" > /dev/null 2>&1 || true
+rm -f .magic/.mp-title
 ```
 
 ## Step 7: Ticket creation
@@ -399,17 +402,16 @@ and becomes the record: months later it is the only place holding why the epic w
 
 ### 7.1: Metadata — third write
 
+Write `{TICKET_ID}: {TICKET_TITLE}` to `.magic/.mp-title` and the summarised `{DESCRIPTION}` to
+`.magic/.mp-desc`, both with the `Write` tool, then:
+
 ```bash
-AGENT_TITLE=$(cat <<'MS_EOF'
-{TICKET_ID}: {TICKET_TITLE}
-MS_EOF
-)
-DESCRIPTION=$(cat <<'MS_EOF'
-{DESCRIPTION}
-MS_EOF
-)
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&ticketId={TICKET_ID}&title=$(printf '%s' "$AGENT_TITLE" | jq -sRr @uri)&description=$(printf '%s' "$DESCRIPTION" | jq -sRr @uri)&status=planned" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&ticketId={TICKET_ID}&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&description=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-desc)&status=planned" > /dev/null 2>&1 || true
+rm -f .magic/.mp-title .magic/.mp-desc
 ```
+
+`{TICKET_ID}` is a tracker-issued identifier (`#412`, `PROJ-1234`) and is the one value still
+substituted directly — it cannot carry shell syntax. Everything free-form goes through a file.
 
 `{TICKET_ID}` is the **epic** on a breakdown: the epic is what this agent planned, and it is what
 the sidebar should show. `{TICKET_TITLE}` is capped at 30 characters, and the `TICKET-ID: Title`
@@ -471,24 +473,30 @@ Every call is guarded by `[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMI
 every value through `jq -sRr @uri`, and ends in `|| true`. The skill must work with the desktop app
 closed — a plan is still a plan without a sidebar to show it in.
 
-**Free text never touches the command line.** Every value that originates from the user — the idea,
-the agreed title, the description — is bound to a shell variable through a **quoted** heredoc
-(`<<'MS_EOF'`) and then used as `"$VAR"`. This is a correctness requirement, not a style preference,
-and it is the one part of these blocks that must survive any later tidying:
+**Free text never touches the command line.** Every free-form value — the idea, the agreed title,
+the description — is written to a file under `.magic/` with the `Write` tool, and the shell reads it
+back with `jq -Rsr 'sub("\n$";"") | @uri' < <path>`. The command line therefore contains nothing but
+a fixed literal path. This is a correctness requirement, not a style preference, and it is the part
+of these blocks that must survive any later tidying:
 
-- A quoted heredoc performs **no** expansion, so an apostrophe, a double quote, a `$`, a backtick or
-  a newline in the idea is data. Pasting the same text between single quotes on the command line
-  instead lets the first apostrophe close the string — and `/magic:plan` is a skill whose input is
-  prose a human just typed, in a product used in French, where `j'ai une idée d'export` is the
-  *normal* case, not the adversarial one. The mildest outcome is a silently truncated title; the
-  worst is the remainder of the line being handed to the shell as syntax.
-- `jq -sRr @uri` does not help here, and it is worth being precise about why: it encodes the value it
-  *receives*. A literal that broke apart before `jq` ever ran is not a value it can protect.
-- `printf '%s'` rather than `echo -n`: `echo -n` is not portable, and a value beginning with `-`
-  would be read as a flag.
+- The point is not which quoting scheme is used, but that **no quoting scheme is involved at all**.
+  Any attempt to carry the text through the command itself has a pathological input: single quotes
+  break on the first apostrophe — and `/magic:plan` runs in a product used in French, where
+  `j'ai une idée d'export` is the *normal* case; a quoted heredoc survives quotes, `$` and backticks
+  but ends early on a line equal to its own delimiter. Handing the shell a path removes the whole
+  class rather than moving its boundary, which is why the earlier heredoc form was replaced.
+- `jq -sRr @uri` is not what makes this safe, and it is worth being precise about why: it encodes the
+  value it *receives*. A literal that broke apart before `jq` ever ran is not a value it can protect.
+  Reading from a file is what guarantees `jq` receives the whole value.
+- `.magic/` is already created in Step 2.4 and git-excluded, so these files cost no new directory and
+  can never be committed. Delete them right after the call — they are a transport, not an artefact.
 
-Where a value must become JSON rather than a bare string, build it with `jq -nc --arg` — never by
-pasting it between literal brackets or braces.
+Where a value must become JSON rather than a bare string, build it with `jq -c` and encode the result
+**once** — never `@json` followed by another encode, which yields a JSON string where the server
+expects an array, and never by pasting the value between literal brackets or braces.
+
+`{TICKET_ID}` is the one value still substituted directly into a command, in Step 7.1: it is a
+tracker-issued identifier (`#412`, `PROJ-1234`) and cannot carry shell syntax.
 
 `status=planning` and `status=planned` are already members of the `TerminalMetadata.status` union and
 already have `statusToAction` entries: the contract was declared before anything sent them, so
