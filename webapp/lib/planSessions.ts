@@ -1,24 +1,30 @@
 import { fetchMembers, fetchOrgs } from './orgs'
 import { getSupabase } from './supabase'
+import { t } from './i18n'
+import { DEFAULT_LANGUAGE, type LanguageId } from './i18n/languages'
 import {
   planAuthor,
   toPlanSession,
   toPlanTicket,
+  toStatus,
   type PlanRepo,
   type PlanSession,
   type PlanSessionRow,
+  type PlanStatus,
   type PlanTicket,
   type PlanTicketRef,
   type PlanTicketRow,
 } from './planSessionRows'
 
 /**
- * Reading `/magic:plan` sessions out of the cloud.
+ * Reading `/magic:plan` sessions out of the cloud, and setting the status of one.
  *
  * The desktop app uploads a session's spec and its created tickets as the skill
- * runs; this is the read side of that, and it does nothing else — the shaping
- * (hierarchy, sort, filter, labels) lives in `lib/planSessionRows.ts`, which is
- * pure and therefore testable. Same division as `lib/team.ts` / `lib/teamRows.ts`.
+ * runs; this is the read side of that — plus exactly one write, `status`, which is
+ * the only field of a session a person is allowed an opinion on (see the end of the
+ * file for why it is only that one). The shaping (hierarchy, sort, filter, labels)
+ * lives in `lib/planSessionRows.ts`, which is pure and therefore testable. Same
+ * division as `lib/team.ts` / `lib/teamRows.ts`.
  *
  * NO ORG FILTER, anywhere below. RLS on `plan_sessions` already returns exactly
  * what the reader may see — their own sessions, plus every session on a repository
@@ -227,4 +233,51 @@ export async function fetchPlanSession(id: string): Promise<PlanDetail | null> {
   ])
 
   return { session, tickets, repo, author: planAuthor(session.ownerId, emailByOwner) }
+}
+
+/**
+ * Set one session's status — the page's only write.
+ *
+ * ONLY `status`, and only these two values. Everything else on the row is a
+ * projection of something on the author's machine (the spec file, the agent, the
+ * repository it resolved), so an edit here would be overwritten by the next upload
+ * and would meanwhile disagree with the document it claims to describe. The status
+ * is the one field whose truth a reader of this page can hold and the machine
+ * cannot: whether the planning is over.
+ *
+ * `planning` and `planned` rather than a third word meaning "closed by hand". The
+ * column is a MIRROR of the desktop's agent status (`planSessionRow`, in
+ * desktop/src/main/store/CloudStore.ts), and a value the desktop cannot produce
+ * would be a state only one of the two writers understands — the list would then
+ * have two done-ish labels and no way to explain the difference.
+ *
+ * WHICH MEANS THIS WRITE IS NOT FINAL, and the UI has to be built for that: the
+ * desktop re-sends `status` with every spec upload while the agent is still open,
+ * so a session marked done can flip back on its own. The page therefore offers both
+ * directions — the correction is one click. Gating the control on "is that agent
+ * still planning" was the alternative and it is not available here: the answer lives
+ * in the app's local agent list, not in a column this page can read.
+ *
+ * Throws when the write touched no row, exactly as `updateRepository` does: RLS
+ * turns a forbidden UPDATE into a success with zero rows affected, so selecting the
+ * affected rows back is the only thing that tells the two apart. `plan_sessions` is
+ * owner-writable only, so that is the case of a reader who sees a teammate's plan
+ * through their organization.
+ *
+ * Returns the stored status, read back through `toStatus`, so the caller displays
+ * what the row holds rather than what it asked for.
+ */
+export async function setPlanSessionStatus(
+  id: string,
+  status: PlanStatus,
+  lang: LanguageId = DEFAULT_LANGUAGE,
+): Promise<PlanStatus> {
+  const { data, error } = await getSupabase()
+    .from('plan_sessions')
+    .update({ status })
+    .eq('id', id)
+    .select('status')
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) throw new Error(t('plans.detail.statusForbidden', lang))
+  return toStatus((data[0] as { status: string | null }).status)
 }

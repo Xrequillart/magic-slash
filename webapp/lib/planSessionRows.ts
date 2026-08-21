@@ -117,8 +117,12 @@ export interface PlanCard extends PlanSession {
  * newer desktop build can carry a word this bundle has never heard of. Anything
  * unrecognised reads as `planning`: a session whose tickets are not confirmed is
  * the honest default, and it is also what an unfinished row actually is.
+ *
+ * Exported because the WRITE side reads its own result back through it: the two
+ * values `setPlanSessionStatus` accepts are exactly the two this recognises, and
+ * that is the one place it is enforced — the column would take any word.
  */
-function toStatus(value: string | null): PlanStatus {
+export function toStatus(value: string | null): PlanStatus {
   return value === 'planned' ? 'planned' : 'planning'
 }
 

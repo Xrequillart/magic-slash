@@ -1240,6 +1240,7 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                                     <ul>
                                         <li>{t('site.doc.plans.19')}</li>
                                         <li>{t('site.doc.plans.20')}</li>
+                                        <li>{t('site.doc.plans.21')}</li>
                                     </ul>
                                 </div>
                             </div>
@@ -1249,22 +1250,22 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                             repository, spelled out rather than left to be discovered: one of
                             them makes private brainstorming readable by a whole org. */}
                         <div className="doc-skill">
-                            <h3>{t('site.doc.plans.21')}</h3>
-                            <p className="doc-skill-desc">{t('site.doc.plans.22')}</p>
+                            <h3>{t('site.doc.plans.22')}</h3>
+                            <p className="doc-skill-desc">{t('site.doc.plans.23')}</p>
                             <div className="doc-skill-details">
                                 <div className="doc-skill-col">
-                                    <h4>{t('site.doc.plans.23')}</h4>
-                                    <RichText k="site.doc.plans.24" as="p" />
+                                    <h4>{t('site.doc.plans.24')}</h4>
+                                    <RichText k="site.doc.plans.25" as="p" />
                                 </div>
                                 <div className="doc-skill-col">
-                                    <h4>{t('site.doc.plans.25')}</h4>
-                                    <RichText k="site.doc.plans.26" as="p" />
+                                    <h4>{t('site.doc.plans.26')}</h4>
+                                    <RichText k="site.doc.plans.27" as="p" />
                                 </div>
                             </div>
                         </div>
 
-                        <h3>{t('site.doc.plans.27')}</h3>
-                        <RichText k="site.doc.plans.28" as="p" />
+                        <h3>{t('site.doc.plans.28')}</h3>
+                        <RichText k="site.doc.plans.29" as="p" />
                     </div>
 
                     {/* Trail 7b */}

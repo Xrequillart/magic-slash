@@ -1,12 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { AlertTriangle, ArrowLeft, ExternalLink, FolderGit2, User } from 'lucide-react'
 import { useRequireSession } from '@/lib/session'
-import { fetchPlanSession, type PlanDetail } from '@/lib/planSessions'
-import { groupPlanTickets, planLabel, type PlanTicket } from '@/lib/planSessionRows'
+import { fetchPlanSession, setPlanSessionStatus, type PlanDetail } from '@/lib/planSessions'
+import {
+  groupPlanTickets,
+  planLabel,
+  type PlanStatus,
+  type PlanTicket,
+} from '@/lib/planSessionRows'
 import { formatRelative } from '@/lib/installations'
 import { useT } from '@/lib/i18n/useLanguage'
 import { AppShell } from '@/components/AppShell'
@@ -90,6 +95,72 @@ function Tickets({ tickets }: { tickets: PlanTicket[] }) {
   )
 }
 
+/**
+ * Where the plan stands, and — for its author — the switch that says so.
+ *
+ * The badge is unchanged and is what everyone sees. The button next to it exists
+ * because `status` is the one field of a session a person knows better than the
+ * machine does: the desktop mirrors the agent's status onto the row as the skill
+ * runs, so a session whose spec ping never landed, or whose planning was abandoned,
+ * sits at `planning` forever with nobody able to say otherwise.
+ *
+ * BOTH DIRECTIONS, deliberately. A live agent's next spec upload re-sends its own
+ * status and can undo this (see setPlanSessionStatus), so the way back has to be as
+ * cheap as the way forward — otherwise the only repair is SQL.
+ *
+ * Owner only. RLS refuses everyone else's write anyway, and a button whose single
+ * outcome is an error message is worse than no button at all.
+ */
+function StatusControl({
+  status,
+  own,
+  onChange,
+}: {
+  status: PlanStatus
+  own: boolean
+  onChange: (next: PlanStatus) => Promise<void>
+}) {
+  const { t } = useT()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const next: PlanStatus = status === 'planned' ? 'planning' : 'planned'
+
+  const flip = async () => {
+    if (saving) return
+    setSaving(true)
+    setError(null)
+    try {
+      await onChange(next)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.saveFailed'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1.5">
+      <div className="flex items-center gap-2">
+        <Badge tone={status === 'planned' ? 'green' : 'yellow'}>
+          {t(status === 'planned' ? 'plans.status.planned' : 'plans.status.planning')}
+        </Badge>
+        {own && (
+          <button
+            type="button"
+            onClick={flip}
+            disabled={saving}
+            className="flex shrink-0 items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-black/[0.03] hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {t(next === 'planned' ? 'plans.detail.markPlanned' : 'plans.detail.markPlanning')}
+          </button>
+        )}
+      </div>
+      {error && <p className="text-xs text-red">{error}</p>}
+    </div>
+  )
+}
+
 export default function PlanDetailPage() {
   const params = useParams<{ id: string }>()
   const { session, pending } = useRequireSession()
@@ -102,6 +173,23 @@ export default function PlanDetailPage() {
     if (!session || !params.id) return
     fetchPlanSession(params.id).then(setDetail)
   }, [session, params.id])
+
+  /**
+   * Patch the status in place, with the value the row came BACK with rather than the
+   * one that was asked for — a successful write is self-correcting that way. No
+   * re-read: nothing else about the session changed, and re-fetching would pull the
+   * whole spec markdown down again to update one word.
+   */
+  const changeStatus = useCallback(
+    async (next: PlanStatus) => {
+      if (!params.id) return
+      const stored = await setPlanSessionStatus(params.id, next, lang)
+      setDetail((current) =>
+        current ? { ...current, session: { ...current.session, status: stored } } : current,
+      )
+    },
+    [params.id, lang],
+  )
 
   if (pending || !session) return <FullPageLoader />
 
@@ -137,13 +225,7 @@ export default function PlanDetailPage() {
             <h1 className="min-w-0 break-words font-display text-4xl font-black leading-tight tracking-tight text-ink">
               {planLabel(detail.session)}
             </h1>
-            <Badge tone={detail.session.status === 'planned' ? 'green' : 'yellow'}>
-              {t(
-                detail.session.status === 'planned'
-                  ? 'plans.status.planned'
-                  : 'plans.status.planning',
-              )}
-            </Badge>
+            <StatusControl status={detail.session.status} own={own} onChange={changeStatus} />
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
