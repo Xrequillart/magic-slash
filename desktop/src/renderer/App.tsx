@@ -58,7 +58,7 @@ function ErrorScreen({ error }: { error: string }) {
 
 export function App() {
   const t = useT()
-  const { closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, setActiveTerminal, rightPaneTerminalIds, toggleRightSidebar, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, setConfig, repoSetupDismissed, setRepoSetupDismissed, activeModal, closeModal } = useStore()
+  const { closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, setActiveTerminal, rightPaneTerminalIds, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, setConfig, repoSetupDismissed, setRepoSetupDismissed, activeModal, closeModal } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal, launchClaudeTerminal } = useTerminals()
   const { flatVisualOrder } = useOrderedTerminals()
@@ -160,14 +160,10 @@ export function App() {
   // Handle closing an agent
   const handleCloseAgent = useCallback(async () => {
     if (closeAgentModal) {
-      const isLastAgent = terminals.length === 1
       await killTerminal(closeAgentModal.terminalId)
       closeCloseAgentModal()
-      if (isLastAgent) {
-        toggleRightSidebar('info')
-      }
     }
-  }, [closeAgentModal, terminals.length, killTerminal, closeCloseAgentModal, toggleRightSidebar])
+  }, [closeAgentModal, killTerminal, closeCloseAgentModal])
 
   // Focus confirm button and listen for Enter/Escape when close agent modal is shown
   useEffect(() => {
@@ -425,8 +421,8 @@ export function App() {
           </div>
         </main>
 
-        {/* Right Sidebar - Hidden when viewing a script terminal */}
-        {!activeTerminalId?.startsWith('script-') && (
+        {/* Right Sidebar - Hidden with no agent at all, and when viewing a script terminal */}
+        {terminals.length > 0 && !activeTerminalId?.startsWith('script-') && (
           <ErrorBoundary fallbackLabel="Sidebar error">
             <AgentInfoSidebar />
           </ErrorBoundary>

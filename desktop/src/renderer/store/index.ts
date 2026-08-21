@@ -245,6 +245,10 @@ export const useStore = create<AppState>()(
               focusedPane:
                 state.splitTerminalId === id ? 'primary' : state.focusedPane,
               rightPaneTerminalIds: newRightIds,
+              // The info sidebar describes an agent, so it has nothing to show
+              // once the last one is gone: leaving it open would slide an empty
+              // panel back in on the next launch's blank slate.
+              rightSidebar: newTerminals.length === 0 ? null : state.rightSidebar,
             }
           }),
 
@@ -262,6 +266,7 @@ export const useStore = create<AppState>()(
             scriptTerminals: [],
             closeAgentModal: null,
             selectedFile: null,
+            rightSidebar: null,
           }),
 
         setActiveTerminal: (activeTerminalId) =>
