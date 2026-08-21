@@ -9,6 +9,7 @@ import type { MessageKey, Translate } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
 import { SkillStats } from '@/components/SkillStats'
 import { TabStrip } from '@/components/TabStrip'
+import { TabSweep } from '@/components/TabSweep'
 
 /**
  * Workflow status → badge tone. Mirrors STATUS_CONFIG in the desktop's Team page
@@ -204,6 +205,15 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
         </div>
       )}
 
+      {/* Everything the tab scopes, in one wrapper so switching tab travels the way the
+          strip does: a tab further right arrives from the right. Not keyed on the scope —
+          keying would remount SkillStats and make it refetch what it already has for a
+          tab you are coming back to. */}
+      <TabSweep
+        tabKey={activeScope === undefined ? undefined : (activeScope ?? 'personal')}
+        order={tabs.map((tab) => tab.scope ?? 'personal')}
+      >
+
       {/* What this tab RUNS, before what it HAS. Every count below says how much work
           is in flight; this one says whether the cycle is being used at all.
           `activeScope` is passed WHOLE rather than coerced: null is the personal tab
@@ -247,6 +257,8 @@ export function TeamRepos({ overview }: { overview: TeamOverview | null }) {
             : t('team.unmatched.many', { count: unmatched })}
         </p>
       )}
+
+      </TabSweep>
     </>
   )
 }

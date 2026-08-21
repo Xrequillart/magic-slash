@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { useRequireSession } from '@/lib/session'
 import {
   fetchUserSettings,
@@ -11,9 +12,10 @@ import {
 import { useT } from '@/lib/i18n/useLanguage'
 import { AppShell } from '@/components/AppShell'
 import { AppHeaderCard } from '@/components/application/AppHeaderCard'
-import { ApplicationTabs } from '@/components/application/ApplicationTabs'
+import { ApplicationTabs, APPLICATION_TABS } from '@/components/application/ApplicationTabs'
 import { SettingsProvider } from '@/components/application/SettingsContext'
 import { Card, FullPageLoader } from '@/components/ui'
+import { TabSweep } from '@/components/TabSweep'
 
 /**
  * Application section: the desktop app itself — whether it is running, on what
@@ -37,6 +39,9 @@ import { Card, FullPageLoader } from '@/components/ui'
 export default function ApplicationLayout({ children }: { children: React.ReactNode }) {
   const { session, pending } = useRequireSession()
   const { t, lang } = useT()
+  // One tab is one route here, so the tab on screen is the pathname — the same value
+  // the strip highlights by.
+  const pathname = usePathname()
   const userId = session?.user.id
 
   const [settings, setSettings] = useState<UserSettings | null>(null)
@@ -124,7 +129,17 @@ export default function ApplicationLayout({ children }: { children: React.ReactN
                 {saveError}
               </p>
             )}
-            <div className="space-y-8">{children}</div>
+            {/* The routed page travels the way the strip does: a tab further right
+                arrives from the right. The wrapper is in the LAYOUT because that is
+                what survives the navigation — a page animating itself would be
+                mounting, with nothing to know which way it came from. */}
+            <TabSweep
+              tabKey={pathname}
+              order={APPLICATION_TABS.map((tab) => tab.href)}
+              className="space-y-8"
+            >
+              {children}
+            </TabSweep>
             <p className="text-xs text-muted">{t('application.footnote')}</p>
           </SettingsProvider>
         )}

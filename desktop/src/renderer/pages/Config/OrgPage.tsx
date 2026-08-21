@@ -7,6 +7,7 @@ import { Modal } from '../../components/Modal'
 import { RoleSelect } from './RoleSelect'
 import { SectionHeader } from './SectionHeader'
 import { TabStrip } from '../../components/TabStrip'
+import { TabSweep } from '../../components/TabSweep'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
 import type { MessageKey, Translate } from '../../i18n'
@@ -526,6 +527,11 @@ export function OrgPage() {
               onSelect={setSettingsOrgId}
             />
           )}
+          {/* The card travels the way the strip does — a tab further right arrives from
+              the right. `order` is the tab order, which is the order the organizations
+              are listed in, not the order of `visibleOrgs`: that one is filtered down to
+              the active tab and knows nothing about which side the previous one was on. */}
+          <TabSweep tabKey={activeOrgId} order={orgs.map((o) => o.id)} className="flex flex-col gap-4">
           {visibleOrgs.map((o) => (
           <OrganizationCard
             key={o.id}
@@ -546,6 +552,7 @@ export function OrgPage() {
             onArchive={setArchiveOrgTarget}
           />
           ))}
+          </TabSweep>
         </>
       )}
 

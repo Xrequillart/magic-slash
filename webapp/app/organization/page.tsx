@@ -23,6 +23,7 @@ import { AppShell } from '@/components/AppShell'
 import { Modal } from '@/components/Modal'
 import { OrganizationCard } from '@/components/OrganizationCard'
 import { TabStrip } from '@/components/TabStrip'
+import { TabSweep } from '@/components/TabSweep'
 import { Button, Card, FullPageLoader, Input, Select, SectionHeader } from '@/components/ui'
 
 type Status = { kind: 'ok' | 'err'; msg: string } | null
@@ -275,6 +276,11 @@ export default function OrganizationPage() {
                 onSelect={setSelectedOrgId}
               />
             )}
+            {/* The card travels the way the strip does — a tab further right arrives from
+                the right. `order` is the full list, which is the tab order: the filtered
+                list below is one organization and knows nothing about which side the
+                previous one was on. */}
+            <TabSweep tabKey={activeOrgId} order={orgs.map((o) => o.id)} className="space-y-4">
             {(orgs.length > 1 ? orgs.filter((o) => o.id === activeOrgId) : orgs).map((o) => (
               <OrganizationCard
                 key={o.id}
@@ -301,6 +307,7 @@ export default function OrganizationPage() {
                 }}
               />
             ))}
+            </TabSweep>
           </div>
         )}
 

@@ -7,6 +7,7 @@ import { useOrgAgents } from '../../hooks/useOrgAgents'
 import { buildRepoRows, type RepoRow, type RepoScope } from '../../utils/repoRows'
 import { useT, type Translate } from '../../i18n'
 import { TabStrip } from '../../components/TabStrip'
+import { TabSweep } from '../../components/TabSweep'
 import { OwnerLabel, StatusPill, TicketBadge } from './parts'
 import { SkillStats } from './SkillStats'
 
@@ -182,6 +183,16 @@ export function RepoSection() {
         />
       )}
 
+      {/* Everything the tab scopes, in one wrapper so switching tab travels the way the
+          strip does: a tab further right arrives from the right. Not keyed on the scope —
+          keying would remount SkillStats and make it refetch what it has already got for
+          a tab you are coming back to. */}
+      <TabSweep
+        tabKey={activeScope === undefined ? undefined : (activeScope ?? PERSONAL_KEY)}
+        order={tabs.map((tab) => tab.scope ?? PERSONAL_KEY)}
+        className="flex flex-col gap-5"
+      >
+
       {/* What this tab RUNS, before what it HAS. Every count below says how much work
           is in flight; this one says whether the cycle is being used at all.
           `activeScope` is passed WHOLE rather than coerced: null is the personal tab
@@ -233,6 +244,8 @@ export function RepoSection() {
           </p>
         )}
       </div>
+
+      </TabSweep>
     </div>
   )
 }
