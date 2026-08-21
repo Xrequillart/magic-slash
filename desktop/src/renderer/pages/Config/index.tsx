@@ -1208,6 +1208,26 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         </div>
       </div>
 
+      {/* Plan session sync (ON by default — an explicit false opts out) */}
+      <div>
+        <SectionHeader icon={Lightbulb} title={t('settings.application.planSync.section')} />
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
+          <ToggleRow
+            label={t('settings.application.planSync.label')}
+            help={t('settings.application.planSync.help')}
+            value={config?.planSyncEnabled}
+            onChange={async (next) => {
+              const result = await window.electronAPI.config.setPlanSyncEnabled(next)
+              setConfig(result.config)
+            }}
+            errorMessage={t('settings.application.planSync.error')}
+          />
+          <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
+            {t('settings.application.planSync.footnote')}
+          </div>
+        </div>
+      </div>
+
       {/* PR Review Watcher Section */}
       <div>
         <SectionHeader icon={GitPullRequest} title={t('settings.application.prWatcher.section')} />
@@ -1318,26 +1338,6 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           )}
           <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
             {t('settings.application.usageLogs.footnote.agents')}
-          </div>
-        </div>
-      </div>
-
-      {/* Plan session sync (ON by default — an explicit false opts out) */}
-      <div>
-        <SectionHeader icon={Lightbulb} title={t('settings.application.planSync.section')} />
-        <div className="bg-surface border border-line-strong rounded-xl p-4">
-          <ToggleRow
-            label={t('settings.application.planSync.label')}
-            help={t('settings.application.planSync.help')}
-            value={config?.planSyncEnabled}
-            onChange={async (next) => {
-              const result = await window.electronAPI.config.setPlanSyncEnabled(next)
-              setConfig(result.config)
-            }}
-            errorMessage={t('settings.application.planSync.error')}
-          />
-          <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
-            {t('settings.application.planSync.footnote')}
           </div>
         </div>
       </div>
