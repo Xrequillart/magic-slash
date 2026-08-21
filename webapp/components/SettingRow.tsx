@@ -53,11 +53,19 @@ export function SettingRow({
   label,
   description,
   stacked = false,
+  icon: Icon,
   children,
 }: {
   label: string
   description?: string
   stacked?: boolean
+  /**
+   * Marks what KIND of setting this is, before the label says which one. For the
+   * guard rails: a padlock on "Commits on main branches" says the row is a safety,
+   * which neither its name nor its toggle could say on their own. Most rows have
+   * none — an icon on every row is decoration, and stops meaning anything.
+   */
+  icon?: LucideIcon
   children?: React.ReactNode
 }) {
   return (
@@ -67,7 +75,10 @@ export function SettingRow({
       }`}
     >
       <div className="min-w-0 flex-1">
-        <p className="font-display text-sm font-bold text-ink">{label}</p>
+        <p className="flex items-center gap-1.5 font-display text-sm font-bold text-ink">
+          {Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-black/30" />}
+          {label}
+        </p>
         {description && <p className="mt-0.5 text-xs text-muted">{description}</p>}
       </div>
       {children && <div className={stacked ? 'mt-3' : 'shrink-0'}>{children}</div>}

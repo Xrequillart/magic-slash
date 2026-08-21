@@ -211,13 +211,15 @@ describe('message catalogues', () => {
       'org.role.admin',
       'org.colActions',
       'org.invitations',
-      // Section and tab titles French borrows whole. "Git", "Tracker", "Repository",
-      // "Skills" and "Danger" are the words the French UI uses too — translating
-      // "Tracker" to "Outil de suivi" here would disagree with the tracker SETTING
-      // right under it, which is translated, and the row would read as two names for
-      // two different things.
-      'repo.git.section',
-      'repo.tracker.section',
+      // Section and tab titles French borrows whole. "Repository", "Tickets",
+      // "Skills" and "Danger" are the words the French UI uses too.
+      'repo.repository.section',
+      // Two of the Repository tab's three group headings: a "branch" is a branche but
+      // "Branches" heads the same box either way, and a worktree is a worktree — it is
+      // git's own word, which is why the help line under it uses it in French too.
+      'repo.repository.groupBranches',
+      'repo.repository.groupWorktrees',
+      'repo.tickets.section',
       // The two trackers, named after the products: "GitHub" and "Jira" in both
       // languages. Every other tab is labelled by its own section key, which is
       // already listed above wherever French borrows it whole.

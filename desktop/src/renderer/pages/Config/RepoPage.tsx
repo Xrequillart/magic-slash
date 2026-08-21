@@ -14,6 +14,16 @@ import { useT, type MessageKey } from '../../i18n'
 import { Switch } from '../../components/Switch'
 import { LanguageSelect } from '../../components/LanguageSelect'
 import { TabStrip } from '../../components/TabStrip'
+import { TabSweep } from '../../components/TabSweep'
+import {
+  COMMIT_FORMAT_LABELS,
+  COMMIT_STYLE_LABELS,
+  commitSummary,
+  planSummary,
+  prSummary,
+  resolveSummary,
+  type SkillSummary,
+} from '../../utils/skillSummary'
 import { BTN, INPUT, SELECT } from '../../theme/controls'
 import {
   PLAN_SPLITTING_MODES,
@@ -46,7 +56,7 @@ interface RepoPageProps {
  * there, and the bin is what keeps it from reading as a fourth ordinary tab.
  */
 type RepoTab =
-  | 'general' | 'tracker' | 'languages' | 'git'
+  | 'general' | 'repository' | 'tickets' | 'languages'
   | 'plan' | 'commit' | 'pr' | 'resolve'
 
 const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
@@ -56,9 +66,12 @@ const REPO_TABS: { id: RepoTab; labelKey: MessageKey; icon: LucideIcon }[] = [
   // to translate. Danger is the exception: its section is headed "Danger Zone",
   // which is a warning, where a pill wants one word.
   { id: 'general', labelKey: 'repo.general.section', icon: Settings2 },
-  { id: 'tracker', labelKey: 'repo.tracker.section', icon: Ticket },
+  // Repository before Tickets, and both before Languages: the first three tabs are
+  // the repo itself — what it is, where its code lives, where its tickets go — and
+  // the strip reads as that list before it turns to how the skills behave.
+  { id: 'repository', labelKey: 'repo.repository.section', icon: GitBranch },
+  { id: 'tickets', labelKey: 'repo.tickets.section', icon: Ticket },
   { id: 'languages', labelKey: 'repo.langs.section', icon: Languages },
-  { id: 'git', labelKey: 'repo.git.section', icon: GitBranch },
   // One tab per skill rather than one "Skills" tab holding four sections: each of
   // these is a workflow with its own vocabulary, and stacking them made the tab that
   // held them longer than the five others put together.
@@ -118,10 +131,17 @@ const PLAN_ACCEPTANCE_CRITERIA_LABELS: Record<(typeof PLAN_ACCEPTANCE_CRITERIA_F
  * component redeclared each render is a new type each render, so React would
  * remount it and the text fields inside would lose focus on every keystroke.
  */
-function SettingRow({ label, description, align = 'start', children }: {
+function SettingRow({ label, description, align = 'start', icon: Icon, children }: {
   label: string
   description: string
   align?: 'start' | 'center'
+  /**
+   * Marks what KIND of setting this is, before the label says which one. For the
+   * guard rails: a padlock on "Commits on main branches" says the row is a safety,
+   * which neither its name nor its switch could say on their own. Most rows have
+   * none — an icon on every row is decoration, and stops meaning anything.
+   */
+  icon?: LucideIcon
   children: React.ReactNode
 }) {
   // Written out rather than interpolated: Tailwind only emits classes it can see
@@ -130,10 +150,73 @@ function SettingRow({ label, description, align = 'start', children }: {
   return (
     <div className={`flex ${items} justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0`}>
       <div className="flex-1">
-        <label className="block text-sm font-medium mb-0.5">{label}</label>
+        <label className="flex items-center gap-1.5 text-sm font-medium mb-0.5">
+          {Icon && <Icon className="w-3.5 h-3.5 text-text-secondary/50 shrink-0" />}
+          {label}
+        </label>
         <p className="text-xs text-text-secondary/50">{description}</p>
       </div>
       {children}
+    </div>
+  )
+}
+
+/**
+ * What the skill a tab configures actually DOES, at the top of that tab.
+ *
+ * The settings alone never said it: "How much to split" and "Acceptance criteria" are
+ * knobs on a run whose shape you had to already know — that /magic:plan brainstorms
+ * first, writes a spec, and creates nothing until you approve it. Four tabs out of
+ * eight configure a skill rather than the repository, and those four get this.
+ *
+ * DESCRIBES THIS REPOSITORY, not the skill in general: the steps are composed from the
+ * settings below by `utils/skillSummary`, so a repo filing GitHub issues reads "one
+ * issue per story on owner/repo" where a Jira one reads "the epic (Epic) and its
+ * stories (Story) in project PROJ". A generic summary was wrong for whichever half of
+ * the fleet was configured the other way, and there is no lead sentence long enough to
+ * cover both without saying nothing.
+ *
+ * The lead is the one static line — the skill's job in a clause — and the steps under
+ * it carry every value. Flags that only add something to the output (co-author, ticket
+ * id, labels) trail below as short phrases instead of taking a step of their own.
+ */
+const SKILL_INTROS = {
+  plan: { command: '/magic:plan', icon: ClipboardList, lead: 'repo.plan.intro' },
+  commit: { command: '/magic:commit', icon: GitCommitHorizontal, lead: 'repo.commit.intro' },
+  pr: { command: '/magic:pr', icon: GitPullRequest, lead: 'repo.pr.intro' },
+  resolve: { command: '/magic:resolve', icon: MessageSquare, lead: 'repo.resolve.intro' },
+} satisfies Record<string, { command: string; icon: LucideIcon; lead: MessageKey }>
+
+function SkillIntro({ skill, summary }: { skill: keyof typeof SKILL_INTROS; summary: SkillSummary }) {
+  const t = useT()
+  const { command, icon: Icon, lead } = SKILL_INTROS[skill]
+  return (
+    <div className="mb-6 flex items-start gap-3 bg-surface-subtle border border-line-subtle rounded-xl px-4 py-3.5">
+      {/* The tab's own icon, so the block reads as belonging to the tab you just picked
+          rather than as a notice about something else. */}
+      <Icon className="w-4 h-4 text-text-secondary/40 shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <code className="inline-block text-xs font-mono bg-surface-strong text-ink px-1.5 py-0.5 rounded">{command}</code>
+        <p className="text-xs text-text-secondary mt-1.5">{t(lead)}</p>
+        {/* Numbered, because these steps happen in this order — the run reads top to
+            bottom, and the ticket creation at the end is what the spec approval above
+            it gates. */}
+        <ol className="mt-2 space-y-1">
+          {summary.steps.map((step, index) => (
+            <li key={step.key} className="flex gap-2 text-[11px] text-text-secondary/70">
+              <span className="text-text-secondary/40 tabular-nums shrink-0">{index + 1}.</span>
+              <span>{t(step.key, step.vars)}</span>
+            </li>
+          ))}
+        </ol>
+        {summary.tail.length > 0 && (
+          /* The flags, as one dim line under the steps. The leading "+" is what makes
+             it read as things ADDED to the run rather than as a step of its own. */
+          <p className="mt-2 text-[11px] text-text-secondary/50">
+            + {summary.tail.map((flag) => t(flag.key, flag.vars)).join(' · ')}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -323,10 +406,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const readOnly = !!repo?.orgId && !isOwner && scopeOrg?.role !== 'admin'
 
   const [path, setPath] = useState(repo?.path || '')
-  const [keywords, setKeywords] = useState((repo?.keywords || []).join(', '))
   const [pathStatus, setPathStatus] = useState<{ isGit?: boolean; exists?: boolean } | null>(null)
   const [pathChanged, setPathChanged] = useState(false)
-  const [keywordsChanged, setKeywordsChanged] = useState(false)
   const [remoteUrl, setRemoteUrl] = useState(repo?.remoteUrl || '')
   const [remoteUrlChanged, setRemoteUrlChanged] = useState(false)
   const [remoteUrlError, setRemoteUrlError] = useState<string | null>(null)
@@ -346,9 +427,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
     const currentRepo = config?.repositories?.[repoName]
     setEditedName(repoName)
     setPath(currentRepo?.path || '')
-    setKeywords((currentRepo?.keywords || []).join(', '))
     setPathChanged(false)
-    setKeywordsChanged(false)
     setTemplate(null)
     setTemplateContent('')
     setTemplateChanged(false)
@@ -401,11 +480,6 @@ export function RepoPage({ repoName }: RepoPageProps) {
     }
   }
 
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    setKeywordsChanged(value !== (repo?.keywords || []).join(', '))
-  }
-
   const savePath = async () => {
     try {
       await updateRepository(repoName, { path })
@@ -447,11 +521,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
     }
   }
 
-  const saveKeywords = async () => {
+  // Saves on every add and every removal, like the worktree files below: a chip is a
+  // whole value, so there is no half-typed state a Save button would be protecting.
+  const handleKeywordsChange = async (next: string[]) => {
     try {
-      const keywordsArray = keywords.split(',').map(k => k.trim()).filter(k => k)
-      await updateRepository(repoName, { keywords: keywordsArray })
-      setKeywordsChanged(false)
+      await updateRepository(repoName, { keywords: next })
       showToast(t('toast.keywordsUpdated'))
     } catch (error) {
       showToast(error instanceof Error ? error.message : t('toast.keywordsUpdateFailed'), 'error')
@@ -724,7 +798,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
   const jiraSiteUrlVal = resolveJiraSite(repo)
   const jiraProjectVal = resolveJiraProject(repo)
   // Derived from the remote, or from an `issues.githubIssuesUrl` override when the
-  // issues live in another repository. Displayed, never edited — see the Tracker tab.
+  // issues live in another repository. Displayed, never edited — see the Tickets tab.
   const githubIssuesTargetVal = resolveGitHubIssuesUrl(repo)
   // `ask` counts as "there is a Jira": it can only mean anything if Jira is one of the
   // two answers. Only `github` states that there is not one.
@@ -765,12 +839,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
   }
 
   /**
-   * The clone address row, rendered on BOTH the Repository and the Tracker tab.
+   * The clone address row, rendered on BOTH the Repository and the Tickets tab.
    *
    * One row, one piece of state, one save button: the two tabs never render at the
    * same time, so sharing them is what makes it impossible for the field to hold two
    * different answers depending on where you opened it. Only the label and the help
-   * line differ — on Repository it is the address the team clones from, on Tracker it
+   * line differ — on Repository it is the address the team clones from, on Tickets it
    * is the repository the issues are filed in.
    *
    * A FUNCTION returning JSX, deliberately not a component: a component declared
@@ -901,8 +975,8 @@ export function RepoPage({ repoName }: RepoPageProps) {
           Local state, not the hash route: `contentKey` in Config/index.tsx keys the
           content pane on `repo:{name}`, so switching sub-tab does not remount this
           page and the choice survives. Leaving the repository and coming back does
-          remount it, which lands on Repository — the right default for reopening a
-          repo you have not touched in a while. */}
+          remount it, which lands on General — the right default for reopening a repo
+          you have not touched in a while. */}
       <div className="mb-6">
         <TabStrip
           ariaLabel={t('repo.tabs.aria')}
@@ -914,6 +988,11 @@ export function RepoPage({ repoName }: RepoPageProps) {
         />
       </div>
 
+      {/* Every tab's panel, in one wrapper so the switch between them travels the way
+          the strip does: a tab further right arrives from the right. The panels keep
+          their own indentation rather than gaining a level from this — the alternative
+          was reindenting nine hundred lines of settings to add a div. */}
+      <TabSweep tabKey={tab} order={REPO_TABS.map(({ id }) => id)}>
 
       {tab === 'general' && (
         <>
@@ -994,24 +1073,25 @@ export function RepoPage({ repoName }: RepoPageProps) {
               </fieldset>
             </div>
 
-            {/* Keywords */}
-            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
+            {/* Keywords, as chips — the same control as the worktree files, and for the
+                same reason: this is a LIST, and a comma-separated line made you re-read
+                the whole thing to drop one word from it. Each chip saves as it is added
+                or removed, so there is no draft to lose and no Save button to find.
+
+                Stacked like that list too: chips grow along the row, and a handful of
+                them beside their own label wraps after two. */}
+            <div className="py-4 border-b border-line-subtle last:border-b-0">
+              <div className="flex-1 mb-3">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.general.keywords')}</label>
                 <p className="text-xs text-text-secondary/50">{t('repo.general.keywordsHelp')}</p>
               </div>
-              <fieldset disabled={readOnly} className="flex flex-col gap-2 w-72 min-w-0">
-                <input
-                  type="text"
-                  value={keywords}
-                  onChange={(e) => handleKeywordsChange(e.target.value)}
-                  className={`${INPUT} w-full`}
+              <fieldset disabled={readOnly} className="w-full min-w-0">
+                <ChipList
+                  items={repo.keywords || []}
+                  onChange={handleKeywordsChange}
+                  placeholder="auth"
+                  inputId="keyword-input"
                 />
-                {keywordsChanged && (
-                  <button onClick={saveKeywords} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                    {t('common.save')}
-                  </button>
-                )}
               </fieldset>
             </div>
 
@@ -1067,9 +1147,130 @@ export function RepoPage({ repoName }: RepoPageProps) {
         </>
       )}
 
-      {tab === 'tracker' && (
+      {tab === 'repository' && (
         <>
-        {/* Tracker, in groups that answer one question each: WHERE do tickets go, and
+        {/* Repository, in three groups that answer three different questions: WHERE the
+            repo is — the folder on this machine and the address teammates clone — which
+            branch work starts from, and what a fresh worktree needs copied into it. One
+            unlabelled card held all four rows, which read as a pile: the path is private
+            to this machine while the branch is shared config, and nothing on screen said
+            so. */}
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.repository.groupLocation')}</h2>
+          {/* No `disabled` fieldset around this group, unlike the two below. The path is
+              this machine's own, private to you, and a read-only member of a team repo
+              still has to point the repo at their clone; the remote row carries its own
+              fieldset because its rule is different again — any member may FILL IN a
+              missing address, only an owner or admin may correct one already set. */}
+          <div className="bg-surface border border-line-strong rounded-xl px-4">
+            <SettingRow
+              label={t('repo.general.path')}
+              description={readOnly ? t('repo.general.pathHelpReadOnly') : t('repo.general.pathHelp')}
+            >
+              <div className="flex flex-col gap-2 w-72">
+                {/* `items-stretch`, so the picker is exactly as tall as the field beside
+                    it: its own padding made it 4px taller, and a hardcoded height would
+                    go stale the day INPUT's padding changes. */}
+                <div className="flex items-stretch gap-2">
+                  <input
+                    type="text"
+                    value={path}
+                    onChange={(e) => handlePathChange(e.target.value)}
+                    className={`${INPUT} flex-1 min-w-0`}
+                  />
+                  <button
+                    onClick={handlePickFolder}
+                    title={t('repo.general.chooseFolder')}
+                    className="flex items-center justify-center px-2 bg-surface border border-line rounded-lg text-text-secondary hover:text-ink transition-colors shrink-0"
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                  </button>
+                </div>
+                {pathStatus && (
+                  <div className={`flex items-center gap-1.5 text-xs ${
+                    pathStatus.isGit ? 'text-green' : 'text-yellow'
+                  }`}>
+                    {pathStatus.isGit ? (
+                      <><Check className="w-3 h-3" /> {t('repo.general.pathValid')}</>
+                    ) : pathStatus.exists ? (
+                      <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathNotGit')}</>
+                    ) : (
+                      <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathMissing')}</>
+                    )}
+                  </div>
+                )}
+                {pathChanged && (
+                  <button onClick={savePath} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
+                    {t('common.save')}
+                  </button>
+                )}
+              </div>
+            </SettingRow>
+
+            {/* The same remote row the Tickets tab shows — same state, same save button
+                (see remoteUrlRow). It appears twice because the address answers two
+                different questions: here it is where a teammate clones this repo FROM,
+                there it is the repository the issues are filed IN. One row shared
+                between them is what keeps the two from drifting apart. */}
+            {remoteUrlRow(
+              t('repo.general.remoteUrl'),
+              readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp'),
+            )}
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.repository.groupBranches')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
+            <SettingRow
+              label={t('repo.branches.development')}
+              description={t('repo.branches.developmentHelp')}
+            >
+              <div className="relative">
+                <select
+                  value={branchSettings.development || ''}
+                  onChange={(e) => handleBranchSettingChange('development', e.target.value)}
+                  disabled={branchesLoading}
+                  className={`${SELECT} w-52 disabled:opacity-50`}
+                >
+                  <option value="">
+                    {branchesLoading ? t('common.loading') : t('repo.branches.select')}
+                  </option>
+                  {remoteBranches.map((branch) => (
+                    <option key={branch} value={branch}>{branch}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+              </div>
+            </SettingRow>
+          </fieldset>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.repository.groupWorktrees')}</h2>
+          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
+            {/* Stacked rather than side by side: the chips grow along the row, and a
+                list of filenames beside its own label would wrap after two. */}
+            <div className="py-4">
+              <div className="flex-1 mb-3">
+                <label className="block text-sm font-medium mb-0.5">{t('repo.worktree.files')}</label>
+                <p className="text-xs text-text-secondary/50">{t('repo.worktree.filesHelp')}</p>
+              </div>
+              <ChipList
+                items={repo.worktreeFiles || []}
+                onChange={handleWorktreeFilesChange}
+                placeholder=".env"
+                inputId="worktree-file-input"
+              />
+            </div>
+          </fieldset>
+        </div>
+        </>
+      )}
+
+      {tab === 'tickets' && (
+        <>
+        {/* Tickets, in groups that answer one question each: WHERE do tickets go, and
             what is each tracker's address. It was one flat list of seven rows mixing
             the two with Jira issue-type names, and it read as a form rather than as an
             answer — the Jira type names have moved to the Plan tab, which is the only
@@ -1110,7 +1311,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.groupGithub')}</h2>
           <div className="bg-surface border border-line-strong rounded-xl px-4">
-            {/* The same remote row the Git tab shows as a clone address — same state,
+            {/* The same remote row the Repository tab shows as a clone address — same state,
                 same save button (see remoteUrlRow).
 
                 Its help line depends on the tracker, and that is the whole point: it
@@ -1162,22 +1363,6 @@ export function RepoPage({ repoName }: RepoPageProps) {
           </div>
         )}
 
-        <div className="mb-6">
-          <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.tracker.groupComments')}</h2>
-          <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            {/* Read by /magic:pr, :review and :done — three skills, so it belongs to the
-                repo's relationship with its tracker rather than to any one skill's tab.
-                The comment lands on the TICKET and carries the PR link, which the old
-                label ("Comment on PR creation") left ambiguous. */}
-            <SettingRow align="center" label={t('repo.issues.commentOnPR')} description={t('repo.issues.commentOnPRHelp')}>
-              <Switch
-                checked={commentOnPRVal}
-                onChange={(next) => handleIssuesSettingChange('commentOnPR', next)}
-                label={t('repo.issues.commentOnPR')}
-              />
-            </SettingRow>
-          </fieldset>
-        </div>
         </>
       )}
 
@@ -1246,118 +1431,24 @@ export function RepoPage({ repoName }: RepoPageProps) {
         </>
       )}
 
-      {tab === 'git' && (
-        <>
-        {/* Git — how this repo's git is laid out: the folder on this machine, the branch
-            features start from, and the files a worktree needs copied into it. Three
-            rows that were spread over General, Branches and Worktree. */}
-        {/* Git Section */}
-        <div className="mb-6">
-          <div className="bg-surface border border-line-strong rounded-xl px-4">
-            {/* Path — always editable: the folder is this machine's, private to
-                you, and a read-only member still needs to point the repo at it. */}
-            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.general.path')}</label>
-                <p className="text-xs text-text-secondary/50">
-                  {readOnly ? t('repo.general.pathHelpReadOnly') : t('repo.general.pathHelp')}
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 w-72">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={path}
-                    onChange={(e) => handlePathChange(e.target.value)}
-                    className={`${INPUT} flex-1 min-w-0`}
-                  />
-                  <button
-                    onClick={handlePickFolder}
-                    title={t('repo.general.chooseFolder')}
-                    className="p-2 bg-surface border border-line rounded-lg text-text-secondary hover:text-ink transition-colors shrink-0"
-                  >
-                    <FolderOpen className="w-4 h-4" />
-                  </button>
-                </div>
-                {pathStatus && (
-                  <div className={`flex items-center gap-1.5 text-xs ${
-                    pathStatus.isGit ? 'text-green' : 'text-yellow'
-                  }`}>
-                    {pathStatus.isGit ? (
-                      <><Check className="w-3 h-3" /> {t('repo.general.pathValid')}</>
-                    ) : pathStatus.exists ? (
-                      <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathNotGit')}</>
-                    ) : (
-                      <><AlertTriangle className="w-3 h-3" /> {t('repo.general.pathMissing')}</>
-                    )}
-                  </div>
-                )}
-                {pathChanged && (
-                  <button onClick={savePath} className="self-end px-3 py-1.5 bg-surface border border-line text-xs rounded-lg hover:text-ink transition-colors">
-                    {t('common.save')}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* The same remote row the Tracker tab shows — same state, same save button
-                (see remoteUrlRow). It appears twice because the address answers two
-                different questions: here it is where a teammate clones this repo FROM,
-                there it is the repository the issues are filed IN. One row shared
-                between them is what keeps the two from drifting apart. */}
-            {remoteUrlRow(
-              t('repo.general.remoteUrl'),
-              readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp'),
-            )}
-
-            {/* The two rows above are OUTSIDE the fieldset on purpose. The path is this
-                machine's own, private to you, and a read-only member of a team repo still
-                has to point the repo at their clone; the remote row carries its own
-                fieldset. Everything below is shared config, so it follows `readOnly`. */}
-            <fieldset disabled={readOnly} className="w-full min-w-0">
-            <div className="flex items-start justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.branches.development')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.branches.developmentHelp')}</p>
-              </div>
-              <div className="relative">
-                <select
-                  value={branchSettings.development || ''}
-                  onChange={(e) => handleBranchSettingChange('development', e.target.value)}
-                  disabled={branchesLoading}
-                  className={`${SELECT} w-52 disabled:opacity-50`}
-                >
-                  <option value="">
-                    {branchesLoading ? t('common.loading') : t('repo.branches.select')}
-                  </option>
-                  {remoteBranches.map((branch) => (
-                    <option key={branch} value={branch}>{branch}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
-              </div>
-            </div>
-
-            <div className="py-4">
-              <div className="flex-1 mb-3">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.worktree.files')}</label>
-                <p className="text-xs text-text-secondary/50">{t('repo.worktree.filesHelp')}</p>
-              </div>
-              <ChipList
-                items={repo.worktreeFiles || []}
-                onChange={handleWorktreeFilesChange}
-                placeholder=".env"
-                inputId="worktree-file-input"
-              />
-            </div>
-            </fieldset>
-          </div>
-        </div>
-        </>
-      )}
-
       {tab === 'plan' && (
         <>
+        <SkillIntro
+          skill="plan"
+          summary={planSummary({
+            tracker: planTrackerVal,
+            jiraProject: jiraProjectVal,
+            githubTarget: githubIssuesTargetVal,
+            epicType: planEpicTypeVal,
+            storyType: planStoryTypeVal,
+            duplicateCheck: planDuplicateCheckVal,
+            splitting: planSplittingVal,
+            acceptanceCriteria: planAcceptanceCriteriaVal,
+            assignToMe: planAssignToMeVal,
+            labels: planDefaultLabelsVal,
+            useRepoTemplates: planUseRepoTemplatesVal,
+          })}
+        />
         {/* Plan, in the three phases the skill itself runs in: it looks for what already
             exists, it decides how to cut the work up, then it creates the tickets. The
             settings were one list of seven rows in which "search for duplicates" sat
@@ -1404,7 +1495,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             {/* Jira issue-type NAMES, as that project spells them — read by this skill
                 and nothing else (jira-fields.md §1.2), which is why they sit here rather
-                than with the Jira address on the Tracker tab. Hidden when the repo files
+                than with the Jira address on the Tickets tab. Hidden when the repo files
                 into GitHub, where an "Epic" issue type does not exist. */}
             {trackerModeVal === 'jira' && (
               <>
@@ -1470,6 +1561,17 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {tab === 'commit' && (
         <>
+        <SkillIntro
+          skill="commit"
+          summary={commitSummary({
+            format: formatVal,
+            style: styleVal,
+            allowOnProtectedBranch: allowOnProtectedBranchVal,
+            developmentBranch: branchSettings.development || '',
+            coAuthor: coAuthorVal,
+            includeTicketId: includeTicketIdVal,
+          })}
+        />
         {/* Commit — what the message looks like, then the one rule about which branch
             it may land on. The protected-branch guard was the last row of a list of
             five, reading as a fifth property of the message; it is not, it is the only
@@ -1556,22 +1658,24 @@ export function RepoPage({ repoName }: RepoPageProps) {
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
             {/* Direct commits on a protected branch. ON means allowed-but-asked; OFF
                 means /magic:commit branches off first. The help text has to say which
-                way round it is, because both states do something. */}
-            <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-0.5">{t('repo.commit.protectedBranch')}</label>
-                <p className="text-xs text-text-secondary/50">
-                  {allowOnProtectedBranchVal
-                    ? t('repo.commit.protectedBranchHelpOn')
-                    : t('repo.commit.protectedBranchHelpOff')}
-                </p>
-              </div>
+                way round it is, because both states do something — and the padlock says
+                this row is a guard rail rather than another property of the message. */}
+            <SettingRow
+              align="center"
+              icon={Lock}
+              label={t('repo.commit.protectedBranch')}
+              description={
+                allowOnProtectedBranchVal
+                  ? t('repo.commit.protectedBranchHelpOn')
+                  : t('repo.commit.protectedBranchHelpOff')
+              }
+            >
               <Switch
                 checked={allowOnProtectedBranchVal}
                 onChange={(next) => handleCommitSettingChange('allowOnProtectedBranch', next)}
                 label={t('repo.commit.protectedBranch')}
               />
-            </div>
+            </SettingRow>
           </fieldset>
         </div>
         </>
@@ -1579,6 +1683,17 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {tab === 'pr' && (
         <>
+        <SkillIntro
+          skill="pr"
+          summary={prSummary({
+            trackerMode: trackerModeVal,
+            autoLinkTickets: autoLinkTicketsVal,
+            testAccounts: testAccountsVal,
+            testAccountsSource: testAccountsSourceVal,
+            commentOnPR: commentOnPRVal,
+            watchCI: watchCIVal,
+          })}
+        />
         {/* Pull request — what goes INTO it, then what happens once it is open. Those
             are two moments, and watching the checks was sitting second in a list whose
             other rows all described the body of the PR. */}
@@ -1697,6 +1812,18 @@ export function RepoPage({ repoName }: RepoPageProps) {
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.pr.groupAfter')}</h2>
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
+            {/* The comment lands on the TICKET and carries the PR link. It sits here
+                rather than with the tracker's address because it is the pull request
+                that triggers it — the same reason the auto-link row above is on this
+                tab. /magic:review and /magic:done read it too. */}
+            <SettingRow align="center" label={t('repo.issues.commentOnPR')} description={t('repo.issues.commentOnPRHelp')}>
+              <Switch
+                checked={commentOnPRVal}
+                onChange={(next) => handleIssuesSettingChange('commentOnPR', next)}
+                label={t('repo.issues.commentOnPR')}
+              />
+            </SettingRow>
+
             <div className="flex items-center justify-between gap-6 py-4 border-b border-line-subtle last:border-b-0">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-0.5">{t('repo.pr.watchCI')}</label>
@@ -1715,6 +1842,18 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
       {tab === 'resolve' && (
         <>
+        <SkillIntro
+          skill="resolve"
+          summary={resolveSummary({
+            commitMode: resolveCommitModeVal,
+            useCommitConfig: resolveUseCommitConfigVal,
+            // Translated here rather than in the summary: a step carries strings, and
+            // these two labels are the resolve tab's own dropdowns spelled out.
+            formatLabel: t(COMMIT_FORMAT_LABELS[resolveFormatVal] ?? COMMIT_FORMAT_LABELS.angular),
+            styleLabel: t(COMMIT_STYLE_LABELS[resolveStyleVal] ?? COMMIT_STYLE_LABELS['single-line']),
+            replyToComments: resolveReplyVal,
+          })}
+        />
         {/* Resolve — the commits that carry the fixes, then what is written back to the
             reviewer. The reply switch was wedged between the commit format and the
             commit preview, which is the one place it does not belong. */}
@@ -1849,8 +1988,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
         </>
       )}
 
-
-
+      </TabSweep>
 
       {/* Delete Modal */}
       <Modal

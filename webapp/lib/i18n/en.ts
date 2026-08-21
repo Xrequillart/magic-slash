@@ -547,7 +547,7 @@ export const en = {
   'repo.general.remoteUrlInvalid': 'Must be https://github.com/owner/repo',
   'repo.general.remoteUrlRefused': 'Only the owner or an org admin can change an address that is already set',
   'repo.general.keywords': 'Keywords',
-  'repo.general.keywordsHelp': 'Auto-detection keywords (comma-separated)',
+  'repo.general.keywordsHelp': 'Auto-detection keywords — one per tag',
   'repo.general.discussionLang': 'Discussion language',
   'repo.general.discussionLangHelp': 'Language Claude uses when talking with you',
   'repo.general.color': 'Color',
@@ -568,13 +568,15 @@ export const en = {
   'repo.langs.section': 'Languages',
   'repo.langs.commit': 'Commit language',
   'repo.langs.pullRequest': 'Pull request language',
-  'repo.git.section': 'Git',
+  'repo.repository.section': 'Repository',
+  'repo.repository.groupLocation': 'Location',
+  'repo.repository.groupBranches': 'Branches',
+  'repo.repository.groupWorktrees': 'Worktrees',
   'repo.tracker.groupDestination': 'Ticket destination',
   'repo.tracker.groupGithub': 'GitHub',
   'repo.tracker.groupJira': 'Jira',
-  'repo.tracker.groupComments': 'Comments',
   'repo.tracker.githubRepoHelpPr': 'Address of the repository — used for pull requests and cloning, not for tickets',
-  'repo.tracker.section': 'Tracker',
+  'repo.tickets.section': 'Tickets',
   'repo.tracker.githubRepo': 'GitHub repository',
   'repo.tracker.issuesGoTo': 'Issues are filed in {target}',
   'repo.tracker.githubTargetNone': 'No GitHub remote',
@@ -594,6 +596,24 @@ export const en = {
   'repo.resolve.groupCommits': 'Fix commits',
   'repo.resolve.groupReplies': 'Replies',
   'repo.commit.section': 'Commit',
+  'repo.commit.intro': 'Turns your working tree into commits. On this repository:',
+  'repo.commit.step.atomic':
+    'Splits what changed into atomic commits — one logical change each, without asking.',
+  'repo.commit.step.formatConventional':
+    'Every message is Conventional: the type, then the subject (feat: add login).',
+  'repo.commit.step.formatAngular':
+    'Every message is Angular: the type, the scope, then the subject (feat(auth): add login).',
+  'repo.commit.step.formatGitmoji':
+    'Every message opens with a gitmoji, then the subject (✨ add login).',
+  'repo.commit.step.formatNone': 'Messages are free form — no type, no scope.',
+  'repo.commit.step.styleSingle': 'One line per commit, with no body.',
+  'repo.commit.step.styleMulti': 'A subject line, then a body saying why the change was made.',
+  'repo.commit.step.protectedAsk':
+    'Committing straight onto {branches} is allowed, but it asks you first.',
+  'repo.commit.step.protectedBlock':
+    'Never commits onto {branches}: it moves the work to a new branch first.',
+  'repo.commit.tail.coAuthor': 'Claude added as co-author',
+  'repo.commit.tail.ticketId': 'ticket id added to the message',
   'repo.commit.languageHelp': 'Language used for commit messages',
   'repo.commit.style': 'Style',
   'repo.commit.styleHelp': 'Single line, or multi-line with a body',
@@ -617,6 +637,17 @@ export const en = {
     'Blocked on main, master, develop and this repo’s development branch — /magic:commit moves the work to a new branch',
   'repo.example': 'Example',
   'repo.resolve.section': 'Resolve',
+  'repo.resolve.intro': 'Turns review comments into a pushed fix. On this repository:',
+  'repo.resolve.step.read':
+    'Reads the review comments on the pull request and fixes what they ask for.',
+  'repo.resolve.step.commitNew': 'Adds one commit for the fixes, and pushes it normally.',
+  'repo.resolve.step.commitAmend': 'Amends the last commit and pushes with --force-with-lease.',
+  'repo.resolve.step.commitAsk':
+    'Asks every time: a new commit, or an amend that pushes with --force-with-lease.',
+  'repo.resolve.step.formatInherit': 'The fix commit takes its message format from the Commit tab.',
+  'repo.resolve.step.formatCustom': 'The fix commit has its own message format: {format}, {style}.',
+  'repo.resolve.step.replyOn': 'Replies in each review thread once its comment is addressed.',
+  'repo.resolve.step.replyOff': 'Posts no reply in the review threads.',
   'repo.resolve.commitMode': 'Commit mode',
   'repo.resolve.commitModeHelp': 'How review fixes are committed',
   'repo.resolve.modeNew': 'New commit',
@@ -640,6 +671,24 @@ export const en = {
   'repo.resolve.askNoticeAmend': 'amend',
   'repo.resolve.askNoticeAfter': 'on each resolve. Amending pushes with',
   'repo.pr.section': 'Pull request',
+  'repo.pr.intro': 'Turns your commits into a pull request. On this repository:',
+  'repo.pr.step.open':
+    'Runs the project’s checks, pushes the branch, then opens the pull request with its title and description.',
+  'repo.pr.step.autoLinkOn': 'The description links the {tracker} ticket.',
+  'repo.pr.step.autoLinkOff': 'The description carries no ticket link.',
+  'repo.pr.step.accountsOff': 'Says nothing about test accounts.',
+  'repo.pr.step.accountsReference':
+    'Tells the reviewer where the test accounts live, without any credentials.',
+  'repo.pr.step.accountsInline':
+    'Pastes the test-account credentials into the description — and falls back to a reference on a public repository.',
+  'repo.pr.step.ticketComment':
+    'Updates the linked {tracker} ticket and comments the pull request link on it.',
+  'repo.pr.step.ticketQuiet': 'Updates the linked {tracker} ticket, without commenting on it.',
+  'repo.pr.step.watchOn':
+    'Then stays on the pull request: waits for the checks, fixes what fails, handles review feedback, and adds the preview URL to the test scenarios when the project publishes one.',
+  'repo.pr.step.watchOff':
+    'Stops once the pull request is open — no checks watched, no preview URL.',
+  'repo.pr.tail.accountsSource': 'accounts read from {source}',
   'repo.pr.languageHelp': 'Language used for PR titles and descriptions',
   'repo.pr.autoLink': 'Auto-link tickets',
   'repo.pr.autoLinkHelp': 'Add Jira / GitHub ticket links in the PR description',
@@ -671,6 +720,35 @@ export const en = {
   'repo.issues.commentOnPR': 'Comment the ticket',
   'repo.issues.commentOnPRHelp': 'Post a comment carrying the pull request link on the ticket, when the PR is created',
   'repo.plan.section': 'Planning',
+  'repo.plan.intro': 'Turns an idea into tickets. On this repository:',
+  'repo.plan.step.duplicateOn':
+    'Searches the tracker for a ticket that already covers the idea before proposing anything.',
+  'repo.plan.step.duplicateOff':
+    'Proposes a structure straight away, without looking for an existing ticket.',
+  'repo.plan.step.splitConservative':
+    'Splits as little as possible — one story when the idea fits in one.',
+  'repo.plan.step.splitBalanced':
+    'Splits as soon as two parts could be finished on different days.',
+  'repo.plan.step.splitEager': 'Prefers several small stories, each one deliverable on its own.',
+  'repo.plan.step.acChecklist':
+    'Every story gets acceptance criteria as a checklist, in plain language.',
+  'repo.plan.step.acGherkin':
+    'Every story gets acceptance criteria in Gherkin — Given / When / Then.',
+  'repo.plan.step.acNone': 'Stories are written without acceptance criteria.',
+  'repo.plan.step.spec':
+    'Writes a spec for you to read and waits for your approval — nothing is created before that.',
+  'repo.plan.step.createJira':
+    'Then creates the epic ({epic}) and its stories ({story}) in the Jira project {project}.',
+  'repo.plan.step.createJiraNoProject':
+    'Then creates the epic ({epic}) and its stories ({story}) in Jira — the project is asked for during the plan.',
+  'repo.plan.step.createGithub': 'Then creates one GitHub issue per story on {target}.',
+  'repo.plan.step.createGithubNoTarget':
+    'Then creates one GitHub issue per story — no GitHub address is set on this repository yet.',
+  'repo.plan.step.createAsk':
+    'Asks on every plan where the tickets go: a Jira epic with its stories, or GitHub issues.',
+  'repo.plan.tail.assign': 'tickets assigned to you',
+  'repo.plan.tail.labels': 'labels: {labels}',
+  'repo.plan.tail.templates': 'repository issue templates followed',
   'repo.plan.trackerJiraHelp': 'Create the epic and its stories in Jira',
   'repo.plan.trackerGithubHelp': 'Create them as issues on this repository',
   'repo.plan.trackerAskHelp': 'Choose at runtime, on each plan',

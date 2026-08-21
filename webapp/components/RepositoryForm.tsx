@@ -6,6 +6,7 @@ import {
   Activity,
   Building2,
   ClipboardList,
+  Copy,
   FolderGit2,
   GitBranch,
   Languages,
@@ -25,6 +26,7 @@ import {
 import { Dropdown, type DropdownOption } from '@/components/Dropdown'
 import { Flag } from '@/components/Flag'
 import { TabStrip } from '@/components/TabStrip'
+import { TabSweep } from '@/components/TabSweep'
 import { ChipList, ExamplePanel, SettingRow, SettingsCard, Toggle } from '@/components/SettingRow'
 import { Button, Input } from '@/components/ui'
 import type { Org } from '@/lib/orgs'
@@ -41,6 +43,16 @@ import {
 } from '@/lib/repositories'
 import type { Translate } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
+import type { MessageKey } from '@/lib/i18n'
+import {
+  COMMIT_FORMAT_LABELS,
+  COMMIT_STYLE_LABELS,
+  commitSummary,
+  planSummary,
+  prSummary,
+  resolveSummary,
+  type SkillSummary,
+} from '@/lib/skillSummary'
 
 /**
  * Every repository setting the desktop app exposes, minus the ones that need a
@@ -150,6 +162,64 @@ function buildOptions(t: Translate) {
  * effect never fires mid-edit.
  */
 /**
+ * What the skill a tab configures actually DOES, at the top of that tab.
+ *
+ * The settings alone never said it: "How much to split" and "Acceptance criteria" are
+ * knobs on a run whose shape you had to already know — that /magic:plan brainstorms
+ * first, writes a spec, and creates nothing until you approve it. Four tabs out of
+ * eight configure a skill rather than the repository, and those four get this.
+ *
+ * DESCRIBES THIS REPOSITORY, not the skill in general: the steps are composed from the
+ * settings below by `lib/skillSummary`, so a repo filing GitHub issues reads "one issue
+ * per story on owner/repo" where a Jira one reads "the epic (Epic) and its stories
+ * (Story) in project PROJ". A generic summary was wrong for whichever half of the fleet
+ * was configured the other way.
+ *
+ * The same block, the same copy and the same steps as the desktop's RepoPage: two
+ * surfaces explaining one skill differently is how the two descriptions start drifting.
+ */
+const SKILL_INTROS = {
+  plan: { command: '/magic:plan', icon: ClipboardList, lead: 'repo.plan.intro' },
+  commit: { command: '/magic:commit', icon: GitCommitHorizontal, lead: 'repo.commit.intro' },
+  pr: { command: '/magic:pr', icon: GitPullRequest, lead: 'repo.pr.intro' },
+  resolve: { command: '/magic:resolve', icon: MessageSquare, lead: 'repo.resolve.intro' },
+} satisfies Record<string, { command: string; icon: LucideIcon; lead: MessageKey }>
+
+function SkillIntro({ skill, summary }: { skill: keyof typeof SKILL_INTROS; summary: SkillSummary }) {
+  const { t } = useT()
+  const { command, icon: Icon, lead } = SKILL_INTROS[skill]
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-black/5 bg-canvas px-5 py-4">
+      {/* The tab's own icon, so the block reads as belonging to the tab you just picked
+          rather than as a notice about something else. */}
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-black/25" />
+      <div className="min-w-0">
+        <code className="inline-block rounded bg-black/[0.06] px-1.5 py-0.5 font-mono text-xs text-ink">{command}</code>
+        <p className="mt-1.5 text-sm text-muted">{t(lead)}</p>
+        {/* Numbered, because these steps happen in this order — the run reads top to
+            bottom, and the ticket creation at the end is what the spec approval above
+            it gates. */}
+        <ol className="mt-2 space-y-1">
+          {summary.steps.map((step, index) => (
+            <li key={step.key} className="flex gap-2 text-xs text-muted">
+              <span className="shrink-0 tabular-nums text-black/30">{index + 1}.</span>
+              <span>{t(step.key, step.vars)}</span>
+            </li>
+          ))}
+        </ol>
+        {summary.tail.length > 0 && (
+          /* The flags, as one dim line under the steps. The leading "+" is what makes
+             it read as things ADDED to the run rather than as a step of its own. */
+          <p className="mt-2 text-xs text-black/40">
+            + {summary.tail.map((flag) => t(flag.key, flag.vars)).join(' · ')}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
  * The four tabs the form is cut into, grouped by SUBJECT rather than by skill —
  * the same four, in the same order, with the same icons, as the desktop's RepoPage.
  * Two surfaces writing the same config that disagree about where a setting lives is
@@ -164,7 +234,7 @@ function buildOptions(t: Translate) {
  * here would pin the strip to the language the page first rendered in.
  */
 type RepoTab =
-  | 'general' | 'tracker' | 'languages' | 'git'
+  | 'general' | 'repository' | 'tickets' | 'languages'
   | 'plan' | 'commit' | 'pr' | 'resolve'
 
 const REPO_TABS: { id: RepoTab; labelKey: Parameters<Translate>[0]; icon: LucideIcon }[] = [
@@ -173,9 +243,12 @@ const REPO_TABS: { id: RepoTab; labelKey: Parameters<Translate>[0]; icon: Lucide
   // nowhere for two spellings of it to drift apart. Danger is the exception — its card
   // is headed "Danger zone", a warning, where a pill wants one word.
   { id: 'general', labelKey: 'repo.general.section', icon: Settings2 },
-  { id: 'tracker', labelKey: 'repo.tracker.section', icon: Ticket },
+  // Repository before Tickets, and both before Languages: the first three tabs are
+  // the repo itself — what it is, where its code lives, where its tickets go — and
+  // the strip reads as that list before it turns to how the skills behave.
+  { id: 'repository', labelKey: 'repo.repository.section', icon: GitBranch },
+  { id: 'tickets', labelKey: 'repo.tickets.section', icon: Ticket },
   { id: 'languages', labelKey: 'repo.langs.section', icon: Languages },
-  { id: 'git', labelKey: 'repo.git.section', icon: GitBranch },
   // One tab per skill rather than one "Skills" tab holding four cards: each is a
   // workflow with its own vocabulary, and stacking them made that tab longer than the
   // five others put together.
@@ -312,7 +385,7 @@ export function RepositoryForm({
   const jiraSiteUrl = resolveJiraSite(repo)
   const jiraProjectKey = resolveJiraProject(repo)
   // Derived from the remote, or from an `issues.githubIssuesUrl` override when the
-  // issues live in another repository. Displayed, never edited — see the Tracker card.
+  // issues live in another repository. Displayed, never edited — see the Tickets card.
   const githubIssuesTarget = resolveGitHubIssuesUrl(repo)
   // `ask` counts as "there is a Jira": it can only mean anything if Jira is one of the
   // two answers. Only `github` states that there is not one.
@@ -345,12 +418,12 @@ export function RepositoryForm({
   }
 
   /**
-   * The remote row, rendered on BOTH the Repository and the Tracker tab.
+   * The remote row, rendered on BOTH the Repository and the Tickets tab.
    *
    * One row, one draft, one error: the two tabs never render together, so sharing them
    * is what makes it impossible for the field to hold two different answers depending
    * on where it was opened. Only the label and the help line differ — on Repository it
-   * is the address the team clones from, on Tracker it is the repository the issues are
+   * is the address the team clones from, on Tickets it is the repository the issues are
    * filed in.
    *
    * A function returning JSX rather than a component, like the desktop's remoteUrlRow:
@@ -444,7 +517,13 @@ export function RepositoryForm({
         onSelect={(key) => setTab(key as RepoTab)}
       />
 
-      <fieldset disabled={readOnly} className="w-full min-w-0 space-y-8">
+      <fieldset disabled={readOnly} className="w-full min-w-0">
+
+      {/* Every tab's panel, in one wrapper so the switch between them travels the way the
+          strip does: a tab further right arrives from the right. It carries the fieldset's
+          own `space-y-8`, since the panels are its children now — and it keeps their
+          indentation rather than reindenting seven hundred lines of settings to add a div. */}
+      <TabSweep tabKey={tab} order={REPO_TABS.map(({ id }) => id)} className="space-y-8">
 
       {tab === 'general' && (
         <>
@@ -491,20 +570,23 @@ export function RepositoryForm({
             />
           </SettingRow>
 
+          {/* Keywords, as chips — the same control as the worktree files, and for the
+              same reason: this is a LIST, and a comma-separated line made you re-read the
+              whole thing to drop one word from it. Each chip saves as it is added or
+              removed, so there is no draft to lose.
+
+              `stacked` like that list too: chips grow along the row, and a handful of
+              them beside their own label wraps after two. */}
           <SettingRow
             label={t('repo.general.keywords')}
             description={t('repo.general.keywordsHelp')}
+            stacked
           >
-            <DraftField
-              persisted={repo.keywords.join(', ')}
-              onSave={(value) =>
-                onPatch({
-                  keywords: value
-                    .split(',')
-                    .map((k) => k.trim())
-                    .filter(Boolean),
-                })
-              }
+            <ChipList
+              items={repo.keywords}
+              onChange={(keywords) => onPatch({ keywords })}
+              placeholder="auth"
+              inputId="keyword-input"
             />
           </SettingRow>
 
@@ -554,9 +636,63 @@ export function RepositoryForm({
         </>
       )}
 
-      {tab === 'tracker' && (
+      {tab === 'repository' && (
         <>
-        {/* ── Tracker ───────────────────────────────────────────────────────────
+        {/* ── Repository ────────────────────────────────────────────────────────
+            Three groups answering three different questions: WHERE the repo is — the
+            address teammates clone — which branch work starts from, and what a fresh
+            worktree needs copied into it. One unlabelled card held all three rows, which
+            read as a pile. The folder on disk is missing from this list on purpose: it is
+            a path on one machine, so it is set in the desktop app and nowhere else. */}
+        <SettingsCard icon={FolderGit2} title={t('repo.repository.groupLocation')}>
+          {/* Clone address — shared, unlike anything else here. Any member may CONTRIBUTE
+              it by binding a local folder in the desktop app; only the owner or an org
+              admin may correct one already set.
+
+              The same row the Tickets tab shows as the GitHub link, and it sits on this
+              tab for the same reason it does on the desktop: here it is the address a
+              teammate clones this repo FROM, there it is the repository the issues are
+              filed IN. */}
+          {remoteUrlRow(
+            t('repo.general.remoteUrl'),
+            readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp'),
+          )}
+        </SettingsCard>
+
+        <SettingsCard icon={GitBranch} title={t('repo.repository.groupBranches')}>
+          <SettingRow
+            label={t('repo.branches.development')}
+            description={t('repo.branches.developmentHelp')}
+          >
+            <DraftField
+              persisted={repo.branches.development ?? ''}
+              onSave={(development) => onPatch({ branches: { development } })}
+              placeholder="develop"
+              className="w-52"
+            />
+          </SettingRow>
+        </SettingsCard>
+
+        <SettingsCard icon={Copy} title={t('repo.repository.groupWorktrees')}>
+          <SettingRow
+            label={t('repo.worktree.files')}
+            description={t('repo.worktree.filesHelp')}
+            stacked
+          >
+            <ChipList
+              items={repo.worktreeFiles}
+              onChange={(worktreeFiles) => onPatch({ worktreeFiles })}
+              placeholder=".env"
+              inputId="worktree-file-input"
+            />
+          </SettingRow>
+        </SettingsCard>
+        </>
+      )}
+
+      {tab === 'tickets' && (
+        <>
+        {/* ── Tickets ───────────────────────────────────────────────────────────
             In groups that answer one question each: WHERE do tickets go, and what is
             each tracker's address. It was one flat card of seven rows mixing the two
             with Jira issue-type names, and it read as a form rather than as an answer —
@@ -594,7 +730,7 @@ export function RepositoryForm({
         </SettingsCard>
 
         <SettingsCard icon={FolderGit2} title={t('repo.tracker.groupGithub')}>
-          {/* The same remote row the Git tab shows as a clone address — same draft, same
+          {/* The same remote row the Repository tab shows as a clone address — same draft, same
               save button.
 
               Its help line depends on the tracker, and that is the whole point: it used
@@ -643,22 +779,6 @@ export function RepositoryForm({
           </SettingsCard>
         )}
 
-        <SettingsCard icon={MessageSquare} title={t('repo.tracker.groupComments')}>
-          {/* Read by /magic:pr, :review and :done — three skills, so it belongs to the
-              repo's relationship with its tracker rather than to any one skill's tab. The
-              comment lands on the TICKET and carries the PR link, which the old label
-              ("Comment on PR creation") left ambiguous. */}
-          <SettingRow
-            label={t('repo.issues.commentOnPR')}
-            description={t('repo.issues.commentOnPRHelp')}
-          >
-            <Toggle
-              label={t('repo.issues.commentOnPR')}
-              checked={commentOnPR}
-              onChange={(commentOnPR) => setIssues({ commentOnPR })}
-            />
-          </SettingRow>
-        </SettingsCard>
         </>
       )}
 
@@ -766,56 +886,24 @@ export function RepositoryForm({
         </>
       )}
 
-      {tab === 'git' && (
-        <>
-        {/* ── Git ───────────────────────────────────────────────────────────────
-            The development branch and the worktree files were a card each, one row
-            apiece. Both answer the same question — how this repo's git is laid out —
-            and neither earned a heading of its own. */}
-        <SettingsCard icon={GitBranch}>
-          {/* Clone address — shared, unlike anything else here. Any member may CONTRIBUTE
-              it by binding a local folder in the desktop app; only the owner or an org
-              admin may correct one already set.
-
-              The same row the Tracker tab shows as the GitHub link, and it sits on this
-              tab for the same reason it does on the desktop: here it is the address a
-              teammate clones this repo FROM, there it is the repository the issues are
-              filed IN. */}
-          {remoteUrlRow(
-            t('repo.general.remoteUrl'),
-            readOnly ? t('repo.general.remoteUrlHelpReadOnly') : t('repo.general.remoteUrlHelp'),
-          )}
-
-          <SettingRow
-            label={t('repo.branches.development')}
-            description={t('repo.branches.developmentHelp')}
-          >
-            <DraftField
-              persisted={repo.branches.development ?? ''}
-              onSave={(development) => onPatch({ branches: { development } })}
-              placeholder="develop"
-              className="w-52"
-            />
-          </SettingRow>
-
-          <SettingRow
-            label={t('repo.worktree.files')}
-            description={t('repo.worktree.filesHelp')}
-            stacked
-          >
-            <ChipList
-              items={repo.worktreeFiles}
-              onChange={(worktreeFiles) => onPatch({ worktreeFiles })}
-              placeholder=".env"
-              inputId="worktree-file-input"
-            />
-          </SettingRow>
-        </SettingsCard>
-        </>
-      )}
-
       {tab === 'plan' && (
         <>
+        <SkillIntro
+          skill="plan"
+          summary={planSummary({
+            tracker,
+            jiraProject: jiraProjectKey,
+            githubTarget: githubIssuesTarget,
+            epicType,
+            storyType,
+            duplicateCheck,
+            splitting,
+            acceptanceCriteria,
+            assignToMe,
+            labels: defaultLabels,
+            useRepoTemplates,
+          })}
+        />
         {/* ── Plan ──────────────────────────────────────────────────────────────
             In the three phases the skill itself runs in: it looks for what already
             exists, it decides how to cut the work up, then it creates the tickets. The
@@ -863,7 +951,7 @@ export function RepositoryForm({
         <SettingsCard icon={ClipboardList} title={t('repo.plan.groupTickets')}>
           {/* Jira issue-type NAMES, as that project spells them — read by this skill and
               nothing else (jira-fields.md §1.2), which is why they sit here rather than
-              with the Jira address on the Tracker tab. Hidden when the repo files into
+              with the Jira address on the Tickets tab. Hidden when the repo files into
               GitHub, where an "Epic" issue type does not exist. */}
           {trackerMode === 'jira' && (
             <>
@@ -926,6 +1014,17 @@ export function RepositoryForm({
 
       {tab === 'commit' && (
         <>
+        <SkillIntro
+          skill="commit"
+          summary={commitSummary({
+            format: commitFormat,
+            style: commitStyle,
+            allowOnProtectedBranch,
+            developmentBranch: repo.branches.development ?? '',
+            coAuthor,
+            includeTicketId,
+          })}
+        />
         {/* ── Commit ────────────────────────────────────────────────────────────
             What the message looks like, then the one rule about which branch it may land
             on. The protected-branch guard was the last row of a list of five, reading as
@@ -977,7 +1076,11 @@ export function RepositoryForm({
         </SettingsCard>
 
         <SettingsCard icon={GitBranch} title={t('repo.commit.groupBranches')}>
+          {/* The padlock says this row is a guard rail rather than another property of
+              the message. Its help line still has to say which way round the toggle is,
+              because both states do something. */}
           <SettingRow
+            icon={Lock}
             label={t('repo.commit.protectedBranch')}
             description={
               allowOnProtectedBranch
@@ -997,6 +1100,17 @@ export function RepositoryForm({
 
       {tab === 'pr' && (
         <>
+        <SkillIntro
+          skill="pr"
+          summary={prSummary({
+            trackerMode,
+            autoLinkTickets,
+            testAccounts,
+            testAccountsSource: repo.pullRequest.testAccountsSource ?? '',
+            commentOnPR,
+            watchCI,
+          })}
+        />
         {/* ── Pull request ──────────────────────────────────────────────────────
             What goes INTO it, then what happens once it is open. Those are two moments,
             and watching the checks was sitting second in a list whose other rows all
@@ -1044,6 +1158,21 @@ export function RepositoryForm({
         </SettingsCard>
 
         <SettingsCard icon={Activity} title={t('repo.pr.groupAfter')}>
+          {/* The comment lands on the TICKET and carries the PR link. It sits here rather
+              than with the tracker's address because it is the pull request that triggers
+              it — the same reason the auto-link row above is on this tab. /magic:review
+              and /magic:done read it too. */}
+          <SettingRow
+            label={t('repo.issues.commentOnPR')}
+            description={t('repo.issues.commentOnPRHelp')}
+          >
+            <Toggle
+              label={t('repo.issues.commentOnPR')}
+              checked={commentOnPR}
+              onChange={(commentOnPR) => setIssues({ commentOnPR })}
+            />
+          </SettingRow>
+
           <SettingRow label={t('repo.pr.watchCI')} description={t('repo.pr.watchCIHelp')}>
             <Toggle
               label={t('repo.pr.watchCI')}
@@ -1057,6 +1186,18 @@ export function RepositoryForm({
 
       {tab === 'resolve' && (
         <>
+        <SkillIntro
+          skill="resolve"
+          summary={resolveSummary({
+            commitMode,
+            useCommitConfig,
+            // Translated here rather than in the summary: a step carries strings, and
+            // these two labels are the resolve card's own dropdowns spelled out.
+            formatLabel: t(COMMIT_FORMAT_LABELS[resolveFormat] ?? COMMIT_FORMAT_LABELS.angular),
+            styleLabel: t(COMMIT_STYLE_LABELS[resolveStyle] ?? COMMIT_STYLE_LABELS['single-line']),
+            replyToComments,
+          })}
+        />
         {/* ── Resolve ───────────────────────────────────────────────────────────
             The commits that carry the fixes, then what is written back to the reviewer.
             The reply switch was wedged between the commit format and the commit preview,
@@ -1153,6 +1294,7 @@ export function RepositoryForm({
         </>
       )}
 
+      </TabSweep>
       </fieldset>
 
       {/* Scope note, so "Team" above is not the only hint about who sees this. */}
