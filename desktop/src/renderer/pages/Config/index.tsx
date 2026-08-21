@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode } from 'react'
-import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, AppWindow, type LucideIcon } from 'lucide-react'
+import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage, resolveActiveOrgId } from './OrgPage'
@@ -7,6 +7,7 @@ import { AppearancePage } from './AppearancePage'
 import { NotificationsPage } from './NotificationsPage'
 import { LanguagePage } from './LanguagePage'
 import { SectionHeader } from './SectionHeader'
+import { ToggleRow } from './ToggleRow'
 import { TelemetryHealthCard } from './TelemetryHealthCard'
 import { SetupHealthCard } from './SetupHealthCard'
 import { RateLimitBar } from '../../components/agent-info-sidebar/LimitGauge'
@@ -1317,6 +1318,26 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           )}
           <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
             {t('settings.application.usageLogs.footnote.agents')}
+          </div>
+        </div>
+      </div>
+
+      {/* Plan session sync (ON by default — an explicit false opts out) */}
+      <div>
+        <SectionHeader icon={Lightbulb} title={t('settings.application.planSync.section')} />
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
+          <ToggleRow
+            label={t('settings.application.planSync.label')}
+            help={t('settings.application.planSync.help')}
+            value={config?.planSyncEnabled}
+            onChange={async (next) => {
+              const result = await window.electronAPI.config.setPlanSyncEnabled(next)
+              setConfig(result.config)
+            }}
+            errorMessage={t('settings.application.planSync.error')}
+          />
+          <div className="text-[11px] text-text-secondary/40 mt-3 leading-snug">
+            {t('settings.application.planSync.footnote')}
           </div>
         </div>
       </div>

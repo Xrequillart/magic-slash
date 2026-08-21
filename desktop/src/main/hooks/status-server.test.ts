@@ -29,6 +29,10 @@ import {
   setQuestionCallback,
   setClearQuestionCallback,
   setMetadataCallback,
+  setSpecPathCallback,
+  setPlanSpecCallback,
+  setPlanTicketsCallback,
+  parsePlanTickets,
 } from './status-server'
 
 describe('parseStatusLinePayload', () => {
@@ -335,6 +339,135 @@ describe('read-back endpoints', () => {
       expect(status).toBe(200)
       expect(received).toEqual([{ id: 'term-1', metadata: { title: 'Hello' } }])
     })
+
+    describe('the spec path callback', () => {
+      let announced: Array<{ id: string; specPath: string }> = []
+
+      beforeEach(() => {
+        announced = []
+        setSpecPathCallback((id, specPath) => announced.push({ id, specPath }))
+      })
+
+      it('fires ONCE per path, however often the same one is re-announced', async () => {
+        // This is what records the planning session, so it runs on the skill's FIRST
+        // metadata write. `/magic:plan` re-sends its title (with the same specPath)
+        // at several later steps, and each of those is not news.
+        const spec = '/repo/.magic/spec-an-idea-20260821-101500.md'
+        await httpGet(`/metadata?id=term-spec-1&specPath=${encodeURIComponent(spec)}`)
+        await httpGet(`/metadata?id=term-spec-1&title=Renamed&specPath=${encodeURIComponent(spec)}`)
+        expect(announced).toEqual([{ id: 'term-spec-1', specPath: spec }])
+
+        // A different spec on the same terminal is a new session, and does fire.
+        const second = '/repo/.magic/spec-another-idea-20260821-113000.md'
+        await httpGet(`/metadata?id=term-spec-1&specPath=${encodeURIComponent(second)}`)
+        expect(announced).toHaveLength(2)
+      })
+
+      it('does not fire on a metadata write that carries no spec path', async () => {
+        await httpGet('/metadata?id=term-spec-2&title=Hello')
+        expect(announced).toEqual([])
+      })
+    })
+  })
+
+  describe('GET /plan/spec', () => {
+    let pinged: string[] = []
+
+    beforeEach(() => {
+      pinged = []
+      setPlanSpecCallback((id) => pinged.push(id))
+    })
+
+    it('forwards the agent id and nothing else — the app already knows the path', async () => {
+      // No markdown and no path on the wire: the spec's text never travels through a
+      // shell, which is the whole reason this is a ping rather than an upload.
+      const { status } = await httpGet('/plan/spec?id=term-1')
+      expect(status).toBe(200)
+      expect(pinged).toEqual(['term-1'])
+    })
+
+    it('ignores sidebar terminals', async () => {
+      const { status } = await httpGet('/plan/spec?id=sidebar-1')
+      expect(status).toBe(200)
+      expect(pinged).toEqual([])
+    })
+
+    it('answers 200 with no id, and never an error the skill has to handle', async () => {
+      const { status, body } = await httpGet('/plan/spec')
+      expect(status).toBe(200)
+      expect(body).toBe('OK')
+      expect(pinged).toEqual([])
+    })
+
+    it('answers 200 even when the callback throws', async () => {
+      setPlanSpecCallback(() => {
+        throw new Error('boom')
+      })
+      const { status } = await httpGet('/plan/spec?id=term-1')
+      expect(status).toBe(200)
+    })
+  })
+
+  describe('GET /plan/tickets', () => {
+    type Received = { id: string; tickets: unknown[] }
+    let received: Received[] = []
+
+    beforeEach(() => {
+      received = []
+      setPlanTicketsCallback((id, tickets) => received.push({ id, tickets }))
+    })
+
+    const encode = (tickets: unknown) => encodeURIComponent(JSON.stringify(tickets))
+
+    it('parses the URI-encoded JSON array the skill sends', async () => {
+      // snake_case `parent_key`, and nulls where a field does not apply — the shape
+      // documented in skills/magic-plan/references/api.md.
+      const wire = [
+        { key: '#412', url: 'https://x/412', title: 'The epic', kind: 'epic', parent_key: null },
+        { key: '#413', url: 'https://x/413', title: 'A story', kind: 'story', parent_key: '#412' },
+      ]
+      const { status } = await httpGet(`/plan/tickets?id=term-1&tickets=${encode(wire)}`)
+      expect(status).toBe(200)
+      expect(received).toEqual([{
+        id: 'term-1',
+        tickets: [
+          { key: '#412', url: 'https://x/412', title: 'The epic', kind: 'epic' },
+          { key: '#413', url: 'https://x/413', title: 'A story', kind: 'story', parentKey: '#412' },
+        ],
+      }])
+    })
+
+    it('also accepts a camelCase parentKey, so neither side has to be right', async () => {
+      await httpGet(`/plan/tickets?id=term-1&tickets=${encode([
+        { key: '#413', url: 'https://x/413', kind: 'story', parentKey: '#412' },
+      ])}`)
+      expect(received).toEqual([{
+        id: 'term-1',
+        tickets: [{ key: '#413', url: 'https://x/413', kind: 'story', parentKey: '#412' }],
+      }])
+    })
+
+    it('drops the entries that are not well formed, and keeps the rest', async () => {
+      const { status } = await httpGet(
+        `/plan/tickets?id=term-1&tickets=${encode([
+          { key: 'PROJ-1', url: 'https://x/1', kind: 'story' },
+          { key: 'PROJ-2', url: 'https://x/2', kind: 'chore' },
+          { key: '', url: 'https://x/3', kind: 'story' },
+          { url: 'https://x/4', kind: 'story' },
+          42,
+        ])}`,
+      )
+      expect(status).toBe(200)
+      expect(received).toEqual([{ id: 'term-1', tickets: [{ key: 'PROJ-1', url: 'https://x/1', kind: 'story' }] }])
+    })
+
+    it('answers 200 on malformed JSON, an empty list, a missing parameter or a sidebar id', async () => {
+      expect((await httpGet('/plan/tickets?id=term-1&tickets=not-json')).status).toBe(200)
+      expect((await httpGet(`/plan/tickets?id=term-1&tickets=${encode([])}`)).status).toBe(200)
+      expect((await httpGet('/plan/tickets?id=term-1')).status).toBe(200)
+      expect((await httpGet(`/plan/tickets?id=sidebar-1&tickets=${encode([{ key: 'A', url: 'u', kind: 'story' }])}`)).status).toBe(200)
+      expect(received).toEqual([])
+    })
   })
 
   describe('the question routes', () => {
@@ -389,5 +522,21 @@ describe('read-back endpoints', () => {
       await httpGet('/question/clear?id=sidebar-1')
       expect(cleared).toHaveLength(0)
     })
+  })
+})
+
+describe('parsePlanTickets', () => {
+  it('keeps a title and a parent only when they carry something', () => {
+    expect(parsePlanTickets(JSON.stringify([
+      { key: 'A', url: 'u', kind: 'epic', title: '', parent_key: '' },
+      { key: 'B', url: 'u', kind: 'story', title: null, parent_key: null },
+    ]))).toEqual([
+      { key: 'A', url: 'u', kind: 'epic' },
+      { key: 'B', url: 'u', kind: 'story' },
+    ])
+  })
+
+  it('returns nothing for a payload that is not an array', () => {
+    expect(parsePlanTickets('{"key":"A"}')).toEqual([])
   })
 })

@@ -73,6 +73,11 @@ vi.mock('../usage/usage-events', () => ({
   recordUsageSnapshot: (...args: unknown[]) => recordUsageSnapshot(...args),
 }))
 
+const flushPlanSpec = vi.fn()
+vi.mock('../store/plan-sync', () => ({
+  flushPlanSpec: (...args: unknown[]) => flushPlanSpec(...args),
+}))
+
 vi.mock('../config/config', () => ({ readConfig: vi.fn(() => ({ repositories: {} })) }))
 vi.mock('../config/validation', () => ({ expandPath: (p: string) => p }))
 vi.mock('../config/repo-validation', () => ({ checkRepoPath: vi.fn(() => ({ valid: true })) }))
@@ -144,6 +149,27 @@ describe('session-end usage flush (terminal:kill)', () => {
     )
   })
 
+  it('uploads the plan spec one last time, before archiveAgent releases the app id', async () => {
+    const id = 'claude-kill-plan'
+    const specPath = '/repo/.magic/spec-an-idea-20260821-101500.md'
+    term.getTerminal.mockReturnValue({ id, name: 'Agent', metadata: { specPath }, repositories: [] })
+
+    await invoke('terminal:kill', { id })
+
+    expect(flushPlanSpec).toHaveBeenCalledWith(id, specPath)
+    // Same ordering constraint as the usage flush: archiveAgent nulls app_agent_id,
+    // and after it this agent's id resolves to no row at all.
+    expect(flushPlanSpec.mock.invocationCallOrder[0]).toBeLessThan(
+      archiveAgent.mock.invocationCallOrder[0],
+    )
+  })
+
+  it('uploads nothing for an agent that never planned', async () => {
+    term.getTerminal.mockReturnValue({ id: 'claude-kill-plain', name: 'Agent', metadata: {}, repositories: [] })
+    await invoke('terminal:kill', { id: 'claude-kill-plain' })
+    expect(flushPlanSpec).not.toHaveBeenCalled()
+  })
+
   it('keeps every model seen mid-session, in order of first appearance', async () => {
     const id = 'claude-kill-switch'
     term.getTerminal.mockReturnValue({
@@ -193,6 +219,20 @@ describe('session-end usage flush (terminal:kill)', () => {
 
     expect(recordUsageSnapshot).not.toHaveBeenCalled()
     expect(archiveAgent).toHaveBeenCalledTimes(1)
+  })
+
+  it('uploads the plan spec on a session that ended on its own (no kill, no archive)', async () => {
+    // The natural-exit path never reaches archiveAgent, so hanging the final upload
+    // there alone would miss every session Claude Code ended by itself.
+    const id = 'claude-exit-plan'
+    const specPath = '/repo/.magic/spec-an-idea-20260821-101500.md'
+    await createTerminal(id)
+    term.getTerminal.mockReturnValue({ id, name: 'Agent', metadata: { specPath }, repositories: [] })
+
+    capturedOnExit?.(0)
+
+    expect(flushPlanSpec).toHaveBeenCalledWith(id, specPath)
+    expect(archiveAgent).not.toHaveBeenCalled()
   })
 
   it('writes only ONE snapshot when a stray onExit fires during the kill (usageFlushed guard)', async () => {

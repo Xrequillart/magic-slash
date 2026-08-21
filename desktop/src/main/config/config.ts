@@ -929,6 +929,18 @@ export function updateUsageLogsEnabled(enabled: boolean): Config {
 }
 
 /**
+ * Toggle the upload of `/magic:plan` sessions. ON by default, like the flag above,
+ * so only an explicit false stops it. Nothing LOCAL changes when it is off: the spec
+ * file is still written, and the app is still told when it changes.
+ */
+export function updatePlanSyncEnabled(enabled: boolean): Config {
+  const config = readConfig()
+  config.planSyncEnabled = enabled
+  writeConfig(config)
+  return config
+}
+
+/**
  * Toggle the optional daily team digest (opt-in, default OFF). When enabled, the
  * digest scheduler fires one summary notification at 9:00 local. The scheduler
  * re-reads this flag at fire time, so a toggle takes effect on the next run.

@@ -264,6 +264,13 @@ export const en = {
     'Every member of your organization can see these figures per person on the Team page.',
   'settings.application.usageLogs.footnote.agents':
     'Whatever this setting says, your agents (name, branch, ticket, repositories) sync to your team — that is what powers the live view.',
+  'settings.application.planSync.section': 'Plan sessions',
+  'settings.application.planSync.label': 'Save my plan sessions to the cloud',
+  'settings.application.planSync.help':
+    'On by default, and yours to turn off at any time. When you run /magic:plan, the spec it writes and the tickets it creates are saved to Magic Slash Cloud so you and your team can read them back from anywhere.',
+  'settings.application.planSync.footnote':
+    'Turning it off changes nothing on your machine: the spec file is still written in the repository, and the app still follows it live.',
+  'settings.application.planSync.error': 'Failed to save that setting.',
   'settings.application.split.section': 'Split View',
   'settings.application.split.label': 'Enable split view',
   'settings.application.split.help': 'Display two agents side by side on wide screens',

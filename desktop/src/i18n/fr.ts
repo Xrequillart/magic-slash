@@ -246,6 +246,13 @@ export const fr: Record<keyof typeof en, string> = {
     'Chaque membre de votre organisation voit ces chiffres par personne sur la page Équipe.',
   'settings.application.usageLogs.footnote.agents':
     'Quoi que dise ce réglage, vos agents (nom, branche, ticket, dépôts) se synchronisent avec votre équipe — c’est ce qui alimente la vue temps réel.',
+  'settings.application.planSync.section': 'Sessions de planification',
+  'settings.application.planSync.label': 'Enregistrer mes sessions de planification dans le cloud',
+  'settings.application.planSync.help':
+    'Activé par défaut, et vous pouvez le couper à tout moment. Quand vous lancez /magic:plan, la spec qu’il rédige et les tickets qu’il crée sont enregistrés dans le cloud Magic Slash pour que vous et votre équipe puissiez les relire de n’importe où.',
+  'settings.application.planSync.footnote':
+    'Le couper ne change rien sur votre machine : le fichier de spec est toujours écrit dans le dépôt, et l’app le suit toujours en direct.',
+  'settings.application.planSync.error': 'Impossible d’enregistrer ce réglage.',
   'settings.application.split.section': 'Vue divisée',
   'settings.application.split.label': 'Activer la vue divisée',
   'settings.application.split.help': 'Affiche deux agents côte à côte sur les écrans larges',

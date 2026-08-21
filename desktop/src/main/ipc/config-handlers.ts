@@ -25,6 +25,7 @@ import {
   updateLaunchMode,
   updateTheme,
   updateLanguage,
+  updatePlanSyncEnabled,
   updateUsageLogsEnabled,
   updateDailyDigestEnabled,
   updateNotifications,
@@ -300,6 +301,13 @@ export function setupConfigHandlers() {
   // Activity recording (default ON, explicit false opts out). Gates WRITING only.
   ipcMain.handle('config:setUsageLogsEnabled', async (_event, { enabled }: { enabled: boolean }) => {
     const config = updateUsageLogsEnabled(enabled)
+    return { config }
+  })
+
+  // Plan session sync (default ON, explicit false opts out). Gates the UPLOAD only:
+  // the spec file and the in-app signal that it changed are unaffected.
+  ipcMain.handle('config:setPlanSyncEnabled', async (_event, { enabled }: { enabled: boolean }) => {
+    const config = updatePlanSyncEnabled(enabled)
     return { config }
   })
 

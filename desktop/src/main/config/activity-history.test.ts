@@ -5,7 +5,20 @@ import { setStore, NOOP_STORE } from '../store/Store'
 import { addHistoryEntry } from './activity-history'
 import { readConfig } from './config'
 
-vi.mock('./config', () => ({ readConfig: vi.fn(() => ({} as Config)) }))
+// CONFIG_DIR comes along because the outbox now reads the open session (its uid
+// guard), and the session store resolves its file from this module.
+vi.mock('./config', () => ({
+  readConfig: vi.fn(() => ({} as Config)),
+  CONFIG_DIR: `${process.env.TMPDIR ?? '/tmp'}/magic-slash-activity-history-test`,
+}))
+
+// And the session store itself is stubbed, because it imports `electron` for
+// safeStorage — a dependency of `desktop/`, not of the root workspace the test suite
+// installs (`ci.yml` runs `npm ci` at the root only). Reaching it here is new: the
+// outbox gained the import for its uid guard, so `activity-history -> outbox` now
+// leads to electron where it used to stop. Same stub as outbox.test.ts,
+// pending-archives.test.ts and CloudStore.test.ts, for the same reason.
+vi.mock('../cloud/session-store', () => ({ loadSession: () => null }))
 
 /** Set what readConfig() returns for the next addHistoryEntry call. */
 function mockConfig(config: Partial<Config>): void {

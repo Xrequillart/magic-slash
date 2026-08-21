@@ -1,4 +1,4 @@
-import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
+import type { AppInstallationInfo, Config, Agent, HistoryEntry, OrgActivity, OrgSharedConfig, OrgAgent, PlanSession, PlanSpecInput, PlanTicketsInput, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, UsageEventInput, UsageStats, StoredRepository, RepositoryIdentity, UserProfile } from '../../types'
 
 /**
  * Result of a backend reachability probe.
@@ -73,6 +73,27 @@ export interface Store {
 
   /** Org-wide agents roster (all members) for the team dashboard. Read-only. */
   loadOrgAgents(): Promise<OrgAgent[]>
+
+  // `/magic:plan` sessions. Upserts, not appends: a session is ONE row per spec
+  // file, rewritten as the spec fills in — see main/store/plan-sync.ts, the only
+  // caller, which is also where the user's opt-out is enforced.
+  /**
+   * Upsert ONE plan session from its spec. Creates the row when the spec is still
+   * a promise (no file yet), which is what records a plan whose agent was closed
+   * before anything was written.
+   */
+  savePlanSpec(input: PlanSpecInput): Promise<void>
+  /**
+   * Upsert the tickets ONE plan session created, resolving the session from the
+   * spec path. Creates the session first when there is none — the tickets exist
+   * in the tracker either way, so dropping them would be the worse loss.
+   */
+  savePlanTickets(input: PlanTicketsInput): Promise<void>
+  /**
+   * When each of the caller's own plan sessions last received its spec — the
+   * projection the launch reconcile compares file mtimes against. Read-only.
+   */
+  loadPlanSyncState(): Promise<Pick<PlanSession, 'specKey' | 'specSyncedAt'>[]>
 
   /**
    * Append ONE activity event (append-only, fire-and-forget). Write-only: the
@@ -192,6 +213,9 @@ export const NOOP_STORE: Store = {
   async saveAgents() { /* no-op */ },
   async archiveAgent() { /* no-op */ },
   async loadOrgAgents() { return [] },
+  async savePlanSpec() { /* no-op */ },
+  async savePlanTickets() { /* no-op */ },
+  async loadPlanSyncState() { return [] },
   async appendHistory() { /* no-op */ },
   async appendUsage() { /* no-op */ },
   async recordSkillInvocation() { /* no-op */ },
