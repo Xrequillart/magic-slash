@@ -44,6 +44,7 @@ export const en = {
 
   // ── App chrome ─────────────────────────────────────────────────────────────
   'nav.application': 'Application',
+  'nav.plans': 'Plans',
   'nav.organization': 'Organization',
   'nav.account': 'Account',
   'nav.admin': 'Admin',
@@ -153,6 +154,38 @@ export const en = {
   'team.status.prMerged': 'PR merged',
   'team.unmatched.one': '1 agent on a repository this view cannot resolve',
   'team.unmatched.many': '{count} agents on repositories this view cannot resolve',
+
+  // ── Plans ──────────────────────────────────────────────────────────────────
+  'plans.title': 'Plans',
+  'plans.subtitle':
+    'Every /magic:plan session on a repository you can see — the spec it produced and the tickets it filed. Your own, and your team’s.',
+  'plans.filter.label': 'Repository',
+  'plans.filter.all': 'All repositories',
+  'plans.status.planning': 'Being written',
+  'plans.status.planned': 'Tickets filed',
+  'plans.tickets.none': 'no ticket',
+  'plans.tickets.one': '1 ticket',
+  'plans.tickets.many': '{count} tickets',
+  'plans.noRepo': 'Unknown repository',
+  'plans.you': 'You',
+  'plans.kind.epic': 'Epic',
+  'plans.empty.title': 'No plan here yet',
+  'plans.empty.body':
+    'Run /magic:plan in Claude Code and it turns an idea into a reviewable spec, then into an epic and its stories. Every session lands here as it is written, with the spec and the tickets it created.',
+  'plans.empty.filteredTitle': 'Nothing on this repository',
+  'plans.empty.filteredBody': 'No plan has been written on this repository yet. Pick another one.',
+  'plans.detail.back': 'All plans',
+  'plans.detail.notFound': 'This plan is not available',
+  'plans.detail.notFoundHint':
+    'It does not exist, or it belongs to a repository none of your organizations share.',
+  'plans.detail.idea': 'Idea',
+  'plans.detail.tickets': 'Created tickets',
+  'plans.detail.noTickets': 'No ticket has been created from this plan yet.',
+  'plans.detail.noEpic': 'No epic',
+  'plans.detail.spec': 'Spec',
+  'plans.detail.specPending':
+    'The spec has not been uploaded yet. It appears here as the session writes it.',
+  'plans.detail.syncedAt': 'Spec updated {when}',
 
   // ── Skill stats ────────────────────────────────────────────────────────────
   'skills.title': 'Skills run',
@@ -373,6 +406,9 @@ export const en = {
   'settings.spotlight.label': 'Enable Spotlight',
   'settings.spotlight.help':
     'Open the Quick Launch panel from anywhere with a keyboard shortcut. Which keys open it is chosen in the desktop app — it depends on what else is installed on that machine.',
+  'settings.planSync.label': 'Sync plan specs',
+  'settings.planSync.help':
+    'On by default. Uploads the spec written by /magic:plan and the tickets it creates, so they show up on the Plans page — yours, and your team’s on a shared repository. Turn it off and nothing leaves the machine; the spec still gets written to the repository as usual.',
   'settings.usageLogs.section': 'Activity recording',
 
   // ── Settings · Notifications ───────────────────────────────────────────────

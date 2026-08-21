@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AppWindow, Building2, ChevronDown, LogOut, ShieldCheck, UserRound } from 'lucide-react'
+import { AppWindow, Building2, ChevronDown, LogOut, NotebookPen, ShieldCheck, UserRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { isPlatformAdmin } from '@/lib/admin'
 import { getSupabase } from '@/lib/supabase'
@@ -34,6 +34,7 @@ interface MenuLink {
 
 const MENU_LINKS: MenuLink[] = [
   { href: '/application', label: 'nav.application', icon: AppWindow },
+  { href: '/plans', label: 'nav.plans', icon: NotebookPen },
   { href: '/organization', label: 'nav.organization', icon: Building2 },
   { href: '/account', label: 'nav.account', icon: UserRound },
   { href: '/admin', label: 'nav.admin', icon: ShieldCheck, platformAdminOnly: true },

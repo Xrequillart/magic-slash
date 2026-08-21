@@ -182,6 +182,15 @@ describe('message catalogues', () => {
       app: [
       'nav.application',
       'nav.admin',
+      // "Plans" is the product's own name for the page, in both languages, and
+      // "Epic" is the word the French Jira and the French spec both use.
+      'nav.plans',
+      'plans.title',
+      'plans.kind.epic',
+      // Ticket counts, same reason as the agent counts below: "1 ticket" and
+      // "{count} tickets" are spelled identically in French.
+      'plans.tickets.one',
+      'plans.tickets.many',
       'team.agents.one',
       'team.agents.many',
       'profile.role.dev',

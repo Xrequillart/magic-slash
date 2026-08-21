@@ -240,6 +240,7 @@ interface AdminUserDetailRpcRow {
   agent_context_enabled: boolean | null
   agent_context_minimized: boolean | null
   usage_logs_enabled: boolean | null
+  plan_sync_enabled: boolean | null
   daily_digest_enabled: boolean | null
   notifications_enabled: boolean | null
   notification_agent_waiting: boolean | null
@@ -393,6 +394,7 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       agentContextEnabled: r.agent_context_enabled,
       agentContextMinimized: r.agent_context_minimized,
       usageLogsEnabled: r.usage_logs_enabled,
+      planSyncEnabled: r.plan_sync_enabled,
       dailyDigestEnabled: r.daily_digest_enabled,
       notificationsEnabled: r.notifications_enabled,
       notificationAgentWaiting: r.notification_agent_waiting,

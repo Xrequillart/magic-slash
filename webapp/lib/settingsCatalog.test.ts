@@ -26,6 +26,7 @@ const EVERY_FIELD: (keyof AdminUserSettings)[] = [
   'agentContextEnabled',
   'agentContextMinimized',
   'usageLogsEnabled',
+  'planSyncEnabled',
   'notificationsEnabled',
   'notificationAgentWaiting',
   'notificationAgentCompleted',

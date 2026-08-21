@@ -38,6 +38,7 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Navigation ─────────────────────────────────────────────────────────────
   'nav.application': 'Application',
+  'nav.plans': 'Plans',
   'nav.organization': 'Organisation',
   'nav.account': 'Compte',
   'nav.admin': 'Admin',
@@ -150,6 +151,39 @@ export const fr: Record<keyof typeof en, string> = {
   'team.status.prMerged': 'PR mergée',
   'team.unmatched.one': '1 agent sur un dépôt que cette vue ne peut pas rattacher',
   'team.unmatched.many': '{count} agents sur des dépôts que cette vue ne peut pas rattacher',
+
+  // ── Plans ──────────────────────────────────────────────────────────────────
+  'plans.title': 'Plans',
+  'plans.subtitle':
+    'Toutes les sessions /magic:plan sur un dépôt visible pour vous — la spec produite et les tickets créés. Les vôtres, et celles de votre équipe.',
+  'plans.filter.label': 'Dépôt',
+  'plans.filter.all': 'Tous les dépôts',
+  'plans.status.planning': 'En cours d’écriture',
+  'plans.status.planned': 'Tickets créés',
+  'plans.tickets.none': 'aucun ticket',
+  'plans.tickets.one': '1 ticket',
+  'plans.tickets.many': '{count} tickets',
+  'plans.noRepo': 'Dépôt inconnu',
+  'plans.you': 'Vous',
+  'plans.kind.epic': 'Epic',
+  'plans.empty.title': 'Aucun plan pour l’instant',
+  'plans.empty.body':
+    'Lancez /magic:plan dans Claude Code : il transforme une idée en spec relisible, puis en epic et en stories. Chaque session arrive ici au fil de son écriture, avec sa spec et les tickets créés.',
+  'plans.empty.filteredTitle': 'Rien sur ce dépôt',
+  'plans.empty.filteredBody':
+    'Aucun plan n’a encore été écrit sur ce dépôt. Choisissez-en un autre.',
+  'plans.detail.back': 'Tous les plans',
+  'plans.detail.notFound': 'Ce plan n’est pas accessible',
+  'plans.detail.notFoundHint':
+    'Il n’existe pas, ou il appartient à un dépôt qu’aucune de vos organisations ne partage.',
+  'plans.detail.idea': 'Idée',
+  'plans.detail.tickets': 'Tickets créés',
+  'plans.detail.noTickets': 'Aucun ticket n’a encore été créé depuis ce plan.',
+  'plans.detail.noEpic': 'Sans epic',
+  'plans.detail.spec': 'Spécification',
+  'plans.detail.specPending':
+    'La spec n’a pas encore été envoyée. Elle apparaît ici à mesure que la session l’écrit.',
+  'plans.detail.syncedAt': 'Spec mise à jour {when}',
 
   // ── Statistiques des skills ────────────────────────────────────────────────
   'skills.title': 'Skills exécutés',
@@ -383,6 +417,9 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.spotlight.label': 'Activer Spotlight',
   'settings.spotlight.help':
     'Ouvre le panneau de lancement rapide depuis n’importe où avec un raccourci clavier. Le choix des touches se fait dans l’application : il dépend de ce qui est installé sur cette machine-là.',
+  'settings.planSync.label': 'Synchroniser les specs de plan',
+  'settings.planSync.help':
+    'Activé par défaut. Envoie la spec écrite par /magic:plan et les tickets qu’elle crée, pour qu’ils apparaissent sur la page Plans — les vôtres, et ceux de votre équipe sur un dépôt partagé. Désactivé, rien ne quitte la machine : la spec est toujours écrite dans le dépôt comme d’habitude.',
   'settings.usageLogs.section': 'Enregistrement de l’activité',
 
   // ── Réglages · Surveillance des revues de PR ───────────────────────────────
