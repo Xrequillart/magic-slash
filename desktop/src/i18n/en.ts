@@ -351,13 +351,14 @@ export const en = {
   'settings.application.setup.healthy': 'Everything the skills need is in place.',
   'settings.application.setup.degraded': 'Some things need your attention:',
   'settings.application.setup.recheck': 'Check again',
+  'settings.application.setup.checking': 'Checking Claude Code, the MCP servers and the skills…',
+  'settings.application.setup.checkFailed':
+    'This machine’s setup could not be read. Use “Check again” to retry.',
   'settings.application.setup.install': 'Install',
   'settings.application.setup.installing': 'Installing…',
   'settings.application.setup.getIt': 'Get it',
   'settings.application.setup.prerequisite.missing': '`{name}` is not installed. The skills cannot run without it.',
   'settings.application.setup.prerequisite.outdated': '`{name}` is v{version}, but v{min} or later is required.',
-  'settings.application.setup.prerequisite.optional':
-    '`{name}` is not installed. Everything works, but /magic:resolve will reply without threading.',
   'settings.application.setup.mcp.missing': 'The {name} MCP server is not configured, so those tools are unavailable.',
   'settings.application.setup.mcp.legacy':
     'The {name} MCP server is configured differently than this version expects. Migrating switches it to browser sign-in, with no token to store.',
@@ -366,7 +367,7 @@ export const en = {
   'settings.application.setup.skills.missing': 'Missing skills: {names}.',
   'settings.application.setup.skills.reinstall': 'Reinstall',
   'settings.application.setup.integrations.title': 'Integrations',
-  'settings.application.setup.integrations.confirmOff': 'Turn Jira off?',
+  'settings.application.setup.integrations.confirmOff': 'Turn Jira off',
   'settings.application.setup.integrations.offWarning':
     'This unregisters the Jira server and withdraws its permissions. Turning it back on takes one click.',
 

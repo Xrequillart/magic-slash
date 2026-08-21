@@ -337,13 +337,14 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.setup.healthy': 'Tout ce dont les skills ont besoin est en place.',
   'settings.application.setup.degraded': 'Quelques points demandent votre attention :',
   'settings.application.setup.recheck': 'Revérifier',
+  'settings.application.setup.checking': 'Vérification de Claude Code, des serveurs MCP et des skills…',
+  'settings.application.setup.checkFailed':
+    'Impossible de lire la configuration de cette machine. Utilisez « Revérifier » pour réessayer.',
   'settings.application.setup.install': 'Installer',
   'settings.application.setup.installing': 'Installation…',
   'settings.application.setup.getIt': 'Obtenir',
   'settings.application.setup.prerequisite.missing': '`{name}` n’est pas installé. Les skills ne peuvent pas fonctionner sans.',
   'settings.application.setup.prerequisite.outdated': '`{name}` est en v{version}, mais la v{min} ou plus récente est requise.',
-  'settings.application.setup.prerequisite.optional':
-    '`{name}` n’est pas installé. Tout fonctionne, mais /magic:resolve répondra sans fil de discussion.',
   'settings.application.setup.mcp.missing': 'Le serveur MCP {name} n’est pas configuré, ses outils sont donc indisponibles.',
   'settings.application.setup.mcp.legacy':
     'Le serveur MCP {name} est configuré autrement que ce que cette version attend. La migration le bascule sur une connexion via le navigateur, sans jeton à stocker.',
@@ -352,7 +353,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.application.setup.skills.missing': 'Skills manquants : {names}.',
   'settings.application.setup.skills.reinstall': 'Réinstaller',
   'settings.application.setup.integrations.title': 'Intégrations',
-  'settings.application.setup.integrations.confirmOff': 'Désactiver Jira ?',
+  'settings.application.setup.integrations.confirmOff': 'Désactiver Jira',
   'settings.application.setup.integrations.offWarning':
     'Le serveur Jira sera retiré et ses permissions révoquées. Le réactiver ne demande qu’un clic.',
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, ExternalLink, Copy, Wrench } from 'lucide-react'
+import { CheckCircle2, XCircle, Download, RefreshCw, ExternalLink, Copy, Wrench, Loader2, ChevronDown } from 'lucide-react'
 import type { McpServerStatus, PrerequisiteId, PrerequisiteStatus, SetupStatus } from '../../../types'
 import { useT } from '../../i18n'
 import { SectionHeader } from './SectionHeader'
@@ -16,24 +16,41 @@ import { SectionHeader } from './SectionHeader'
  * always the same and always mystifying — a skill that stops early, or telemetry that
  * silently records nothing. This card exists so that state is legible at any time,
  * from inside the app, with the repair one click away.
+ *
+ * WHAT IT ANSWERS
+ * ---------------------------------------------------------------------------
+ * One question, three checks: are the required tools there, are the MCP servers
+ * registered, are the skills installed. The verdict is binary on purpose — a green
+ * check or a red cross with the reason spelled out. A middle "warning" state only
+ * ever raised the question of whether it mattered, and the answer was always the
+ * same: fix it or ignore it forever. Optional tools are checked by the first-run
+ * wizard, which is where a nice-to-have belongs.
  */
 export function SetupHealthCard() {
   const t = useT()
+  /** Null while the check is in flight — the card shows a spinner rather than nothing. */
   const [status, setStatus] = useState<SetupStatus | null>(null)
+  /** The check itself failed (no IPC answer). Distinct from "answered: something is missing". */
+  const [checkFailed, setCheckFailed] = useState(false)
   /** Which prerequisite is currently being installed, if any. */
   const [installing, setInstalling] = useState<PrerequisiteId | null>(null)
   /** Live installer output — an install can be silent for a minute. */
   const [installLog, setInstallLog] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
-  /** Second click needed to turn Atlassian off — see setIntegrations below. */
+  /** Confirmation pending before Jira is switched off — see applyIntegrations below. */
   const [confirmingOff, setConfirmingOff] = useState(false)
 
   const refresh = useCallback(() => {
+    // Back to the spinner: re-checking is the one moment where the numbers on
+    // screen are known to be stale, and showing the old verdict during it is how
+    // you end up trusting a green check that was computed two installs ago.
+    setStatus(null)
+    setCheckFailed(false)
     window.electronAPI.setup
       .getStatus()
       .then(setStatus)
-      .catch(() => { /* the panel simply does not render */ })
+      .catch(() => setCheckFailed(true))
   }, [])
 
   useEffect(refresh, [refresh])
@@ -71,15 +88,12 @@ export function SetupHealthCard() {
    * Switch the integrations.
    *
    * Turning Atlassian OFF unregisters its MCP server and withdraws the Jira
-   * permissions, which is why it asks first: everything else in this card ADDS
-   * something, and one mis-click here would revoke someone's Jira access in the
-   * middle of a ticket. Turning it back on needs no confirmation — nothing is lost.
+   * permissions, which is why the select does not apply that choice on its own:
+   * everything else in this card ADDS something, and one mis-pick here would
+   * revoke someone's Jira access in the middle of a ticket. Turning it back on
+   * applies immediately — nothing is lost.
    */
-  const setIntegrations = async (atlassian: boolean) => {
-    if (!atlassian && confirmingOff === false) {
-      setConfirmingOff(true)
-      return
-    }
+  const applyIntegrations = async (atlassian: boolean) => {
     setConfirmingOff(false)
     setBusy('integrations')
     try {
@@ -87,6 +101,17 @@ export function SetupHealthCard() {
     } finally {
       setBusy(null)
     }
+  }
+
+  const pickIntegrations = (atlassian: boolean, current: boolean) => {
+    if (atlassian) {
+      // Also the way out of a pending turn-off: picking "Jira and GitHub" again
+      // cancels it, so the select never sits on a value that is not in effect.
+      if (confirmingOff) setConfirmingOff(false)
+      if (!current) void applyIntegrations(true)
+      return
+    }
+    if (current) setConfirmingOff(true)
   }
 
   const reinstallSkills = async () => {
@@ -105,21 +130,59 @@ export function SetupHealthCard() {
     setTimeout(() => setCopied(null), 1500)
   }
 
-  if (!status) return null
+  // Shared between the three states so the heading and its "Check again" never
+  // move or disappear as the card resolves.
+  const header = (
+    <SectionHeader
+      icon={Wrench}
+      title={t('settings.application.setup.title')}
+      action={
+        <button
+          onClick={refresh}
+          disabled={status === null && !checkFailed}
+          className="text-xs text-text-secondary/60 hover:text-ink transition-colors flex items-center gap-1 disabled:opacity-50"
+        >
+          <RefreshCw className="w-3 h-3" />
+          {t('settings.application.setup.recheck')}
+        </button>
+      }
+    />
+  )
 
-  // A missing OPTIONAL tool is a warning, never a fault: `gh` absent only costs
-  // /magic:resolve its threaded replies, and there is a documented fallback.
+  // Checking, or the check never came back. Same shape as the resolved card — an
+  // icon and a sentence — so nothing shifts when the answer lands.
+  if (!status) {
+    return (
+      <div>
+        {header}
+        <div className="bg-surface border border-line-strong rounded-xl p-4">
+          <div className="flex items-start gap-2.5">
+            {checkFailed
+              ? <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-red" />
+              : <Loader2 className="w-4 h-4 mt-0.5 shrink-0 text-text-secondary/60 animate-spin" />}
+            <div className="text-xs text-text-secondary/70">
+              {checkFailed
+                ? t('settings.application.setup.checkFailed')
+                : t('settings.application.setup.checking')}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Only the required tools: an absent `gh` costs /magic:resolve its threaded
+  // replies and has a documented fallback, which is not something to paint red
+  // on a card whose whole job is to say whether the skills can run.
   const missingRequired = status.prerequisites.filter((p) => p.required && (!p.installed || p.outdated))
-  const missingOptional = status.prerequisites.filter((p) => !p.required && !p.installed)
   const mcpToFix = status.mcpServers.filter(
     (s) => s.state !== 'configured' && (s.id === 'github' ? status.integrations.github : status.integrations.atlassian),
   )
   const healthy = missingRequired.length === 0 && mcpToFix.length === 0 && status.missingSkills.length === 0
 
-  const Icon = missingRequired.length > 0 ? XCircle : healthy ? CheckCircle2 : AlertTriangle
-  // Theme tokens rather than Tailwind's numbered scale — a fixed colour stops being
-  // readable on half the themes (see themes.test.ts).
-  const tone = missingRequired.length > 0 ? 'text-red' : healthy ? 'text-green' : 'text-yellow'
+  // The select shows the pending choice while a turn-off waits for confirmation,
+  // so the sentence under it reads as being about what you just picked.
+  const atlassianSelected = confirmingOff ? false : status.integrations.atlassian
 
   return (
     <div>
@@ -127,22 +190,14 @@ export function SetupHealthCard() {
           inside the card: it sits among the feature toggles now, and a bold title
           in the box would make it read as a different kind of thing. The status
           icon stays inside — it belongs to the verdict, not to the heading. */}
-      <SectionHeader
-        icon={Wrench}
-        title={t('settings.application.setup.title')}
-        action={
-          <button
-            onClick={refresh}
-            className="text-xs text-text-secondary/60 hover:text-ink transition-colors flex items-center gap-1"
-          >
-            <RefreshCw className="w-3 h-3" />
-            {t('settings.application.setup.recheck')}
-          </button>
-        }
-      />
+      {header}
       <div className="bg-surface border border-line-strong rounded-xl p-4">
         <div className="flex items-start gap-2.5">
-          <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${tone}`} />
+          {/* Theme tokens rather than Tailwind's numbered scale — a fixed colour
+              stops being readable on half the themes (see themes.test.ts). */}
+          {healthy
+            ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-green" />
+            : <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-red" />}
           <div className="min-w-0 flex-1">
             <div className="text-xs text-text-secondary/70">
               {healthy ? t('settings.application.setup.healthy') : t('settings.application.setup.degraded')}
@@ -160,23 +215,6 @@ export function SetupHealthCard() {
                     onInstall={() => install(prerequisite.id)}
                     onCopy={copy}
                     copied={copied}
-                  />
-                ))}
-              </ul>
-            )}
-
-            {missingOptional.length > 0 && (
-              <ul className="mt-2 space-y-2">
-                {missingOptional.map((prerequisite) => (
-                  <PrerequisiteRow
-                    key={prerequisite.id}
-                    prerequisite={prerequisite}
-                    installing={installing === prerequisite.id}
-                    disabled={installing !== null}
-                    onInstall={() => install(prerequisite.id)}
-                    onCopy={copy}
-                    copied={copied}
-                    optional
                   />
                 ))}
               </ul>
@@ -229,42 +267,40 @@ export function SetupHealthCard() {
             {/* Integrations. Lives here rather than in its own section because it is the
                 same decision the first-run wizard makes, reading the same status — and
                 because the wizard promises it can be changed later, which has to be
-                true somewhere. */}
+                true somewhere. A select rather than a pair of buttons: it is one choice
+                between two mutually exclusive values, and it says which one is in
+                effect without the reader having to compare two highlight states. */}
             <div className="mt-3 pt-3 border-t border-line">
-              <div className="text-xs font-medium text-text-secondary/70">
-                {t('settings.application.setup.integrations.title')}
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-medium text-text-secondary/70">
+                  {t('settings.application.setup.integrations.title')}
+                </div>
+                <div className="relative shrink-0">
+                  <select
+                    value={atlassianSelected ? 'both' : 'github'}
+                    onChange={(e) => pickIntegrations(e.target.value === 'both', status.integrations.atlassian)}
+                    disabled={busy === 'integrations'}
+                    aria-label={t('settings.application.setup.integrations.title')}
+                    className="pl-3 pr-7 py-1.5 bg-surface border border-line-field rounded-lg text-xs focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50"
+                  >
+                    <option value="both">{t('setup.wizard.integrations.both')}</option>
+                    <option value="github">{t('setup.wizard.integrations.githubOnly')}</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 mt-2">
-                <button
-                  onClick={() => setIntegrations(true)}
-                  disabled={busy === 'integrations'}
-                  className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors disabled:opacity-50 ${
-                    status.integrations.atlassian
-                      ? 'bg-accent/10 border-accent/30 text-accent'
-                      : 'bg-surface border-line text-text-secondary hover:text-ink'
-                  }`}
-                >
-                  {t('setup.wizard.integrations.both')}
-                </button>
-                <button
-                  onClick={() => setIntegrations(false)}
-                  disabled={busy === 'integrations'}
-                  className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors disabled:opacity-50 ${
-                    !status.integrations.atlassian
-                      ? 'bg-accent/10 border-accent/30 text-accent'
-                      : confirmingOff
-                        ? 'bg-red/10 border-red/30 text-red'
-                        : 'bg-surface border-line text-text-secondary hover:text-ink'
-                  }`}
-                >
-                  {confirmingOff && status.integrations.atlassian
-                    ? t('settings.application.setup.integrations.confirmOff')
-                    : t('setup.wizard.integrations.githubOnly')}
-                </button>
-              </div>
-              {confirmingOff && status.integrations.atlassian && (
-                <div className="text-[11px] text-text-secondary/50 mt-1.5">
-                  {t('settings.application.setup.integrations.offWarning')}
+              {confirmingOff && (
+                <div className="mt-2 flex items-start justify-between gap-2">
+                  <div className="text-[11px] text-text-secondary/50">
+                    {t('settings.application.setup.integrations.offWarning')}
+                  </div>
+                  <button
+                    onClick={() => applyIntegrations(false)}
+                    disabled={busy === 'integrations'}
+                    className="shrink-0 px-2 py-1 text-[11px] font-medium text-red bg-red/10 border border-red/20 rounded-md hover:bg-red/20 transition-colors disabled:opacity-50"
+                  >
+                    {t('settings.application.setup.integrations.confirmOff')}
+                  </button>
                 </div>
               )}
             </div>
@@ -279,7 +315,6 @@ interface PrerequisiteRowProps {
   prerequisite: PrerequisiteStatus
   installing: boolean
   disabled: boolean
-  optional?: boolean
   copied: string | null
   onInstall: () => void
   onCopy: (text: string) => void
@@ -296,13 +331,13 @@ interface PrerequisiteRowProps {
  * it ships an official installer we run for the user — being the one REQUIRED tool the
  * app could not repair made it the worst possible thing to leave as a link.
  */
-function PrerequisiteRow({ prerequisite, installing, disabled, optional, copied, onInstall, onCopy }: PrerequisiteRowProps) {
+function PrerequisiteRow({ prerequisite, installing, disabled, copied, onInstall, onCopy }: PrerequisiteRowProps) {
   const t = useT()
 
   return (
     <li className="flex items-start justify-between gap-2">
       <div className="text-xs text-text-secondary/70 flex gap-1.5 min-w-0">
-        <span aria-hidden className={optional ? 'text-text-secondary/40' : 'text-red'}>•</span>
+        <span aria-hidden className="text-red">•</span>
         <span>
           {prerequisite.outdated
             ? t('settings.application.setup.prerequisite.outdated', {
@@ -310,9 +345,7 @@ function PrerequisiteRow({ prerequisite, installing, disabled, optional, copied,
                 version: prerequisite.version ?? '?',
                 min: prerequisite.minVersion ?? '?',
               })
-            : optional
-              ? t('settings.application.setup.prerequisite.optional', { name: prerequisite.id })
-              : t('settings.application.setup.prerequisite.missing', { name: prerequisite.id })}
+            : t('settings.application.setup.prerequisite.missing', { name: prerequisite.id })}
         </span>
       </div>
 
