@@ -191,6 +191,25 @@ export function FeatureSettings() {
             {t('settings.usageLogs.footnoteAgents')}
           </p>
         </div>
+
+        {/*
+          In the "what the app SENDS" card rather than the features one above, and
+          that is the whole reason it is here: this is the only switch in the product
+          that decides whether the CONTENTS OF A FILE leave the machine. It belongs
+          next to the question about data, not among the three switches about layout.
+
+          Its own row rather than a line inside the activity-recording block: that
+          block is anonymous telemetry with an explicit "never collected" list that
+          says prompts and code stay local, and a spec upload sitting inside it would
+          read as contradicting that list.
+        */}
+        <SettingRow label={t('settings.planSync.label')} description={t('settings.planSync.help')}>
+          <Toggle
+            checked={settings.planSyncEnabled ?? DEFAULTS.planSyncEnabled}
+            onChange={(planSyncEnabled) => patch({ planSyncEnabled })}
+            label={t('settings.planSync.label')}
+          />
+        </SettingRow>
       </SettingsCard>
     </>
   )

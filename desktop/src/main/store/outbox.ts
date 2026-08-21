@@ -3,6 +3,8 @@ import * as path from 'path'
 import { randomUUID } from 'crypto'
 import { CONFIG_DIR } from '../config/paths'
 import type { HistoryEntry, SkillInvocationInput, SkillRunEndInput, UsageEventInput } from '../../types'
+import { loadSession } from '../cloud/session-store'
+import { readSpecFile } from './spec-file'
 import { getStore } from './Store'
 
 /**
@@ -32,11 +34,27 @@ import { getStore } from './Store'
  * does nothing. Minting the id inside the store instead would defeat this: the retry
  * would carry a different one and insert a second row.
  *
- * NOT A GENERAL-PURPOSE QUEUE
+ * STILL NOT A GENERAL-PURPOSE QUEUE
  * ---------------------------------------------------------------------------
- * Telemetry only. It must never block, never throw into a caller, and never grow
+ * It was telemetry only until `planSpec` joined it (#194), and the difference is
+ * worth being explicit about, because it is the difference that decides what may be
+ * queued here at all. A telemetry entry carries the WHOLE event; a `planSpec` entry
+ * carries only the PATH of a spec file, which is re-read at replay. Two reasons, both
+ * hard constraints rather than preferences:
+ *
+ *  - MAX_FILE_BYTES is a corruption guard that deletes the entire file, telemetry
+ *    included (see readEntries). Entries of tens of kilobytes would reach it, so
+ *    nothing whose size is user-controlled may be stored inline.
+ *  - re-reading at replay IS the semantics a spec wants — the file as it stands when
+ *    the upload finally happens, not as it stood when the network dropped.
+ *
+ * That also makes `planSpec` the first entry kind with an OWNER, hence the uid guard
+ * in flushOutbox: a queue drains under whatever session happens to be open, which is
+ * harmless for a row scoped by user_id and wrong for a document.
+ *
+ * Whatever the kind, this must never block, never throw into a caller, and never grow
  * without bound — an unreadable or oversized file is truncated rather than repaired,
- * because losing queued telemetry is always preferable to breaking the app that
+ * because losing a queued entry is always preferable to breaking the app that
  * produced it.
  */
 
@@ -61,7 +79,20 @@ const COMPACT_AT = Math.floor(MAX_ENTRIES * 1.1)
 const MAX_FILE_BYTES = 8 * 1024 * 1024
 
 /** The event kinds the queue can replay, each mapping to one Store method. */
-export type OutboxKind = 'history' | 'usage' | 'skill' | 'skillEnd'
+export type OutboxKind = 'history' | 'usage' | 'skill' | 'skillEnd' | 'planSpec'
+
+/**
+ * A `/magic:plan` spec upload that could not be made. The PATH, not the markdown —
+ * see the header — plus the account it belongs to, since this is the one entry kind
+ * that must not be replayed under another user's session.
+ */
+interface PlanSpecEntry {
+  specPath: string
+  /** app agent id ("claude-…"). May no longer resolve by the time this replays. */
+  agentId: string
+  /** The owner at the time of the failed write; '' when no session was loaded. */
+  uid: string
+}
 
 type OutboxEntry =
   | { kind: 'history'; payload: HistoryEntry }
@@ -74,6 +105,13 @@ type OutboxEntry =
    * up counted as time spent running.
    */
   | { kind: 'skillEnd'; payload: SkillRunEndInput }
+  /**
+   * No idempotence key either, and none is possible: the row is keyed on the spec
+   * path, so a replay is an upsert onto the same row — a second delivery rewrites
+   * what the first one wrote, which is the last-write-wins this whole path is built
+   * on rather than a duplicate.
+   */
+  | { kind: 'planSpec'; payload: PlanSpecEntry }
 
 /**
  * Mint the idempotence key for one event, at the moment it happens.
@@ -181,13 +219,51 @@ async function replay(entry: OutboxEntry): Promise<void> {
       // reason to keep retrying a close that will never find its run.
       await store.closeSkillRun(entry.payload)
       return
+    case 'planSpec': {
+      // Through the shared guard, not `fs` directly: this is the SECOND path that
+      // opens a spec file, and it is as exposed as the first. `readSpecFile` re-applies
+      // the `.magic/spec-*.md` shape test to the REAL path, so a queued entry whose
+      // file has since become a symlink to something private cannot deliver it here.
+      const spec = readSpecFile(entry.payload.specPath)
+      if (spec === undefined) {
+        // Nothing to send: the spec is gone (a deleted worktree, a renamed repository),
+        // too large, or no longer a spec at all. RETURNING is the point in every one of
+        // those cases — it counts as delivered, so the entry LEAVES the queue. Throwing
+        // instead would head-of-line the whole backlog forever, since flushOutbox stops
+        // at the first failure and this one can never stop failing.
+        return
+      }
+      // agent_id may resolve to nothing by now — replay happens after the agent was
+      // archived, which releases its app id. The session keeps its owner regardless.
+      return store.savePlanSpec({ agentId: entry.payload.agentId, specPath: entry.payload.specPath, spec })
+    }
   }
+}
+
+/**
+ * Whether an entry with an owner may be replayed under the session that is open.
+ *
+ * DELIBERATELY STRICTER THAN flushPendingArchives, and the difference is the point.
+ * There, an empty uid on either side means "unknown", and treating unknown as a match
+ * is safe: the worst case is settling an archive flag. Here the payload is a DOCUMENT
+ * that gets published to an organization, so "unknown" must never resolve to "yours".
+ *
+ * Two accounts on one OS profile is the case this exists for. An upload that failed
+ * while signed out is queued with `uid: ''`; the loose rule would then hand it to
+ * whoever signs in next, uploading the previous user's plan under the new user's
+ * identity and their repositories' visibility. So both sides must be present AND
+ * equal. An entry that can never match is kept, not dropped — its owner may sign back
+ * in, and flushOutbox skips rather than deletes.
+ */
+function replayableBy(entryUid: string, sessionUid: string): boolean {
+  return entryUid !== '' && sessionUid !== '' && entryUid === sessionUid
 }
 
 let flushing: Promise<number> | null = null
 
 /**
- * Replay the queue, oldest first, and keep whatever still fails.
+ * Replay the queue, oldest first, and keep whatever still fails — or whatever is not
+ * this session's to send (see the uid guard below).
  *
  * Stops at the FIRST failure instead of trying every entry: the failure is almost
  * always "the backend is unreachable", and walking a 5000-entry backlog to learn that
@@ -212,19 +288,40 @@ export function flushOutbox(): Promise<number> {
       return 0
     }
 
+    const uid = loadSession()?.user?.id ?? ''
+    // What survives this pass, in order. Not `entries.slice(delivered)` any more: an
+    // entry may now be kept from the MIDDLE of the queue (another account's spec),
+    // so the remainder is no longer a suffix.
+    const kept: OutboxEntry[] = []
     let delivered = 0
+    let stopped = false
+
     for (const entry of entries) {
+      if (stopped) {
+        kept.push(entry)
+        continue
+      }
+      // Another account's spec upload. Not ours to replay — the row is scoped by
+      // owner_id, so this session would either write it under the wrong owner or be
+      // refused — and not ours to drop either: the file is still on this disk, and
+      // the entry is the only record that it was never uploaded. Its owner's next
+      // flush settles it. SKIPPED, so the rest of the backlog still drains.
+      if (entry.kind === 'planSpec' && !replayableBy(entry.payload.uid, uid)) {
+        kept.push(entry)
+        continue
+      }
       try {
         await replay(entry)
         delivered++
       } catch {
-        break
+        kept.push(entry)
+        stopped = true
       }
     }
 
-    if (delivered > 0) {
-      writeEntries(entries.slice(delivered))
-      console.log(`[outbox] Delivered ${delivered} queued event(s), ${entries.length - delivered} remaining`)
+    if (kept.length !== entries.length) {
+      writeEntries(kept)
+      console.log(`[outbox] Delivered ${delivered} queued event(s), ${kept.length} remaining`)
     }
     return delivered
   })()

@@ -74,6 +74,8 @@ const configApi = {
     ipcRenderer.invoke('config:setNotifications', { patch }),
   setUsageLogsEnabled: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setUsageLogsEnabled', { enabled }),
+  setPlanSyncEnabled: (enabled: boolean): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setPlanSyncEnabled', { enabled }),
   setDailyDigestEnabled: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setDailyDigestEnabled', { enabled }),
 
@@ -260,6 +262,21 @@ const terminalApi = {
     const listener = (_event: IpcRendererEvent, data: { id: string; repositories: string[] }) => callback(data)
     ipcRenderer.on('terminal:repositories', listener)
     return () => ipcRenderer.removeListener('terminal:repositories', listener)
+  },
+
+  /**
+   * The agent's `/magic:plan` spec file changed on disk.
+   *
+   * Fired by the `/plan/spec` hook ping, unconditionally — whether or not the
+   * session syncs to the cloud, and whether or not the app is even online. It exists
+   * so a spec view can re-read the local file on a signal instead of holding an
+   * `fs.watch` handle per agent. `specPath` is absent when the agent announced no
+   * spec path, which is the one case there is nothing to re-read.
+   */
+  onPlanSpecChanged: (callback: (data: { id: string; specPath?: string }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: string; specPath?: string }) => callback(data)
+    ipcRenderer.on('plan:specChanged', listener)
+    return () => ipcRenderer.removeListener('plan:specChanged', listener)
   },
 }
 

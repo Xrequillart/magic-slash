@@ -36,6 +36,10 @@ export const DEFAULTS = {
   agentContextEnabled: true,
   agentContextMinimized: false,
   usageLogsEnabled: true,
+  // ON, and stated here rather than inferred: the desktop's plan-sync path
+  // short-circuits on `=== false`, so a user who never chose gets their
+  // /magic:plan specs synced.
+  planSyncEnabled: true,
   // All five read `!== false` where the notification is produced (the master at
   // the sink in the main process, the four kinds at their sender): absent has to
   // describe the behaviour every existing install already has.
@@ -56,12 +60,12 @@ export const DEFAULTS = {
 } as const
 
 /**
- * All 24 `user_settings` columns, as the desktop app stores them. Every one is
+ * All 25 `user_settings` columns, as the desktop app stores them. Every one is
  * nullable and NULL is a third state distinct from false — it means the user
  * never chose, and the app applies its own default. Nothing here normalises a
  * null away: "never chose" is exactly what a support question needs to see.
  *
- * Extends the 20 fields `lib/settings.ts` already names (the ones the webapp lets
+ * Extends the 21 fields `lib/settings.ts` already names (the ones the webapp lets
  * a user edit) rather than restating them, so a column rename is one edit and not
  * two camelCase lists that must silently agree. The 4 added below are the ones
  * `UserSettings` deliberately omits: per-machine properties and transient view
@@ -79,7 +83,7 @@ export interface AdminUserSettings extends UserSettings {
  * can say "par défaut (on)" instead of just "jamais choisi", which tells an operator
  * that a column is null without telling them what the app is therefore doing.
  *
- * Extends `DEFAULTS` (lib/settings.ts) rather than restating it: those twenty are
+ * Extends `DEFAULTS` (lib/settings.ts) rather than restating it: those twenty-one are
  * the ones the webapp itself can edit, and their defaults are already documented
  * there. The four below are the admin-only columns, each verified against the line in
  * the desktop app that resolves the unset value — cited, because a default invented
@@ -111,7 +115,7 @@ export interface SettingGroup {
 }
 
 /**
- * The twenty-four settings, grouped by FEATURE, in reading order. Also the field
+ * The twenty-five settings, grouped by FEATURE, in reading order. Also the field
  * allowlist — a column absent from here is a column the console does not show.
  *
  * The groups and their titles are the desktop app's own sections, verbatim and in its
@@ -197,6 +201,13 @@ export const SETTING_GROUPS: SettingGroup[] = [
     // surprising enough to annotate by hand.
     title: 'Activity recording',
     fields: [{ field: 'usageLogsEnabled', label: 'Enabled' }],
+  },
+  {
+    // Its own group rather than a second row under "Activity recording": that one
+    // is anonymous telemetry, this one uploads the TEXT of a document. Reading the
+    // two as one switch is exactly the confusion to avoid.
+    title: 'Plan sync',
+    fields: [{ field: 'planSyncEnabled', label: 'Enabled' }],
   },
   {
     title: 'Daily digest',

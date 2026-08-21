@@ -3,7 +3,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { URL } from 'url'
 import { CONFIG_DIR } from '../config/paths'
-import type { TerminalUsage } from '../../types'
+import type { PlanTicket, TerminalUsage } from '../../types'
 
 /**
  * Where the running server publishes its port.
@@ -82,6 +82,23 @@ type WorktreeFilesWriter = (files: string[], path: string | null, repo: string |
  * `main/index.ts`: this module must stay importable without Electron.
  */
 type PRUrlCallback = (terminalId: string, repoPath: string, prUrl: string) => void
+/**
+ * An agent announced where its spec file will be, for the first time.
+ *
+ * Same shape and same reason as PRUrlCallback: `/metadata?specPath=` is the only
+ * place a spec path is ever written, and the app has work to do the moment it
+ * arrives — the plan session is recorded from here, which is what makes a plan
+ * survive an agent closed before its spec was ever written.
+ */
+type SpecPathCallback = (terminalId: string, specPath: string) => void
+/**
+ * The agent wrote (or rewrote) its spec. Carries no path and no content: the app
+ * already knows where the spec is, and the whole point of this design is that the
+ * spec's text never travels over a command line.
+ */
+type PlanSpecCallback = (terminalId: string) => void
+/** The planning session created its tickets. Parsed from the request's JSON array. */
+type PlanTicketsCallback = (terminalId: string, tickets: PlanTicket[]) => void
 
 let server: http.Server | null = null
 let serverPort: number = 0
@@ -98,12 +115,20 @@ let configProvider: ConfigProvider | null = null
 let agentProvider: AgentProvider | null = null
 let worktreeFilesWriter: WorktreeFilesWriter | null = null
 let prUrlCallback: PRUrlCallback | null = null
+let specPathCallback: SpecPathCallback | null = null
+let planSpecCallback: PlanSpecCallback | null = null
+let planTicketsCallback: PlanTicketsCallback | null = null
 /**
  * Last PR URL seen per `terminalId:repoPath`, so the callback only fires on a
  * NEW one. `/magic:pr` re-sends the same metadata on later runs, and a tick per
  * repeat would be a free GraphQL query per repeat.
  */
 const lastSeenPRUrls = new Map<string, string>()
+/**
+ * Last spec path seen per terminal, for the same reason: `/magic:plan` re-sends its
+ * title on every later metadata write, and a path it already announced is not news.
+ */
+const lastSeenSpecPaths = new Map<string, string>()
 
 export function getServerPort(): number {
   return serverPort
@@ -119,6 +144,18 @@ export function setMetadataCallback(callback: MetadataCallback) {
 
 export function setPRUrlCallback(callback: PRUrlCallback) {
   prUrlCallback = callback
+}
+
+export function setSpecPathCallback(callback: SpecPathCallback) {
+  specPathCallback = callback
+}
+
+export function setPlanSpecCallback(callback: PlanSpecCallback) {
+  planSpecCallback = callback
+}
+
+export function setPlanTicketsCallback(callback: PlanTicketsCallback) {
+  planTicketsCallback = callback
 }
 
 export function setCommandStartCallback(callback: CommandStartCallback) {
@@ -220,6 +257,69 @@ export function parseStatusLinePayload(body: string): TerminalUsage {
     sevenDayPercent: numOrUndef(sevenDay.used_percentage),
     sevenDayResetsAt: numOrUndef(sevenDay.resets_at),
   }
+}
+
+/**
+ * Parse the `tickets` query parameter of `GET /plan/tickets` — a JSON array, sent
+ * URI-encoded exactly once by the caller.
+ *
+ * THE WIRE SHAPE, which `/magic:plan` builds with `jq` (see its `references/api.md`):
+ *   `[{ "key": "#412", "url": "https://…", "title": "Add SSO", "kind": "epic", "parent_key": null },
+ *     { "key": "#413", "url": "https://…", "title": "…", "kind": "story", "parent_key": "#412" }]`
+ *
+ * `parent_key` is snake_case because that is the column it lands in and what the
+ * skill documents; `parentKey` is accepted too, so neither side has to be right about
+ * the other's convention. `title` and the parent may be null, which reads as absent.
+ *
+ * Entries that are not well formed are DROPPED rather than repaired: `key`, `url` and
+ * `kind` are what the row is made of, and a ticket labelled neither epic nor story
+ * would land in the database as a hierarchy nobody can render. A malformed entry next
+ * to good ones must not take them down with it, hence per-entry filtering rather than
+ * rejecting the batch. Exported for unit testing.
+ */
+/**
+ * Whether a string is a URL safe to put behind a link a human will click.
+ *
+ * Only `http:` and `https:`. `WHATWG URL` parsing rather than a prefix test, so that
+ * `HTTP://`, surrounding whitespace and `\njavascript:` smuggling all resolve to the
+ * scheme the browser would actually use — which is the only thing that matters here.
+ */
+function isBrowsableUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value === '') return false
+  try {
+    const scheme = new URL(value).protocol
+    return scheme === 'http:' || scheme === 'https:'
+  } catch {
+    // Not absolute, therefore not a browse link the tracker issued.
+    return false
+  }
+}
+
+export function parsePlanTickets(raw: string): PlanTicket[] {
+  const parsed = JSON.parse(raw)
+  if (!Array.isArray(parsed)) return []
+
+  return parsed.flatMap((entry): PlanTicket[] => {
+    if (!entry || typeof entry !== 'object') return []
+    const record = entry as Record<string, unknown>
+    const { key, url, title, kind } = record
+    const parentKey = record.parent_key ?? record.parentKey
+    if (typeof key !== 'string' || key === '') return []
+    // http(s) only, and checked HERE rather than only at render time. This value is
+    // stored verbatim and later becomes an `href` on a page other members of the
+    // organization open, so a `javascript:` or `data:` target would be a clickable
+    // script in someone else's browser. The tracker only ever issues http(s) links, so
+    // anything else is either a mistake or an attempt; both are dropped.
+    if (!isBrowsableUrl(url)) return []
+    if (kind !== 'epic' && kind !== 'story') return []
+    return [{
+      key,
+      url,
+      kind,
+      ...(typeof title === 'string' && title !== '' ? { title } : {}),
+      ...(typeof parentKey === 'string' && parentKey !== '' ? { parentKey } : {}),
+    }]
+  })
 }
 
 export function startStatusServer(): Promise<number> {
@@ -399,6 +499,22 @@ export function startStatusServer(): Promise<number> {
             }
           }
 
+          // Also AFTER the metadata is stored, and also only on a path that changed:
+          // this is what records the planning session, and it reads the agent back
+          // from the very metadata written just above. `/magic:plan` re-sends its
+          // title (with the same specPath) at several later steps, and each of those
+          // would otherwise be a fresh session write for nothing.
+          if (terminalId && specPath) {
+            if (lastSeenSpecPaths.get(terminalId) !== specPath) {
+              lastSeenSpecPaths.set(terminalId, specPath)
+              try {
+                specPathCallback?.(terminalId, specPath)
+              } catch (e) {
+                console.error('[Hook Metadata] spec path callback failed:', e)
+              }
+            }
+          }
+
           res.writeHead(200)
           res.end('OK')
         } else if (url.pathname === '/command/start') {
@@ -483,6 +599,62 @@ export function startStatusServer(): Promise<number> {
               }
             } catch (e) {
               console.error('[Hook Repositories] Failed to parse repos:', e)
+            }
+          }
+
+          res.writeHead(200)
+          res.end('OK')
+        } else if (url.pathname === '/plan/spec') {
+          // The agent wrote a section of its spec. A PING, deliberately: the app knows
+          // where the spec is (from `/metadata?specPath=`) and reads the file itself, so
+          // no markdown is ever handed to a shell — and the upload, its debounce and the
+          // user's opt-out all stay in one place (main/store/plan-sync.ts).
+          //
+          // GET with a query even though it writes, like /config/worktree-files: these
+          // routes are called by curl from a hook, and a body would buy nothing.
+          const terminalId = url.searchParams.get('id')
+
+          // Ignore sidebar terminals (VS Code extension)
+          if (terminalId?.startsWith('sidebar-')) {
+            res.writeHead(200)
+            res.end('OK')
+            return
+          }
+
+          // An unknown agent, an agent with no spec path, a spec that is not written
+          // yet: all no-ops behind this callback, none of them an error. The caller is
+          // a `curl` inside a Claude Code turn, and there is nothing it could do with
+          // a failure except waste the turn on it.
+          if (terminalId && planSpecCallback) {
+            try {
+              planSpecCallback(terminalId)
+            } catch (e) {
+              console.error('[Plan] spec callback failed:', e)
+            }
+          }
+
+          res.writeHead(200)
+          res.end('OK')
+        } else if (url.pathname === '/plan/tickets') {
+          // The tickets the planning session created, as a URI-encoded JSON array.
+          // Same parse-and-guard shape as /repositories above.
+          const terminalId = url.searchParams.get('id')
+
+          // Ignore sidebar terminals (VS Code extension)
+          if (terminalId?.startsWith('sidebar-')) {
+            res.writeHead(200)
+            res.end('OK')
+            return
+          }
+
+          const ticketsRaw = url.searchParams.get('tickets')
+
+          if (terminalId && ticketsRaw && planTicketsCallback) {
+            try {
+              const tickets = parsePlanTickets(ticketsRaw)
+              if (tickets.length > 0) planTicketsCallback(terminalId, tickets)
+            } catch (e) {
+              console.error('[Plan] Failed to parse tickets:', e)
             }
           }
 

@@ -1198,6 +1198,84 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                         </svg>
                     </div>
 
+                    {/* ==================== PLANS ==================== */}
+                    <div className="doc-section" id="plans">
+                        <h2>{t('site.doc.plans.1')}</h2>
+                        <RichText k="site.doc.plans.2" as="p" />
+
+                        <div className="doc-skill">
+                            <h3>{t('site.doc.plans.3')}</h3>
+                            <p className="doc-skill-desc">{t('site.doc.plans.4')}</p>
+                            <div className="doc-skill-details">
+                                <div className="doc-skill-col">
+                                    <h4>{t('site.doc.plans.5')}</h4>
+                                    <ul>
+                                        <li>{t('site.doc.plans.6')}</li>
+                                        <li>{t('site.doc.plans.7')}</li>
+                                        <li>{t('site.doc.plans.8')}</li>
+                                        <li>{t('site.doc.plans.9')}</li>
+                                    </ul>
+                                </div>
+                                <div className="doc-skill-col">
+                                    <h4>{t('site.doc.plans.10')}</h4>
+                                    <RichText k="site.doc.plans.11" as="p" />
+                                    <RichText k="site.doc.plans.12" as="p" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="doc-skill">
+                            <h3>{t('site.doc.plans.13')}</h3>
+                            <p className="doc-skill-desc">{t('site.doc.plans.14')}</p>
+                            <div className="doc-skill-details">
+                                <div className="doc-skill-col">
+                                    <h4>{t('site.doc.plans.15')}</h4>
+                                    <ul>
+                                        <li>{t('site.doc.plans.16')}</li>
+                                        <li>{t('site.doc.plans.17')}</li>
+                                    </ul>
+                                </div>
+                                <div className="doc-skill-col">
+                                    <h4>{t('site.doc.plans.18')}</h4>
+                                    <ul>
+                                        <li>{t('site.doc.plans.19')}</li>
+                                        <li>{t('site.doc.plans.20')}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* The two surprising consequences of deriving visibility from the
+                            repository, spelled out rather than left to be discovered: one of
+                            them makes private brainstorming readable by a whole org. */}
+                        <div className="doc-skill">
+                            <h3>{t('site.doc.plans.21')}</h3>
+                            <p className="doc-skill-desc">{t('site.doc.plans.22')}</p>
+                            <div className="doc-skill-details">
+                                <div className="doc-skill-col">
+                                    <h4>{t('site.doc.plans.23')}</h4>
+                                    <RichText k="site.doc.plans.24" as="p" />
+                                </div>
+                                <div className="doc-skill-col">
+                                    <h4>{t('site.doc.plans.25')}</h4>
+                                    <RichText k="site.doc.plans.26" as="p" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3>{t('site.doc.plans.27')}</h3>
+                        <RichText k="site.doc.plans.28" as="p" />
+                    </div>
+
+                    {/* Trail 7b */}
+                    <div className="doc-trail">
+                        <svg viewBox="0 0 700 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <g filter="url(#trail-texture-1)">
+                                <path d="M-20 30C90 52 190 8 320 32C450 56 550 12 660 30C700 36 720 30 720 30" stroke="#FF0000" strokeWidth="6" strokeLinecap="round" />
+                            </g>
+                        </svg>
+                    </div>
+
                     {/* ==================== HOOKS & AUTOMATION ==================== */}
                     <div className="doc-section" id="hooks">
                         <h2>{t('site.doc.hooks.1')}</h2>

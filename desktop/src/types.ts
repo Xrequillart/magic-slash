@@ -640,6 +640,16 @@ export interface Config {
   // aggregate is open to any member regardless of this flag, and the `agents`
   // table syncs regardless too (that is what powers the live Team view).
   usageLogsEnabled?: boolean
+  /**
+   * Whether `/magic:plan` sessions (the spec and the tickets it produced) are
+   * uploaded to the cloud. ON by default, like usageLogsEnabled above, so only an
+   * EXPLICIT false opts out.
+   *
+   * It gates the UPLOAD alone: the spec file is written to the repository either
+   * way, and the in-app signal that it changed keeps firing, so turning this off
+   * degrades nothing local.
+   */
+  planSyncEnabled?: boolean
   prReviews?: {
     enabled?: boolean
     pollIntervalMs?: number
@@ -813,6 +823,93 @@ export interface OrgAgentChange {
   eventType: 'INSERT' | 'UPDATE' | 'DELETE'
   id: string
   agent?: OrgAgent
+}
+
+// ---------------------------------------------------------------------------
+// Cloud: /magic:plan sessions. One row per spec file, plus the tickets it created.
+// Writing is gated by Config.planSyncEnabled, ON by default (an explicit false opts
+// out); the whole upload path lives in the main process (main/store/plan-sync.ts) —
+// the skill only pings it, and never talks to Supabase itself.
+// ---------------------------------------------------------------------------
+
+/**
+ * One `/magic:plan` session, as `public.plan_sessions` holds it.
+ *
+ * Keyed on `specKey` — a hash of the spec's absolute path — rather than on the path
+ * itself: the row is readable by the whole organization, and an absolute path
+ * carries the author's home directory.
+ */
+export interface PlanSession {
+  id: string
+  ownerId: string
+  /** The repository the spec was written in, when its path resolved to one. */
+  repoId?: string
+  /**
+   * DERIVED from `repoId` by a trigger — the client never sends it. Selected but
+   * never trusted, exactly like AgentRow.org_id.
+   */
+  orgId?: string
+  /** `agents.id` uuid of the agent that planned. Null once that agent is archived. */
+  agentId?: string
+  /** Spec filename minus its `spec-` prefix and `.md` suffix. */
+  slug: string
+  /** sha256 of the spec's absolute path. See specKeyFor in main/store/plan-sync.ts. */
+  specKey: string
+  title?: string
+  /** The body of the spec's `## Idea` section, extracted at upload time. */
+  idea?: string
+  /** The spec markdown. Absent on a session whose spec was never written. */
+  spec?: string
+  status: string
+  /**
+   * When the spec CONTENT was last uploaded — not when the row last changed.
+   * `updatedAt` cannot serve here: the org-derivation trigger bumps it, which
+   * would make a row look fresher than a spec that really did change.
+   */
+  specSyncedAt?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+/**
+ * One ticket a planning session created, as `public.plan_tickets` holds it.
+ *
+ * `session_id` is deliberately absent: it is a server-generated uuid the desktop
+ * never sees, so the store resolves it from `(owner_id, spec_key)` at write time.
+ */
+export interface PlanTicket {
+  /** Tracker id — "PROJ-12" on Jira, "#194" on GitHub. */
+  key: string
+  url: string
+  title?: string
+  kind: 'epic' | 'story'
+  /** The epic this story hangs under, by `key`. Absent on an epic or a lone story. */
+  parentKey?: string
+}
+
+/**
+ * A spec upload. The store resolves everything else — the slug, the spec key, the
+ * repository, the title and the status — from `specPath` and from the agent, so a
+ * caller (and the offline spool) only has to carry these.
+ */
+export interface PlanSpecInput {
+  /** app agent id ("claude-…"), mapped to the agents.id uuid by the store. */
+  agentId: string
+  /** ABSOLUTE path to the spec file. Hashed into `spec_key`, never stored raw. */
+  specPath: string
+  /**
+   * The spec markdown. Absent when the file does not exist YET — the session row is
+   * still created, which is what records a plan whose agent was closed before any
+   * spec was written. An absent spec leaves the stored one untouched.
+   */
+  spec?: string
+}
+
+/** The tickets of ONE planning session, identified the same way as a spec upload. */
+export interface PlanTicketsInput {
+  agentId: string
+  specPath: string
+  tickets: PlanTicket[]
 }
 
 // ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ import { join } from 'path'
 import { setupConfigHandlers } from './ipc/config-handlers'
 import { setupRepoHandlers } from './ipc/repo-handlers'
 import { setupTerminalHandlers, cleanupTerminals } from './ipc/terminal-handlers'
-import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorktreeFilesWriter, setPRUrlCallback } from './hooks/status-server'
+import { startStatusServer, stopStatusServer, setStateCallback, setMetadataCallback, setCommandStartCallback, setCommandEndCallback, setRepositoriesCallback, setUsageCallback, setSkillCallback, setQuestionCallback, setClearQuestionCallback, setConfigProvider, setAgentProvider, setWorktreeFilesWriter, setPRUrlCallback, setSpecPathCallback, setPlanSpecCallback, setPlanTicketsCallback } from './hooks/status-server'
 import { ingestQuestionPayload, getPendingQuestion, clearPendingQuestion } from './questions/pending-questions'
 import { answerPendingQuestion } from './questions/answer-question'
 import { recordSkillInvocation } from './usage/skill-invocations'
@@ -20,6 +20,7 @@ import { setupConnectivityHandlers } from './ipc/connectivity-handlers'
 import { setupAppearanceHandlers } from './ipc/appearance-handlers'
 import { setStore } from './store/Store'
 import { CloudStore } from './store/CloudStore'
+import { recordPlanSession, schedulePlanSpecUpload, syncPlanTickets } from './store/plan-sync'
 import { readConfig, writeConfig, updateRepositoryWorktreeFilesSettings } from './config/config'
 import { archiveLegacyConfig } from './config/legacy-cleanup'
 import { expandPath } from './config/validation'
@@ -709,6 +710,35 @@ async function initializeHooksAndSessions() {
           repositories
         })
       }
+    })
+
+    // `/magic:plan` announcing where its spec will be, through the `/metadata` hook:
+    // record the session NOW, with no spec content. That is what makes a plan survive
+    // an agent closed before anything was written to the file.
+    setSpecPathCallback((terminalId: string, specPath: string) => {
+      recordPlanSession(terminalId, specPath)
+    })
+
+    // The spec was written (or rewritten). The renderer is told FIRST and
+    // UNCONDITIONALLY: it renders the local file off this signal instead of watching
+    // it, so the notification must survive everything the upload can decline to do —
+    // the setting being off, the backend being unreachable, the debounce collapsing
+    // this ping into the next one.
+    setPlanSpecCallback((terminalId: string) => {
+      const specPath = readAgents().find((a) => a.id === terminalId)?.metadata?.specPath
+      if (mainWindow) {
+        mainWindow.webContents.send('plan:specChanged', { id: terminalId, specPath })
+      }
+      if (specPath) schedulePlanSpecUpload(terminalId, specPath)
+    })
+
+    // The tickets that session created. The spec path is read from the agent for the
+    // same reason the route carries no content: it is the session's identity, and the
+    // app already has it.
+    setPlanTicketsCallback((terminalId: string, tickets) => {
+      const specPath = readAgents().find((a) => a.id === terminalId)?.metadata?.specPath
+      if (!specPath) return
+      void syncPlanTickets(terminalId, specPath, tickets)
     })
 
     // Read-back providers: let terminal-run skills read the live config/agent metadata

@@ -1,12 +1,14 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import type { Agent, AppInstallationInfo, Config, HistoryAction, HistoryEntry, OrgActivity, OrgAgent, OrgSharedConfig, PlanSession, PlanSpecInput, PlanTicketsInput, RepositoryConfig, RepositoryIdentity, SkillCounts, SkillHours, SkillInvocationInput, SkillRunEndInput, StoredRepository, TerminalMetadata, UsageEventInput, UsageStats, UserProfile } from '../../types'
+import { readAgents } from '../config/agents'
 import { getAuthedClient } from '../cloud/auth'
 import { loadSession } from '../cloud/session-store'
 import { isCloudEnabled } from '../cloud/supabase-client'
 import { mapOrgAgentRow, type OrgAgentRow } from '../cloud/realtime'
 import type { ConnectivityStatus, Store } from './Store'
 import { enqueuePendingArchive, resolvePendingArchive } from './pending-archives'
+import { ideaFrom, slugFor, specKeyFor } from './plan-sync'
 import {
   applySettingsRow,
   configToSettingsRow,
@@ -43,6 +45,17 @@ interface AgentRow {
   status: string | null
   repositories: string[]
   metadata: TerminalMetadata & { __app?: { id: string; tsCreate?: number; splitPane?: 'left' | 'right' } }
+}
+
+/**
+ * The plan-sessions projection the launch reconcile reads. `spec` is deliberately
+ * NOT selected: the reconcile only needs to know whether the row is behind the file,
+ * and a launch that pulled every spec's markdown back down would be paying for a
+ * document it is about to overwrite anyway.
+ */
+interface PlanSessionSyncRow {
+  spec_key: string
+  spec_synced_at: string | null
 }
 
 /**
@@ -1408,6 +1421,156 @@ export class CloudStore implements Store {
     const rows = data as OrgAgentRow[]
     const linksByAgent = await this.fetchRepoLinks(ctx, rows.map((r) => r.id))
     return rows.map((row) => ({ ...mapOrgAgentRow(row), repositoryIds: linksByAgent.get(row.id) ?? [] }))
+  }
+
+  // -------------------------------------------------------------------------
+  // Plan sessions (plan_sessions / plan_tickets — one row per spec file, upserted)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Project a spec upload onto its plan_sessions row.
+   *
+   * Everything but the key is OMITTED rather than sent as null when it cannot be
+   * resolved, and that is load-bearing: PostgREST builds the `DO UPDATE SET` list
+   * from the columns it is given, so an absent column keeps the value the row
+   * already has. A ping arriving after the agent was archived would otherwise wipe
+   * `repo_id` — and with it the derived `org_id`, i.e. the whole team's access to a
+   * session that was theirs a second earlier.
+   *
+   * `org_id` is never sent at all: a BEFORE trigger derives it from `repo_id`, and
+   * the client is not allowed an opinion on who may read this.
+   */
+  private planSessionRow(input: PlanSpecInput, uid: string): Record<string, unknown> {
+    const agent = readAgents().find((a) => a.id === input.agentId)
+
+    const row: Record<string, unknown> = {
+      owner_id: uid,
+      spec_key: specKeyFor(input.specPath),
+      slug: slugFor(input.specPath),
+    }
+
+    // Null once the agent is archived (archiveAgent releases app_agent_id, and
+    // settleArchive drops the binding), which is exactly when a final upload or an
+    // offline replay lands. The session keeps its author through owner_id.
+    const agentUuid = this.agentIdMap.get(input.agentId)
+    if (agentUuid) row.agent_id = agentUuid
+
+    // The repository as the AGENT resolved it — never re-derived from the spec path.
+    // `repositoryIds` is what config/agents already matched the agent's working
+    // directories against, and it is the same value syncRepoLinks writes, so the
+    // session and the agent cannot end up attributed to two different repos.
+    const repoId = agent?.repositoryIds?.[0]
+    if (repoId) row.repo_id = repoId
+
+    if (agent?.metadata?.title) row.title = agent.metadata.title
+    if (agent?.metadata?.status) row.status = agent.metadata.status
+
+    if (input.spec !== undefined) {
+      row.spec = input.spec
+      const idea = ideaFrom(input.spec)
+      if (idea) row.idea = idea
+      // Stamped only when the CONTENT is written, which is what makes it comparable
+      // to the file's mtime at the next launch — see loadPlanSyncState.
+      row.spec_synced_at = new Date().toISOString()
+    }
+
+    return row
+  }
+
+  /** Upsert one session and hand back its uuid (server-generated on first write). */
+  private async upsertPlanSession(
+    ctx: { client: SupabaseClient; uid: string },
+    input: PlanSpecInput,
+  ): Promise<string | null> {
+    const { data, error } = await ctx.client
+      .from('plan_sessions')
+      .upsert(this.planSessionRow(input, ctx.uid), { onConflict: 'owner_id,spec_key' })
+      .select('id')
+    if (error) throw new Error(`plan_sessions upsert failed: ${error.message}`)
+    return ((data ?? []) as { id: string }[])[0]?.id ?? null
+  }
+
+  /**
+   * Upsert ONE plan session's spec.
+   *
+   * userContext, not context: a plan written on a personal repository has no
+   * organization, and requiring one would drop exactly those sessions.
+   */
+  async savePlanSpec(input: PlanSpecInput): Promise<void> {
+    const ctx = await this.userContext()
+    if (!ctx) return
+    await this.upsertPlanSession(ctx, input)
+  }
+
+  /**
+   * Upsert the tickets ONE session created.
+   *
+   * The session is resolved from `(owner_id, spec_key)` HERE, at write time: its id
+   * is a server-generated uuid, so nothing upstream — not the skill, not the ping,
+   * not the outbox — can carry one. When there is no session yet (the tickets
+   * arrived before any spec upload landed) it is created with no spec content
+   * rather than the tickets being dropped: they exist in the tracker either way,
+   * and a session with tickets and no spec is still worth having.
+   */
+  async savePlanTickets(input: PlanTicketsInput): Promise<void> {
+    const ctx = await this.userContext()
+    if (!ctx) return
+    if (input.tickets.length === 0) return
+
+    const { data, error } = await ctx.client
+      .from('plan_sessions')
+      .select('id')
+      .eq('owner_id', ctx.uid)
+      .eq('spec_key', specKeyFor(input.specPath))
+      .maybeSingle()
+    if (error) throw new Error(`savePlanTickets failed: ${error.message}`)
+
+    const sessionId =
+      (data as { id: string } | null)?.id ??
+      (await this.upsertPlanSession(ctx, { agentId: input.agentId, specPath: input.specPath }))
+    if (!sessionId) throw new Error('savePlanTickets failed: no plan session to attach the tickets to')
+
+    const rows = input.tickets.map((ticket) => ({
+      session_id: sessionId,
+      key: ticket.key,
+      url: ticket.url,
+      title: ticket.title ?? null,
+      kind: ticket.kind,
+      parent_key: ticket.parentKey ?? null,
+    }))
+
+    // Nulls are sent here, unlike the session row above: a ticket write carries the
+    // whole ticket, so an absent title IS the absence of a title rather than a
+    // field this caller happened not to resolve.
+    const { error: upsertError } = await ctx.client
+      .from('plan_tickets')
+      .upsert(rows, { onConflict: 'session_id,key' })
+    if (upsertError) throw new Error(`savePlanTickets failed: ${upsertError.message}`)
+  }
+
+  /**
+   * When each of the caller's OWN sessions last received its spec.
+   *
+   * Scoped by owner rather than by what RLS would allow: this feeds the reconcile,
+   * which compares against files on THIS machine, and a colleague's session is
+   * neither ours to compare nor ours to overwrite.
+   */
+  async loadPlanSyncState(): Promise<Pick<PlanSession, 'specKey' | 'specSyncedAt'>[]> {
+    const ctx = await this.userContext()
+    if (!ctx) return []
+
+    const { data, error } = await ctx.client
+      .from('plan_sessions')
+      .select('spec_key, spec_synced_at')
+      .eq('owner_id', ctx.uid)
+    if (error || !data) return []
+
+    // `?? undefined` rather than a conditional spread: `exactOptionalPropertyTypes`
+    // is off, so the two are the same type — and one of them reads as a plain field.
+    return (data as unknown as PlanSessionSyncRow[]).map((row) => ({
+      specKey: row.spec_key,
+      specSyncedAt: row.spec_synced_at ?? undefined,
+    }))
   }
 
   // -------------------------------------------------------------------------

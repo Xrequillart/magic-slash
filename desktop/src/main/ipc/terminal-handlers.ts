@@ -35,6 +35,7 @@ import { readConfig } from '../config/config'
 import { expandPath } from '../config/validation'
 import { checkRepoPath } from '../config/repo-validation'
 import { ensureHydrated } from '../store/hydrate'
+import { flushPlanSpec } from '../store/plan-sync'
 import type { HistoryAction } from '../../types'
 
 /**
@@ -161,6 +162,25 @@ function flushUsageSnapshot(id: string): void {
     durationMs: usage.durationMs,
     occurredAt: Date.now(),
   })
+}
+
+/**
+ * Upload the agent's `/magic:plan` spec one last time, if it has one.
+ *
+ * Next to flushUsageSnapshot at BOTH session-end sites, and for two reasons that
+ * each cover a different half of the problem. `archiveAgent` releases
+ * `app_agent_id`, so once it has run the app id no longer resolves to the agent
+ * row — the same ordering the usage flush needs. And the natural-exit path never
+ * reaches `archiveAgent` at all, so an agent that ended on its own would otherwise
+ * never upload the last state of its spec.
+ *
+ * Not guarded like the usage snapshot: this is an upsert of a document, so sending
+ * it twice writes the same row twice rather than double-counting anything.
+ */
+function flushPlanSpecSnapshot(id: string): void {
+  const specPath = getTerminal(id)?.metadata?.specPath
+  if (!specPath) return
+  flushPlanSpec(id, specPath)
 }
 
 // Helper to show notification with cooldown, focus check and per-kind opt-out
@@ -301,6 +321,7 @@ function createTerminalCallbacks(id: string, name: string) {
       // before pty.kill so an intentional kill never double-fires here; the
       // usageFlushed guard defends against any overlap regardless.
       flushUsageSnapshot(id)
+      flushPlanSpecSnapshot(id)
       base.onExit(exitCode)
       previousStatus.delete(id)
       previousTitle.delete(id)
@@ -560,6 +581,8 @@ export function setupTerminalHandlers(
     // Flush the aggregated usage snapshot BEFORE archiveAgent so the store can still
     // resolve this agent's uuid (one write per session; GDPR-gated inside).
     flushUsageSnapshot(id)
+    // Same window, same reason: after archiveAgent the app id resolves to nothing.
+    flushPlanSpecSnapshot(id)
     killTerminal(id)
     // Archive, never delete: the row is kept so the events above keep their link.
     archiveAgent(id)

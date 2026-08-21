@@ -2232,6 +2232,7 @@ describe('user settings', () => {
       agent_context_enabled: null,
       agent_context_minimized: null,
       usage_logs_enabled: null,
+      plan_sync_enabled: null,
       daily_digest_enabled: true,
       notifications_enabled: null,
       notification_agent_waiting: null,

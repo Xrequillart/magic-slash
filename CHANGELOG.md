@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Plan**: `/magic:plan` sessions are stored in the cloud and readable on a new `/plans` page in the webapp — the spec, the tickets it created and who ran it, shared with the whole organization on a team repository and with nobody else on a personal one. **Requires migrations `20260821090000_plan_sessions.sql` and `20260821090100_user_settings_plan_sync.sql`: the second recreates `admin_get_user`, whose `returns table` both clients name column by column, so a database that has not run it breaks the back-office user detail**
+- **Desktop**: The main process uploads the spec as it fills, coalescing a burst of writes into one upsert, and spools it to the outbox when offline — the skill only pings `/plan/spec` and `/plan/tickets` and never talks to Supabase itself
+- **Desktop**: A per-user setting turns spec sync off entirely, from Settings → Application or from the webapp; with it off the local file is still written and everything reading it keeps working
+
 ## [0.75.3] - 2026-08-21
 
 ### Added

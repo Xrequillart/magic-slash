@@ -25,6 +25,7 @@ import {
   updateLaunchMode,
   updateTheme,
   updateLanguage,
+  updatePlanSyncEnabled,
   updateUsageLogsEnabled,
   updateDailyDigestEnabled,
   updateNotifications,
@@ -300,6 +301,22 @@ export function setupConfigHandlers() {
   // Activity recording (default ON, explicit false opts out). Gates WRITING only.
   ipcMain.handle('config:setUsageLogsEnabled', async (_event, { enabled }: { enabled: boolean }) => {
     const config = updateUsageLogsEnabled(enabled)
+    return { config }
+  })
+
+  // Plan session sync (default ON, explicit false opts out). Gates the UPLOAD only:
+  // the spec file and the in-app signal that it changed are unaffected.
+  //
+  // The runtime type check is not ceremony here, and it is why this handler carries one
+  // where its neighbours do not: the annotation is erased at build time, the setting
+  // reads as ON for anything that is not exactly `false`, and it decides whether the
+  // user's own writing leaves their machine. A malformed payload must therefore not be
+  // stored — storing `undefined` would silently read as ON right after someone asked
+  // for OFF. Ignore it and hand back the config as it stands, so the UI reverts to what
+  // is actually persisted instead of showing a state nothing agreed to.
+  ipcMain.handle('config:setPlanSyncEnabled', async (_event, { enabled }: { enabled: boolean }) => {
+    if (typeof enabled !== 'boolean') return { config: readConfig() }
+    const config = updatePlanSyncEnabled(enabled)
     return { config }
   })
 

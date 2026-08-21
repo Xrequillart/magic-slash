@@ -3,6 +3,7 @@ import type { ConnectivityStatus, StoreWriteKind } from '../store/Store'
 import { getStore, setWriteErrorHandler } from '../store/Store'
 import { ensureHydrated, rehydrate, resetHydration } from '../store/hydrate'
 import { flushOutbox } from '../store/outbox'
+import { reconcilePlanSpecs } from '../store/plan-sync'
 import { flushPendingArchives } from '../store/pending-archives'
 import { drainSkillSpool } from '../usage/skill-spool'
 import { migrateConfig } from '../config/migrate'
@@ -120,6 +121,13 @@ export function setupConnectivityHandlers(getMainWindow: () => BrowserWindow | n
           // (pre-hydration it is still the default), and so must the set of MCP
           // servers to register. Fire-and-forget, for the same reason as above.
           void completeMachineSetup(readConfig().integrations)
+          // Plan specs whose upload never landed — the app was offline or shut down
+          // when the skill pinged, and a ping is fire-and-forget by design. HERE
+          // rather than in restoreAgents(), which returns early as soon as a
+          // terminal is already running (the normal case), so a reconcile hung
+          // there would almost never run. After ensureHydrated: it walks the agents
+          // cache. Fire-and-forget, like the two calls above.
+          void reconcilePlanSpecs()
         }
         emitInvalidRepos()
         // The backend is reachable and authed — the one condition under which

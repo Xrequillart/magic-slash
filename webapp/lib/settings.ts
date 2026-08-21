@@ -41,6 +41,7 @@ export interface UserSettings {
   agentContextEnabled: boolean | null
   agentContextMinimized: boolean | null
   usageLogsEnabled: boolean | null
+  planSyncEnabled: boolean | null
   notificationsEnabled: boolean | null
   notificationAgentWaiting: boolean | null
   notificationAgentCompleted: boolean | null
@@ -66,6 +67,7 @@ interface UserSettingsRow {
   agent_context_enabled: boolean | null
   agent_context_minimized: boolean | null
   usage_logs_enabled: boolean | null
+  plan_sync_enabled: boolean | null
   notifications_enabled: boolean | null
   notification_agent_waiting: boolean | null
   notification_agent_completed: boolean | null
@@ -81,7 +83,7 @@ interface UserSettingsRow {
 }
 
 const COLUMNS =
-  'theme, sync_claude_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_enabled, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode'
+  'theme, sync_claude_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_enabled, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
@@ -93,6 +95,7 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   agentContextEnabled: 'agent_context_enabled',
   agentContextMinimized: 'agent_context_minimized',
   usageLogsEnabled: 'usage_logs_enabled',
+  planSyncEnabled: 'plan_sync_enabled',
   notificationsEnabled: 'notifications_enabled',
   notificationAgentWaiting: 'notification_agent_waiting',
   notificationAgentCompleted: 'notification_agent_completed',
@@ -117,6 +120,7 @@ export const EMPTY_SETTINGS: UserSettings = {
   agentContextEnabled: null,
   agentContextMinimized: null,
   usageLogsEnabled: null,
+  planSyncEnabled: null,
   notificationsEnabled: null,
   notificationAgentWaiting: null,
   notificationAgentCompleted: null,
@@ -142,6 +146,7 @@ function toSettings(row: UserSettingsRow): UserSettings {
     agentContextEnabled: row.agent_context_enabled,
     agentContextMinimized: row.agent_context_minimized,
     usageLogsEnabled: row.usage_logs_enabled,
+    planSyncEnabled: row.plan_sync_enabled,
     notificationsEnabled: row.notifications_enabled,
     notificationAgentWaiting: row.notification_agent_waiting,
     notificationAgentCompleted: row.notification_agent_completed,

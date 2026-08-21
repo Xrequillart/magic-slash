@@ -109,3 +109,52 @@ Attaches repositories to the agent for grouping in the sidebar.
 MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
 curl -s "http://127.0.0.1:$MS_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=%5B%22%2Fpath%2Fto%2Frepo%22%5D"
 ```
+
+## Endpoint `/plan/spec`
+
+Tells the app that the spec of this agent has changed on disk. `/magic:plan` calls it at the end of
+Step 2.5 and after every later section it writes.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | Terminal ID (`$MAGIC_SLASH_TERMINAL_ID`) |
+
+**No other parameter — the spec itself is never sent.** The app reads the file at the `specPath` the
+`/metadata` call gave it, which is why this one must come **after** that call: before it, the app has
+no path to read and the ping does nothing.
+
+```bash
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -s "http://127.0.0.1:$MS_PORT/plan/spec?id=$MAGIC_SLASH_TERMINAL_ID"
+```
+
+Calling it repeatedly is expected and cheap: the app coalesces a burst of pings into one upload.
+An agent it does not know, a missing `specPath` or a file that is not there yet are all no-ops that
+answer `200` — nothing about the workflow depends on the answer.
+
+## Endpoint `/plan/tickets`
+
+Records the tickets a plan created, so the webapp's Plans page can show the epic with its stories
+under it. `/magic:plan` calls it at Step 7.2.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | Terminal ID (`$MAGIC_SLASH_TERMINAL_ID`) |
+| `tickets` | JSON array | Yes | URL-encoded, one object per ticket |
+
+Each object carries exactly `key`, `url`, `title`, `kind` (`"epic"` or `"story"`) and `parent_key`
+(the epic's `key`, or `null`). No session or row id: the app resolves that from the spec's path.
+
+`key`, `url` and a valid `kind` are all required — an object missing any of them is dropped rather
+than stored, since `url` is `not null` in the table and a `kind` outside the two values has nowhere
+to render. `title` and `parent_key` may be `null`.
+
+**Example** (`[{"key":"#412","url":"https://…/412","title":"Add SSO","kind":"epic","parent_key":null}]`):
+```bash
+MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
+curl -s "http://127.0.0.1:$MS_PORT/plan/tickets?id=$MAGIC_SLASH_TERMINAL_ID&tickets=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-tickets-min.json)"
+```
+
+Build the value with `jq -c` from a file and encode it **once** with `jq -Rsr @uri`. Never `@json`
+before `@uri` — that yields a JSON *string* where the server expects an array — and never put the
+list on the command line: ticket titles are free text.

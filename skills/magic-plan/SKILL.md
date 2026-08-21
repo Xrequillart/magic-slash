@@ -23,7 +23,7 @@ Follow each step in order. Each step builds on the previous one.
 - `references/sizing.md` — The single-story-vs-epic heuristic, the breakdown rules and the acceptance-criteria formats. Read in Step 5.
 - `references/trackers.md` — Tracker detection, creation calls, the parent/child hierarchy and partial-failure handling. Read §1 in Step 2.3 (detection, the carried resolution, and the refusal); read §2-§4 in Step 7, after approval.
 - `references/jira-fields.md` — Jira site, project and issue-type resolution, and the required-field discovery that must happen before the structure is proposed. Read in Step 2.3, only when the tracker resolved to Jira.
-- `references/api.md` — Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`).
+- `references/api.md` — Magic Slash Desktop API reference (endpoints `/metadata`, `/repositories`, `/plan/spec` and `/plan/tickets`).
 
 ## Step 0: Configuration
 
@@ -260,6 +260,7 @@ Then run the calls. The only thing the command line ever contains is a fixed lit
 ```bash
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/repositories?id=$MAGIC_SLASH_TERMINAL_ID&repos=$(jq -Rs -c '[sub("\n$";"")]' < .magic/.mp-repo-path | jq -sRr 'sub("\n$";"") | @uri')" > /dev/null 2>&1 || true
 [ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&status=planning&specPath=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-spec-path)" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/plan/spec?id=$MAGIC_SLASH_TERMINAL_ID" > /dev/null 2>&1 || true
 rm -f .magic/.mp-title .magic/.mp-spec-path .magic/.mp-repo-path
 ```
 
@@ -277,6 +278,25 @@ valid JSON instead of a broken payload.
 file not existing yet — the writer announces where the spec will be, and nothing checks the
 filesystem — but they cannot tolerate a path that arrives ten minutes late, because the whole point
 is that the user can open the spec while it fills.
+
+**The third call — `/plan/spec` — must stay last in this block, and must not be moved earlier.** It
+carries no payload: it says "the spec at the path you already know has changed on disk", and the
+desktop reads the file itself. Which is exactly why it cannot run at Step 2.4, however tempting it
+looks there — the desktop only learns `specPath` from the `/metadata` call on the line above, so a
+ping issued before it resolves to an agent with no spec path and is a guaranteed no-op. After the
+`/metadata` call, the first ping is what records the session in the cloud.
+
+**Ping it again after every later write to the spec** — at the end of Step 3 (`## Codebase findings`,
+`## Related tickets`), Step 4 (`## Framing decisions`), Step 5 (`## Sizing`, `## Proposed tickets`),
+each Step 6 edit, and the Step 7 append. One line, unchanged, in the directory the spec lives in:
+
+```bash
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/plan/spec?id=$MAGIC_SLASH_TERMINAL_ID" > /dev/null 2>&1 || true
+```
+
+Pinging often is free and pinging rarely is not: the desktop coalesces bursts before it uploads, so
+an extra call costs nothing, while a skipped one leaves the last section of a spec invisible to
+everyone else until the next write happens to land.
 
 See `## Metadata contract` at the end of this file for the fields this skill never sends, and why.
 
@@ -488,6 +508,52 @@ debug.
 Run this call even after a partial failure, carrying whatever ticket id does exist. A half-created
 plan is still a plan the sidebar should show.
 
+### 7.2: The created tickets
+
+The metadata write above carries **one** ticket id — the epic, because that is what the sidebar row
+is. This call carries the whole list, so the plan's page in the webapp can show the epic with its
+stories under it instead of a single link.
+
+Write the list to `.magic/.mp-tickets.json` with the `Write` tool, as a JSON array of objects with
+exactly these five fields:
+
+| Field | Value |
+| --- | --- |
+| `key` | the tracker's identifier — `#412`, `PROJ-1234` |
+| `url` | the ticket's browse URL — **required**, never `null` |
+| `title` | the ticket's title, in `languages.ticket` |
+| `kind` | `"epic"` or `"story"` — nothing else |
+| `parent_key` | the epic's `key` for a story under one, `null` otherwise |
+
+A single-story plan is one object with `kind: "story"` and `parent_key: null`. An epic whose stories
+partly failed lists what exists — never a placeholder for what does not.
+
+`url` is the one field with no fallback: an entry missing it is **dropped**, silently, because the
+column is `not null` and a ticket nobody can click is not worth a row. If the creation call did not
+return a URL, compose it from the tracker coordinates the repo config already carries — `jira.siteUrl`
+plus the key, or the GitHub repo's `issues/<number>` — rather than sending `null` and losing the ticket.
+
+```bash
+jq -c . < .magic/.mp-tickets.json > .magic/.mp-tickets-min.json
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/plan/tickets?id=$MAGIC_SLASH_TERMINAL_ID&tickets=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-tickets-min.json)" > /dev/null 2>&1 || true
+rm -f .magic/.mp-tickets.json .magic/.mp-tickets-min.json
+```
+
+Three properties of that block are load-bearing, in the terms `## Metadata contract` sets out:
+
+- **The list is never written into the command.** Ticket titles are free text — quotes, apostrophes,
+  accents — and this payload is the largest one the skill produces. It goes on disk and the shell
+  reads the path, exactly like every other free-form value here.
+- **`jq -c` builds it, and `jq -Rsr @uri` encodes it once.** The first pass compacts the array and,
+  more importantly, *validates* it: a malformed list fails here, on this machine, instead of arriving
+  at the server as a query string nobody can read. Never `@json` before `@uri` — that would encode
+  the array into a JSON *string* and the server would receive `"[{…}]"` where it expects `[{…}]`.
+- **No `session_id`.** The skill has never seen one: the row is keyed on the spec's path and the
+  desktop resolves the id at write time. Sending anything that looks like one would be a guess.
+
+Run this after a partial failure too, with whatever was created. And run it even if `/plan/spec` has
+never succeeded — the two are independent, and a list of tickets is worth having on its own.
+
 ## Step 8: Chain
 
 Display `MSG_NEXT_STEPS`, offering `/magic:start <TICKET-ID>`.
@@ -534,9 +600,34 @@ Three writes, and nothing between them:
 | Step 6.1 — structure approved | `title`, refined to the agreed epic/story wording |
 | Step 7.1 — tickets created | `ticketId`, `title` = `TICKET-ID: Title`, `description` (summarised), `status=planned` |
 
+Plus two pings on `/plan/*`, which are notifications rather than metadata: they tell the desktop that
+something it already knows where to find has changed.
+
+| When | Call |
+| --- | --- |
+| Step 2.5, **after** `/metadata` — then after every later write to the spec | `/plan/spec?id=…`, bodyless |
+| Step 7.2 — tickets created | `/plan/tickets?id=…&tickets=…`, the five-field list |
+
+`/plan/spec` sends nothing but the terminal id, and the ordering is the whole subtlety: the desktop
+learns `specPath` from the `/metadata` call, so a ping placed at Step 2.4 — before that call — has no
+path to read and does nothing at all. Last in the 2.5 block, never earlier.
+
 Every call is guarded by `[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ]`, sends
 every value through `jq -sRr @uri`, and ends in `|| true`. The skill must work with the desktop app
 closed — a plan is still a plan without a sidebar to show it in.
+
+**This skill never talks to Supabase, and must never start.** It holds no URL, no key and no session,
+and none of these calls reaches further than `127.0.0.1`. Everything that ends up in the cloud —
+the session row, the spec, the ticket list — is written by the desktop app on the user's behalf,
+under the user's own credentials and subject to their sync setting, which the skill neither reads nor
+respects because it never needs to know: it reports to the local process and stops there.
+
+That is what the guards and the `|| true` are for, and it is the reason they can never be tidied
+away. With the app closed there is no port, the guard short-circuits, and the skill runs to
+completion writing the spec and filing the tickets exactly as it would otherwise — nothing about the
+plan depends on the cloud, and the spec on disk is always the complete artefact. A network call the
+skill made itself would break that: it would need a secret, it would need to be online, and a plan
+would start being able to fail for reasons that have nothing to do with planning.
 
 **Free text never touches the command line.** Every free-form value — the idea, the agreed title,
 the description — is written to a file under `.magic/` with the `Write` tool, and the shell reads it
@@ -577,5 +668,5 @@ them, it means the skill has started creating branches, and that is a different 
 creates a worktree where an untracked spec does not appear, so the chained skill has to read it
 where it actually is.
 
-For the Magic Slash Desktop API reference (endpoints `/metadata` and `/repositories`), see
-`references/api.md`.
+For the Magic Slash Desktop API reference (endpoints `/metadata`, `/repositories`, `/plan/spec` and
+`/plan/tickets`), see `references/api.md`.
