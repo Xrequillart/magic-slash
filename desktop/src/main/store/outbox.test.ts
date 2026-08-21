@@ -173,7 +173,9 @@ describe('flushOutbox', () => {
 })
 
 describe('a queued plan spec', () => {
-  const SPEC = path.join(TMP_HOME, 'spec-plan-sync-20260821-101500.md')
+  // Inside a `.magic` directory: the shared guard (store/spec-file.ts) confines what
+  // may be read to the shape the skill writes, and the replay path goes through it.
+  const SPEC = path.join(TMP_HOME, '.magic', 'spec-plan-sync-20260821-101500.md')
 
   const planSpec = (uid: string, specPath = SPEC) =>
     ({ kind: 'planSpec' as const, payload: { specPath, agentId: 'claude-1', uid } })
@@ -206,7 +208,7 @@ describe('a queued plan spec', () => {
   it('DROPS an entry whose spec file is gone, and keeps draining', async () => {
     // flushOutbox stops at the first failure, so an entry that can never succeed
     // would head-of-line the telemetry behind it for the life of the install.
-    enqueue(planSpec('uid-1', path.join(TMP_HOME, 'spec-deleted.md')))
+    enqueue(planSpec('uid-1', path.join(TMP_HOME, '.magic', 'spec-deleted.md')))
     enqueue({ kind: 'history', payload: historyEntry('after') })
 
     expect(await flushOutbox()).toBe(2)
@@ -238,12 +240,44 @@ describe('a queued plan spec', () => {
     expect(delivered.planSpec).toHaveLength(1)
   })
 
-  it('treats an unknown uid on either side as no mismatch', async () => {
-    // Same rule as the archive spool: '' means "not known", not "somebody else".
+  it('never replays an entry with an unknown owner, and never drops it either', async () => {
+    // DELIBERATELY stricter than the archive spool, which treats '' as "not known"
+    // and lets it through. The payload here is a DOCUMENT that gets published to an
+    // organization: an upload that failed while signed out must not be handed to
+    // whoever signs in next on the same machine, under their identity and their
+    // repositories' visibility. Kept rather than dropped — its owner may sign back in.
     enqueue(planSpec(''))
+    session.uid = 'uid-1'
+    expect(await flushOutbox()).toBe(0)
+    expect(delivered.planSpec).toEqual([])
+    expect(outboxStats().pending).toBe(1)
+  })
+
+  it('sends nothing at all when no session is open', async () => {
+    // The other half of the same rule: an entry with a known owner and no open
+    // session has nobody to be attributed to.
+    enqueue(planSpec('uid-1'))
     session.uid = ''
+    expect(await flushOutbox()).toBe(0)
+    expect(delivered.planSpec).toEqual([])
+    expect(outboxStats().pending).toBe(1)
+  })
+
+  it('refuses a spec path that is a symlink to something else', async () => {
+    // The lexical shape test passes — it is `.magic/spec-*.md`. Following the link is
+    // what would hand a private file to the whole organization, so the guard
+    // re-validates the RESOLVED path and this delivers nothing. The entry leaves the
+    // queue like any other unreadable spec, rather than blocking the backlog.
+    const secret = path.join(TMP_HOME, 'id_rsa')
+    fs.writeFileSync(secret, 'PRIVATE KEY\n')
+    const link = path.join(TMP_HOME, '.magic', 'spec-innocent-20260821-101500.md')
+    fs.rmSync(link, { force: true })
+    fs.symlinkSync(secret, link)
+
+    enqueue(planSpec('uid-1', link))
     expect(await flushOutbox()).toBe(1)
-    expect(delivered.planSpec).toHaveLength(1)
+    expect(delivered.planSpec).toEqual([])
+    expect(outboxStats().pending).toBe(0)
   })
 })
 

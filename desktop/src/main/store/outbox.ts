@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import { CONFIG_DIR } from '../config/paths'
 import type { HistoryEntry, SkillInvocationInput, SkillRunEndInput, UsageEventInput } from '../../types'
 import { loadSession } from '../cloud/session-store'
+import { readSpecFile } from './spec-file'
 import { getStore } from './Store'
 
 /**
@@ -219,14 +220,17 @@ async function replay(entry: OutboxEntry): Promise<void> {
       await store.closeSkillRun(entry.payload)
       return
     case 'planSpec': {
-      let spec: string
-      try {
-        spec = fs.readFileSync(entry.payload.specPath, 'utf-8')
-      } catch {
-        // The spec is gone — a deleted worktree, a renamed repository. RETURNING is
-        // the point: this counts as delivered, so the entry LEAVES the queue. Throwing
-        // instead would head-of-line the whole backlog forever, since flushOutbox
-        // stops at the first failure and this one can never stop failing.
+      // Through the shared guard, not `fs` directly: this is the SECOND path that
+      // opens a spec file, and it is as exposed as the first. `readSpecFile` re-applies
+      // the `.magic/spec-*.md` shape test to the REAL path, so a queued entry whose
+      // file has since become a symlink to something private cannot deliver it here.
+      const spec = readSpecFile(entry.payload.specPath)
+      if (spec === undefined) {
+        // Nothing to send: the spec is gone (a deleted worktree, a renamed repository),
+        // too large, or no longer a spec at all. RETURNING is the point in every one of
+        // those cases — it counts as delivered, so the entry LEAVES the queue. Throwing
+        // instead would head-of-line the whole backlog forever, since flushOutbox stops
+        // at the first failure and this one can never stop failing.
         return
       }
       // agent_id may resolve to nothing by now — replay happens after the agent was
@@ -239,12 +243,20 @@ async function replay(entry: OutboxEntry): Promise<void> {
 /**
  * Whether an entry with an owner may be replayed under the session that is open.
  *
- * Same rule, and the same reasoning, as flushPendingArchives: an empty uid on either
- * side means "unknown", which is not a mismatch. A real mismatch is SKIPPED and kept
- * — see flushOutbox.
+ * DELIBERATELY STRICTER THAN flushPendingArchives, and the difference is the point.
+ * There, an empty uid on either side means "unknown", and treating unknown as a match
+ * is safe: the worst case is settling an archive flag. Here the payload is a DOCUMENT
+ * that gets published to an organization, so "unknown" must never resolve to "yours".
+ *
+ * Two accounts on one OS profile is the case this exists for. An upload that failed
+ * while signed out is queued with `uid: ''`; the loose rule would then hand it to
+ * whoever signs in next, uploading the previous user's plan under the new user's
+ * identity and their repositories' visibility. So both sides must be present AND
+ * equal. An entry that can never match is kept, not dropped — its owner may sign back
+ * in, and flushOutbox skips rather than deletes.
  */
 function replayableBy(entryUid: string, sessionUid: string): boolean {
-  return entryUid === '' || sessionUid === '' || entryUid === sessionUid
+  return entryUid !== '' && sessionUid !== '' && entryUid === sessionUid
 }
 
 let flushing: Promise<number> | null = null

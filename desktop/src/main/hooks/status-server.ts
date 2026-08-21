@@ -277,6 +277,24 @@ export function parseStatusLinePayload(body: string): TerminalUsage {
  * to good ones must not take them down with it, hence per-entry filtering rather than
  * rejecting the batch. Exported for unit testing.
  */
+/**
+ * Whether a string is a URL safe to put behind a link a human will click.
+ *
+ * Only `http:` and `https:`. `WHATWG URL` parsing rather than a prefix test, so that
+ * `HTTP://`, surrounding whitespace and `\njavascript:` smuggling all resolve to the
+ * scheme the browser would actually use — which is the only thing that matters here.
+ */
+function isBrowsableUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value === '') return false
+  try {
+    const scheme = new URL(value).protocol
+    return scheme === 'http:' || scheme === 'https:'
+  } catch {
+    // Not absolute, therefore not a browse link the tracker issued.
+    return false
+  }
+}
+
 export function parsePlanTickets(raw: string): PlanTicket[] {
   const parsed = JSON.parse(raw)
   if (!Array.isArray(parsed)) return []
@@ -287,7 +305,12 @@ export function parsePlanTickets(raw: string): PlanTicket[] {
     const { key, url, title, kind } = record
     const parentKey = record.parent_key ?? record.parentKey
     if (typeof key !== 'string' || key === '') return []
-    if (typeof url !== 'string' || url === '') return []
+    // http(s) only, and checked HERE rather than only at render time. This value is
+    // stored verbatim and later becomes an `href` on a page other members of the
+    // organization open, so a `javascript:` or `data:` target would be a clickable
+    // script in someone else's browser. The tracker only ever issues http(s) links, so
+    // anything else is either a mistake or an attempt; both are dropped.
+    if (!isBrowsableUrl(url)) return []
     if (kind !== 'epic' && kind !== 'story') return []
     return [{
       key,

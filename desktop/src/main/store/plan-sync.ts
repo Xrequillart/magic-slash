@@ -6,6 +6,7 @@ import { readAgents } from '../config/agents'
 import { readConfig } from '../config/config'
 import { loadSession } from '../cloud/session-store'
 import { enqueue } from './outbox'
+import { isSpecPath, readSpecFile } from './spec-file'
 import { getStore } from './Store'
 
 /**
@@ -38,38 +39,6 @@ import { getStore } from './Store'
 
 /** How long a burst of pings is allowed to collapse into one upload. */
 const DEBOUNCE_MS = 3000
-
-/**
- * The largest spec this module will upload.
- *
- * A spec is "a few tens of KB of markdown" — that is the sizing the `text` column was
- * chosen on. The ceiling is not there to be reached: it is there so that whatever ends
- * up behind `specPath` cannot be streamed into an org-readable row wholesale. A spec
- * that grows past it stops syncing rather than uploading a truncated half, which would
- * read as complete to anyone opening the page.
- */
-const MAX_SPEC_BYTES = 1024 * 1024
-
-/**
- * Whether a path is shaped like a spec this app wrote.
- *
- * NOT paranoia about the skill — about everything else on the machine. `specPath`
- * arrives over `GET /metadata?specPath=`, on a loopback server whose port sits in a
- * world-readable file, and it is then read verbatim and uploaded into a table the whole
- * organization can select from. Without this check any local process could point the
- * uploader at `~/.ssh/id_rsa` or a customer export and have its contents published to
- * the user's colleagues. The skill's own naming (`references/spec-template.md`) is the
- * whitelist: an absolute path, inside a `.magic` directory, named `spec-*.md`.
- *
- * Rejecting is silent and total — no upload, no outbox entry, no row.
- */
-function isSpecPath(specPath: string): boolean {
-  if (!path.isAbsolute(specPath)) return false
-  const normalized = path.normalize(specPath)
-  if (path.basename(path.dirname(normalized)) !== '.magic') return false
-  const name = path.basename(normalized)
-  return name.startsWith('spec-') && name.endsWith('.md') && name.length > 'spec-.md'.length
-}
 
 /**
  * One scheduled upload. Keyed by spec path, because that is what identifies the row —
@@ -130,22 +99,6 @@ export function ideaFrom(markdown: string): string | undefined {
   const end = rest.findIndex((line) => /^#{1,6}[ \t]/.test(line))
   const body = (end === -1 ? rest : rest.slice(0, end)).join('\n').trim()
   return body === '' ? undefined : body
-}
-
-/**
- * The spec markdown, or undefined when the file is not there (yet, or any more).
- *
- * Never throws: this runs behind a hook ping, and a spec that was moved or deleted
- * mid-session is an ordinary thing that must not surface as an error anywhere.
- */
-function readSpec(specPath: string): string | undefined {
-  try {
-    // stat before read: the point of the ceiling is to not pull the bytes in at all.
-    if (fs.statSync(specPath).size > MAX_SPEC_BYTES) return undefined
-    return fs.readFileSync(specPath, 'utf-8')
-  } catch {
-    return undefined
-  }
 }
 
 /** Whether the user allows plan sessions to leave the machine (absent = yes). */
@@ -219,7 +172,7 @@ async function run(key: string): Promise<void> {
 async function send(upload: PendingUpload): Promise<void> {
   if (!syncEnabled()) return
 
-  const spec = readSpec(upload.specPath)
+  const spec = readSpecFile(upload.specPath)
   if (spec === undefined && upload.requireSpecFile) return
 
   const input: PlanSpecInput = { agentId: upload.agentId, specPath: upload.specPath, ...(spec !== undefined ? { spec } : {}) }

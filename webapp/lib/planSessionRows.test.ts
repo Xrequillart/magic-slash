@@ -7,6 +7,7 @@ import {
   planLabel,
   planRecency,
   planRepoOptions,
+  safeTicketUrl,
   sortPlanSessions,
   toPlanSession,
   toPlanTicket,
@@ -342,5 +343,33 @@ describe('buildPlanCards', () => {
       null,
     )
     expect(cards.map((c) => c.id)).toEqual(['new', 'old'])
+  })
+})
+
+describe('safeTicketUrl', () => {
+  // The desktop rejects a non-http(s) scheme before storing it, but this page renders
+  // rows from a table the whole organization can write to through another process or
+  // an older version — so the scheme is checked again on the way out.
+  it('keeps the http(s) links a tracker actually issues', () => {
+    expect(safeTicketUrl('https://github.com/o/r/issues/412')).toBe('https://github.com/o/r/issues/412')
+    expect(safeTicketUrl('http://jira.internal/browse/PROJ-1')).toBe('http://jira.internal/browse/PROJ-1')
+  })
+
+  it('rejects a scheme that would run instead of navigate', () => {
+    // Each of these would be a clickable script in a colleague's browser.
+    expect(safeTicketUrl('javascript:alert(1)')).toBeNull()
+    expect(safeTicketUrl('JavaScript:alert(1)')).toBeNull()
+    expect(safeTicketUrl('  javascript:alert(1)')).toBeNull()
+    expect(safeTicketUrl('data:text/html,<script>alert(1)</script>')).toBeNull()
+    expect(safeTicketUrl('vbscript:msgbox(1)')).toBeNull()
+    expect(safeTicketUrl('file:///etc/passwd')).toBeNull()
+  })
+
+  it('degrades a relative or empty value into the no-link state that already exists', () => {
+    // `null` is a rendered state — a tracker that returned a key but no browse link —
+    // so a rejected URL lands there rather than needing a new one.
+    expect(safeTicketUrl('/browse/PROJ-1')).toBeNull()
+    expect(safeTicketUrl('')).toBeNull()
+    expect(safeTicketUrl(null)).toBeNull()
   })
 })

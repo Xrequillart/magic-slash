@@ -141,11 +141,33 @@ export function toPlanSession(row: PlanSessionRow): PlanSession {
   }
 }
 
+/**
+ * The ticket's URL when it is safe to put behind a link, otherwise null.
+ *
+ * Only `http:` and `https:`. The desktop rejects anything else before storing it, but
+ * this page renders rows written by another process, on another version, to a table
+ * every member of the organization can read — so the scheme is checked again on the way
+ * out. A `javascript:` href here would be a clickable script in a colleague's browser.
+ *
+ * `null` is already a rendered state (a tracker that returned a key but no browse
+ * link), so a rejected URL degrades into it: the ticket still shows, it is just not a
+ * link.
+ */
+export function safeTicketUrl(url: string | null): string | null {
+  if (!url) return null
+  try {
+    const scheme = new URL(url).protocol
+    return scheme === 'http:' || scheme === 'https:' ? url : null
+  } catch {
+    return null
+  }
+}
+
 export function toPlanTicket(row: PlanTicketRow): PlanTicket {
   return {
     sessionId: row.session_id,
     key: row.key,
-    url: row.url,
+    url: safeTicketUrl(row.url),
     title: row.title,
     // Same reasoning as `toStatus`: an unknown kind is treated as a story, which
     // is the leaf. Calling it an epic would invent a parent for other rows.

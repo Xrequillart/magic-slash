@@ -526,17 +526,40 @@ describe('read-back endpoints', () => {
 })
 
 describe('parsePlanTickets', () => {
+  const EPIC = 'https://github.com/o/r/issues/412'
+  const STORY = 'https://github.com/o/r/issues/413'
+
   it('keeps a title and a parent only when they carry something', () => {
     expect(parsePlanTickets(JSON.stringify([
-      { key: 'A', url: 'u', kind: 'epic', title: '', parent_key: '' },
-      { key: 'B', url: 'u', kind: 'story', title: null, parent_key: null },
+      { key: 'A', url: EPIC, kind: 'epic', title: '', parent_key: '' },
+      { key: 'B', url: STORY, kind: 'story', title: null, parent_key: null },
     ]))).toEqual([
-      { key: 'A', url: 'u', kind: 'epic' },
-      { key: 'B', url: 'u', kind: 'story' },
+      { key: 'A', url: EPIC, kind: 'epic' },
+      { key: 'B', url: STORY, kind: 'story' },
     ])
   })
 
   it('returns nothing for a payload that is not an array', () => {
     expect(parsePlanTickets('{"key":"A"}')).toEqual([])
+  })
+
+  it('drops a ticket whose url is not an http(s) link', () => {
+    // This value is stored verbatim and later becomes an `href` on a page other
+    // members of the organization open, so a scheme that executes instead of
+    // navigating is refused at ingest — not left for the renderer to catch.
+    expect(parsePlanTickets(JSON.stringify([
+      { key: 'A', url: 'javascript:alert(1)', kind: 'epic' },
+      { key: 'B', url: 'data:text/html,<script>alert(1)</script>', kind: 'story' },
+      { key: 'C', url: 'file:///etc/passwd', kind: 'story' },
+      { key: 'D', url: '/browse/PROJ-1', kind: 'story' },
+      { key: 'E', url: '', kind: 'story' },
+      { key: 'F', url: EPIC, kind: 'epic' },
+    ]))).toEqual([{ key: 'F', url: EPIC, kind: 'epic' }])
+  })
+
+  it('is not fooled by case or leading whitespace in the scheme', () => {
+    expect(parsePlanTickets(JSON.stringify([
+      { key: 'A', url: ' JavaScript:alert(1)', kind: 'story' },
+    ]))).toEqual([])
   })
 })

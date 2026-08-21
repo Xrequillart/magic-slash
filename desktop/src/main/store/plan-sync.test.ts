@@ -312,6 +312,25 @@ describe('what may be uploaded at all', () => {
     expect(saved).toHaveLength(0)
   })
 
+  it('refuses a spec-shaped path that is a symlink to something private', async () => {
+    // This is the case a lexical check cannot catch: the path IS `.magic/spec-*.md`,
+    // so every string rule passes, and `readFileSync` would then follow the link and
+    // publish a private key to the whole organization. The guard resolves the path and
+    // re-applies the shape test to the result, which is what refuses it.
+    const secret = path.join(TMP, 'id_rsa')
+    fs.writeFileSync(secret, 'PRIVATE KEY\n')
+    const link = path.join(MAGIC, 'spec-innocent-20260821-101500.md')
+    fs.rmSync(link, { force: true })
+    fs.symlinkSync(secret, link)
+
+    schedulePlanSpecUpload('claude-1', link)
+    await vi.advanceTimersByTimeAsync(3000)
+
+    expect(saved).toHaveLength(0)
+    expect(spool.entries).toHaveLength(0)
+    fs.rmSync(link, { force: true })
+  })
+
   it('still accepts the ordinary spec the skill writes', async () => {
     fs.writeFileSync(SPEC, '## Idea\n\nship it\n')
     schedulePlanSpecUpload('claude-1', SPEC)
