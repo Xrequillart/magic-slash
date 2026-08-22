@@ -488,12 +488,42 @@ export function setupConfigHandlers() {
   )
 }
 
+/** Is `child` the directory itself, or something beneath it? Plain string containment. */
+function contains(dir: string, child: string): boolean {
+  return child === dir || child.startsWith(dir + path.sep)
+}
+
 export async function readFileForPreview(repoPath: string, filePath: string, status?: string): Promise<object> {
   const resolvedRepo = path.resolve(repoPath)
   const resolvedFile = path.resolve(repoPath, filePath)
 
-  if (!resolvedFile.startsWith(resolvedRepo + path.sep) && resolvedFile !== resolvedRepo) {
+  if (!contains(resolvedRepo, resolvedFile)) {
     return { error: 'path_traversal' }
+  }
+
+  // The lexical check above is not enough on its own: `path.resolve` never follows a
+  // symlink, so a link sitting inside the tree can name a target anywhere on disk and
+  // still pass it. Re-check against the CANONICAL paths — the same two-step
+  // `readSpecFile` applies before reading a spec (main/store/spec-file.ts), and the
+  // half that was missing here.
+  //
+  // This matters most for the spec panel, whose `repoPath` is the spec's own parent
+  // directory: lexical containment is satisfied by construction there, so canonical
+  // containment is the only thing standing between a `.magic/spec-*.md` symlink and
+  // the file it points at.
+  //
+  // A path that does not exist cannot be canonicalised, and `realpathSync` throws for
+  // it. That is not a refusal: a missing file discloses nothing, and it is a normal
+  // state for a spec whose path was announced before it was written. Fall through and
+  // let the readers below report `not_found` as they always have.
+  try {
+    const realRepo = fs.realpathSync(resolvedRepo)
+    const realFile = fs.realpathSync(resolvedFile)
+    if (!contains(realRepo, realFile)) {
+      return { error: 'path_traversal' }
+    }
+  } catch {
+    // ENOENT on either side — nothing canonical to compare, and nothing readable to leak.
   }
 
   const ext = path.extname(filePath).toLowerCase()
