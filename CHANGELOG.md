@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.77.0] - 2026-08-22
+
+### Changed
+
+- **Desktop**: The spec card is headed by the repository being planned against, at the weight the repository cards give it, in place of a `SPEC` label that only ever named the card the panel already is
+
+### Fixed
+
+- **Desktop**: Switching agents no longer lags. The info sidebar's width snaps instead of animating across 300ms of moving layout for the terminal to chase, the terminal is fitted on the frame the switch commits rather than two frames and a 200ms debounce later, and a background agent keeps tracking layout while hidden — the fit that resolved that staleness landed a SIGWINCH, and a full Claude Code repaint, exactly on the frame you switched to it
+- **Desktop**: A spec path an agent announces is validated and bound to that agent, and a previewed file is read through the descriptor it was validated on, so nothing outside the repository can be read through the panel
+- **Desktop**: Ctrl+W is no longer swallowed by the desktop app
+
 ## [0.76.2] - 2026-08-22
 
 ### Added
@@ -2322,6 +2334,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.77.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.77.0
 [0.76.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.76.2
 [0.76.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.76.1
 [0.76.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.76.0
