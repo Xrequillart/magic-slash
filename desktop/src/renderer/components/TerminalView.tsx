@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -39,14 +39,54 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
   const inAlternateScreenRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [showScrollButton, setShowScrollButton] = useState(false)
-  const needsResizeRef = useRef(false)
   const dragCounterRef = useRef(0)
+  // Geometry the terminal was last fitted to, and the grid that fit produced.
+  // Both are what make an agent switch free: a fit is skipped when the container
+  // has not moved, and the PTY is told only when the grid genuinely changed.
+  const lastFitRef = useRef({ width: 0, height: 0 })
+  const lastGridRef = useRef({ cols: 0, rows: 0 })
+  // Held in refs so the effects below can reach the current one without listing
+  // it as a dependency: re-running them would tear down the xterm session.
+  const fitNowRef = useRef<() => void>(() => {})
+  const cancelPendingFitRef = useRef<(() => void) | null>(null)
+  // Whether this terminal has been hidden since it was last shown, i.e. whether
+  // the repaint below is owed anything at all.
+  const wasHiddenRef = useRef(false)
 
   const tokens = useThemeTokens()
   // Held in a ref for the creation effect below: depending on the tokens there
   // would tear the terminal down and lose the session on every theme change.
   const tokensRef = useRef(tokens)
   tokensRef.current = tokens
+
+  /**
+   * Fit the terminal to its container, once, right now.
+   *
+   * Both guards matter. An unchanged container costs nothing, so the frames where
+   * only the visibility flipped do no work at all. And the PTY hears about a
+   * resize only when the grid actually moved: a SIGWINCH makes Claude Code repaint
+   * its entire UI and re-wrap its history, so one that changes no dimension is
+   * pure jank.
+   */
+  const fitNow = useCallback(() => {
+    const container = containerRef.current
+    const xterm = xtermRef.current
+    const fitAddon = fitAddonRef.current
+    if (!container || !xterm || !fitAddon) return
+
+    const { offsetWidth, offsetHeight } = container
+    if (offsetWidth <= 0 || offsetHeight <= 0) return
+    if (offsetWidth === lastFitRef.current.width && offsetHeight === lastFitRef.current.height) return
+    lastFitRef.current = { width: offsetWidth, height: offsetHeight }
+
+    fitAddon.fit()
+    const { cols, rows } = xterm
+    if (cols !== lastGridRef.current.cols || rows !== lastGridRef.current.rows) {
+      lastGridRef.current = { cols, rows }
+      window.electronAPI.terminal.resize(terminal.id, cols, rows)
+    }
+  }, [terminal.id])
+  fitNowRef.current = fitNow
 
   // A live terminal is repainted in place instead.
   useEffect(() => {
@@ -122,14 +162,7 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
     // before we measure the container and fit the terminal
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        if (containerRef.current && fitAddonRef.current && xtermRef.current) {
-          const { offsetWidth, offsetHeight } = containerRef.current
-          if (offsetWidth > 0 && offsetHeight > 0) {
-            fitAddonRef.current.fit()
-            const { cols, rows } = xtermRef.current
-            window.electronAPI.terminal.resize(terminal.id, cols, rows)
-          }
-        }
+        fitNowRef.current()
       })
     })
 
@@ -233,79 +266,81 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
     }
   }, [terminal.id])
 
-  // Handle resize - use ResizeObserver to detect container size changes
+  // Handle resize — ResizeObserver on the container, debounced.
+  //
+  // The observer stays connected while the terminal is HIDDEN, which it did not
+  // before. A background agent that ignored layout changes came back with a stale
+  // grid, and the fit resolving that staleness landed its SIGWINCH — a full Claude
+  // Code repaint — on the very frame the user switched to it. Tracking layout in
+  // the background costs one debounced fit nobody is looking at, and is what makes
+  // the switch itself free.
   useEffect(() => {
     if (!containerRef.current) return
 
-    // When not visible, mark that a resize check is needed when we become visible
-    if (!isVisible) {
-      needsResizeRef.current = true
-      return
-    }
-
     let resizeTimer: ReturnType<typeof setTimeout> | null = null
 
-    const prevColsRef = { current: xtermRef.current?.cols ?? 0 }
-    const prevRowsRef = { current: xtermRef.current?.rows ?? 0 }
-
-    const handleResize = () => {
-      if (fitAddonRef.current && xtermRef.current && containerRef.current) {
-        const { offsetWidth, offsetHeight } = containerRef.current
-        if (offsetWidth > 0 && offsetHeight > 0) {
-          fitAddonRef.current.fit()
-          const { cols, rows } = xtermRef.current
-          // Only send resize to PTY if dimensions actually changed,
-          // to avoid unnecessary SIGWINCH that causes Claude Code to re-render
-          if (cols !== prevColsRef.current || rows !== prevRowsRef.current) {
-            prevColsRef.current = cols
-            prevRowsRef.current = rows
-            window.electronAPI.terminal.resize(terminal.id, cols, rows)
-          }
-        }
+    const cancelPending = () => {
+      if (resizeTimer) {
+        clearTimeout(resizeTimer)
+        resizeTimer = null
       }
     }
 
     const debouncedResize = () => {
-      if (resizeTimer) clearTimeout(resizeTimer)
-      resizeTimer = setTimeout(handleResize, 200)
+      cancelPending()
+      resizeTimer = setTimeout(() => fitNowRef.current(), 200)
     }
 
-    // Initial fit: double-RAF ensures browser has computed layout after visibility change
-    // (single RAF can fire before visibility change layout is resolved)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (!fitAddonRef.current || !xtermRef.current || !containerRef.current) return
-
-        handleResize()
-
-        // When terminal was hidden, force a repaint. The xterm buffer is
-        // already up-to-date (onData listener writes even while visibility:hidden),
-        // only the visual renderer may be stale.
-        if (needsResizeRef.current) {
-          xtermRef.current.refresh(0, xtermRef.current.rows - 1)
-          xtermRef.current.scrollToBottom()
-        }
-
-        needsResizeRef.current = false
-      })
-    })
-
-    // Use ResizeObserver to detect container size changes (e.g., sidebar open/close)
-    const resizeObserver = new ResizeObserver(() => {
-      debouncedResize()
-    })
-
+    const resizeObserver = new ResizeObserver(debouncedResize)
     resizeObserver.observe(containerRef.current)
-
-    // Also listen to window resize
     window.addEventListener('resize', debouncedResize)
+    cancelPendingFitRef.current = cancelPending
 
     return () => {
-      if (resizeTimer) clearTimeout(resizeTimer)
+      cancelPending()
+      cancelPendingFitRef.current = null
       resizeObserver.disconnect()
       window.removeEventListener('resize', debouncedResize)
     }
-  }, [isVisible, terminal.id])
+  }, [terminal.id])
+
+  // Becoming visible: fit in the same frame the switch commits.
+  //
+  // A layout effect, and not the pair of requestAnimationFrames this replaces:
+  // the visibility flip and everything else the switch moved — the info sidebar
+  // derives its width from the KIND of agent — are already committed by the time
+  // this runs, so the geometry read here is the final one. The two frames it used
+  // to wait were two frames of a terminal still sized for the agent just left,
+  // and the 200ms debounce behind them was the rest of the lag.
+  //
+  // Any fit the observer queued for the same layout change is dropped: this one
+  // has already covered it, and letting it fire would resize a second time.
+  useLayoutEffect(() => {
+    if (!isVisible) {
+      wasHiddenRef.current = true
+      return
+    }
+    cancelPendingFitRef.current?.()
+    fitNow()
+
+    if (!wasHiddenRef.current) return
+    wasHiddenRef.current = false
+
+    // Kept from the version this replaces, and kept SYNCHRONOUS. The buffer is
+    // up to date either way — the data listener writes to a hidden terminal like
+    // any other — but whether xterm's renderer keeps painting while the element
+    // is `visibility: hidden` is not ours to decide: its pause is driven by an
+    // IntersectionObserver, which watches geometry and not visibility, and a
+    // renderer that never unpauses would show a stale screen on every switch.
+    // One repaint of the visible rows is cheap insurance against that, and doing
+    // it here rather than a frame later is what keeps the FIRST painted frame of
+    // the switch the correct one.
+    xtermRef.current?.refresh(0, xtermRef.current.rows - 1)
+    // Only for someone who was already at the bottom: an agent left mid-scroll
+    // comes back where it was left, which the unconditional jump this replaces
+    // took away.
+    if (!userScrolledUpRef.current) xtermRef.current?.scrollToBottom()
+  }, [isVisible, fitNow])
 
   // Focus when focused
   useEffect(() => {

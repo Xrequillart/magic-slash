@@ -31,6 +31,9 @@ const PLANNING_WIDTH = 720
 const MAX_WIDTH_RATIO = 0.4
 const PLANNING_MAX_WIDTH_RATIO = 0.55
 
+/** How long the panel takes to open or to close. */
+const OPEN_MS = 300
+
 /** Never wider than its share of the window, never narrower than MIN_WIDTH. */
 function sidebarWidth(viewportWidth: number, planning: boolean) {
   const cap = Math.floor(viewportWidth * (planning ? PLANNING_MAX_WIDTH_RATIO : MAX_WIDTH_RATIO))
@@ -95,6 +98,36 @@ export function AgentInfoSidebar() {
   const spec = isOpen && specMode !== 'hidden' && specParts
     ? { ...specParts, mode: specMode }
     : null
+
+  /**
+   * Whether the width on screen is currently being animated.
+   *
+   * Opening and closing the panel animates. An agent switch that merely derives a
+   * different width SNAPS, in one frame. Animating that width was 300ms of moving
+   * layout for the terminal beside it to chase, and the chase — debounced, then
+   * resolved with a SIGWINCH that repaints the whole of Claude Code — was the lag
+   * every switch between a planner and an ordinary agent carried. Nothing replaces
+   * it: a switch between agents is a change of subject, not travel, and the panel
+   * arriving already in place is what makes it read as instant.
+   *
+   * Set during render rather than in an effect, React's own pattern for reacting to
+   * a changed value: an effect would land the transition one commit after the width
+   * it is meant to animate, i.e. one commit too late to animate anything.
+   */
+  const [animateWidth, setAnimateWidth] = useState(false)
+  const wasOpenRef = useRef(isOpen)
+  if (wasOpenRef.current !== isOpen) {
+    wasOpenRef.current = isOpen
+    setAnimateWidth(true)
+  }
+  // Dropped once the panel has arrived, so the next agent switch snaps. Keyed on
+  // `isOpen` too: a close landing mid-open restarts the hold instead of letting the
+  // first one strip the transition from the animation still running.
+  useEffect(() => {
+    if (!animateWidth) return
+    const timer = window.setTimeout(() => setAnimateWidth(false), OPEN_MS)
+    return () => window.clearTimeout(timer)
+  }, [animateWidth, isOpen])
 
   // Get all configured repository paths for the dropdown
   const availableRepos = useMemo(() => {
@@ -390,7 +423,9 @@ export function AgentInfoSidebar() {
   return (
     <div
       ref={sidebarRef}
-      className="bg-surface-sunken flex flex-col h-full relative overflow-hidden transition-all duration-300 ease-in-out"
+      className={`bg-surface-sunken flex flex-col h-full relative overflow-hidden ${
+        animateWidth ? 'transition-[width] duration-300 ease-in-out' : ''
+      }`}
       style={{ width: isOpen ? `${width}px` : 0 }}
     >
       <div className="flex flex-col h-full" style={{ width: `${width}px` }}>
