@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.76.2] - 2026-08-22
+
+### Added
+
+- **Plan**: A repository can choose the language its spec is written in, separately from its tickets — `languages.spec` heads the chain `spec` -> `ticket` -> `jiraComment` -> `en`, so a repository that never sets it resolves exactly as it did before the key existed. When the two differ, `/magic:plan` translates the spec's own words into the ticket language rather than recomposing a body from the conversation
+- **Desktop**: A plan's status is a select on its page in the webapp, listing both states with the current one visible, rather than a button labelled by the flip it would perform
+- **Desktop**: A plan session can be marked done — or reopened — from its own page in the webapp by its author, so a session whose final spec ping never landed no longer sits at "being written" with SQL as the only repair
+
 ## [0.76.1] - 2026-08-21
 
 ### Changed
@@ -2312,6 +2320,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.76.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.76.2
 [0.76.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.76.1
 [0.76.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.76.0
 [0.75.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.75.3

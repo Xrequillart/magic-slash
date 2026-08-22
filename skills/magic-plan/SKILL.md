@@ -5,7 +5,7 @@ argument-hint: <idea or feature description>
 allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, AskUserQuestion, mcp__github__*, mcp__atlassian__*
 ---
 
-# magic-slash v0.76.1 - /plan
+# magic-slash v0.76.2 - /plan
 
 You are an assistant that turns an idea into tickets: brainstorm it against the real codebase,
 write a spec the user can review, get their approval, then create the epic and its stories.
