@@ -289,7 +289,7 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Réglages → Raccourcis ────────────────────────────────────────────────
   'settings.shortcuts.section': 'Raccourcis clavier',
   'settings.shortcuts.duplicateAgent': 'Dupliquer l’agent',
-  'settings.shortcuts.closeAgent': 'Fermer l’agent',
+  'settings.shortcuts.closeAgent': 'Archiver l’agent',
   'settings.shortcuts.previousAgent': 'Agent précédent',
   'settings.shortcuts.nextAgent': 'Agent suivant',
   'settings.shortcuts.toggleAgentInfo': 'Afficher/masquer les infos de l’agent',
@@ -1270,9 +1270,7 @@ export const fr: Record<keyof typeof en, string> = {
   'relative.ago': 'il y a {time}',
 
   // ── Barre d'infos de l'agent ─────────────────────────────────────────────
-  'agentInfo.titleNamed': 'Infos de {name}',
-  'agentInfo.title': 'Infos de l’agent',
-  'agentInfo.closeAgent': 'Fermer l’agent',
+  'agentInfo.closeAgent': 'Archiver l’agent',
   'agentInfo.notGitRepo': 'Ce n’est pas un dépôt git',
   'agentInfo.unknownError': 'Erreur inconnue',
   'agentInfo.selectRepositories': 'Choisir des dépôts',
@@ -1303,6 +1301,18 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.launchDone': 'Lancer magic-done',
   'agentInfo.files.one': '{count} fichier',
   'agentInfo.files.other': '{count} fichiers',
+
+  // ── Panneau de spec en direct (barre d'infos, agents en planification) ───
+  'agentInfo.spec.title': 'Spec',
+  'agentInfo.spec.drafting': 'Rédaction de la spec…',
+  'agentType.coder': 'Coder',
+  'toast.defaultAgentTypeUpdated': 'Type d’agent par défaut mis à jour',
+  'agentType.planner': 'Planner',
+  'agentType.coderHint': 'Cycle d’implémentation : start, commit, PR, review, done',
+  'agentType.plannerHint': 'Planification : transformer une idée en spec, puis en tickets',
+  'settings.defaultAgentType.title': 'Type d’agent par défaut',
+  'settings.defaultAgentType.description': 'Ce qu’est un nouvel agent, avant qu’une skill n’en décide autrement. Tu peux encore le changer depuis la barre de titre tant que l’agent n’a pas remonté de statut.',
+  'agentInfo.spec.open': 'Ouvrir la spec en plein écran',
   'toast.commandSent': '{command} envoyé à l’agent',
   'toast.commandCopied': 'Lancement automatique désactivé — {command} copié dans le presse-papiers',
   'toast.commandFailed': 'Impossible de lancer la commande',
@@ -1374,9 +1384,9 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Coquille de l'application ────────────────────────────────────────────
   'app.connecting': 'Connexion…',
-  'app.closeAgent.title': 'Fermer cet agent ?',
-  'app.closeAgent.body': 'Voulez-vous vraiment fermer cet agent ?',
-  'app.closeAgent.confirm': 'Oui, fermer l’agent',
+  'app.closeAgent.title': 'Archiver cet agent ?',
+  'app.closeAgent.body': 'Il quitte ta liste, et son historique est conservé.',
+  'app.closeAgent.confirm': 'Oui, archiver',
   'app.later': 'Plus tard',
   'app.errorBoundary.title': 'Une erreur est survenue',
   'app.errorBoundary.body': 'Une erreur inattendue s’est produite.',

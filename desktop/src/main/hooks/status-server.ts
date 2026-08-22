@@ -3,6 +3,8 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { URL } from 'url'
 import { CONFIG_DIR } from '../config/paths'
+import { isValidAgentType } from '../config/defaults'
+import { isSpecPath } from '../store/spec-file'
 import type { PlanTicket, TerminalUsage } from '../../types'
 
 /**
@@ -188,6 +190,32 @@ export function setSkillCallback(callback: SkillCallback) {
 
 export function setConfigProvider(provider: ConfigProvider) {
   configProvider = provider
+}
+
+/**
+ * Is the announced spec inside one of the agent's OWN repositories?
+ *
+ * `isSpecPath` checks shape only, so every absolute `.magic/spec-*.md` satisfies it —
+ * including one belonging to a project this agent has nothing to do with. That is not
+ * an authorisation, it is a spelling check: the path arrives on a loopback server any
+ * local process can call, and the renderer then derives the preview root from the path
+ * itself. Binding it to the repositories the agent actually holds is what turns the
+ * shape test into a decision about whether THIS agent may name THAT file.
+ *
+ * The repositories are known by the time this runs: `/magic:plan` sends
+ * `/repositories` immediately before `/metadata?specPath=` (skills/magic-plan/SKILL.md).
+ * An agent holding none has nothing to bind to, so nothing is accepted for it — a
+ * refusal here drops the path and leaves the rest of the metadata write intact.
+ */
+function specBelongsToAgent(terminalId: string, specPath: string): boolean {
+  const agent = agentProvider?.(terminalId) as { repositories?: unknown } | null | undefined
+  const repositories = Array.isArray(agent?.repositories) ? agent.repositories : []
+  const normalized = path.normalize(specPath)
+  return repositories.some((repo) => {
+    if (typeof repo !== 'string' || repo === '') return false
+    const root = path.normalize(repo)
+    return normalized === root || normalized.startsWith(root + path.sep)
+  })
 }
 
 export function setAgentProvider(provider: AgentProvider) {
@@ -454,10 +482,38 @@ export function startStatusServer(): Promise<number> {
           const prRepo = url.searchParams.get('prRepo')  // Repository path for the PR
           const fullStackTaskId = url.searchParams.get('fullStackTaskId')
           const relatedWorktreesRaw = url.searchParams.get('relatedWorktrees')
-          // Absolute path to the spec the planning phase writes. Taken raw, and NOT
-          // checked against the filesystem: the writer announces where the spec will
-          // be, so it legitimately arrives before the file exists.
-          const specPath = url.searchParams.get('specPath')
+          // Absolute path to the spec the planning phase writes.
+          //
+          // VALIDATED, and this is a trust boundary rather than a formality: this route
+          // is a loopback server whose port sits in a world-readable file, so any local
+          // process can name any path here. Whatever lands in `specPath` is later read
+          // and rendered in the spec panel — and the renderer resolves it by splitting
+          // it into its own dirname plus basename, which means config:readFile's
+          // containment check compares the file against its own parent and passes for
+          // ANY path. That check therefore constrains nothing on this input, and this
+          // is the only place that can.
+          //
+          // Two conditions, and both are needed. `isSpecPath` is the same lexical
+          // whitelist plan-sync and outbox already apply before uploading a spec
+          // (absolute, inside a `.magic` directory, named `spec-*.md`); it is
+          // deliberately lexical, because it must run before the file exists — the
+          // writer announces where the spec WILL be minutes ahead of creating it.
+          // `specBelongsToAgent` supplies what shape alone cannot: that this agent has
+          // any business naming that file. A path failing either is dropped, which
+          // leaves a previously announced path untouched rather than clearing it.
+          const specPathRaw = url.searchParams.get('specPath')
+          const specPath =
+            specPathRaw && terminalId && isSpecPath(specPathRaw) && specBelongsToAgent(terminalId, specPathRaw)
+              ? specPathRaw
+              : null
+          // `coder` or `planner`. VALIDATED here, unlike `status`, which is taken raw:
+          // an unrecognised status renders as a neutral pill and is otherwise inert,
+          // whereas the type drives the whole sidebar layout and which statuses are
+          // offered — so a typo would put a planning agent in front of a coder. An
+          // invalid value is dropped, which leaves the existing type untouched rather
+          // than clearing it.
+          const agentTypeRaw = url.searchParams.get('type')
+          const agentType = isValidAgentType(agentTypeRaw) ? agentTypeRaw : null
 
           if (terminalId && metadataCallback) {
             const metadata: Record<string, string | string[] | Record<string, { prUrl?: string }>> = {}
@@ -468,6 +524,7 @@ export function startStatusServer(): Promise<number> {
             if (status) metadata.status = status
             if (baseBranch) metadata.baseBranch = baseBranch
             if (specPath) metadata.specPath = specPath
+            if (agentType) metadata.type = agentType
             if (prUrl && prRepo) {
               // Store PR URL per repository
               metadata.repositoryMetadata = { [prRepo]: { prUrl } }

@@ -102,9 +102,40 @@ describe('readFileForPreview', () => {
       const result = await readFileForPreview('/repo', '/etc/passwd')
       expect(result).toEqual({ error: 'path_traversal' })
     })
+
+    // The two checks above are lexical, and `path.resolve` never follows a symlink —
+    // so a link INSIDE the tree can name a target anywhere on disk and satisfy them
+    // both. This is the case the spec panel makes reachable: its repoPath is the
+    // spec's own parent directory, so lexical containment holds by construction and
+    // the canonical check is the only thing left.
+    it('blocks a symlink whose target escapes the repo', async () => {
+      const outside = path.join(tmpDir, 'outside-secret.txt')
+      fs.writeFileSync(outside, 'SECRET')
+
+      const repo = path.join(tmpDir, 'repo-with-link')
+      fs.mkdirSync(repo, { recursive: true })
+      const link = path.join(repo, 'looks-innocent.txt')
+      fs.symlinkSync(outside, link)
+
+      const result = await readFileForPreview(repo, 'looks-innocent.txt')
+      expect(result).toEqual({ error: 'path_traversal' })
+    })
+
+    it('still reads a symlink whose target stays inside the repo', async () => {
+      const repo = path.join(tmpDir, 'repo-inner-link')
+      fs.mkdirSync(repo, { recursive: true })
+      fs.writeFileSync(path.join(repo, 'real.txt'), 'inside')
+      fs.symlinkSync(path.join(repo, 'real.txt'), path.join(repo, 'alias.txt'))
+
+      const result = await readFileForPreview(repo, 'alias.txt')
+      expect(result).toMatchObject({ content: 'inside', encoding: 'utf8' })
+    })
   })
 
   describe('non-deleted files (live filesystem)', () => {
+    // Also guards the canonical containment check above: `realpathSync` throws for a
+    // path that does not exist, and that must stay a not_found rather than becoming a
+    // refusal — a spec's path is announced before the file is written.
     it('returns not_found for a non-existent file', async () => {
       const result = await readFileForPreview(tmpDir, 'no-such-file.txt')
       expect(result).toEqual({ error: 'not_found' })

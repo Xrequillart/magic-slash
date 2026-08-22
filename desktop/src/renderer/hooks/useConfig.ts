@@ -126,6 +126,12 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  const updateDefaultAgentType = useCallback(async (type: string) => {
+    const result = await window.electronAPI.config.updateDefaultAgentType(type)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   // Repainting is the main process's job (it also owns the native chrome and
   // the other windows), so this only records the choice.
   const updateTheme = useCallback(async (theme: ThemeId) => {
@@ -233,6 +239,7 @@ export function useConfig() {
     updateSplitEnabled,
     updateSpotlight,
     updateLaunchMode,
+    updateDefaultAgentType,
     updateTheme,
     updateSyncClaudeTheme,
     updateUsageCardEnabled,

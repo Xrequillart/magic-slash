@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode } from 'react'
-import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, type LucideIcon } from 'lucide-react'
+import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, Bot, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage, resolveActiveOrgId } from './OrgPage'
@@ -15,7 +15,7 @@ import { SweepPane } from '../../components/SweepPane'
 import { useStore } from '../../store'
 import { useConfig } from '../../hooks/useConfig'
 import { useAuth } from '../../hooks/useAuth'
-import type { SpotlightShortcut, LaunchMode, ClaudeAccount, SpendSummary, SettingsTab, RepositoryConfig, Org } from '../../../types'
+import type { SpotlightShortcut, LaunchMode, AgentType, ClaudeAccount, SpendSummary, SettingsTab, RepositoryConfig, Org } from '../../../types'
 import { showToast } from '../../components/Toast'
 import { getProjectColorMap } from '../../utils/projectColors'
 import { formatUsd } from '../../utils/usageStats'
@@ -44,6 +44,11 @@ const LAUNCH_MODE_OPTIONS: { value: LaunchMode; labelKey: MessageKey; descriptio
   { value: 'acceptEdits', labelKey: 'settings.launchMode.acceptEdits', descriptionKey: 'settings.launchMode.acceptEdits.help' },
   { value: 'auto', labelKey: 'settings.launchMode.auto', descriptionKey: 'settings.launchMode.auto.help' },
   { value: 'bypassPermissions', labelKey: 'settings.launchMode.bypass', descriptionKey: 'settings.launchMode.bypass.help' },
+]
+
+const AGENT_TYPE_OPTIONS: { value: AgentType; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
+  { value: 'coder', labelKey: 'agentType.coder', descriptionKey: 'agentType.coderHint' },
+  { value: 'planner', labelKey: 'agentType.planner', descriptionKey: 'agentType.plannerHint' },
 ]
 
 // Icons mirror each tab's own section header, so the rail and the content agree.
@@ -407,7 +412,7 @@ function OrgRailItems({
 
 function WelcomePage({ route }: { route: SettingsRoute }) {
   const { config, terminals, splitEnabled, toggleSplitEnabled, setConfig, settingsInitialTab, setSettingsInitialTab } = useStore()
-  const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode } = useConfig()
+  const { addRepository, updateSplitEnabled, updateSpotlight, updateLaunchMode, updateDefaultAgentType } = useConfig()
   const orgs = useStore((s) => s.orgs)
   // The rail lists the organizations too, so it needs the same selection the
   // Organization page reads — and the same fallback rule, hence the shared
@@ -468,6 +473,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
   const [spotlightShortcut, setSpotlightShortcut] = useState(config?.spotlight?.shortcut ?? 'Control+Space')
   const [spotlightError, setSpotlightError] = useState(false)
   const [launchMode, setLaunchMode] = useState<LaunchMode>(config?.launchMode ?? 'default')
+  const [defaultAgentType, setDefaultAgentType] = useState<AgentType>(config?.defaultAgentType ?? 'coder')
   const [showBypassWarning, setShowBypassWarning] = useState(false)
   const [usageLogsEnabled, setUsageLogsEnabled] = useState(config?.usageLogsEnabled ?? true)
   const [prWatcherEnabled, setPrWatcherEnabled] = useState(config?.prReviews?.enabled ?? true)
@@ -537,6 +543,19 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       showToast(t('toast.launchModeUpdated'), 'success')
     } catch {
       setLaunchMode(previous)
+    }
+  }
+
+  // Optimistic, then reverted on failure — the same shape as applyLaunchMode above and
+  // as ToggleRow, so every control in this page fails the same way.
+  const applyDefaultAgentType = async (type: AgentType) => {
+    const previous = defaultAgentType
+    setDefaultAgentType(type)
+    try {
+      await updateDefaultAgentType(type)
+      showToast(t('toast.defaultAgentTypeUpdated'), 'success')
+    } catch {
+      setDefaultAgentType(previous)
     }
   }
 
@@ -974,6 +993,36 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       </div>
 
       {/* Launch mode */}
+      <div>
+        <SectionHeader icon={Bot} title={t('settings.defaultAgentType.title')} />
+        <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">{t('settings.defaultAgentType.title')}</div>
+              <div className="text-xs text-text-secondary/50 mt-0.5">{t('settings.defaultAgentType.description')}</div>
+            </div>
+            <div className="relative">
+              <select
+                value={defaultAgentType}
+                onChange={(e) => applyDefaultAgentType(e.target.value as AgentType)}
+                className={`${SELECT} w-52`}
+              >
+                {AGENT_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+            </div>
+          </div>
+          <div className="text-xs text-text-secondary/50">
+            {(() => {
+              const active = AGENT_TYPE_OPTIONS.find(o => o.value === defaultAgentType)
+              return active ? t(active.descriptionKey) : null
+            })()}
+          </div>
+        </div>
+      </div>
+
       <div>
         <SectionHeader icon={Shield} title={t('settings.launchMode.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">

@@ -23,6 +23,7 @@ import {
   updateSplitEnabled,
   updateSplitActive,
   updateLaunchMode,
+  updateDefaultAgentType,
   updateTheme,
   updateLanguage,
   updatePlanSyncEnabled,
@@ -33,7 +34,7 @@ import {
 } from '../config/config'
 import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
-import { isValidSpotlightShortcut, isValidLaunchMode } from '../config/defaults'
+import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import { isValidLanguage, isValidTheme, type Config } from '../../types'
 import { applyLanguage, applyTheme } from '../appearance'
 import {
@@ -390,6 +391,14 @@ export function setupConfigHandlers() {
     return { config }
   })
 
+  ipcMain.handle('config:updateDefaultAgentType', async (_event, { type }: { type: string }) => {
+    if (!isValidAgentType(type)) {
+      throw new Error(`Invalid agent type: '${type}'. Must be one of: coder, planner.`)
+    }
+    const config = updateDefaultAgentType(type)
+    return { config }
+  })
+
   // Toggle an integration flag (only atlassian is user-settable). Detection/
   // display only — no token is ever stored (see ticket #124 locked decisions).
   ipcMain.handle('config:setIntegration', async (_event, { name, enabled }: { name: 'atlassian'; enabled: boolean }) => {
@@ -479,11 +488,16 @@ export function setupConfigHandlers() {
   )
 }
 
+/** Is `child` the directory itself, or something beneath it? Plain string containment. */
+function contains(dir: string, child: string): boolean {
+  return child === dir || child.startsWith(dir + path.sep)
+}
+
 export async function readFileForPreview(repoPath: string, filePath: string, status?: string): Promise<object> {
   const resolvedRepo = path.resolve(repoPath)
   const resolvedFile = path.resolve(repoPath, filePath)
 
-  if (!resolvedFile.startsWith(resolvedRepo + path.sep) && resolvedFile !== resolvedRepo) {
+  if (!contains(resolvedRepo, resolvedFile)) {
     return { error: 'path_traversal' }
   }
 
@@ -491,6 +505,9 @@ export async function readFileForPreview(repoPath: string, filePath: string, sta
   const mimeHint = ext.startsWith('.') ? ext.slice(1) : ext
 
   if (status === 'deleted') {
+    // Reads a git OBJECT, not the working tree. It runs before any descriptor is
+    // opened, because a deleted file has nothing on disk to open — the lexical
+    // containment above is the whole check this path needs.
     try {
       const buffer = execFileSync('git', ['show', `HEAD:${filePath}`], { cwd: repoPath, maxBuffer: 11 * 1024 * 1024 })
       if (buffer.length > 10 * 1024 * 1024) {
@@ -521,35 +538,90 @@ export async function readFileForPreview(repoPath: string, filePath: string, sta
     }
   }
 
-  let stat: fs.Stats
+  // Everything below reads the working tree, and the lexical check at the top of this
+  // function is not enough to authorise that: `path.resolve` never follows a symlink,
+  // so a link sitting inside the tree can name a target anywhere on disk and satisfy
+  // it. The canonical paths have to agree too — the same two-step `readSpecFile`
+  // applies before reading a spec (main/store/spec-file.ts).
+  //
+  // It matters most for the spec panel, whose `repoPath` is the spec's own parent
+  // directory: lexical containment holds there by construction, so canonical
+  // containment is the only thing between a `.magic/spec-*.md` symlink and the file
+  // it points at.
+  //
+  // The result is held as an OPEN DESCRIPTOR rather than as a pathname. A validated
+  // string still has to be re-resolved by every later call, and each re-resolution is
+  // a fresh opportunity to swap the file — or one of its ancestor directories —
+  // between the check and the read. A descriptor names the object itself: once it is
+  // open, nothing on disk can change what it refers to, so the race has no mechanism
+  // left rather than a narrower window.
+  //
+  // Opening comes FIRST, and the validation is then done on what was actually opened
+  // (`fstatSync`) compared against the canonical path's own identity. Validating a
+  // name and opening it afterwards would leave exactly the gap this closes.
+  let fd: number | null = null
   try {
-    stat = fs.statSync(resolvedFile)
+    fd = fs.openSync(resolvedFile, 'r')
+    const opened = fs.fstatSync(fd)
+
+    const realRepo = fs.realpathSync(resolvedRepo)
+    const realFile = fs.realpathSync(resolvedFile)
+    const named = fs.statSync(realFile)
+
+    // The canonical name must be inside the root, AND must still designate the very
+    // object the descriptor holds. Different device or inode means the path was
+    // swapped between the open and the resolution, so the authorisation just computed
+    // does not apply to what would be read.
+    if (!contains(realRepo, realFile) || named.ino !== opened.ino || named.dev !== opened.dev) {
+      fs.closeSync(fd)
+      return { error: 'path_traversal' }
+    }
   } catch {
+    // ENOENT on any of them — the file is not there. Nothing canonical to compare and
+    // nothing readable to leak; a spec's path is announced before it is written, so
+    // this is a normal first state. Report it the way it has always been reported.
+    if (fd !== null) fs.closeSync(fd)
     return { error: 'not_found' }
   }
 
-  if (stat.size > 10 * 1024 * 1024) {
-    return { error: 'too_large', size: stat.size }
+  // From here on every read goes through `fd` — the descriptor validated above — and
+  // never through a pathname. `finally` closes it on every exit, including the early
+  // returns for an oversized or binary file.
+  let stat: fs.Stats
+  let content: string
+  try {
+    stat = fs.fstatSync(fd)
+
+    if (stat.size > 10 * 1024 * 1024) {
+      return { error: 'too_large', size: stat.size }
+    }
+
+    if (IMAGE_EXTS.has(ext)) {
+      const buffer = Buffer.alloc(stat.size)
+      fs.readSync(fd, buffer, 0, buffer.length, 0)
+      const mime = MIME_MAP[ext] ?? 'image/png'
+      const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`
+      return { content: dataUrl, encoding: 'image', size: stat.size, mimeHint }
+    }
+
+    // Null-byte scan: reliable binary detection without loading the full file
+    const sample = Buffer.alloc(Math.min(512, stat.size))
+    fs.readSync(fd, sample, 0, sample.length, 0)
+
+    if (sample.includes(0)) {
+      return { encoding: 'binary', size: stat.size, mimeHint }
+    }
+
+    const whole = Buffer.alloc(stat.size)
+    fs.readSync(fd, whole, 0, whole.length, 0)
+    content = whole.toString('utf8')
+  } catch {
+    return { error: 'not_found' }
+  } finally {
+    if (fd !== null) fs.closeSync(fd)
+    fd = null
   }
 
-  if (IMAGE_EXTS.has(ext)) {
-    const buffer = fs.readFileSync(resolvedFile)
-    const mime = MIME_MAP[ext] ?? 'image/png'
-    const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`
-    return { content: dataUrl, encoding: 'image', size: stat.size, mimeHint }
-  }
-
-  // Null-byte scan: reliable binary detection without loading the full file
-  const fd = fs.openSync(resolvedFile, 'r')
-  const sample = Buffer.alloc(Math.min(512, stat.size))
-  fs.readSync(fd, sample, 0, sample.length, 0)
-  fs.closeSync(fd)
-
-  if (sample.includes(0)) {
-    return { encoding: 'binary', size: stat.size, mimeHint }
-  }
-
-  const content = fs.readFileSync(resolvedFile, 'utf8')
   const lang = KNOWN_LANGS.has(mimeHint) ? mimeHint : 'text'
   const raw = await codeToHtml(content, { lang, theme: 'github-dark' }).catch(() => null)
 

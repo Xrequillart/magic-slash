@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Bot, Bug, Download, CheckCircle, Loader2, Play, ScrollText, Sparkles } from 'lucide-react'
+import { AlertTriangle, Bot, Bug, Download, CheckCircle, FileText, Loader2, Play, ScrollText, Sparkles } from 'lucide-react'
 import { useStore } from '../store'
 import { useT } from '../i18n'
 
@@ -10,6 +10,13 @@ type UpdateStatus =
   | { type: 'downloading'; progress: number }
   | { type: 'downloaded'; version: string; releaseNotes?: string }
   | { type: 'error'; message: string; phase?: 'check' | 'download' | 'install' }
+
+/**
+ * Id of the fake agent the debug menu pins into the list. Prefixed like the other
+ * non-pty ids so it is recognisable in the store, but NOT `sidebar-`/`script-`:
+ * those two are filtered out of the agent list, and the point here is to appear in it.
+ */
+const DEBUG_PLANNING_AGENT_ID = 'debug-planning-agent'
 
 const DEBUG_SEQUENCE: UpdateStatus[] = [
   { type: 'checking' },
@@ -109,6 +116,7 @@ export function UpdateOverlay() {
   const [debugRunning, setDebugRunning] = useState(false)
   const [debugMenuOpen, setDebugMenuOpen] = useState(false)
   const [emptyStatePinned, setEmptyStatePinned] = useState(false)
+  const [planningAgentPinned, setPlanningAgentPinned] = useState(false)
   const [updateRowPinned, setUpdateRowPinned] = useState(false)
   const debugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const debugMenuRef = useRef<HTMLDivElement>(null)
@@ -157,6 +165,47 @@ export function UpdateOverlay() {
     window.dispatchEvent(new CustomEvent('debug:update-sim', {
       detail: { type: 'error', message: 'net::ERR_CONNECTION_RESET (simulated)', phase: 'download' },
     }))
+  }
+
+  /**
+   * Pins a fake `planning` agent into the list, so the spec panel can be seen without
+   * running a real `/magic:plan` session. A toggle, like the empty state above: the
+   * point is to switch into it, resize the sidebar, expand the spec, then switch back.
+   *
+   * It exists only in the renderer store — no pty is spawned, so its terminal pane is
+   * blank and writing to it is a no-op. `specPath` points at the first configured
+   * repository's CHANGELOG.md purely because it is long, real markdown that is certain
+   * to be there; with no repository configured the path stays absent and the panel
+   * shows its "drafting the spec" empty state instead, which is worth seeing too.
+   *
+   * That path is NOT spec-shaped, so the /metadata route would reject it — this works
+   * only because the fixture writes the renderer store directly, which is the whole
+   * point of a debug fixture and no reason to relax the route's guard.
+   */
+  function togglePlanningAgent() {
+    setDebugMenuOpen(false)
+    const next = !planningAgentPinned
+    setPlanningAgentPinned(next)
+
+    if (!next) {
+      useStore.getState().removeTerminal(DEBUG_PLANNING_AGENT_ID)
+      return
+    }
+
+    const repoPath = Object.values(useStore.getState().config?.repositories ?? {})[0]?.path
+    useStore.getState().addTerminal({
+      id: DEBUG_PLANNING_AGENT_ID,
+      name: 'Fake planning agent',
+      state: 'working',
+      repositories: repoPath ? [repoPath] : [],
+      metadata: {
+        title: 'Fake planning agent',
+        description: 'Simulated /magic:plan session (debug menu)',
+        type: 'planner',
+        status: 'planning',
+        specPath: repoPath ? `${repoPath}/CHANGELOG.md` : undefined,
+      },
+    })
   }
 
   function showWhatsNew() {
@@ -319,6 +368,16 @@ export function UpdateOverlay() {
                   <Bot className="w-3.5 h-3.5" />
                   Empty agents state
                   {emptyStatePinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
+                </button>
+                <button
+                  onClick={togglePlanningAgent}
+                  className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
+                    planningAgentPinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Fake planning agent
+                  {planningAgentPinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
                 </button>
                 <button
                   onClick={showWhatsNew}

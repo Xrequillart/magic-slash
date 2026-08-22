@@ -33,6 +33,7 @@ import { addHistoryEntry } from '../config/activity-history'
 import { recordUsageSnapshot } from '../usage/usage-events'
 import { readConfig } from '../config/config'
 import { expandPath } from '../config/validation'
+import { isValidAgentType, DEFAULT_AGENT_TYPE } from '../config/defaults'
 import { checkRepoPath } from '../config/repo-validation'
 import { ensureHydrated } from '../store/hydrate'
 import { flushPlanSpec } from '../store/plan-sync'
@@ -89,6 +90,10 @@ export const STATUS_TO_ACTION: Record<NonNullable<TerminalMetadata['status']>, H
   '': null, // cleared status: an absence, not an event
   // The pair, not just the end: `planned` alone says a spec exists, the two together
   // say how long the idea took to become one.
+  //
+  // SPEC_PANEL_MODE in renderer/components/agent-info-sidebar/utils.ts keys off the
+  // same two names to place the live spec panel; it is exhaustive by type too, so a
+  // rename fails to compile there rather than silently hiding the panel.
   'planning': 'planning',
   'planned': 'planned',
   'in progress': 'started',
@@ -485,7 +490,7 @@ export function setupTerminalHandlers(
   })
 
   // Launch Claude in a new terminal
-  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd, initialPrompt }) => {
+  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd, initialPrompt, agentType }) => {
     if (typeof id !== 'string' || typeof name !== 'string') {
       throw new Error('terminal:launchClaude requires id (string) and name (string)')
     }
@@ -504,7 +509,11 @@ export function setupTerminalHandlers(
       callbacks.onExit,
       callbacks.onBranchChange,
       callbacks.onMetadataChange,
-      undefined,
+      // The agent's kind, decided before it exists rather than inferred later. The
+      // caller may name one; otherwise the user's configured default applies, and
+      // `coder` backs that up. Written at creation, so an agent has a kind from its
+      // very first render — the gap that made status-based inference unworkable.
+      { type: isValidAgentType(agentType) ? agentType : (readConfig().defaultAgentType ?? DEFAULT_AGENT_TYPE) },
       callbacks.onRepositoriesChange,
       undefined,
       typeof initialPrompt === 'string' ? initialPrompt : undefined

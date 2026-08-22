@@ -71,7 +71,12 @@ export default function FilePreviewPanel() {
 
   const fileName = selectedFile.path.split('/').pop() ?? selectedFile.path
   const relativePath = selectedFile.path
-  const statusCfg = STATUS_CONFIG[selectedFile.status] ?? STATUS_CONFIG.modified
+  // No fallback to `modified` for an EMPTY status. The fallback exists for a git
+  // status this version does not know — showing "M" beats showing nothing there —
+  // but an empty status means the file is not a git change at all (the live spec
+  // panel opens the spec this way), and badging it "M" with a yellow rail states
+  // something false about it.
+  const statusCfg = selectedFile.status ? (STATUS_CONFIG[selectedFile.status] ?? STATUS_CONFIG.modified) : null
   const extLabel = getExtLabel(selectedFile.path)
 
   return (
@@ -80,12 +85,14 @@ export default function FilePreviewPanel() {
         className="fixed inset-0 z-[59]"
         onClick={handleClose}
       />
-      <div className={`fixed right-0 top-0 h-full w-[70%] z-[60] flex flex-col bg-bg-secondary border-l-4 ${statusCfg.border} ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}>
+      <div className={`fixed right-0 top-0 h-full w-[70%] z-[60] flex flex-col bg-bg-secondary border-l-4 ${statusCfg?.border ?? 'border-l-line'} ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-line shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold border ${statusCfg.color}`}>
-              {statusCfg.label}
-            </span>
+            {statusCfg && (
+              <span className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold border ${statusCfg.color}`}>
+                {statusCfg.label}
+              </span>
+            )}
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-medium text-ink truncate">{fileName}</span>
               <span className="text-xs text-text-secondary truncate">{relativePath}</span>

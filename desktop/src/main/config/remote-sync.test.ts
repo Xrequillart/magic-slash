@@ -49,6 +49,7 @@ const emptyRow = (): UserSettingsRow => ({
   theme: null,
   language: null,
   sync_claude_theme: null,
+  default_agent_type: null,
 })
 
 const storeLoading = (loadConfig: Store['loadConfig']): Store => ({ ...NOOP_STORE, loadConfig })

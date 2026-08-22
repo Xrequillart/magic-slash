@@ -57,6 +57,8 @@ export const DEFAULTS = {
   prReviewsPollIntervalMs: 60_000,
   prReviewsAutoLaunchSkills: false,
   launchMode: 'default',
+  // NULL means never chosen; the desktop resolves that to 'coder'.
+  defaultAgentType: 'coder',
 } as const
 
 /**
@@ -146,6 +148,10 @@ export const SETTING_GROUPS: SettingGroup[] = [
   {
     title: 'Launch mode',
     fields: [{ field: 'launchMode', label: 'Claude Code launch' }],
+  },
+  {
+    title: 'Default agent type',
+    fields: [{ field: 'defaultAgentType', label: 'New agent is a' }],
   },
   {
     title: 'Usage card',
