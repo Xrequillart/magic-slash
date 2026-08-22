@@ -1324,7 +1324,6 @@ export const en = {
   // Shown while an agent is `planning`, and again beside the ticket once it is
   // `planned`. The panel reads the LOCAL file at metadata.specPath, so every one
   // of these has to read sensibly with the file still half-written — or absent.
-  'agentInfo.spec.title': 'Spec',
   // Not an error: /magic:plan announces where the spec WILL be before it writes
   // a byte, so "no such file" is the normal first state of a planning agent.
   'agentInfo.spec.drafting': 'Drafting the spec…',

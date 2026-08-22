@@ -1303,7 +1303,6 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.files.other': '{count} fichiers',
 
   // ── Panneau de spec en direct (barre d'infos, agents en planification) ───
-  'agentInfo.spec.title': 'Spec',
   'agentInfo.spec.drafting': 'Rédaction de la spec…',
   'agentType.coder': 'Coder',
   'toast.defaultAgentTypeUpdated': 'Type d’agent par défaut mis à jour',

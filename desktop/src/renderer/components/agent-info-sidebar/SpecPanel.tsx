@@ -17,10 +17,10 @@ interface SpecPanelProps {
    */
   identity: AgentIdentity
   /**
-   * Names of the repositories attached to the agent, rendered inline after the card
-   * label as `SPEC • magic-slash`. The repository CARDS are gone for a planning agent
-   * — it has no branch, no diff and no PR for them to show — but which repository is
-   * being planned against still matters.
+   * Names of the repositories attached to the agent. They are this card's heading:
+   * the repository CARDS are gone for a planning agent — it has no branch, no diff
+   * and no PR for them to show — but which repository is being planned against still
+   * matters, and it is the one thing those cards said that is worth keeping.
    */
   repoNames: string[]
   status: string
@@ -112,6 +112,10 @@ export function SpecPanel({
     }))
   }, [])
 
+  // The card's heading. With no repository attached the spec's own file name stands
+  // in, so the row is never left empty.
+  const heading = repoNames.length > 0 ? repoNames.join(', ') : filePath
+
   const handleExpand = useCallback(() => {
     // Empty status on purpose: the spec is not a git change, and any of the
     // `modified`/`added`/… values would send the read down the `git diff HEAD`
@@ -129,18 +133,14 @@ export function SpecPanel({
           rather than two. */}
       <div className="p-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-2 mb-3">
+          {/* The repository, at the weight RepositoryCard gives it. The repository
+              cards are gone for a planning agent, so the spec card takes over their
+              header: what is being planned against, said once and said plainly. It
+              replaces a label that only ever named the card the panel already is. */}
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary/50 flex-shrink-0">
-              {t('agentInfo.spec.title')}
+            <span className="text-ink/90 font-medium text-sm truncate" title={heading}>
+              {heading}
             </span>
-            {/* `SPEC • magic-slash`. The repository cards are gone for a planning
-                agent, so this is the only thing left saying what is being planned
-                against — and it costs one line rather than a card. */}
-            {repoNames.length > 0 && (
-              <span className="text-[10px] text-text-secondary/50 truncate">
-                • {repoNames.join(', ')}
-              </span>
-            )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {/* The ticket appears here at `planned`. TicketHeader never comes back for
