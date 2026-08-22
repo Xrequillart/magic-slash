@@ -192,6 +192,32 @@ export function setConfigProvider(provider: ConfigProvider) {
   configProvider = provider
 }
 
+/**
+ * Is the announced spec inside one of the agent's OWN repositories?
+ *
+ * `isSpecPath` checks shape only, so every absolute `.magic/spec-*.md` satisfies it —
+ * including one belonging to a project this agent has nothing to do with. That is not
+ * an authorisation, it is a spelling check: the path arrives on a loopback server any
+ * local process can call, and the renderer then derives the preview root from the path
+ * itself. Binding it to the repositories the agent actually holds is what turns the
+ * shape test into a decision about whether THIS agent may name THAT file.
+ *
+ * The repositories are known by the time this runs: `/magic:plan` sends
+ * `/repositories` immediately before `/metadata?specPath=` (skills/magic-plan/SKILL.md).
+ * An agent holding none has nothing to bind to, so nothing is accepted for it — a
+ * refusal here drops the path and leaves the rest of the metadata write intact.
+ */
+function specBelongsToAgent(terminalId: string, specPath: string): boolean {
+  const agent = agentProvider?.(terminalId) as { repositories?: unknown } | null | undefined
+  const repositories = Array.isArray(agent?.repositories) ? agent.repositories : []
+  const normalized = path.normalize(specPath)
+  return repositories.some((repo) => {
+    if (typeof repo !== 'string' || repo === '') return false
+    const root = path.normalize(repo)
+    return normalized === root || normalized.startsWith(root + path.sep)
+  })
+}
+
 export function setAgentProvider(provider: AgentProvider) {
   agentProvider = provider
 }
@@ -467,14 +493,19 @@ export function startStatusServer(): Promise<number> {
           // ANY path. That check therefore constrains nothing on this input, and this
           // is the only place that can.
           //
-          // `isSpecPath` is the same lexical whitelist plan-sync and outbox already
-          // apply before uploading a spec (absolute, inside a `.magic` directory, named
-          // `spec-*.md`). It is deliberately lexical: it must run before the file
-          // exists, because the writer announces where the spec WILL be minutes ahead
-          // of creating it. An unshaped path is dropped, which leaves any previously
-          // announced path untouched rather than clearing it.
+          // Two conditions, and both are needed. `isSpecPath` is the same lexical
+          // whitelist plan-sync and outbox already apply before uploading a spec
+          // (absolute, inside a `.magic` directory, named `spec-*.md`); it is
+          // deliberately lexical, because it must run before the file exists — the
+          // writer announces where the spec WILL be minutes ahead of creating it.
+          // `specBelongsToAgent` supplies what shape alone cannot: that this agent has
+          // any business naming that file. A path failing either is dropped, which
+          // leaves a previously announced path untouched rather than clearing it.
           const specPathRaw = url.searchParams.get('specPath')
-          const specPath = specPathRaw && isSpecPath(specPathRaw) ? specPathRaw : null
+          const specPath =
+            specPathRaw && terminalId && isSpecPath(specPathRaw) && specBelongsToAgent(terminalId, specPathRaw)
+              ? specPathRaw
+              : null
           // `coder` or `planner`. VALIDATED here, unlike `status`, which is taken raw:
           // an unrecognised status renders as a neutral pill and is otherwise inert,
           // whereas the type drives the whole sidebar layout and which statuses are

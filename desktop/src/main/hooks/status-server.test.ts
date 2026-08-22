@@ -318,6 +318,11 @@ describe('read-back endpoints', () => {
     beforeEach(() => {
       received = []
       setMetadataCallback((id, metadata) => received.push({ id, metadata }))
+      // A spec path is only accepted when it sits inside one of the ANNOUNCING agent's
+      // own repositories, so every terminal used below has to hold one. This mirrors
+      // the real order: /magic:plan sends /repositories immediately before its first
+      // /metadata?specPath= write.
+      setAgentProvider((id) => ({ id, repositories: [TEST_CONFIG_DIR, '/repo'] }))
     })
 
     // The path is announced BEFORE the spec is written: a planning agent says where
@@ -357,6 +362,29 @@ describe('read-back endpoints', () => {
         // The rest of the write still lands: a bad specPath is dropped, not fatal.
         expect(received, hostile).toEqual([{ id: 'term-guard', metadata: { title: 'Still applied' } }])
       }
+    })
+
+    // Shape is not authorisation. A well-formed `.magic/spec-*.md` belonging to some
+    // OTHER project satisfies isSpecPath perfectly, and the renderer would then derive
+    // the preview root from that same path — so without this binding, any local
+    // process could point a planning agent at a spec-shaped file anywhere on disk.
+    it('drops a well-shaped specPath that belongs to no repository of the agent', async () => {
+      const elsewhere = '/somewhere/else/.magic/spec-not-ours-20260822-090000.md'
+      const { status } = await httpGet(
+        `/metadata?id=term-1&specPath=${encodeURIComponent(elsewhere)}&title=Still%20applied`
+      )
+      expect(status).toBe(200)
+      expect(received).toEqual([{ id: 'term-1', metadata: { title: 'Still applied' } }])
+    })
+
+    it('drops a specPath from an agent that holds no repository at all', async () => {
+      setAgentProvider((id) => ({ id, repositories: [] }))
+      const spec = path.join(TEST_CONFIG_DIR, '.magic', 'spec-orphan-20260822-090000.md')
+      const { status } = await httpGet(
+        `/metadata?id=term-1&specPath=${encodeURIComponent(spec)}&title=Still%20applied`
+      )
+      expect(status).toBe(200)
+      expect(received).toEqual([{ id: 'term-1', metadata: { title: 'Still applied' } }])
     })
 
     it('leaves specPath out entirely when the caller sends none', async () => {

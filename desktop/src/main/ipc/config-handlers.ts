@@ -516,14 +516,23 @@ export async function readFileForPreview(repoPath: string, filePath: string, sta
   // it. That is not a refusal: a missing file discloses nothing, and it is a normal
   // state for a spec whose path was announced before it was written. Fall through and
   // let the readers below report `not_found` as they always have.
+  //
+  // The canonical path is then what every read below OPENS. Validating one path and
+  // reopening another by name is a time-of-check/time-of-use gap: between the check
+  // and the read, a symlink can be repointed, and the read would land on the new
+  // target having been authorised against the old one. Resolving once and reusing the
+  // result closes it.
+  let readPath = resolvedFile
   try {
     const realRepo = fs.realpathSync(resolvedRepo)
     const realFile = fs.realpathSync(resolvedFile)
     if (!contains(realRepo, realFile)) {
       return { error: 'path_traversal' }
     }
+    readPath = realFile
   } catch {
-    // ENOENT on either side — nothing canonical to compare, and nothing readable to leak.
+    // ENOENT on either side — nothing canonical to compare, and nothing readable to
+    // leak. `statSync` below reports it as not_found, as it always has.
   }
 
   const ext = path.extname(filePath).toLowerCase()
@@ -562,7 +571,7 @@ export async function readFileForPreview(repoPath: string, filePath: string, sta
 
   let stat: fs.Stats
   try {
-    stat = fs.statSync(resolvedFile)
+    stat = fs.statSync(readPath)
   } catch {
     return { error: 'not_found' }
   }
@@ -572,14 +581,14 @@ export async function readFileForPreview(repoPath: string, filePath: string, sta
   }
 
   if (IMAGE_EXTS.has(ext)) {
-    const buffer = fs.readFileSync(resolvedFile)
+    const buffer = fs.readFileSync(readPath)
     const mime = MIME_MAP[ext] ?? 'image/png'
     const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`
     return { content: dataUrl, encoding: 'image', size: stat.size, mimeHint }
   }
 
   // Null-byte scan: reliable binary detection without loading the full file
-  const fd = fs.openSync(resolvedFile, 'r')
+  const fd = fs.openSync(readPath, 'r')
   const sample = Buffer.alloc(Math.min(512, stat.size))
   fs.readSync(fd, sample, 0, sample.length, 0)
   fs.closeSync(fd)
@@ -588,7 +597,7 @@ export async function readFileForPreview(repoPath: string, filePath: string, sta
     return { encoding: 'binary', size: stat.size, mimeHint }
   }
 
-  const content = fs.readFileSync(resolvedFile, 'utf8')
+  const content = fs.readFileSync(readPath, 'utf8')
   const lang = KNOWN_LANGS.has(mimeHint) ? mimeHint : 'text'
   const raw = await codeToHtml(content, { lang, theme: 'github-dark' }).catch(() => null)
 
