@@ -3,9 +3,11 @@
 > Select the message variant matching `languages.discussion` config value. Default is `en`.
 >
 > `languages.discussion` governs **this file** — how the skill talks. It does **not** govern the
-> spec file or the ticket bodies: those are written in `languages.ticket` (resolved through the
-> `ticket` → `jiraComment` → `en` chain). The two are independent, and a French-speaking developer
-> filing English tickets for an international team is the normal case, not an edge case.
+> spec file or the ticket bodies: the bodies are written in `languages.ticket` (resolved through the
+> `ticket` → `jiraComment` → `en` chain) and the spec in `languages.spec` (which falls back to that
+> resolved ticket language). All three are independent, and a French-speaking developer who reviews a
+> French spec while filing English tickets for an international team is the normal case, not an edge
+> case.
 
 ## MSG_APP_NOT_RUNNING
 

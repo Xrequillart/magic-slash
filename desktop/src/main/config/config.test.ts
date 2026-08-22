@@ -426,6 +426,27 @@ describe('updateRepositoryLanguages — ticket', () => {
     updateRepositoryLanguages('api', { ticket: 'de' })
     expect(readConfig().repositories.api.languages?.ticket).toBeUndefined()
   })
+
+  // Same whitelist, same silent-drop failure mode, one chain further out.
+  it('persists the spec language', () => {
+    updateRepositoryLanguages('api', { spec: 'fr' })
+    expect(readConfig().repositories.api.languages?.spec).toBe('fr')
+  })
+
+  it('resets the spec language back to the ticket chain', () => {
+    updateRepositoryLanguages('api', { spec: 'fr' })
+    updateRepositoryLanguages('api', { spec: null })
+    expect(readConfig().repositories.api.languages?.spec).toBeUndefined()
+  })
+
+  // The pair the feature exists for: they must be storable independently.
+  it('keeps the spec and ticket languages apart', () => {
+    updateRepositoryLanguages('api', { ticket: 'en' })
+    updateRepositoryLanguages('api', { spec: 'fr' })
+    const langs = readConfig().repositories.api.languages
+    expect(langs?.ticket).toBe('en')
+    expect(langs?.spec).toBe('fr')
+  })
 })
 
 describe('updateRepositoryJiraSettings', () => {

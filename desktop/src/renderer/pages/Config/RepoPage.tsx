@@ -30,7 +30,7 @@ import {
   PLAN_ACCEPTANCE_CRITERIA_FORMATS,
   type PlanSettingsInput,
 } from '../../../types'
-import { resolveTicketLanguage } from '../../../languages'
+import { resolveSpecLanguage, resolveTicketLanguage } from '../../../languages'
 import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../../../tracker'
 
 interface RepoPageProps {
@@ -1415,9 +1415,9 @@ export function RepoPage({ repoName }: RepoPageProps) {
         <div className="mb-6">
           <h2 className="text-xs text-text-secondary/50 uppercase tracking-wider mb-4">{t('repo.langs.groupTickets')}</h2>
           <fieldset disabled={readOnly} className="bg-surface border border-line-strong rounded-xl px-4 w-full min-w-0">
-            {/* The ticket BODY sits under the comments it inherits from: absent, it
-                resolves to the row above (`ticket` -> `jiraComment` -> 'en'), and
-                LangSelect is handed that resolved value so the row shows what is
+            {/* One cascade, in reading order: each row inherits the one above it
+                when unset (`spec` -> `ticket` -> `jiraComment` -> 'en'), and
+                LangSelect is handed the RESOLVED value so a row shows what is
                 actually in force rather than a blank. */}
             <LangSelect langKey="jiraComment" label={t('repo.issues.commentLang')} description={t('repo.issues.commentLangHelp')} />
             <LangSelect
@@ -1425,6 +1425,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
               label={t('repo.issues.ticketLang')}
               description={t('repo.issues.ticketLangHelp')}
               resolvedValue={resolveTicketLanguage(repoLangs)}
+            />
+            {/* Last of the three, because the cascade reads top-down: the spec
+                inherits the tickets, which inherit the comments. */}
+            <LangSelect
+              langKey="spec"
+              label={t('repo.issues.specLang')}
+              description={t('repo.issues.specLangHelp')}
+              resolvedValue={resolveSpecLanguage(repoLangs)}
             />
           </fieldset>
         </div>

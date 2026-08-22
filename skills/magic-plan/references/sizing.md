@@ -114,8 +114,10 @@ drifts in one of the two places.
 
 Format follows `plan.acceptanceCriteria`. Default: `checklist`.
 
-Criteria are written in `languages.ticket`, per story, and every one of them must be checkable by
-someone who was not in the planning conversation. "Works correctly" is not a criterion.
+Criteria are drafted into the spec, so they take the **spec** language, per story — and are
+translated into `languages.ticket` with the rest of the body when Step 7 files the ticket. Every one
+of them must be checkable by someone who was not in the planning conversation, in either language.
+"Works correctly" is not a criterion.
 
 ### 4.1 `checklist`
 

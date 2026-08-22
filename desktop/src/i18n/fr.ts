@@ -623,6 +623,9 @@ export const fr: Record<keyof typeof en, string> = {
   'repo.issues.ticketLang': 'Langue des tickets',
   'repo.issues.ticketLangHelp':
     'Langue de rédaction des tickets créés par /magic:plan — suit la langue des commentaires tant que vous ne la définissez pas',
+  'repo.issues.specLang': 'Langue de la spec',
+  'repo.issues.specLangHelp':
+    'Langue de rédaction de la spec écrite par /magic:plan — suit la langue des tickets tant que vous ne la définissez pas',
   'repo.issues.commentOnPR': 'Commenter le ticket',
   'repo.issues.commentOnPRHelp':
     'Publie sur le ticket un commentaire contenant le lien de la pull request, à sa création',

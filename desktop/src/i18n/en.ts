@@ -633,6 +633,9 @@ export const en = {
   'repo.issues.ticketLang': 'Ticket Language',
   'repo.issues.ticketLangHelp':
     'Language the tickets created by /magic:plan are written in — follows the comment language until you set it',
+  'repo.issues.specLang': 'Spec Language',
+  'repo.issues.specLangHelp':
+    'Language the spec /magic:plan writes is in — follows the ticket language until you set it',
   'repo.issues.commentOnPR': 'Comment the Ticket',
   'repo.issues.commentOnPRHelp': 'Post a comment carrying the pull request link on the ticket, when the PR is created',
 

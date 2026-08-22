@@ -378,6 +378,10 @@ export function RepositoryForm({
   // desktop/src/languages.ts, which has a test for exactly this — and the two
   // surfaces must not disagree about what an empty string means.
   const ticketLanguage = repo.languages.ticket || repo.languages.jiraComment || DEFAULTS.language
+  // The spec inherits the resolved TICKET language, not `jiraComment` directly — a
+  // repo that set only `ticket` has to carry that through to its spec. Chained off
+  // the line above rather than repeated, exactly as resolveSpecLanguage does it.
+  const specLanguage = repo.languages.spec || ticketLanguage
 
   const tracker = repo.plan.tracker ?? DEFAULTS.tracker
   // Resolved, not read: both keys chain onto the legacy `issues.jiraUrl` /
@@ -853,10 +857,10 @@ export function RepositoryForm({
         </SettingsCard>
 
         <SettingsCard icon={Ticket} title={t('repo.langs.groupTickets')}>
-          {/* The ticket BODY sits under the comments it inherits from: absent, it
-              resolves to the row above (`ticket` -> `jiraComment` -> 'en'), and the row
-              is handed that resolved value so it shows what is actually in force rather
-              than a blank. */}
+          {/* One cascade, in reading order: each row inherits the one above it when
+              unset (`spec` -> `ticket` -> `jiraComment` -> 'en'), and each is handed
+              the RESOLVED value so it shows what is actually in force rather than a
+              blank. */}
           <SettingRow
             label={t('repo.issues.commentLang')}
             description={t('repo.issues.commentLangHelp')}
@@ -878,6 +882,21 @@ export function RepositoryForm({
               value={ticketLanguage}
               options={LANGUAGE_OPTIONS}
               onChange={(v) => setLanguage('ticket', v)}
+              width={200}
+              className="w-52"
+            />
+          </SettingRow>
+
+          {/* Last of the three, because the cascade reads top-down: the spec
+              inherits the tickets, which inherit the comments. */}
+          <SettingRow
+            label={t('repo.issues.specLang')}
+            description={t('repo.issues.specLangHelp')}
+          >
+            <Dropdown
+              value={specLanguage}
+              options={LANGUAGE_OPTIONS}
+              onChange={(v) => setLanguage('spec', v)}
               width={200}
               className="w-52"
             />

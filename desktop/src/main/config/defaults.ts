@@ -92,11 +92,12 @@ export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keyword
     siteUrl: '',
     projectKey: ''
   },
-  // NOTE: `languages.ticket` is deliberately NOT defaulted here. It heads a
-  // fallback chain (`ticket` -> `jiraComment` -> 'en'), and deepMergeDefaults
-  // would materialise 'en' on every existing repo — pinning them to English and
-  // making the chain unreachable. Resolve it at read time instead, with
-  // resolveTicketLanguage() from `desktop/src/languages.ts`.
+  // NOTE: `languages.ticket` and `languages.spec` are deliberately NOT defaulted
+  // here. They head one fallback chain (`spec` -> `ticket` -> `jiraComment` ->
+  // 'en'), and deepMergeDefaults would materialise 'en' on every existing repo —
+  // pinning them to English and making the chain unreachable. Resolve them at read
+  // time instead, with resolveSpecLanguage() / resolveTicketLanguage() from
+  // `desktop/src/languages.ts`.
   plan: {
     tracker: 'ask',
     issueTypes: {

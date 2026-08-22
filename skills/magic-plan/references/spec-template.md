@@ -71,9 +71,14 @@ Never rewrite the file wholesale to add a section. Edit in place, keep the headi
 
 ## 3. Language and headings
 
-The body is written in `languages.ticket` (resolved `ticket` → `jiraComment` → `en`), because this
-document is the source text of the ticket bodies: a spec in one language and tickets in another
-would mean the bodies were re-composed from somewhere else.
+The body is written in the **spec** language from SKILL.md Step 0.2 — `languages.spec`, falling back
+to the resolved ticket language. It follows the tickets by default, because this document is the
+source text of their bodies and one language for both is what most repositories want.
+
+When it is set differently, the spec wins for this file and Step 7 **translates it** into the ticket
+language as it composes each body. What must not happen is the bodies being re-composed from the
+conversation because the spec was in the "wrong" language: a translated body still says what the user
+approved, a re-remembered one does not.
 
 The **section headings stay verbatim and in English**, exactly as below — same rule as
 `/magic:start`'s design brief, for the same reason. Step 7 locates the content it composes each

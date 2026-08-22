@@ -40,6 +40,13 @@ export interface RepoLanguages {
    * materialising one would pin every repo to English and make the chain unreachable.
    */
   ticket?: string
+  /**
+   * The language the `.magic/spec-*.md` document /magic:plan writes is in. One link
+   * further out than `ticket`, whose whole chain it inherits when unset — so a repo
+   * that never sets it reads exactly as it did before the key existed. No DEFAULTS
+   * entry, for the same reason as `ticket`.
+   */
+  spec?: string
 }
 
 export interface RepoCommit {

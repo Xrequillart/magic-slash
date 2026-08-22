@@ -55,19 +55,29 @@ migration and must not be read.
 Keep the config in memory: `$CONFIG_FILE` is a temp file that does not survive into a later bash
 block.
 
-### 0.2: Determine the two languages
+### 0.2: Determine the three languages
 
-This skill needs **two** languages, and they are independent.
+This skill needs **three** languages, and they are independent.
 
 | Value | Read from | Default | Governs |
 | --- | --- | --- | --- |
 | discussion | `.repositories.<key>.languages.discussion` | `en` | every message from `references/messages.md`, every question |
-| ticket | `.repositories.<key>.languages.ticket` → `.languages.jiraComment` → `en` | — | the spec file and the ticket bodies |
+| ticket | `.repositories.<key>.languages.ticket` → `.languages.jiraComment` → `en` | — | the ticket bodies and their acceptance criteria |
+| spec | `.repositories.<key>.languages.spec` → the resolved **ticket** language | — | the `.magic/spec-*.md` document |
 
-The ticket language is a **fallback chain**, not a defaulted field: `languages.ticket` is
-deliberately absent from the config defaults, because materialising `en` there would pin every
-existing repository to English and make the chain unreachable. Resolve it at read time, in that
-order, and take the first non-empty value.
+The ticket and spec languages are **fallback chains**, not defaulted fields: neither
+`languages.ticket` nor `languages.spec` exists in the config defaults, because materialising `en`
+there would pin every existing repository to English and make the chain unreachable. Resolve each at
+read time, in the order above, and take the first non-empty value. Treat an empty string as unset —
+the config is a jsonb blob written wholesale, so `''` does arrive.
+
+Note the spec chains onto the **resolved** ticket language, not onto `jiraComment`: a repository that
+set only `languages.ticket` must carry that value through to its spec.
+
+**When the two differ, the spec is the source text and Step 7 translates as it composes.** Reviewing
+a document and filing a ticket have different audiences — the author reads the spec, the team reads
+the tracker — so `spec: fr` with `ticket: en` is a configuration to serve, not to correct. What it
+must never become is a licence to recompose a body from the conversation: see Step 7.
 
 A French-speaking developer who files English tickets for an international team is the normal case
 here, not an edge case. Talking in one language and writing in another is expected behaviour — do
@@ -471,8 +481,14 @@ Two things this step must get right, whatever the tracker:
 **Bodies come from the spec, not from memory.** Compose each ticket body from the spec's sections —
 that is what the user just reviewed and approved. Recomposing from the conversation reintroduces
 everything the spec was written to pin down, and the ticket then says something subtly different
-from the document that was approved. Bodies and criteria are written in `languages.ticket`, the same
-language as the spec.
+from the document that was approved. Bodies and criteria are written in the **ticket** language from
+Step 0.2.
+
+When that language differs from the spec's, **translate the spec's own words** — do not go back to
+the conversation for an easier source in the target language. A translated body still says what was
+approved; a re-remembered one does not, and this is the exact failure the rule above exists to
+prevent. Keep the spec's structure, its criteria and its numbers intact through the translation, and
+carry proper nouns, identifiers, file paths and code across verbatim.
 
 **A partial failure is reported, not smoothed over.** Epic created and story 3 of 5 failing is a
 real outcome. Nothing is rolled back — a created issue is a real issue someone may already have been

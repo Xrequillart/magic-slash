@@ -754,6 +754,9 @@ export const en = {
   'repo.issues.ticketLang': 'Ticket language',
   'repo.issues.ticketLangHelp':
     'Language new tickets are written in — follows the comment language until you set it',
+  'repo.issues.specLang': 'Spec language',
+  'repo.issues.specLangHelp':
+    'Language the spec /magic:plan writes is in — follows the ticket language until you set it',
   'repo.issues.commentOnPR': 'Comment the ticket',
   'repo.issues.commentOnPRHelp': 'Post a comment carrying the pull request link on the ticket, when the PR is created',
   'repo.plan.section': 'Planning',

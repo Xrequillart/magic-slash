@@ -156,9 +156,10 @@ value found in the config is a decision, never a leftover default.
 | `labels` | `plan.defaultLabels` + any label the template declares | see §2.5 |
 | `assignees` | `plan.assignToMe` | see §2.6 |
 
-The body is written in `languages.ticket`, the same language the spec is written in. That is not a
-coincidence to preserve loosely: the spec *is* the source text, so a body in another language would
-mean the body was re-composed from somewhere else.
+The body is written in `languages.ticket`. The spec follows that language by default and then the two
+match; when `languages.spec` pulls them apart, the body is a **translation of the spec's own words**,
+never a fresh composition. The spec *is* the source text either way — a body that owes anything to
+the conversation instead is the failure this rule exists to prevent.
 
 ### 2.3 Creating an issue
 
@@ -309,8 +310,8 @@ which issue type made each field mandatory: a "Team" required on the story type 
 create screen, and sending it there is a rejection on a field that project never asked for.
 
 The description is written in `languages.ticket`, per §2.2 — same rule, same reason: the spec *is*
-the source text, so a description in another language would mean it was composed from somewhere
-else.
+the source text, so a description that owes anything to the conversation, rather than being the
+spec's own words (translated when the two languages differ), was composed from somewhere else.
 
 A required field arriving at §3.3 without a value is a **defect in the discovery pass, not
 something to guess**. Say which field and which issue type, and do not send a call whose only

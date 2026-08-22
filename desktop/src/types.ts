@@ -281,6 +281,15 @@ export interface RepositoryConfig {
      * Resolve it with resolveTicketLanguage() from `desktop/src/languages.ts`.
      */
     ticket?: string
+    /**
+     * The language the `.magic/spec-*.md` document /magic:plan writes is in.
+     * Inherits `ticket` (and therefore the whole chain behind it) when unset, so
+     * a repo that never sets this reads exactly as it did before the key existed.
+     *
+     * Absent from DEFAULT_REPOSITORY_FIELDS for the same reason as `ticket`, and
+     * resolved with resolveSpecLanguage() from `desktop/src/languages.ts`.
+     */
+    spec?: string
   }
   commit?: {
     style?: string
