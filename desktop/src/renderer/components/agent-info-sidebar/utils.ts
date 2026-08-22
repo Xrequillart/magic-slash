@@ -1,4 +1,5 @@
 import type { Translate } from '../../i18n'
+import type { AgentType, TerminalMetadata } from '../../../types'
 
 // Format a timestamp (ms) to compact relative time (now, 5min, 2h, 3d, 1w, 2mo, 1y).
 // The translator is a parameter rather than a hook call: this stays a pure
@@ -130,3 +131,152 @@ export function buildTicketLink(
   const segment = provider === 'github' ? ticketId.replace(/^#/, '') : ticketId
   return `${base.replace(/\/+$/, '')}/${segment}`
 }
+
+/**
+ * Resolve an agent's kind, applying the default an absent one means.
+ *
+ * Absent is common and is not an error: every agent created before the type existed
+ * has none, and so does one whose skill has not announced yet. `coder` is what all of
+ * those were, so that is what absent reads as — never `planner`, which would put a
+ * spec panel in front of someone writing code.
+ *
+ * Takes `string` rather than `AgentType` on purpose: a newer build can persist a kind
+ * this one has never heard of, and that must fall back rather than render as itself.
+ */
+export function resolveAgentType(type: string | undefined): AgentType {
+  return type === 'planner' ? 'planner' : 'coder'
+}
+
+/**
+ * Does this agent's sidebar show the live spec instead of the ticket card?
+ *
+ * Keyed on the agent's TYPE, not on its status. It used to read the status —
+ * `planning`/`planned` meant a spec panel — which meant a planner had no layout until
+ * its first status arrived, and that renaming either value silently disabled the
+ * panel for everyone. The type is declared at creation, so the layout is right from
+ * the first render.
+ */
+export type SpecPanelMode = 'replace' | 'hidden'
+
+export function getSpecPanelMode(type: string | undefined): SpecPanelMode {
+  return resolveAgentType(type) === 'planner' ? 'replace' : 'hidden'
+}
+
+/**
+ * The statuses each kind of agent can be in, in workflow order.
+ *
+ * EXHAUSTIVE BY TYPE across the two lists put together, and that is the point: this is
+ * the whole contract between the statuses the skills write and the ones the picker
+ * offers. Renaming a status in `TerminalMetadata` (desktop/src/types.ts) is a compile
+ * error here rather than a value that quietly disappears from every menu.
+ *
+ * `''` — no status — belongs to both: it is where every agent starts, whatever it is.
+ */
+export const STATUSES_BY_TYPE: Record<AgentType, readonly NonNullable<TerminalMetadata['status']>[]> = {
+  planner: ['', 'planning', 'planned'],
+  coder: [
+    '',
+    'in progress',
+    'committed',
+    'ready for PR',
+    'PR created',
+    'CI green',
+    'in review',
+    'changes requested',
+    'Review addressed',
+    'PR merged',
+  ],
+}
+
+/**
+ * The status that ENDS each workflow — where the agent has nothing left to do.
+ *
+ * A planner stops at `planned`: it produces a spec and a ticket, never a branch or a
+ * PR, so waiting for `PR merged` would leave it uncloseable forever.
+ */
+const TERMINAL_STATUS: Record<AgentType, NonNullable<TerminalMetadata['status']>> = {
+  planner: 'planned',
+  coder: 'PR merged',
+}
+
+/**
+ * May this agent be closed for good?
+ *
+ * Its own workflow's end, or a beginning: an agent with no status never started, so
+ * there is nothing to lose.
+ *
+ * Lives here rather than inline because two surfaces ask the question — the title bar,
+ * which offers the button, and the sidebar, which used to. One answer is what stops
+ * them disagreeing about whether the button should be there.
+ */
+export function canCloseAgent(status: string | undefined, type: string | undefined): boolean {
+  return !status || status === TERMINAL_STATUS[resolveAgentType(type)]
+}
+
+/**
+ * May the agent's kind still be changed?
+ *
+ * Only before it has done anything. Once a status is set the agent has committed to a
+ * workflow — a coder mid-`in progress` has a branch and a diff, a planner at `planned`
+ * has a ticket — and switching its kind would strand that status outside the list its
+ * new kind offers. Rather than clearing the status or tolerating an orphan, the switch
+ * simply stops being available, which is also why the caller HIDES the control instead
+ * of disabling it: there is nothing the user could do to re-enable it.
+ */
+export function canChangeAgentType(status: string | undefined): boolean {
+  return !status
+}
+
+/**
+ * Split an ABSOLUTE spec path into the `(repoPath, filePath)` pair `config:readFile`
+ * takes.
+ *
+ * Written with string operations rather than node's `path`: this runs in the
+ * renderer bundle, where the builtin is not available, and in the node-environment
+ * test suite, where importing it would hide that.
+ *
+ * The pair looks redundant — dirname plus basename is just the path again — but it
+ * is what makes the containment check in the handler pass: it does
+ * `path.resolve(repoPath, filePath)` and then verifies the result sits under
+ * `repoPath`, which a directory and its own child satisfy by construction. No repo
+ * root is involved, and none could be: an agent can hold several repositories and
+ * the spec need not live inside any of them.
+ *
+ * Returns null for an empty or relative path — `TerminalMetadata.specPath` is
+ * documented absolute, so anything else is a writer bug and guessing a root for it
+ * would read some unrelated file.
+ */
+export function splitSpecPath(specPath: string | undefined): { repoPath: string; filePath: string } | null {
+  if (!specPath) return null
+  const trimmed = specPath.trim()
+  if (!trimmed.startsWith('/')) return null
+
+  const lastSlash = trimmed.lastIndexOf('/')
+  const filePath = trimmed.slice(lastSlash + 1)
+  // A path that ends on its separator names a directory, not a spec.
+  if (!filePath) return null
+
+  return { repoPath: lastSlash === 0 ? '/' : trimmed.slice(0, lastSlash), filePath }
+}
+
+/**
+ * Should the spec view stay pinned to the bottom as Claude Code appends to the file?
+ *
+ * Takes the three numbers rather than an `Element` on purpose: the suite runs on
+ * node with no DOM, so a signature that named `HTMLElement` would be untestable —
+ * and this threshold is exactly the part worth testing.
+ *
+ * The tolerance absorbs sub-pixel scroll positions and the last partial line: a
+ * strict equality would release the follow on almost every update and leave the
+ * reader stranded mid-spec.
+ */
+export const SPEC_FOLLOW_TOLERANCE_PX = 32
+
+export function shouldAutoFollow(
+  metrics: { scrollTop: number; scrollHeight: number; clientHeight: number },
+): boolean {
+  const distanceFromBottom = metrics.scrollHeight - metrics.clientHeight - metrics.scrollTop
+  return distanceFromBottom <= SPEC_FOLLOW_TOLERANCE_PX
+}
+
+

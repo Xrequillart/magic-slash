@@ -43,6 +43,9 @@ interface AgentRow {
   branch_name: string | null
   base_branch: string | null
   status: string | null
+  // Null on every row written before the type existed, and on any row an older
+  // build wrote — `coder` is what those were, and fromAgentRow does not guess.
+  type: string | null
   repositories: string[]
   metadata: TerminalMetadata & { __app?: { id: string; tsCreate?: number; splitPane?: 'left' | 'right' } }
 }
@@ -886,14 +889,18 @@ export class CloudStore implements Store {
    * readers that predate the column still look for it.
    */
   private toAgentRow(agent: Agent, uid: string): Record<string, unknown> {
-    // The five fields that HAVE a column are peeled off the metadata rather than
+    // The six fields that HAVE a column are peeled off the metadata rather than
     // copied into it. They used to be written twice — once in the column, once
     // inside the jsonb — while fromAgentRow read only the jsonb, which made every
     // column write-only decoration and the JSON the de facto store. Two copies of
     // one fact is one of them being wrong eventually; the column is the one every
     // other reader can query, index and join on (mapOrgAgentRow and the webapp's
     // admin_list_user_agents already read the columns).
-    const { ticketId, description, branchName, baseBranch, status, ...rest } = agent.metadata ?? {}
+    //
+    // `type` earns a column for that last reason above all: "how many planning
+    // agents ran this week" is a question the back-office and the Team page will
+    // ask, and a jsonb field cannot be grouped on without a scan.
+    const { ticketId, description, branchName, baseBranch, status, type, ...rest } = agent.metadata ?? {}
     return {
       app_agent_id: agent.id,
       owner_id: uid,
@@ -903,6 +910,7 @@ export class CloudStore implements Store {
       branch_name: branchName ?? null,
       base_branch: baseBranch ?? null,
       status: status ?? null,
+      type: type ?? null,
       repositories: agent.repositories ?? [],
       // What is left has no column of its own: title, fullStackTaskId,
       // relatedWorktrees, repositoryMetadata, usage, specPath — plus __app, which carries
@@ -942,6 +950,11 @@ export class CloudStore implements Store {
         branchName: row.branch_name || rest.branchName,
         baseBranch: row.base_branch || rest.baseBranch,
         status: (row.status || rest.status) as TerminalMetadata['status'],
+        // No default applied here: an absent type stays absent all the way to the
+        // renderer, which resolves it. Writing `coder` in would make a row that
+        // never declared a type indistinguishable from one that chose it, and the
+        // next save would persist the guess.
+        type: (row.type || rest.type) as TerminalMetadata['type'],
       } as TerminalMetadata,
       splitPane: app?.splitPane,
     }
@@ -982,7 +995,7 @@ export class CloudStore implements Store {
 
     const { data, error } = await ctx.client
       .from('agents')
-      .select('id, app_agent_id, org_id, owner_id, name, ticket_id, description, branch_name, base_branch, status, repositories, metadata, updated_at')
+      .select('id, app_agent_id, org_id, owner_id, name, ticket_id, description, branch_name, base_branch, status, type, repositories, metadata, updated_at')
       .eq('owner_id', ctx.uid)
       .is('archived_at', null)
 
@@ -1411,7 +1424,7 @@ export class CloudStore implements Store {
 
     const { data, error } = await ctx.client
       .from('agents')
-      .select('id, org_id, owner_id, name, ticket_id, status, repositories, metadata, updated_at')
+      .select('id, org_id, owner_id, name, ticket_id, status, type, repositories, metadata, updated_at')
       .is('archived_at', null)
 
     if (error || !data) return []

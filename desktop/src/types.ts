@@ -180,6 +180,12 @@ export interface TerminalMetadata {
    * announces where the spec will be, and nothing here checks the filesystem.
    */
   specPath?: string
+  /**
+   * Absent on agents created before the type existed, and on any agent whose skill
+   * has not announced one yet. Readers must treat absent as `coder`: that is what
+   * every agent was before planning existed, and it is the default for a new one.
+   */
+  type?: AgentType
   fullStackTaskId?: string
   relatedWorktrees?: string[]
   repositoryMetadata?: Record<string, RepositoryMetadata>
@@ -509,6 +515,23 @@ export interface SpotlightConfig {
 export type LaunchMode = 'plan' | 'default' | 'acceptEdits' | 'auto' | 'bypassPermissions'
 
 /**
+ * What kind of work an agent does — the app's own notion, distinct from the status
+ * it happens to be at.
+ *
+ * `coder` runs the implementation cycle (`/magic:start` → commit → pr → resolve →
+ * done); `planner` runs `/magic:plan`, which produces a spec and a ticket and never
+ * a branch or a PR.
+ *
+ * This used to be INFERRED from the status: `planning`/`planned` meant a planning
+ * agent, everything else meant a coder. That worked only while the agent had already
+ * announced a status, so a freshly created agent had no kind at all, and a rename of
+ * either status silently changed the layout. The type is declared instead — by the
+ * skills over `/metadata?type=`, and by the app at creation.
+ */
+export const AGENT_TYPES = ['coder', 'planner'] as const
+export type AgentType = (typeof AGENT_TYPES)[number]
+
+/**
  * Available appearances, in the order the picker shows them. Adding one is a
  * single entry here plus its colours in the renderer's theme registry — the
  * registry is typed against this list, so TypeScript refuses a theme whose
@@ -638,6 +661,13 @@ export interface Config {
   }
   spotlight?: SpotlightConfig
   launchMode?: LaunchMode
+  /**
+   * What a NEW agent is, when nothing says otherwise. Absent = never chosen, and
+   * the app applies `coder` — which is what every agent was before planning
+   * existed. Follows the account like the theme: which kind of work you usually
+   * start is a property of the person, not of the machine.
+   */
+  defaultAgentType?: AgentType
   usageCardEnabled?: boolean    // show the Claude usage card in the left sidebar
   usageCardMinimized?: boolean  // left sidebar usage card collapsed to gauges only
   agentContextEnabled?: boolean // show the agent's context/session card in the right sidebar

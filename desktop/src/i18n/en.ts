@@ -303,7 +303,7 @@ export const en = {
   // ── Settings → Shortcuts ─────────────────────────────────────────────────
   'settings.shortcuts.section': 'Keyboard Shortcuts',
   'settings.shortcuts.duplicateAgent': 'Duplicate agent',
-  'settings.shortcuts.closeAgent': 'Close agent',
+  'settings.shortcuts.closeAgent': 'Archive agent',
   'settings.shortcuts.previousAgent': 'Previous agent',
   'settings.shortcuts.nextAgent': 'Next agent',
   'settings.shortcuts.toggleAgentInfo': 'Toggle agent info',
@@ -1288,9 +1288,7 @@ export const en = {
   'relative.ago': '{time} ago',
 
   // ── Agent info sidebar ───────────────────────────────────────────────────
-  'agentInfo.titleNamed': '{name} Info',
-  'agentInfo.title': 'Agent Info',
-  'agentInfo.closeAgent': 'Close agent',
+  'agentInfo.closeAgent': 'Archive the agent',
   'agentInfo.notGitRepo': 'Not a git repo',
   'agentInfo.unknownError': 'Unknown error',
   'agentInfo.selectRepositories': 'Select repositories',
@@ -1321,6 +1319,23 @@ export const en = {
   'agentInfo.launchDone': 'Launch magic-done',
   'agentInfo.files.one': '{count} file',
   'agentInfo.files.other': '{count} files',
+
+  // ── Live spec panel (agent info sidebar, planning agents) ────────────────
+  // Shown while an agent is `planning`, and again beside the ticket once it is
+  // `planned`. The panel reads the LOCAL file at metadata.specPath, so every one
+  // of these has to read sensibly with the file still half-written — or absent.
+  'agentInfo.spec.title': 'Spec',
+  // Not an error: /magic:plan announces where the spec WILL be before it writes
+  // a byte, so "no such file" is the normal first state of a planning agent.
+  'agentInfo.spec.drafting': 'Drafting the spec…',
+  'agentType.coder': 'Coder',
+  'toast.defaultAgentTypeUpdated': 'Default agent type updated',
+  'agentType.planner': 'Planner',
+  'agentType.coderHint': 'Implementation cycle: start, commit, PR, review, done',
+  'agentType.plannerHint': 'Planning: turn an idea into a spec, then into tickets',
+  'settings.defaultAgentType.title': 'Default agent type',
+  'settings.defaultAgentType.description': 'What a new agent is, before any skill says otherwise. You can still switch it from the title bar until the agent reports a status.',
+  'agentInfo.spec.open': 'Open the spec full screen',
   'toast.commandSent': 'Sent {command} to the agent',
   'toast.commandCopied': 'Auto-launch disabled — {command} copied to clipboard',
   'toast.commandFailed': 'Failed to launch command',
@@ -1408,9 +1423,9 @@ export const en = {
 
   // ── App shell ────────────────────────────────────────────────────────────
   'app.connecting': 'Connecting…',
-  'app.closeAgent.title': 'Close this agent?',
-  'app.closeAgent.body': 'Are you sure you want to close this agent?',
-  'app.closeAgent.confirm': 'Yes, close agent',
+  'app.closeAgent.title': 'Archive this agent?',
+  'app.closeAgent.body': 'It leaves your list, and its history is kept.',
+  'app.closeAgent.confirm': 'Yes, archive it',
   'app.later': 'Later',
   'app.errorBoundary.title': 'Something went wrong',
   'app.errorBoundary.body': 'An unexpected error occurred.',

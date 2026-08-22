@@ -54,6 +54,7 @@ export interface UserSettings {
   prReviewsPollIntervalMs: number | null
   prReviewsAutoLaunchSkills: boolean | null
   launchMode: string | null
+  defaultAgentType: string | null
 }
 
 export type UserSettingsPatch = Partial<UserSettings>
@@ -80,10 +81,11 @@ interface UserSettingsRow {
   pr_reviews_poll_interval_ms: number | null
   pr_reviews_auto_launch_skills: boolean | null
   launch_mode: string | null
+  default_agent_type: string | null
 }
 
 const COLUMNS =
-  'theme, sync_claude_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_enabled, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode'
+  'theme, sync_claude_theme, language, usage_card_enabled, usage_card_minimized, agent_context_enabled, agent_context_minimized, usage_logs_enabled, plan_sync_enabled, notifications_enabled, notification_agent_waiting, notification_agent_completed, notification_pr_review, notification_pr_changes_requested, daily_digest_enabled, split_enabled, spotlight_enabled, pr_reviews_enabled, pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, launch_mode, default_agent_type'
 
 /** Maps a camelCase field to its column. Also the list of writable fields. */
 const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
@@ -108,6 +110,7 @@ const FIELD_TO_COLUMN: Record<keyof UserSettings, keyof UserSettingsRow> = {
   prReviewsPollIntervalMs: 'pr_reviews_poll_interval_ms',
   prReviewsAutoLaunchSkills: 'pr_reviews_auto_launch_skills',
   launchMode: 'launch_mode',
+  defaultAgentType: 'default_agent_type',
 }
 
 /** What the page shows before the fetch resolves, and when no row exists yet. */
@@ -133,6 +136,7 @@ export const EMPTY_SETTINGS: UserSettings = {
   prReviewsPollIntervalMs: null,
   prReviewsAutoLaunchSkills: null,
   launchMode: null,
+  defaultAgentType: null,
 }
 
 
@@ -159,6 +163,7 @@ function toSettings(row: UserSettingsRow): UserSettings {
     prReviewsPollIntervalMs: row.pr_reviews_poll_interval_ms,
     prReviewsAutoLaunchSkills: row.pr_reviews_auto_launch_skills,
     launchMode: row.launch_mode,
+    defaultAgentType: row.default_agent_type,
   }
 }
 

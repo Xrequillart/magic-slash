@@ -3,6 +3,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { URL } from 'url'
 import { CONFIG_DIR } from '../config/paths'
+import { isValidAgentType } from '../config/defaults'
 import type { PlanTicket, TerminalUsage } from '../../types'
 
 /**
@@ -458,6 +459,14 @@ export function startStatusServer(): Promise<number> {
           // checked against the filesystem: the writer announces where the spec will
           // be, so it legitimately arrives before the file exists.
           const specPath = url.searchParams.get('specPath')
+          // `coder` or `planner`. VALIDATED here, unlike `status`, which is taken raw:
+          // an unrecognised status renders as a neutral pill and is otherwise inert,
+          // whereas the type drives the whole sidebar layout and which statuses are
+          // offered — so a typo would put a planning agent in front of a coder. An
+          // invalid value is dropped, which leaves the existing type untouched rather
+          // than clearing it.
+          const agentTypeRaw = url.searchParams.get('type')
+          const agentType = isValidAgentType(agentTypeRaw) ? agentTypeRaw : null
 
           if (terminalId && metadataCallback) {
             const metadata: Record<string, string | string[] | Record<string, { prUrl?: string }>> = {}
@@ -468,6 +477,7 @@ export function startStatusServer(): Promise<number> {
             if (status) metadata.status = status
             if (baseBranch) metadata.baseBranch = baseBranch
             if (specPath) metadata.specPath = specPath
+            if (agentType) metadata.type = agentType
             if (prUrl && prRepo) {
               // Store PR URL per repository
               metadata.repositoryMetadata = { [prRepo]: { prUrl } }

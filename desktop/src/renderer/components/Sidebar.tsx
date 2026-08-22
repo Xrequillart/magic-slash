@@ -15,8 +15,13 @@ import { useT } from '../i18n'
 import type { ScriptTerminalInfo } from '../../types'
 import { CHANGELOG_URL, DOCUMENTATION_URL } from '../../urls'
 
-const SIDEBAR_MIN_WIDTH = 200
-const SIDEBAR_DEFAULT_WIDTH = 300
+/**
+ * Fixed, and deliberately not resizable. The agent list is a column of short labels
+ * with a known shape, so there was nothing for a drag handle to reveal — while the
+ * width it produced was one more piece of layout state to keep consistent with the
+ * right sidebar, which now sizes itself from the kind of agent being inspected.
+ */
+const SIDEBAR_WIDTH = 230
 
 // Project color dot component
 const ProjectDot = memo(function ProjectDot({ color, title }: { color: string; title: string }) {
@@ -186,8 +191,6 @@ export function Sidebar() {
   const { scriptTerminals, stopScript } = useScriptRunner()
   const t = useT()
 
-  const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH)
-  const [isResizing, setIsResizing] = useState(false)
   const [now, setNow] = useState(Date.now())
 
   // Refresh `now` every 60s to update relative timestamps
@@ -195,49 +198,6 @@ export function Sidebar() {
     const interval = setInterval(() => setNow(Date.now()), 60_000)
     return () => clearInterval(interval)
   }, [])
-
-  const getMaxWidth = useCallback(() => {
-    return Math.floor(window.innerWidth * 0.2)
-  }, [])
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizing(true)
-  }, [])
-
-  useEffect(() => {
-    if (!isResizing) return
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const maxWidth = getMaxWidth()
-      const newWidth = e.clientX
-      setWidth(Math.min(maxWidth, Math.max(SIDEBAR_MIN_WIDTH, newWidth)))
-    }
-
-    const handleMouseUp = () => {
-      setIsResizing(false)
-    }
-
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [isResizing, getMaxWidth])
-
-  useEffect(() => {
-    const handleResize = () => {
-      const maxWidth = getMaxWidth()
-      if (width > maxWidth) {
-        setWidth(maxWidth)
-      }
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [width, getMaxWidth])
 
   // Agents, newest first — no grouping, no status-driven reordering
   const { ordered, projectNames } = useOrderedTerminals()
@@ -359,17 +319,9 @@ export function Sidebar() {
 
   return (
     <div
-      className={`bg-surface-sunken flex flex-col h-full relative z-10 ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
-      style={{ width: `${width}px`, marginLeft: leftSidebarVisible ? 0 : -width }}
+      className="bg-surface-sunken flex flex-col h-full relative z-10 transition-all duration-300 ease-in-out"
+      style={{ width: `${SIDEBAR_WIDTH}px`, marginLeft: leftSidebarVisible ? 0 : -SIDEBAR_WIDTH }}
     >
-      {/* Resize Handle */}
-      <div
-        onMouseDown={handleMouseDown}
-        className={`absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-purple/50 transition-colors z-20 ${
-          isResizing ? 'bg-purple' : ''
-        }`}
-      />
-
       {/* Top actions */}
       <div className="px-2 pt-3 flex flex-col gap-1">
         {/* New agent button */}

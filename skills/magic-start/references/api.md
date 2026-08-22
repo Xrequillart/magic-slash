@@ -71,12 +71,14 @@ Updates the agent metadata in the sidebar.
 | `ticketId` | string | No | Ticket ID (e.g.: `PROJ-123`, `#456`) |
 | `description` | string | No | Short description (URL-encoded) |
 | `status` | string | No | `"in progress"`, `"committed"`, `"PR created"` |
+| `type` | string | No | `"coder"` or `"planner"`. Sent once, by the skill that establishes what the agent is; an unknown value is ignored |
 | `branchName` | string | No | Task branch actually checked out. Report it only from inside the worktree, once the branch exists — see the note below |
 | `baseBranch` | string | No | Dev branch (e.g.: `main`, `develop`) |
 | `fullStackTaskId` | string | No | Links multiple worktrees |
 | `relatedWorktrees` | JSON array | No | Absolute paths (URL-encoded) |
 | `prUrl` | string | No | Created PR URL |
 | `prRepo` | string | No | PR repo path |
+| `specPath` | string | No | Absolute path to the spec file written by `/magic:plan` (URL-encoded) |
 
 **Example**:
 ```bash

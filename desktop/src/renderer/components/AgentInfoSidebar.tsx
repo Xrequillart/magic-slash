@@ -1,26 +1,66 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { X, Bot } from 'lucide-react'
 import { useStore } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { TicketHeader } from './agent-info-sidebar/TicketHeader'
+import { SpecPanel } from './agent-info-sidebar/SpecPanel'
 import { UsageCard } from './agent-info-sidebar/UsageCard'
 import { RepositoryCard } from './agent-info-sidebar/RepositoryCard'
 import { RepositorySelector } from './agent-info-sidebar/RepositorySelector'
-import { buildTicketLink, detectTicketProvider } from './agent-info-sidebar/utils'
+import { buildTicketLink, detectTicketProvider, getSpecPanelMode, splitSpecPath } from './agent-info-sidebar/utils'
+import { usePlanSpec } from '../hooks/usePlanSpec'
 import { useT } from '../i18n'
 import type { RepoGitData } from './agent-info-sidebar/types'
 import type { TerminalMetadata } from '../../types'
 import { resolveGitHubIssuesUrl, resolveJiraSite } from '../../tracker'
 
 const MIN_WIDTH = 288 // w-72
+
+/**
+ * The right sidebar is fixed, and sized by the KIND of agent being inspected rather
+ * than by a drag handle.
+ *
+ * The trade-off genuinely differs between the two. During `/magic:plan` the sidebar
+ * holds long-form prose being written live and the terminal is mostly a place to
+ * reply, so column width is what makes the spec readable; during implementation the
+ * terminal IS the work. A single user-chosen width could not serve both, and letting
+ * an agent switch move a width the user had set was worse still — so the width is
+ * derived, and the handle is gone.
+ */
 const DEFAULT_WIDTH = 500
+const PLANNING_WIDTH = 720
+const MAX_WIDTH_RATIO = 0.4
+const PLANNING_MAX_WIDTH_RATIO = 0.55
+
+/** Never wider than its share of the window, never narrower than MIN_WIDTH. */
+function sidebarWidth(viewportWidth: number, planning: boolean) {
+  const cap = Math.floor(viewportWidth * (planning ? PLANNING_MAX_WIDTH_RATIO : MAX_WIDTH_RATIO))
+  return Math.max(MIN_WIDTH, Math.min(cap, planning ? PLANNING_WIDTH : DEFAULT_WIDTH))
+}
 
 export function AgentInfoSidebar() {
-  const { rightSidebar, toggleRightSidebar, terminals, activeTerminalId, config, setConfig, openCloseAgentModal, isSplitMode, focusedPane, splitTerminalId } = useStore()
+  const { rightSidebar, terminals, activeTerminalId, config, setConfig, isSplitMode, focusedPane, splitTerminalId } = useStore()
   const { updateTerminalMetadata, updateTerminalRepositories } = useTerminals()
   const t = useT()
-  const [width, setWidth] = useState(DEFAULT_WIDTH)
-  const [isResizing, setIsResizing] = useState(false)
+
+  // Derived before the width state on purpose: the sidebar's default width depends
+  // on whether the inspected agent is a planning one.
+  const inspectedTerminalId = isSplitMode && focusedPane === 'secondary'
+    ? splitTerminalId
+    : activeTerminalId
+  const activeTerminal = terminals.find(t => t.id === inspectedTerminalId)
+  const metadata = activeTerminal?.metadata
+  const specMode = getSpecPanelMode(metadata?.type)
+  const isPlanningAgent = specMode !== 'hidden'
+
+  // Only the viewport is tracked: the width itself is derived, so there is no
+  // resize state, no drag handle and nothing an agent switch can overwrite.
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth)
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+  const width = sidebarWidth(viewportWidth, isPlanningAgent)
 
   // Git data per repository
   const [repoGitData, setRepoGitData] = useState<Record<string, RepoGitData>>({})
@@ -38,59 +78,23 @@ export function AgentInfoSidebar() {
   const [copiedCommitHash, setCopiedCommitHash] = useState<string | null>(null)
   const [copiedBranch, setCopiedBranch] = useState<string | null>(null)
 
-  const getMaxWidth = useCallback(() => {
-    return Math.floor(window.innerWidth * 0.4)
-  }, [])
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizing(true)
-  }, [])
-
-  useEffect(() => {
-    if (!isResizing) return
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const maxWidth = getMaxWidth()
-      const newWidth = window.innerWidth - e.clientX
-      setWidth(Math.min(maxWidth, Math.max(MIN_WIDTH, newWidth)))
-    }
-
-    const handleMouseUp = () => {
-      setIsResizing(false)
-    }
-
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [isResizing, getMaxWidth])
-
-  // Update width on window resize to respect max
-  useEffect(() => {
-    const handleResize = () => {
-      const maxWidth = getMaxWidth()
-      if (width > maxWidth) {
-        setWidth(maxWidth)
-      }
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [width, getMaxWidth])
-
-  const inspectedTerminalId = isSplitMode && focusedPane === 'secondary'
-    ? splitTerminalId
-    : activeTerminalId
-  const activeTerminal = terminals.find(t => t.id === inspectedTerminalId)
-  const metadata = activeTerminal?.metadata
-  // `planned` is a terminal state too: a planning agent ends at a spec and never
-  // reaches `PR merged`, so without it the only way to close one would be to clear
-  // its status first.
-  const canClose = metadata?.status === 'PR merged' || metadata?.status === 'planned' || !metadata?.status
+  // The live `/magic:plan` spec for the agent being inspected. The panel only
+  // exists for a planning agent, and only while the sidebar it lives in is open —
+  // `usePlanSpec` subscribes to nothing and refreshes nothing when that is false.
+  const isOpen = rightSidebar === 'info'
+  const { specPath, refreshToken: specRefreshToken } = usePlanSpec(
+    inspectedTerminalId ?? undefined,
+    metadata?.specPath,
+    isOpen && specMode !== 'hidden',
+  )
+  // Null until there is something to read: a planning agent that has not announced
+  // a path yet keeps the ordinary header rather than showing an empty frame. Kept
+  // as one nullable object so the mode travels WITH the path it needs — two
+  // separate variables cost the caller a non-null assertion at every use.
+  const specParts = splitSpecPath(specPath)
+  const spec = isOpen && specMode !== 'hidden' && specParts
+    ? { ...specParts, mode: specMode }
+    : null
 
   // Get all configured repository paths for the dropdown
   const availableRepos = useMemo(() => {
@@ -284,24 +288,6 @@ export function AgentInfoSidebar() {
     }
   }, [activeTerminal?.repositories, getRepoConfig, metadata?.baseBranch])
 
-  // Listen for Command+W keyboard shortcut to close agent
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
-        if (rightSidebar === 'info' && activeTerminal && canClose) {
-          e.preventDefault()
-          openCloseAgentModal({
-            terminalId: activeTerminal.id,
-            terminalName: activeTerminal.name,
-          })
-        }
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [rightSidebar, activeTerminal, canClose, openCloseAgentModal])
-
   // Listen for Command+P keyboard shortcut to open repositories modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -347,6 +333,32 @@ export function AgentInfoSidebar() {
     setIsEditingDescription(false)
   }, [inspectedTerminalId, editDescription, metadata?.description, updateTerminalMetadata])
 
+  // One object for both cards: TicketHeader renders it for an implementation agent,
+  // SpecPanel for a planning one. Memoised so the panel does not re-render on every
+  // keystroke elsewhere in the sidebar.
+  const identity = useMemo(() => ({
+    title: metadata?.title,
+    description: metadata?.description,
+    isEditingTitle,
+    isEditingDescription,
+    editTitle,
+    editDescription,
+    setEditTitle,
+    setEditDescription,
+    startEditingTitle,
+    startEditingDescription,
+    saveTitle,
+    saveDescription,
+    setIsEditingTitle,
+    setIsEditingDescription,
+    titleInputRef,
+    descriptionInputRef,
+  }), [
+    metadata?.title, metadata?.description,
+    isEditingTitle, isEditingDescription, editTitle, editDescription,
+    startEditingTitle, startEditingDescription, saveTitle, saveDescription,
+  ])
+
   // Change status
   const handleStatusChange = useCallback((status: string) => {
     if (inspectedTerminalId) {
@@ -375,59 +387,27 @@ export function AgentInfoSidebar() {
     setTimeout(() => setCopiedBranch(null), 2000)
   }, [])
 
-  const isOpen = rightSidebar === 'info'
-
   return (
     <div
       ref={sidebarRef}
-      className={`bg-surface-sunken flex flex-col h-full relative overflow-hidden ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
+      className="bg-surface-sunken flex flex-col h-full relative overflow-hidden transition-all duration-300 ease-in-out"
       style={{ width: isOpen ? `${width}px` : 0 }}
     >
       <div className="flex flex-col h-full" style={{ width: `${width}px` }}>
-      {/* Resize Handle */}
-      <div
-        onMouseDown={handleMouseDown}
-        className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-purple/50 transition-colors ${
-          isResizing ? 'bg-purple' : ''
-        }`}
-      />
-
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-3">
-        <div className="flex items-center gap-2">
-          <Bot className="w-4 h-4 text-purple" />
-          <span className="font-semibold text-xs">{activeTerminal ? t('agentInfo.titleNamed', { name: activeTerminal.name }) : t('agentInfo.title')}</span>
-        </div>
-        {activeTerminal && canClose ? (
-          <button
-            onClick={() => openCloseAgentModal({
-              terminalId: activeTerminal.id,
-              terminalName: activeTerminal.name,
-            })}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary bg-surface border border-line-field rounded-lg hover:bg-surface-strong hover:text-ink transition-colors"
-          >
-            <X className="w-3 h-3" />
-            <span>{t('agentInfo.closeAgent')}</span>
-            <span className="text-[10px] opacity-50">⌘W</span>
-          </button>
-        ) : (
-          <button
-            onClick={() => toggleRightSidebar('info')}
-            className="p-1.5 text-text-secondary hover:text-ink hover:bg-bg-tertiary rounded transition-colors"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </div>
-
       {/* Content */}
-      <div className="flex-1 overflow-y-auto" style={{ fontFamily: "'Cera Pro', -apple-system, BlinkMacSystemFont, sans-serif" }}>
+      {/* In `replace` mode this container does NOT scroll: the spec card fills the
+          column and owns the only scroll region, so there is never a scrollbar
+          inside a scrollbar. Every other mode keeps the ordinary scrolling column. */}
+      <div
+        className={`flex-1 min-h-0 ${spec?.mode === 'replace' ? 'overflow-hidden' : 'overflow-y-auto'}`}
+        style={{ fontFamily: "'Cera Pro', -apple-system, BlinkMacSystemFont, sans-serif" }}
+      >
         {!activeTerminal ? (
           <div className="px-4 py-8 text-center text-text-secondary text-xs">
             {t('agentInfo.noActiveAgent')}
           </div>
         ) : (
-          <div className="p-4 space-y-4">
+          <div className={spec?.mode === 'replace' ? 'p-4 flex flex-col gap-4 h-full min-h-0' : 'p-4 space-y-4'}>
             {/* Usage Card (context, cost, model). Switched off from Appearance →
                 Sidebars; on by default, and shown for the whole life of the agent
                 once on. That second part is deliberate: the usage feed only lands
@@ -442,30 +422,43 @@ export function AgentInfoSidebar() {
               />
             )}
 
-            {/* Ticket Header Card */}
-            <TicketHeader
-              metadata={metadata}
-              ticketLink={ticketLink}
-              ticketProvider={ticketProvider}
-              isEditingTitle={isEditingTitle}
-              isEditingDescription={isEditingDescription}
-              editTitle={editTitle}
-              editDescription={editDescription}
-              setEditTitle={setEditTitle}
-              setEditDescription={setEditDescription}
-              startEditingTitle={startEditingTitle}
-              startEditingDescription={startEditingDescription}
-              saveTitle={saveTitle}
-              saveDescription={saveDescription}
-              setIsEditingTitle={setIsEditingTitle}
-              setIsEditingDescription={setIsEditingDescription}
-              titleInputRef={titleInputRef}
-              descriptionInputRef={descriptionInputRef}
-              onStatusChange={handleStatusChange}
-            />
+            {/* At `planning` the spec REPLACES the ticket header — no ticket exists
+                yet, so the header would be an empty card above the only thing there
+                is to read. At `planned` both are shown, header first: the ticket has
+                just been created and the spec is what it came from. Anywhere else the
+                header stands alone, exactly as it always has. */}
+            {spec?.mode !== 'replace' && (
+              <TicketHeader
+                metadata={metadata}
+                ticketLink={ticketLink}
+                ticketProvider={ticketProvider}
+                identity={identity}
+                onStatusChange={handleStatusChange}
+              />
+            )}
+            {spec && (
+              <SpecPanel
+                // A new file starts fresh: expanded, and pinned to its own bottom
+                // rather than wherever the previous spec had been left.
+                key={specPath}
+                identity={identity}
+                repoNames={configuredAttachedRepos.map(getRepoName)}
+                status={metadata?.status ?? ''}
+                repoPath={spec.repoPath}
+                filePath={spec.filePath}
+                refreshToken={specRefreshToken}
+                ticketId={metadata?.ticketId}
+                ticketLink={ticketLink}
+                ticketProvider={ticketProvider}
+                onStatusChange={handleStatusChange}
+              />
+            )}
 
-            {/* Repository cards with git stats */}
-            {configuredAttachedRepos.length > 0 && (
+            {/* Repository cards with git stats. Gone entirely at `planning`: a planning
+                agent has no branch, no diff and no PR, so every row in these cards is
+                empty — the repository NAME is all that is left to say, and the spec
+                header says it. */}
+            {spec?.mode !== 'replace' && configuredAttachedRepos.length > 0 && (
               <div className="space-y-3">
                 {configuredAttachedRepos.map((repoPath) => (
                   <RepositoryCard
@@ -489,7 +482,10 @@ export function AgentInfoSidebar() {
               </div>
             )}
 
-            {/* Add a repository button (always shown) */}
+            {/* Hidden at `planning` along with the cards it belongs to: it is the only
+                other thing competing for the height the spec now fills, and attaching
+                a repository is not a planning-time action. */}
+            {spec?.mode !== 'replace' && (
             <button
               onClick={() => setIsRepoModalOpen(true)}
               className="w-full py-4 text-center border border-dashed border-border/50 rounded-lg hover:border-text-secondary/50 hover:bg-surface transition-colors"
@@ -498,6 +494,7 @@ export function AgentInfoSidebar() {
                 {t('agentInfo.addRepository')}
               </div>
             </button>
+            )}
           </div>
         )}
       </div>

@@ -91,6 +91,9 @@ const configApi = {
   updateLaunchMode: (mode: string) =>
     ipcRenderer.invoke('config:updateLaunchMode', { mode }),
 
+  updateDefaultAgentType: (type: string) =>
+    ipcRenderer.invoke('config:updateDefaultAgentType', { type }),
+
   updateTheme: (theme: ThemeId) =>
     ipcRenderer.invoke('config:updateTheme', { theme }),
 

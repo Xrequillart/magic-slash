@@ -1,4 +1,4 @@
-import type { RepositoryConfig, SpotlightConfig, SpotlightShortcut, LaunchMode } from '../../types'
+import { AGENT_TYPES, type RepositoryConfig, type SpotlightConfig, type SpotlightShortcut, type LaunchMode, type AgentType } from '../../types'
 
 export const VALID_SPOTLIGHT_SHORTCUTS: readonly SpotlightShortcut[] = [
   'Control+Space',
@@ -33,6 +33,16 @@ const VALID_LAUNCH_MODES: readonly LaunchMode[] = [
 
 export function isValidLaunchMode(value: unknown): value is LaunchMode {
   return typeof value === 'string' && (VALID_LAUNCH_MODES as readonly string[]).includes(value)
+}
+
+/**
+ * `coder` is the default everywhere a type is missing: every agent was one before
+ * planning existed, so an absent type on an old row must not turn into a planner.
+ */
+export const DEFAULT_AGENT_TYPE: AgentType = 'coder'
+
+export function isValidAgentType(value: unknown): value is AgentType {
+  return typeof value === 'string' && (AGENT_TYPES as readonly string[]).includes(value)
 }
 
 export const DEFAULT_REPOSITORY_FIELDS: Omit<RepositoryConfig, 'path' | 'keywords'> = {

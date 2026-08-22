@@ -332,7 +332,7 @@ Display the commit confirmation (see `references/messages.md` MSG_COMMIT_SUCCESS
 This curl notifies Magic Slash Desktop so it can update its UI. Without it, the user sees a stale status in the desktop app, which is confusing.
 
 ```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&status=committed" > /dev/null 2>&1 || true
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&status=committed&type=coder" > /dev/null 2>&1 || true
 ```
 
 ---

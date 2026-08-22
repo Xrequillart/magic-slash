@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { formatTimestamp, formatRelativeDate, contextColors, detectTicketProvider, buildTicketLink } from './utils'
+import {
+  canCloseAgent,
+  formatTimestamp,
+  formatRelativeDate,
+  contextColors,
+  detectTicketProvider,
+  buildTicketLink,
+  getSpecPanelMode,
+  splitSpecPath,
+  shouldAutoFollow,
+  SPEC_FOLLOW_TOLERANCE_PX,
+  STATUSES_BY_TYPE,
+  resolveAgentType,
+  canChangeAgentType,
+} from './utils'
 import { t as translate, type MessageKey } from '../../../i18n'
 
 // Both formatters take a translator; bind English so the expectations below stay
@@ -143,5 +157,164 @@ describe('buildTicketLink', () => {
   it('returns null for an unrecognised ID', () => {
     expect(buildTicketLink('some free text', urls)).toBeNull()
     expect(buildTicketLink(undefined, urls)).toBeNull()
+  })
+})
+
+describe('resolveAgentType', () => {
+  it('reads an absent or unknown kind as coder', () => {
+    // Every agent predating the type has none, and reading those as planners would
+    // put a spec panel in front of people writing code.
+    expect(resolveAgentType(undefined)).toBe('coder')
+    expect(resolveAgentType('')).toBe('coder')
+    expect(resolveAgentType('some future kind')).toBe('coder')
+  })
+
+  it('passes the two known kinds through', () => {
+    expect(resolveAgentType('coder')).toBe('coder')
+    expect(resolveAgentType('planner')).toBe('planner')
+  })
+})
+
+describe('getSpecPanelMode', () => {
+  it('replaces the ticket header for a planner, whatever its status', () => {
+    expect(getSpecPanelMode('planner')).toBe('replace')
+  })
+
+  it('hides for a coder, and for an agent with no kind yet', () => {
+    expect(getSpecPanelMode('coder')).toBe('hidden')
+    expect(getSpecPanelMode(undefined)).toBe('hidden')
+    // A kind a newer build could persist: an implementation agent's sidebar must be
+    // what it has always been, never a spec panel by accident.
+    expect(getSpecPanelMode('some future kind')).toBe('hidden')
+  })
+})
+
+describe('STATUSES_BY_TYPE', () => {
+  it('offers every status to exactly one kind, plus the shared empty one', () => {
+    const planner = STATUSES_BY_TYPE.planner
+    const coder = STATUSES_BY_TYPE.coder
+    // '' is where every agent starts, so both lists carry it and nothing else overlaps.
+    const shared = planner.filter(s => (coder as readonly string[]).includes(s))
+    expect(shared).toEqual([''])
+  })
+
+  it('covers the whole status union between the two lists', () => {
+    // Guards the contract the type cannot: adding a status to TerminalMetadata without
+    // assigning it to a workflow would leave it unreachable from every picker.
+    const ALL_STATUSES = [
+      '', 'planning', 'planned', 'in progress', 'committed', 'ready for PR',
+      'PR created', 'CI green', 'in review', 'changes requested',
+      'Review addressed', 'PR merged',
+    ]
+    const covered = new Set([...STATUSES_BY_TYPE.planner, ...STATUSES_BY_TYPE.coder])
+    expect([...covered].sort()).toEqual([...ALL_STATUSES].sort())
+  })
+})
+
+describe('splitSpecPath', () => {
+  it('splits an absolute path into the directory and the file name', () => {
+    expect(splitSpecPath('/Users/me/repo/.magic/specs/plan.md')).toEqual({
+      repoPath: '/Users/me/repo/.magic/specs',
+      filePath: 'plan.md',
+    })
+  })
+
+  it('keeps the root as a directory of its own', () => {
+    expect(splitSpecPath('/plan.md')).toEqual({ repoPath: '/', filePath: 'plan.md' })
+  })
+
+  it('ignores surrounding whitespace', () => {
+    expect(splitSpecPath('  /tmp/spec.md  ')).toEqual({ repoPath: '/tmp', filePath: 'spec.md' })
+  })
+
+  it('refuses anything that is not an absolute file path', () => {
+    expect(splitSpecPath(undefined)).toBeNull()
+    expect(splitSpecPath('')).toBeNull()
+    expect(splitSpecPath('   ')).toBeNull()
+    // Relative: there is no single root to resolve it against — an agent can hold
+    // several repositories — so guessing one would read an unrelated file.
+    expect(splitSpecPath('.magic/specs/plan.md')).toBeNull()
+    expect(splitSpecPath('plan.md')).toBeNull()
+    // A directory names no spec.
+    expect(splitSpecPath('/Users/me/repo/')).toBeNull()
+  })
+})
+
+describe('shouldAutoFollow', () => {
+  it('follows while the view sits at the bottom', () => {
+    expect(shouldAutoFollow({ scrollTop: 400, scrollHeight: 1000, clientHeight: 600 })).toBe(true)
+  })
+
+  it('follows within the tolerance of the bottom', () => {
+    // 1000 - 600 - 380 = 20px from the bottom: a partial last line, not a reader
+    // who scrolled away.
+    expect(shouldAutoFollow({ scrollTop: 380, scrollHeight: 1000, clientHeight: 600 })).toBe(true)
+    expect(shouldAutoFollow({
+      scrollTop: 400 - SPEC_FOLLOW_TOLERANCE_PX,
+      scrollHeight: 1000,
+      clientHeight: 600,
+    })).toBe(true)
+  })
+
+  it('releases once the reader scrolls further up than the tolerance', () => {
+    expect(shouldAutoFollow({
+      scrollTop: 400 - SPEC_FOLLOW_TOLERANCE_PX - 1,
+      scrollHeight: 1000,
+      clientHeight: 600,
+    })).toBe(false)
+    expect(shouldAutoFollow({ scrollTop: 0, scrollHeight: 1000, clientHeight: 600 })).toBe(false)
+  })
+
+  it('follows when the content is shorter than the view', () => {
+    expect(shouldAutoFollow({ scrollTop: 0, scrollHeight: 200, clientHeight: 600 })).toBe(true)
+  })
+
+})
+
+describe('canCloseAgent', () => {
+  it('allows closing an agent that never started, whatever its kind', () => {
+    expect(canCloseAgent(undefined, 'coder')).toBe(true)
+    expect(canCloseAgent('', 'planner')).toBe(true)
+  })
+
+  it('allows closing each kind at the end of its OWN workflow', () => {
+    expect(canCloseAgent('PR merged', 'coder')).toBe(true)
+    // A planner stops at `planned`: it never reaches `PR merged`, so this is the only
+    // thing that makes it closeable at all.
+    expect(canCloseAgent('planned', 'planner')).toBe(true)
+  })
+
+  it('refuses the other kind\'s terminal status', () => {
+    // The pairing is what matters: `planned` on a coder is not an ending, and neither
+    // is `PR merged` on a planner — a status the kind never reaches must not close it.
+    expect(canCloseAgent('planned', 'coder')).toBe(false)
+    expect(canCloseAgent('PR merged', 'planner')).toBe(false)
+  })
+
+  it('refuses every status in between', () => {
+    for (const status of ['in progress', 'committed', 'ready for PR', 'PR created', 'CI green', 'in review', 'changes requested', 'Review addressed']) {
+      expect(canCloseAgent(status, 'coder')).toBe(false)
+    }
+    expect(canCloseAgent('planning', 'planner')).toBe(false)
+  })
+
+  it('treats a missing kind as a coder', () => {
+    expect(canCloseAgent('PR merged', undefined)).toBe(true)
+    expect(canCloseAgent('planned', undefined)).toBe(false)
+  })
+})
+
+describe('canChangeAgentType', () => {
+  it('allows the switch only before the agent has done anything', () => {
+    expect(canChangeAgentType(undefined)).toBe(true)
+    expect(canChangeAgentType('')).toBe(true)
+  })
+
+  it('refuses once any status has been reported', () => {
+    // Once a workflow has started the status would be stranded outside the list the
+    // new kind offers, so the control is hidden rather than made to strand it.
+    for (const status of ['planning', 'planned', 'in progress', 'PR merged']) {
+      expect(canChangeAgentType(status), status).toBe(false)
+    }
   })
 })

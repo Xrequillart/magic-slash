@@ -23,6 +23,7 @@ import {
   updateSplitEnabled,
   updateSplitActive,
   updateLaunchMode,
+  updateDefaultAgentType,
   updateTheme,
   updateLanguage,
   updatePlanSyncEnabled,
@@ -33,7 +34,7 @@ import {
 } from '../config/config'
 import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
-import { isValidSpotlightShortcut, isValidLaunchMode } from '../config/defaults'
+import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import { isValidLanguage, isValidTheme, type Config } from '../../types'
 import { applyLanguage, applyTheme } from '../appearance'
 import {
@@ -387,6 +388,14 @@ export function setupConfigHandlers() {
       throw new Error(`Invalid launch mode: '${mode}'. Must be one of: plan, default, acceptEdits, auto, bypassPermissions.`)
     }
     const config = updateLaunchMode(mode)
+    return { config }
+  })
+
+  ipcMain.handle('config:updateDefaultAgentType', async (_event, { type }: { type: string }) => {
+    if (!isValidAgentType(type)) {
+      throw new Error(`Invalid agent type: '${type}'. Must be one of: coder, planner.`)
+    }
+    const config = updateDefaultAgentType(type)
     return { config }
   })
 
