@@ -17,6 +17,7 @@ import { useT } from '@/lib/i18n/useLanguage'
 import { AppShell } from '@/components/AppShell'
 import { Markdown } from '@/components/Markdown'
 import { Badge, Card, Eyebrow, FullPageLoader } from '@/components/ui'
+import { Dropdown } from '@/components/Dropdown'
 
 /**
  * One plan: the tickets it created, then the spec it was approved from.
@@ -96,21 +97,39 @@ function Tickets({ tickets }: { tickets: PlanTicket[] }) {
 }
 
 /**
- * Where the plan stands, and — for its author — the switch that says so.
+ * Where the plan stands, and — for its author — the select that says so.
  *
- * The badge is unchanged and is what everyone sees. The button next to it exists
- * because `status` is the one field of a session a person knows better than the
- * machine does: the desktop mirrors the agent's status onto the row as the skill
- * runs, so a session whose spec ping never landed, or whose planning was abandoned,
- * sits at `planning` forever with nobody able to say otherwise.
+ * A reader gets the badge, which is all `status` is to them. The author gets a
+ * picker over the same two values instead, because `status` is the one field of a
+ * session a person knows better than the machine does: the desktop mirrors the
+ * agent's status onto the row as the skill runs, so a session whose spec ping never
+ * landed, or whose planning was abandoned, sits at `planning` forever with nobody
+ * able to say otherwise.
  *
- * BOTH DIRECTIONS, deliberately. A live agent's next spec upload re-sends its own
- * status and can undo this (see setPlanSessionStatus), so the way back has to be as
- * cheap as the way forward — otherwise the only repair is SQL.
+ * A PICKER RATHER THAN A FLIP BUTTON, and not only for symmetry with the desktop's
+ * status pill. The write is not final — a live agent's next spec upload re-sends its
+ * own status and can undo this (see setPlanSessionStatus) — so the control is used
+ * to say "it is at X", possibly twice in a row, rather than to advance a workflow.
+ * A list of the states says that; a button labelled by its own side effect does not,
+ * and it hid the current one behind a label about the other.
  *
- * Owner only. RLS refuses everyone else's write anyway, and a button whose single
- * outcome is an error message is worse than no button at all.
+ * The dot carries the badge's colour into the trigger, so the author loses nothing
+ * by getting the select in the badge's place. It is `leading` rather than `icon`
+ * because the two tones are the point and an icon is tinted by the row it sits in.
+ *
+ * Owner only. RLS refuses everyone else's write anyway, and a control whose single
+ * outcome is an error message is worse than none at all.
  */
+function StatusDot({ tone }: { tone: 'green' | 'yellow' }) {
+  // The h-4 box is the text's line height, so the dot lands centred on the
+  // `items-center` trigger and on an `items-start` panel row alike.
+  return (
+    <span className="flex h-4 w-2 shrink-0 items-center">
+      <span className={`h-2 w-2 rounded-full ${tone === 'green' ? 'bg-green' : 'bg-yellow'}`} />
+    </span>
+  )
+}
+
 function StatusControl({
   status,
   own,
@@ -124,9 +143,7 @@ function StatusControl({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const next: PlanStatus = status === 'planned' ? 'planning' : 'planned'
-
-  const flip = async () => {
+  const select = async (next: PlanStatus) => {
     if (saving) return
     setSaving(true)
     setError(null)
@@ -139,23 +156,35 @@ function StatusControl({
     }
   }
 
+  if (!own) {
+    return (
+      <Badge tone={status === 'planned' ? 'green' : 'yellow'}>
+        {t(status === 'planned' ? 'plans.status.planned' : 'plans.status.planning')}
+      </Badge>
+    )
+  }
+
   return (
     <div className="flex flex-col items-end gap-1.5">
-      <div className="flex items-center gap-2">
-        <Badge tone={status === 'planned' ? 'green' : 'yellow'}>
-          {t(status === 'planned' ? 'plans.status.planned' : 'plans.status.planning')}
-        </Badge>
-        {own && (
-          <button
-            type="button"
-            onClick={flip}
-            disabled={saving}
-            className="flex shrink-0 items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-black/[0.03] hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {t(next === 'planned' ? 'plans.detail.markPlanned' : 'plans.detail.markPlanning')}
-          </button>
-        )}
-      </div>
+      <Dropdown<PlanStatus>
+        value={status}
+        onChange={select}
+        disabled={saving}
+        size="sm"
+        width={200}
+        options={[
+          {
+            value: 'planning',
+            label: t('plans.status.planning'),
+            leading: <StatusDot tone="yellow" />,
+          },
+          {
+            value: 'planned',
+            label: t('plans.status.planned'),
+            leading: <StatusDot tone="green" />,
+          },
+        ]}
+      />
       {error && <p className="text-xs text-red">{error}</p>}
     </div>
   )

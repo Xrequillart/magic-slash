@@ -186,10 +186,6 @@ export const en = {
   'plans.detail.specPending':
     'The spec has not been uploaded yet. It appears here as the session writes it.',
   'plans.detail.syncedAt': 'Spec updated {when}',
-  // The two directions of the status switch, labelled by what the click DOES —
-  // the badge next to it already says where the plan stands.
-  'plans.detail.markPlanned': 'Mark as done',
-  'plans.detail.markPlanning': 'Reopen',
   'plans.detail.statusForbidden': 'Only the author of a plan can change its status.',
 
   // ── Skill stats ────────────────────────────────────────────────────────────

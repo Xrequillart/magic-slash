@@ -184,8 +184,6 @@ export const fr: Record<keyof typeof en, string> = {
   'plans.detail.specPending':
     'La spec n’a pas encore été envoyée. Elle apparaît ici à mesure que la session l’écrit.',
   'plans.detail.syncedAt': 'Spec mise à jour {when}',
-  'plans.detail.markPlanned': 'Marquer comme terminé',
-  'plans.detail.markPlanning': 'Rouvrir',
   'plans.detail.statusForbidden': 'Seul l’auteur d’un plan peut changer son statut.',
 
   // ── Statistiques des skills ────────────────────────────────────────────────
