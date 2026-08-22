@@ -4,6 +4,7 @@ import * as path from 'path'
 import { URL } from 'url'
 import { CONFIG_DIR } from '../config/paths'
 import { isValidAgentType } from '../config/defaults'
+import { isSpecPath } from '../store/spec-file'
 import type { PlanTicket, TerminalUsage } from '../../types'
 
 /**
@@ -455,10 +456,25 @@ export function startStatusServer(): Promise<number> {
           const prRepo = url.searchParams.get('prRepo')  // Repository path for the PR
           const fullStackTaskId = url.searchParams.get('fullStackTaskId')
           const relatedWorktreesRaw = url.searchParams.get('relatedWorktrees')
-          // Absolute path to the spec the planning phase writes. Taken raw, and NOT
-          // checked against the filesystem: the writer announces where the spec will
-          // be, so it legitimately arrives before the file exists.
-          const specPath = url.searchParams.get('specPath')
+          // Absolute path to the spec the planning phase writes.
+          //
+          // VALIDATED, and this is a trust boundary rather than a formality: this route
+          // is a loopback server whose port sits in a world-readable file, so any local
+          // process can name any path here. Whatever lands in `specPath` is later read
+          // and rendered in the spec panel — and the renderer resolves it by splitting
+          // it into its own dirname plus basename, which means config:readFile's
+          // containment check compares the file against its own parent and passes for
+          // ANY path. That check therefore constrains nothing on this input, and this
+          // is the only place that can.
+          //
+          // `isSpecPath` is the same lexical whitelist plan-sync and outbox already
+          // apply before uploading a spec (absolute, inside a `.magic` directory, named
+          // `spec-*.md`). It is deliberately lexical: it must run before the file
+          // exists, because the writer announces where the spec WILL be minutes ahead
+          // of creating it. An unshaped path is dropped, which leaves any previously
+          // announced path untouched rather than clearing it.
+          const specPathRaw = url.searchParams.get('specPath')
+          const specPath = specPathRaw && isSpecPath(specPathRaw) ? specPathRaw : null
           // `coder` or `planner`. VALIDATED here, unlike `status`, which is taken raw:
           // an unrecognised status renders as a neutral pill and is otherwise inert,
           // whereas the type drives the whole sidebar layout and which statuses are

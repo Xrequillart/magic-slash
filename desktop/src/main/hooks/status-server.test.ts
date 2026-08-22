@@ -326,12 +326,37 @@ describe('read-back endpoints', () => {
     // forwarded" and "no filesystem check happens" — a separate happy-path test would
     // just repeat the same assertion against a different string.
     it('forwards specPath to the metadata callback even when the file does not exist yet', async () => {
-      const spec = path.join(TEST_CONFIG_DIR, 'nothing-here', 'spec-does-not-exist.md')
+      const spec = path.join(TEST_CONFIG_DIR, '.magic', 'spec-does-not-exist.md')
       expect(fs.existsSync(spec)).toBe(false)
 
       const { status } = await httpGet(`/metadata?id=term-1&specPath=${encodeURIComponent(spec)}`)
       expect(status).toBe(200)
       expect(received).toEqual([{ id: 'term-1', metadata: { specPath: spec } }])
+    })
+
+    // The route is a loopback server any local process can call, and the renderer
+    // resolves a spec by splitting it into its own dirname plus basename — which makes
+    // config:readFile's containment check pass for ANY path. So this lexical guard is
+    // the only thing standing between "a local process named /etc/passwd" and that
+    // file being rendered in the spec panel. It must reject, and it must reject
+    // WITHOUT clearing a legitimate path announced earlier.
+    it('drops a specPath that is not shaped like a spec', async () => {
+      const legit = path.join(TEST_CONFIG_DIR, '.magic', 'spec-real-20260822-090000.md')
+      await httpGet(`/metadata?id=term-guard&specPath=${encodeURIComponent(legit)}`)
+
+      for (const hostile of [
+        '/etc/passwd',
+        path.join(TEST_CONFIG_DIR, 'notes.md'),                    // absolute, but not in .magic
+        path.join(TEST_CONFIG_DIR, '.magic', 'id_rsa'),            // in .magic, but not spec-*.md
+        path.join(TEST_CONFIG_DIR, '.magic', 'spec-.md'),          // spec-*.md shaped, but empty slug
+        '.magic/spec-relative.md',                                 // relative
+      ]) {
+        received.length = 0
+        const { status } = await httpGet(`/metadata?id=term-guard&specPath=${encodeURIComponent(hostile)}&title=Still%20applied`)
+        expect(status).toBe(200)
+        // The rest of the write still lands: a bad specPath is dropped, not fatal.
+        expect(received, hostile).toEqual([{ id: 'term-guard', metadata: { title: 'Still applied' } }])
+      }
     })
 
     it('leaves specPath out entirely when the caller sends none', async () => {

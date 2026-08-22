@@ -235,12 +235,18 @@ export function canChangeAgentType(status: string | undefined): boolean {
  * renderer bundle, where the builtin is not available, and in the node-environment
  * test suite, where importing it would hide that.
  *
- * The pair looks redundant — dirname plus basename is just the path again — but it
- * is what makes the containment check in the handler pass: it does
- * `path.resolve(repoPath, filePath)` and then verifies the result sits under
- * `repoPath`, which a directory and its own child satisfy by construction. No repo
- * root is involved, and none could be: an agent can hold several repositories and
- * the spec need not live inside any of them.
+ * The pair looks redundant — dirname plus basename is just the path again — and that
+ * is exactly why it is NOT a security boundary. `config:readFile` resolves
+ * `path.resolve(repoPath, filePath)` and checks the result sits under `repoPath`,
+ * which a directory and its own child satisfy by construction: passing the pair this
+ * way makes that check succeed for any path at all. It is a formatting helper, not an
+ * authorization gate, and it must never be read as one.
+ *
+ * What actually constrains the path is `isSpecPath` in `main/store/spec-file.ts`,
+ * applied by the `/metadata` route before `specPath` is ever stored — that route is
+ * the only untrusted entry point, since it is a loopback server any local process can
+ * call. No repo root is involved here, and none could be: an agent can hold several
+ * repositories and the spec need not live inside any of them.
  *
  * Returns null for an empty or relative path — `TerminalMetadata.specPath` is
  * documented absolute, so anything else is a writer bug and guessing a root for it

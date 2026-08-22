@@ -70,13 +70,18 @@ export function TitleBar() {
   useEffect(() => {
     if (!closeableTerminal) return
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
-        e.preventDefault()
-        openCloseAgentModal({
-          terminalId: closeableTerminal.id,
-          terminalName: closeableTerminal.name,
-        })
-      }
+      if (e.key !== 'w' || !(e.metaKey || e.ctrlKey)) return
+      // Ctrl+W inside a terminal is readline's delete-previous-word, and the terminal
+      // is where this app spends most of its focus. A window-level handler that
+      // preventDefaults it would take that keystroke away from the shell and put an
+      // archive dialog in its place — so a chord aimed at xterm is left to xterm.
+      // (`.xterm` is the class the library puts on the element it is opened into.)
+      if (e.target instanceof Element && e.target.closest('.xterm')) return
+      e.preventDefault()
+      openCloseAgentModal({
+        terminalId: closeableTerminal.id,
+        terminalName: closeableTerminal.name,
+      })
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)

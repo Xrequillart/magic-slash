@@ -177,6 +177,10 @@ export function UpdateOverlay() {
    * repository's CHANGELOG.md purely because it is long, real markdown that is certain
    * to be there; with no repository configured the path stays absent and the panel
    * shows its "drafting the spec" empty state instead, which is worth seeing too.
+   *
+   * That path is NOT spec-shaped, so the /metadata route would reject it — this works
+   * only because the fixture writes the renderer store directly, which is the whole
+   * point of a debug fixture and no reason to relax the route's guard.
    */
   function togglePlanningAgent() {
     setDebugMenuOpen(false)
