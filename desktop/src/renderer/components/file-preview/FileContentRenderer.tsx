@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { FilePreviewResult } from '../../../types'
 import CodeView from './CodeView'
 import MarkdownView from './MarkdownView'
 import ImageView from './ImageView'
@@ -27,17 +28,19 @@ interface Props {
    * error, and should look like one.
    */
   notFoundLabel?: string
+  /**
+   * Forwarded to CodeView, where every bump re-anchors the view on the file's first
+   * change. Nothing here reads it, and nothing here should: it must NOT join the
+   * read effect's dependencies, or re-clicking an open file would pay for a fresh
+   * IPC read to arrive at the bytes already on screen.
+   */
+  scrollSeq?: number
 }
 
-type FileResult =
-  | { encoding: 'utf8'; content: string; highlightedHtml: string | null; size: number; mimeHint: string }
-  | { encoding: 'binary'; size: number; mimeHint: string; content?: never }
-  | { encoding: 'image'; content: string; size: number; mimeHint: string }
-  | { error: 'too_large'; size: number }
-  // `unreadable` is local to this component: the handler never returns it, it is
-  // what a thrown IPC call becomes. Kept apart from `not_found` so a dead channel
-  // is never softened by `notFoundLabel` into "the file is not written yet".
-  | { error: 'path_traversal' | 'not_found' | 'unreadable' }
+// `unreadable` is local to this component: the handler never returns it, it is
+// what a thrown IPC call becomes. Kept apart from `not_found` so a dead channel
+// is never softened by `notFoundLabel` into "the file is not written yet".
+type FileResult = FilePreviewResult | { error: 'unreadable' }
 
 const MARKDOWN_EXTS = new Set(['md', 'markdown'])
 
@@ -80,7 +83,7 @@ function ContentSkeleton() {
   )
 }
 
-export default function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel }: Props) {
+export default function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, scrollSeq }: Props) {
   const t = useT()
   const key = cacheKeyFor(repoPath, filePath, status)
   // Seeded from the cache so a remount on a known file paints immediately; the read
@@ -158,5 +161,12 @@ export default function FileContentRenderer({ repoPath, filePath, status, refres
     return <MarkdownView content={result.content} />
   }
 
-  return <CodeView content={result.content} highlightedHtml={result.highlightedHtml} />
+  return (
+    <CodeView
+      content={result.content}
+      highlightedHtml={result.highlightedHtml}
+      scrollSeq={scrollSeq}
+      changedLines={result.changedLines}
+    />
+  )
 }

@@ -1485,6 +1485,40 @@ export interface TrayState {
   agents: TrayAgent[]
 }
 
+/**
+ * Where a modified file changed, as line numbers in the file as it stands now.
+ *
+ * `removedBefore` is a "sits before" position, not a line that exists: a deletion is
+ * rendered as an extra visual row inserted ahead of that line. Neither array is a DOM
+ * row index for that reason — anything positioning against the rendered document has
+ * to measure it, not count these.
+ */
+export interface ChangedLines {
+  added: number[]
+  removedBefore: number[]
+}
+
+/** Everything `config:readFile` can answer, as the renderer receives it. */
+export type FilePreviewResult =
+  | {
+      encoding: 'utf8'
+      content: string
+      highlightedHtml: string | null
+      size: number
+      mimeHint: string
+      /**
+       * Present only for a file read against a diff. On an added, untracked or
+       * deleted file every line is changed, so the positions would say nothing the
+       * status does not already say — and spelling out `[1..n]` for a large file
+       * would be pure IPC weight.
+       */
+      changedLines?: ChangedLines
+    }
+  | { encoding: 'binary'; size: number; mimeHint: string; content?: never }
+  | { encoding: 'image'; content: string; size: number; mimeHint: string }
+  | { error: 'too_large'; size: number }
+  | { error: 'path_traversal' | 'not_found' }
+
 export interface BranchCommit {
   hash: string
   shortHash: string

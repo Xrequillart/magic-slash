@@ -35,7 +35,7 @@ import {
 import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
-import { isValidLanguage, isValidTheme, type Config } from '../../types'
+import { isValidLanguage, isValidTheme, type Config, type FilePreviewResult, type ChangedLines } from '../../types'
 import { applyLanguage, applyTheme } from '../appearance'
 import {
   validateRepoName,
@@ -59,12 +59,12 @@ import {
 } from '../config/command-history'
 import { ensureHydrated } from '../store/hydrate'
 
-interface ParsedDiff {
+export interface ParsedDiff {
   addedNewLines: Set<number>
   removedBeforeLines: Map<number, string[]>
 }
 
-function parseDiff(diffOutput: string): ParsedDiff {
+export function parseDiff(diffOutput: string): ParsedDiff {
   const addedNewLines = new Set<number>()
   const removedBeforeLines = new Map<number, string[]>()
   const lines = diffOutput.split('\n')
@@ -88,7 +88,7 @@ function escHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-function annotateShikiHtml(
+export function annotateShikiHtml(
   html: string,
   diff: ParsedDiff | null,
   mode: 'normal' | 'all-add' | 'all-remove'
@@ -493,7 +493,7 @@ function contains(dir: string, child: string): boolean {
   return child === dir || child.startsWith(dir + path.sep)
 }
 
-export async function readFileForPreview(repoPath: string, filePath: string, status?: string): Promise<object> {
+export async function readFileForPreview(repoPath: string, filePath: string, status?: string): Promise<FilePreviewResult> {
   const resolvedRepo = path.resolve(repoPath)
   const resolvedFile = path.resolve(repoPath, filePath)
 
@@ -626,15 +626,24 @@ export async function readFileForPreview(repoPath: string, filePath: string, sta
   const raw = await codeToHtml(content, { lang, theme: 'github-dark' }).catch(() => null)
 
   let highlightedHtml: string | null = raw
+  let changedLines: ChangedLines | undefined
   if (raw) {
     if (status === 'added' || status === 'untracked') {
       highlightedHtml = annotateShikiHtml(raw, null, 'all-add')
     } else if (status === 'modified' || status === 'renamed') {
       try {
         const diffOut = execFileSync('git', ['diff', 'HEAD', '--', filePath], { cwd: repoPath }).toString()
-        highlightedHtml = annotateShikiHtml(raw, parseDiff(diffOut), 'normal')
+        const diff = parseDiff(diffOut)
+        // Read the positions out BEFORE annotating. `annotateShikiHtml` drains
+        // `removedBeforeLines` as it walks the document — it deletes each entry once it
+        // has emitted the row — so afterwards there is nothing left to report.
+        changedLines = {
+          added: [...diff.addedNewLines].sort((a, b) => a - b),
+          removedBefore: [...diff.removedBeforeLines.keys()].sort((a, b) => a - b),
+        }
+        highlightedHtml = annotateShikiHtml(raw, diff, 'normal')
       } catch { /* leave unhighlighted on error */ }
     }
   }
-  return { content, highlightedHtml, encoding: 'utf8', size: stat.size, mimeHint }
+  return { content, highlightedHtml, encoding: 'utf8', size: stat.size, mimeHint, changedLines }
 }
