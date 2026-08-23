@@ -217,4 +217,39 @@ describe('readFileForPreview', () => {
       expect(result).toMatchObject({ encoding: 'utf8', content: 'old content' })
     })
   })
+  // The positions the epic's navigator and marker ruler will read. They are extracted
+  // from the ParsedDiff BEFORE the HTML is annotated, because annotating drains the
+  // removed-lines map — so a regression here looks like `removedBefore` silently
+  // emptying while the highlighting still works.
+  describe('changed-line positions', () => {
+    it('reports the added and removed positions of a modified file', async () => {
+      const filePath = path.join(tmpDir, 'changed.ts')
+      fs.writeFileSync(filePath, 'a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\n')
+      mockExecFileSync.mockReturnValueOnce(Buffer.from(
+        [
+          '@@ -1,3 +1,3 @@',
+          ' a',
+          '-old',
+          '+b',
+          ' c',
+          '@@ -10,2 +10,3 @@',
+          ' j',
+          '+k',
+        ].join('\n'),
+        'utf8',
+      ))
+
+      const result = await readFileForPreview(tmpDir, 'changed.ts', 'modified')
+      expect(result).toMatchObject({ changedLines: { added: [2, 11], removedBefore: [2] } })
+    })
+
+    it('reports no positions for an added file, and never runs git for one', async () => {
+      const filePath = path.join(tmpDir, 'brand-new.ts')
+      fs.writeFileSync(filePath, 'const x = 1\n')
+
+      const result = await readFileForPreview(tmpDir, 'brand-new.ts', 'added') as { changedLines?: unknown }
+      expect(result.changedLines).toBeUndefined()
+      expect(mockExecFileSync).not.toHaveBeenCalled()
+    })
+  })
 })

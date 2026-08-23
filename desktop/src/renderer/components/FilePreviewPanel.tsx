@@ -31,6 +31,22 @@ export default function FilePreviewPanel() {
   const prevTerminalId = useRef(activeTerminalId)
   const [isClosing, setIsClosing] = useState(false)
   const isClosingRef = useRef(false)
+  const [prevSelectedFile, setPrevSelectedFile] = useState(selectedFile)
+  const [scrollSeq, setScrollSeq] = useState(0)
+
+  // Every selection — including re-clicking the file already on screen — is a fresh
+  // object from `setSelectedFile`, so this fires on each one. That is the whole
+  // point of it: on a re-click the path, the status and the cached content are all
+  // unchanged, nothing below re-reads anything, and this is the only signal left to
+  // tell CodeView to take the reader back to the first change after they have
+  // scrolled away from it. Bumped inline during render rather than from an effect —
+  // `selectedFile` already carries a fresh identity per click, so comparing it
+  // against the previous render is enough; React applies the state update before
+  // committing, with no extra effect-and-re-render round trip.
+  if (selectedFile !== prevSelectedFile) {
+    setPrevSelectedFile(selectedFile)
+    if (selectedFile) setScrollSeq(n => n + 1)
+  }
 
   const handleClose = useCallback(() => {
     if (isClosingRef.current) return
@@ -115,6 +131,7 @@ export default function FilePreviewPanel() {
             repoPath={selectedFile.repoPath}
             filePath={selectedFile.path}
             status={selectedFile.status}
+            scrollSeq={scrollSeq}
           />
         </div>
       </div>
