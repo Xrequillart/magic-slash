@@ -74,9 +74,11 @@ export function TitleBar() {
       // Ctrl+W inside a terminal is readline's delete-previous-word, and the terminal
       // is where this app spends most of its focus. A window-level handler that
       // preventDefaults it would take that keystroke away from the shell and put an
-      // archive dialog in its place — so a chord aimed at xterm is left to xterm.
+      // archive dialog in its place — so a CTRL chord aimed at xterm is left to xterm.
+      // ⌘W is not: nothing in the shell listens for it, and gating it on focus killed
+      // the shortcut everywhere it was actually used.
       // (`.xterm` is the class the library puts on the element it is opened into.)
-      if (e.target instanceof Element && e.target.closest('.xterm')) return
+      if (!e.metaKey && e.target instanceof Element && e.target.closest('.xterm')) return
       e.preventDefault()
       openCloseAgentModal({
         terminalId: closeableTerminal.id,
