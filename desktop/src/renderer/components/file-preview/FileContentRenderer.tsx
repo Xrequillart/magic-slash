@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import type { FilePreviewResult } from '../../../types'
 import CodeView from './CodeView'
 import MarkdownView from './MarkdownView'
@@ -91,7 +91,7 @@ function ContentSkeleton() {
   )
 }
 
-export default function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, scrollSeq, onBlocksMeasured }: Props) {
+function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, scrollSeq, onBlocksMeasured }: Props) {
   const t = useT()
   const key = cacheKeyFor(repoPath, filePath, status)
   // Seeded from the cache so a remount on a known file paints immediately; the read
@@ -174,8 +174,21 @@ export default function FileContentRenderer({ repoPath, filePath, status, refres
       content={result.content}
       highlightedHtml={result.highlightedHtml}
       scrollSeq={scrollSeq}
-      changedLines={result.changedLines}
       onBlocksMeasured={onBlocksMeasured}
     />
   )
 }
+
+/**
+ * Memoised, because the file-preview panel now re-renders on every scroll event to
+ * move the ruler's viewport indicator.
+ *
+ * Every prop is stable across a scroll — the path and status come from the
+ * selected file, `scrollSeq` only moves on a click, and `onBlocksMeasured` has an empty
+ * dependency list — so the shallow comparison holds and the whole subtree, shiki HTML
+ * and all, is skipped. Without it a scroll would re-render CodeView sixty times a
+ * second for a document that has not changed a byte. Nothing here writes `scrollTop`
+ * from the render path, so there is no loop to guard against either way; this is purely
+ * about not paying for the redraw.
+ */
+export default memo(FileContentRenderer)

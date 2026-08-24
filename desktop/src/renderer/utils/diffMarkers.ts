@@ -7,16 +7,38 @@
  * node with no jsdom, so anything holding an Element could not be covered here.
  */
 
+/** What a single marked row is: the two values `data-diff` can carry. */
+export type MarkerKind = 'add' | 'remove'
+
+/**
+ * What a BLOCK is, once a run of rows has been folded into one.
+ *
+ * `'mixed'` is not an exotic third case — it is the ordinary shape of an edited line.
+ * The diff renders a modification as the removed row immediately followed by the added
+ * one, the two touch, and `groupMarkerBlocks` therefore hands back one block covering
+ * both. A file of pure insertions is what produces an `'add'` block.
+ */
+export type BlockKind = MarkerKind | 'mixed'
+
 /** One marked row, in pixels relative to the top of the scrollable content. */
 export interface MarkerPosition {
   top: number
   height: number
+  kind: MarkerKind
 }
 
 /** A run of marked rows the reader perceives as a single change. */
 export interface MarkerBlock {
   top: number
   bottom: number
+  /**
+   * Optional on purpose. Everything that ANCHORS a scroll — `blockScrollTop`,
+   * `selectScrollTop`, `currentBlockIndex`, `resolveBlockIndex` — works on geometry
+   * alone and has no opinion about what changed, so requiring the field would make
+   * those callers (and their fixtures) carry a value none of them reads. Only the
+   * ruler paints it, and it treats a block that never declared one as `'mixed'`.
+   */
+  kind?: BlockKind
 }
 
 export interface ScrollView {
@@ -36,6 +58,10 @@ export interface ScrollView {
  * is sorted and the run is collapsed. `gapTolerance` absorbs the sub-pixel seam
  * between two rows that visually touch; anything larger is a real stretch of
  * unchanged code and starts a new block.
+ *
+ * The kind is folded along the way rather than recomputed afterwards: a block is what
+ * its rows agreed on, or `'mixed'` the moment two of them disagree. Once mixed it
+ * stays mixed — a third row cannot un-mix a block that already holds both.
  */
 export function groupMarkerBlocks(markers: MarkerPosition[], gapTolerance = 1): MarkerBlock[] {
   const sorted = [...markers].sort((a, b) => a.top - b.top)
@@ -46,12 +72,17 @@ export function groupMarkerBlocks(markers: MarkerPosition[], gapTolerance = 1): 
     const current = blocks[blocks.length - 1]
     if (current && marker.top - current.bottom <= gapTolerance) {
       current.bottom = Math.max(current.bottom, bottom)
+      if (current.kind !== marker.kind) current.kind = 'mixed'
     } else {
-      blocks.push({ top: marker.top, bottom })
+      blocks.push({ top: marker.top, bottom, kind: marker.kind })
     }
   }
 
   return blocks
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
 }
 
 /**
@@ -111,7 +142,7 @@ export function selectScrollTop(blocks: MarkerBlock[], view: ScrollView): number
  * cluster.
  */
 export function blockScrollTop(block: MarkerBlock, view: ScrollView): number {
-  return Math.min(Math.max(block.top - view.contextPx, 0), maxScrollTop(view))
+  return clamp(block.top - view.contextPx, 0, maxScrollTop(view))
 }
 
 /**
@@ -196,4 +227,144 @@ export function resolveBlockIndex(blocks: MarkerBlock[], view: ScrollView, previ
   const kept = blocks[previous]
   if (kept && Math.abs(blockScrollTop(kept, view) - view.currentScrollTop) <= SCROLL_EPSILON) return previous
   return currentBlockIndex(blocks, view)
+}
+
+/* -------------------------------------------------------------------------- *
+ * The marker ruler: the same blocks again, projected onto the thin band pinned
+ * to the right edge of the preview.
+ *
+ * Everything below works in TRACK SPACE — pixels down the band — while
+ * everything above works in CONTENT SPACE, pixels down the scrollable document.
+ * The two are related by one number, `trackHeight / contentHeight`, and keeping
+ * the conversion in one place is what stops a segment and the indicator that is
+ * supposed to sit over it from being drawn to two different scales.
+ * -------------------------------------------------------------------------- */
+
+/**
+ * The shortest a segment may be drawn.
+ *
+ * A one-line change in a thousand-line file projects to a fraction of a pixel, which
+ * is both invisible and unclickable — the ruler would silently drop exactly the
+ * changes that are hardest to find by scrolling. Four pixels is a hairline that still
+ * has a hit area, and it is the reason a segment's height is NOT a faithful reading of
+ * how much of the file changed: the ruler is a set of handles, not a proportion chart.
+ */
+export const MIN_SEGMENT_PX = 4
+
+/**
+ * The shortest the viewport indicator may be drawn, same argument as above: in a very
+ * long file the visible window is a sliver of the whole, and an indicator too thin to
+ * see tells the reader nothing about where they are.
+ */
+export const MIN_VIEWPORT_PX = 12
+
+/** A span of the track: a segment, or the viewport indicator, in track pixels. */
+export interface RulerGeometry {
+  top: number
+  height: number
+}
+
+/** One block, projected onto the track. */
+export interface RulerSegment extends RulerGeometry {
+  kind: BlockKind
+  /** Which block this came from, so a click on it can be handed back as a block index. */
+  index: number
+}
+
+/**
+ * Content pixels → track pixels.
+ *
+ * Zero for empty content rather than an Infinity or a NaN: with nothing to scroll every
+ * projection collapses to the top of the track at its minimum height, which is a
+ * drawable answer, where a NaN would reach the DOM as an invalid `style.top`.
+ */
+function trackScale(view: ScrollView, trackHeight: number): number {
+  return view.contentHeight > 0 ? trackHeight / view.contentHeight : 0
+}
+
+/**
+ * One content-space span, placed on the track.
+ *
+ * THE conversion — the segments and the indicator both come through here, which is what
+ * makes the promise in the banner above ("one place") true rather than aspirational.
+ *
+ * `minPx` is why this is not a bare multiplication, and it is also what makes the second
+ * clamp non-obvious: `top` is bounded by `trackHeight - height`, not by `trackHeight`. A
+ * span in the last rows of a long file projects to within a pixel of the bottom, and the
+ * floor then pushes its lower edge past the end of the band. Pinning the top instead
+ * keeps it whole and inside the track, at the cost of sitting a couple of pixels higher
+ * than strictly proportional — invisible, where the alternative is a mark cropped by
+ * overflow exactly where the reader is looking for the end of the file.
+ */
+function project(startPx: number, spanPx: number, minPx: number, view: ScrollView, trackHeight: number): RulerGeometry {
+  const scale = trackScale(view, trackHeight)
+  const height = clamp(spanPx * scale, minPx, Math.max(trackHeight, minPx))
+  return { top: clamp(startPx * scale, 0, Math.max(trackHeight - height, 0)), height }
+}
+
+/**
+ * Every block, placed on the track.
+ *
+ * `trackHeight` defaults to `view.viewportHeight`, which is what it always is in this
+ * app: the band is `top-0 bottom-0` inside the `relative flex-1 min-h-0 flex flex-col`
+ * wrapper whose only in-flow child is the `flex-1` scroller, so the two boxes are the
+ * same height by construction. It stays a parameter regardless — the assumption is the
+ * CALLER's layout, not this module's arithmetic, and a band that one day gains a margin
+ * should change the drawing rather than quietly skew it.
+ */
+export function rulerSegments(blocks: MarkerBlock[], view: ScrollView, trackHeight = view.viewportHeight): RulerSegment[] {
+  return blocks.map((block, index) => ({
+    ...project(block.top, block.bottom - block.top, MIN_SEGMENT_PX, view, trackHeight),
+    // A block measured before this module knew about kinds paints as `'mixed'`, the
+    // colour that claims the least: "something changed here" is always true.
+    kind: block.kind ?? 'mixed',
+    index,
+  }))
+}
+
+/** The visible window, placed on the track — same projection, same clamps. */
+export function rulerViewport(view: ScrollView, trackHeight = view.viewportHeight): RulerGeometry {
+  return project(view.currentScrollTop, view.viewportHeight, MIN_VIEWPORT_PX, view, trackHeight)
+}
+
+/**
+ * Where to scroll for a click at `offsetPx` down the band.
+ *
+ * The click names a point in the FILE, and the reader gets it in the middle of the
+ * screen rather than at the top — which is what makes this the exact inverse of
+ * `rulerViewport` while the clamps are slack: click the centre of the indicator and
+ * nothing moves. Anchoring at the top instead would jump the view by half a screen on
+ * a click that meant "stay here".
+ *
+ * At either end the clamp wins and the round trip stops being exact, necessarily so:
+ * the first half-screen of the file all maps to scrollTop 0 because there is nowhere
+ * above it to go. Callers must not expect identity there.
+ */
+export function jumpScrollTop(offsetPx: number, trackHeight: number, view: ScrollView): number {
+  // A zero-height track has no position to read; leaving the scroll alone beats
+  // dividing by it.
+  if (trackHeight <= 0) return view.currentScrollTop
+  const contentY = (offsetPx / trackHeight) * view.contentHeight
+  return clamp(contentY - view.viewportHeight / 2, 0, maxScrollTop(view))
+}
+
+/**
+ * Which block a click at `offsetPx` landed on, or `null` for the track itself.
+ *
+ * This is the whole difference between the ruler's two behaviours — jump to THAT
+ * change, or scroll to roughly there — so it is decided here on the drawn geometry
+ * rather than by the DOM. Hit-testing the rendered elements would answer for the boxes
+ * the browser happens to have, and the minimum-height floor means those boxes are not
+ * where the blocks are.
+ *
+ * The bounds are inclusive at both ends, so no pixel of a drawn segment falls through
+ * to the background. That makes a shared edge ambiguous, and the earlier block wins by
+ * scan order; a segment overlapping its neighbour is only ever the floor stretching
+ * two adjacent changes into each other, where either answer is a pixel from the other.
+ */
+export function segmentIndexAt(segments: RulerSegment[], offsetPx: number): number | null {
+  for (const segment of segments) {
+    if (offsetPx >= segment.top && offsetPx <= segment.top + segment.height) return segment.index
+  }
+  return null
 }

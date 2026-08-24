@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
 import { groupMarkerBlocks, selectScrollTop, type MarkerBlock, type MarkerPosition } from '../../utils/diffMarkers'
-import type { ChangedLines } from '../../../types'
 
 interface Props {
   content: string
@@ -13,19 +12,16 @@ interface Props {
    */
   scrollSeq?: number
   /**
-   * Where the file changed, straight from the diff. Nothing in this component uses
-   * it, and neither does the change navigator: a deletion is re-injected as an extra
-   * visual row, so a file line number is not a rendered row index, and only measuring
-   * the document gets the positions right — which is what `onBlocksMeasured` reports.
-   * It is carried here for the marker ruler, which paints the scrollbar from the diff
-   * rather than from layout.
-   */
-  changedLines?: ChangedLines
-  /**
-   * Where the changes ended up ON SCREEN, handed to the parent so the navigator can
-   * scroll between them with the same anchoring this component opens on. Reported
-   * from the measurement below rather than measured again: the numbers are only valid
-   * for the layout that produced them.
+   * Where the changes ended up ON SCREEN, handed to the parent so the navigator and the
+   * marker ruler can both work from the same anchoring this component opens on.
+   * Reported from the measurement below rather than measured again: the numbers are
+   * only valid for the layout that produced them.
+   *
+   * This — and NOT the `changedLines` the IPC read also returns — is the only usable
+   * source of position. A deletion is re-injected as an extra visual row, so a file
+   * line number is not a rendered row index, and nothing downstream can convert one
+   * into the other without measuring the document anyway. Each block carries the kind
+   * of the rows it covers, which is the ruler's only other input.
    */
   onBlocksMeasured?: (blocks: MarkerBlock[], contextPx: number) => void
 }
@@ -147,6 +143,10 @@ export default function CodeView({ content, highlightedHtml, scrollSeq, onBlocks
     const markers: MarkerPosition[] = [...root.querySelectorAll<HTMLElement>('.line[data-diff]')].map(line => ({
       top: cumulativeOffsetTop(line) - containerTop,
       height: line.offsetHeight,
+      // `annotateShikiHtml` only ever writes "add" or "remove", and the selector above
+      // already excluded rows with no attribute at all; anything else is a row this
+      // version does not know, and colouring it as an addition beats dropping it.
+      kind: line.dataset.diff === 'remove' ? 'remove' : 'add',
     }))
 
     const contextPx = CONTEXT_LINES * (markers[0]?.height || FALLBACK_LINE_HEIGHT)

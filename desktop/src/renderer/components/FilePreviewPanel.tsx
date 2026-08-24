@@ -3,7 +3,11 @@ import { X } from 'lucide-react'
 import { useStore } from '../store'
 import FileContentRenderer from './file-preview/FileContentRenderer'
 import ChangeNavigator from './file-preview/ChangeNavigator'
-import { blockScrollTop, resolveBlockIndex, type MarkerBlock, type ScrollView } from '../utils/diffMarkers'
+import ChangeRuler, { RULER_GUTTER } from './file-preview/ChangeRuler'
+import {
+  blockScrollTop, jumpScrollTop, resolveBlockIndex, rulerSegments, rulerViewport,
+  type MarkerBlock, type ScrollView,
+} from '../utils/diffMarkers'
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; border: string }> = {
   modified:  { label: 'M', color: 'text-yellow  bg-yellow/10  border-yellow/20',  border: 'border-l-yellow' },
@@ -32,17 +36,35 @@ const SCROLL_MS = 180
  */
 const SCROLL_TAKEOVER_PX = 1
 
+const EXT_LABELS: Record<string, string> = {
+  ts: 'TypeScript', tsx: 'TSX', js: 'JavaScript', jsx: 'JSX',
+  py: 'Python', rs: 'Rust', go: 'Go', rb: 'Ruby', java: 'Java',
+  md: 'Markdown', markdown: 'Markdown', json: 'JSON', yaml: 'YAML',
+  yml: 'YAML', toml: 'TOML', css: 'CSS', scss: 'SCSS', html: 'HTML',
+  sh: 'Shell', bash: 'Shell', vue: 'Vue', svelte: 'Svelte', sql: 'SQL',
+  png: 'PNG', jpg: 'JPEG', jpeg: 'JPEG', gif: 'GIF', svg: 'SVG', webp: 'WebP',
+}
+
 function getExtLabel(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() ?? ''
-  const MAP: Record<string, string> = {
-    ts: 'TypeScript', tsx: 'TSX', js: 'JavaScript', jsx: 'JSX',
-    py: 'Python', rs: 'Rust', go: 'Go', rb: 'Ruby', java: 'Java',
-    md: 'Markdown', markdown: 'Markdown', json: 'JSON', yaml: 'YAML',
-    yml: 'YAML', toml: 'TOML', css: 'CSS', scss: 'SCSS', html: 'HTML',
-    sh: 'Shell', bash: 'Shell', vue: 'Vue', svelte: 'Svelte', sql: 'SQL',
-    png: 'PNG', jpg: 'JPEG', jpeg: 'JPEG', gif: 'GIF', svg: 'SVG', webp: 'WebP',
+  return EXT_LABELS[ext] ?? ext.toUpperCase()
+}
+
+/**
+ * The container's geometry, as one object.
+ *
+ * A plain function taking `contextPx` rather than a closure over it: this is read both
+ * from `handleBlocksMeasured`, which has the freshly measured value in hand and no
+ * business waiting a render for state to catch up, and from the hook below, which has
+ * the one in state. A captured `contextPx` could only ever serve the second.
+ */
+function readScrollView(container: HTMLDivElement, contextPx: number): ScrollView {
+  return {
+    viewportHeight: container.clientHeight,
+    contentHeight: container.scrollHeight,
+    currentScrollTop: container.scrollTop,
+    contextPx,
   }
-  return MAP[ext] ?? ext.toUpperCase()
 }
 
 export default function FilePreviewPanel() {
@@ -61,6 +83,20 @@ export default function FilePreviewPanel() {
   const [blocks, setBlocks] = useState<MarkerBlock[]>([])
   const [contextPx, setContextPx] = useState(0)
   const [currentIndex, setCurrentIndex] = useState(0)
+  /**
+   * The container's geometry, in state rather than read at paint time.
+   *
+   * The navigator only needs it when something is clicked, and reads it live; the ruler
+   * has to be REDRAWN whenever it changes, and a render is the only thing that redraws
+   * anything. Null until the first measurement, which is also "no ruler yet".
+   */
+  const [scrollView, setScrollView] = useState<ScrollView | null>(null)
+  /**
+   * Whether there is a ruler at all — see the `ruler` object below for what the
+   * condition means. Named here because the resize observer has to gate on it too, and
+   * a condition spelled twice is a condition that gets edited once.
+   */
+  const hasBlocks = blocks.length > 0
 
   // Every selection — including re-clicking the file already on screen — is a fresh
   // object from `setSelectedFile`, so this fires on each one. That is the whole
@@ -72,8 +108,8 @@ export default function FilePreviewPanel() {
   // against the previous render is enough; React applies the state update before
   // committing, with no extra effect-and-re-render round trip.
   //
-  // Clearing the navigator belongs here for a second reason on top of that one: it
-  // has to happen BEFORE the new file's CodeView reports its blocks, and a
+  // Clearing the navigator and the ruler belongs here for a second reason on top of
+  // that one: it has to happen BEFORE the new file's CodeView reports its blocks, and a
   // `useEffect` cannot. CodeView measures in a LAYOUT effect, which runs ahead of
   // this component's passive effects, and FileContentRenderer seeds its state from
   // `readCache` — so a file already read mounts CodeView in the very same commit, and
@@ -84,6 +120,7 @@ export default function FilePreviewPanel() {
     setBlocks([])
     setContextPx(0)
     setCurrentIndex(0)
+    setScrollView(null)
   }
 
   // CodeView has just anchored the view on the first change, so that is where the
@@ -92,6 +129,16 @@ export default function FilePreviewPanel() {
     setBlocks(measured)
     setContextPx(measuredContextPx)
     setCurrentIndex(0)
+    // Seed the ruler here rather than wait for a scroll event to bring the geometry in.
+    // CodeView reports the blocks BEFORE it performs its anchor scroll, and when
+    // `selectScrollTop` answers null there is no scroll at all and therefore no event
+    // to correct a missing read — the band would stay unrendered on every file that
+    // opens already showing its first change. Where the scroll DOES happen, the event
+    // it fires replaces this read a frame later, so the stale `scrollTop` here never
+    // reaches the screen. `measuredContextPx` is passed explicitly because the value in
+    // state is still the 0 that predates the measurement being reported right now.
+    const container = scrollRef.current
+    setScrollView(container ? readScrollView(container, measuredContextPx) : null)
   }, [])
 
   /**
@@ -101,12 +148,10 @@ export default function FilePreviewPanel() {
    * `contextPx` is the one number that legitimately comes from the measurement —
    * it is a row height, and rows do not change under the reader.
    */
-  const readView = useCallback((container: HTMLDivElement): ScrollView => ({
-    viewportHeight: container.clientHeight,
-    contentHeight: container.scrollHeight,
-    currentScrollTop: container.scrollTop,
-    contextPx,
-  }), [contextPx])
+  const readView = useCallback(
+    (container: HTMLDivElement): ScrollView => readScrollView(container, contextPx),
+    [contextPx],
+  )
 
   const stopScrollAnimation = useCallback(() => {
     lastStepScrollTop.current = null
@@ -118,6 +163,16 @@ export default function FilePreviewPanel() {
   const handleScroll = useCallback(() => {
     const container = scrollRef.current
     if (!container || blocks.length === 0) return
+    // Read live, and read once, OUTSIDE the updater further down: that updater is a
+    // pure function of the index and may be replayed, while these numbers are only
+    // right for the event being handled.
+    const view = readView(container)
+    // Handed to the ruler BEFORE the bail-out below, not after it. That branch skips
+    // the frames the animated step produced — the right call for the counter, whose
+    // destination is already known — but the indicator's whole job is to show the
+    // travel: skipping them would freeze it for the full 180 ms of the step and then
+    // snap it to the end, which reads as a stutter rather than as a scroll.
+    setScrollView(view)
     if (scrollAnimationRef.current !== null) {
       // This event is either the step's own frame or the reader taking over, and the
       // position is what tells them apart: anything other than where the step last put
@@ -140,10 +195,6 @@ export default function FilePreviewPanel() {
       // frames, and handle this event as the manual scroll it is.
       stopScrollAnimation()
     }
-    // Read live, and read once, OUTSIDE the updater below: the updater is a pure
-    // function of the index and may be replayed, while these three numbers are only
-    // right for the event being handled.
-    const view = readView(container)
     // The functional form is not a style choice. `goToBlock` sets the clicked index
     // optimistically and the scroll it starts brings us straight here, so this handler
     // has to compare against the index as it stands NOW — one captured in this closure
@@ -216,6 +267,51 @@ export default function FilePreviewPanel() {
 
   const goToPrevious = useCallback(() => goToBlock(currentIndex - 1), [goToBlock, currentIndex])
   const goToNext = useCallback(() => goToBlock(currentIndex + 1), [goToBlock, currentIndex])
+
+  /**
+   * A click on bare ruler track: go roughly there.
+   *
+   * `readView` rather than the `scrollView` in state, for the same reason `goToBlock`
+   * does it: the state holds the last SCROLL, and a window the reader has resized since
+   * would put the jump on the wrong scale. Animated like the arrows, so the two controls
+   * move the panel the same way.
+   *
+   * `currentIndex` is deliberately left alone — the next scroll event resolves it from
+   * the position, which is the honest answer for a jump that named no block.
+   */
+  const handleJumpTo = useCallback((offsetPx: number, trackHeight: number) => {
+    const container = scrollRef.current
+    if (!container) return
+    animateScrollTo(container, jumpScrollTop(offsetPx, trackHeight, readView(container)))
+  }, [readView, animateScrollTo])
+
+  /**
+   * Redraw the ruler when the container is resized.
+   *
+   * The band is drawn to the geometry of the last scroll, and a resize changes that
+   * geometry without producing a scroll event. Left alone, the segments and the
+   * indicator keep the scale they were measured at — and `segmentIndexAt` hit-tests
+   * against those same offsets, so a click resolves to the wrong block or to none.
+   * The failure is a quiet one: `handleJumpTo` reads the rect live and stays correct,
+   * so bare-track clicks keep working while the segments lie, until the next scroll
+   * event happens to fix it.
+   *
+   * Observing the scroller rather than listening for `resize` on the window is what
+   * catches the rest of the cases — the drawer is 70% of the window, but the sidebar
+   * collapsing or a devtools split resizes it with the window itself untouched.
+   *
+   * The observer fires once on `observe()`, which costs one redundant render and is
+   * left in: the alternative is a first-callback flag to skip a read that is correct
+   * anyway.
+   */
+  useEffect(() => {
+    const container = scrollRef.current
+    if (!container || !hasBlocks || typeof ResizeObserver === 'undefined') return
+
+    const observer = new ResizeObserver(() => setScrollView(readView(container)))
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [hasBlocks, readView])
 
   const handleClose = useCallback(() => {
     if (isClosingRef.current) return
@@ -305,6 +401,25 @@ export default function FilePreviewPanel() {
   const statusCfg = selectedFile.status ? (STATUS_CONFIG[selectedFile.status] ?? STATUS_CONFIG.modified) : null
   const extLabel = getExtLabel(selectedFile.path)
 
+  /**
+   * The ruler's geometry, recomputed each render from the numbers in state — or `null`
+   * for the files that get no ruler at all.
+   *
+   * ONE object, and one condition, because the answer is needed in three places: the
+   * band itself, the gutter that keeps code from running under it, and the props. Three
+   * separate tests of "is there a ruler" could be edited apart; this cannot.
+   *
+   * Gated on there being a block, which is the whole of the rule and needs no special
+   * case of its own. A markdown or an image preview never calls `onBlocksMeasured`, and
+   * an unchanged file renders no `.line[data-diff]`, so both arrive here with nothing to
+   * draw. It also covers the case where CodeView found no scrollable container — content
+   * shorter than its own viewport — which is right: a ruler over a view that cannot
+   * scroll is a control with nowhere to send anyone.
+   */
+  const ruler = scrollView && hasBlocks
+    ? { segments: rulerSegments(blocks, scrollView), viewport: rulerViewport(scrollView) }
+    : null
+
   return (
     <>
       <div
@@ -336,18 +451,24 @@ export default function FilePreviewPanel() {
             </button>
           </div>
         </div>
-        {/* The navigator is a SIBLING of the scroller, not a child of it. An
-            absolutely positioned descendant of an `overflow-auto` element joins that
-            element's scrollable overflow, so `bottom-4` would anchor to the top of the
-            document and the card would scroll off with the code. This wrapper is the
-            positioning context instead — same shape as SpecPanel's scroll-to-bottom
-            button. `flex-1 min-h-0` moves onto it, since it is now the flex child. */}
+        {/* The navigator and the ruler are SIBLINGS of the scroller, not children of
+            it. An absolutely positioned descendant of an `overflow-auto` element joins
+            that element's scrollable overflow, so `bottom-4` would anchor to the top of
+            the document and the card would scroll off with the code — and the ruler's
+            `top-0 bottom-0` would size itself to the whole file rather than to the
+            window. This wrapper is the positioning context instead — same shape as
+            SpecPanel's scroll-to-bottom button. `flex-1 min-h-0` moves onto it, since
+            it is now the flex child. */}
         <div className="relative flex-1 min-h-0 flex flex-col">
           <div
             ref={scrollRef}
             onScroll={handleScroll}
             tabIndex={-1}
-            className="flex-1 min-h-0 overflow-auto [will-change:transform]"
+            /* `RULER_GUTTER` matches the band's own width, and only appears with it:
+               the `<pre>` inside CodeView scrolls horizontally on its own, so a long
+               line dragged to the right would otherwise run under the band. It changes
+               nothing vertically, so the geometry CodeView measured still holds. */
+            className={`flex-1 min-h-0 overflow-auto [will-change:transform] ${ruler ? RULER_GUTTER : ''}`}
           >
             <FileContentRenderer
               repoPath={selectedFile.repoPath}
@@ -363,6 +484,16 @@ export default function FilePreviewPanel() {
             onPrevious={goToPrevious}
             onNext={goToNext}
           />
+          {/* A segment goes through `goToBlock`, the arrows' own step, so clicking a
+              mark and clicking "next" onto it land on exactly the same pixel. */}
+          {ruler && (
+            <ChangeRuler
+              segments={ruler.segments}
+              viewport={ruler.viewport}
+              onSelectBlock={goToBlock}
+              onJumpTo={handleJumpTo}
+            />
+          )}
         </div>
       </div>
     </>
