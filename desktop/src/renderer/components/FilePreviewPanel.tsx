@@ -22,6 +22,16 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; border: stri
  */
 const SCROLL_MS = 180
 
+/**
+ * How far the container may sit from the position the step last wrote and still be
+ * considered untouched.
+ *
+ * Not zero: `scrollTop` is snapped to a device pixel on write, so the value read back
+ * on a fractional-DPR display is a hair off the one asked for. One pixel is below what
+ * any real scroll input produces and above that rounding.
+ */
+const SCROLL_TAKEOVER_PX = 1
+
 function getExtLabel(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() ?? ''
   const MAP: Record<string, string> = {
@@ -46,6 +56,8 @@ export default function FilePreviewPanel() {
   const [scrollSeq, setScrollSeq] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrollAnimationRef = useRef<number | null>(null)
+  /** Where the animated step last put the container, so a scroll it did not cause is recognisable. */
+  const lastStepScrollTop = useRef<number | null>(null)
   const [blocks, setBlocks] = useState<MarkerBlock[]>([])
   const [contextPx, setContextPx] = useState(0)
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -96,16 +108,38 @@ export default function FilePreviewPanel() {
     contextPx,
   }), [contextPx])
 
+  const stopScrollAnimation = useCallback(() => {
+    lastStepScrollTop.current = null
+    if (scrollAnimationRef.current === null) return
+    cancelAnimationFrame(scrollAnimationRef.current)
+    scrollAnimationRef.current = null
+  }, [])
+
   const handleScroll = useCallback(() => {
     const container = scrollRef.current
     if (!container || blocks.length === 0) return
-    // Every frame of an animated step fires one of these, and the destination is
-    // already known — `goToBlock` set the index before starting the travel. Reading
-    // the counter off the positions being flown over would run it through every block
-    // in between and land back on the right one: a flicker, not information. The last
-    // frame clears the ref before its own scroll event is dispatched, so exactly one
-    // of these gets through, at the final position, and reconciles.
-    if (scrollAnimationRef.current !== null) return
+    if (scrollAnimationRef.current !== null) {
+      // This event is either the step's own frame or the reader taking over, and the
+      // position is what tells them apart: anything other than where the step last put
+      // the container was put there by someone else. Deliberately not a list of input
+      // events — cancelling on `wheel` covers a wheel and nothing else, while this
+      // container is focused and therefore also scrolls from its own arrow keys, Page
+      // Up/Down, Home/End, space, a scrollbar drag, a trackpad fling and whatever the
+      // platform adds next. The position covers all of them at once.
+      const stepPosition = lastStepScrollTop.current
+      if (stepPosition !== null && Math.abs(container.scrollTop - stepPosition) <= SCROLL_TAKEOVER_PX) {
+        // The step's own frame. The destination is already known — `goToBlock` set the
+        // index before starting the travel — so reading the counter off a position
+        // being flown over would run it through every block in between and land back
+        // on the right one: a flicker, not information. The last frame clears the ref
+        // before its own scroll event is dispatched, so exactly one of these gets
+        // through, at the final position, and reconciles.
+        return
+      }
+      // The reader moved it. Drop the step rather than fight it for the next few
+      // frames, and handle this event as the manual scroll it is.
+      stopScrollAnimation()
+    }
     // Read live, and read once, OUTSIDE the updater below: the updater is a pure
     // function of the index and may be replayed, while these three numbers are only
     // right for the event being handled.
@@ -122,13 +156,7 @@ export default function FilePreviewPanel() {
     // `Object.is` and bails out before scheduling anything when the value is
     // unchanged, so those cost no render and no guard of our own is needed here.
     setCurrentIndex(index => resolveBlockIndex(blocks, view, index))
-  }, [blocks, readView])
-
-  const stopScrollAnimation = useCallback(() => {
-    if (scrollAnimationRef.current === null) return
-    cancelAnimationFrame(scrollAnimationRef.current)
-    scrollAnimationRef.current = null
-  }, [])
+  }, [blocks, readView, stopScrollAnimation])
 
   /**
    * Travel to `target` over a fixed short duration, rather than teleporting.
@@ -154,12 +182,23 @@ export default function FilePreviewPanel() {
       return
     }
 
+    // Seeded with the starting position rather than left empty. A step cancelled
+    // mid-flight — two clicks in quick succession — can leave its last frame's scroll
+    // event still queued; it reports exactly this position, and with no reference to
+    // compare against it would read as a takeover and kill the step just started.
+    lastStepScrollTop.current = from
+
     const start = performance.now()
     const step = (now: number) => {
       const progress = Math.min((now - start) / SCROLL_MS, 1)
       // easeOutCubic: leaves immediately and settles gently, so the motion reads as a
       // step that landed rather than a scroll that drifted.
       container.scrollTop = from + distance * (1 - (1 - progress) ** 3)
+      // Read back rather than trusting what was just assigned: the browser snaps
+      // `scrollTop` to a device pixel, and the snapped value is the one the scroll
+      // event about to fire will report. Comparing against the unsnapped number would
+      // read every frame as a takeover on a fractional-DPR display.
+      lastStepScrollTop.current = container.scrollTop
       // Cleared BEFORE the last frame's scroll event is dispatched, which is what lets
       // `handleScroll` run once on the final position and reconcile the counter.
       scrollAnimationRef.current = progress < 1 ? requestAnimationFrame(step) : null
@@ -307,10 +346,6 @@ export default function FilePreviewPanel() {
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            // A hand on the wheel wins over a step in flight. Without this the two
-            // write scrollTop in the same frame and the panel drags against the
-            // reader for the rest of the animation.
-            onWheel={stopScrollAnimation}
             tabIndex={-1}
             className="flex-1 min-h-0 overflow-auto [will-change:transform]"
           >
