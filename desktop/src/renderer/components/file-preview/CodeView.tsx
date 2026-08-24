@@ -3,6 +3,7 @@ import {
   countMarkerKinds, groupMarkerBlocks, selectScrollTop,
   type MarkerBlock, type MarkerCounts, type MarkerPosition,
 } from '../../utils/diffMarkers'
+import { useT } from '../../i18n'
 
 interface Props {
   content: string
@@ -137,13 +138,19 @@ const CHROME: Record<'light' | 'dark', CodeChrome> = {
 
 function codeStyles(c: CodeChrome): string {
   return `
-  .shiki code { counter-reset: line; white-space: normal; }
+  .shiki code { white-space: normal; }
 
   .shiki code .line { display: block; white-space: pre; }
 
+  /* The number comes off the ROW, not off a CSS counter.
+     A counter counts the rows that were drawn, and the changes-only view drops
+     whole regions of them — the gutter would then read 1, 2, 3… against a file
+     whose lines are 1, 2, 3, 40, 41. data-line is stamped in the main process
+     from the file itself and survives any elision. A row without the attribute
+     (an elision marker) resolves attr() to the empty string, which leaves the
+     gutter box drawn and blank — exactly what that row wants. */
   .shiki code .line::before {
-    counter-increment: line;
-    content: "\\00a0" counter(line);
+    content: "\\00a0" attr(data-line);
     display: inline-block;
     width: 3rem;
     margin-right: 1.25rem;
@@ -162,8 +169,7 @@ function codeStyles(c: CodeChrome): string {
     margin-left: -1px;
   }
   .shiki code .line[data-diff="add"]::before {
-    counter-increment: line;
-    content: "+" counter(line);
+    content: "+" attr(data-line);
     color: ${c.add};
     border-right-color: ${c.addRule};
   }
@@ -175,10 +181,30 @@ function codeStyles(c: CodeChrome): string {
     margin-left: -1px;
   }
   .shiki code .line[data-diff="remove"]::before {
-    counter-increment: line;
-    content: "-" counter(line);
+    content: "-" attr(data-line);
     color: ${c.remove};
     border-right-color: ${c.removeRule};
+  }
+
+  /* Where the unchanged middle of the file was left out.
+     Carries no data-diff on purpose: the measurement below walks
+     .line[data-diff] to build the ruler and the navigator, and a separator is not
+     a change to navigate to. Its label is written in by the layout effect rather
+     than by content:, because it is translated. */
+  /* Taller than a line of code on purpose: this row is a seam between two regions of
+     the file, and at code line-height it read as just another line. The padding is what
+     gives it that weight — it is applied in the stylesheet, so it is already in place
+     when the layout effect measures the rows below it. */
+  .shiki code .line[data-elided] {
+    color: ${c.gutter};
+    background-color: ${c.rule};
+    font-style: italic;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+    user-select: none;
+    -webkit-user-select: none;
   }
 `
 }
@@ -197,6 +223,7 @@ const FALLBACK_LINE_HEIGHT = 18
 
 export default function CodeView({ content, highlightedHtml, appearance = 'dark', blend = true, scrollSeq, onBlocksMeasured }: Props) {
   const htmlRef = useRef<HTMLDivElement>(null)
+  const t = useT()
 
   // Opening a modified file at line 1 hides the very thing it was opened for, so the
   // panel is anchored on the first change instead. In a layout effect, before paint:
@@ -204,24 +231,48 @@ export default function CodeView({ content, highlightedHtml, appearance = 'dark'
   useLayoutEffect(() => {
     const root = htmlRef.current
     if (!root) return
+
+    // The elision markers arrive empty from the main process — the HTML is built
+    // there, where no interface language is bound — so their label is written here.
+    //
+    // BEFORE the measurement below, and in this same effect rather than one of its
+    // own: the label is what gives the row its height, and a measurement taken over
+    // rows that are still empty would put every block below the first elision a few
+    // pixels off. The ruler and the navigator both read those numbers.
+    for (const row of root.querySelectorAll<HTMLElement>('.line[data-elided]')) {
+      row.textContent = t('filePreview.linesHidden', { count: Number(row.dataset.elided) })
+    }
+
+    const rows = [...root.querySelectorAll<HTMLElement>('.line[data-diff]')]
+    // `annotateShikiHtml` only ever writes "add" or "remove", and the selector above
+    // already excluded rows with no attribute at all; anything else is a row this
+    // version does not know, and colouring it as an addition beats dropping it.
+    const kindOf = (line: HTMLElement): MarkerPosition['kind'] =>
+      line.dataset.diff === 'remove' ? 'remove' : 'add'
+
     const container = findScrollContainer(root)
-    // No scrollable ancestor means no scrollable overflow, and returning here reports
-    // no block — which also leaves the navigator card unrendered. That is the decision,
-    // not an oversight: with the content shorter than its viewport every change is
-    // already on screen, so there is nothing to navigate to. Reporting the blocks
-    // anyway would put up a card whose arrows move nothing — `blockScrollTop` clamps
-    // every one of them to 0 — leaving a counter that walks 1 → 2 → 3 over a view that
-    // never changes, which reads as a broken button rather than as "already there".
-    if (!container) return
+    // No scrollable ancestor means no scrollable overflow: every change is already on
+    // screen. The COUNTS are still worth reporting — the navigator is built to stand on
+    // them alone, dropping its own arrows below two blocks — but the BLOCKS are not, and
+    // that asymmetry is the decision rather than an oversight. Reporting them would put
+    // up arrows that move nothing (`blockScrollTop` clamps every one to 0), leaving a
+    // counter walking 1 → 2 → 3 over a view that never changes, which reads as a broken
+    // button rather than as "already there"; it would also draw a ruler with nowhere to
+    // send anyone. Passing no block is what makes both drop out on their existing rule.
+    //
+    // Collapsed to its changed regions, a big file with a small diff lands here as a
+    // matter of course, so this path carries the summary for the common case — not just
+    // for the short files it used to be about.
+    if (!container) {
+      onBlocksMeasured?.([], 0, countMarkerKinds(rows.map(line => ({ kind: kindOf(line) }))))
+      return
+    }
 
     const containerTop = cumulativeOffsetTop(container)
-    const markers: MarkerPosition[] = [...root.querySelectorAll<HTMLElement>('.line[data-diff]')].map(line => ({
+    const markers: MarkerPosition[] = rows.map(line => ({
       top: cumulativeOffsetTop(line) - containerTop,
       height: line.offsetHeight,
-      // `annotateShikiHtml` only ever writes "add" or "remove", and the selector above
-      // already excluded rows with no attribute at all; anything else is a row this
-      // version does not know, and colouring it as an addition beats dropping it.
-      kind: line.dataset.diff === 'remove' ? 'remove' : 'add',
+      kind: kindOf(line),
     }))
 
     const contextPx = CONTEXT_LINES * (markers[0]?.height || FALLBACK_LINE_HEIGHT)
@@ -244,7 +295,11 @@ export default function CodeView({ content, highlightedHtml, appearance = 'dark'
     // `onBlocksMeasured` is deliberately absent from the dependencies: it is a
     // notification, not an input, and re-running this effect for a new callback
     // identity would drag the reader back to the first change on an unrelated render.
-  }, [highlightedHtml, scrollSeq])
+    //
+    // `t` IS a dependency: its identity changes with the interface language, and the
+    // elision labels above are written straight into the DOM, where nothing else
+    // would ever come back to retranslate them.
+  }, [highlightedHtml, scrollSeq, t])
 
   if (highlightedHtml) {
     return (

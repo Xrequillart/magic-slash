@@ -44,6 +44,24 @@ interface Props {
    * fresh IPC read of bytes already on screen.
    */
   onBlocksMeasured?: (blocks: MarkerBlock[], contextPx: number, counts: MarkerCounts) => void
+  /**
+   * Show the file end to end instead of just its changed regions. Default — false —
+   * is the changes-only view, which is what a modified file opens as.
+   *
+   * A mode, not a second read: both renderings come back in the same IPC result, so
+   * flipping this picks the other string that is already in hand. It is deliberately
+   * NOT part of the cache key for that reason.
+   */
+  showWholeFile?: boolean
+  /**
+   * Whether the read came back with a changes-only rendering at all — the header's
+   * only way to know whether it has a toggle to offer, since the read lives in here.
+   *
+   * Reported rather than derived from the status: a modified file whose changes
+   * already cover it gets no collapsed view either, and the status alone cannot
+   * tell that.
+   */
+  onCollapsibleChange?: (collapsible: boolean) => void
 }
 
 // `unreadable` is local to this component: the handler never returns it, it is
@@ -99,7 +117,13 @@ function ContentSkeleton() {
   )
 }
 
-function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, scrollSeq, onBlocksMeasured }: Props) {
+/** The collapsed rendering of `result`, or undefined when the read produced none. */
+function changesOnlyOf(result: FileResult | null): string | undefined {
+  if (!result || 'error' in result || result.encoding !== 'utf8') return undefined
+  return result.changesOnlyHtml
+}
+
+function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, scrollSeq, showWholeFile = false, onBlocksMeasured, onCollapsibleChange }: Props) {
   const t = useT()
   const { appearance, blend } = useCodeAppearance()
   const key = cacheKeyFor(repoPath, filePath, status, appearance)
@@ -137,6 +161,16 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
     // without this the slower one wins and the panel shows a stale spec.
     return () => { cancelled = true }
   }, [repoPath, filePath, status, refreshToken, key])
+
+  const changesOnlyHtml = changesOnlyOf(result)
+
+  // Told to the parent from an effect, never from the render path: this is a message
+  // out of the component, and a parent state update issued while a child renders is
+  // exactly the pattern React warns about. The value is a boolean, so a re-read that
+  // reaches the same answer bails out before scheduling anything.
+  useEffect(() => {
+    onCollapsibleChange?.(changesOnlyHtml !== undefined)
+  }, [changesOnlyHtml, onCollapsibleChange])
 
   if (loading) return <ContentSkeleton />
 
@@ -181,7 +215,10 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
   return (
     <CodeView
       content={result.content}
-      highlightedHtml={result.highlightedHtml}
+      /* The changed regions unless the reader asked for the whole file — and the
+         whole file anyway wherever the read produced no collapsed rendering, which
+         is every path where collapsing would have hidden nothing. */
+      highlightedHtml={showWholeFile ? result.highlightedHtml : (changesOnlyHtml ?? result.highlightedHtml)}
       appearance={appearance}
       blend={blend}
       scrollSeq={scrollSeq}

@@ -1534,4 +1534,7 @@ export const en = {
   'filePreview.linesAdded': '{count} lines added',
   'filePreview.linesRemoved': '{count} lines removed',
   'filePreview.changeRuler': 'Changes in this file',
+  'filePreview.showWholeFile': 'Show the whole file',
+  'filePreview.showChangesOnly': 'Show only the changes',
+  'filePreview.linesHidden': '{count} lines hidden',
 }

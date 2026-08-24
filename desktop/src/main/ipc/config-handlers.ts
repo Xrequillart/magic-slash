@@ -61,28 +61,58 @@ import {
   getLastCommand
 } from '../config/command-history'
 import { ensureHydrated } from '../store/hydrate'
+import {
+  computeVisibleRanges, countShikiRows, numberShikiLines, renderRows, splitShikiLines, ROW_MARKER,
+} from './hunkView'
+
+/**
+ * Unchanged lines kept on either side of a change when the preview shows only the
+ * changed regions.
+ *
+ * Four, which is what a unified `git diff` gives by default (three) plus one: the
+ * preview is read in a drawer rather than in a terminal, and the extra line is what
+ * keeps a change from opening flush against an elision marker. Nothing to do with
+ * CodeView's `CONTEXT_LINES`, which is a scroll anchor measured in pixels.
+ */
+const DIFF_CONTEXT_LINES = 4
+
+/** A line the diff removed: what it said, and which line of the OLD file it was. */
+export interface RemovedLine {
+  text: string
+  /**
+   * Its number before the edit. The only number this line ever had — it does not
+   * exist in the file on disk — and therefore the one the gutter shows for it.
+   */
+  oldLine: number
+}
 
 export interface ParsedDiff {
   addedNewLines: Set<number>
-  removedBeforeLines: Map<number, string[]>
+  /** Keyed by the NEW-file line each run of deletions sits before. */
+  removedBeforeLines: Map<number, RemovedLine[]>
 }
 
 export function parseDiff(diffOutput: string): ParsedDiff {
   const addedNewLines = new Set<number>()
-  const removedBeforeLines = new Map<number, string[]>()
+  const removedBeforeLines = new Map<number, RemovedLine[]>()
   const lines = diffOutput.split('\n')
   let newLineNum = 0
+  // Tracked alongside the new-file counter, and only ever read for a removed line:
+  // a deletion has no position in the file as it stands, so its old number is the
+  // only thing that can be put in front of it.
+  let oldLineNum = 0
 
   for (const line of lines) {
-    const hunk = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
-    if (hunk) { newLineNum = parseInt(hunk[1], 10); continue }
+    const hunk = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
+    if (hunk) { oldLineNum = parseInt(hunk[1], 10); newLineNum = parseInt(hunk[2], 10); continue }
     if (newLineNum === 0) continue
     if (line.startsWith('+')) { addedNewLines.add(newLineNum); newLineNum++ }
     else if (line.startsWith('-')) {
       const arr = removedBeforeLines.get(newLineNum) ?? []
-      arr.push(line.slice(1))
+      arr.push({ text: line.slice(1), oldLine: oldLineNum })
       removedBeforeLines.set(newLineNum, arr)
-    } else if (line.startsWith(' ')) { newLineNum++ }
+      oldLineNum++
+    } else if (line.startsWith(' ')) { newLineNum++; oldLineNum++ }
   }
   return { addedNewLines, removedBeforeLines }
 }
@@ -91,31 +121,57 @@ function escHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+/**
+ * Every row shiki opens, capturing whatever `numberShikiLines` already stamped on it.
+ *
+ * Safe as one shared `/g` instance because every use below is `String.replace`, which
+ * resets `lastIndex` before it starts and again when it finishes. Hand this to
+ * `.test()` or `.exec()` and that stops being true.
+ */
+const ROW_OPEN = /<span class="line"([^>]*)>/g
+
+/**
+ * A row standing in for a line the diff removed.
+ *
+ * `data-line` is the OLD number, which is what the gutter must show — the line is
+ * gone from the file, so its new-file number does not exist. `data-anchor` is the
+ * new-file line it was injected before, and it is what decides whether the row
+ * survives a collapse to the changed regions: the two numbers belong to different
+ * files, and filtering on the wrong one keeps the wrong rows.
+ */
+function removedRowHtml(removed: RemovedLine, anchor: number): string {
+  return `${ROW_MARKER} data-line="${removed.oldLine}" data-anchor="${anchor}" data-diff="remove">${escHtml(removed.text)}</span>`
+}
+
 export function annotateShikiHtml(
   html: string,
   diff: ParsedDiff | null,
   mode: 'normal' | 'all-add' | 'all-remove'
 ): string {
-  if (mode === 'all-add') return html.replace(/<span class="line">/g, '<span class="line" data-diff="add">')
-  if (mode === 'all-remove') return html.replace(/<span class="line">/g, '<span class="line" data-diff="remove">')
+  if (mode !== 'normal') {
+    const kind = mode === 'all-add' ? 'add' : 'remove'
+    return html.replace(ROW_OPEN, (_m, attrs: string) => `${ROW_MARKER}${attrs} data-diff="${kind}">`)
+  }
   if (!diff) return html
 
   let lineIndex = 0
-  let result = html.replace(/<span class="line">/g, () => {
+  let result = html.replace(ROW_OPEN, (_m, attrs: string) => {
     lineIndex++
     const removed = diff.removedBeforeLines.get(lineIndex) ?? []
     diff.removedBeforeLines.delete(lineIndex)
-    const removedHtml = removed.map(c =>
-      `<span class="line" data-diff="remove">${escHtml(c)}</span>`
-    ).join('')
+    const removedHtml = removed.map(c => removedRowHtml(c, lineIndex)).join('')
     const attr = diff.addedNewLines.has(lineIndex) ? ' data-diff="add"' : ''
-    return `${removedHtml}<span class="line"${attr}>`
+    return `${removedHtml}${ROW_MARKER}${attrs}${attr}>`
   })
 
-  // Trailing removed lines (deleted at end of file)
+  // Trailing removed lines (deleted at end of file). Their anchor is one past the
+  // file's last line — a position no row of the document occupies, which is exactly
+  // why they have to be appended here rather than injected in the walk above.
   if (diff.removedBeforeLines.size > 0) {
-    const trailing = [...diff.removedBeforeLines.values()].flat()
-      .map(c => `<span class="line" data-diff="remove">${escHtml(c)}</span>`).join('')
+    const trailing = [...diff.removedBeforeLines.entries()]
+      .sort(([a], [b]) => a - b)
+      .flatMap(([anchor, removed]) => removed.map(c => removedRowHtml(c, anchor)))
+      .join('')
     result = result.replace('</code>', trailing + '</code>')
   }
   return result
@@ -127,6 +183,22 @@ const KNOWN_LANGS = new Set([
   'less', 'vue', 'svelte', 'rb', 'php', 'java', 'kt', 'swift', 'c', 'cpp',
   'cs', 'sql', 'graphql', 'xml', 'dockerfile', 'tf', 'prisma', 'md',
 ])
+
+/**
+ * Highlight a file and stamp its line numbers on, or `null` if shiki could not.
+ *
+ * The numbering is folded in here rather than left to the callers on purpose: the
+ * gutter reads `data-line` off the row, so EVERY preview has to have been through it —
+ * the three diff modes, the spec panel's unannotated HTML, a status this version does
+ * not know. Forgetting it does not degrade the preview, it blanks the gutter, and an
+ * invariant with that failure mode should not be held by a comment at each call site.
+ * Un-numbered shiki output has no name in this module as a result.
+ */
+async function highlightNumbered(text: string, mimeHint: string, shikiTheme: string): Promise<string | null> {
+  const lang = KNOWN_LANGS.has(mimeHint) ? mimeHint : 'text'
+  const raw = await codeToHtml(text, { lang, theme: shikiTheme }).catch(() => null)
+  return raw ? numberShikiLines(raw) : null
+}
 
 const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico'])
 
@@ -575,9 +647,10 @@ export async function readFileForPreview(
 
       // UTF-8 text — highlight server-side, all lines red (file was deleted)
       const textContent = buffer.toString('utf8')
-      const lang = KNOWN_LANGS.has(mimeHint) ? mimeHint : 'text'
-      const raw = await codeToHtml(textContent, { lang, theme: shikiTheme }).catch(() => null)
-      const highlightedHtml = raw ? annotateShikiHtml(raw, null, 'all-remove') : null
+      const numbered = await highlightNumbered(textContent, mimeHint, shikiTheme)
+      const highlightedHtml = numbered ? annotateShikiHtml(numbered, null, 'all-remove') : null
+      // No `changesOnlyHtml`: every line of a deleted file is a change, so there is
+      // nothing to collapse and nothing for the header's toggle to switch between.
       return { content: textContent, highlightedHtml, encoding: 'utf8', size: buffer.length, mimeHint }
     } catch {
       return { error: 'not_found' }
@@ -668,14 +741,16 @@ export async function readFileForPreview(
     fd = null
   }
 
-  const lang = KNOWN_LANGS.has(mimeHint) ? mimeHint : 'text'
-  const raw = await codeToHtml(content, { lang, theme: shikiTheme }).catch(() => null)
+  // Already numbered — see `highlightNumbered`. Every branch below starts from this
+  // document, including the `catch` that throws the annotation away.
+  const numbered = await highlightNumbered(content, mimeHint, shikiTheme)
 
-  let highlightedHtml: string | null = raw
+  let highlightedHtml: string | null = numbered
+  let changesOnlyHtml: string | undefined
   let changedLines: ChangedLines | undefined
-  if (raw) {
+  if (numbered) {
     if (status === 'added' || status === 'untracked') {
-      highlightedHtml = annotateShikiHtml(raw, null, 'all-add')
+      highlightedHtml = annotateShikiHtml(numbered, null, 'all-add')
     } else if (status === 'modified' || status === 'renamed') {
       try {
         const diffOut = execFileSync('git', ['diff', 'HEAD', '--', filePath], { cwd: repoPath }).toString()
@@ -687,9 +762,28 @@ export async function readFileForPreview(
           added: [...diff.addedNewLines].sort((a, b) => a - b),
           removedBefore: [...diff.removedBeforeLines.keys()].sort((a, b) => a - b),
         }
-        highlightedHtml = annotateShikiHtml(raw, diff, 'normal')
+        // The file's own length, taken from the row count rather than from
+        // `content.split('\n')`: a file ending in a newline gives shiki one extra
+        // empty row, and the two numbers then disagree by one for the rest of the
+        // computation — which is enough to lose the last line of the last region.
+        const totalLines = countShikiRows(numbered)
+        const annotated = annotateShikiHtml(numbered, diff, 'normal')
+        // Assigned before the collapse is attempted, so a throw below can only cost
+        // the changes-only view, never the full one the panel falls back to.
+        highlightedHtml = annotated
+
+        const ranges = computeVisibleRanges(
+          [...changedLines.added, ...changedLines.removedBefore],
+          totalLines,
+          DIFF_CONTEXT_LINES,
+        )
+        // `null` means the regions already cover the file — a change on every line,
+        // or a file short enough that the context reaches both ends. Emitting a
+        // second copy of the same document would be pure IPC weight, and the absence
+        // is also what tells the header there is no toggle to offer.
+        if (ranges) changesOnlyHtml = renderRows(splitShikiLines(annotated), ranges, totalLines)
       } catch { /* leave unhighlighted on error */ }
     }
   }
-  return { content, highlightedHtml, encoding: 'utf8', size: stat.size, mimeHint, changedLines }
+  return { content, highlightedHtml, changesOnlyHtml, encoding: 'utf8', size: stat.size, mimeHint, changedLines }
 }

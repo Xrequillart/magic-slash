@@ -99,7 +99,10 @@ export interface MarkerCounts {
  * all: its `removedBefore` is keyed by the line a deletion sits before, so three lines
  * removed at one spot arrive as a single entry. The rendered rows are the truth.
  */
-export function countMarkerKinds(markers: MarkerPosition[]): MarkerCounts {
+// Takes only the kind, so it also serves the caller that has the marked rows but no
+// geometry for them: with nothing to scroll there is no container to measure against,
+// and the summary is still worth reporting.
+export function countMarkerKinds(markers: Pick<MarkerPosition, 'kind'>[]): MarkerCounts {
   let added = 0
   let removed = 0
   for (const marker of markers) {

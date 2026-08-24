@@ -1495,4 +1495,7 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.linesAdded': '{count} lignes ajoutées',
   'filePreview.linesRemoved': '{count} lignes supprimées',
   'filePreview.changeRuler': 'Changements dans ce fichier',
+  'filePreview.showWholeFile': 'Afficher tout le fichier',
+  'filePreview.showChangesOnly': 'Afficher uniquement les changements',
+  'filePreview.linesHidden': '{count} lignes masquées',
 }
