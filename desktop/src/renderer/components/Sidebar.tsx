@@ -13,7 +13,6 @@ import { SidebarAccount } from './SidebarAccount'
 import { stateBgColors, stateHoverBgColors } from '../utils/stateColors'
 import { useT } from '../i18n'
 import type { ScriptTerminalInfo } from '../../types'
-import { CHANGELOG_URL, DOCUMENTATION_URL } from '../../urls'
 
 /**
  * Fixed, and deliberately not resizable. The agent list is a column of short labels
@@ -481,33 +480,6 @@ export function Sidebar() {
       {/* Footer */}
       <div className="px-4 py-2 text-xs text-text-secondary flex items-center justify-start gap-2">
         <span className="opacity-60">v0.77.1</span>
-        <span className="opacity-30">&bull;</span>
-        <a
-          href={DOCUMENTATION_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-ink transition-colors"
-        >
-          {t('sidebar.docs')}
-        </a>
-        <span className="opacity-30">&bull;</span>
-        <a
-          href={CHANGELOG_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-ink transition-colors"
-        >
-          {t('sidebar.changelog')}
-        </a>
-        <span className="opacity-30">&bull;</span>
-        <a
-          href="https://github.com/xrequillart/magic-slash"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-ink transition-colors"
-        >
-          {t('sidebar.github')}
-        </a>
       </div>
     </div>
   )

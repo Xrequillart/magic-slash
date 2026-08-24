@@ -140,9 +140,6 @@ export const en = {
   'sidebar.dropAgents': 'Drop agents here',
   'sidebar.scripts': 'Scripts',
   'sidebar.stopScript': 'Stop script',
-  'sidebar.docs': 'Docs',
-  'sidebar.changelog': 'Changelog',
-  'sidebar.github': 'GitHub',
 
   // ── Claude plan usage gauges ─────────────────────────────────────────────
   // The reset countdown is split per unit rather than assembled from a suffix:

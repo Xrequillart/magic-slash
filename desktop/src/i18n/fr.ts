@@ -120,9 +120,6 @@ export const fr: Record<keyof typeof en, string> = {
   'sidebar.dropAgents': 'Déposez des agents ici',
   'sidebar.scripts': 'Scripts',
   'sidebar.stopScript': 'Arrêter le script',
-  'sidebar.docs': 'Docs',
-  'sidebar.changelog': 'Nouveautés',
-  'sidebar.github': 'GitHub',
 
   // ── Jauges d'usage du forfait Claude ─────────────────────────────────────
   'usage.reset.soon': 'bientôt',
