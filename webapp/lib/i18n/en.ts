@@ -337,6 +337,12 @@ export const en = {
   'settings.appearance.claudeTheme.label': 'Match Claude Code to the theme',
   'settings.appearance.claudeTheme.help':
     'Claude Code takes the chosen theme’s colours in the app’s terminals, repainting sessions that are already open. Claude Code started from a real terminal is left alone.',
+  'settings.appearance.codeTheme.label': 'Syntax highlighting',
+  'settings.appearance.codeTheme.help':
+    'Which appearance the desktop app’s file preview paints code in. Following the theme is right for almost everyone; pin one to read dark code on a light interface, or the other way round.',
+  'settings.appearance.codeTheme.auto': 'Follows the theme',
+  'settings.appearance.codeTheme.light': 'Always light',
+  'settings.appearance.codeTheme.dark': 'Always dark',
   'settings.sidebars.section': 'Sidebars',
   'settings.sidebars.agentContext.label': 'Agent context',
   'settings.sidebars.agentContext.help':

@@ -5,6 +5,21 @@ interface Props {
   content: string
   highlightedHtml: string | null
   /**
+   * Which appearance the HTML above was highlighted in — NOT the app's theme. The
+   * two differ whenever the reader has pinned one in Settings, and everything this
+   * component draws over the code (the line-number gutter, the +/- rails) has to
+   * follow the CODE: a light theme's ink over a dark slab of code is the exact
+   * unreadability this option exists to let people avoid.
+   */
+  appearance?: 'light' | 'dark'
+  /**
+   * Whether that appearance matches the interface's, in which case shiki's own
+   * background is dropped and the code sits straight on the panel — one surface
+   * instead of a slab floating in a drawer. Pinned the other way it is kept, since
+   * it is then the only thing making the code legible.
+   */
+  blend?: boolean
+  /**
    * Bump to re-anchor on the first change without re-reading the file. Clicking a
    * file that is already open changes nothing else — same path, same status, same
    * HTML — so this counter is the only thing left that can say "take me back to the
@@ -68,7 +83,53 @@ function cumulativeOffsetTop(node: HTMLElement): number {
   return top
 }
 
-const CODE_STYLES = `
+/**
+ * The chrome CodeView draws over shiki's output, per appearance.
+ *
+ * Fixed values rather than the app's theme tokens, deliberately: these sit ON the
+ * highlighted code, so they belong to the code's palette, not the window's. They are
+ * GitHub's own diff colours because the highlighting is GitHub's github-light /
+ * github-dark — a second source of green would put two of them on one added line.
+ */
+interface CodeChrome {
+  /** Line numbers, and the rule between them and the code. */
+  gutter: string
+  rule: string
+  add: string
+  addBg: string
+  addRule: string
+  remove: string
+  removeBg: string
+  removeRule: string
+}
+
+const CHROME: Record<'light' | 'dark', CodeChrome> = {
+  dark: {
+    gutter: 'rgba(255,255,255,0.18)',
+    rule: 'rgba(255,255,255,0.07)',
+    add: '#2ea043',
+    addBg: 'rgba(46,160,67,0.15)',
+    addRule: 'rgba(46,160,67,0.3)',
+    remove: '#f85149',
+    removeBg: 'rgba(248,81,73,0.15)',
+    removeRule: 'rgba(248,81,73,0.3)',
+  },
+  light: {
+    // Heavier than the dark theme's mirror image: 18% black on white reads as a
+    // smudge where 18% white on near-black reads as a number.
+    gutter: 'rgba(27,31,36,0.4)',
+    rule: 'rgba(27,31,36,0.12)',
+    add: '#1a7f37',
+    addBg: 'rgba(74,194,107,0.18)',
+    addRule: 'rgba(26,127,55,0.3)',
+    remove: '#cf222e',
+    removeBg: 'rgba(255,129,130,0.2)',
+    removeRule: 'rgba(207,34,46,0.3)',
+  },
+}
+
+function codeStyles(c: CodeChrome): string {
+  return `
   .shiki code { counter-reset: line; white-space: normal; }
 
   .shiki code .line { display: block; white-space: pre; }
@@ -81,38 +142,45 @@ const CODE_STYLES = `
     margin-right: 1.25rem;
     padding-right: 0.75rem;
     text-align: right;
-    color: rgba(255,255,255,0.18);
-    border-right: 1px solid rgba(255,255,255,0.07);
+    color: ${c.gutter};
+    border-right: 1px solid ${c.rule};
     user-select: none;
     -webkit-user-select: none;
   }
 
   /* diff: added lines */
   .shiki code .line[data-diff="add"] {
-    background-color: rgba(46,160,67,0.15);
-    border-left: 2px solid #2ea043;
+    background-color: ${c.addBg};
+    border-left: 2px solid ${c.add};
     margin-left: -1px;
   }
   .shiki code .line[data-diff="add"]::before {
     counter-increment: line;
     content: "+" counter(line);
-    color: #2ea043;
-    border-right-color: rgba(46,160,67,0.3);
+    color: ${c.add};
+    border-right-color: ${c.addRule};
   }
 
   /* diff: removed lines */
   .shiki code .line[data-diff="remove"] {
-    background-color: rgba(248,81,73,0.15);
-    border-left: 2px solid #f85149;
+    background-color: ${c.removeBg};
+    border-left: 2px solid ${c.remove};
     margin-left: -1px;
   }
   .shiki code .line[data-diff="remove"]::before {
     counter-increment: line;
     content: "-" counter(line);
-    color: #f85149;
-    border-right-color: rgba(248,81,73,0.3);
+    color: ${c.remove};
+    border-right-color: ${c.removeRule};
   }
 `
+}
+
+/** Built once per appearance at module scope — a render must not assemble a stylesheet. */
+const CODE_STYLES: Record<'light' | 'dark', string> = {
+  dark: codeStyles(CHROME.dark),
+  light: codeStyles(CHROME.light),
+}
 
 /** Lines of unchanged code kept above the first change, so it reads in context. */
 const CONTEXT_LINES = 3
@@ -120,7 +188,7 @@ const CONTEXT_LINES = 3
 /** Only used if the first marked row measures zero, which layout should never give. */
 const FALLBACK_LINE_HEIGHT = 18
 
-export default function CodeView({ content, highlightedHtml, scrollSeq, onBlocksMeasured }: Props) {
+export default function CodeView({ content, highlightedHtml, appearance = 'dark', blend = true, scrollSeq, onBlocksMeasured }: Props) {
   const htmlRef = useRef<HTMLDivElement>(null)
 
   // Opening a modified file at line 1 hides the very thing it was opened for, so the
@@ -174,10 +242,14 @@ export default function CodeView({ content, highlightedHtml, scrollSeq, onBlocks
   if (highlightedHtml) {
     return (
       <>
-        <style>{CODE_STYLES}</style>
+        <style>{CODE_STYLES[appearance]}</style>
         <div
           ref={htmlRef}
-          className="text-sm [&>pre]:p-4 [&>pre]:min-h-full [&>pre]:font-mono [&>pre]:text-xs [&>pre]:leading-relaxed [&>pre]:overflow-auto"
+          /* `!bg-transparent` beats the background shiki writes as an INLINE style on
+             its own `<pre>` — nothing but `!important` can. Dropping it is what lets
+             the panel's own surface show through, so the preview reads as one card
+             rather than as a code slab sitting in a drawer. */
+          className={`text-sm [&>pre]:p-4 [&>pre]:min-h-full [&>pre]:font-mono [&>pre]:text-xs [&>pre]:leading-relaxed [&>pre]:overflow-auto ${blend ? '[&>pre]:!bg-transparent' : ''}`}
           dangerouslySetInnerHTML={{ __html: highlightedHtml }}
         />
       </>

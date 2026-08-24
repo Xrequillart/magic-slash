@@ -29,6 +29,9 @@ export const DEFAULTS = {
   // `?? true` in AppearancePage: an unreadable transcript would read as a bug
   // rather than as a feature nobody switched on.
   syncClaudeTheme: true,
+  // NULL means never chosen; the desktop resolves that to 'auto', i.e. the file
+  // preview highlights code in the appearance of the theme in use.
+  codeTheme: 'auto',
   language: 'en',
   usageCardEnabled: true,
   // `=== true` in SidebarUsageCard / the agent card, so anything else is expanded.
@@ -143,6 +146,7 @@ export const SETTING_GROUPS: SettingGroup[] = [
       { field: 'theme', label: 'Theme' },
       { field: 'language', label: 'Interface language' },
       { field: 'syncClaudeTheme', label: 'Sync Claude Code theme' },
+      { field: 'codeTheme', label: 'Syntax highlighting' },
     ],
   },
   {

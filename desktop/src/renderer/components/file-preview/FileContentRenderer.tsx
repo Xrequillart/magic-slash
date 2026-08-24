@@ -5,6 +5,7 @@ import MarkdownView from './MarkdownView'
 import ImageView from './ImageView'
 import BinaryPlaceholder from './BinaryPlaceholder'
 import { formatSize } from '../../utils/formatSize'
+import { useCodeAppearance } from '../../hooks/useCodeAppearance'
 import type { MarkerBlock } from '../../utils/diffMarkers'
 import { useT } from '../../i18n'
 
@@ -67,8 +68,15 @@ const MARKDOWN_EXTS = new Set(['md', 'markdown'])
 const MAX_CACHED = 10
 const readCache = new Map<string, FileResult>()
 
-function cacheKeyFor(repoPath: string, filePath: string, status: string) {
-  return `${repoPath}\u0000${filePath}\u0000${status}`
+/**
+ * `appearance` is part of the key, not an afterthought: the highlighted HTML comes
+ * back from the main process already painted in one appearance, so an entry cached
+ * under the dark one is not an answer to a question asked in the light one. Keying on
+ * it is also what makes switching theme repaint the file already on screen — the key
+ * changes, the cache misses, the read runs again.
+ */
+function cacheKeyFor(repoPath: string, filePath: string, status: string, appearance: string) {
+  return `${repoPath}\u0000${filePath}\u0000${status}\u0000${appearance}`
 }
 
 function remember(key: string, value: FileResult) {
@@ -93,7 +101,8 @@ function ContentSkeleton() {
 
 function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, scrollSeq, onBlocksMeasured }: Props) {
   const t = useT()
-  const key = cacheKeyFor(repoPath, filePath, status)
+  const { appearance, blend } = useCodeAppearance()
+  const key = cacheKeyFor(repoPath, filePath, status, appearance)
   // Seeded from the cache so a remount on a known file paints immediately; the read
   // below still runs and replaces this the moment it resolves.
   const [result, setResult] = useState<FileResult | null>(() => readCache.get(key) ?? null)
@@ -173,6 +182,8 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
     <CodeView
       content={result.content}
       highlightedHtml={result.highlightedHtml}
+      appearance={appearance}
+      blend={blend}
       scrollSeq={scrollSeq}
       onBlocksMeasured={onBlocksMeasured}
     />
@@ -186,7 +197,9 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
  * Every prop is stable across a scroll — the path and status come from the
  * selected file, `scrollSeq` only moves on a click, and `onBlocksMeasured` has an empty
  * dependency list — so the shallow comparison holds and the whole subtree, shiki HTML
- * and all, is skipped. Without it a scroll would re-render CodeView sixty times a
+ * and all, is skipped. The code appearance is read from a hook rather than taken as a
+ * prop, which memoisation does not block: a theme change re-renders this component and
+ * re-reads the file, exactly as it should. Without it a scroll would re-render CodeView sixty times a
  * second for a document that has not changed a byte. Nothing here writes `scrollTop`
  * from the render path, so there is no loop to guard against either way; this is purely
  * about not paying for the redraw.

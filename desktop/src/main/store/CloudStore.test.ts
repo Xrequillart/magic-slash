@@ -2254,6 +2254,7 @@ describe('user settings', () => {
       theme: null,
       language: null,
       sync_claude_theme: null,
+      code_theme: null,
     })
   })
 

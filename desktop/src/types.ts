@@ -578,6 +578,42 @@ export function isValidTheme(value: unknown): value is ThemeId {
 }
 
 /**
+ * How the syntax highlighting inside the file preview is painted.
+ *
+ * `auto` — the default and the only one most people should need — takes the
+ * appearance of the theme in use, so a light theme stops showing a black slab of
+ * code in the middle of a white drawer. The two explicit values exist because
+ * reading code is not reading UI: someone on a light interface may still want
+ * their code dark, and that preference has nothing to do with the theme.
+ */
+export const CODE_THEME_MODES = ['auto', 'light', 'dark'] as const
+
+export type CodeThemeMode = (typeof CODE_THEME_MODES)[number]
+
+export const DEFAULT_CODE_THEME_MODE: CodeThemeMode = 'auto'
+
+export function isValidCodeThemeMode(value: unknown): value is CodeThemeMode {
+  return typeof value === 'string' && (CODE_THEME_MODES as readonly string[]).includes(value)
+}
+
+/**
+ * The appearance the highlighter should paint in, from the theme and the mode.
+ *
+ * Lives here — beside THEME_APPEARANCE, which it reads — rather than in either
+ * process, because BOTH have to reach the same answer from the same inputs: the
+ * main process picks the shiki theme with it, and the renderer keys its read
+ * cache on it so switching theme actually re-highlights. Two copies of this rule
+ * would be a preview cached under one appearance and painted in the other.
+ *
+ * Anything unknown for either argument reads as "never chosen", which is what
+ * makes it safe to call with a raw config value.
+ */
+export function codeAppearance(theme: unknown, mode: unknown): 'light' | 'dark' {
+  if (mode === 'light' || mode === 'dark') return mode
+  return THEME_APPEARANCE[isValidTheme(theme) ? theme : DEFAULT_THEME]
+}
+
+/**
  * Languages the interface is available in, in the order the picker shows them.
  * Adding one is an entry here plus its catalogue in src/i18n — the catalogue is
  * typed against the English one, so TypeScript refuses a language whose
@@ -652,6 +688,13 @@ export interface Config {
    * Follows the account like the theme it tracks — see main/claude-theme.ts.
    */
   syncClaudeTheme?: boolean
+  /**
+   * Which appearance the file preview's syntax highlighting is painted in.
+   * Absent = DEFAULT_CODE_THEME_MODE, i.e. follow `theme`. Follows the account
+   * for the same reason the theme does — it is a reading preference, not a
+   * property of the screen.
+   */
+  codeTheme?: CodeThemeMode
   splitEnabled?: boolean
   splitActive?: boolean
   autoStartAtLogin?: boolean

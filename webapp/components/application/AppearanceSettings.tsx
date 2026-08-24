@@ -5,7 +5,7 @@ import { AlertTriangle, Check, Palette, PanelsTopLeft } from 'lucide-react'
 import { Dropdown } from '@/components/Dropdown'
 import { SettingRow, SettingsCard, Toggle } from '@/components/SettingRow'
 import { useT } from '@/lib/i18n/useLanguage'
-import { DEFAULTS, PANEL_FORMAT_OPTIONS, THEME_OPTIONS, type ThemeSwatch } from '@/lib/settings'
+import { CODE_THEME_OPTIONS, DEFAULTS, PANEL_FORMAT_OPTIONS, THEME_OPTIONS, type ThemeSwatch } from '@/lib/settings'
 import { useAppSettings } from '@/components/application/SettingsContext'
 import { translateOptions } from '@/components/application/options'
 
@@ -53,6 +53,7 @@ export function AppearanceSettings() {
   const { settings, patch } = useAppSettings()
 
   const formatOptions = useMemo(() => translateOptions(PANEL_FORMAT_OPTIONS, t), [t])
+  const codeThemeOptions = useMemo(() => translateOptions(CODE_THEME_OPTIONS, t), [t])
 
   // A null column means the user never chose, so the desktop applies its own
   // default — show that, never a normalised value.
@@ -126,6 +127,22 @@ export function AppearanceSettings() {
             checked={settings.syncClaudeTheme ?? DEFAULTS.syncClaudeTheme}
             onChange={(syncClaudeTheme) => patch({ syncClaudeTheme })}
             label={t('settings.appearance.claudeTheme.label')}
+          />
+        </SettingRow>
+        {/* The other half of "how far the theme reaches": the file preview's
+            syntax highlighting. A dropdown rather than a toggle because
+            "follows the theme" is a third state, not the off position. */}
+        <SettingRow
+          label={t('settings.appearance.codeTheme.label')}
+          description={t('settings.appearance.codeTheme.help')}
+        >
+          <Dropdown
+            value={settings.codeTheme ?? DEFAULTS.codeTheme}
+            options={codeThemeOptions}
+            onChange={(codeTheme) => patch({ codeTheme })}
+            className="w-40"
+            width={180}
+            size="sm"
           />
         </SettingRow>
       </SettingsCard>

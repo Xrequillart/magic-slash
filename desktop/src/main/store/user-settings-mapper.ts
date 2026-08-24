@@ -1,5 +1,5 @@
 import type { Config, SpotlightConfig } from '../../types'
-import { isValidLanguage, isValidTheme } from '../../types'
+import { isValidCodeThemeMode, isValidLanguage, isValidTheme } from '../../types'
 import { isValidAgentType, isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 
 // ---------------------------------------------------------------------------
@@ -50,6 +50,7 @@ export interface UserSettingsRow {
   theme: string | null
   language: string | null
   sync_claude_theme: boolean | null
+  code_theme: string | null
   default_agent_type: string | null
 }
 
@@ -61,7 +62,7 @@ export const USER_SETTINGS_COLUMNS =
   'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
-  'language, sync_claude_theme, default_agent_type'
+  'language, sync_claude_theme, code_theme, default_agent_type'
 
 /**
  * Config keys that live in `user_settings`. Stripped from the org-scoped
@@ -93,6 +94,7 @@ export const SETTINGS_KEYS = [
   'theme',
   'language',
   'syncClaudeTheme',
+  'codeTheme',
 ] as const
 
 /** `undefined` (key absent from Config) → `null` (column unset). */
@@ -133,6 +135,7 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     theme: orNull(config.theme),
     language: orNull(config.language),
     sync_claude_theme: orNull(config.syncClaudeTheme),
+    code_theme: orNull(config.codeTheme),
     default_agent_type: orNull(config.defaultAgentType),
   }
 }
@@ -166,6 +169,10 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   // so this build falls back to English rather than to a locale it cannot show.
   if (isValidLanguage(row.language)) config.language = row.language
   if (isSet(row.sync_claude_theme)) config.syncClaudeTheme = row.sync_claude_theme
+  // Re-validated like the theme above: a mode a newer build knows and this one does
+  // not must read as "unset" — the preview then follows the theme, which is the
+  // behaviour every version had before the setting existed.
+  if (isValidCodeThemeMode(row.code_theme)) config.codeTheme = row.code_theme
   // Re-validated like launchMode and the theme: a newer build may have stored a kind
   // this one does not know, and that must read as "unset" rather than lay out an
   // agent as something this version cannot render.

@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
-import type { Config, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
+import type { CodeThemeMode, Config, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -148,6 +148,15 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  // Which appearance the file preview highlights code in. Recorded here and read
+  // back through `useCodeAppearance`, which is what the preview keys its cache on
+  // — so the drawer re-highlights the file already on screen.
+  const updateCodeTheme = useCallback(async (mode: CodeThemeMode) => {
+    const result = await window.electronAPI.config.setCodeTheme(mode)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   // The two sidebar panels, recorded the same way — Appearance shows them as one
   // pair, and the renderer reads the flags straight off the config to decide.
   const updateUsageCardEnabled = useCallback(async (enabled: boolean) => {
@@ -242,6 +251,7 @@ export function useConfig() {
     updateDefaultAgentType,
     updateTheme,
     updateSyncClaudeTheme,
+    updateCodeTheme,
     updateUsageCardEnabled,
     updateUsageCardMinimized,
     updateAgentContextEnabled,

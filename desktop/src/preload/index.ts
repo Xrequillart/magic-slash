@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult } from '../types'
+import type { TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -62,6 +62,10 @@ const configApi = {
 
   setSyncClaudeTheme: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setSyncClaudeTheme', { enabled }),
+
+  setCodeTheme: (mode: CodeThemeMode): Promise<{ config: Config }> =>
+    ipcRenderer.invoke('config:setCodeTheme', { mode }),
+
   setUsageCardEnabled: (enabled: boolean): Promise<{ config: Config }> =>
     ipcRenderer.invoke('config:setUsageCardEnabled', { enabled }),
   setUsageCardMinimized: (minimized: boolean): Promise<{ config: Config }> =>

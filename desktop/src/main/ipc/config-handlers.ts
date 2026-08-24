@@ -35,8 +35,11 @@ import {
 import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
-import { isValidLanguage, isValidTheme, type Config, type FilePreviewResult, type ChangedLines } from '../../types'
-import { applyLanguage, applyTheme } from '../appearance'
+import {
+  codeAppearance, DEFAULT_CODE_THEME_MODE, isValidCodeThemeMode, isValidLanguage, isValidTheme,
+  type Config, type FilePreviewResult, type ChangedLines,
+} from '../../types'
+import { applyLanguage, applyTheme, currentTheme } from '../appearance'
 import {
   validateRepoName,
   validateRepoPath,
@@ -267,6 +270,17 @@ export function setupConfigHandlers() {
     return { config }
   })
 
+  // Which appearance the file preview's syntax highlighting is painted in. Nothing
+  // to re-apply: the highlighting is produced per read, and the renderer keys its
+  // cache on the resolved appearance, so the next read of a file already on screen
+  // comes back in the new one.
+  ipcMain.handle('config:setCodeTheme', async (_event, { mode }: { mode: unknown }) => {
+    const config = readConfig()
+    config.codeTheme = isValidCodeThemeMode(mode) ? mode : DEFAULT_CODE_THEME_MODE
+    writeConfig(config)
+    return { config }
+  })
+
   // Show/hide the Claude usage card in the left sidebar
   ipcMain.handle('config:setUsageCardEnabled', async (_event, { enabled }: { enabled: boolean }) => {
     const config = readConfig()
@@ -484,8 +498,30 @@ export function setupConfigHandlers() {
   })
 
   ipcMain.handle('config:readFile', (_event, repoPath: string, filePath: string, status?: string) =>
-    readFileForPreview(repoPath, filePath, status)
+    readFileForPreview(repoPath, filePath, status, previewShikiTheme())
   )
+}
+
+/**
+ * The shiki theme a preview is highlighted with.
+ *
+ * GitHub's own pair, because the diff chrome CodeView draws over the result (the
+ * +/- rails, the gutter) is GitHub's palette too — mixing a third highlighter's
+ * colours in would put two different greens on the same added line.
+ */
+const SHIKI_THEMES = { light: 'github-light', dark: 'github-dark' } as const
+
+/**
+ * Which of the two to use right now: the app's theme, unless the reader pinned an
+ * appearance in Settings → Appearance.
+ *
+ * Resolved HERE rather than inside `readFileForPreview`, which stays a pure
+ * function of its arguments — it is the one part of this file with a test suite,
+ * and reading process-wide state from it would mean stubbing the config and the
+ * native theme to read a file off disk.
+ */
+function previewShikiTheme(): string {
+  return SHIKI_THEMES[codeAppearance(currentTheme(), readConfig().codeTheme)]
 }
 
 /** Is `child` the directory itself, or something beneath it? Plain string containment. */
@@ -493,7 +529,17 @@ function contains(dir: string, child: string): boolean {
   return child === dir || child.startsWith(dir + path.sep)
 }
 
-export async function readFileForPreview(repoPath: string, filePath: string, status?: string): Promise<FilePreviewResult> {
+/**
+ * `shikiTheme` defaults to the dark one rather than being resolved in here: this
+ * function is pure on purpose (see `previewShikiTheme`), and the app itself always
+ * passes an answer. The default only serves callers that do not care — the tests.
+ */
+export async function readFileForPreview(
+  repoPath: string,
+  filePath: string,
+  status?: string,
+  shikiTheme: string = SHIKI_THEMES.dark,
+): Promise<FilePreviewResult> {
   const resolvedRepo = path.resolve(repoPath)
   const resolvedFile = path.resolve(repoPath, filePath)
 
@@ -530,7 +576,7 @@ export async function readFileForPreview(repoPath: string, filePath: string, sta
       // UTF-8 text — highlight server-side, all lines red (file was deleted)
       const textContent = buffer.toString('utf8')
       const lang = KNOWN_LANGS.has(mimeHint) ? mimeHint : 'text'
-      const raw = await codeToHtml(textContent, { lang, theme: 'github-dark' }).catch(() => null)
+      const raw = await codeToHtml(textContent, { lang, theme: shikiTheme }).catch(() => null)
       const highlightedHtml = raw ? annotateShikiHtml(raw, null, 'all-remove') : null
       return { content: textContent, highlightedHtml, encoding: 'utf8', size: buffer.length, mimeHint }
     } catch {
@@ -623,7 +669,7 @@ export async function readFileForPreview(repoPath: string, filePath: string, sta
   }
 
   const lang = KNOWN_LANGS.has(mimeHint) ? mimeHint : 'text'
-  const raw = await codeToHtml(content, { lang, theme: 'github-dark' }).catch(() => null)
+  const raw = await codeToHtml(content, { lang, theme: shikiTheme }).catch(() => null)
 
   let highlightedHtml: string | null = raw
   let changedLines: ChangedLines | undefined

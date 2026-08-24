@@ -891,6 +891,12 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.appearance.claudeTheme.label': 'Accorder Claude Code au thème',
   'settings.appearance.claudeTheme.help':
     'Claude Code adopte les couleurs du thème choisi dans les terminaux de l’app. Les sessions déjà ouvertes se repeignent aussi. Votre Claude Code lancé depuis un vrai terminal n’est pas touché.',
+  'settings.appearance.codeTheme.label': 'Coloration du code',
+  'settings.appearance.codeTheme.help':
+    'L’apparence dans laquelle l’aperçu de fichier affiche le code. Suivre le thème convient à presque tout le monde ; fixez-en une pour lire du code sombre sur une interface claire, ou l’inverse.',
+  'settings.appearance.codeTheme.auto': 'Suit le thème',
+  'settings.appearance.codeTheme.light': 'Toujours claire',
+  'settings.appearance.codeTheme.dark': 'Toujours sombre',
   'settings.appearance.displaySection': 'Affichage',
   'settings.appearance.scale': 'Échelle de l’interface',
   'settings.appearance.scaleHelpBefore':
@@ -900,6 +906,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.appearance.zoomReset': 'Revenir à 100 %',
   'toast.themeChangeFailed': 'Impossible de changer de thème',
   'toast.claudeThemeSyncFailed': 'Impossible de changer le thème de Claude Code',
+  'toast.codeThemeFailed': 'Impossible de changer la coloration du code',
   'toast.sidebarPanelFailed': 'Impossible de modifier les panneaux des barres latérales',
 
   // ── Champs du profil utilisateur ─────────────────────────────────────────

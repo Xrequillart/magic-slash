@@ -261,6 +261,7 @@ interface AdminUserDetailRpcRow {
   theme: string | null
   language: string | null
   sync_claude_theme: boolean | null
+  code_theme: string | null
 }
 
 interface AdminOrgRpcRow {
@@ -416,6 +417,7 @@ function toUserDetail(r: AdminUserDetailRpcRow): AdminUserDetail {
       theme: r.theme,
       language: r.language,
       syncClaudeTheme: r.sync_claude_theme,
+      codeTheme: r.code_theme,
     },
   }
 }

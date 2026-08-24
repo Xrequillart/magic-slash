@@ -896,6 +896,12 @@ export const en = {
   'settings.appearance.claudeTheme.label': 'Match Claude Code to the theme',
   'settings.appearance.claudeTheme.help':
     'Claude Code takes the chosen theme’s colours in the app’s terminals, repainting sessions that are already open. Claude Code started from a real terminal is left alone.',
+  'settings.appearance.codeTheme.label': 'Syntax highlighting',
+  'settings.appearance.codeTheme.help':
+    'Which appearance the file preview paints code in. Following the theme is right for almost everyone; pin one to read dark code on a light interface, or the other way round.',
+  'settings.appearance.codeTheme.auto': 'Follows the theme',
+  'settings.appearance.codeTheme.light': 'Always light',
+  'settings.appearance.codeTheme.dark': 'Always dark',
   'settings.appearance.displaySection': 'Display',
   'settings.appearance.scale': 'Interface scale',
   // Split around the two <kbd> accelerators rendered between them.
@@ -905,6 +911,7 @@ export const en = {
   'settings.appearance.zoomReset': 'Reset to 100%',
   'toast.themeChangeFailed': 'Failed to change theme',
   'toast.claudeThemeSyncFailed': 'Failed to change the Claude Code theme',
+  'toast.codeThemeFailed': 'Failed to change the syntax highlighting',
   'toast.sidebarPanelFailed': 'Failed to change the sidebar panels',
 
   // ── User profile fields ──────────────────────────────────────────────────

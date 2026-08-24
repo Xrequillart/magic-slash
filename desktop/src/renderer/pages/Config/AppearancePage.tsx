@@ -7,7 +7,10 @@ import { SectionHeader } from './SectionHeader'
 import { ToggleRow } from './ToggleRow'
 import { THEMES, THEME_IDS, useTheme } from '../../theme'
 import { useT } from '../../i18n'
-import { DEFAULT_ZOOM, MAX_ZOOM, MIN_ZOOM, type ThemeId } from '../../../types'
+import {
+  CODE_THEME_MODES, DEFAULT_CODE_THEME_MODE, DEFAULT_ZOOM, MAX_ZOOM, MIN_ZOOM,
+  type CodeThemeMode, type ThemeId,
+} from '../../../types'
 
 /**
  * Miniature of a theme, painted with that theme's own tokens rather than the
@@ -156,19 +159,76 @@ function FormatSelect({ minimized, onChange, ariaLabel, errorMessage }: FormatSe
 }
 
 /**
- * Whether Claude Code in the terminal panes follows the app's theme.
+ * Which appearance the file preview highlights code in.
  *
- * Sits directly under the theme picker rather than in a section of its own: it
- * has no meaning apart from the theme chosen above — it says how far that choice
- * reaches — and a "Terminal" heading of its own made it read as a separate
- * subject you had to scroll past the sidebars to find.
+ * A select rather than a switch because "follow the theme" is a third state, not
+ * the off position of a toggle: pinning light and pinning dark are both real
+ * answers, and neither is "don't follow".
+ *
+ * Optimistic like every other control in Settings — the value moves first and
+ * reverts if the write fails.
  */
-function ClaudeThemeToggle() {
+function CodeThemeSelect() {
+  const { config, updateCodeTheme } = useConfig()
+  const t = useT()
+  const stored = config?.codeTheme ?? DEFAULT_CODE_THEME_MODE
+  const [value, setValue] = useState<CodeThemeMode>(stored)
+
+  useEffect(() => {
+    setValue(stored)
+  }, [stored])
+
+  const choose = async (next: CodeThemeMode) => {
+    if (next === value) return
+    const previous = value
+    setValue(next)
+    try {
+      await updateCodeTheme(next)
+    } catch (error) {
+      setValue(previous)
+      showToast(error instanceof Error ? error.message : t('toast.codeThemeFailed'), 'error')
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-6">
+      {/* Same shape as ToggleRow's own row, so the two line up inside the card. */}
+      <div className="min-w-0">
+        <div className="text-sm font-medium">{t('settings.appearance.codeTheme.label')}</div>
+        <p className="text-xs text-text-secondary/50 mt-0.5">{t('settings.appearance.codeTheme.help')}</p>
+      </div>
+      <div className="relative shrink-0">
+        <select
+          value={value}
+          onChange={(e) => choose(e.target.value as CodeThemeMode)}
+          aria-label={t('settings.appearance.codeTheme.label')}
+          className="w-40 pl-3 pr-7 py-1.5 bg-surface border border-line-field rounded-lg text-xs focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+        >
+          {CODE_THEME_MODES.map((mode) => (
+            <option key={mode} value={mode}>{t(`settings.appearance.codeTheme.${mode}`)}</option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * How far the theme chosen above reaches: Claude Code in the terminal panes, and
+ * the syntax highlighting in the file preview.
+ *
+ * One card directly under the picker rather than a section of its own. Both rows
+ * are meaningless apart from that choice — they say where it applies — and a
+ * heading of their own made them read as separate subjects you had to scroll past
+ * the sidebars to find.
+ */
+function ThemeReachSection() {
   const { config, updateSyncClaudeTheme } = useConfig()
   const t = useT()
 
   return (
-    <div className="bg-surface border border-line-strong rounded-xl p-4">
+    <div className="bg-surface border border-line-strong rounded-xl p-4 space-y-4">
       <ToggleRow
         label={t('settings.appearance.claudeTheme.label')}
         help={t('settings.appearance.claudeTheme.help')}
@@ -176,6 +236,8 @@ function ClaudeThemeToggle() {
         onChange={updateSyncClaudeTheme}
         errorMessage={t('toast.claudeThemeSyncFailed')}
       />
+      <div className="border-t border-line-subtle" />
+      <CodeThemeSelect />
     </div>
   )
 }
@@ -292,7 +354,7 @@ export function AppearancePage() {
           the theme above reaches, and read anywhere else it is a question about
           nothing. */}
       <div className="mt-3">
-        <ClaudeThemeToggle />
+        <ThemeReachSection />
       </div>
 
       <div className="mt-8">

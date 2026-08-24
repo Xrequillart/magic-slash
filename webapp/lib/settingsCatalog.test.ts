@@ -20,6 +20,7 @@ const EVERY_FIELD: (keyof AdminUserSettings)[] = [
   'theme',
   'language',
   'syncClaudeTheme',
+  'codeTheme',
   'launchMode',
   'defaultAgentType',
   'usageCardEnabled',

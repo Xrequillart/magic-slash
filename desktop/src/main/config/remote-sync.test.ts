@@ -49,6 +49,7 @@ const emptyRow = (): UserSettingsRow => ({
   theme: null,
   language: null,
   sync_claude_theme: null,
+  code_theme: null,
   default_agent_type: null,
 })
 
