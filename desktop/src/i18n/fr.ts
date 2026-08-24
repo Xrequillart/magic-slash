@@ -1488,7 +1488,11 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.binary': 'Fichier binaire',
   'filePreview.unreadable': 'Impossible de lire le fichier',
   'filePreview.changeCounter': '{current} / {total} changements',
+  'filePreview.previous': 'Précédent',
+  'filePreview.next': 'Suivant',
   'filePreview.previousChange': 'Changement précédent',
   'filePreview.nextChange': 'Changement suivant',
+  'filePreview.linesAdded': '{count} lignes ajoutées',
+  'filePreview.linesRemoved': '{count} lignes supprimées',
   'filePreview.changeRuler': 'Changements dans ce fichier',
 }

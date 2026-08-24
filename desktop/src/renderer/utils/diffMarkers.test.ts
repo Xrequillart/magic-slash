@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  blockScrollTop, currentBlockIndex, groupMarkerBlocks, jumpScrollTop, resolveBlockIndex,
+  blockScrollTop, countMarkerKinds, currentBlockIndex, groupMarkerBlocks, jumpScrollTop, resolveBlockIndex,
   rulerSegments, rulerViewport, segmentIndexAt, selectScrollTop,
   MIN_SEGMENT_PX, MIN_VIEWPORT_PX,
   type BlockKind, type MarkerBlock, type MarkerKind, type MarkerPosition, type RulerSegment, type ScrollView,
@@ -47,6 +47,23 @@ function rulerView(overrides: Partial<ScrollView> = {}): ScrollView {
 function segment(top: number, height: number, index: number): RulerSegment {
   return { top, height, kind: 'add', index }
 }
+
+describe('countMarkerKinds', () => {
+  it('counts ROWS, not the blocks they group into', () => {
+    // One block to the ruler, four lines to the reader — the summary is about the
+    // lines, which is the whole reason this is not derived from the blocks.
+    const markers = [marker(4), marker(5), marker(6, 'remove'), marker(7, 'remove')]
+    expect(countMarkerKinds(markers)).toEqual({ added: 2, removed: 2 })
+  })
+
+  it('counts a run split across the file, in whatever order it arrived', () => {
+    expect(countMarkerKinds([marker(40, 'remove'), marker(4), marker(41)])).toEqual({ added: 2, removed: 1 })
+  })
+
+  it('reports zeros for a file with nothing marked', () => {
+    expect(countMarkerKinds([])).toEqual({ added: 0, removed: 0 })
+  })
+})
 
 describe('groupMarkerBlocks', () => {
   it('turns a lone marked line into a block of its own height', () => {

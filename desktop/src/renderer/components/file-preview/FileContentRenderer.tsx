@@ -6,7 +6,7 @@ import ImageView from './ImageView'
 import BinaryPlaceholder from './BinaryPlaceholder'
 import { formatSize } from '../../utils/formatSize'
 import { useCodeAppearance } from '../../hooks/useCodeAppearance'
-import type { MarkerBlock } from '../../utils/diffMarkers'
+import type { MarkerBlock, MarkerCounts } from '../../utils/diffMarkers'
 import { useT } from '../../i18n'
 
 interface Props {
@@ -43,7 +43,7 @@ interface Props {
    * effect's dependencies: a caller that rebuilds the callback would otherwise buy a
    * fresh IPC read of bytes already on screen.
    */
-  onBlocksMeasured?: (blocks: MarkerBlock[], contextPx: number) => void
+  onBlocksMeasured?: (blocks: MarkerBlock[], contextPx: number, counts: MarkerCounts) => void
 }
 
 // `unreadable` is local to this component: the handler never returns it, it is

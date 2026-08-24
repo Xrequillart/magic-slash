@@ -1527,7 +1527,11 @@ export const en = {
   'filePreview.binary': 'Binary file',
   'filePreview.unreadable': 'Cannot read file',
   'filePreview.changeCounter': '{current} / {total} changes',
+  'filePreview.previous': 'Previous',
+  'filePreview.next': 'Next',
   'filePreview.previousChange': 'Previous change',
   'filePreview.nextChange': 'Next change',
+  'filePreview.linesAdded': '{count} lines added',
+  'filePreview.linesRemoved': '{count} lines removed',
   'filePreview.changeRuler': 'Changes in this file',
 }

@@ -81,6 +81,34 @@ export function groupMarkerBlocks(markers: MarkerPosition[], gapTolerance = 1): 
   return blocks
 }
 
+/** How many marked ROWS a document holds, per kind. */
+export interface MarkerCounts {
+  added: number
+  removed: number
+}
+
+/**
+ * Count the marked rows, per kind.
+ *
+ * Rows, deliberately, and not the blocks above: the summary in the change bar answers
+ * "how much of this file moved", and a run of eight consecutive edits is one block but
+ * eight lines. It is also the only count that agrees with what the reader can see —
+ * the `+`/`-` rails are drawn per row.
+ *
+ * `changedLines` from the IPC read is NOT a substitute, which is why this exists at
+ * all: its `removedBefore` is keyed by the line a deletion sits before, so three lines
+ * removed at one spot arrive as a single entry. The rendered rows are the truth.
+ */
+export function countMarkerKinds(markers: MarkerPosition[]): MarkerCounts {
+  let added = 0
+  let removed = 0
+  for (const marker of markers) {
+    if (marker.kind === 'remove') removed++
+    else added++
+  }
+  return { added, removed }
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }

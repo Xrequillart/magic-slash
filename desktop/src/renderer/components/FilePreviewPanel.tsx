@@ -6,7 +6,7 @@ import ChangeNavigator from './file-preview/ChangeNavigator'
 import ChangeRuler, { RULER_GUTTER } from './file-preview/ChangeRuler'
 import {
   blockScrollTop, jumpScrollTop, resolveBlockIndex, rulerSegments, rulerViewport,
-  type MarkerBlock, type ScrollView,
+  type MarkerBlock, type MarkerCounts, type ScrollView,
 } from '../utils/diffMarkers'
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; border: string }> = {
@@ -50,6 +50,9 @@ function getExtLabel(filePath: string): string {
   return EXT_LABELS[ext] ?? ext.toUpperCase()
 }
 
+/** Nothing changed — what the bar reads before a measurement, and after a reset. */
+const NO_CHANGES: MarkerCounts = { added: 0, removed: 0 }
+
 /**
  * The container's geometry, as one object.
  *
@@ -81,6 +84,8 @@ export default function FilePreviewPanel() {
   /** Where the animated step last put the container, so a scroll it did not cause is recognisable. */
   const lastStepScrollTop = useRef<number | null>(null)
   const [blocks, setBlocks] = useState<MarkerBlock[]>([])
+  /** Rows changed in the file on screen, for the summary on the left of the bar. */
+  const [counts, setCounts] = useState<MarkerCounts>(NO_CHANGES)
   const [contextPx, setContextPx] = useState(0)
   const [currentIndex, setCurrentIndex] = useState(0)
   /**
@@ -118,6 +123,7 @@ export default function FilePreviewPanel() {
     setPrevSelectedFile(selectedFile)
     if (selectedFile) setScrollSeq(n => n + 1)
     setBlocks([])
+    setCounts(NO_CHANGES)
     setContextPx(0)
     setCurrentIndex(0)
     setScrollView(null)
@@ -125,8 +131,9 @@ export default function FilePreviewPanel() {
 
   // CodeView has just anchored the view on the first change, so that is where the
   // counter starts — no measurement of our own is needed to know it.
-  const handleBlocksMeasured = useCallback((measured: MarkerBlock[], measuredContextPx: number) => {
+  const handleBlocksMeasured = useCallback((measured: MarkerBlock[], measuredContextPx: number, measuredCounts: MarkerCounts) => {
     setBlocks(measured)
+    setCounts(measuredCounts)
     setContextPx(measuredContextPx)
     setCurrentIndex(0)
     // Seed the ruler here rather than wait for a scroll event to bring the geometry in.
@@ -481,6 +488,7 @@ export default function FilePreviewPanel() {
           <ChangeNavigator
             current={currentIndex + 1}
             total={blocks.length}
+            counts={counts}
             onPrevious={goToPrevious}
             onNext={goToNext}
           />

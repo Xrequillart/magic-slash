@@ -1,5 +1,8 @@
 import { useLayoutEffect, useRef } from 'react'
-import { groupMarkerBlocks, selectScrollTop, type MarkerBlock, type MarkerPosition } from '../../utils/diffMarkers'
+import {
+  countMarkerKinds, groupMarkerBlocks, selectScrollTop,
+  type MarkerBlock, type MarkerCounts, type MarkerPosition,
+} from '../../utils/diffMarkers'
 
 interface Props {
   content: string
@@ -37,8 +40,12 @@ interface Props {
    * line number is not a rendered row index, and nothing downstream can convert one
    * into the other without measuring the document anyway. Each block carries the kind
    * of the rows it covers, which is the ruler's only other input.
+   *
+   * `counts` rides along for the change bar's summary: it comes off the same walk of
+   * the same rows, and measuring the document twice for two numbers that are equal by
+   * construction is how the two readouts would end up disagreeing.
    */
-  onBlocksMeasured?: (blocks: MarkerBlock[], contextPx: number) => void
+  onBlocksMeasured?: (blocks: MarkerBlock[], contextPx: number, counts: MarkerCounts) => void
 }
 
 /**
@@ -222,7 +229,7 @@ export default function CodeView({ content, highlightedHtml, appearance = 'dark'
     // Reported before the scroll rather than after it, and from this one grouping:
     // measuring a second time for the navigator would mean two passes over the DOM
     // for numbers that are the same by construction.
-    onBlocksMeasured?.(blocks, contextPx)
+    onBlocksMeasured?.(blocks, contextPx, countMarkerKinds(markers))
 
     // No marker is the normal case for the spec panel, which renders this component
     // with an empty status and therefore gets no `data-diff` at all: `selectScrollTop`
