@@ -6,7 +6,8 @@ import ImageView from './ImageView'
 import BinaryPlaceholder from './BinaryPlaceholder'
 import { formatSize } from '../../utils/formatSize'
 import { useCodeAppearance } from '../../hooks/useCodeAppearance'
-import type { MarkerBlock, MarkerCounts } from '../../utils/diffMarkers'
+import { evictToBudget } from '../../utils/boundedCache'
+import { createTaskQueue } from '../../utils/taskQueue'
 import { useT } from '../../i18n'
 
 interface Props {
@@ -31,19 +32,28 @@ interface Props {
    */
   notFoundLabel?: string
   /**
-   * Forwarded to CodeView, where every bump re-anchors the view on the file's first
-   * change. Nothing here reads it, and nothing here should: it must NOT join the
-   * read effect's dependencies, or re-clicking an open file would pay for a fresh
-   * IPC read to arrive at the bytes already on screen.
+   * How much room to hold open while this file is still being read, in pixels.
+   *
+   * For ONE caller and one reason: a review card has to keep its place in the stack
+   * before its bytes arrive. Cards are read a few at a time, so a file near the top of
+   * the review can resolve after one below it — and every card that lands without a
+   * reservation pushes the cards under it down, which moves the anchor the panel
+   * scrolled to and invalidates every offset it measured. Worse, the panel reads a
+   * scroll position it did not write as the reader taking over, so it stops re-anchoring
+   * altogether and the review settles wherever the last file happened to land.
+   *
+   * Taken as a NUMBER coming down rather than a `loading` flag going up. The component
+   * that knows the read is still in flight is this one — it is drawing the placeholder —
+   * so telling the parent so it could size a wrapper meant a callback, an effect to fire
+   * it out of the render path, and a second copy of `loading` in the card. A `minHeight`
+   * on the skeleton says the same thing with none of that, and it clears itself: the
+   * skeleton unmounts when the content lands, so a file shorter than the estimate leaves
+   * no blank space behind.
+   *
+   * Omitted — the spec panel's case — nothing is reserved and the skeleton is whatever
+   * height its own lines make it.
    */
-  scrollSeq?: number
-  /**
-   * Forwarded to CodeView, which calls it with the changed blocks it just measured.
-   * Nothing here reads it either, and like `scrollSeq` it must NOT join the read
-   * effect's dependencies: a caller that rebuilds the callback would otherwise buy a
-   * fresh IPC read of bytes already on screen.
-   */
-  onBlocksMeasured?: (blocks: MarkerBlock[], contextPx: number, counts: MarkerCounts) => void
+  reservedHeight?: number
   /**
    * Show the file end to end instead of just its changed regions. Default — false —
    * is the changes-only view, which is what a modified file opens as.
@@ -80,11 +90,61 @@ const MARKDOWN_EXTS = new Set(['md', 'markdown'])
  * follow state gets reset), so without a cache every return paid for a full IPC
  * read plus a shiki highlight before showing a single character.
  *
- * Bounded, because entries hold whole file contents: the oldest key is dropped past
- * MAX_CACHED. Insertion order is Map's own, so the first key is the oldest.
+ * Bounded by SIZE, not by a count of entries. Counting entries was the wrong unit by
+ * orders of magnitude: one entry holds a file's whole content plus up to two highlighted
+ * renderings of it, each capped at 10 MB on its own, so "ten entries" was anywhere
+ * between a few kilobytes and a few hundred megabytes with nothing to say which. The
+ * review drawer is what made that concrete — it reads every changed file of a repository
+ * at once, so the cache now fills in one go instead of a file at a time.
+ *
+ * Insertion order is Map's own and `remember` deletes before setting, so the front of
+ * the map is always the least recently used.
  */
-const MAX_CACHED = 10
 const readCache = new Map<string, FileResult>()
+
+/**
+ * The cache's budget, in JavaScript string units — so roughly twice this many bytes of
+ * memory, since strings are UTF-16.
+ *
+ * Sized to hold an ordinary review of a couple of dozen source files comfortably while
+ * refusing to sit on hundreds of megabytes because someone once opened a generated
+ * bundle. It is a cache: the cost of being wrong is one re-read.
+ */
+const MAX_CACHED_CHARS = 8_000_000
+
+/**
+ * How much of the budget one entry uses.
+ *
+ * An ERROR measures zero, deliberately — errors are never cached anyway (see the read
+ * below), and giving the failure path a size would be a rule nothing exercises. A binary
+ * entry carries no content at all, only a size and a mime hint.
+ */
+function cacheEntryChars(value: FileResult): number {
+  if ('error' in value) return 0
+  const content = typeof value.content === 'string' ? value.content.length : 0
+  if (value.encoding !== 'utf8') return content
+  return content + (value.highlightedHtml?.length ?? 0) + (value.changesOnlyHtml?.length ?? 0)
+}
+
+/**
+ * How many files may be read at once.
+ *
+ * `config:readFile` runs `git diff HEAD -- <file>` SYNCHRONOUSLY in the main process, so
+ * a review of forty files mounting together would put forty read messages in that
+ * process's queue at once — ahead of every PTY data message behind them. The reads are
+ * serialised by the main process either way; what floods is the QUEUE, and the symptom
+ * is every terminal in the app freezing for the length of the whole batch rather than
+ * for one read. Holding the tail here means at most three are ever waiting over there,
+ * so anything else that needs the main loop gets it in between.
+ *
+ * Three rather than one because the highlighting and the IPC round trip are real time
+ * that a single-file queue would spend idle, and the first screenful of a review should
+ * not arrive one file at a time.
+ *
+ * Module scope: the gate is shared by every mounted renderer, which is the only place it
+ * could possibly work — a per-component queue would be forty queues of three.
+ */
+const readQueue = createTaskQueue(3)
 
 /**
  * `appearance` is part of the key, not an afterthought: the highlighted HTML comes
@@ -98,18 +158,26 @@ function cacheKeyFor(repoPath: string, filePath: string, status: string, appeara
 }
 
 function remember(key: string, value: FileResult) {
+  // Delete before set, so a re-read moves the key to the BACK of the map. That is what
+  // makes insertion order an LRU order, which is what `evictToBudget` walks.
   readCache.delete(key)
   readCache.set(key, value)
-  if (readCache.size > MAX_CACHED) {
-    const oldest = readCache.keys().next().value
-    if (oldest !== undefined) readCache.delete(oldest)
-  }
+  evictToBudget(readCache, cacheEntryChars, MAX_CACHED_CHARS)
 }
 
-/** Pulsing lines standing in for the document, rather than a bare "Loading…". */
-function ContentSkeleton() {
+/**
+ * Pulsing lines standing in for the document, rather than a bare "Loading…".
+ *
+ * `reservedHeight` is a `minHeight` rather than a height: the lines below still draw at
+ * their own size, and the reservation only stops the card from collapsing to them.
+ */
+function ContentSkeleton({ reservedHeight }: { reservedHeight?: number }) {
   return (
-    <div className="px-5 py-4 space-y-2.5 animate-pulse" aria-hidden="true">
+    <div
+      className="px-5 py-4 space-y-2.5 animate-pulse"
+      aria-hidden="true"
+      style={reservedHeight ? { minHeight: reservedHeight } : undefined}
+    >
       {['w-2/5', 'w-full', 'w-11/12', 'w-4/5', 'w-1/3', 'w-full', 'w-3/4'].map((w, i) => (
         <div key={i} className={`h-3 rounded bg-ink/10 ${w}`} />
       ))}
@@ -123,7 +191,7 @@ function changesOnlyOf(result: FileResult | null): string | undefined {
   return result.changesOnlyHtml
 }
 
-function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, scrollSeq, showWholeFile = false, onBlocksMeasured, onCollapsibleChange }: Props) {
+function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, reservedHeight, showWholeFile = false, onCollapsibleChange }: Props) {
   const t = useT()
   const { appearance, blend } = useCodeAppearance()
   const key = cacheKeyFor(repoPath, filePath, status, appearance)
@@ -145,11 +213,19 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
 
   useEffect(() => {
     let cancelled = false
-    window.electronAPI.config.readFile(repoPath, filePath, status)
+    readQueue
+      .run<FileResult | null>(() => {
+        // Checked again HERE, on the way out of the queue, not only in `.then` below.
+        // A card whose drawer closed while it waited its turn has nothing to render,
+        // and the read it would have run is a synchronous `git diff` in the main
+        // process — the one cost worth skipping rather than discarding afterwards.
+        if (cancelled) return Promise.resolve(null)
+        return window.electronAPI.config.readFile(repoPath, filePath, status)
+      })
       // Identical bytes keep the previous object, so a refresh that found no change
       // does not re-run the markdown parse over the whole document.
-      .then((res: FileResult) => {
-        if (cancelled) return
+      .then((res: FileResult | null) => {
+        if (cancelled || res === null) return
         remember(key, res)
         setResult(prev => (prev && 'content' in prev && 'content' in res && prev.content === res.content ? prev : res))
       })
@@ -172,7 +248,7 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
     onCollapsibleChange?.(changesOnlyHtml !== undefined)
   }, [changesOnlyHtml, onCollapsibleChange])
 
-  if (loading) return <ContentSkeleton />
+  if (loading) return <ContentSkeleton reservedHeight={reservedHeight} />
 
   if (!result) return null
 
@@ -221,8 +297,6 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
       highlightedHtml={showWholeFile ? result.highlightedHtml : (changesOnlyHtml ?? result.highlightedHtml)}
       appearance={appearance}
       blend={blend}
-      scrollSeq={scrollSeq}
-      onBlocksMeasured={onBlocksMeasured}
     />
   )
 }
@@ -231,14 +305,22 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
  * Memoised, because the file-preview panel now re-renders on every scroll event to
  * move the ruler's viewport indicator.
  *
- * Every prop is stable across a scroll — the path and status come from the
- * selected file, `scrollSeq` only moves on a click, and `onBlocksMeasured` has an empty
- * dependency list — so the shallow comparison holds and the whole subtree, shiki HTML
- * and all, is skipped. The code appearance is read from a hook rather than taken as a
- * prop, which memoisation does not block: a theme change re-renders this component and
- * re-reads the file, exactly as it should. Without it a scroll would re-render CodeView sixty times a
- * second for a document that has not changed a byte. Nothing here writes `scrollTop`
- * from the render path, so there is no loop to guard against either way; this is purely
- * about not paying for the redraw.
+ * EVERY prop must be referentially stable across a scroll, and the review drawer is
+ * where that stopped being a nicety. The panel re-renders on every scroll event to move
+ * the ruler's viewport indicator, and it now has N of these mounted at once: one
+ * unstable callback would re-render N shiki documents sixty times a second.
+ *
+ * What makes that hold is that nothing unstable is passed: `reservedHeight` is a number,
+ * and the one callback left is a state SETTER — a review card passes `setCanExpand`
+ * straight through, and React guarantees that identity for the life of the component,
+ * rather than wrapping it in a `useCallback` whose dependency list someone could later
+ * widen. `onBlocksMeasured` used to be the awkward one; it is gone entirely, because the
+ * panel now measures every card in one sweep of its own instead of being told by each of
+ * them.
+ *
+ * The code appearance is read from a hook rather than taken as a prop, which memoisation
+ * does not block: a theme change re-renders this component and re-reads the file,
+ * exactly as it should. Nothing here writes `scrollTop` from the render path, so there
+ * is no loop to guard against either way; this is purely about not paying for the redraw.
  */
 export default memo(FileContentRenderer)

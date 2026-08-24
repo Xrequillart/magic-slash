@@ -1,13 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store'
 import FileContentRenderer from './file-preview/FileContentRenderer'
 import FileHeader, { statusConfigFor } from './file-preview/FileHeader'
+import FileReviewCard from './file-preview/FileReviewCard'
+import ReviewHeader from './file-preview/ReviewHeader'
 import ChangeNavigator from './file-preview/ChangeNavigator'
 import ChangeRuler, { RULER_GUTTER } from './file-preview/ChangeRuler'
 import {
-  blockScrollTop, jumpScrollTop, resolveBlockIndex, rulerSegments, rulerViewport,
-  type MarkerBlock, type MarkerCounts, type ScrollView,
+  blockScrollTop, countMarkerKinds, currentBlockIndex, jumpScrollTop, resolveBlockIndex,
+  rulerSegments, rulerViewport, selectScrollTop,
+  type MarkerPosition, type ScrollView,
 } from '../utils/diffMarkers'
+import {
+  anchorScrollTop, buildReviewLayout, mergeRulerSegments, sumChangedFiles,
+  EMPTY_REVIEW_LAYOUT, type FileMarkers, type ReviewLayout,
+} from '../utils/reviewLayout'
+import { cumulativeOffsetTop, findScrollContainer } from '../utils/scrollGeometry'
+import { useT } from '../i18n'
 
 /**
  * How long a step between two changes takes.
@@ -19,27 +28,45 @@ import {
 const SCROLL_MS = 180
 
 /**
- * How far the container may sit from the position the step last wrote and still be
+ * How far the container may sit from the position the panel last wrote and still be
  * considered untouched.
  *
  * Not zero: `scrollTop` is snapped to a device pixel on write, so the value read back
  * on a fractional-DPR display is a hair off the one asked for. One pixel is below what
  * any real scroll input produces and above that rounding.
+ *
+ * Used by two things now — the animated step, and the anchor below, which has to know
+ * whether the reader has taken the scroll over since it last positioned the review.
  */
 const SCROLL_TAKEOVER_PX = 1
 
+/** Lines of unchanged code kept above a change, so it reads in context. */
+const CONTEXT_LINES = 3
+
+/** Only used if the first marked row measures zero, which layout should never give. */
+const FALLBACK_LINE_HEIGHT = 18
+
+/**
+ * How much of the card above the anchor stays visible.
+ *
+ * Equal to the gap between cards, so the anchored card lands where a card sits in the
+ * list rather than flush against the top of the view — which is what makes the position
+ * read as "here, in a stack" instead of as the top of a document.
+ */
+const ANCHOR_MARGIN_PX = 12
+
 /** Nothing changed — what the bar reads before a measurement, and after a reset. */
-const NO_CHANGES: MarkerCounts = { added: 0, removed: 0 }
+const NO_CHANGES = { added: 0, removed: 0 }
 
 /**
  * The container's geometry, as one object.
  *
  * A plain function taking `contextPx` rather than a closure over it: this is read both
- * from `handleBlocksMeasured`, which has the freshly measured value in hand and no
+ * from the measurement sweep, which has the freshly measured value in hand and no
  * business waiting a render for state to catch up, and from the hook below, which has
  * the one in state. A captured `contextPx` could only ever serve the second.
  */
-function readScrollView(container: HTMLDivElement, contextPx: number): ScrollView {
+function readScrollView(container: HTMLElement, contextPx: number): ScrollView {
   return {
     viewportHeight: container.clientHeight,
     contentHeight: container.scrollHeight,
@@ -48,7 +75,55 @@ function readScrollView(container: HTMLDivElement, contextPx: number): ScrollVie
   }
 }
 
+/**
+ * `annotateShikiHtml` only ever writes "add" or "remove", and the row selector already
+ * excluded rows with no attribute at all; anything else is a row this version does not
+ * know, and colouring it as an addition beats dropping it.
+ */
+function kindOf(line: HTMLElement): MarkerPosition['kind'] {
+  return line.dataset.diff === 'remove' ? 'remove' : 'add'
+}
+
+/**
+ * Where to put the container so the anchored card sits at the top of the view, or
+ * `null` when there is no card to go to.
+ *
+ * The card is found by the same `data-file-index` the measurement groups rows by, so
+ * "the file the ruler's marks belong to" and "the file the review scrolled to" are the
+ * same identifier read twice — they cannot drift apart.
+ *
+ * An anchor path the frozen list does not hold falls back to the first card rather than
+ * to nothing. That is not defensive padding: `validation.ts` reports a RENAME as the
+ * literal path `"old -> new"`, so a review can legitimately be handed an anchor that
+ * matches no entry. Opening at the top of the repository is a worse answer than opening
+ * on the right file and a better one than an empty drawer.
+ */
+function anchorTargetFor(content: HTMLElement, containerTop: number, anchorIndex: number, view: ScrollView): number | null {
+  const card = content.querySelector<HTMLElement>(`[data-file-index="${anchorIndex >= 0 ? anchorIndex : 0}"]`)
+  if (!card) return null
+  return anchorScrollTop(cumulativeOffsetTop(card) - containerTop, view, ANCHOR_MARGIN_PX)
+}
+
+/**
+ * The drawer, in its two shapes.
+ *
+ * A REPOSITORY REVIEW is the ordinary one: every changed file of a repository stacked as
+ * collapsible cards in one scroll, anchored on the file the reader clicked. There is no
+ * per-file mode beside it and no toggle between the two — clicking a file in the sidebar
+ * opens the repository, and the file it names decides only where the scroll lands.
+ *
+ * A SINGLE FILE is what is left of the surface this component used to be, and it now has
+ * exactly one caller: the spec panel, which opens a file that is not a git change at all
+ * (`status: ''`, and a `repoPath` that is a directory rather than a repository root). It
+ * gets no badge, no rail, no ruler and no navigator, because with no status there are no
+ * `data-diff` rows to measure — which is the same rule as ever, arrived at by the same
+ * route.
+ *
+ * Mounted once, globally, and driven purely by store state; it takes no props.
+ */
 export default function FilePreviewPanel() {
+  const t = useT()
+  const review = useStore(s => s.review)
   const selectedFile = useStore(s => s.selectedFile)
   const closeFilePreview = useStore(s => s.closeFilePreview)
   const activeTerminalId = useStore(s => s.activeTerminalId)
@@ -56,25 +131,68 @@ export default function FilePreviewPanel() {
   const [isClosing, setIsClosing] = useState(false)
   const isClosingRef = useRef(false)
   const [prevSelectedFile, setPrevSelectedFile] = useState(selectedFile)
+  const [prevReviewRepo, setPrevReviewRepo] = useState<string | null>(review?.repoPath ?? null)
+  const [prevAnchorSeq, setPrevAnchorSeq] = useState(review?.anchorSeq ?? 0)
   const [scrollSeq, setScrollSeq] = useState(0)
   /**
-   * Whether the card is showing the file end to end. False — the changed regions
-   * alone — is what every file opens as, because a preview is opened to read a
-   * change and the rest of the file is what buries it.
+   * Whether the SINGLE-FILE card is showing the file end to end.
+   *
+   * Panel state only for that one mode. In a review it is per CARD — the mode is a way
+   * of reading one file, and a single toggle up here would claim to speak for forty.
    */
   const [showWholeFile, setShowWholeFile] = useState(false)
   const [prevShowWholeFile, setPrevShowWholeFile] = useState(false)
-  /** Whether the file on screen HAS two views to switch between. Reported by the renderer. */
+  /** Whether the single file on screen HAS two views to switch between. Per card in a review. */
   const [canExpand, setCanExpand] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  /**
+   * The element that WRAPS the content, as opposed to the one that scrolls it.
+   *
+   * The two are different boxes and the difference is the point, twice over.
+   *
+   * For the resize observer: collapsing a card does not change the scroller's height by
+   * a pixel, while it moves every offset below it. Watching the scroller — which is all
+   * this component used to do — would miss every content change there is and catch only
+   * window resizes.
+   *
+   * For the measurement: `findScrollContainer` walks up from the element it is GIVEN,
+   * starting at that element's parent. Handed the scroller itself it would look for a
+   * scrollable ancestor ABOVE the scroller, find none, and report every review as having
+   * nothing to scroll. So the sweep is always given something strictly inside the
+   * scroller, which is why this wrapper is rendered in both modes even though only the
+   * review needs it for layout.
+   */
+  const contentRef = useRef<HTMLDivElement>(null)
   const scrollAnimationRef = useRef<number | null>(null)
   /** Where the animated step last put the container, so a scroll it did not cause is recognisable. */
   const lastStepScrollTop = useRef<number | null>(null)
-  const [blocks, setBlocks] = useState<MarkerBlock[]>([])
-  /** Rows changed in the file on screen, for the summary on the left of the bar. */
-  const [counts, setCounts] = useState<MarkerCounts>(NO_CHANGES)
+  /**
+   * What the anchor last wrote, and for which `scrollSeq`.
+   *
+   * The review re-anchors on every content change — cards land at their own pace, and
+   * each one that grows moves the card the reader asked for — but it has to stop the
+   * moment the reader scrolls, or reading the fifth file would be interrupted by the
+   * fortieth finishing its read. Comparing the container against the position the
+   * anchor itself last wrote is what tells those two apart, exactly as the animated
+   * step does a few functions down.
+   */
+  const anchorRef = useRef<{ seq: number; lastTop: number | null }>({ seq: -1, lastTop: null })
+  /**
+   * Every change in the repository, flattened.
+   *
+   * One list, in document order, with no notion of a file boundary in it — which is why
+   * previous/next crossing from one file to the next needed nothing built for it.
+   */
+  const [layout, setLayout] = useState<ReviewLayout>(EMPTY_REVIEW_LAYOUT)
   const [contextPx, setContextPx] = useState(0)
   const [currentIndex, setCurrentIndex] = useState(0)
+  /**
+   * Bumped whenever the content or the viewport is resized, to re-run the sweep below.
+   *
+   * A counter rather than the measurement itself: the observer fires from outside React
+   * and its job is only to say "the numbers you have are stale", not to produce new ones.
+   */
+  const [contentVersion, setContentVersion] = useState(0)
   /**
    * The container's geometry, in state rather than read at paint time.
    *
@@ -83,47 +201,39 @@ export default function FilePreviewPanel() {
    * anything. Null until the first measurement, which is also "no ruler yet".
    */
   const [scrollView, setScrollView] = useState<ScrollView | null>(null)
-  /**
-   * Whether there is a ruler at all — see the `ruler` object below for what the
-   * condition means. Named here because the resize observer has to gate on it too, and
-   * a condition spelled twice is a condition that gets edited once.
-   */
-  const hasBlocks = blocks.length > 0
 
-  // Every selection — including re-clicking the file already on screen — is a fresh
-  // object from `setSelectedFile`, so this fires on each one. That is the whole
-  // point of it: on a re-click the path, the status and the cached content are all
-  // unchanged, nothing below re-reads anything, and this is the only signal left to
-  // tell CodeView to take the reader back to the first change after they have
-  // scrolled away from it. Bumped inline during render rather than from an effect —
-  // `selectedFile` already carries a fresh identity per click, so comparing it
-  // against the previous render is enough; React applies the state update before
-  // committing, with no extra effect-and-re-render round trip.
-  //
-  // Clearing the navigator and the ruler belongs here for a second reason on top of
-  // that one: it has to happen BEFORE the new file's CodeView reports its blocks, and a
-  // `useEffect` cannot. CodeView measures in a LAYOUT effect, which runs ahead of
-  // this component's passive effects, and FileContentRenderer seeds its state from
-  // `readCache` — so a file already read mounts CodeView in the very same commit, and
-  // a reset landing afterwards would blank a card that had just been measured.
-  //
-  // Toggling between the changed regions and the whole file goes through the very
-  // same reset, for the very same reason: it replaces the document CodeView measured
-  // — every row below the first elision moves — so the blocks, the counter and the
-  // ruler's geometry all describe a layout that no longer exists. Bumping `scrollSeq`
-  // with them re-anchors the view on the FIRST change — `selectScrollTop` anchors on
-  // `blocks[0]` and knows nothing of where the reader was — which is the point: the
-  // expanded document is a different one, and landing at the top of a 900-line file
-  // would be worse. Expanding while reading the fifth hunk does go back to the first.
+  const blocks = layout.blocks
+  const hasBlocks = blocks.length > 0
+  const isOpen = review !== null || selectedFile !== null
+
+  /**
+   * Clear everything the last measurement produced.
+   *
+   * Called from the render path, not from an effect, and that is deliberate: it has to
+   * happen BEFORE the new content's rows are measured, and a `useEffect` cannot. Cards
+   * seed their state from `readCache`, so a file already read mounts its CodeView in the
+   * very same commit — and a reset landing afterwards would blank a review that had just
+   * been measured.
+   */
   const resetGeometry = () => {
-    setBlocks([])
-    setCounts(NO_CHANGES)
+    setLayout(EMPTY_REVIEW_LAYOUT)
     setContextPx(0)
     setCurrentIndex(0)
     setScrollView(null)
   }
 
+  // ── What changed since the last render, and how much of the state it invalidates ──
+  //
+  // Three different answers, where there used to be one. The old panel reset everything
+  // whenever `selectedFile` changed identity, because everything it knew described one
+  // file. A review is not one document, so the reset is now scoped to what actually
+  // moved.
+  const reviewRepo = review?.repoPath ?? null
+  const anchorSeq = review?.anchorSeq ?? 0
+
   if (selectedFile !== prevSelectedFile) {
+    // A different single file — in practice, the spec panel opening or closing its
+    // preview. Full reset: it is a different document.
     setPrevSelectedFile(selectedFile)
     if (selectedFile) setScrollSeq(n => n + 1)
     // Back to the changed regions on every file: the mode is a way of reading THIS
@@ -133,40 +243,41 @@ export default function FilePreviewPanel() {
     setPrevShowWholeFile(false)
     setCanExpand(false)
     resetGeometry()
-  } else if (showWholeFile !== prevShowWholeFile) {
+  } else if (!review && showWholeFile !== prevShowWholeFile) {
+    // The single-file toggle replaced the document that was measured — every row below
+    // the first elision moved — so the blocks and the ruler's geometry describe a layout
+    // that no longer exists. In a REVIEW this branch never fires: the toggle is per card
+    // there, and a card growing is a content-height change like any other, which the
+    // observer below already catches without throwing the other cards' offsets away.
     setPrevShowWholeFile(showWholeFile)
     setScrollSeq(n => n + 1)
     resetGeometry()
   }
 
-  // CodeView has just anchored the view on the first change, so that is where the
-  // counter starts — no measurement of our own is needed to know it.
-  const handleBlocksMeasured = useCallback((measured: MarkerBlock[], measuredContextPx: number, measuredCounts: MarkerCounts) => {
-    setBlocks(measured)
-    setCounts(measuredCounts)
-    setContextPx(measuredContextPx)
-    setCurrentIndex(0)
-    // Seed the ruler here rather than wait for a scroll event to bring the geometry in.
-    // CodeView reports the blocks BEFORE it performs its anchor scroll, and when
-    // `selectScrollTop` answers null there is no scroll at all and therefore no event
-    // to correct a missing read — the band would stay unrendered on every file that
-    // opens already showing its first change. Where the scroll DOES happen, the event
-    // it fires replaces this read a frame later, so the stale `scrollTop` here never
-    // reaches the screen. `measuredContextPx` is passed explicitly because the value in
-    // state is still the 0 that predates the measurement being reported right now.
-    const container = scrollRef.current
-    setScrollView(container ? readScrollView(container, measuredContextPx) : null)
-  }, [])
+  if (reviewRepo !== prevReviewRepo) {
+    // A different repository: different cards, different everything.
+    setPrevReviewRepo(reviewRepo)
+    setPrevAnchorSeq(anchorSeq)
+    if (reviewRepo) setScrollSeq(n => n + 1)
+    resetGeometry()
+  } else if (anchorSeq !== prevAnchorSeq) {
+    // The SAME repository, another file — or the same file clicked again. Scroll only.
+    // The cards on screen are the same cards, every offset measured under them still
+    // holds, and clearing the ruler here would blank it for a frame on a click that
+    // moved nothing but the scroll position.
+    setPrevAnchorSeq(anchorSeq)
+    setScrollSeq(n => n + 1)
+  }
 
   /**
-   * The container as it is RIGHT NOW. Never the heights CodeView measured at mount:
-   * a `contentHeight` from before the last highlight would put the end-of-travel
+   * The container as it is RIGHT NOW. Never the heights measured at mount: a
+   * `contentHeight` from before the last card landed would put the end-of-travel
    * comparison off, and that comparison is what makes the last changes reachable.
-   * `contextPx` is the one number that legitimately comes from the measurement —
-   * it is a row height, and rows do not change under the reader.
+   * `contextPx` is the one number that legitimately comes from the measurement — it is
+   * a row height, and rows do not change under the reader.
    */
   const readView = useCallback(
-    (container: HTMLDivElement): ScrollView => readScrollView(container, contextPx),
+    (container: HTMLElement): ScrollView => readScrollView(container, contextPx),
     [contextPx],
   )
 
@@ -176,6 +287,177 @@ export default function FilePreviewPanel() {
     cancelAnimationFrame(scrollAnimationRef.current)
     scrollAnimationRef.current = null
   }, [])
+
+  /**
+   * ONE measurement pass over the whole review, from the panel.
+   *
+   * This replaces the per-file measurement CodeView used to do, and the reason is not
+   * tidiness. With N cards, N copies of that effect would each resolve the same scroller
+   * and each write `scrollTop` into it in the same commit — the reader would land
+   * wherever the last card to mount decided. Grouping rows by file is also something no
+   * single card can do, and stable per-card callbacks would have had to be threaded
+   * through a memoised component for every one of them.
+   *
+   * A LAYOUT effect, before paint, for two reasons that both matter. React runs a
+   * child's layout effects before its parent's, so every card's elision labels are
+   * already written and every row is already at its final height by the time this runs —
+   * that ordering is what lets the panel measure the cards without asking them anything.
+   * And the reader must never see the top of the review and then a jump away from it.
+   *
+   * It re-runs on every content-height change, not only on open, because a review is not
+   * finished when it mounts: cards arrive as their reads come back, and each one that
+   * lands moves every offset below it.
+   */
+  useLayoutEffect(() => {
+    // Always the wrapper INSIDE the scroller, never the scroller itself — see
+    // `contentRef` above for why handing this one the scroller would answer "nothing to
+    // scroll" for every review there is.
+    const content = contentRef.current
+    if (!content) return
+
+    const rows = [...content.querySelectorAll<HTMLElement>('.line[data-diff]')]
+
+    // Resolved from the DOM rather than assumed to be `scrollRef`, because the answer
+    // carries a second meaning: no scrollable ancestor means no scrollable overflow, so
+    // every change is already on screen. The COUNTS are still worth reporting — the
+    // navigator stands on them alone and drops its arrows below two blocks — but the
+    // BLOCKS are not. Reporting them would put up arrows that move nothing
+    // (`blockScrollTop` clamps every one to 0), leaving a counter walking 1 → 2 → 3 over
+    // a view that never changes, and a ruler with nowhere to send anyone.
+    const container = findScrollContainer(content)
+    if (!container) {
+      // `EMPTY_REVIEW_LAYOUT` for the common case, rather than a fresh object every
+      // pass: with no row there is nothing to count either, and a new identity here
+      // would re-render the panel on every resize of a preview that has no ruler.
+      setLayout(rows.length === 0
+        ? EMPTY_REVIEW_LAYOUT
+        : { blocks: [], counts: countMarkerKinds(rows.map(line => ({ kind: kindOf(line) }))) })
+      setContextPx(0)
+      setCurrentIndex(0)
+      setScrollView(null)
+      return
+    }
+
+    const containerTop = cumulativeOffsetTop(container)
+
+    // Grouped by the card each row sits in, which is the whole of what the cards are
+    // asked to provide: a `data-file-index` on their outer element. Rows outside any
+    // card — single-file mode — all belong to file 0.
+    const byFile = new Map<number, MarkerPosition[]>()
+    for (const line of rows) {
+      const card = line.closest<HTMLElement>('[data-file-index]')
+      const fileIndex = card ? Number(card.dataset.fileIndex) : 0
+      const marker: MarkerPosition = {
+        // Layout offsets, never `getBoundingClientRect`: this runs while the drawer is
+        // midway through its slide-in, and a rect would be displaced by however far it
+        // has slid — by a DIFFERENT amount for the cards measured early and the ones
+        // measured late.
+        top: cumulativeOffsetTop(line) - containerTop,
+        height: line.offsetHeight,
+        kind: kindOf(line),
+      }
+      const markers = byFile.get(fileIndex)
+      if (markers) markers.push(marker)
+      else byFile.set(fileIndex, [marker])
+    }
+
+    const files: FileMarkers[] = [...byFile].map(([fileIndex, markers]) => ({ fileIndex, markers }))
+    const measured = buildReviewLayout(files)
+    // The context margin, plus whatever a card's sticky header covers.
+    //
+    // `contextPx` is "how far below the top of the view a change should land", and
+    // every consumer of it in `diffMarkers` reads it that way — `blockScrollTop`
+    // subtracts it, `currentBlockIndex` adds it to find the anchor line, and the two
+    // are self-consistent BECAUSE they read the same number. Folding the header into it
+    // here therefore moves both together and needs no change to that module.
+    //
+    // Measured rather than assumed: the bar is two lines of text on a padding, so its
+    // height follows the theme's type scale. Read from any card, since `truncate` keeps
+    // every header on exactly one line each. Zero in single-file mode, which has no
+    // cards and no sticky anything.
+    const stickyHeaderPx = content.querySelector<HTMLElement>('[data-card-header]')?.offsetHeight ?? 0
+    const measuredContextPx = CONTEXT_LINES * (rows[0]?.offsetHeight || FALLBACK_LINE_HEIGHT) + stickyHeaderPx
+
+    // ── Anchor ──
+    //
+    // A fresh `scrollSeq` is a fresh anchor: the reader has just asked for a file, so
+    // whatever they had scrolled to before stops counting.
+    if (anchorRef.current.seq !== scrollSeq) anchorRef.current = { seq: scrollSeq, lastTop: null }
+
+    const view = readScrollView(container, measuredContextPx)
+    const lastAnchored = anchorRef.current.lastTop
+    // Anything other than where the anchor last left the container was put there by the
+    // reader — a wheel, a drag, an arrow key, the navigator's own animated step. The
+    // position covers all of them at once, which is why this is not a list of events.
+    const readerTookOver = lastAnchored !== null && Math.abs(container.scrollTop - lastAnchored) > SCROLL_TAKEOVER_PX
+
+    if (!readerTookOver) {
+      const target = review
+        ? anchorTargetFor(content, containerTop, review.files.findIndex(f => f.path === review.anchorPath), view)
+        // Single-file mode keeps the rule it always had: go to the first change, or
+        // leave the scroll alone. With no `data-diff` row — the spec preview's case —
+        // `selectScrollTop` answers null and that panel's own scrolling is untouched.
+        : selectScrollTop(measured.blocks, view)
+
+      if (target !== null) {
+        // Written directly rather than animated: this is not a step the reader asked
+        // for, it is the view being kept on the file they already chose while the cards
+        // around it settle. An animation here would fight the next card that lands.
+        stopScrollAnimation()
+        container.scrollTop = target
+        // Read back rather than trusting what was assigned: the browser snaps
+        // `scrollTop` to a device pixel, and the snapped value is what the comparison
+        // above will see next time.
+        anchorRef.current.lastTop = container.scrollTop
+      }
+    }
+
+    // Read AFTER the anchor, so the ruler is drawn to where the view actually ended up
+    // rather than to where it was a moment before.
+    const settled = readScrollView(container, measuredContextPx)
+    setLayout(measured)
+    setContextPx(measuredContextPx)
+    setScrollView(settled)
+    // Resolved from the position rather than reset to 0. The old panel could assume the
+    // first change, because it had just scrolled onto it; a review anchored on the
+    // twelfth file opens somewhere in the middle of its own list.
+    setCurrentIndex(Math.max(0, currentBlockIndex(measured.blocks, settled)))
+    // `review` is in the dependencies for its `files` and `anchorPath`; its identity only
+    // changes when one of those does. `t` is deliberately absent — the panel writes no
+    // text into the document, and a language change that alters a label's height reaches
+    // here through the resize observer like any other content change.
+  }, [scrollSeq, contentVersion, review, selectedFile, stopScrollAnimation])
+
+  /**
+   * Re-measure when the CONTENT is resized, and when the viewport is.
+   *
+   * Two different reasons, one observer. Content: cards arrive as their reads come back
+   * and fold shut when the reader asks, and both move every offset below them — this is
+   * what makes the review settle correctly instead of freezing on the geometry it had
+   * when the first card happened to land. Viewport: the band is drawn to the geometry of
+   * the last measurement, and a resize changes that geometry without producing a scroll
+   * event, so the segments and the indicator would keep a scale they no longer have —
+   * and `segmentIndexAt` hit-tests against those same offsets, so a click would resolve
+   * to the wrong block or to none.
+   *
+   * Observing the scroller rather than listening for `resize` on the window is what
+   * catches the rest of the viewport cases — the drawer is 70% of the window, but the
+   * sidebar collapsing or a devtools split resizes it with the window itself untouched.
+   *
+   * The observer fires once on `observe()`, which costs one redundant pass and is left
+   * in: the alternative is a first-callback flag to skip a measurement that is correct
+   * anyway.
+   */
+  useEffect(() => {
+    const scroller = scrollRef.current
+    const content = contentRef.current
+    if (!scroller || !content || typeof ResizeObserver === 'undefined') return
+
+    const observer = new ResizeObserver(() => setContentVersion(v => v + 1))
+    observer.observe(content)
+    observer.observe(scroller)
+    return () => observer.disconnect()
+  }, [review, selectedFile])
 
   const handleScroll = useCallback(() => {
     const container = scrollRef.current
@@ -230,7 +512,7 @@ export default function FilePreviewPanel() {
    * Travel to `target` over a fixed short duration, rather than teleporting.
    *
    * Fixed, and not `scrollTo({ behavior: 'smooth' })`, for two reasons. The native
-   * duration scales with the distance — a jump across a long file takes half a second
+   * duration scales with the distance — a jump across a long review takes half a second
    * and stops feeling like a step — and it ends without telling anyone, while the
    * counter below needs to know exactly when the travel is over.
    *
@@ -274,6 +556,13 @@ export default function FilePreviewPanel() {
     scrollAnimationRef.current = requestAnimationFrame(step)
   }, [stopScrollAnimation])
 
+  /**
+   * Go to a change by its index in the repo-wide list.
+   *
+   * The list is flat, so a step that happens to cross from one file's card into the
+   * next's is the same arithmetic as a step inside one file. That is the whole of how
+   * previous/next walks file boundaries — there is no boundary in the data.
+   */
   const goToBlock = useCallback((index: number) => {
     const container = scrollRef.current
     if (!container || blocks.length === 0) return
@@ -302,34 +591,6 @@ export default function FilePreviewPanel() {
     animateScrollTo(container, jumpScrollTop(offsetPx, trackHeight, readView(container)))
   }, [readView, animateScrollTo])
 
-  /**
-   * Redraw the ruler when the container is resized.
-   *
-   * The band is drawn to the geometry of the last scroll, and a resize changes that
-   * geometry without producing a scroll event. Left alone, the segments and the
-   * indicator keep the scale they were measured at — and `segmentIndexAt` hit-tests
-   * against those same offsets, so a click resolves to the wrong block or to none.
-   * The failure is a quiet one: `handleJumpTo` reads the rect live and stays correct,
-   * so bare-track clicks keep working while the segments lie, until the next scroll
-   * event happens to fix it.
-   *
-   * Observing the scroller rather than listening for `resize` on the window is what
-   * catches the rest of the cases — the drawer is 70% of the window, but the sidebar
-   * collapsing or a devtools split resizes it with the window itself untouched.
-   *
-   * The observer fires once on `observe()`, which costs one redundant render and is
-   * left in: the alternative is a first-callback flag to skip a read that is correct
-   * anyway.
-   */
-  useEffect(() => {
-    const container = scrollRef.current
-    if (!container || !hasBlocks || typeof ResizeObserver === 'undefined') return
-
-    const observer = new ResizeObserver(() => setScrollView(readView(container)))
-    observer.observe(container)
-    return () => observer.disconnect()
-  }, [hasBlocks, readView])
-
   const handleClose = useCallback(() => {
     if (isClosingRef.current) return
     isClosingRef.current = true
@@ -344,11 +605,11 @@ export default function FilePreviewPanel() {
   const handleToggleWholeFile = useCallback(() => setShowWholeFile(v => !v), [])
 
   useEffect(() => {
-    if (selectedFile) {
+    if (isOpen) {
       isClosingRef.current = false
       setIsClosing(false)
     }
-  }, [selectedFile])
+  }, [isOpen])
 
   useEffect(() => {
     if (prevTerminalId.current !== activeTerminalId) {
@@ -359,20 +620,20 @@ export default function FilePreviewPanel() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedFile !== null) {
+      if (e.key === 'Escape' && isOpen) {
         handleClose()
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [selectedFile, handleClose])
+  }, [isOpen, handleClose])
 
-  // Alt+↑/↓ walks the changes. Kept apart from the Escape listener above rather than
-  // folded into it: that one is on `document` by the modal convention and closes the
-  // panel, this one is a navigation shortcut and only ever fires while the drawer is
-  // open on a file with somewhere to go.
+  // Alt+↑/↓ walks the changes — every change in the repository, in one list. Kept apart
+  // from the Escape listener above rather than folded into it: that one is on `document`
+  // by the modal convention and closes the panel, this one is a navigation shortcut and
+  // only ever fires while the drawer is open on something with somewhere to go.
   useEffect(() => {
-    if (!selectedFile || blocks.length < 2) return
+    if (!isOpen || blocks.length < 2) return
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return
       // A terminal owns its arrow keys — history, and whatever the running program
@@ -384,53 +645,91 @@ export default function FilePreviewPanel() {
       // preventDefault only on the branches that act, so an Alt+arrow this panel does
       // not use keeps whatever meaning it has elsewhere.
       e.preventDefault()
-      // The card's own two steps, not a second copy of the arithmetic: the keyboard
+      // The bar's own two steps, not a second copy of the arithmetic: the keyboard
       // and the arrows cannot end up disagreeing about what "next" means.
       if (e.key === 'ArrowUp') goToPrevious()
       else goToNext()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedFile, blocks.length, goToPrevious, goToNext])
+  }, [isOpen, blocks.length, goToPrevious, goToNext])
 
-  // Focus the drawer when it opens. This, not the `.xterm` check above, is what
-  // actually keeps the terminal out of it: a focused panel is where the keystrokes
-  // arrive in the first place. It also restores native arrow-key scrolling inside the
-  // preview. `preventScroll` because the browser would otherwise scroll the freshly
-  // focused container back to the top — straight over the anchoring CodeView just did.
+  // Focus the drawer when it opens, and again whenever the reader asks for another
+  // file. This, not the `.xterm` check above, is what actually keeps the terminal out of
+  // it: a focused panel is where the keystrokes arrive in the first place. It also
+  // restores native arrow-key scrolling inside the preview. `preventScroll` because the
+  // browser would otherwise scroll the freshly focused container back to the top —
+  // straight over the anchoring done a moment earlier.
   useEffect(() => {
-    if (selectedFile) scrollRef.current?.focus({ preventScroll: true })
-  }, [selectedFile])
+    if (isOpen) scrollRef.current?.focus({ preventScroll: true })
+  }, [isOpen, scrollSeq])
 
-  // The container outlives the file shown in it, so a step still in flight when the
-  // reader switches files would keep writing scrollTop into the next one — fighting
-  // the anchoring CodeView is doing for it at that exact moment. Also covers unmount,
+  // The container outlives what is shown in it, so a step still in flight when the
+  // reader switches repositories would keep writing scrollTop into the next one —
+  // fighting the anchoring being done for it at that exact moment. Also covers unmount,
   // where the callback would otherwise touch a detached element.
-  useEffect(() => stopScrollAnimation, [selectedFile, stopScrollAnimation])
+  useEffect(() => stopScrollAnimation, [selectedFile, review, stopScrollAnimation])
 
-  if (!selectedFile) return null
+  // The repository's own total, from the frozen list rather than from the measurement:
+  // it must not count up as cards resolve or down as the reader folds them away.
+  const repoCounts = useMemo(() => (review ? sumChangedFiles(review.files) : NO_CHANGES), [review])
 
-  // Only for the drawer's left rail — the badge, the name and the extension pill all
-  // belong to FileHeader, which reads the same table.
-  const statusCfg = statusConfigFor(selectedFile.status)
+  /**
+   * The ruler's MARKS, which depend on the shape of the review and not on where it is
+   * scrolled to.
+   *
+   * `rulerSegments` projects every block through `trackHeight / contentHeight`, so the
+   * only two numbers it reads out of the view are the content's height and the
+   * viewport's. `currentScrollTop` reaches the band through `rulerViewport` alone — the
+   * moving indicator — which is exactly why that one stays on the render path below
+   * while this does not.
+   *
+   * Worth a memo because the panel re-renders on EVERY scroll event to move that
+   * indicator, and a repository review is where the marks stopped being cheap: a few
+   * hundred blocks, each a projection, then a sort and a copy per mark inside
+   * `mergeRulerSegments`. Recomputing the lot sixty times a second also handed the band
+   * a fresh array every frame, so every mark in it reconciled on a redraw that could not
+   * have moved any of them.
+   */
+  const rulerMarks = useMemo(
+    () => (scrollView && hasBlocks ? mergeRulerSegments(rulerSegments(blocks, scrollView)) : null),
+    // The two fields rather than `scrollView` itself: keying on the object would defeat
+    // the memo on the very path it exists for, and those two are the whole of what
+    // `rulerSegments` reads out of it.
+    [blocks, hasBlocks, scrollView?.contentHeight, scrollView?.viewportHeight],
+  )
+
+  if (!isOpen) return null
+
+  // Only for the drawer's left rail. A REVIEW gets the neutral one: `statusConfigFor`
+  // answers for one status, and a repository holds several — painting the rail from any
+  // one file's would state something false about the other thirty-nine.
+  const statusCfg = selectedFile ? statusConfigFor(selectedFile.status) : null
 
   /**
    * The ruler's geometry, recomputed each render from the numbers in state — or `null`
-   * for the files that get no ruler at all.
+   * for the previews that get no ruler at all.
    *
    * ONE object, and one condition, because the answer is needed in three places: the
    * band itself, the gutter that keeps code from running under it, and the props. Three
    * separate tests of "is there a ruler" could be edited apart; this cannot.
    *
    * Gated on there being a block, which is the whole of the rule and needs no special
-   * case of its own. A markdown or an image preview never calls `onBlocksMeasured`, and
-   * an unchanged file renders no `.line[data-diff]`, so both arrive here with nothing to
-   * draw. It also covers the case where CodeView found no scrollable container — content
-   * shorter than its own viewport — which is right: a ruler over a view that cannot
-   * scroll is a control with nowhere to send anyone.
+   * case of its own. A markdown or an image card produces no `.line[data-diff]`, and
+   * neither does the spec preview's empty status, so both arrive here with nothing to
+   * draw. It also covers the case where the content is shorter than its own viewport,
+   * which is right: a ruler over a view that cannot scroll is a control with nowhere to
+   * send anyone.
+   *
+   * `mergeRulerSegments` — folded into `rulerMarks` above — is what keeps the band
+   * legible once a repository's worth of marks is projected onto it. It is a no-op on
+   * anything sparse, so a one-file review is drawn exactly as it has always been.
+   *
+   * Only the INDICATOR is computed here: it is the one part that moves with the scroll,
+   * and it is a single projection rather than one per block.
    */
-  const ruler = scrollView && hasBlocks
-    ? { segments: rulerSegments(blocks, scrollView), viewport: rulerViewport(scrollView) }
+  const ruler = rulerMarks && scrollView
+    ? { segments: rulerMarks, viewport: rulerViewport(scrollView) }
     : null
 
   return (
@@ -440,20 +739,30 @@ export default function FilePreviewPanel() {
         onClick={handleClose}
       />
       <div className={`fixed right-0 top-0 h-full w-[70%] z-[60] flex flex-col bg-bg-secondary border-l-4 ${statusCfg?.border ?? 'border-l-line'} ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}>
-        <FileHeader
-          filePath={selectedFile.path}
-          status={selectedFile.status}
-          canExpand={canExpand}
-          showWholeFile={showWholeFile}
-          counts={counts}
-          onToggleWholeFile={handleToggleWholeFile}
-          onClose={handleClose}
-        />
+        {review ? (
+          <ReviewHeader
+            repoName={review.repoName}
+            repoPath={review.repoPath}
+            fileCount={review.files.length}
+            counts={repoCounts}
+            onClose={handleClose}
+          />
+        ) : selectedFile && (
+          <FileHeader
+            filePath={selectedFile.path}
+            status={selectedFile.status}
+            canExpand={canExpand}
+            showWholeFile={showWholeFile}
+            counts={layout.counts}
+            onToggleWholeFile={handleToggleWholeFile}
+            onClose={handleClose}
+          />
+        )}
         {/* The navigator and the ruler are SIBLINGS of the scroller, not children of it.
             An absolutely positioned descendant of an `overflow-auto` element joins that
             element's scrollable overflow, so the navigator's `bottom-4` would anchor to
             the top of the document and the card would scroll off with the code — and the
-            ruler's `top-0 bottom-0` would size itself to the whole file rather than to
+            ruler's `top-0 bottom-0` would size itself to the whole review rather than to
             the window. This wrapper is the positioning context instead. `flex-1 min-h-0`
             moves onto it, since it is now the flex child. */}
         <div className="relative flex-1 min-h-0 flex flex-col">
@@ -464,26 +773,61 @@ export default function FilePreviewPanel() {
             /* `RULER_GUTTER` matches the band's own width, and only appears with it:
                the `<pre>` inside CodeView scrolls horizontally on its own, so a long
                line dragged to the right would otherwise run under the band. It changes
-               nothing vertically, so the geometry CodeView measured still holds.
+               nothing vertically, so the geometry measured still holds.
 
                `focus-visible:outline-none` because the app paints a 2px accent ring on
                `:focus-visible` globally (renderer/index.css), and Chromium matches it on
                a `tabindex="-1"` element that takes focus — it cannot tell the modality —
-               so opening a file drew that ring around the whole code area. Suppressed
+               so opening the drawer drew that ring around the whole code area. Suppressed
                HERE and nowhere else: this element is deliberately out of the tab order
                and exists as a scroll target, so a keyboard user never arrives on it and
                the ring tells them nothing. Every control that IS tabbable keeps it. */
             className={`flex-1 min-h-0 overflow-auto [will-change:transform] focus-visible:outline-none ${ruler ? RULER_GUTTER : ''}`}
           >
-            <FileContentRenderer
-              repoPath={selectedFile.repoPath}
-              filePath={selectedFile.path}
-              status={selectedFile.status}
-              scrollSeq={scrollSeq}
-              showWholeFile={showWholeFile}
-              onBlocksMeasured={handleBlocksMeasured}
-              onCollapsibleChange={setCanExpand}
-            />
+            {/* The content wrapper: what the resize observer watches, and what the
+                measurement sweep is handed. Rendered in BOTH modes — the single-file one
+                gets no classes of its own, so it adds a box and changes no layout, but
+                it is what keeps `findScrollContainer` resolving the scroller rather than
+                looking above it.
+
+                In a review, cards are NEVER unmounted when they scroll out of view.
+                That, and not the read cache, is what makes a long review scroll without
+                re-reading anything: a virtualised list would unmount a card, throw away
+                its measured rows, and mount it again a scroll later at a different
+                height — moving every offset below it each time. */}
+            <div ref={contentRef} className={review ? 'p-3 space-y-3' : undefined}>
+              {review ? (
+                review.files.length === 0 ? (
+                  <div className="flex items-center justify-center h-32 text-text-secondary text-sm italic">
+                    {t('filePreview.noChangedFiles')}
+                  </div>
+                ) : (
+                  review.files.map((file, index) => (
+                    <FileReviewCard
+                      key={file.path}
+                      repoPath={review.repoPath}
+                      file={file}
+                      fileIndex={index}
+                      // The ref OBJECT, not the node: `useRef` keeps one identity for
+                      // the life of the panel, so handing it down costs the memo below
+                      // nothing. A card needs it to observe itself against the scroller
+                      // — resolving that by walking the DOM would not work here, because
+                      // `findScrollContainer` only answers once the content overflows,
+                      // and cards mount before their reads have given them any height.
+                      scrollerRef={scrollRef}
+                    />
+                  ))
+                )
+              ) : selectedFile && (
+                <FileContentRenderer
+                  repoPath={selectedFile.repoPath}
+                  filePath={selectedFile.path}
+                  status={selectedFile.status}
+                  showWholeFile={showWholeFile}
+                  onCollapsibleChange={setCanExpand}
+                />
+              )}
+            </div>
           </div>
           {/* A segment goes through `goToBlock`, the arrows' own step, so clicking a
               mark and clicking "next" onto it land on exactly the same pixel. */}
@@ -495,6 +839,11 @@ export default function FilePreviewPanel() {
               onJumpTo={handleJumpTo}
             />
           )}
+          {/* Repo-wide, both of them: the counter reads over every change in the
+              repository and the arrows walk the same flat list. `total < 2 → null` is
+              unchanged and needs no special case — with a repo-wide total it is the very
+              same rule, and it now hides the bar only when the WHOLE repository holds
+              fewer than two changes. */}
           <ChangeNavigator
             current={currentIndex + 1}
             total={blocks.length}

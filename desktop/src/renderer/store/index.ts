@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, SettingsTab, Org } from '../../types'
+import type { ChangedFile, Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, SettingsTab, Org } from '../../types'
+import { reviewFileKey } from '../utils/reviewLayout'
 import { migrateSkillsContextWindow } from '../pages/Skills/contextWindow'
 
 interface CloseAgentModalData {
@@ -34,6 +35,37 @@ export type SkillsContextWindow = 200_000 | 1_000_000
  * A viewing preference, never written back to Claude Code's settings.
  */
 export type SkillsContextWindowSetting = 'auto' | SkillsContextWindow
+
+/**
+ * A repository being reviewed: every changed file at once, in one scroll.
+ *
+ * `files` is a COPY taken at click time, never a live read of the sidebar's git data.
+ * That data is re-polled every five seconds and replaced wholesale when a byte differs,
+ * so a live list would re-key the cards under the reader — a file dropping out mid-read
+ * unmounts a card, a status flipping `modified → renamed` changes the read's cache key,
+ * and either one moves every offset the panel measured. Freezing the list is what makes
+ * "the view does not refresh while the agent edits" true by construction rather than by
+ * a rule someone has to remember.
+ *
+ * `anchorPath` is the file the reader clicked. It positions the review and nothing
+ * else: every file in `files` is rendered either way, so the anchor is where the scroll
+ * lands, not what is shown.
+ */
+export interface RepoReview {
+  repoPath: string
+  repoName: string
+  files: ChangedFile[]
+  anchorPath: string
+  /**
+   * Bumped on every open, including re-opening on the file already anchored.
+   *
+   * The panel needs a signal that says "take the reader back to that card" even when
+   * nothing else about the review changed — same repository, same list, same path, same
+   * bytes already read. Object identity plays that role for `selectedFile`; a review is
+   * compared field by field, so it carries the counter explicitly.
+   */
+  anchorSeq: number
+}
 
 interface AppState {
   // Config
@@ -87,7 +119,30 @@ interface AppState {
   // storage, so it survives a renderer reload but comes back on the next launch.
   repoSetupDismissed: boolean
 
+  /**
+   * The single-file preview, which is now the SPEC panel's surface alone.
+   *
+   * A changed file in a repository no longer opens this — it opens `review` below, with
+   * every changed file of that repository stacked. What is left here is the one preview
+   * that is not a git change at all: `status: ''`, and a `repoPath` that is the spec's
+   * parent directory rather than a repository root.
+   */
   selectedFile: { repoPath: string; path: string; status: string } | null
+
+  /** The repository review, when one is open. Mutually exclusive with `selectedFile`. */
+  review: RepoReview | null
+
+  /**
+   * Which cards the reader has folded shut, keyed by `reviewFileKey`.
+   *
+   * Deliberately NOT in either `partialize`. The store is a module singleton, so
+   * closing the drawer and opening it again already finds this map exactly as it was —
+   * which is the whole of what "reopening lands on the same file with the same cards
+   * collapsed" asks for. Persisting it would instead accumulate a key per file anyone
+   * ever collapsed, in any repository, for as long as the install lives, with nothing
+   * that could ever tell which of those files still exist.
+   */
+  collapsedFiles: Record<string, boolean>
 
   // Actions
   setConfig: (config: Config) => void
@@ -136,6 +191,15 @@ interface AppState {
   setRepoSetupDismissed: (dismissed: boolean) => void
 
   setSelectedFile: (file: { repoPath: string; path: string; status: string } | null) => void
+  /**
+   * Open the review of a repository, scrolled to `anchorPath`.
+   *
+   * `files` is copied here rather than referenced — see `RepoReview` above for why the
+   * list has to stop moving the moment the drawer opens.
+   */
+  openRepoReview: (repo: { repoPath: string; repoName: string; files: ChangedFile[] }, anchorPath: string) => void
+  /** Fold a card shut, or open it again. */
+  toggleReviewFileCollapsed: (repoPath: string, path: string) => void
   closeFilePreview: () => void
 }
 
@@ -174,6 +238,8 @@ export const useStore = create<AppState>()(
         closeAgentModal: null,
         repoSetupDismissed: false,
         selectedFile: null,
+        review: null,
+        collapsedFiles: {},
 
         // Actions
         setConfig: (config) => set({
@@ -266,6 +332,10 @@ export const useStore = create<AppState>()(
             scriptTerminals: [],
             closeAgentModal: null,
             selectedFile: null,
+            review: null,
+            // The collapsed-card map goes too: it is keyed by repository path, and the
+            // next account's repositories are not this one's.
+            collapsedFiles: {},
             rightSidebar: null,
           }),
 
@@ -339,7 +409,7 @@ export const useStore = create<AppState>()(
         // and a blank agents page gets its first agent selected so the overlay
         // never floats over an empty app.
         openModal: (modal) => set((state) => {
-          const updates: Partial<AppState> = { activeModal: modal, selectedFile: null }
+          const updates: Partial<AppState> = { activeModal: modal, selectedFile: null, review: null }
           if (!state.activeTerminalId && state.terminals.length > 0) {
             updates.activeTerminalId = state.terminals[0].id
           }
@@ -386,8 +456,33 @@ export const useStore = create<AppState>()(
         // Launch repository-setup modal actions
         setRepoSetupDismissed: (repoSetupDismissed) => set({ repoSetupDismissed }),
 
-        setSelectedFile: (selectedFile) => set({ selectedFile }),
-        closeFilePreview: () => set({ selectedFile: null }),
+        // The two previews share one drawer, so opening either closes the other. The
+        // reader can only be looking at one thing, and leaving the review mounted
+        // behind a spec preview would keep forty cards — and forty reads — alive
+        // underneath it.
+        setSelectedFile: (selectedFile) => set({ selectedFile, review: null }),
+
+        openRepoReview: (repo, anchorPath) => set((state) => ({
+          selectedFile: null,
+          review: {
+            repoPath: repo.repoPath,
+            repoName: repo.repoName,
+            // Copied, not referenced: the array this came from is replaced wholesale by
+            // the sidebar's five-second poll, and the review must not follow it.
+            files: [...repo.files],
+            anchorPath,
+            // Read off the review being replaced rather than kept as a counter of its
+            // own, so it never restarts and the panel can compare two renders of it.
+            anchorSeq: (state.review?.anchorSeq ?? 0) + 1,
+          },
+        })),
+
+        toggleReviewFileCollapsed: (repoPath, path) => set((state) => {
+          const key = reviewFileKey(repoPath, path)
+          return { collapsedFiles: { ...state.collapsedFiles, [key]: !state.collapsedFiles[key] } }
+        }),
+
+        closeFilePreview: () => set({ selectedFile: null, review: null }),
       }),
       // Session storage persist for activeTerminalId (cleared on app close)
       {

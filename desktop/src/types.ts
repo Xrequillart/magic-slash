@@ -1541,6 +1541,31 @@ export interface ChangedLines {
   removedBefore: number[]
 }
 
+/** How git describes what happened to a file, as the sidebar's stats report it. */
+export type ChangedFileStatus = 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked'
+
+/**
+ * One entry of a repository's uncommitted-changes list.
+ *
+ * It lives HERE rather than beside the sidebar that first read it because the store
+ * now holds a snapshot of these — the review drawer stacks every changed file of a
+ * repository, and the list it renders is frozen at the moment the reader clicked so
+ * the five-second git poll cannot re-key the cards mid-read. The store may not import
+ * from a component folder, so the shape moved to the shared module instead of the
+ * dependency being pointed the wrong way.
+ *
+ * `additions`/`deletions` are the repository's own count, not a measurement of the
+ * rendered document: an untracked file arrives as 0/0 because git has nothing to diff
+ * it against, which is why every reader of these two has to treat "both zero" as "no
+ * figure to show" rather than as "nothing changed".
+ */
+export interface ChangedFile {
+  path: string
+  additions: number
+  deletions: number
+  status: ChangedFileStatus
+}
+
 /** Everything `config:readFile` can answer, as the renderer receives it. */
 export type FilePreviewResult =
   | {
