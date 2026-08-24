@@ -1525,4 +1525,5 @@ export const en = {
   'filePreview.changeCounter': '{current} / {total} changes',
   'filePreview.previousChange': 'Previous change',
   'filePreview.nextChange': 'Next change',
+  'filePreview.changeRuler': 'Changes in this file',
 }

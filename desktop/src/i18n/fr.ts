@@ -1486,4 +1486,5 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.changeCounter': '{current} / {total} changements',
   'filePreview.previousChange': 'Changement précédent',
   'filePreview.nextChange': 'Changement suivant',
+  'filePreview.changeRuler': 'Changements dans ce fichier',
 }

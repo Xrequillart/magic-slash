@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Desktop**: The file preview scrolls to the first changed line
 - **Desktop**: The file preview walks through every change — a floating card counts them, its arrows step from one to the next (Alt+↑ / Alt+↓), and the count follows a hand scroll
+- **Desktop**: The file preview shows where its changes sit — a ruler down the right edge marks every changed block, green for additions, red for removals, yellow where a line was edited, with a translucent indicator for the visible window; clicking a mark jumps to that block, clicking the bare ruler jumps roughly there
 
 ### Fixed
 
