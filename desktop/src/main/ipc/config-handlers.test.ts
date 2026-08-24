@@ -74,7 +74,22 @@ vi.mock('child_process', () => ({
   execFileSync: (...args: unknown[]) => mockExecFileSync(...(args as Parameters<typeof mockExecFileSync>)),
 }))
 
-import { readFileForPreview } from './config-handlers'
+import { codeToHtml } from 'shiki'
+import { annotateShikiHtml, parseDiff, readFileForPreview } from './config-handlers'
+import { numberShikiLines } from './hunkView'
+
+const mockCodeToHtml = vi.mocked(codeToHtml)
+
+/** Shiki's shape for a file of `count` lines, each holding its own number as text. */
+function shikiDoc(count: number): string {
+  const rows = Array.from({ length: count }, (_, i) => `<span class="line">L${i + 1}</span>`)
+  return `<pre class="shiki"><code>${rows.join('\n')}</code></pre>`
+}
+
+/** The attributes of every row in a document, in order. */
+function rowAttributes(html: string): string[] {
+  return [...html.matchAll(/<span class="line"([^>]*)>/g)].map(([, attrs]) => attrs)
+}
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -251,5 +266,135 @@ describe('readFileForPreview', () => {
       expect(result.changedLines).toBeUndefined()
       expect(mockExecFileSync).not.toHaveBeenCalled()
     })
+  })
+
+  // Only a modified or renamed file gets a second, collapsed rendering. The absence
+  // of one is load-bearing: it is what tells the panel's header there is no expand
+  // toggle to offer, and what makes an all-changed file render exactly as before.
+  describe('changes-only rendering', () => {
+    it('collapses a long file to its changed regions, and keeps the whole one alongside', async () => {
+      const filePath = path.join(tmpDir, 'long.ts')
+      fs.writeFileSync(filePath, Array.from({ length: 40 }, (_, i) => `L${i + 1}`).join('\n'))
+      mockCodeToHtml.mockResolvedValueOnce(shikiDoc(40))
+      mockExecFileSync.mockReturnValueOnce(Buffer.from(
+        ['@@ -20,1 +20,1 @@', '-was', '+L20'].join('\n'),
+        'utf8',
+      ))
+
+      const result = await readFileForPreview(tmpDir, 'long.ts', 'modified') as
+        { highlightedHtml: string; changesOnlyHtml: string }
+
+      // Four lines of context each side of line 20, and a marker for each cut.
+      expect(rowAttributes(result.changesOnlyHtml).filter(a => / data-elided=/.test(a)))
+        .toEqual([' data-elided="15"', ' data-elided="16"'])
+      expect(result.changesOnlyHtml).toContain('>L16<')
+      expect(result.changesOnlyHtml).not.toContain('>L15<')
+      // The full document is untouched by any of this — it is what the expand shows.
+      expect(result.highlightedHtml).toContain('>L1<')
+      expect(result.highlightedHtml).not.toContain('data-elided')
+    })
+
+    it('offers no collapsed view for an added file, where every line is a change', async () => {
+      const filePath = path.join(tmpDir, 'fresh.ts')
+      fs.writeFileSync(filePath, Array.from({ length: 40 }, (_, i) => `L${i + 1}`).join('\n'))
+      mockCodeToHtml.mockResolvedValueOnce(shikiDoc(40))
+
+      const result = await readFileForPreview(tmpDir, 'fresh.ts', 'added') as { changesOnlyHtml?: string }
+      expect(result.changesOnlyHtml).toBeUndefined()
+    })
+
+    it('offers no collapsed view when the context already reaches both ends of the file', async () => {
+      const filePath = path.join(tmpDir, 'short.ts')
+      fs.writeFileSync(filePath, 'L1\nL2\nL3\nL4\nL5')
+      mockCodeToHtml.mockResolvedValueOnce(shikiDoc(5))
+      mockExecFileSync.mockReturnValueOnce(Buffer.from(['@@ -3,1 +3,1 @@', '-was', '+L3'].join('\n'), 'utf8'))
+
+      const result = await readFileForPreview(tmpDir, 'short.ts', 'modified') as { changesOnlyHtml?: string }
+      expect(result.changesOnlyHtml).toBeUndefined()
+    })
+
+    it('numbers every row even where no diff was applied, so the gutter is never blank', async () => {
+      // The spec panel's path: no status at all, and therefore no annotation.
+      const filePath = path.join(tmpDir, 'plain.ts')
+      fs.writeFileSync(filePath, 'L1\nL2\nL3')
+      mockCodeToHtml.mockResolvedValueOnce(shikiDoc(3))
+
+      const result = await readFileForPreview(tmpDir, 'plain.ts') as { highlightedHtml: string }
+      expect(rowAttributes(result.highlightedHtml)).toEqual([
+        ' data-line="1"', ' data-line="2"', ' data-line="3"',
+      ])
+    })
+  })
+})
+
+// The gutter reads its number off the row, and a deletion is the one row whose
+// number comes from a different file — so these two functions are where the two
+// numbering spaces are kept apart. A regression here is silent: the highlighting
+// still works, the wrong numbers just appear beside it.
+describe('parseDiff', () => {
+  it('numbers a removed line in the OLD file, which is the only number it ever had', () => {
+    const diff = parseDiff(['@@ -10,4 +10,3 @@', ' a', '-gone', '-also gone', ' b'].join('\n'))
+    expect(diff.removedBeforeLines.get(11)).toEqual([
+      { text: 'gone', oldLine: 11 },
+      { text: 'also gone', oldLine: 12 },
+    ])
+  })
+
+  it('keeps the two files apart once an edit has shifted them', () => {
+    // Two lines added at the top push the new file ahead; the deletion further down
+    // must still report where it was BEFORE that shift.
+    const diff = parseDiff([
+      '@@ -1,3 +1,5 @@',
+      ' a',
+      '+one',
+      '+two',
+      ' b',
+      '-gone',
+      ' c',
+    ].join('\n'))
+    expect(diff.addedNewLines).toEqual(new Set([2, 3]))
+    expect(diff.removedBeforeLines.get(5)).toEqual([{ text: 'gone', oldLine: 3 }])
+  })
+
+  it('places lines deleted at the end of the file one past its last line', () => {
+    const diff = parseDiff(['@@ -1,3 +1,1 @@', ' a', '-b', '-c'].join('\n'))
+    expect([...diff.removedBeforeLines.keys()]).toEqual([2])
+  })
+})
+
+describe('annotateShikiHtml', () => {
+  it('gives a deleted row the old number for its gutter and the new one for its place', () => {
+    const numbered = numberShikiLines(shikiDoc(3))
+    const diff = parseDiff(['@@ -1,3 +1,2 @@', ' L1', '-gone', ' L2'].join('\n'))
+    const html = annotateShikiHtml(numbered, diff, 'normal')
+
+    // The removed row sits before line 2 of the new file and shows line 2 of the old.
+    expect(rowAttributes(html)).toEqual([
+      ' data-line="1"',
+      ' data-line="2" data-anchor="2" data-diff="remove"',
+      ' data-line="2"',
+      ' data-line="3"',
+    ])
+  })
+
+  it('keeps the numbers the rows already carry when marking a file all added', () => {
+    const html = annotateShikiHtml(numberShikiLines(shikiDoc(2)), null, 'all-add')
+    expect(rowAttributes(html)).toEqual([
+      ' data-line="1" data-diff="add"',
+      ' data-line="2" data-diff="add"',
+    ])
+  })
+
+  it('anchors lines deleted at the end of the file past its last row', () => {
+    const numbered = numberShikiLines(shikiDoc(2))
+    const diff = parseDiff(['@@ -1,4 +1,2 @@', ' L1', ' L2', '-gone', '-also'].join('\n'))
+    const html = annotateShikiHtml(numbered, diff, 'normal')
+
+    expect(rowAttributes(html)).toEqual([
+      ' data-line="1"',
+      ' data-line="2"',
+      ' data-line="3" data-anchor="3" data-diff="remove"',
+      ' data-line="4" data-anchor="3" data-diff="remove"',
+    ])
   })
 })

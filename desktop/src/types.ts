@@ -1547,6 +1547,27 @@ export type FilePreviewResult =
       encoding: 'utf8'
       content: string
       highlightedHtml: string | null
+      /**
+       * The same document with everything but the changed regions left out, each
+       * kept with a few lines of unchanged code around it and every cut marked.
+       *
+       * Present only where there is something to collapse: a modified or renamed
+       * file whose changes do not already cover it. Absent on an added, untracked or
+       * deleted file — every line there is a change, so the collapsed view would be
+       * the full one — and absent when the file is short enough that the context
+       * reaches both ends. Its absence is the signal the preview's header reads to
+       * decide whether to offer the expand toggle at all.
+       *
+       * `highlightedHtml` above stays the whole file either way. This is a second
+       * rendering of the same read, not a replacement for it: the toggle switches
+       * between the two without going back to disk.
+       *
+       * One spelling of "absent", deliberately: the field is either a string or
+       * missing. Admitting `null` as well would give a two-state fact three states,
+       * and every reader would have to normalise before asking the only question
+       * anyone asks of it — is there a second rendering or not.
+       */
+      changesOnlyHtml?: string
       size: number
       mimeHint: string
       /**

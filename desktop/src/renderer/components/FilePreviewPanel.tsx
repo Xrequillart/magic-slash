@@ -1,21 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
 import { useStore } from '../store'
 import FileContentRenderer from './file-preview/FileContentRenderer'
+import FileHeader, { statusConfigFor } from './file-preview/FileHeader'
 import ChangeNavigator from './file-preview/ChangeNavigator'
 import ChangeRuler, { RULER_GUTTER } from './file-preview/ChangeRuler'
 import {
   blockScrollTop, jumpScrollTop, resolveBlockIndex, rulerSegments, rulerViewport,
   type MarkerBlock, type MarkerCounts, type ScrollView,
 } from '../utils/diffMarkers'
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; border: string }> = {
-  modified:  { label: 'M', color: 'text-yellow  bg-yellow/10  border-yellow/20',  border: 'border-l-yellow' },
-  added:     { label: 'A', color: 'text-green   bg-green/10   border-green/20',   border: 'border-l-green' },
-  deleted:   { label: 'D', color: 'text-red     bg-red/10     border-red/20',     border: 'border-l-red' },
-  renamed:   { label: 'R', color: 'text-accent  bg-accent/10  border-accent/20',  border: 'border-l-accent' },
-  untracked: { label: 'U', color: 'text-orange  bg-orange/10  border-orange/20',  border: 'border-l-orange' },
-}
 
 /**
  * How long a step between two changes takes.
@@ -35,20 +27,6 @@ const SCROLL_MS = 180
  * any real scroll input produces and above that rounding.
  */
 const SCROLL_TAKEOVER_PX = 1
-
-const EXT_LABELS: Record<string, string> = {
-  ts: 'TypeScript', tsx: 'TSX', js: 'JavaScript', jsx: 'JSX',
-  py: 'Python', rs: 'Rust', go: 'Go', rb: 'Ruby', java: 'Java',
-  md: 'Markdown', markdown: 'Markdown', json: 'JSON', yaml: 'YAML',
-  yml: 'YAML', toml: 'TOML', css: 'CSS', scss: 'SCSS', html: 'HTML',
-  sh: 'Shell', bash: 'Shell', vue: 'Vue', svelte: 'Svelte', sql: 'SQL',
-  png: 'PNG', jpg: 'JPEG', jpeg: 'JPEG', gif: 'GIF', svg: 'SVG', webp: 'WebP',
-}
-
-function getExtLabel(filePath: string): string {
-  const ext = filePath.split('.').pop()?.toLowerCase() ?? ''
-  return EXT_LABELS[ext] ?? ext.toUpperCase()
-}
 
 /** Nothing changed — what the bar reads before a measurement, and after a reset. */
 const NO_CHANGES: MarkerCounts = { added: 0, removed: 0 }
@@ -79,6 +57,15 @@ export default function FilePreviewPanel() {
   const isClosingRef = useRef(false)
   const [prevSelectedFile, setPrevSelectedFile] = useState(selectedFile)
   const [scrollSeq, setScrollSeq] = useState(0)
+  /**
+   * Whether the card is showing the file end to end. False — the changed regions
+   * alone — is what every file opens as, because a preview is opened to read a
+   * change and the rest of the file is what buries it.
+   */
+  const [showWholeFile, setShowWholeFile] = useState(false)
+  const [prevShowWholeFile, setPrevShowWholeFile] = useState(false)
+  /** Whether the file on screen HAS two views to switch between. Reported by the renderer. */
+  const [canExpand, setCanExpand] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrollAnimationRef = useRef<number | null>(null)
   /** Where the animated step last put the container, so a scroll it did not cause is recognisable. */
@@ -119,14 +106,37 @@ export default function FilePreviewPanel() {
   // this component's passive effects, and FileContentRenderer seeds its state from
   // `readCache` — so a file already read mounts CodeView in the very same commit, and
   // a reset landing afterwards would blank a card that had just been measured.
-  if (selectedFile !== prevSelectedFile) {
-    setPrevSelectedFile(selectedFile)
-    if (selectedFile) setScrollSeq(n => n + 1)
+  //
+  // Toggling between the changed regions and the whole file goes through the very
+  // same reset, for the very same reason: it replaces the document CodeView measured
+  // — every row below the first elision moves — so the blocks, the counter and the
+  // ruler's geometry all describe a layout that no longer exists. Bumping `scrollSeq`
+  // with them re-anchors the view on the FIRST change — `selectScrollTop` anchors on
+  // `blocks[0]` and knows nothing of where the reader was — which is the point: the
+  // expanded document is a different one, and landing at the top of a 900-line file
+  // would be worse. Expanding while reading the fifth hunk does go back to the first.
+  const resetGeometry = () => {
     setBlocks([])
     setCounts(NO_CHANGES)
     setContextPx(0)
     setCurrentIndex(0)
     setScrollView(null)
+  }
+
+  if (selectedFile !== prevSelectedFile) {
+    setPrevSelectedFile(selectedFile)
+    if (selectedFile) setScrollSeq(n => n + 1)
+    // Back to the changed regions on every file: the mode is a way of reading THIS
+    // file, not a preference, and carrying it over would open the next file expanded
+    // with a toggle the reader does not remember pressing.
+    setShowWholeFile(false)
+    setPrevShowWholeFile(false)
+    setCanExpand(false)
+    resetGeometry()
+  } else if (showWholeFile !== prevShowWholeFile) {
+    setPrevShowWholeFile(showWholeFile)
+    setScrollSeq(n => n + 1)
+    resetGeometry()
   }
 
   // CodeView has just anchored the view on the first change, so that is where the
@@ -331,6 +341,8 @@ export default function FilePreviewPanel() {
     }, 310)
   }, [closeFilePreview])
 
+  const handleToggleWholeFile = useCallback(() => setShowWholeFile(v => !v), [])
+
   useEffect(() => {
     if (selectedFile) {
       isClosingRef.current = false
@@ -398,15 +410,9 @@ export default function FilePreviewPanel() {
 
   if (!selectedFile) return null
 
-  const fileName = selectedFile.path.split('/').pop() ?? selectedFile.path
-  const relativePath = selectedFile.path
-  // No fallback to `modified` for an EMPTY status. The fallback exists for a git
-  // status this version does not know — showing "M" beats showing nothing there —
-  // but an empty status means the file is not a git change at all (the live spec
-  // panel opens the spec this way), and badging it "M" with a yellow rail states
-  // something false about it.
-  const statusCfg = selectedFile.status ? (STATUS_CONFIG[selectedFile.status] ?? STATUS_CONFIG.modified) : null
-  const extLabel = getExtLabel(selectedFile.path)
+  // Only for the drawer's left rail — the badge, the name and the extension pill all
+  // belong to FileHeader, which reads the same table.
+  const statusCfg = statusConfigFor(selectedFile.status)
 
   /**
    * The ruler's geometry, recomputed each render from the numbers in state — or `null`
@@ -434,38 +440,22 @@ export default function FilePreviewPanel() {
         onClick={handleClose}
       />
       <div className={`fixed right-0 top-0 h-full w-[70%] z-[60] flex flex-col bg-bg-secondary border-l-4 ${statusCfg?.border ?? 'border-l-line'} ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-line shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {statusCfg && (
-              <span className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold border ${statusCfg.color}`}>
-                {statusCfg.label}
-              </span>
-            )}
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium text-ink truncate">{fileName}</span>
-              <span className="text-xs text-text-secondary truncate">{relativePath}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 ml-3 shrink-0">
-            <span className="text-[10px] font-medium text-text-secondary bg-surface border border-line-field rounded px-1.5 py-0.5">
-              {extLabel}
-            </span>
-            <button
-              onClick={handleClose}
-              className="p-1.5 rounded-md hover:bg-surface-strong text-text-secondary hover:text-ink transition-colors"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-        {/* The navigator and the ruler are SIBLINGS of the scroller, not children of
-            it. An absolutely positioned descendant of an `overflow-auto` element joins
-            that element's scrollable overflow, so `bottom-4` would anchor to the top of
-            the document and the card would scroll off with the code — and the ruler's
-            `top-0 bottom-0` would size itself to the whole file rather than to the
-            window. This wrapper is the positioning context instead — same shape as
-            SpecPanel's scroll-to-bottom button. `flex-1 min-h-0` moves onto it, since
-            it is now the flex child. */}
+        <FileHeader
+          filePath={selectedFile.path}
+          status={selectedFile.status}
+          canExpand={canExpand}
+          showWholeFile={showWholeFile}
+          counts={counts}
+          onToggleWholeFile={handleToggleWholeFile}
+          onClose={handleClose}
+        />
+        {/* The navigator and the ruler are SIBLINGS of the scroller, not children of it.
+            An absolutely positioned descendant of an `overflow-auto` element joins that
+            element's scrollable overflow, so the navigator's `bottom-4` would anchor to
+            the top of the document and the card would scroll off with the code — and the
+            ruler's `top-0 bottom-0` would size itself to the whole file rather than to
+            the window. This wrapper is the positioning context instead. `flex-1 min-h-0`
+            moves onto it, since it is now the flex child. */}
         <div className="relative flex-1 min-h-0 flex flex-col">
           <div
             ref={scrollRef}
@@ -474,24 +464,27 @@ export default function FilePreviewPanel() {
             /* `RULER_GUTTER` matches the band's own width, and only appears with it:
                the `<pre>` inside CodeView scrolls horizontally on its own, so a long
                line dragged to the right would otherwise run under the band. It changes
-               nothing vertically, so the geometry CodeView measured still holds. */
-            className={`flex-1 min-h-0 overflow-auto [will-change:transform] ${ruler ? RULER_GUTTER : ''}`}
+               nothing vertically, so the geometry CodeView measured still holds.
+
+               `focus-visible:outline-none` because the app paints a 2px accent ring on
+               `:focus-visible` globally (renderer/index.css), and Chromium matches it on
+               a `tabindex="-1"` element that takes focus — it cannot tell the modality —
+               so opening a file drew that ring around the whole code area. Suppressed
+               HERE and nowhere else: this element is deliberately out of the tab order
+               and exists as a scroll target, so a keyboard user never arrives on it and
+               the ring tells them nothing. Every control that IS tabbable keeps it. */
+            className={`flex-1 min-h-0 overflow-auto [will-change:transform] focus-visible:outline-none ${ruler ? RULER_GUTTER : ''}`}
           >
             <FileContentRenderer
               repoPath={selectedFile.repoPath}
               filePath={selectedFile.path}
               status={selectedFile.status}
               scrollSeq={scrollSeq}
+              showWholeFile={showWholeFile}
               onBlocksMeasured={handleBlocksMeasured}
+              onCollapsibleChange={setCanExpand}
             />
           </div>
-          <ChangeNavigator
-            current={currentIndex + 1}
-            total={blocks.length}
-            counts={counts}
-            onPrevious={goToPrevious}
-            onNext={goToNext}
-          />
           {/* A segment goes through `goToBlock`, the arrows' own step, so clicking a
               mark and clicking "next" onto it land on exactly the same pixel. */}
           {ruler && (
@@ -502,6 +495,12 @@ export default function FilePreviewPanel() {
               onJumpTo={handleJumpTo}
             />
           )}
+          <ChangeNavigator
+            current={currentIndex + 1}
+            total={blocks.length}
+            onPrevious={goToPrevious}
+            onNext={goToNext}
+          />
         </div>
       </div>
     </>
