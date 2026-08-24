@@ -43,7 +43,7 @@ export function RepositoryCard({
   onRemove,
 }: RepositoryCardProps) {
   const t = useT()
-  const setSelectedFile = useStore(s => s.setSelectedFile)
+  const openRepoReview = useStore(s => s.openRepoReview)
   const hasChanges = gitData?.stats?.isGitRepo && gitData.stats.filesChanged > 0
   const hasCommits = gitData?.commits && gitData.commits.commits.length > 0
   const resolvedBaseBranch = baseBranch || gitData?.commits?.baseBranch
@@ -171,7 +171,14 @@ export function RepositoryCard({
                 <div
                   key={index}
                   className="flex items-center gap-1.5 text-xs py-0.5 cursor-pointer hover:bg-surface-strong rounded transition-colors px-1 -mx-1"
-                  onClick={() => setSelectedFile({ repoPath, path: file.path, status: file.status })}
+                  /* A click opens the REPOSITORY, anchored on this file — not this file
+                     on its own. The whole list is handed over so the drawer can freeze
+                     it; `gitData.stats.files` is replaced wholesale by the poll a few
+                     seconds from now, and the review must not follow it. */
+                  onClick={() => openRepoReview(
+                    { repoPath, repoName, files: gitData.stats!.files },
+                    file.path,
+                  )}
                 >
                   <span className="flex-1 text-text-secondary/60 font-mono truncate" title={file.path}>
                     {file.path.split('/').pop()}

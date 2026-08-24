@@ -72,7 +72,11 @@ export default function ChangeRuler({ segments, viewport, onSelectBlock, onJumpT
       // says what it is to the reader who can see and click it.
       role="presentation"
       title={t('filePreview.changeRuler')}
-      className={`absolute right-0 top-0 bottom-0 ${RULER_WIDTH} z-10 bg-surface-sunken border-l border-line-subtle cursor-pointer`}
+      // `overflow-hidden` because a mark's drawn height is not purely proportional:
+      // `rulerSegments` floors it, and `mergeRulerSegments` may then widen one that was
+      // already pinned to the bottom of the track. Clipping keeps the band's own edge
+      // straight instead of letting a mark hang a pixel or two past it.
+      className={`absolute right-0 top-0 bottom-0 ${RULER_WIDTH} z-10 overflow-hidden bg-surface-sunken border-l border-line-subtle cursor-pointer`}
     >
       {segments.map(segment => (
         <div

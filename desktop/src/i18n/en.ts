@@ -1533,8 +1533,15 @@ export const en = {
   'filePreview.nextChange': 'Next change',
   'filePreview.linesAdded': '{count} lines added',
   'filePreview.linesRemoved': '{count} lines removed',
-  'filePreview.changeRuler': 'Changes in this file',
+  // Repo-wide since the drawer stacks every changed file of a repository: the ruler
+  // spans the whole review, and the counter walks its changes across file boundaries.
+  'filePreview.changeRuler': 'Changes in this repository',
   'filePreview.showWholeFile': 'Show the whole file',
   'filePreview.showChangesOnly': 'Show only the changes',
   'filePreview.linesHidden': '{count} lines hidden',
+  'filePreview.filesChanged.one': '1 file changed',
+  'filePreview.filesChanged.other': '{count} files changed',
+  'filePreview.collapseFile': 'Collapse this file',
+  'filePreview.expandFile': 'Expand this file',
+  'filePreview.noChangedFiles': 'No changed files',
 }

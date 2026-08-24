@@ -1,5 +1,6 @@
 import { FoldVertical, UnfoldVertical, X } from 'lucide-react'
 import { useT } from '../../i18n'
+import ChangeCountChip from './ChangeCountChip'
 import type { MarkerCounts } from '../../utils/diffMarkers'
 
 /**
@@ -28,6 +29,97 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; border: stri
 export function statusConfigFor(status: string) {
   return status ? (STATUS_CONFIG[status] ?? STATUS_CONFIG.modified) : null
 }
+
+/**
+ * The one-letter git badge, drawn the same wherever a file is named.
+ *
+ * The TABLE was already shared through `statusConfigFor`; this shares the RENDERING
+ * too, which is the half that had been copied into the review's file cards verbatim.
+ * Sharing only the colours is how the two would drift — a resize or a re-radius landing
+ * on the drawer's header and not on the forty cards under it.
+ *
+ * Renders nothing for an empty status, which is the rule the table already owns: the
+ * spec panel opens a file that is not a git change at all, and badging it "M" would
+ * state something false about it.
+ */
+export function StatusBadge({ status }: { status: string }) {
+  const cfg = statusConfigFor(status)
+  if (!cfg) return null
+
+  return (
+    <span className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold border ${cfg.color}`}>
+      {cfg.label}
+    </span>
+  )
+}
+
+/**
+ * Fold/unfold between a file's changed regions and the whole of it.
+ *
+ * Fold arrows rather than the spec panel's `Maximize2`, whose arrows run corner to
+ * corner. That diagonal states "grow this in both directions", which is what SpecPanel
+ * does — it hands the file to a bigger surface. This button does something narrower:
+ * the card keeps its width and the hidden regions come back along ONE axis. Arrows
+ * leaving a centre line straight up and down say that, and they read as the elision
+ * rows opening back up.
+ *
+ * One component for the drawer's header and for every review card, label included: the
+ * two spelled the same ternary over the same two keys, which is one wording change away
+ * from disagreeing about what the button does.
+ */
+export function WholeFileToggle({ showWholeFile, onToggle }: { showWholeFile: boolean; onToggle: () => void }) {
+  const t = useT()
+  const label = t(showWholeFile ? 'filePreview.showChangesOnly' : 'filePreview.showWholeFile')
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={label}
+      aria-label={label}
+      aria-pressed={showWholeFile}
+      className="shrink-0 p-1.5 rounded-md text-text-secondary hover:text-ink hover:bg-surface-strong transition-colors border-none cursor-pointer bg-transparent"
+    >
+      {showWholeFile ? <FoldVertical className="w-3.5 h-3.5" /> : <UnfoldVertical className="w-3.5 h-3.5" />}
+    </button>
+  )
+}
+
+/**
+ * The drawer's close button, shared by both of its headers.
+ *
+ * Kept in one place for the label as much as for the classes: `modal.closeEsc` promises
+ * a keyboard shortcut, and the panel's Escape listener is what keeps that promise. Two
+ * copies of the promise is one copy too many.
+ */
+export function DrawerCloseButton({ onClose }: { onClose: () => void }) {
+  const t = useT()
+
+  return (
+    <button
+      onClick={onClose}
+      title={t('modal.closeEsc')}
+      aria-label={t('modal.closeEsc')}
+      className="p-1.5 rounded-md hover:bg-surface-strong text-text-secondary hover:text-ink transition-colors"
+    >
+      <X size={16} />
+    </button>
+  )
+}
+
+/**
+ * The bar across the top of the drawer, in whichever shape it is showing.
+ *
+ * `electron-no-drag` is the load-bearing part and the reason this is a shared constant
+ * rather than a class string spelled once per header. The drawer is `fixed top-0`, so
+ * its header is the only bar in the app that puts controls inside the window's top
+ * 40px — everything else sits below TitleBar. The window is `titleBarStyle: 'hidden'`,
+ * and macOS treats that band as draggable, which swallows clicks on whatever is painted
+ * there no matter how high its z-index. Without this the buttons simply do not respond,
+ * and nothing about the symptom points at the cause — which is exactly why the next
+ * header to be added must not have to rediscover it.
+ */
+export const DRAWER_HEADER = 'electron-no-drag flex items-center justify-between px-4 py-3 border-b border-line shrink-0'
 
 const EXT_LABELS: Record<string, string> = {
   ts: 'TypeScript', tsx: 'TSX', js: 'JavaScript', jsx: 'JSX',
@@ -74,26 +166,12 @@ interface Props {
  * scroll geometry, and the header shares none of it.
  */
 export default function FileHeader({ filePath, status, canExpand, showWholeFile, counts, onToggleWholeFile, onClose }: Props) {
-  const t = useT()
   const fileName = filePath.split('/').pop() ?? filePath
-  const statusCfg = statusConfigFor(status)
-  const expandLabel = t(showWholeFile ? 'filePreview.showChangesOnly' : 'filePreview.showWholeFile')
-  const addedLabel = t('filePreview.linesAdded', { count: counts.added })
-  const removedLabel = t('filePreview.linesRemoved', { count: counts.removed })
 
   return (
-    /* `electron-no-drag`: the drawer is `fixed top-0`, so this header is the only bar in
-       the app that puts controls inside the window's top 40px — everything else sits
-       below TitleBar. The window is `titleBarStyle: 'hidden'`, and macOS treats that band
-       as draggable, which swallows clicks on whatever is painted there no matter how high
-       its z-index. Without this the expand and close buttons simply do not respond. */
-    <div className="electron-no-drag flex items-center justify-between px-4 py-3 border-b border-line shrink-0">
+    <div className={DRAWER_HEADER}>
       <div className="flex items-center gap-2.5 min-w-0">
-        {statusCfg && (
-          <span className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold border ${statusCfg.color}`}>
-            {statusCfg.label}
-          </span>
-        )}
+        <StatusBadge status={status} />
         <div className="flex flex-col min-w-0">
           <span className="text-sm font-medium text-ink truncate">{fileName}</span>
           <span className="text-xs text-text-secondary truncate">{filePath}</span>
@@ -104,44 +182,14 @@ export default function FileHeader({ filePath, status, canExpand, showWholeFile,
             border and radius — so the header reads as one row of chips rather than as a
             loose figure next to a chip. Only the two numbers keep their own colour.
 
-            `tabular-nums` so the two figures keep one width and the controls to their
-            right do not shift as the counts change from file to file. U+2212 for the
-            minus, not a hyphen: it is drawn at the `+`'s width and height, and these
-            two sit side by side. */}
-        {counts.added + counts.removed > 0 && (
-          <span className="flex items-center gap-1.5 text-[10px] font-medium bg-surface border border-line-field rounded px-1.5 py-0.5 tabular-nums select-none">
-            <span className="text-green" title={addedLabel} aria-label={addedLabel}>+{counts.added}</span>
-            <span className="text-red" title={removedLabel} aria-label={removedLabel}>−{counts.removed}</span>
-          </span>
-        )}
+            Shared with the review's file cards rather than respelled there: a second
+            copy is how the two would end up disagreeing about the minus sign. */}
+        <ChangeCountChip counts={counts} />
         <span className="text-[10px] font-medium text-text-secondary bg-surface border border-line-field rounded px-1.5 py-0.5">
           {getExtLabel(filePath)}
         </span>
-        {/* Fold/unfold rather than the spec panel's `Maximize2`, whose arrows run corner
-            to corner. That diagonal states "grow this in both directions", which is what
-            SpecPanel does — it hands the file to a bigger surface. This button does
-            something narrower: the card keeps its width and the hidden regions come back
-            along ONE axis. Arrows leaving a centre line straight up and down say that,
-            and they read as the elision rows opening back up. */}
-        {canExpand && (
-          <button
-            onClick={onToggleWholeFile}
-            title={expandLabel}
-            aria-label={expandLabel}
-            aria-pressed={showWholeFile}
-            className="p-1.5 rounded-md text-text-secondary hover:text-ink hover:bg-surface-strong transition-colors border-none cursor-pointer bg-transparent"
-          >
-            {showWholeFile ? <FoldVertical className="w-3.5 h-3.5" /> : <UnfoldVertical className="w-3.5 h-3.5" />}
-          </button>
-        )}
-        <button
-          onClick={onClose}
-          title={t('modal.closeEsc')}
-          aria-label={t('modal.closeEsc')}
-          className="p-1.5 rounded-md hover:bg-surface-strong text-text-secondary hover:text-ink transition-colors"
-        >
-          <X size={16} />
-        </button>
+        {canExpand && <WholeFileToggle showWholeFile={showWholeFile} onToggle={onToggleWholeFile} />}
+        <DrawerCloseButton onClose={onClose} />
       </div>
     </div>
   )

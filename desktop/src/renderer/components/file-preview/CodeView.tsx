@@ -1,8 +1,4 @@
 import { useLayoutEffect, useRef } from 'react'
-import {
-  countMarkerKinds, groupMarkerBlocks, selectScrollTop,
-  type MarkerBlock, type MarkerCounts, type MarkerPosition,
-} from '../../utils/diffMarkers'
 import { useT } from '../../i18n'
 
 interface Props {
@@ -23,72 +19,6 @@ interface Props {
    * it is then the only thing making the code legible.
    */
   blend?: boolean
-  /**
-   * Bump to re-anchor on the first change without re-reading the file. Clicking a
-   * file that is already open changes nothing else — same path, same status, same
-   * HTML — so this counter is the only thing left that can say "take me back to the
-   * change".
-   */
-  scrollSeq?: number
-  /**
-   * Where the changes ended up ON SCREEN, handed to the parent so the navigator and the
-   * marker ruler can both work from the same anchoring this component opens on.
-   * Reported from the measurement below rather than measured again: the numbers are
-   * only valid for the layout that produced them.
-   *
-   * This — and NOT the `changedLines` the IPC read also returns — is the only usable
-   * source of position. A deletion is re-injected as an extra visual row, so a file
-   * line number is not a rendered row index, and nothing downstream can convert one
-   * into the other without measuring the document anyway. Each block carries the kind
-   * of the rows it covers, which is the ruler's only other input.
-   *
-   * `counts` rides along for the change bar's summary: it comes off the same walk of
-   * the same rows, and measuring the document twice for two numbers that are equal by
-   * construction is how the two readouts would end up disagreeing.
-   */
-  onBlocksMeasured?: (blocks: MarkerBlock[], contextPx: number, counts: MarkerCounts) => void
-}
-
-/**
- * The element the preview actually scrolls in, walking up from the highlighted
- * block. It is FilePreviewPanel's `flex-1 overflow-auto`, but this is resolved from
- * the DOM rather than assumed, because the same component also renders inside the
- * spec panel, which scrolls somewhere else entirely.
- *
- * Both halves of the test matter, and neither is about the inner `<pre>` — the walk
- * starts at the parent, so the `<pre>` sitting *inside* the highlighted block is never
- * a candidate. Size alone would stop at any ancestor whose content merely overflows a
- * `hidden` or `visible` box, which scrolls nothing; overflow alone would stop at an
- * `overflow-auto` ancestor that currently fits its content, and scrolling it is a
- * no-op that leaves the real container untouched.
- */
-function findScrollContainer(from: HTMLElement): HTMLElement | null {
-  let node = from.parentElement
-  while (node) {
-    const overflowY = getComputedStyle(node).overflowY
-    if (node.scrollHeight > node.clientHeight && (overflowY === 'auto' || overflowY === 'scroll')) return node
-    node = node.parentElement
-  }
-  return null
-}
-
-/**
- * Distance from the document's layout origin, summed up the offsetParent chain.
- *
- * Layout offsets, not `getBoundingClientRect`: this runs while the panel is midway
- * through its 310 ms `animate-slide-in`, and a rect is a POST-transform measurement,
- * so every number it returns is displaced by however far the panel has slid. An
- * offset is pure layout and immune to the transform, which is also why no timer is
- * needed here — the values are already final at commit.
- */
-function cumulativeOffsetTop(node: HTMLElement): number {
-  let top = 0
-  let current: HTMLElement | null = node
-  while (current) {
-    top += current.offsetTop
-    current = current.offsetParent as HTMLElement | null
-  }
-  return top
 }
 
 /**
@@ -187,14 +117,14 @@ function codeStyles(c: CodeChrome): string {
   }
 
   /* Where the unchanged middle of the file was left out.
-     Carries no data-diff on purpose: the measurement below walks
-     .line[data-diff] to build the ruler and the navigator, and a separator is not
-     a change to navigate to. Its label is written in by the layout effect rather
-     than by content:, because it is translated. */
+     Carries no data-diff on purpose: FilePreviewPanel's sweep walks .line[data-diff]
+     to build the ruler and the navigator, and a separator is not a change to navigate
+     to. Its label is written in by the layout effect above rather than by content:,
+     because it is translated. */
   /* Taller than a line of code on purpose: this row is a seam between two regions of
      the file, and at code line-height it read as just another line. The padding is what
      gives it that weight — it is applied in the stylesheet, so it is already in place
-     when the layout effect measures the rows below it. */
+     before anything measures the rows below it. */
   .shiki code .line[data-elided] {
     color: ${c.gutter};
     background-color: ${c.rule};
@@ -215,91 +145,40 @@ const CODE_STYLES: Record<'light' | 'dark', string> = {
   light: codeStyles(CHROME.light),
 }
 
-/** Lines of unchanged code kept above the first change, so it reads in context. */
-const CONTEXT_LINES = 3
-
-/** Only used if the first marked row measures zero, which layout should never give. */
-const FALLBACK_LINE_HEIGHT = 18
-
-export default function CodeView({ content, highlightedHtml, appearance = 'dark', blend = true, scrollSeq, onBlocksMeasured }: Props) {
+export default function CodeView({ content, highlightedHtml, appearance = 'dark', blend = true }: Props) {
   const htmlRef = useRef<HTMLDivElement>(null)
   const t = useT()
 
-  // Opening a modified file at line 1 hides the very thing it was opened for, so the
-  // panel is anchored on the first change instead. In a layout effect, before paint:
-  // the reader must never see the top of the file and then a jump away from it.
+  /**
+   * Label the elision rows. That is now this component's ONLY layout-time job.
+   *
+   * It used to also measure the changed rows, report them upwards, and scroll the
+   * container onto the first one. All three moved to FilePreviewPanel, because the
+   * drawer stopped being about one file: N cards mount in the same commit, and N copies
+   * of this effect would each resolve the SAME scroller and each write `scrollTop` into
+   * it — the last card to mount would win, so where the reader landed would depend on
+   * the order forty reads happened to resolve in. Measuring is now a single sweep from
+   * the panel, which is also the only place that can group rows by the file they are in.
+   *
+   * Labelling has to stay HERE, and in a LAYOUT effect: the markers arrive empty from
+   * the main process, where no interface language is bound, and the label is what gives
+   * the row its height. React runs a child's layout effects before its parent's, so
+   * every card's labels are written — and every row below them is at its final offset —
+   * by the time the panel's sweep runs. That ordering is the whole reason the panel can
+   * measure the cards without asking them anything.
+   *
+   * `t` IS a dependency: its identity changes with the interface language, and these
+   * labels are written straight into the DOM, where nothing else would ever come back
+   * to retranslate them.
+   */
   useLayoutEffect(() => {
     const root = htmlRef.current
     if (!root) return
 
-    // The elision markers arrive empty from the main process — the HTML is built
-    // there, where no interface language is bound — so their label is written here.
-    //
-    // BEFORE the measurement below, and in this same effect rather than one of its
-    // own: the label is what gives the row its height, and a measurement taken over
-    // rows that are still empty would put every block below the first elision a few
-    // pixels off. The ruler and the navigator both read those numbers.
     for (const row of root.querySelectorAll<HTMLElement>('.line[data-elided]')) {
       row.textContent = t('filePreview.linesHidden', { count: Number(row.dataset.elided) })
     }
-
-    const rows = [...root.querySelectorAll<HTMLElement>('.line[data-diff]')]
-    // `annotateShikiHtml` only ever writes "add" or "remove", and the selector above
-    // already excluded rows with no attribute at all; anything else is a row this
-    // version does not know, and colouring it as an addition beats dropping it.
-    const kindOf = (line: HTMLElement): MarkerPosition['kind'] =>
-      line.dataset.diff === 'remove' ? 'remove' : 'add'
-
-    const container = findScrollContainer(root)
-    // No scrollable ancestor means no scrollable overflow: every change is already on
-    // screen. The COUNTS are still worth reporting — the navigator is built to stand on
-    // them alone, dropping its own arrows below two blocks — but the BLOCKS are not, and
-    // that asymmetry is the decision rather than an oversight. Reporting them would put
-    // up arrows that move nothing (`blockScrollTop` clamps every one to 0), leaving a
-    // counter walking 1 → 2 → 3 over a view that never changes, which reads as a broken
-    // button rather than as "already there"; it would also draw a ruler with nowhere to
-    // send anyone. Passing no block is what makes both drop out on their existing rule.
-    //
-    // Collapsed to its changed regions, a big file with a small diff lands here as a
-    // matter of course, so this path carries the summary for the common case — not just
-    // for the short files it used to be about.
-    if (!container) {
-      onBlocksMeasured?.([], 0, countMarkerKinds(rows.map(line => ({ kind: kindOf(line) }))))
-      return
-    }
-
-    const containerTop = cumulativeOffsetTop(container)
-    const markers: MarkerPosition[] = rows.map(line => ({
-      top: cumulativeOffsetTop(line) - containerTop,
-      height: line.offsetHeight,
-      kind: kindOf(line),
-    }))
-
-    const contextPx = CONTEXT_LINES * (markers[0]?.height || FALLBACK_LINE_HEIGHT)
-    const blocks = groupMarkerBlocks(markers)
-    // Reported before the scroll rather than after it, and from this one grouping:
-    // measuring a second time for the navigator would mean two passes over the DOM
-    // for numbers that are the same by construction.
-    onBlocksMeasured?.(blocks, contextPx, countMarkerKinds(markers))
-
-    // No marker is the normal case for the spec panel, which renders this component
-    // with an empty status and therefore gets no `data-diff` at all: `selectScrollTop`
-    // answers null and the panel's own follow-the-bottom scrolling is left alone.
-    const target = selectScrollTop(blocks, {
-      viewportHeight: container.clientHeight,
-      contentHeight: container.scrollHeight,
-      currentScrollTop: container.scrollTop,
-      contextPx,
-    })
-    if (target !== null) container.scrollTo({ top: target })
-    // `onBlocksMeasured` is deliberately absent from the dependencies: it is a
-    // notification, not an input, and re-running this effect for a new callback
-    // identity would drag the reader back to the first change on an unrelated render.
-    //
-    // `t` IS a dependency: its identity changes with the interface language, and the
-    // elision labels above are written straight into the DOM, where nothing else
-    // would ever come back to retranslate them.
-  }, [highlightedHtml, scrollSeq, t])
+  }, [highlightedHtml, t])
 
   if (highlightedHtml) {
     return (

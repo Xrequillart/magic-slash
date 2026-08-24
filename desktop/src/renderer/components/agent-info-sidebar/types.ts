@@ -1,3 +1,5 @@
+import type { ChangedFile } from '../../../types'
+
 export interface BranchCommit {
   hash: string
   shortHash: string
@@ -13,12 +15,12 @@ export interface GitStats {
   deletions: number
   filesChanged: number
   isGitRepo: boolean
-  files: Array<{
-    path: string
-    additions: number
-    deletions: number
-    status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked'
-  }>
+  /**
+   * Declared in the shared types module rather than inline here: the store keeps a
+   * frozen COPY of this array for the review drawer, and it cannot import a shape
+   * out of a component folder.
+   */
+  files: ChangedFile[]
 }
 
 export interface BranchCommits {
