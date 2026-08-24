@@ -93,7 +93,7 @@ export function RepositoryCard({
           {/* Base branch (left) */}
           {resolvedBaseBranch && (
             <>
-              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-surface rounded-md min-w-0">
+              <div className="self-stretch flex items-center gap-1.5 px-2 py-1.5 bg-surface rounded-md border border-line-subtle min-w-0">
                 <GitBranch className="w-3 h-3 text-text-secondary/50 flex-shrink-0" />
                 <span
                   className="text-text-secondary/70 text-[10px] font-medium truncate"
@@ -106,7 +106,7 @@ export function RepositoryCard({
             </>
           )}
           {/* Current branch (right) */}
-          <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1.5 bg-surface rounded-md">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1.5 bg-surface rounded-md border border-line-subtle">
             <GitBranch className="w-3.5 h-3.5 text-green/70 flex-shrink-0" />
             <span
               className="text-green text-xs font-medium truncate"
@@ -131,7 +131,7 @@ export function RepositoryCard({
 
       {/* Uncommitted changes block */}
       {hasChanges && gitData.stats && (
-        <div className="bg-surface rounded-md p-2 mb-2">
+        <div className="bg-surface rounded-md border border-line-subtle p-2 mb-2">
           {/* Header with title, stats and gauge */}
           <div className="flex items-center gap-2 text-xs mb-2">
             <span className="text-text-secondary/70 font-medium">{t('agentInfo.uncommittedChanges')}</span>
@@ -192,7 +192,7 @@ export function RepositoryCard({
 
       {/* Commits block */}
       {hasCommits && gitData.commits && (
-        <div className="bg-surface rounded-md p-2 mb-2">
+        <div className="bg-surface rounded-md border border-line-subtle p-2 mb-2">
           <div className="flex items-center text-xs mb-1.5">
             <span className="text-text-secondary/70 font-medium">{t('agentInfo.commits')}</span>
             <span className="text-text-secondary/50 ml-auto">
@@ -245,7 +245,7 @@ export function RepositoryCard({
 
       {/* No changes state */}
       {gitData && !gitData.error && !hasChanges && !hasCommits && gitData.branch && (
-        <div className="bg-surface rounded-md p-2 mb-2">
+        <div className="bg-surface rounded-md border border-line-subtle p-2 mb-2">
           <span className="text-xs text-text-secondary/40 italic">{t('agentInfo.noUncommittedChanges')}</span>
         </div>
       )}
