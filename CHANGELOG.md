@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.78.0] - 2026-08-24
+
+### Added
+
+- **Desktop**: The file preview highlights code in the appearance of the theme in use, so a light theme no longer opens the drawer on a black slab of code. Settings → Appearance can pin it light or dark instead, for anyone who reads code in the opposite appearance to their interface
+- **Desktop**: The change bar says what moved in the file — added and removed line counts on the left, and the walk through the changes at the bar's true centre, whatever sits beside it, with its arrows now labelled Previous and Next
+- **PR**: Test-step routes link to the pull request's preview deployment
+
+### Changed
+
+- **Desktop**: The sidebar footer drops the docs, changelog and GitHub links
+- **Deps**: Vitest 4.1.10 → 4.1.11
+
 ## [0.77.1] - 2026-08-24
 
 ### Added
@@ -2346,6 +2359,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.78.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.78.0
 [0.77.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.77.1
 [0.77.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.77.0
 [0.76.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.76.2
