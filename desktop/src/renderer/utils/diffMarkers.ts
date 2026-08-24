@@ -55,6 +55,19 @@ export function groupMarkerBlocks(markers: MarkerPosition[], gapTolerance = 1): 
 }
 
 /**
+ * How far this container can actually travel.
+ *
+ * The floor at 0 is not defensive: content shorter than its own viewport gives a
+ * NEGATIVE difference, and clamping a scroll target to that would ask for a negative
+ * scrollTop. Named once and shared, because `blockScrollTop`'s clamp and
+ * `currentBlockIndex`'s end-of-travel guard are only consistent with each other for
+ * as long as they agree on this number.
+ */
+function maxScrollTop(view: ScrollView): number {
+  return Math.max(0, view.contentHeight - view.viewportHeight)
+}
+
+/**
  * The scrollTop that brings the first change into view, or `null` for "leave the
  * scroll alone".
  *
@@ -80,6 +93,107 @@ export function selectScrollTop(blocks: MarkerBlock[], view: ScrollView): number
   const viewportBottom = view.currentScrollTop + view.viewportHeight
   if (first.top >= view.currentScrollTop && first.top + view.contextPx <= viewportBottom) return null
 
-  const maxScrollTop = Math.max(0, view.contentHeight - view.viewportHeight)
-  return Math.min(Math.max(first.top - view.contextPx, 0), maxScrollTop)
+  return blockScrollTop(first, view)
+}
+
+/**
+ * The scrollTop that brings a block into view: its top pushed down by `contextPx`,
+ * clamped into the real range of travel.
+ *
+ * THE anchoring rule of this module — `selectScrollTop` ends by delegating here
+ * rather than restating it, so the place the panel opens on and the place the
+ * navigator's arrows land on cannot drift apart. What that function adds on top is
+ * its "already visible → leave the scroll alone" short-circuit, and that one is
+ * deliberately absent here: it is the right answer when the panel moves on its own
+ * initiative and the wrong one for a reader who has just clicked "next", since
+ * answering "no movement" for a block that happens to share the viewport with the
+ * current one would make the button look broken on exactly the files where changes
+ * cluster.
+ */
+export function blockScrollTop(block: MarkerBlock, view: ScrollView): number {
+  return Math.min(Math.max(block.top - view.contextPx, 0), maxScrollTop(view))
+}
+
+/**
+ * Which block the reader is on, from where the container currently sits — so the
+ * counter follows a hand scroll, not just the arrows.
+ *
+ * The general rule is the last block whose top has passed the anchor line
+ * (`currentScrollTop + contextPx`), which is self-consistent with `blockScrollTop`:
+ * after scrolling to block `i` that anchor sits exactly on `blocks[i].top`, and
+ * blocks are strictly increasing in `top`, so the answer comes back `i`.
+ *
+ * The two clamp guards above it exist because that consistency breaks wherever the
+ * scroll cannot actually reach the anchor:
+ *
+ * - At scrollTop 0, a first block sitting closer to the top than `contextPx` had its
+ *   target clamped to 0. The general rule would then find several blocks at or below
+ *   the anchor and answer with the LAST of them — the counter would open on change 3
+ *   of a file the panel just anchored on change 1.
+ * - At the end of travel the mirror image: the last blocks are past the anchor the
+ *   container can offer, so without the guard they could never become current and the
+ *   counter would stick a few changes short of the end.
+ *
+ * The empty case has to be tested first, or `blocks.length - 1` would answer `-1`
+ * too and "no blocks" would be indistinguishable from "the last one".
+ */
+export function currentBlockIndex(blocks: MarkerBlock[], view: ScrollView): number {
+  if (blocks.length === 0) return -1
+  if (view.currentScrollTop <= 0) return 0
+  if (view.currentScrollTop >= maxScrollTop(view)) return blocks.length - 1
+
+  // `groupMarkerBlocks` hands these back in increasing `top`, so the first block past
+  // the anchor ends the search — nothing after it can qualify. `index` staying at its
+  // initial 0 is itself an answer, and the right one: a reader who has scrolled a
+  // little but not yet down to the first change is still on change 1.
+  const anchor = view.currentScrollTop + view.contextPx
+  let index = 0
+  for (let i = 0; i < blocks.length; i++) {
+    if (blocks[i].top > anchor) break
+    index = i
+  }
+  return index
+}
+
+/**
+ * Half a pixel, for comparing a scroll target against the scrollTop the container
+ * reports back afterwards.
+ *
+ * Both numbers come out of `blockScrollTop`, so they would be identical if the DOM
+ * round-tripped them untouched — it does not: a fractional target is stored snapped to
+ * the engine's layout grid, and an exact `===` would then fail on precisely the
+ * fractional row heights the rest of this module goes out of its way to carry through.
+ * Nothing is at risk from the looseness: `groupMarkerBlocks` only ever emits blocks
+ * separated by more than a row, so two DIFFERENT targets are never this close.
+ */
+const SCROLL_EPSILON = 0.5
+
+/**
+ * Which block to show as current now the container has moved, given the one that was
+ * current before.
+ *
+ * `currentBlockIndex` reads the scroll position and nothing else, which is the right
+ * answer for a hand scroll and the wrong one immediately after an arrow click:
+ * wherever two blocks resolve to the SAME clamped `blockScrollTop`, the position no
+ * longer tells them apart and a coarser positional guess would overrule the block the
+ * reader just asked for. That is not hypothetical — it is what the two clamps produce:
+ *
+ * - At the end of travel every remaining block targets `maxScrollTop`, and the
+ *   end-of-travel guard answers the LAST of them. Clicking "next" onto the third
+ *   change of a file whose last three all clamp there would renumber the counter to
+ *   the last one, and the blocks in between could never be shown as current at all.
+ * - At the top, two blocks within `contextPx` of offset 0 both target scrollTop 0, so
+ *   moving between them fires no scroll event whatsoever — nothing moves on screen,
+ *   and the position corroborates neither block over the other.
+ *
+ * So: keep `previous` for as long as it still EXPLAINS where the container sits —
+ * scrolling to it lands exactly here — and fall back to the positional reading the
+ * moment it does not, which is any real hand scroll. An out-of-range `previous`
+ * (including the -1 of an empty file) indexes to `undefined` and falls through, so the
+ * caller owes no validation of its own.
+ */
+export function resolveBlockIndex(blocks: MarkerBlock[], view: ScrollView, previous: number): number {
+  const kept = blocks[previous]
+  if (kept && Math.abs(blockScrollTop(kept, view) - view.currentScrollTop) <= SCROLL_EPSILON) return previous
+  return currentBlockIndex(blocks, view)
 }

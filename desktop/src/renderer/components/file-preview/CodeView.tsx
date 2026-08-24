@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
-import { groupMarkerBlocks, selectScrollTop, type MarkerPosition } from '../../utils/diffMarkers'
+import { groupMarkerBlocks, selectScrollTop, type MarkerBlock, type MarkerPosition } from '../../utils/diffMarkers'
 import type { ChangedLines } from '../../../types'
 
 interface Props {
@@ -13,13 +13,21 @@ interface Props {
    */
   scrollSeq?: number
   /**
-   * Where the file changed, straight from the diff. The scroll below deliberately
-   * does NOT use it: a deletion is re-injected as an extra visual row, so a file line
-   * number is not a rendered row index and only measuring the document gets the
-   * anchor right. It is carried here for the epic's navigator and marker ruler, which
-   * need the positions themselves rather than one anchor.
+   * Where the file changed, straight from the diff. Nothing in this component uses
+   * it, and neither does the change navigator: a deletion is re-injected as an extra
+   * visual row, so a file line number is not a rendered row index, and only measuring
+   * the document gets the positions right — which is what `onBlocksMeasured` reports.
+   * It is carried here for the marker ruler, which paints the scrollbar from the diff
+   * rather than from layout.
    */
   changedLines?: ChangedLines
+  /**
+   * Where the changes ended up ON SCREEN, handed to the parent so the navigator can
+   * scroll between them with the same anchoring this component opens on. Reported
+   * from the measurement below rather than measured again: the numbers are only valid
+   * for the layout that produced them.
+   */
+  onBlocksMeasured?: (blocks: MarkerBlock[], contextPx: number) => void
 }
 
 /**
@@ -116,7 +124,7 @@ const CONTEXT_LINES = 3
 /** Only used if the first marked row measures zero, which layout should never give. */
 const FALLBACK_LINE_HEIGHT = 18
 
-export default function CodeView({ content, highlightedHtml, scrollSeq }: Props) {
+export default function CodeView({ content, highlightedHtml, scrollSeq, onBlocksMeasured }: Props) {
   const htmlRef = useRef<HTMLDivElement>(null)
 
   // Opening a modified file at line 1 hides the very thing it was opened for, so the
@@ -126,6 +134,13 @@ export default function CodeView({ content, highlightedHtml, scrollSeq }: Props)
     const root = htmlRef.current
     if (!root) return
     const container = findScrollContainer(root)
+    // No scrollable ancestor means no scrollable overflow, and returning here reports
+    // no block — which also leaves the navigator card unrendered. That is the decision,
+    // not an oversight: with the content shorter than its viewport every change is
+    // already on screen, so there is nothing to navigate to. Reporting the blocks
+    // anyway would put up a card whose arrows move nothing — `blockScrollTop` clamps
+    // every one of them to 0 — leaving a counter that walks 1 → 2 → 3 over a view that
+    // never changes, which reads as a broken button rather than as "already there".
     if (!container) return
 
     const containerTop = cumulativeOffsetTop(container)
@@ -134,16 +149,26 @@ export default function CodeView({ content, highlightedHtml, scrollSeq }: Props)
       height: line.offsetHeight,
     }))
 
+    const contextPx = CONTEXT_LINES * (markers[0]?.height || FALLBACK_LINE_HEIGHT)
+    const blocks = groupMarkerBlocks(markers)
+    // Reported before the scroll rather than after it, and from this one grouping:
+    // measuring a second time for the navigator would mean two passes over the DOM
+    // for numbers that are the same by construction.
+    onBlocksMeasured?.(blocks, contextPx)
+
     // No marker is the normal case for the spec panel, which renders this component
     // with an empty status and therefore gets no `data-diff` at all: `selectScrollTop`
     // answers null and the panel's own follow-the-bottom scrolling is left alone.
-    const target = selectScrollTop(groupMarkerBlocks(markers), {
+    const target = selectScrollTop(blocks, {
       viewportHeight: container.clientHeight,
       contentHeight: container.scrollHeight,
       currentScrollTop: container.scrollTop,
-      contextPx: CONTEXT_LINES * (markers[0]?.height || FALLBACK_LINE_HEIGHT),
+      contextPx,
     })
     if (target !== null) container.scrollTo({ top: target })
+    // `onBlocksMeasured` is deliberately absent from the dependencies: it is a
+    // notification, not an input, and re-running this effect for a new callback
+    // identity would drag the reader back to the first change on an unrelated render.
   }, [highlightedHtml, scrollSeq])
 
   if (highlightedHtml) {

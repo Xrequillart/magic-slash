@@ -1522,4 +1522,7 @@ export const en = {
   'live.reconnectingTitle': 'Reconnecting to the real-time feed…',
   'filePreview.binary': 'Binary file',
   'filePreview.unreadable': 'Cannot read file',
+  'filePreview.changeCounter': '{current} / {total} changes',
+  'filePreview.previousChange': 'Previous change',
+  'filePreview.nextChange': 'Next change',
 }
