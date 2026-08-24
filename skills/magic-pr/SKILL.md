@@ -18,7 +18,7 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Agent, Skill, mcp__github
 > - **Step 6.5**: Announce the PR to the user — they need the link before anything long-running starts
 > - **Step 7**: Update the Jira/GitHub ticket — closes the feedback loop with the team
 > - **Step 7.4**: Watch the CI and review feedback — turns the PR from "created" into "actually green"
-> - **Step 7.4.2.5**: Backfill the preview URL — points the reviewer at this PR's deployed code instead of a local rebuild, when the project publishes one, and keeps that one line current as the head commit moves
+> - **Step 7.4.2.5**: Backfill the preview URL — points the reviewer at this PR's deployed code instead of a local rebuild, when the project publishes one, turns the routes named in the test steps into clickable links against it, and keeps both current as the head commit moves
 
 You are an assistant that finalizes a task by pushing commits, creating a PR, updating the Jira/GitHub ticket, and then watching the PR until its checks are green and its review feedback is handled.
 
@@ -323,7 +323,7 @@ Then selectively read the **key files** (business logic, API routes, components)
 
 1. From the `--stat` output, identify key files vs secondary files (tests, config, types, lock files)
 2. Read key modified files individually using `Read` to understand the changes in context
-3. While reading, note the user-visible surfaces touched (routes/pages, UI components, API endpoints, CLI commands), the test environment needed (env vars, seed data, a service to run) and — when a touched surface is behind a login — which test account a reviewer would need (which role/persona, not the credential itself: that is resolved in Step 6.1.1) — this is the raw material for the manual test scenarios in Step 6
+3. While reading, note the user-visible surfaces touched (routes/pages, UI components, API endpoints, CLI commands) **with their exact paths** (`/admin/dashboard`, `/api/users`), the test environment needed (env vars, seed data, a service to run) and — when a touched surface is behind a login — which test account a reviewer would need (which role/persona, not the credential itself: that is resolved in Step 6.1.1) — this is the raw material for the manual test scenarios in Step 6
 4. Use this understanding to write a meaningful summary and concrete testing instructions in Step 6
 
 Only use `git diff origin/$DEV_BRANCH..HEAD` for small changes (< 10 files, < 200 lines total). For anything larger, the selective approach above produces better PR descriptions while consuming far less context.
@@ -337,6 +337,8 @@ cat .github/PULL_REQUEST_TEMPLATE.md 2>/dev/null || cat .github/pull_request_tem
 ```
 
 If a template exists, you must **strictly follow it** and fill in its sections. For any section related to testing (e.g., "Testing", "How to test", "Test Steps", "Comment tester", "Vérification"), you must **analyze the diff from Step 4.1** to fill it with concrete, specific testing steps based on the actual code changes. Do NOT use generic placeholders. The same rules as the default template apply: write numbered manual scenarios from the user's point of view (each pairing an action with its observable expected result), never "run the automated tests" as the sole content, and — if the PR has no manually testable surface (docs-only, CI, pure refactor) — state that plainly instead of inventing a scenario.
+
+**Write every web route or API path as inline code with a leading slash** (`/admin/dashboard`, `/api/users`) — never as a bare word, never as a full URL. This applies to a project template exactly as it does to the default one: Step 7.4.2.5 turns those spans, and only those, into clickable links against this PR's preview deployment once one is found, so a route written any other way stays a plain path for the life of the PR. File paths (`SKILL.md`, `desktop/src/main/`) are not routes and are never linked.
 
 **Record the exact heading of the testing section you filled** (e.g. `## Testing`, `### Test Steps`, `## Vérification`, `## QA`). Step 6.1.1 needs it: a project template replaces `MSG_PR_TEMPLATE_EN`/`MSG_PR_TEMPLATE_FR` entirely, so that heading is the only place the test-account line can be injected. If the template has no testing section at all, note that too — Step 6.1.1 then has nowhere to inject and emits nothing.
 
@@ -604,10 +606,14 @@ If the sub-agent returns something that is not parseable as the report schema, d
 > — not the value captured on the first pass. A stale SHA makes this step describe a commit the PR
 > no longer has, which is the same wrong-code failure the whole design exists to avoid.
 >
-> The step owns **exactly one bullet** of the PR body — the `Preview:` / `Aperçu :` bullet inside
-> the testing section — for the whole life of the PR, not one per round. Because the head commit
-> moves between rounds, that bullet's URL legitimately changes: the step keeps the line current by
-> **replacing** it, never by adding a second one, and touches nothing else in the body.
+> The step owns two things inside the testing section, and nothing else in the body: **exactly one
+> bullet** — the `Preview:` / `Aperçu :` one — for the whole life of the PR, not one per round, and
+> **the route links of the numbered steps**, built from the inline-code paths Step 6.1 wrote
+> (`/admin/dashboard` → `[/admin/dashboard](https://<preview>/admin/dashboard)`). Because the head
+> commit moves between rounds, the preview URL legitimately changes: the step keeps both current by
+> **replacing** the bullet, never adding a second one, and re-hosting the links in the same write.
+> When no preview may be named, the bullet goes and the links revert to bare paths — the link text
+> is the original path, so nothing is lost.
 
 Immediately after the watcher returns its report — regardless of what it says (green, failed,
 timed out, or errored) — read `references/preview-url.md` and follow it exactly to attempt this.
@@ -626,17 +632,21 @@ Run this every time the watcher concludes: once here, again after each auto-fix 
 re-check (Step 7.4.5) — 1 + up to 3 + 1 = up to **5** rounds per PR, each of which may be a
 different head commit with a different preview URL.
 
-What makes those rounds safe is not "write only once" but the reference file's **three-outcome**
+What makes those rounds safe is not "write only once" but the reference file's **four-outcome**
 classification (Phase 5, which reads and classifies the body *before* Phase 6's question):
 
-- the owned bullet already names one of this round's candidates → **no-op**: no question, no write,
-  no chat output, body byte-identical. This is the common repeat case (3 `gh` calls, nothing said)
+- the owned bullet already names one of this round's candidates, and the step routes already point
+  at it → **no-op**: no question, no write, no chat output, body byte-identical. This is the common
+  repeat case (3 `gh` calls, nothing said)
+- the bullet is right but a step is not — a route added by a `/magic:resolve` push is still a bare
+  path, or a link still names an older base → **routes rewritten**, bullet byte-identical, silently
 - the bullet exists but names a URL that is none of this head commit's candidates → **replaced in
-  place** (`MSG_PREVIEW_URL_UPDATED`), never appended — and with a single candidate, without asking
-- no bullet yet → **created** (`MSG_PREVIEW_URL_ADDED`)
+  place** (`MSG_PREVIEW_URL_UPDATED`), never appended — and with a single candidate, without asking;
+  every route link is re-hosted to the new base in the same write
+- no bullet yet → **created** (`MSG_PREVIEW_URL_ADDED`), and the routes are linked against it
 - the bullet is out of date and no URL may be written (the user answered "none", or the question
-  could not be asked at all) → the bullet is **removed** and nothing is added, silently: a line
-  pointing at code the PR no longer has is worse than no line
+  could not be asked at all) → the bullet is **removed**, the route links **revert** to bare paths,
+  and nothing is added, silently: a link pointing at code the PR no longer has is worse than none
 
 So the user is never asked when the body is already right and never asked when a single deployment
 settles it; only a multi-preview repo whose head commit moved can be asked again, at most once per
@@ -751,4 +761,4 @@ printf '{"type":"end","skill":"magic-pr","agentId":"%s","outcome":"success","occ
 - `references/node-setup.md` — Node.js version manager detection. Read before any Node.js-dependent command (Step 0.6).
 - `references/ci-watch.md` — Watcher contract, `gh` commands, time budget, and report schema. Read before Step 7.4.
 - `references/test-accounts.md` — Test-account modes, discovery cascade, and the credential guardrails. Read before Step 6.1.1, only when `pullRequest.testAccounts` is not `off`.
-- `references/preview-url.md` — Preview-URL discovery (deployments API, bot-comment fallback), the console-URL rejection rules, the multi-candidate question, and the write procedure for the one body line this feature owns — create it, replace it in place when the head commit's preview changed, or leave the body untouched. Read before Step 7.4.2.5.
+- `references/preview-url.md` — Preview-URL discovery (deployments API, bot-comment fallback), the console-URL rejection rules, the multi-candidate question, and the write procedure for what this feature owns: the one preview bullet and the route links of the test steps — create them, re-host them in place when the head commit's preview changed, revert them when no preview may be named, or leave the body untouched. Read before Step 7.4.2.5.

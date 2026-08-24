@@ -4,7 +4,8 @@ Specification for the post-creation preview-URL backfill consumed by `/magic:pr`
 
 The gate has already fired by the time this file is read: the watcher (Step 7.4.2) has just
 returned a report. Nothing here decides *whether* to run; it only decides whether a usable preview
-URL exists for the branch's **current** head commit and, if so, makes the PR body say so.
+URL exists for the branch's **current** head commit and, if so, makes the PR body say so — in the
+preview bullet, and in every route the test steps ask the reviewer to open.
 
 This is a backfill over a **moving target**. The PR already exists, but its head commit is not
 fixed: the caller runs this procedure up to 5 times per PR (Step 7.4.2.5 — 1 initial watcher
@@ -39,7 +40,12 @@ direct snapshot), treat it as empty and skip Phase 3: a missing report is not ev
 preview exists, and skipping is the safe default here because the only thing lost is a fallback
 that almost never fires, while the alternative spends a call on every PR forever.
 
-## The line this feature owns
+## What this feature owns
+
+Two things, both confined to the located testing section: **one bullet**, and **the route links
+inside the steps**. Nothing else, ever.
+
+### First: the preview bullet
 
 This feature owns **exactly one bullet** in the located testing section, for the whole life of the
 PR — not one bullet per round. Its handle is that bullet's own prefix, *within that section*:
@@ -54,6 +60,51 @@ changes between rounds, so a procedure that looked for its own URL could never r
 previous line. Both prefixes are recognised on **read** (a body written before a language change
 stays findable); the prefix of `$PR_LANGUAGE` is what is used on **write**.
 
+### Second: the route links in the test steps
+
+The steps name the routes the reviewer must open, written by Step 6.1 as inline code with a leading
+slash (`/admin/dashboard`). A preview deployment is what makes those paths resolvable, so the write
+that puts the URL in the bullet also turns them into links against it:
+
+| Before | After |
+| ------ | ----- |
+| `1. Open ` + inline-code `/admin/dashboard` | `1. Open [/admin/dashboard](https://x-abc.vercel.app/admin/dashboard)` |
+
+The link's **text is the path itself**, and its href is `<preview base>` + `<that same path>`. That
+shape *is* the handle: this feature keeps no state, so a link is recognised as its own by its own
+form, exactly as the bullet is recognised by its prefix. Two operations follow mechanically from it:
+
+- **Re-host**, when the head commit's preview changed: keep the text, rebuild the href from the new
+  base.
+- **Revert**, when no preview may be named: the original path is the link text, so
+  `[/admin/dashboard](…)` goes back to inline-code `/admin/dashboard` with nothing lost.
+
+A bare full URL in the step would have made both impossible — nothing in
+`https://x-abc.vercel.app/admin/dashboard` says where the host ends and the route begins, so a later
+round could neither re-host it nor undo it. That is why the link form is not cosmetic.
+
+A markdown link whose text does not start with `/`, or whose href does not end with its own text, is
+**not** this feature's: never re-hosted, never reverted, never read.
+
+### What counts as a route
+
+Eligible: an **inline-code span whose content starts with `/`**, inside the located testing section,
+outside fenced code blocks, and not on the preview bullet itself. On top of that, two denials — a
+file path is not a route, and linking one would put a 404 in the PR body:
+
+- **Filesystem prefixes**: `/Users/`, `/home/`, `/root/`, `/etc/`, `/var/`, `/tmp/`, `/usr/`,
+  `/opt/`, `/private/`, `/dev/`, `/proc/`, `/Volumes/`, `/Applications/`, `/Library/`, `/bin/`,
+  `/sbin/`, `/mnt/`, `/media/`.
+- **Source, config and asset extensions** on the last path segment, query and fragment stripped
+  first: `.md`, `.ts`, `.tsx`, `.js`, `.json`, `.yml`, `.sh`, `.py`, `.css`, `.html`, `.sql`,
+  `.png`, `.svg` and the rest of the list in `IS_ROUTE_AWK` below.
+
+Anything without a leading slash — `SKILL.md`, `desktop/src/main/`, `npm test` — falls outside the
+eligible form already and needs no rule. The denials are deliberately conservative: an endpoint that
+genuinely ends in an extension (`/api/users.json`) is left as a plain path rather than risk linking
+a file. Leaving one route unlinked costs the reviewer a paste; linking a file path costs the PR its
+credibility.
+
 Scope rules, absolute:
 
 - Finding, replacing, removing and inserting all happen **inside the located testing section
@@ -61,19 +112,132 @@ Scope rules, absolute:
   else in the body belongs to someone else: never read it, never move it, never rewrite it.
 - **Nothing else in the body is ever touched** — not one other character. The test-account
   fragment Step 6.1.1 may have folded into the same prerequisites line, the prerequisites line's
-  own text, the numbered steps, the other sections, a project template's checklists and comments:
-  all byte-identical after this feature writes.
+  own text, the *prose* of the numbered steps, the other sections, a project template's checklists
+  and comments: all byte-identical after this feature writes. Within a step, the only thing that
+  changes is an eligible route span becoming a link — or an owned link becoming a route span again.
+  The wording around it, the numbering and the expected results are untouched.
 - **At most one** such bullet exists after any write. A section found carrying two or more (a body
   damaged by an earlier, append-only version of this procedure) is collapsed to the single current
   one by the same write.
 
 So the invariant is **not** "never write twice". It is:
 
-> At most one preview bullet of this feature exists in the located testing section, and it always
-> names the preview of the branch's **current** head commit.
+> At most one preview bullet of this feature exists in the located testing section; it names the
+> preview of the branch's **current** head commit; and every route link in that section points at
+> that same preview. When no preview may be named, the section carries no bullet and no route link —
+> only bare paths.
 
 A second write on a later round is not a defect; it is how that invariant is kept when the head
-commit moves. What is forbidden is a *second bullet*.
+commit moves. What is forbidden is a *second bullet*, and a link that outlives the deployment it
+names.
+
+## The route-link program (`$LINKS_AWK`)
+
+One program, shared by Phase 5 and Phase 7 so the probe and the write can never disagree about what
+is eligible — they run the same code over the same body. Three modes:
+
+| `mode` | Prints | Used by |
+| ------ | ------ | ------- |
+| `probe` | `needs=yes` when `link` against `$base` would change anything, `needs=no` otherwise | Phase 5.4 |
+| `link` | the body with every eligible route linked and every owned link re-hosted to `$base` | Phase 7, cases B, C, E |
+| `revert` | the body with every owned link turned back into a bare inline-code route | Phase 7, case D |
+
+```bash
+LINKS_AWK='
+function is_route(p,   q) {
+  if (p !~ /^\//) return 0
+  if (p ~ /[[:space:]]/) return 0
+  if (index(p, "`") || index(p, "[") || index(p, "]") || index(p, "(") || index(p, ")")) return 0
+  if (p ~ /^\/(Users|home|root|etc|var|tmp|usr|opt|private|dev|proc|Volumes|Applications|Library|bin|sbin|mnt|media)(\/|$)/) return 0
+  q = p
+  sub(/[?#].*$/, "", q)                                  # a query or fragment is not an extension
+  if (q ~ /\.(md|markdown|txt|ts|tsx|js|jsx|mjs|cjs|json|ya?ml|toml|lock|env|sh|bash|zsh|py|rb|go|rs|java|kt|php|swift|c|h|cc|cpp|cs|css|scss|less|html?|xml|sql|csv|png|jpe?g|gif|svg|ico|webp|pdf|zip|tar|gz|log)$/) return 0
+  return 1
+}
+# Pass 1 — markdown links. Ours iff the text is a route, the href ends with exactly that text, and
+# what precedes it is either $base or a bare origin. Both tests matter: without the tail test any
+# link would be rewritten, and without the prefix test [/a](https://x/b/a) would be mistaken for
+# ours and rewritten to https://x/a, silently losing a path segment.
+function walk_links(line,   out, rest, m, cut, txt, href, tail, prefix) {
+  out = ""; rest = line
+  while (match(rest, /\[\/[^]]*\]\([^)]*\)/)) {
+    m = substr(rest, RSTART, RLENGTH)
+    out = out substr(rest, 1, RSTART - 1)
+    rest = substr(rest, RSTART + RLENGTH)
+    cut = index(m, "](")
+    txt = substr(m, 2, cut - 2)
+    href = substr(m, cut + 2, length(m) - cut - 2)
+    tail = substr(href, length(href) - length(txt) + 1)
+    prefix = substr(href, 1, length(href) - length(txt))
+    if (is_route(txt) && tail == txt && (prefix == base || prefix ~ /^https?:\/\/[^\/]+$/))
+      out = out (mode == "revert" ? "`" txt "`" : "[" txt "](" base txt ")")
+    else
+      out = out m
+  }
+  return out rest
+}
+# Pass 2 — inline-code spans holding a route. Never run in revert mode: it would immediately
+# re-link what pass 1 just reverted.
+function walk_spans(line,   out, rest, m, path) {
+  out = ""; rest = line
+  while (match(rest, /`\/[^`]*`/)) {
+    m = substr(rest, RSTART, RLENGTH)
+    out = out substr(rest, 1, RSTART - 1)
+    rest = substr(rest, RSTART + RLENGTH)
+    path = substr(m, 2, length(m) - 2)
+    out = out (is_route(path) ? "[" path "](" base path ")" : m)
+  }
+  return out rest
+}
+function trim(s) { sub(/^[[:space:]]+/, "", s); sub(/[[:space:]]+$/, "", s); return s }
+function is_preview(l,   t) {
+  t = l
+  sub(/^[[:space:]]*/, "", t)
+  if (t !~ /^[-*][[:space:]]+/) return 0
+  sub(/^[-*][[:space:]]+/, "", t)
+  return (index(t, "Preview:") == 1 || index(t, "Aperçu :") == 1)
+}
+BEGIN { insec = 0; fence = 0; changed = 0 }
+{
+  line = $0
+  if (trim(line) == h) insec = 1
+  else if (insec && line ~ /^#+[[:space:]]/) insec = 0
+  isfence = (trim(line) ~ /^(```|~~~)/)
+  if (insec && isfence) fence = !fence
+  if (insec && !fence && !isfence && trim(line) != h && !is_preview(line)) {
+    new = walk_links(line)
+    if (mode != "revert") new = walk_spans(new)
+    if (new != line) changed = 1
+    line = new
+  }
+  if (mode != "probe") print line
+}
+END { if (mode == "probe") print (changed ? "needs=yes" : "needs=no") }'
+```
+
+`$base` is `$PREVIEW_URL` (or, in `revert` and `probe`, the bullet's own URL) with any trailing
+slash stripped, so `base path` never produces a double slash:
+
+```bash
+PREVIEW_BASE=$(printf '%s' "$PREVIEW_URL" | sed -E 's#/+$##' || true)
+```
+
+Properties it relies on, and why each is written the way it is:
+
+- **The preview bullet is excluded** by `is_preview()`. Its own URL is a bare `https://…` with no
+  markdown link and no code span, so nothing would match it anyway — the exclusion makes that a
+  guarantee rather than a coincidence, and it is what lets Phase 7 compose the bullet and rewrite
+  the routes in either order.
+- **Fenced blocks are skipped.** A step that shows a `curl` invocation or a config excerpt keeps its
+  paths as text; turning one into a markdown link inside a code fence would print the brackets
+  literally.
+- **Outside the located section nothing is even considered** — `insec` gates every branch, exactly
+  as it does in `FOLD_AWK`.
+- **`probe` and `link` share every line of logic**, so a round that probes `needs=no` is a round
+  whose `link` pass would have produced a byte-identical body. That equivalence is what makes the
+  no-op round safe to skip without a write.
+- Every `match()` loop consumes what it matched, so `rest` strictly shrinks — no pipeline here can
+  spin.
 
 ## Phase order
 
@@ -88,11 +252,11 @@ watcher conclusion + up to 3 auto-fix rounds + 1 post-resolve re-check):
 | 2 | Never use the commit status's `target_url` (a prohibition, no call) |
 | 3 | Bot-comment fallback — collect candidates from bot comments (at most 1 call, gated) |
 | 4 | Reject console / build-log / dashboard URLs (a filter over every candidate, no call) |
-| 5 | Read the PR body **once**: locate the testing section, then classify this feature's own bullet as `current` / `stale` / `absent` (1 call) |
+| 5 | Read the PR body **once**: locate the testing section, then classify what this feature owns as `current` / `links-only` / `stale` / `absent` (1 call) |
 | 6 | Pick among the candidates — the question, only when the classification does not already settle it (no call) |
-| 7 | Write the body back **once**: replace, insert, or remove this feature's bullet (1 call) |
+| 7 | Write the body back **once**: replace, insert or remove the bullet, and link, re-host or revert the step routes (1 call) |
 
-**Phase 5 before Phase 6** is still the whole point, and its reason survives the three-outcome
+**Phase 5 before Phase 6** is still the whole point, and its reason survives the four-outcome
 model unchanged: the body is classified *before* any question is asked, so a round whose bullet
 already names one of this round's candidates stops silently instead of re-asking, and a round that
 only needs to swap a stale URL for the single candidate available swaps it without asking. Asking
@@ -105,10 +269,15 @@ Call budget:
   list comes back empty, so the procedure stops at Phase 1: exactly **1** call. The body is never
   read.
 - **No-op round** — the common repeat case: the feature's bullet already names one of this round's
-  candidates. 1 (deployments list) + 1 (that deployment's statuses) + 1 (read the body) = **3**
-  calls, then stop at Phase 5.4 — no question, no write, no chat output. Rounds 2 through 5 land
-  here whenever the head commit's preview is the one already in the body (the commit did not move,
-  or the provider reused the URL).
+  candidates *and* the probe finds nothing to fix in the step routes. 1 (deployments list) + 1 (that
+  deployment's statuses) + 1 (read the body) = **3** calls, then stop at Phase 5.4 — no question, no
+  write, no chat output. Rounds 2 through 5 land here whenever the head commit's preview is the one
+  already in the body (the commit did not move, or the provider reused the URL) and no step has
+  changed since.
+- **Links-only round** — the bullet is right but the steps are not: a route was added by a
+  `/magic:resolve` push, or a link still names an older base. 1 + 1 + 1 (read) + 1 (write) = **4**
+  calls, no question, and nothing said in the chat — the URL was already reported when the bullet
+  was written, and re-announcing it would report an event the reviewer did not experience.
 - **First write, exactly one candidate** — the common case on a repo that does publish previews:
   1 + 1 + 1 (read) + 1 (write) = **4** calls, and no question is asked.
 - **Replacement round, exactly one candidate from the deployments API** — the head commit moved
@@ -128,8 +297,8 @@ Call budget:
   Phase 1 is what keeps this a constant instead of scaling with the number of apps in the monorepo.
 - **Per PR, all rounds**: at most 5 rounds × the per-round figure above. On the realistic
   single-preview repo that is 4 for the first round plus 3 or 4 for each later round (3 when it is
-  a no-op, 4 when the head commit's preview changed) — **at most 20** calls for the whole PR. What
-  dominates is the number of watcher conclusions, not this procedure.
+  a no-op, 4 when the head commit's preview changed or the steps needed relinking) — **at most 20**
+  calls for the whole PR. What dominates is the number of watcher conclusions, not this procedure.
 
 No `--paginate`, no retry loop, no polling — within one round every call happens at most once.
 
@@ -406,17 +575,31 @@ whose URL may still be right. Removal only ever happens on a round that *did* fi
        if [ "$CAND_URL" = "$BULLET_URL" ]; then PREVIEW_STATE=current; fi
      done <<<"$CANDIDATES"
    fi
-   if [ "$PREVIEW_STATE" = current ]; then exit 0; fi
+
+   # A correct bullet does not by itself mean the section is correct. A step added after the bullet
+   # was written (a /magic:resolve round adds one routinely) still carries a bare route, and a link
+   # can still name a base the bullet no longer uses. Probe the routes against the bullet's own URL
+   # before calling the round a no-op — same program, same body, so the probe cannot disagree with
+   # the write it is standing in for.
+   if [ "$PREVIEW_STATE" = current ]; then
+     PREVIEW_BASE=$(printf '%s' "$BULLET_URL" | sed -E 's#/+$##' || true)
+     NEEDS=$(awk -v h="$TESTING_HEADING" -v mode=probe -v base="$PREVIEW_BASE" \
+       "$LINKS_AWK" "$TMP_BODY_FILE" 2>/dev/null | sed -n 's/^needs=//p' | head -1 || true)
+     if [ "${NEEDS:-no}" = yes ]; then PREVIEW_STATE=links-only; else exit 0; fi
+   fi
    ```
 
    `if` rather than `[ … ] && …`: an `&&` list whose test is false returns non-zero, which aborts
-   the run under `set -e` — the same no-match trap the `grep`s above guard against.
+   the run under `set -e` — the same no-match trap the `grep`s above guard against. `${NEEDS:-no}`
+   defaults to "nothing to do" when the probe itself fails, which keeps a broken `awk` from
+   triggering a write rather than from suppressing one.
 
    | Classification | Condition | Phase 6 | Phase 7 |
    | -------------- | --------- | ------- | ------- |
-   | `current` | the bullet exists and its URL is **one of this round's candidates** | not run | not run — **stop here**: no question, no write, no chat output, body byte-identical |
-   | `stale` | the bullet exists and its URL is **none of this round's candidates** | run only when the candidates do not settle it | **replace in place** (case B), or **remove** (case D) |
-   | `absent` | the section carries no bullet of this feature | run as before | **insert** (case C) |
+   | `current` | the bullet names **one of this round's candidates**, and the probe says the routes already match it | not run | not run — **stop here**: no question, no write, no chat output, body byte-identical |
+   | `links-only` | same bullet condition, but the probe found a bare route or a link on another base | not run — the URL is settled, it is the bullet's own | **rewrite the routes** (case E), bullet byte-identical, chat silent |
+   | `stale` | the bullet exists and its URL is **none of this round's candidates** | run only when the candidates do not settle it | **replace in place** (case B), or **remove** (case D) — routes follow the bullet either way |
+   | `absent` | the section carries no bullet of this feature | run as before | **insert** (case C), and link the routes |
 
    The comparison is against **this round's whole candidate set**, not against the one candidate
    that would be chosen. Two reasons, and both are load-bearing:
@@ -433,10 +616,15 @@ whose URL may still be right. Removal only ever happens on a round that *did* fi
    not among the *new* head's deployments, so the correct action is to **replace** the bullet —
    never to add a second one next to a URL that now serves code the PR no longer has.
 
+   `links-only` exists because the bullet and the routes can drift apart. Treating a correct bullet
+   as proof that the whole section is correct is what would leave a step added by `/magic:resolve`
+   with a bare path forever, and it costs nothing to rule out: the probe runs on the body this round
+   already read, spends no call, and a round it clears still stops exactly where it stopped before.
+
 ## Phase 6 — Pick among the candidates (no call)
 
-Reached with `$PREVIEW_STATE` equal to `absent` or `stale` (a `current` classification already
-stopped the procedure in Phase 5.4). What happens depends on both the classification and the
+Reached with `$PREVIEW_STATE` equal to `absent` or `stale` (`current` already stopped the procedure
+in Phase 5.4, and `links-only` has nothing to choose — its URL is the one already in the bullet). What happens depends on both the classification and the
 candidate set:
 
 | `$PREVIEW_STATE` | Candidates | Behaviour |
@@ -447,6 +635,7 @@ candidate set:
 | `stale` | exactly 1, from Phase 1 | **No question.** It is `$PREVIEW_URL`; Phase 7 replaces the line silently. |
 | `stale` | exactly 1, marked `bot-comment` | **Ask** — the bot-comment rule is unconditional, replacement included. |
 | `stale` | 2 or more | **Ask** `MSG_PREVIEW_URL_MULTIPLE`, at most once for this head commit. |
+| `links-only` | any | Phase 6 is never reached — `$PREVIEW_URL` is the bullet's own URL. |
 | `current` | any | Phase 6 is never reached. |
 
 Why `stale` with a single Phase 1 candidate asks **nothing**: there is nothing to choose. That one
@@ -514,12 +703,28 @@ are unaffected: they need no question, so they still write.
 Exactly one write per round, and never an append. Which case applies is already decided by
 Phase 5.4's classification and Phase 6's answer:
 
-| Case | Classification | `$PREVIEW_URL` | Action on the bullet | Chat |
-| ---- | -------------- | -------------- | -------------------- | ---- |
-| A | `current` | — | none — Phase 5.4 already stopped the procedure | silent |
-| B | `stale` | set | **replace in place** — same slot, same indentation, new URL | `MSG_PREVIEW_URL_UPDATED` |
-| C | `absent` | set | **insert** it under the prerequisites line | `MSG_PREVIEW_URL_ADDED` |
-| D | `stale` | not set ("none", or the question could not be asked) | **remove** it | silent |
+| Case | Classification | `$PREVIEW_URL` | Action on the bullet | Action on the step routes | Chat |
+| ---- | -------------- | -------------- | -------------------- | ------------------------- | ---- |
+| A | `current` | — | none — Phase 5.4 already stopped the procedure | none | silent |
+| B | `stale` | set | **replace in place** — same slot, same indentation, new URL | `link` against the new base — every owned link re-hosted, every bare route linked | `MSG_PREVIEW_URL_UPDATED` |
+| C | `absent` | set | **insert** it under the prerequisites line | `link` against it | `MSG_PREVIEW_URL_ADDED` |
+| D | `stale` | not set ("none", or the question could not be asked) | **remove** it | `revert` — every owned link back to a bare inline-code route | silent |
+| E | `links-only` | the bullet's own URL | none — byte-identical | `link` against it | silent |
+
+The bullet and the routes always move together, and case D is why. Removing the bullet while
+leaving the links would hand the reviewer the exact thing the removal exists to prevent — a
+clickable link into code the PR no longer has — only harder to spot, because it no longer sits next
+to a `Preview:` label. Conversely a route link with no bullet above it has no provenance. One
+write, one state.
+
+0. **Resolve the base**, from `$PREVIEW_URL` in cases B, C and E, or from `$BULLET_URL` in case D
+   (the stale bullet's own URL — it is what the links to be reverted were built from):
+
+   ```bash
+   PREVIEW_BASE=$(printf '%s' "${PREVIEW_URL:-$BULLET_URL}" | sed -E 's#/+$##' || true)
+   LINK_MODE=link                      # cases B, C, E
+   [ "$FOLD_MODE" = prune ] && LINK_MODE=revert || true
+   ```
 
 1. **Compose the bullet** in `$PR_LANGUAGE` — one line, the same nested-bullet slot the
    test-account line occupies when present, under the testing section's prerequisites line (the
@@ -586,8 +791,12 @@ Phase 5.4's classification and Phase 6's answer:
    }'
 
    awk -v h="$TESTING_HEADING" -v mode="$FOLD_MODE" -v bullet="$PREVIEW_BULLET" \
-     "$FOLD_AWK" "$TMP_BODY_FILE" > "$TMP_NEW_BODY" || true
+     "$FOLD_AWK" "$TMP_BODY_FILE" > "$TMP_FOLDED" || true
    ```
+
+   In case E there is no bullet work at all, so `FOLD_AWK` is skipped and the read body is used as
+   is (`cp "$TMP_BODY_FILE" "$TMP_FOLDED"`). Running it with a no-op mode would be an invitation to
+   touch the bullet by accident, and the case is defined by the bullet staying byte-identical.
 
    Properties this relies on, all of them verified in `bash` and `zsh`, on default-template and
    project-template bodies:
@@ -605,6 +814,20 @@ Phase 5.4's classification and Phase 6's answer:
    - A body whose heading cannot be found is reprinted **unchanged** — the procedure cannot reach
      this point with no section (Phase 5.2 stops first), and if it somehow did, it would write
      nothing rather than something arbitrary.
+
+2b. **Rewrite the step routes**, in the same section, as a second pass over that output
+   (`$LINKS_AWK`, defined above):
+
+   ```bash
+   awk -v h="$TESTING_HEADING" -v mode="$LINK_MODE" -v base="$PREVIEW_BASE" \
+     "$LINKS_AWK" "$TMP_FOLDED" > "$TMP_NEW_BODY" || true
+   ```
+
+   Two passes rather than one program, deliberately: `FOLD_AWK` stays byte-for-byte the program it
+   already was, so nothing about the bullet's placement can regress from this feature. The order is
+   fold-then-link, and it is safe in that direction because `$LINKS_AWK` excludes the preview bullet
+   by `is_preview()` — the line `FOLD_AWK` just wrote or moved is exactly the line the second pass
+   refuses to look at.
 
 3. **Write the body back** — once:
 
@@ -625,6 +848,8 @@ Phase 5.4's classification and Phase 6's answer:
    - case B (replacement) → **`MSG_PREVIEW_URL_UPDATED`** — a different event, and the reviewer may
      already have clicked the previous link, so it is not reported as a fresh discovery
    - case D (removal) → nothing at all
+   - case E (routes only) → nothing at all. The URL is unchanged and was already announced when the
+     bullet was written; saying it again would report a discovery that did not happen this round.
 
 ## Never
 
@@ -652,8 +877,21 @@ Phase 5.4's classification and Phase 6's answer:
 - Never look for this feature's own previous bullet by its URL — the URL is the part that changes.
   The handle is the `Preview:` / `Aperçu :` prefix **within the located testing section**.
 - Never touch anything outside that section, and never modify anything inside it but this feature's
-  own bullet — the prerequisites line's own text and the test-account fragment Step 6.1.1 folded
-  into it stay byte-identical.
+  own bullet and its own route links — the prerequisites line's own text, the test-account fragment
+  Step 6.1.1 folded into it, and the prose of every step stay byte-identical.
+- Never link anything but an inline-code span starting with `/`, inside the located testing section,
+  outside fenced code blocks, and never on the preview bullet itself.
+- Never link a filesystem path or a path ending in a source/config/asset extension. When the two
+  denials of "What counts as a route" leave a real endpoint unlinked, that is the intended trade:
+  a plain path costs a paste, a linked file path is a 404 in the PR body.
+- Never write a bare full preview URL into a step. The link's text is the path and its href is
+  `$base` + that path; a bare URL cannot be re-hosted when the head commit moves, nor reverted when
+  the preview goes away, because nothing in it says where the host ends.
+- Never touch a markdown link that is not this feature's — one whose text does not start with `/`,
+  or whose href does not end with exactly that text preceded by `$base` or a bare origin.
+- Never remove the preview bullet while leaving its route links (case D removes both), and never
+  leave a route link naming a base the bullet does not name.
+- Never announce a `links-only` round: its URL was already reported when the bullet was written.
 - Never leave a bullet whose URL is none of the current head's candidates on a round that found
   candidates: replace it, or remove it when no URL may be written (Phase 7 cases B and D).
 - Never remove a bullet on a round that found **no** candidate — Phase 5 is not even reached, and a
@@ -678,19 +916,23 @@ Phase 5.4's classification and Phase 6's answer:
 The caller (Step 7.4.2.5) invokes this procedure with the prerequisite values already resolved, on
 every watcher conclusion. The procedure returns one of:
 
-- **The URL was written for the first time** — the bullet was inserted (Phase 7 case C) and
-  `MSG_PREVIEW_URL_ADDED` was displayed exactly once. The URL was either the only candidate or the
-  one the user chose.
+- **The URL was written for the first time** — the bullet was inserted and the section's routes were
+  linked against it (Phase 7 case C); `MSG_PREVIEW_URL_ADDED` was displayed exactly once. The URL was
+  either the only candidate or the one the user chose.
 - **The URL was replaced** — the bullet existed with a URL that is not one of this head commit's
-  candidates, and was rewritten in place (case B); `MSG_PREVIEW_URL_UPDATED` was displayed exactly
-  once. This is the normal outcome of the round that follows an auto-fix or post-resolve push, and
-  it involves no question when the repo publishes a single preview.
-- **The line was already correct** — the bullet names one of this round's candidates
-  (classification `current`): nothing written, nothing said, no question asked. This is the normal
-  outcome of a round whose head commit did not move, or whose preview URL did not change.
+  candidates, and was rewritten in place, with every route link re-hosted to the new base (case B);
+  `MSG_PREVIEW_URL_UPDATED` was displayed exactly once. This is the normal outcome of the round that
+  follows an auto-fix or post-resolve push, and it involves no question when the repo publishes a
+  single preview.
+- **The line was already correct, and so were the routes** — classification `current`: nothing
+  written, nothing said, no question asked. This is the normal outcome of a round whose head commit
+  did not move, or whose preview URL did not change, and whose steps did not change either.
+- **Only the routes were brought up to date** — the bullet already named the current preview but a
+  step carried a bare route or a link on another base (classification `links-only`, case E): the
+  routes were rewritten, the bullet left byte-identical, and nothing was said.
 - **The stale line was removed** — a bullet existed, none of this round's candidates matched it,
   and no URL could be written (the user answered "none", or the question could not be asked): the
-  bullet was deleted, nothing was added, nothing was said (case D).
+  bullet was deleted along with its route links, nothing was added, nothing was said (case D).
 - **No URL** — nothing was written, nothing was said in the chat. This covers no candidate at all
   (in which case an existing bullet is left untouched, the body is not even read), every candidate
   rejected by Phase 4, and a user answering "none" with no bullet in the body. This is silent by
@@ -699,10 +941,10 @@ every watcher conclusion. The procedure returns one of:
   only when at least one candidate was found but the template has nowhere to put it. Detected in
   Phase 5.2, before any question.
 
-The caller never branches on which phase produced the URL, on which of the three classifications
+The caller never branches on which phase produced the URL, on which of the four classifications
 applied, nor on whether the user was asked. The contract is just: **after this procedure returns,
-the body either carries exactly one preview bullet naming the current head's preview, or this
-procedure said nothing.**
+the body either carries exactly one preview bullet naming the current head's preview with every
+step route linked against it, or this procedure said nothing.**
 
 ## Degradation
 
@@ -721,7 +963,12 @@ procedure said nothing.**
 | `$DEPLOY_CHECKS` is unavailable (no parseable watcher report) | Treated as empty — Phase 3 skipped rather than spending the call blindly |
 | Every candidate URL is rejected by the console-URL filter | No URL, stay silent |
 | No candidate at all on this round, while a preview bullet exists in the body | The bullet is left untouched and the body is not even read — a failed lookup is not evidence against it (Phase 5) |
-| The feature's bullet already names one of this round's candidates | No-op — no question, no write, no chat message, body byte-identical (classification `current`) |
+| The feature's bullet already names one of this round's candidates, and the routes match it | No-op — no question, no write, no chat message, body byte-identical (classification `current`) |
+| The bullet is correct but a step carries a bare route, or a link on another base | Routes rewritten in the same single write, bullet untouched, nothing said (classification `links-only`, case E) |
+| A step names a filesystem path or a file (`/Users/…`, `/var/log/app.log`, `/fixtures/users.json`) | Left as a plain inline-code path — never linked, in any case |
+| A route appears inside a fenced code block in the testing section | Left as text — a markdown link would render as literal brackets there |
+| A step carries a markdown link that is not this feature's (`[the docs](https://example.com/docs)`) | Left byte-identical — the text does not start with `/` |
+| The `probe` awk fails or prints nothing | Treated as `needs=no` — a broken probe suppresses a write, it never triggers one |
 | Exactly one candidate survives, no bullet in the section | No question — inserted directly (Phase 7 case C, `MSG_PREVIEW_URL_ADDED`) |
 | Exactly one candidate survives, bullet holds a different URL | No question — **replaced in place**, never appended (Phase 7 case B, `MSG_PREVIEW_URL_UPDATED`) |
 | Two or more distinct candidates, no bullet in the section | `AskUserQuestion` (Phase 6), one option per URL plus a "none" option |

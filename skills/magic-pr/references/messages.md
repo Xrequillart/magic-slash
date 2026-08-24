@@ -329,6 +329,7 @@ Créer cette PR ? (O/n/edit)
     - Nothing resolved, mode still `reference` or `inline`: say so in exactly one line — "No test account documented for this project" — and write no credential of any kind.
     - Never invent, complete or guess a credential. See `references/test-accounts.md`.
 - Then list 2-5 numbered actions. Each step pairs a concrete action (open a URL/page, click a UI element, run a CLI command, call an endpoint) with its observable expected result — action → expected result.
+- Write every **web route or API path** a step asks the reviewer to open as inline code with a leading slash — `/admin/dashboard`, `/api/users` — never as a bare word, never as a full URL. Step 7.4.2.5 turns exactly those into clickable links against this PR's preview deployment once one is found (`[/admin/dashboard](https://<preview-host>/admin/dashboard)`); a route written any other way stays a plain path forever. Never write a **file** path this way (`SKILL.md`, `desktop/src/main/`, `/Users/…`) — those are not routes and are never linked.
 - Do NOT write "run the automated tests" (npm test, etc.) as the only instruction. A single automated-test line is allowed ONLY as an optional last line AFTER the manual steps.
 - If the PR has no manually testable surface (docs-only, CI, pure refactor), do NOT invent a scenario: state it plainly instead, e.g. "No manual test surface — docs-only change; verify rendering / links".
 Every step must be specific to the actual changes — no generic placeholders, and no invented test account.]
@@ -357,6 +358,7 @@ Every step must be specific to the actual changes — no generic placeholders, a
     - Rien de résolu, alors que le mode vaut `reference` ou `inline` : le dire en une seule ligne — « Aucun compte de test documenté pour ce projet » — et n'écrire aucun identifiant.
     - Ne jamais inventer, compléter ni deviner un identifiant. Voir `references/test-accounts.md`.
 - Puis lister 2 à 5 actions numérotées. Chaque étape associe une action concrète (ouvrir une URL/page, cliquer sur un élément d'UI, lancer une commande CLI, appeler un endpoint) à son résultat attendu observable — action → résultat attendu.
+- Écrire chaque **route web ou chemin d'API** qu'une étape demande d'ouvrir en code inline avec un slash initial — `/admin/dashboard`, `/api/users` — jamais en toutes lettres, jamais en URL complète. Le Step 7.4.2.5 transforme exactement celles-là en liens cliquables vers le déploiement de preview de cette PR dès qu'il en trouve un (`[/admin/dashboard](https://<hôte-de-preview>/admin/dashboard)`) ; une route écrite autrement restera un chemin nu pour toujours. Ne jamais écrire un chemin de **fichier** sous cette forme (`SKILL.md`, `desktop/src/main/`, `/Users/…`) — ce ne sont pas des routes et ils ne sont jamais transformés en liens.
 - Ne PAS écrire « lancer les tests automatisés » (npm test, etc.) comme seule instruction. Une unique ligne de tests automatisés n'est autorisée QU'EN dernière ligne optionnelle, APRÈS les étapes manuelles.
 - Si la PR n'a aucune surface testable manuellement (docs uniquement, CI, refactoring pur), ne PAS inventer de scénario : le dire clairement à la place, ex. « Aucune surface de test manuel — changement docs uniquement ; vérifier le rendu / les liens ».
 Chaque étape doit être spécifique aux changements réels — pas de placeholders génériques, et aucun compte de test inventé.]
@@ -622,6 +624,8 @@ Lequel les scénarios de test doivent-ils indiquer ? Un seul est écrit, et seul
 Displayed in Step 7.4.2.5 when a preview deployment was found for this PR's head commit and its URL
 was folded into the PR body **for the first time** — the body carried no preview line before
 (`references/preview-url.md`, Phase 7 case C).
+The same write also turns the inline-code routes of the test steps into links against that URL; a
+round that only refreshes those links (the preview line was already correct) displays nothing.
 A later round that swaps an out-of-date URL for the current head's one uses
 `MSG_PREVIEW_URL_UPDATED` instead, and a round that finds the line already correct displays nothing.
 Never displayed when no preview is found, nor when the line was only removed — silence is the
@@ -631,7 +635,8 @@ invariant for every case that does not put a new URL in the body.
 
 ```text
 🔗 Preview deployment found — added to the PR body: {url}
-The reviewer can test this PR's actual deployed code there instead of rebuilding locally
+The routes named in the test steps are now clickable links against it, so the reviewer can test this
+PR's actual deployed code instead of rebuilding locally
 (destructive steps still need local: migrations, deletions, seeding).
 ```
 
@@ -639,8 +644,9 @@ The reviewer can test this PR's actual deployed code there instead of rebuilding
 
 ```text
 🔗 Déploiement de preview trouvé — ajouté au corps de la PR : {url}
-Le reviewer peut tester le code réellement déployé de cette PR à cette adresse au lieu de
-reconstruire en local (les étapes destructrices restent en local : migrations, suppressions, seed).
+Les routes citées dans les étapes de test sont désormais des liens cliquables vers cette adresse : le
+reviewer peut tester le code réellement déployé de cette PR au lieu de reconstruire en local
+(les étapes destructrices restent en local : migrations, suppressions, seed).
 ```
 
 ## MSG_PREVIEW_URL_UPDATED
@@ -658,16 +664,18 @@ correct, and never when the line was only removed.
 
 ```text
 🔗 Preview deployment updated — the PR body now points at this PR's current commit: {url}
-The previous preview served code this PR no longer has, so that line was replaced (there is only
-ever one preview line, and it always names the current commit).
+The previous preview served code this PR no longer has, so that line — and every route link in the
+test steps — was re-pointed at the new one (there is only ever one preview line, and both it and the
+step links always name the current commit).
 ```
 
 ### fr
 
 ```text
 🔗 Déploiement de preview mis à jour — le corps de la PR pointe maintenant vers le commit actuel de cette PR : {url}
-La preview précédente servait du code que cette PR n'a plus, cette ligne a donc été remplacée (il n'y a
-jamais qu'une seule ligne de preview, et elle indique toujours le commit actuel).
+La preview précédente servait du code que cette PR n'a plus : cette ligne — et chaque lien de route des
+étapes de test — a donc été repointée vers la nouvelle (il n'y a jamais qu'une seule ligne de preview, et
+elle comme les liens des étapes indiquent toujours le commit actuel).
 ```
 
 ## MSG_CI_ALL_GREEN
