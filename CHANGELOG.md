@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Desktop**: The file preview scrolls to the first changed line
+- **Desktop**: The file preview walks through every change — a floating card counts them, its arrows step from one to the next (Alt+↑ / Alt+↓), and the count follows a hand scroll
 
 ### Fixed
 

@@ -5,6 +5,7 @@ import MarkdownView from './MarkdownView'
 import ImageView from './ImageView'
 import BinaryPlaceholder from './BinaryPlaceholder'
 import { formatSize } from '../../utils/formatSize'
+import type { MarkerBlock } from '../../utils/diffMarkers'
 import { useT } from '../../i18n'
 
 interface Props {
@@ -35,6 +36,13 @@ interface Props {
    * IPC read to arrive at the bytes already on screen.
    */
   scrollSeq?: number
+  /**
+   * Forwarded to CodeView, which calls it with the changed blocks it just measured.
+   * Nothing here reads it either, and like `scrollSeq` it must NOT join the read
+   * effect's dependencies: a caller that rebuilds the callback would otherwise buy a
+   * fresh IPC read of bytes already on screen.
+   */
+  onBlocksMeasured?: (blocks: MarkerBlock[], contextPx: number) => void
 }
 
 // `unreadable` is local to this component: the handler never returns it, it is
@@ -83,7 +91,7 @@ function ContentSkeleton() {
   )
 }
 
-export default function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, scrollSeq }: Props) {
+export default function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, scrollSeq, onBlocksMeasured }: Props) {
   const t = useT()
   const key = cacheKeyFor(repoPath, filePath, status)
   // Seeded from the cache so a remount on a known file paints immediately; the read
@@ -167,6 +175,7 @@ export default function FileContentRenderer({ repoPath, filePath, status, refres
       highlightedHtml={result.highlightedHtml}
       scrollSeq={scrollSeq}
       changedLines={result.changedLines}
+      onBlocksMeasured={onBlocksMeasured}
     />
   )
 }

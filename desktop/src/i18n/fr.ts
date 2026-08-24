@@ -1483,4 +1483,7 @@ export const fr: Record<keyof typeof en, string> = {
   'live.reconnectingTitle': 'Reconnexion au flux temps réel…',
   'filePreview.binary': 'Fichier binaire',
   'filePreview.unreadable': 'Impossible de lire le fichier',
+  'filePreview.changeCounter': '{current} / {total} changements',
+  'filePreview.previousChange': 'Changement précédent',
+  'filePreview.nextChange': 'Changement suivant',
 }
