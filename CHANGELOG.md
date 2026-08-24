@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.77.1] - 2026-08-24
+
+### Added
+
+- **Desktop**: The file preview scrolls to the first changed line
+
+### Fixed
+
+- **Desktop**: The xterm guard no longer swallows cmd+w
+
 ## [0.77.0] - 2026-08-22
 
 ### Changed
@@ -2334,6 +2344,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.77.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.77.1
 [0.77.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.77.0
 [0.76.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.76.2
 [0.76.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.76.1
