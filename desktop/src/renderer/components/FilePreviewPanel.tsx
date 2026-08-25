@@ -784,7 +784,7 @@ export default function FilePreviewPanel() {
         className="fixed inset-0 z-[59]"
         onClick={handleClose}
       />
-      <div className={`fixed right-0 top-0 h-full w-[70%] z-[60] flex flex-col bg-bg-secondary border-l-4 ${statusCfg?.border ?? 'border-l-line'} ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}>
+      <div className={`fixed right-0 top-0 h-full w-[70%] z-[60] flex flex-col bg-bg border-l-4 ${statusCfg?.border ?? 'border-l-line'} ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}>
         {review ? (
           <ReviewHeader
             repoName={review.repoName}
