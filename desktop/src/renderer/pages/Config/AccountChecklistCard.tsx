@@ -30,6 +30,7 @@ export function AccountChecklistCard() {
 
   const [profileFilled, setProfileFilled] = useState<boolean | null>(null)
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
+  const [setupFailed, setSetupFailed] = useState(false)
   const [invalidRepos, setInvalidRepos] = useState<InvalidRepo[]>([])
 
   useEffect(() => {
@@ -43,7 +44,10 @@ export function AccountChecklistCard() {
     window.electronAPI.setup
       .getStatus()
       .then(setSetupStatus)
-      .catch(() => { /* leaves the card unrendered, like SetupHealthCard */ })
+      // Told apart from "still loading" on purpose: the card is unrendered either
+      // way, but a failure that only cleared the loading flag would leave the
+      // placeholder pulsing forever, like SetupHealthCard.
+      .catch(() => setSetupFailed(true))
   }, [])
 
   // Same source as the launch modal: the main process is the only side that can
@@ -71,9 +75,17 @@ export function AccountChecklistCard() {
     return !missingRequired && !mcpToFix && setupStatus.missingSkills.length === 0
   }, [setupStatus])
 
-  // Nothing until every answer is in: a half-loaded card would show green rows
-  // turning grey, which reads as something breaking rather than as loading.
-  if (authLoading || profileFilled === null || setupStatus === null || !config) return null
+  if (setupFailed) return null
+
+  // A placeholder until every answer is in: a half-loaded card would show green
+  // rows turning grey, which reads as something breaking rather than as loading.
+  // The placeholder keeps the card's own shape, so the verdict lands in place
+  // instead of pushing the sections under it down the page.
+  if (authLoading || profileFilled === null || setupStatus === null || !config) {
+    // Four rows is the shape of a stock install; only a build with no Supabase env
+    // drops the cloud row, and by then `authLoading` is over and the count is real.
+    return <ChecklistSkeleton rows={authLoading || authStatus.enabled ? 4 : 3} />
+  }
 
   const steps: { key: MessageKey; done: boolean }[] = [
     // The cloud account is optional and hidden entirely when no Supabase env is
@@ -118,6 +130,45 @@ export function AccountChecklistCard() {
                   <span className={`text-xs ${step.done ? 'text-text-secondary/60' : 'text-ink'}`}>
                     {t(step.key)}
                   </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** The card's own layout with every string swapped for a bar of its size. */
+function ChecklistSkeleton({ rows }: { rows: number }) {
+  const t = useT()
+
+  return (
+    <div>
+      <SectionHeader icon={ListChecks} title={t('account.checklist.section')} />
+      <div
+        className="bg-surface border border-line-strong rounded-xl p-4"
+        role="status"
+        aria-busy="true"
+        aria-label={t('common.loading')}
+      >
+        <div className="flex items-start gap-2.5 animate-pulse">
+          <span aria-hidden className="w-4 h-4 mt-0.5 shrink-0 rounded-full bg-surface-strong" />
+          <div className="min-w-0 flex-1">
+            {/* Heights match the verdict and its hint so nothing moves when they land. */}
+            <span aria-hidden className="block h-5 w-32 rounded bg-surface-strong" />
+            <span aria-hidden className="block h-4 w-48 max-w-full rounded bg-surface-strong mt-0.5" />
+
+            <ul className="mt-3 space-y-1.5">
+              {/* Widths staggered per row: four identical bars read as a table, not a list. */}
+              {Array.from({ length: rows }, (_, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <span aria-hidden className="w-3.5 h-3.5 shrink-0 rounded-full bg-surface-strong" />
+                  <span
+                    aria-hidden
+                    className={`block h-4 rounded bg-surface-strong ${['w-40', 'w-28', 'w-44', 'w-36'][i % 4]}`}
+                  />
                 </li>
               ))}
             </ul>
