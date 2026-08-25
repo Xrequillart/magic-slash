@@ -1513,4 +1513,11 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.commentMarkers': 'Lire ces {count} commentaires — cliquez à nouveau pour le suivant',
   'filePreview.commentLine': 'Ligne {start}',
   'filePreview.commentLines': 'Lignes {start} à {end}',
+  'filePreview.commentCount.none': 'Aucun commentaire',
+  'filePreview.commentCount.one': '1 commentaire',
+  'filePreview.commentCount.other': '{count} commentaires',
+  'filePreview.reviewComments': 'Commentaires de cette revue',
+  'filePreview.commentOnFile': 'Tout le fichier',
+  'filePreview.sendToAgent': "Envoyer à l'agent",
+  'filePreview.sendNoAgent': 'Aucun agent en cours — copiez les commentaires à la place',
 }

@@ -78,16 +78,29 @@ interface CodeChrome {
   remove: string
   removeBg: string
   removeRule: string
-  /** The rows currently picked, and the gutter cell of a row under the pointer. */
+  /**
+   * The rows currently picked, and the gutter cell of a row under the pointer.
+   *
+   * The SAME HUE as `comment` below, not the blue this used to be. A pick is the gesture
+   * that becomes a comment, so it now previews what it is about to leave behind: the wash a
+   * reader drags over three lines is the wash those lines keep once the card is saved.
+   *
+   * The cost is real and is accepted: hue no longer separates a transient selection from a
+   * standing annotation, so `pickBg` and `commentRow` are the same colour at the same alpha
+   * and a picked row is indistinguishable from an already-commented one. What still tells
+   * them apart is everything else a standing comment draws and a pick does not — the pill in
+   * the gutter, and the edge lines closing its block off (`commentEdge`).
+   */
   pickBg: string
   pickStrong: string
   /**
    * A standing comment: the icon in its pill, and the lines closing its block off.
    *
    * GitHub's own severe/orange, which is the hue its diff greens and reds leave free — a
-   * comment is not a change and must not read as one. It is also what now tells a comment
-   * from a PICK, the blue above having been left to that: a transient selection and a
-   * standing annotation are told apart by hue, which no alpha relationship could do as well.
+   * comment is not a change and must not read as one.
+   *
+   * `pickBg` above is now this same hue, so it no longer separates a comment from a pick
+   * either. The pill and the block edges do that instead; see that field for the trade.
    */
   comment: string
   /** The block's top and bottom lines: the same orange, opaque enough to read as an edge. */
@@ -95,8 +108,9 @@ interface CodeChrome {
   /**
    * The wash over every row a comment covers.
    *
-   * It no longer has to stay under `pickBg` to be told from a pick — that is the hue's job
-   * now — so it is set by what actually reads: low, because it composites OVER the diff's
+   * Equal to `pickBg` now that the two share a hue, which is deliberate rather than a
+   * collision — a pick previews the wash it is about to leave. The value is set by what
+   * actually reads: low, because it composites OVER the diff's
    * own green and red row tints and a commented added line has to go on reading as added.
    * Orange being the near neighbour of the red on a removed line, a heavy wash there would
    * blur the two into one warm band.
@@ -115,8 +129,10 @@ const CHROME: Record<'light' | 'dark', CodeChrome> = {
     remove: '#f85149',
     removeBg: 'rgba(248,81,73,0.15)',
     removeRule: 'rgba(248,81,73,0.3)',
-    pickBg: 'rgba(88,166,255,0.12)',
-    pickStrong: 'rgba(88,166,255,0.28)',
+    // The comment orange below, at the pick's own alphas. Selection and annotation share
+    // the hue deliberately — see `pickBg` on the interface.
+    pickBg: 'rgba(240,136,62,0.12)',
+    pickStrong: 'rgba(240,136,62,0.28)',
     // GitHub dark's severe.fg. The brighter of its two oranges, because on #0d1117 the
     // darker one (#bc4c00, used in light below) sinks into the background.
     comment: '#f0883e',
@@ -135,8 +151,9 @@ const CHROME: Record<'light' | 'dark', CodeChrome> = {
     remove: '#cf222e',
     removeBg: 'rgba(255,129,130,0.2)',
     removeRule: 'rgba(207,34,46,0.3)',
-    pickBg: 'rgba(9,105,218,0.10)',
-    pickStrong: 'rgba(9,105,218,0.22)',
+    // The comment orange below, at the pick's own alphas, as in the dark theme.
+    pickBg: 'rgba(188,76,0,0.10)',
+    pickStrong: 'rgba(188,76,0,0.22)',
     // GitHub light's severe.fg. Darker and less saturated than the dark theme's orange,
     // which is what keeps a 14px icon reading on white rather than glowing on it — and
     // what keeps it clear of the #cf222e above, since a bright orange over white is a
@@ -319,9 +336,17 @@ function codeStyles(c: CodeChrome): string {
     background-image: linear-gradient(${c.commentRow}, ${c.commentRow});
   }
 
-  /* The top and the bottom of each comment's BLOCK, on its first and last covered row — so
-     two comments on consecutive lines read as two blocks instead of one continuous wash.
-     edgesByRow decides which rows those are, off the same marker map the wash above is
+  /* The top and the bottom of a BLOCK, on its first and last row — so two comments on
+     consecutive lines read as two blocks instead of one continuous wash.
+
+     A block is a comment's range OR the lines currently picked: a selection is closed off
+     the same way, in the same orange, so it reads as the block it is about to become rather
+     than as a wash that stops wherever the drag did. Hence data-edge and not
+     data-comment-edge — the attribute says a block ends here, not what kind. The layout
+     effect merges the two sources into it, and its comment there is where the reason lives.
+     (No backticks in here: this comment lives inside a template literal.)
+
+     edgesByRow decides which rows a comment's are, off the same marker map the wash above is
      keyed from, so the two cannot disagree about where a comment stops.
 
      An inset box-shadow, and NOT a border: a border adds to the row's height, and the whole
@@ -338,9 +363,9 @@ function codeStyles(c: CodeChrome): string {
      one attribute with three values rather than two independent attributes — the layout
      effect already knows which case a row is in, and this way the stylesheet does not have
      to be talked out of a specificity accident. */
-  .shiki code .line[data-comment-edge="top"] { box-shadow: inset 0 1px 0 ${c.commentEdge}; }
-  .shiki code .line[data-comment-edge="bottom"] { box-shadow: inset 0 -1px 0 ${c.commentEdge}; }
-  .shiki code .line[data-comment-edge="both"] {
+  .shiki code .line[data-edge="top"] { box-shadow: inset 0 1px 0 ${c.commentEdge}; }
+  .shiki code .line[data-edge="bottom"] { box-shadow: inset 0 -1px 0 ${c.commentEdge}; }
+  .shiki code .line[data-edge="both"] {
     box-shadow: inset 0 1px 0 ${c.commentEdge}, inset 0 -1px 0 ${c.commentEdge};
   }
 
@@ -425,6 +450,8 @@ function identityOf(row: HTMLElement): RowIdentity | null {
  * stylesheet cannot combine a rule for the top with a rule for the bottom, so the row has to
  * say which case it is in rather than leaving CSS to add them up.
  */
+const NO_EDGES: RowEdges = { top: false, bottom: false }
+
 function edgeValue(edges: RowEdges): string {
   if (edges.top && edges.bottom) return 'both'
   return edges.top ? 'top' : 'bottom'
@@ -531,6 +558,27 @@ export default function CodeView({
   const removeFileComment = useStore(s => s.removeFileComment)
 
   /**
+   * The review's request to take the reader to a comment, when the comment is one of THIS
+   * document's — `null` in every other card.
+   *
+   * The key comparison is inside the SELECTOR rather than after it, and both halves of that
+   * matter. Answering `null` for the other thirty-nine cards is what keeps a jump from
+   * re-rendering every mounted shiki document; and short-circuiting on
+   * `s.focusedComment !== null` first is what keeps the comparison off the hot path — with
+   * no focus set there is not even a string built, on a store that mutates for the terminal
+   * state, the config and the five-second git poll.
+   *
+   * The object itself comes back when it matches, so its identity is the store's and the
+   * effect below is not re-run by a render of its own.
+   */
+  const focus = useStore(s => (
+    s.focusedComment !== null && commentKey !== null
+      && commentFileKey(s.focusedComment.target) === commentKey
+      ? s.focusedComment
+      : null
+  ))
+
+  /**
    * The lines offered for a comment, and the text that was selected — the state the
    * affordance is drawn from, before the reader has confirmed anything.
    */
@@ -592,6 +640,9 @@ export default function CodeView({
    * oldest rather than resuming at an index that now means a different comment.
    */
   const cycleRef = useRef<{ ids: string; index: number } | null>(null)
+
+  /** Which `focusedComment.seq` this document has already acted on. See the effect below. */
+  const focusRef = useRef<number | null>(null)
 
   /**
    * Label the elision rows. That is now this component's ONLY layout-time job.
@@ -659,6 +710,41 @@ export default function CodeView({
   const activeRange = dragRange ?? cardRange ?? pending?.range ?? null
 
   /**
+   * Open the card the review's comment list asked for, and let the lines light up with it.
+   *
+   * Nothing here highlights anything, and that is the point. It writes the SAME state a
+   * click on a marker writes — `setCard({ mode: 'existing', id })` — which flows through
+   * `openComment` to `cardRange`, to `activeRange` above, and out to the `data-picked`
+   * wash the effect below stamps. There is no second highlighting path, as `dragRange`
+   * says a few declarations up, and there could not be one "without two things to keep in
+   * step": a temporary attribute of its own would need its own CSS in `CODE_STYLES` and
+   * would be wiped by the next `highlightedHtml` a re-read swaps in.
+   *
+   * An EFFECT rather than something the click handler could have done, because the card
+   * being jumped to is usually not mounted when the reader clicks: it is folded shut, or
+   * its read is still in flight. This document may therefore not exist yet at that moment
+   * — and when it mounts, this runs in its first render with a focus already waiting.
+   *
+   * Guarded on `seq` rather than on the target, so a second click on the same entry does
+   * the jump again — and so a card the reader has since dismissed is not reopened by an
+   * unrelated store write. `comments` is in the dependencies because the comment has to
+   * BE there to open, and the guard is what keeps that from reopening the card whenever
+   * the list changes.
+   */
+  useEffect(() => {
+    if (!focus || focusRef.current === focus.seq) return
+    if (!comments.some(c => c.id === focus.id)) return
+    focusRef.current = focus.seq
+    // A pick in progress is not what the reader is looking at any more.
+    setPending(null)
+    setCard({ mode: 'existing', id: focus.id })
+    // The marker walk starts again from the oldest comment on the row: it was left
+    // wherever a previous click on that row had got to, which says nothing about the
+    // comment just arrived at from the list.
+    cycleRef.current = null
+  }, [focus, comments])
+
+  /**
    * Re-derive every marker from the store, on every render that could have changed one.
    *
    * This effect is the answer to two of the acceptance criteria at once, and it is why
@@ -689,15 +775,19 @@ export default function CodeView({
     // same commit as FilePreviewPanel's own measurement pass. Only this effect writes
     // these attributes, so there is nothing else for the selectors to miss.
     //
-    // One selector finds the badge and the edges too: both are only ever stamped on a row
-    // that also carries the id list, so a row with a pill or an edge and no ids is a state
-    // this effect cannot produce.
+    // One selector finds the badge too: it is only ever stamped on a row that also carries
+    // the id list, so a row with a pill and no ids is a state this effect cannot produce.
+    //
+    // `data-edge` gets its OWN selector, and that is the one invariant here that changed
+    // when the pick learned to draw edges: a selected row outside any comment carries an
+    // edge and no id list, so clearing it through the list above would leave the orange
+    // line behind after the selection moved on.
     for (const row of root.querySelectorAll<HTMLElement>('.line[data-comment-ids]')) {
       delete row.dataset.commentIds
       delete row.dataset.commentBadge
-      delete row.dataset.commentEdge
       row.removeAttribute('title')
     }
+    for (const row of root.querySelectorAll<HTMLElement>('.line[data-edge]')) delete row.dataset.edge
     for (const row of root.querySelectorAll<HTMLElement>('.line[data-picked]')) delete row.dataset.picked
     if (comments.length === 0 && !activeRange) return
 
@@ -734,17 +824,46 @@ export default function CodeView({
     // above: which row is a comment's first and which its last is only known once every row
     // of every comment has been collected, and reading the same map twice is what keeps the
     // pill, the edges and the wash from ever disagreeing about the range.
-    for (const [index, edges] of edgesByRow(markers)) {
-      const row = rows[index]
-      row.dataset.commentEdge = edgeValue(edges)
-      if (edges.top) row.dataset.commentBadge = ''
+    //
+    // Collected into a map rather than stamped straight onto the rows, because the PICK
+    // below adds its own edges to the same attribute — see the merge there.
+    const edges = new Map<number, RowEdges>()
+    for (const [index, e] of edgesByRow(markers)) {
+      edges.set(index, { top: e.top, bottom: e.bottom })
+      // The pill belongs to a COMMENT, so it is stamped from this loop and not from the
+      // merged map below: a selection draws the same orange edges and must NOT draw a badge.
+      if (e.top) rows[index].dataset.commentBadge = ''
     }
 
-    if (!activeRange) return
-    for (let i = 0; i < rows.length; i++) {
-      const identity = identities[i]
-      if (identity && rangeCovers(activeRange, identity.side, identity.line)) rows[i].dataset.picked = ''
+    // The pick's edges, into that same map, so a selection is closed off top and bottom like
+    // a finished comment — it reads as the block it is about to become rather than as a wash
+    // that stops wherever the drag did.
+    //
+    // ONE attribute for both, because box-shadow is one property: a row that is the last
+    // line of a selection and the first of a comment needs both lines in a single
+    // declaration, and two attributes would leave only whichever won the cascade. Now that a
+    // pick and a comment are the same orange there is no reason for two anyway — an edge says
+    // "a block starts or ends here", not what kind of block it was.
+    if (activeRange) {
+      let first = -1
+      let last = -1
+      for (let i = 0; i < rows.length; i++) {
+        const identity = identities[i]
+        if (identity && rangeCovers(activeRange, identity.side, identity.line)) {
+          rows[i].dataset.picked = ''
+          if (first < 0) first = i
+          last = i
+        }
+      }
+      // A single picked row takes both, which the second `set` reads back off the first
+      // rather than overwriting it — `edgeValue` then spells that `both`.
+      if (first >= 0) {
+        edges.set(first, { ...(edges.get(first) ?? NO_EDGES), top: true })
+        edges.set(last, { ...(edges.get(last) ?? NO_EDGES), bottom: true })
+      }
     }
+
+    for (const [index, e] of edges) rows[index].dataset.edge = edgeValue(e)
   }, [highlightedHtml, comments, activeRange, t])
 
   /**

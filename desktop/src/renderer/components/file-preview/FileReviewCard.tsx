@@ -38,6 +38,19 @@ interface Props {
    * the whole of it.
    */
   scrollerRef: RefObject<HTMLDivElement>
+  /**
+   * This file's live `diffFingerprint`, on its way to the panel, under this card's
+   * `reviewFileKey` — the repository is in the key so the panel's map can outlive a review
+   * instead of having to be reset with one.
+   *
+   * The card is only a relay — it has no use for the value itself. It belongs to the panel,
+   * which is the only thing that sees every file at once and therefore the only thing that
+   * can tell a comment on the current version of a file from one on a superseded version.
+   *
+   * MUST be referentially stable, like every other prop here. See the note at the
+   * `FileContentRenderer` call site below: an unstable one costs N shiki documents.
+   */
+  onFingerprintChange?: (fileKey: string, fingerprint: string | undefined) => void
 }
 
 /**
@@ -60,7 +73,7 @@ interface Props {
  * survives the drawer closing and opening again, and so a card folding shut re-renders
  * itself alone rather than the whole review.
  */
-function FileReviewCard({ repoPath, file, fileIndex, scrollerRef }: Props) {
+function FileReviewCard({ repoPath, file, fileIndex, scrollerRef, onFingerprintChange }: Props) {
   const t = useT()
   // Built once per file rather than inside the selector: zustand runs every subscriber's
   // selector on every store mutation, and this store is a busy one — terminal state,
@@ -117,6 +130,15 @@ function FileReviewCard({ repoPath, file, fileIndex, scrollerRef }: Props) {
     [toggleCollapsed, repoPath, file.path],
   )
   const handleToggleWholeFile = useCallback(() => setShowWholeFile(v => !v), [])
+  // Binds this card's path onto the panel's handler, and MEMOISED for the reason spelled
+  // out at the `FileContentRenderer` call site: an inline arrow here would be a new identity
+  // on every render of this card, which defeats that component's `memo` and re-renders its
+  // shiki document — forty of them, on a parent that re-renders per scroll frame. Both
+  // dependencies are stable by contract (a string, and the panel's own `useCallback`).
+  const reportFingerprint = useCallback(
+    (fingerprint: string | undefined) => onFingerprintChange?.(key, fingerprint),
+    [onFingerprintChange, key],
+  )
 
   const fileName = file.path.split('/').pop() ?? file.path
   const bodyId = `review-file-${fileIndex}`
@@ -133,14 +155,22 @@ function FileReviewCard({ repoPath, file, fileIndex, scrollerRef }: Props) {
       // `sticky` child sticks to its NEAREST scrolling ancestor. The header would then
       // be pinned to a box that never scrolls — laid out correctly, and never sticking
       // to anything. The body clips its own corners instead.
-      className="rounded-xl border border-line"
+      // `bg-bg-secondary` on the drawer's `bg-bg`: the card is a raised surface, one step
+      // up from the page rather than the same paint with a border drawn on it. It used to
+      // have no background at all and simply let the drawer through, which made the border
+      // the only thing separating forty files from the space between them.
+      //
+      // No `overflow-hidden` is needed for the corners, despite the note below: a
+      // background-colour is clipped to the border box by `border-radius` on its own. It is
+      // the CHILDREN that would overflow it, and the body still clips its own.
+      className="rounded-xl border border-line bg-bg-secondary"
     >
       {/* Zero height, no margin, nothing to see: it exists only to be watched. It marks
           where the top of the card WOULD be, which is the one thing a stuck header can
           no longer tell you about itself. */}
       <div ref={sentinelRef} className="h-0" aria-hidden />
 
-      {/* `bg-surface` against the drawer's `bg-bg-secondary`: the header is the part
+      {/* `bg-surface` against the card's own `bg-bg-secondary`: the header is the part
           that has to be findable while scrolling past forty of them, and a tint plus a
           border is what separates it from the code below without a second rule.
 
@@ -157,8 +187,9 @@ function FileReviewCard({ repoPath, file, fileIndex, scrollerRef }: Props) {
           sitting on the drawer that reads as a solid panel; under a header floating over
           scrolling code it lets every line through.
 
-          So the same two layers are stacked explicitly: the drawer's own opaque
-          background as the background-COLOR, and that tint over it as a flat
+          So the same two layers are stacked explicitly: the card's own opaque background
+          as the background-COLOR — the same `bg-bg-secondary` the section carries, which
+          is what the header slides over — and that tint over it as a flat
           background-IMAGE. Composites to exactly what the header looked like before, and
           stays theme-safe — both halves are the variables the theme rewrites.
 
@@ -271,6 +302,7 @@ function FileReviewCard({ repoPath, file, fileIndex, scrollerRef }: Props) {
             showWholeFile={showWholeFile}
             markdownMode={markdownMode}
             onCollapsibleChange={setCanExpand}
+            onFingerprintChange={reportFingerprint}
             reservedHeight={reservedCardHeight(file, ESTIMATED_LINE_HEIGHT_PX)}
             /* The ONE caller that turns commenting on — see `commentable` on
                FileContentRenderer's props for why, and why the other two do not. */
