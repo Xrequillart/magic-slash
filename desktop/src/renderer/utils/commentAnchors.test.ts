@@ -525,11 +525,22 @@ describe('unclampQuote', () => {
     expect(unclampQuote('')).toBe('')
   })
 
-  it('takes off only ONE marker, so a passage that genuinely ends in an ellipsis survives', () => {
-    // Its prefix is what a clamp would have left anyway, so losing the last glyph is the
-    // honest answer — losing every trailing ellipsis the author wrote would not be.
-    expect(unclampQuote('the story ends…')).toBe('the story ends')
-    expect(unclampQuote('and on……')).toBe('and on…')
+  it('keeps an ellipsis the author wrote, because only the LENGTH says the clamp ran', () => {
+    // The marker alone cannot tell the two apart, and guessing costs a character: the
+    // highlight would stop one glyph before the quote the card and the agent were shown.
+    // `clampQuote` only appends after cutting to exactly MAX_QUOTE_CHARS, so nothing
+    // shorter than its output was ever clamped, whatever it ends with.
+    expect(unclampQuote('the story ends…')).toBe('the story ends…')
+    expect(unclampQuote('and on……')).toBe('and on……')
+  })
+
+  it('takes off only ONE marker when the clamp cut text that itself ended in an ellipsis', () => {
+    // The single ambiguous-looking case, settled by length: this IS a clamp, so its own
+    // marker comes off and the authored one underneath it stays.
+    const passage = `${'x'.repeat(MAX_QUOTE_CHARS - 1)}…${'y'.repeat(500)}`
+    const clamped = clampQuote(passage)
+    expect(clamped).toHaveLength(MAX_QUOTE_CHARS + 1)
+    expect(unclampQuote(clamped)).toBe(`${'x'.repeat(MAX_QUOTE_CHARS - 1)}…`)
   })
 })
 

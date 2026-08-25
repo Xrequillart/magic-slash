@@ -73,9 +73,21 @@ describe('locateQuote', () => {
   })
 
   it('does not mistake an ellipsis the reader selected for one the clamp added', () => {
-    // Only ONE trailing ellipsis comes off, so a passage that genuinely ends in one is
-    // still found — by its prefix, which is what a clamp would have left anyway.
-    expect(matched('the story ends… or does it', 'the story ends…')).toBe('the story ends')
+    // The ellipsis comes off on LENGTH, not on the character: prose ends in one often
+    // enough, and stripping an authored one would relocate a character short of what the
+    // card and the agent were shown — a highlight that stops before the quote does.
+    expect(matched('the story ends… or does it', 'the story ends…')).toBe('the story ends…')
+  })
+
+  it('still relocates a clamped quote whose kept text itself ends in an ellipsis', () => {
+    // The one case where both readings meet: the clamp cut mid-prose and the character
+    // before the marker happens to be an ellipsis too. Length settles it — this is a clamp,
+    // so exactly one marker comes off and the authored one stays.
+    const passage = `${'x'.repeat(MAX_QUOTE_CHARS - 1)}…${'y'.repeat(500)}`
+    const clamped = clampQuote(passage)
+    expect(clamped.endsWith('……')).toBe(true)
+    expect(matched(`before ${passage} after`, clamped))
+      .toBe(`${'x'.repeat(MAX_QUOTE_CHARS - 1)}…`)
   })
 
   it('takes the FIRST of several identical passages', () => {

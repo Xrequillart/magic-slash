@@ -435,9 +435,18 @@ export function clampQuote(text: string): string {
  * boundary, use a different glyph — instead of failing silently one file away.
  *
  * What is left is a PREFIX of what was selected, which is what a search then finds.
+ *
+ * The LENGTH is what says whether the clamp ran, and a trailing ellipsis on its own is not:
+ * prose ends in one often enough ("the story ends…"), and stripping an authored character
+ * would relocate one character short of what the card and the agent were shown. `clampQuote`
+ * only appends after cutting to exactly `MAX_QUOTE_CHARS`, so its output is always exactly
+ * that plus the marker — and any shorter quote ending the same way was written that way.
+ * There is no ambiguous case: a longer selection would itself have been clamped to this
+ * length.
  */
 export function unclampQuote(quote: string): string {
-  return quote.endsWith(QUOTE_ELLIPSIS) ? quote.slice(0, -QUOTE_ELLIPSIS.length) : quote
+  const clamped = quote.length === MAX_QUOTE_CHARS + QUOTE_ELLIPSIS.length
+  return clamped && quote.endsWith(QUOTE_ELLIPSIS) ? quote.slice(0, -QUOTE_ELLIPSIS.length) : quote
 }
 
 /**
