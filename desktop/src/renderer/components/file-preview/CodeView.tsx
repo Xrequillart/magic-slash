@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import CommentCard, { CommentAffordance } from './CommentCard'
+import CommentCard, { CommentAffordance, CommentAnchorNotice } from './CommentCard'
 import {
-  clampQuote, commentFileKey, edgesByRow, extendRange, lineIdentityFromRow,
+  clampQuote, commentAnchorKind, commentFileKey, edgesByRow, extendRange, lineIdentityFromRow,
   markersByRow, normalizeRange, rangeCovers, visibleRowForComment,
   type CommentTarget, type GutterPick, type LineRange, type RowEdges, type RowIdentity,
 } from '../../utils/commentAnchors'
@@ -523,6 +523,31 @@ function rootFontSize(): number {
 type OpenCard =
   | { mode: 'new'; range: LineRange; quote: string }
   | { mode: 'existing'; id: string }
+
+/**
+ * What the RAW diff says about the comments on this file that it cannot show.
+ *
+ * A comment left on the rendered markdown is anchored to a quoted passage and to nothing
+ * else, so this view has no row to put its marker on — `markersByRow` skips a null anchor,
+ * which is the correct arithmetic and also the whole problem: silence there is
+ * indistinguishable from the comment having been dropped when the reader flipped the toggle.
+ * It was not; `markdownMode` is deliberately no part of `commentFileKey`, so the store still
+ * holds it and the rendered view still shows it in place.
+ *
+ * The widget is `CommentAnchorNotice` in `CommentCard`, shared with the mirror-image notice
+ * the rendered view draws about a passage it can no longer find; only the two keys and the
+ * padding are this view's. `px-4` matches the `<pre>` the notice sits above.
+ */
+function QuotedElsewhereNotice({ count }: { count: number }) {
+  return (
+    <CommentAnchorNotice
+      count={count}
+      one="filePreview.commentQuoteOtherView.one"
+      other="filePreview.commentQuoteOtherView.other"
+      className="px-4"
+    />
+  )
+}
 
 export default function CodeView({
   content, highlightedHtml, appearance = 'dark', blend = true, repoPath, filePath, fingerprint,
@@ -1109,10 +1134,17 @@ export default function CodeView({
     setCard(null)
   }
 
+  // How many of this file's comments are anchored to a passage of the rendered markdown, and
+  // so have no row here to be marked on. Counted through `commentAnchorKind` rather than by
+  // testing `!anchor` — an anchorless comment with no quote is a comment on the whole file,
+  // which this view is not failing to show anything about.
+  const quotedElsewhere = comments.filter(c => commentAnchorKind(c) === 'quote').length
+
   if (highlightedHtml) {
     return (
       <>
         <style>{CODE_STYLES[appearance]}</style>
+        <QuotedElsewhereNotice count={quotedElsewhere} />
         <div
           ref={htmlRef}
           onMouseDown={handleMouseDown}
@@ -1154,9 +1186,16 @@ export default function CodeView({
     )
   }
 
+  // The unhighlighted fallback carries the notice too. It offers no commenting of its own —
+  // there is no gutter to pick from — but a file whose highlight failed can still hold
+  // comments left on its rendered markdown, and dropping the notice on this path would make
+  // those the one case where the silence really does look like a deletion.
   return (
-    <pre className="p-4 text-sm text-ink/80 font-mono whitespace-pre-wrap break-all">
-      {content}
-    </pre>
+    <>
+      <QuotedElsewhereNotice count={quotedElsewhere} />
+      <pre className="p-4 text-sm text-ink/80 font-mono whitespace-pre-wrap break-all">
+        {content}
+      </pre>
+    </>
   )
 }

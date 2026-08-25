@@ -1515,11 +1515,21 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.markdownRendered': 'Rendu',
   'filePreview.comment': 'Commenter',
   'filePreview.commentPlaceholder': "Que doit savoir l'agent à propos de ces lignes ?",
+  'filePreview.commentQuotePlaceholder': "Que doit savoir l'agent à propos de ce passage ?",
   'filePreview.commentDelete': 'Supprimer',
   'filePreview.commentMarker': 'Lire ce commentaire',
   'filePreview.commentMarkers': 'Lire ces {count} commentaires — cliquez à nouveau pour le suivant',
   'filePreview.commentLine': 'Ligne {start}',
   'filePreview.commentLines': 'Lignes {start} à {end}',
+  'filePreview.commentQuoted': 'Passage cité',
+  'filePreview.commentQuoteOtherView.one':
+    'Un commentaire de ce fichier est rattaché à un passage cité — passez à la vue rendue pour le voir en place.',
+  'filePreview.commentQuoteOtherView.other':
+    '{count} commentaires de ce fichier sont rattachés à des passages cités — passez à la vue rendue pour les voir en place.',
+  'filePreview.commentQuoteLost.one':
+    'Le passage cité par un commentaire n’est plus dans ce document — le commentaire est conservé, son ancrage est perdu.',
+  'filePreview.commentQuoteLost.other':
+    'Les passages cités par {count} commentaires ne sont plus dans ce document — les commentaires sont conservés, leurs ancrages sont perdus.',
   'filePreview.commentCount.none': 'Aucun commentaire',
   'filePreview.commentCount.one': '1 commentaire',
   'filePreview.commentCount.other': '{count} commentaires',

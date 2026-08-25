@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  clampQuote, commentFileKey, commentFileKeyPrefix, diffFingerprint, edgesByRow, extendRange,
-  lineIdentityFromRow, markersByRow, normalizeRange, rangeCovers, rangeLabel, rowsForComment,
-  visibleRowForComment, MAX_QUOTE_CHARS,
+  clampQuote, commentAnchorKind, commentFileKey, commentFileKeyPrefix, commentLabel,
+  diffFingerprint, edgesByRow, extendRange, lineIdentityFromRow, markersByRow, normalizeRange,
+  rangeCovers, rowsForComment, unclampQuote, visibleRowForComment, MAX_QUOTE_CHARS,
   type AnchoredComment, type CommentTarget, type LineRange, type RowAttributes, type RowIdentity,
 } from './commentAnchors'
 import { reviewFileKey } from './reviewLayout'
@@ -438,20 +438,57 @@ describe('edgesByRow', () => {
   })
 })
 
-describe('rangeLabel', () => {
+describe('commentAnchorKind', () => {
+  it('calls a comment with lines a comment on lines, whatever it also quoted', () => {
+    expect(commentAnchorKind({ anchor: { side: 'new', startLine: 3, endLine: 4 }, quote: 'a' }))
+      .toBe('lines')
+    expect(commentAnchorKind({ anchor: { side: 'old', startLine: 9, endLine: 9 }, quote: '' }))
+      .toBe('lines')
+  })
+
+  it('calls a comment with no lines and a quote a comment on that passage', () => {
+    // The rendered markdown's case: the prose has no mapping back to the file's lines, so
+    // the passage is the whole of the anchor.
+    expect(commentAnchorKind({ anchor: null, quote: 'the agent may refuse' })).toBe('quote')
+  })
+
+  it('calls a comment with neither a comment on the file', () => {
+    // What `anchor: null` meant on its own before this existed, and what every comment
+    // written by a gutter pick and then widened would still be.
+    expect(commentAnchorKind({ anchor: null, quote: '' })).toBe('file')
+  })
+
+  it('reads a quote of nothing but whitespace as no quote at all', () => {
+    // Otherwise a drag that caught only the gap between two blocks would anchor a comment
+    // to a passage no reader could recognise and `locateQuote` could not find.
+    expect(commentAnchorKind({ anchor: null, quote: '  \n\t ' })).toBe('file')
+  })
+})
+
+describe('commentLabel', () => {
   it('names a single line without pretending it is a range', () => {
-    expect(rangeLabel({ side: 'new', startLine: 12, endLine: 12 }))
+    expect(commentLabel({ anchor: { side: 'new', startLine: 12, endLine: 12 }, quote: '' }))
       .toEqual({ key: 'filePreview.commentLine', vars: { start: 12, end: 12 } })
   })
 
-  it('names both ends of a block', () => {
-    expect(rangeLabel({ side: 'new', startLine: 12, endLine: 18 }))
+  it('names both ends of a block, whatever it also quoted', () => {
+    expect(commentLabel({ anchor: { side: 'new', startLine: 12, endLine: 18 }, quote: 'x' }))
       .toEqual({ key: 'filePreview.commentLines', vars: { start: 12, end: 18 } })
   })
 
   it('says the same thing about a block of deleted lines, which are numbered in their own file', () => {
-    expect(rangeLabel({ side: 'old', startLine: 80, endLine: 81 }))
+    expect(commentLabel({ anchor: { side: 'old', startLine: 80, endLine: 81 }, quote: '' }))
       .toEqual({ key: 'filePreview.commentLines', vars: { start: 80, end: 81 } })
+  })
+
+  it('names a quoted passage, and carries no line numbers to substitute', () => {
+    expect(commentLabel({ anchor: null, quote: 'the agent may refuse' }))
+      .toEqual({ key: 'filePreview.commentQuoted' })
+  })
+
+  it('keeps naming the whole file for a comment that quoted nothing', () => {
+    expect(commentLabel({ anchor: null, quote: '' }))
+      .toEqual({ key: 'filePreview.commentOnFile' })
   })
 })
 
@@ -472,6 +509,38 @@ describe('clampQuote', () => {
     const clamped = clampQuote('x'.repeat(MAX_QUOTE_CHARS + 500))
     expect(clamped).toHaveLength(MAX_QUOTE_CHARS + 1)
     expect(clamped.endsWith('…')).toBe(true)
+  })
+})
+
+describe('unclampQuote', () => {
+  it('undoes the clamp, leaving the prefix that was actually stored', () => {
+    // The round trip is the contract `quoteAnchors` stands on: a clamped quote can never
+    // match a document verbatim, so the search has to get the prefix back out.
+    const passage = 'x'.repeat(MAX_QUOTE_CHARS + 500)
+    expect(unclampQuote(clampQuote(passage))).toBe(passage.slice(0, MAX_QUOTE_CHARS))
+  })
+
+  it('leaves a quote the clamp never touched exactly as it was', () => {
+    expect(unclampQuote('const answer = 42')).toBe('const answer = 42')
+    expect(unclampQuote('')).toBe('')
+  })
+
+  it('keeps an ellipsis the author wrote, because only the LENGTH says the clamp ran', () => {
+    // The marker alone cannot tell the two apart, and guessing costs a character: the
+    // highlight would stop one glyph before the quote the card and the agent were shown.
+    // `clampQuote` only appends after cutting to exactly MAX_QUOTE_CHARS, so nothing
+    // shorter than its output was ever clamped, whatever it ends with.
+    expect(unclampQuote('the story ends…')).toBe('the story ends…')
+    expect(unclampQuote('and on……')).toBe('and on……')
+  })
+
+  it('takes off only ONE marker when the clamp cut text that itself ended in an ellipsis', () => {
+    // The single ambiguous-looking case, settled by length: this IS a clamp, so its own
+    // marker comes off and the authored one underneath it stays.
+    const passage = `${'x'.repeat(MAX_QUOTE_CHARS - 1)}…${'y'.repeat(500)}`
+    const clamped = clampQuote(passage)
+    expect(clamped).toHaveLength(MAX_QUOTE_CHARS + 1)
+    expect(unclampQuote(clamped)).toBe(`${'x'.repeat(MAX_QUOTE_CHARS - 1)}…`)
   })
 })
 

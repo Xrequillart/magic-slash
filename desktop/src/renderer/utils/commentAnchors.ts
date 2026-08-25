@@ -331,24 +331,88 @@ export function edgesByRow(markers: Map<number, string[]>): Map<number, RowEdges
 }
 
 /**
- * The catalogue key and values that name a range to the reader.
+ * Just enough of a stored comment to say WHERE it points. `FileComment` satisfies it.
  *
- * A key rather than a string, because this module has no language: it is imported by the
- * node test suite, and the component that draws the label is the one holding `t`. Two
- * keys rather than one with a plural rule — "Lines 12–12" for a single line is the kind
- * of thing that survives review in English and reads as a bug in French.
+ * A structural type for the same reason `AnchoredComment` above is one — this module is
+ * imported by the node suite — and a separate one from it because the two ask different
+ * questions: that one places a marker on a row and reads the anchor alone, this one has to
+ * see the quote as well.
  */
-export interface RangeLabel {
-  key: 'filePreview.commentLine' | 'filePreview.commentLines'
-  vars: { start: number; end: number }
+export interface CommentAnchoring {
+  anchor: LineRange | null
+  quote: string
 }
 
-export function rangeLabel(range: LineRange): RangeLabel {
-  return {
-    key: range.startLine === range.endLine ? 'filePreview.commentLine' : 'filePreview.commentLines',
-    vars: { start: range.startLine, end: range.endLine },
+/** What a comment is attached to: lines of the file, a quoted passage, or the file itself. */
+export type CommentAnchorKind = 'lines' | 'quote' | 'file'
+
+/**
+ * Which of the three, decided in ONE place.
+ *
+ * That is the whole point of it rather than an `!anchor` test at each of the four call
+ * sites. `anchor: null` used to mean one thing — a comment on the file as a whole — and now
+ * means two: a comment on a quoted passage of the RENDERED markdown carries no line range
+ * either, because the prose has no mapping back to the file's lines and inventing one would
+ * be a claim the reader never made. What separates the two is whether anything was quoted,
+ * and a discriminant spelled in four places is a discriminant that comes to disagree with
+ * itself — the card would say "Whole file" over a passage the list called a quotation.
+ *
+ * TRIMMED, so a drag that caught nothing but whitespace is not an anchor: `clampQuote`
+ * stores what was selected verbatim, and a quote with no characters in it is nothing for
+ * `locateQuote` to find and nothing for a reader to recognise. It is also what keeps every
+ * comment written before this existed reading as `'file'`, since those store `quote: ''`.
+ */
+export function commentAnchorKind({ anchor, quote }: CommentAnchoring): CommentAnchorKind {
+  if (anchor) return 'lines'
+  return quote.trim() === '' ? 'file' : 'quote'
+}
+
+/**
+ * The catalogue key and values that name what a comment is attached to — all three cases.
+ *
+ * A key rather than a string, because this module has no language: it is imported by the
+ * node test suite, and the component that draws the label is the one holding `t`.
+ *
+ * A `switch` over `commentAnchorKind` rather than an `if (anchor)` of its own, so the
+ * discriminant is read here exactly as it is read everywhere else and a fourth kind added to
+ * the enum cannot compile until this function has decided what to call it.
+ *
+ * Two keys for a range rather than one with a plural rule — "Lines 12–12" for a single line
+ * is the kind of thing that survives review in English and reads as a bug in French. And
+ * `vars` is absent on the two anchorless cases rather than carried as zeroes: their messages
+ * take no placeholder, and a `{ start: 0, end: 0 }` nobody substitutes is a value a later
+ * reader would try to use.
+ */
+export interface CommentLabel {
+  key: 'filePreview.commentLine' | 'filePreview.commentLines'
+    | 'filePreview.commentQuoted' | 'filePreview.commentOnFile'
+  vars?: { start: number; end: number }
+}
+
+export function commentLabel(comment: CommentAnchoring): CommentLabel {
+  switch (commentAnchorKind(comment)) {
+    case 'lines': {
+      // Non-null by the discriminant: `'lines'` is what having an anchor MEANS.
+      const range = comment.anchor as LineRange
+      return {
+        key: range.startLine === range.endLine
+          ? 'filePreview.commentLine'
+          : 'filePreview.commentLines',
+        vars: { start: range.startLine, end: range.endLine },
+      }
+    }
+    case 'quote':
+      return { key: 'filePreview.commentQuoted' }
+    case 'file':
+      return { key: 'filePreview.commentOnFile' }
   }
 }
+
+/**
+ * What `clampQuote` appends when it cuts a selection short. Private: the pair below is the
+ * interface, so the glyph can change without anyone having to find its second reader.
+ */
+const QUOTE_ELLIPSIS = '…'
 
 /**
  * The selected text, trimmed to something worth storing.
@@ -358,7 +422,31 @@ export function rangeLabel(range: LineRange): RangeLabel {
  */
 export function clampQuote(text: string): string {
   if (text.length <= MAX_QUOTE_CHARS) return text
-  return text.slice(0, MAX_QUOTE_CHARS) + '…'
+  return text.slice(0, MAX_QUOTE_CHARS) + QUOTE_ELLIPSIS
+}
+
+/**
+ * The inverse, and it lives HERE rather than where it is called, beside the clamp it undoes.
+ *
+ * `quoteAnchors` has to take the ellipsis back off before it searches for a quote: a clamped
+ * quote can never match the document verbatim, so a search that did not know about it would
+ * report the anchor lost for every long selection. Exporting the operation rather than the
+ * character is what keeps that reader working when the marker changes — clamp on a word
+ * boundary, use a different glyph — instead of failing silently one file away.
+ *
+ * What is left is a PREFIX of what was selected, which is what a search then finds.
+ *
+ * The LENGTH is what says whether the clamp ran, and a trailing ellipsis on its own is not:
+ * prose ends in one often enough ("the story ends…"), and stripping an authored character
+ * would relocate one character short of what the card and the agent were shown. `clampQuote`
+ * only appends after cutting to exactly `MAX_QUOTE_CHARS`, so its output is always exactly
+ * that plus the marker — and any shorter quote ending the same way was written that way.
+ * There is no ambiguous case: a longer selection would itself have been clamped to this
+ * length.
+ */
+export function unclampQuote(quote: string): string {
+  const clamped = quote.length === MAX_QUOTE_CHARS + QUOTE_ELLIPSIS.length
+  return clamped && quote.endsWith(QUOTE_ELLIPSIS) ? quote.slice(0, -QUOTE_ELLIPSIS.length) : quote
 }
 
 /**

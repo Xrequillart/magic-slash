@@ -4,7 +4,7 @@ import { Check, Copy, MessageSquare, SendHorizontal, Trash2 } from 'lucide-react
 import { useAnchoredPanel } from '../useAnchoredPanel'
 import { BUTTON_ACTION, BUTTON_COMMENTS } from './ChangeNavigator'
 import { isAgentTerminal } from '../../utils/agentTerminals'
-import { rangeLabel } from '../../utils/commentAnchors'
+import { commentLabel } from '../../utils/commentAnchors'
 import {
   formatReviewComments, type ReviewComment, type ReviewCommentGroup,
 } from '../../utils/reviewComments'
@@ -258,10 +258,13 @@ function ReviewCommentsButton({
                   {group.path}
                 </div>
                 {group.comments.map(comment => {
-                  // The label picks between a singular and a plural KEY rather than a plural
-                  // rule — the same call `CommentCard` makes, so the list and the card name
-                  // a range the same way.
-                  const range = comment.anchor ? rangeLabel(comment.anchor) : null
+                  // The same call `CommentCard` makes, so the list and the card name an
+                  // anchor the same way — a range by its lines (a singular and a plural KEY
+                  // rather than a plural rule), a quoted passage as a quotation, and a
+                  // comment on neither as the whole file. This is why the discriminant is
+                  // one function: line-anchored and quote-anchored comments sit side by side
+                  // in this list, and only `commentAnchorKind` decides which a row is.
+                  const label = commentLabel(comment)
                   return (
                     <div key={comment.id} className="flex items-start rounded-lg hover:bg-surface">
                       <button
@@ -270,12 +273,14 @@ function ReviewCommentsButton({
                         className="flex-1 min-w-0 flex flex-col gap-0.5 px-2 py-1.5 text-left cursor-pointer bg-transparent border-none"
                       >
                         <span className="text-[11px] font-mono text-text-secondary">
-                          {range ? t(range.key, range.vars) : t('filePreview.commentOnFile')}
+                          {t(label.key, label.vars)}
                         </span>
                         {/* The quote, on one line. It is context for the reader scanning
                             the list; the card they land on shows the whole of it. Absent
                             for a comment made by picking line numbers, which selected no
-                            text at all. */}
+                            text at all — and, on a quote-anchored row, it is not context at
+                            all but the anchor itself, which is why the label above says
+                            "Quoted passage" rather than naming a position. */}
                         {comment.quote.trim() !== '' && (
                           <span className="text-[11px] font-mono text-text-secondary/70 truncate w-full border-l-2 border-line pl-1.5">
                             {comment.quote}

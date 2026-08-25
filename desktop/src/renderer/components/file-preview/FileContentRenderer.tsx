@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useState } from 'react'
 import type { ChangedLines, FilePreviewResult } from '../../../types'
 import CodeView from './CodeView'
 import MarkdownView from './MarkdownView'
+import MarkdownCommentLayer from './MarkdownCommentLayer'
 import ImageView from './ImageView'
 import BinaryPlaceholder from './BinaryPlaceholder'
 import { formatSize } from '../../utils/formatSize'
@@ -121,10 +122,12 @@ interface Props {
    * point of a flag: turning it on there is a decision someone takes, not a consequence of
    * the props that caller happened to be passing already.
    *
-   * Handed straight down to CodeView with the two paths and the fingerprint derived below,
-   * which is a departure from this file's general rule that a store read beats a new prop —
-   * see CodeView's own props for why the store cannot answer "which file is this". All four
-   * are a string or a boolean, so `memo` below still holds.
+   * Handed straight down with the two paths and the fingerprint derived below — to CodeView
+   * for the diff, and to MarkdownCommentLayer for a markdown card switched to its rendered
+   * view, which takes comments on QUOTED PASSAGES rather than on lines. That is a departure
+   * from this file's general rule that a store read beats a new prop; see CodeView's own
+   * props for why the store cannot answer "which file is this". All four are a string or a
+   * boolean, so `memo` below still holds.
    */
   commentable?: boolean
 }
@@ -420,8 +423,25 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
   // which is the branch that carries the `+`/`-` annotation — the rendered document has
   // no rows to annotate, so taking this branch unconditionally silently dropped the diff
   // of every changed `.md` in a review.
+  //
+  // The comment layer WRAPS MarkdownView here rather than reaching inside it, which is what
+  // keeps that component at its two props and both of its Tailwind strings untouched — and
+  // what makes the Skills document's own use of it incapable of growing a comment affordance,
+  // there being no path from it to the layer at all.
+  //
+  // Gated on the SAME opt-in CodeView is, `commentable` plus a fingerprint to file the
+  // comments under. `repoPath` and `filePath` are not tested because they are required props
+  // of this component: CodeView takes them optionally and has to, this does not.
   if (rendersProse) {
-    return <MarkdownView content={result.content} />
+    if (!commentable || fingerprint === undefined) return <MarkdownView content={result.content} />
+    return (
+      <MarkdownCommentLayer
+        content={result.content}
+        repoPath={repoPath}
+        filePath={filePath}
+        fingerprint={fingerprint}
+      />
+    )
   }
 
   return (
