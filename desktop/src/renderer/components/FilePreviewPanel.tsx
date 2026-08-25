@@ -715,9 +715,17 @@ export default function FilePreviewPanel() {
    * separate tests of "is there a ruler" could be edited apart; this cannot.
    *
    * Gated on there being a block, which is the whole of the rule and needs no special
-   * case of its own. A markdown or an image card produces no `.line[data-diff]`, and
-   * neither does the spec preview's empty status, so both arrive here with nothing to
-   * draw. It also covers the case where the content is shorter than its own viewport,
+   * case of its own. A markdown card IN RENDERED MODE, or an image card, produces no
+   * `.line[data-diff]` — MarkdownView paints prose, not annotated rows — and neither
+   * does the spec preview's empty status, so all of them arrive here with nothing to
+   * draw. A markdown card in its default RAW mode is an ordinary CodeView and does
+   * contribute rows, which is the point of that default.
+   *
+   * So the repository-wide total the ruler and the counter stand on shifts as a reader
+   * flips one card to rendered and back. That is correct rather than a leak: the sweep
+   * at `useLayoutEffect` re-runs on the content-height change the swap causes, and a
+   * navigator that stepped to a change no longer on screen would be worse. It also
+   * covers the case where the content is shorter than its own viewport,
    * which is right: a ruler over a view that cannot scroll is a control with nowhere to
    * send anyone.
    *
@@ -819,10 +827,14 @@ export default function FilePreviewPanel() {
                   ))
                 )
               ) : selectedFile && (
+                /* Pinned to the rendered view, and no toggle beside it: the one caller
+                   left is the spec panel's Maximize button, whose file is read with
+                   `status: ''` and therefore carries no diff to go back to. */
                 <FileContentRenderer
                   repoPath={selectedFile.repoPath}
                   filePath={selectedFile.path}
                   status={selectedFile.status}
+                  markdownMode="rendered"
                   showWholeFile={showWholeFile}
                   onCollapsibleChange={setCanExpand}
                 />

@@ -1503,4 +1503,7 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.collapseFile': 'Replier ce fichier',
   'filePreview.expandFile': 'Déplier ce fichier',
   'filePreview.noChangedFiles': 'Aucun fichier modifié',
+  'filePreview.markdownMode': "Mode d'affichage du markdown",
+  'filePreview.markdownRaw': 'Brut',
+  'filePreview.markdownRendered': 'Rendu',
 }

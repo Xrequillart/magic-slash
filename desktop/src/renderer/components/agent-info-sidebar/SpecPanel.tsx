@@ -193,10 +193,14 @@ export function SpecPanel({
             className="overflow-y-auto rounded-b-xl border-t border-line flex-1 min-h-0"
           >
             <div ref={contentRef}>
+              {/* Pinned: a spec is read with `status: ''`, so it never gets diff
+                  annotation and raw markdown would cost the reader the formatting for
+                  nothing. */}
               <FileContentRenderer
                 repoPath={repoPath}
                 filePath={filePath}
                 status=""
+                markdownMode="rendered"
                 refreshToken={refreshToken}
                 notFoundLabel={t('agentInfo.spec.drafting')}
               />
