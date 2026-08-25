@@ -115,6 +115,19 @@ function newCommentId(): string {
 }
 
 /**
+ * The counter behind `focusedComment.seq`.
+ *
+ * At module scope, like `commentSeq` above, and for a reason `anchorSeq`'s in-state counter
+ * does not have to face: this field is CLEARED to `null` whenever the review changes, so a
+ * sequence read off the value being replaced would restart at 1 — while the consumers that
+ * remember which seq they have already acted on are components that may not have unmounted
+ * (the same repository, another anchor). The second request would then carry a number one of
+ * them had already crossed off, and the jump would be silently dropped. A counter that never
+ * goes back cannot produce that.
+ */
+let focusSeq = 0
+
+/**
  * No comments, as ONE array.
  *
  * Every selector below reads `fileComments[key] ?? NO_COMMENTS`, never `?? []`: zustand
@@ -229,6 +242,27 @@ interface AppState {
    */
   fileComments: Record<string, FileComment[]>
 
+  /**
+   * Which stored comment the review has been asked to take the reader to.
+   *
+   * STATE rather than an imperative call, and that is the whole reason it is in the store
+   * at all. The comment being jumped to is very often in a card that is folded shut, or in
+   * one whose read has not come back — `highlightedHtml` arrives asynchronously — so there
+   * are no rows to open a card against at the moment the reader clicks the entry. A
+   * `querySelector` on the next frame would find nothing in exactly the case that matters.
+   * As state it is simply read by whichever CodeView eventually mounts for that file, in
+   * the first render it has rows in, and the card opens then.
+   *
+   * `seq` is a counter on `review.anchorSeq`'s model, and for its reason: two clicks on the
+   * SAME entry have to do the jump twice, and every other field would be identical the
+   * second time. Consumers key their effect on it rather than comparing the target, and
+   * remember the last one they acted on — which is why it comes from a module counter that
+   * never restarts rather than from the value being replaced. See `focusSeq`.
+   *
+   * Cleared wherever `review` is, since it names a comment of the review being left.
+   */
+  focusedComment: { target: CommentTarget; id: string; seq: number } | null
+
   // Actions
   setConfig: (config: Config) => void
   setConfigLoading: (loading: boolean) => void
@@ -295,6 +329,15 @@ interface AppState {
   /** Rewrite a comment's body. The anchor and the quote are what the reader picked and never move. */
   updateFileComment: (target: CommentTarget, id: string, body: string) => void
   removeFileComment: (target: CommentTarget, id: string) => void
+  /**
+   * Take the reader to a comment: open its card, and light up the lines it is on.
+   *
+   * No `unfocusComment` beside it. The focus is not a mode the reader is in — it is a
+   * request that was made, and the card it opens is dismissed the way every other card is
+   * (Escape, a click elsewhere). Leaving it set costs nothing: consumers act on the `seq`
+   * changing, so a focus that has already been honoured is inert.
+   */
+  focusFileComment: (target: CommentTarget, id: string) => void
   closeFilePreview: () => void
 }
 
@@ -336,6 +379,7 @@ export const useStore = create<AppState>()(
         review: null,
         collapsedFiles: {},
         fileComments: {},
+        focusedComment: null,
 
         // Actions
         setConfig: (config) => set({
@@ -435,6 +479,7 @@ export const useStore = create<AppState>()(
             // someone else's diff.
             collapsedFiles: {},
             fileComments: {},
+            focusedComment: null,
             rightSidebar: null,
           }),
 
@@ -508,7 +553,9 @@ export const useStore = create<AppState>()(
         // and a blank agents page gets its first agent selected so the overlay
         // never floats over an empty app.
         openModal: (modal) => set((state) => {
-          const updates: Partial<AppState> = { activeModal: modal, selectedFile: null, review: null }
+          const updates: Partial<AppState> = {
+            activeModal: modal, selectedFile: null, review: null, focusedComment: null,
+          }
           if (!state.activeTerminalId && state.terminals.length > 0) {
             updates.activeTerminalId = state.terminals[0].id
           }
@@ -559,10 +606,13 @@ export const useStore = create<AppState>()(
         // reader can only be looking at one thing, and leaving the review mounted
         // behind a spec preview would keep forty cards — and forty reads — alive
         // underneath it.
-        setSelectedFile: (selectedFile) => set({ selectedFile, review: null }),
+        setSelectedFile: (selectedFile) => set({ selectedFile, review: null, focusedComment: null }),
 
         openRepoReview: (repo, anchorPath) => set((state) => ({
           selectedFile: null,
+          // A comment of the review being replaced names a file the next one may not
+          // hold, so the request does not survive the switch.
+          focusedComment: null,
           review: {
             repoPath: repo.repoPath,
             repoName: repo.repoName,
@@ -634,7 +684,11 @@ export const useStore = create<AppState>()(
           return { fileComments: next }
         }),
 
-        closeFilePreview: () => set({ selectedFile: null, review: null }),
+        focusFileComment: (target, id) => set({
+          focusedComment: { target, id, seq: ++focusSeq },
+        }),
+
+        closeFilePreview: () => set({ selectedFile: null, review: null, focusedComment: null }),
       }),
       // Session storage persist for activeTerminalId (cleared on app close)
       {

@@ -6,6 +6,7 @@ import FileReviewCard from './file-preview/FileReviewCard'
 import ReviewHeader from './file-preview/ReviewHeader'
 import ChangeNavigator from './file-preview/ChangeNavigator'
 import ChangeRuler, { RULER_GUTTER } from './file-preview/ChangeRuler'
+import ReviewCommentsButton from './file-preview/ReviewCommentsButton'
 import {
   blockScrollTop, countMarkerKinds, currentBlockIndex, jumpScrollTop, resolveBlockIndex,
   rulerSegments, rulerViewport, selectScrollTop,
@@ -15,6 +16,9 @@ import {
   anchorScrollTop, buildReviewLayout, mergeRulerSegments, reviewFileKey, sumChangedFiles,
   EMPTY_REVIEW_LAYOUT, type FileMarkers, type ReviewLayout,
 } from '../utils/reviewLayout'
+import {
+  collectReviewComments, type ReviewComment, type ReviewCommentGroup,
+} from '../utils/reviewComments'
 import { cumulativeOffsetTop, findScrollContainer } from '../utils/scrollGeometry'
 import { useT } from '../i18n'
 
@@ -55,8 +59,28 @@ const FALLBACK_LINE_HEIGHT = 18
  */
 const ANCHOR_MARGIN_PX = 12
 
+/**
+ * No comments anywhere in the review, as ONE array.
+ *
+ * `NO_COMMENTS`' reason, one level up: the memo below hands this to the bar, and a fresh
+ * `[]` on every render of a panel that re-renders per scroll frame would defeat
+ * `memo(ReviewCommentsButton)` and re-render the button and its portalled panel with it.
+ */
+const NO_GROUPS: ReviewCommentGroup[] = []
+
 /** Nothing changed — what the bar reads before a measurement, and after a reset. */
 const NO_CHANGES = { added: 0, removed: 0 }
+
+/**
+ * The surfaces inside the drawer that own their own keystrokes.
+ *
+ * Spelled once, because the two listeners below both have to test it and they must not be
+ * able to disagree about what counts: the Escape one and the Alt+↑/↓ one, the second of
+ * which prepends `.xterm` to it. A target test rather than a flag in the store — see the
+ * Escape listener for why — so this is the whole registry, and the next inner surface is
+ * one string edit rather than two in the right order.
+ */
+const KEY_OWNING_SURFACES = '[data-comment-composer], [data-comment-list]'
 
 /**
  * The container's geometry, as one object.
@@ -85,12 +109,29 @@ function kindOf(line: HTMLElement): MarkerPosition['kind'] {
 }
 
 /**
+ * The card for a file of the frozen list, by the index the measurement groups rows by.
+ *
+ * Spelled ONCE, because `data-file-index` is what makes "the file the ruler's marks belong
+ * to", "the file the review scrolled to" and "the file a comment was left on" the same
+ * identifier read three times — they cannot drift apart while they all come through here.
+ */
+function cardFor(content: HTMLElement, fileIndex: number): HTMLElement | null {
+  return content.querySelector<HTMLElement>(`[data-file-index="${fileIndex}"]`)
+}
+
+/**
+ * Where to put the container so `el` sits `marginPx` below the top of the view.
+ *
+ * The one piece of arithmetic behind every jump this panel makes, so a card and a
+ * commented row land by the same rule and differ only in the margin they ask for.
+ */
+function scrollTargetFor(el: HTMLElement, containerTop: number, view: ScrollView, marginPx: number): number {
+  return anchorScrollTop(cumulativeOffsetTop(el) - containerTop, view, marginPx)
+}
+
+/**
  * Where to put the container so the anchored card sits at the top of the view, or
  * `null` when there is no card to go to.
- *
- * The card is found by the same `data-file-index` the measurement groups rows by, so
- * "the file the ruler's marks belong to" and "the file the review scrolled to" are the
- * same identifier read twice — they cannot drift apart.
  *
  * An anchor path the frozen list does not hold falls back to the first card rather than
  * to nothing. That is not defensive padding: `validation.ts` reports a RENAME as the
@@ -99,9 +140,9 @@ function kindOf(line: HTMLElement): MarkerPosition['kind'] {
  * on the right file and a better one than an empty drawer.
  */
 function anchorTargetFor(content: HTMLElement, containerTop: number, anchorIndex: number, view: ScrollView): number | null {
-  const card = content.querySelector<HTMLElement>(`[data-file-index="${anchorIndex >= 0 ? anchorIndex : 0}"]`)
+  const card = cardFor(content, anchorIndex >= 0 ? anchorIndex : 0)
   if (!card) return null
-  return anchorScrollTop(cumulativeOffsetTop(card) - containerTop, view, ANCHOR_MARGIN_PX)
+  return scrollTargetFor(card, containerTop, view, ANCHOR_MARGIN_PX)
 }
 
 /**
@@ -132,6 +173,14 @@ export default function FilePreviewPanel() {
   // identity only changes when a card is toggled, so the cost is one re-render per fold —
   // on a component that already re-renders on every scroll frame.
   const collapsedFiles = useStore(s => s.collapsedFiles)
+  // The whole comment map, for the same reason and with the same cost: the bar reads over
+  // every file of the review at once, and there is no narrower selector for "all of them".
+  // Its identity only changes when a comment is written or deleted.
+  const fileComments = useStore(s => s.fileComments)
+  const focusedComment = useStore(s => s.focusedComment)
+  // Store actions: their identity never changes, so they need no memoising.
+  const focusFileComment = useStore(s => s.focusFileComment)
+  const toggleReviewFileCollapsed = useStore(s => s.toggleReviewFileCollapsed)
   const prevTerminalId = useRef(activeTerminalId)
   const [isClosing, setIsClosing] = useState(false)
   const isClosingRef = useRef(false)
@@ -182,6 +231,17 @@ export default function FilePreviewPanel() {
    * step does a few functions down.
    */
   const anchorRef = useRef<{ seq: number; lastTop: number | null }>({ seq: -1, lastTop: null })
+  /**
+   * The last `focusedComment.seq` the jump below has FINISHED — landed on the commented
+   * row itself rather than on the card holding it.
+   *
+   * Two states, not one, because a comment is very often in a card that is folded shut or
+   * still being read: the click unfolds it and the rows arrive some frames later. Until
+   * they do, the jump goes to the card and stays unfinished, so the next content change
+   * runs it again and it lands on the line. Recording the seq only once the row was found
+   * is the whole of that logic.
+   */
+  const commentJumpRef = useRef<number | null>(null)
   /**
    * Every change in the repository, flattened.
    *
@@ -631,7 +691,12 @@ export default function FilePreviewPanel() {
       // `.xterm` guard on the navigation listener below: a target test rather than a flag
       // in the store, so there is no state to keep in step, nothing a card that unmounted
       // can leave set, and it works for two composers open at once.
-      if (e.target instanceof Element && e.target.closest('[data-comment-composer]')) return
+      //
+      // The comment LIST owns its own Escape the same way, and `useAnchoredPanel` is what
+      // closes it. The marker is stamped on the bar's button as well as on the panel,
+      // because the focus never leaves that button while the list is open — so this test
+      // is what it matches on.
+      if (e.target instanceof Element && e.target.closest(KEY_OWNING_SURFACES)) return
       if (e.key === 'Escape' && isOpen) {
         handleClose()
       }
@@ -657,7 +722,9 @@ export default function FilePreviewPanel() {
       // A comment composer is guarded the same way and for the same reason: Alt+↑/↓ in a
       // textarea moves the caret, and jumping the review to another file out from under
       // someone mid-sentence would take the box they were typing in off screen.
-      if (e.target instanceof Element && e.target.closest('.xterm, [data-comment-composer]')) return
+      // The comment list is guarded for the third time on the same grounds: reading through
+      // a review's comments must not fly the review off to another file underneath them.
+      if (e.target instanceof Element && e.target.closest(`.xterm, ${KEY_OWNING_SURFACES}`)) return
       // preventDefault only on the branches that act, so an Alt+arrow this panel does
       // not use keeps whatever meaning it has elsewhere.
       e.preventDefault()
@@ -711,6 +778,100 @@ export default function FilePreviewPanel() {
     }
     return folded
   }, [review, collapsedFiles])
+
+  /**
+   * Every comment of the review, grouped by file — and, just below, how many that is.
+   *
+   * ONE computation, with the count derived from its result rather than counted again,
+   * because the two must not be able to disagree: the count is what keeps the bar on
+   * screen, and the groups are what the panel it opens draws. A count from one source and
+   * a list from another is the state where the bar says "3" over an empty list.
+   *
+   * The arithmetic itself is in `reviewComments`, where it is tested. Worth memoising for
+   * the ordinary reason in this file: the panel re-renders on every scroll event, and this
+   * walks the review's file list against the comment map.
+   */
+  const commentGroups = useMemo(
+    () => (review ? collectReviewComments(fileComments, review.files, review.repoPath) : NO_GROUPS),
+    [review, fileComments],
+  )
+  // Derived on the spot rather than memoised: the result is a NUMBER, so there is no
+  // identity to stabilise, and one addition per commented file is cheaper than the hook
+  // cell and the dependency compare that would guard it. Deriving it off the memo above
+  // is what makes it the same arithmetic as the list — which is the whole point.
+  const commentCount = commentGroups.reduce((total, group) => total + group.comments.length, 0)
+
+  /**
+   * Take the reader from the comment list to the comment.
+   *
+   * Two things, in this order. The card is UNFOLDED if it is folded shut — otherwise there
+   * is nothing to scroll to and nothing to highlight — and `toggleReviewFileCollapsed` is
+   * a toggle, so the current state has to be read first or a jump into an open card would
+   * fold it. Then the comment is FOCUSED, which is store state rather than a call into the
+   * card: see `focusedComment` for why nothing here can reach the rows yet.
+   *
+   * The scroll is not done here. It is the effect below, which re-runs as the card's rows
+   * arrive — the card just unfolded has none in this frame.
+   *
+   * `collapsedFiles` is read off the store rather than closed over, so folding a card does
+   * not give this callback a new identity: it is a prop of a MEMOISED child, and the fold
+   * map changes far more often than anything the child draws. Read at call time, which is
+   * the only moment its value matters — nothing here reacts to it.
+   */
+  const handleJumpToComment = useCallback((group: ReviewCommentGroup, comment: ReviewComment) => {
+    if (!review) return
+    if (useStore.getState().collapsedFiles[reviewFileKey(review.repoPath, group.path)]) {
+      toggleReviewFileCollapsed(review.repoPath, group.path)
+    }
+    focusFileComment(
+      { repoPath: review.repoPath, path: group.path, fingerprint: comment.fingerprint },
+      comment.id,
+    )
+  }, [review, toggleReviewFileCollapsed, focusFileComment])
+
+  /**
+   * Scroll onto the focused comment, and keep trying until its line is actually there.
+   *
+   * The row is found through the marker CodeView stamps — `data-comment-ids` is a
+   * space-separated list of the comments on that row, which is exactly what `~=` matches —
+   * so this asks the same document the highlight is drawn on rather than re-deriving line
+   * numbers here. Until that row exists the scroll falls back to the card, which is the
+   * best answer available while the file is still being read, and `commentJumpRef` keeps
+   * the jump open so the next content change finishes it.
+   *
+   * Animated, unlike the anchor a few effects up, because this one IS a step the reader
+   * asked for — the same travel the navigator's arrows make, for the same reason. It also
+   * has the side effect of leaving the container somewhere the anchor did not put it, which
+   * is precisely how the anchor knows to stop re-anchoring.
+   */
+  useEffect(() => {
+    if (!review || !focusedComment) return
+    if (commentJumpRef.current === focusedComment.seq) return
+    const container = scrollRef.current
+    const content = contentRef.current
+    if (!container || !content) return
+
+    const fileIndex = review.files.findIndex(f => f.path === focusedComment.target.path)
+    if (fileIndex < 0) return
+    const card = cardFor(content, fileIndex)
+    if (!card) return
+    const row = card.querySelector<HTMLElement>(`.line[data-comment-ids~="${focusedComment.id}"]`)
+    // Only a landing on the ROW counts as done. Reaching the card is a stop on the way.
+    if (row) commentJumpRef.current = focusedComment.seq
+
+    const view = readView(container)
+    animateScrollTo(container, scrollTargetFor(
+      row ?? card,
+      cumulativeOffsetTop(container),
+      view,
+      // The row lands where a change lands — below the sticky header, with a few lines of
+      // context above it — while a card lands where the review's own anchor puts one, by
+      // the same `ANCHOR_MARGIN_PX` `anchorTargetFor` hands it.
+      row ? view.contextPx : ANCHOR_MARGIN_PX,
+    ))
+    // `contentVersion` is the retry: it is bumped by the resize observer, which is what
+    // fires when the card being jumped into unfolds or its read lands.
+  }, [review, focusedComment, contentVersion, readView, animateScrollTo])
 
   /**
    * The ruler's MARKS, which depend on the shape of the review and not on where it is
@@ -898,11 +1059,30 @@ export default function FilePreviewPanel() {
               deliberately NOT the repository's `+N −M` — that is true of a one-change review
               as well, which is how this bar came to stand over a review with two greyed-out
               arrows and nothing to point them at. A single-file preview has no cards to fold,
-              so it passes zero and keeps the behaviour it has always had. */}
+              so it passes zero and keeps the behaviour it has always had.
+
+              The comments button is mounted for every REVIEW, count or no count, and
+              disables itself at zero — the same rule the arrows follow at the ends of the
+              list, and for the same reason: a control that appears the moment there is
+              something in it changes the bar's shape under the cursor. The single-file
+              preview gets none: it is not a review, and nothing there can be commented. */}
           <ChangeNavigator
             current={currentIndex + 1}
             total={blocks.length}
             foldedFiles={foldedFiles}
+            /* Both of the next two come from `commentGroups`, which is what keeps the bar's
+               guard and the panel it opens from ever disagreeing. */
+            commentCount={commentCount}
+            trailing={review ? (
+              <ReviewCommentsButton
+                repoPath={review.repoPath}
+                groups={commentGroups}
+                total={commentCount}
+                onJump={handleJumpToComment}
+                /* The paste is waiting for Enter in a prompt that is behind this drawer. */
+                onSent={handleClose}
+              />
+            ) : undefined}
             onPrevious={goToPrevious}
             onNext={goToNext}
           />

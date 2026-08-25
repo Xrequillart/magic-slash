@@ -1563,4 +1563,26 @@ export const en = {
   'filePreview.commentMarkers': 'Read these {count} comments — click again for the next',
   'filePreview.commentLine': 'Line {start}',
   'filePreview.commentLines': 'Lines {start}–{end}',
+  // What the bar's trigger reads. Spelled out rather than left as a bare digit beside the
+  // icon: a speech bubble and a number make the reader infer what is being counted, and the
+  // one control that hands a whole review to the agent is worth naming. Two keys rather
+  // than a plural rule, the convention this catalogue keeps throughout — a suffix rule that
+  // works in English does not survive translation.
+  // `none` is its own key, not `other` with a zero in it: "0 comments" is a number a
+  // reader has to parse before learning there is nothing there, and this label sits on a
+  // control that is disabled in exactly that state.
+  'filePreview.commentCount.none': 'No comments',
+  'filePreview.commentCount.one': '1 comment',
+  'filePreview.commentCount.other': '{count} comments',
+  // The list itself, as the trigger's tooltip and the panel's heading. It says what the
+  // button opens, where the label above says what the button counts.
+  'filePreview.reviewComments': 'Comments on this review',
+  // What a comment with no line range is about. Nothing creates one today; the list has
+  // to name it anyway, since the store's shape allows it.
+  'filePreview.commentOnFile': 'Whole file',
+  // Sending, and the reason it cannot be done. Two keys rather than one sentence with a
+  // condition in it: the second is a tooltip on a disabled control, and its whole job is
+  // to say which of the two states this is.
+  'filePreview.sendToAgent': 'Send to the agent',
+  'filePreview.sendNoAgent': 'No agent is running — copy the comments instead',
 }
