@@ -15,6 +15,19 @@ Ce skill est uniquement pour le developpement interne du projet Magic Slash, pas
 
 Quand tu poses une question ou demandes une confirmation a l'utilisateur, utilise toujours l'outil `AskUserQuestion` et attends sa reponse avant de continuer. Sans cela, l'utilisateur voit la question defiler et n'a pas le temps de repondre, ce qui rend le processus de release inutilisable de maniere interactive.
 
+## Regle importante : comment editer les fichiers
+
+Les bumps de version se font avec l'outil `Edit`, un fichier a la fois. Il echoue bruyamment quand la chaine cherchee est absente ou ambigue, ce qui est exactement le comportement voulu ici : un remplacement rate doit s'arreter, pas passer inapercu.
+
+**N'utilise pas `sed -i` pour ces remplacements.** Le `sed` de macOS est celui de BSD, et il ne partage ni la syntaxe ni les extensions de GNU :
+
+- L'adressage `0,/regex/` — le reflexe pour « seulement la premiere occurrence » — est une extension GNU. BSD `sed` ne la connait pas et le fichier ressort **inchange**, sans code d'erreur : meme un `set -e` ne rattrape rien. C'est la panne vecue sur la 0.80.1, ou `package.json`, `desktop/package.json` et `README.md` sont restes sur l'ancienne version jusqu'a la verification de l'etape 6.1.
+- `-i` exige un argument de suffixe explicite (`-i ''`), `\+`, `\?` et `\|` ne sont pas reconnus sans `-E`, et `\n` dans un remplacement ne produit pas un saut de ligne.
+
+Si un remplacement en masse est vraiment plus court a ecrire qu'une serie d'`Edit` — les 8 titres de SKILL.md, par exemple — passe par un court script `python3` plutot que par `sed` : il compte les occurrences, `assert` quand il n'en trouve pas, et se comporte pareil sur macOS et Linux.
+
+L'etape 6.1 reste le filet de securite et n'est jamais optionnelle, quel que soit l'outil utilise : c'est elle qui transforme un remplacement silencieusement rate en erreur qui bloque la release.
+
 ## Etape 1 : Obtenir et valider le numero de version
 
 ### 1.1 : Recuperer la version demandee
@@ -111,6 +124,8 @@ Remplace par :
 ```
 
 **IMPORTANT** : Ne cherche PAS la version actuelle (`VERSION_ACTUELLE`) dans ces fichiers. Utilise toujours le pattern regex generique ci-dessus pour trouver la ligne, car un fichier peut avoir rate une mise a jour precedente et contenir une version differente.
+
+Ces 8 titres sont le cas ou un remplacement en masse est legitime — un `Edit` par fichier marche aussi. Dans les deux cas, applique la regle « comment editer les fichiers » ci-dessus : pas de `sed -i`, et un script `python3` qui `assert` sur chaque fichier si tu regroupes.
 
 ### 4.2 : desktop/src/renderer/components/Sidebar.tsx
 
