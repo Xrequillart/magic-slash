@@ -2,7 +2,10 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { ChangedFile, Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, SettingsTab, Org } from '../../types'
 import { reviewFileKey } from '../utils/reviewLayout'
-import type { LineRange } from '../utils/commentAnchors'
+import {
+  commentFileKey, commentFileKeyPrefix,
+  type CommentTarget, type LineRange,
+} from '../utils/commentAnchors'
 import { migrateSkillsContextWindow } from '../pages/Skills/contextWindow'
 
 interface CloseAgentModalData {
@@ -201,8 +204,15 @@ interface AppState {
   collapsedFiles: Record<string, boolean>
 
   /**
-   * The comments left on each file, keyed by `reviewFileKey` — repository path and file
-   * path joined with a NUL byte, the one character a path cannot contain.
+   * The comments left on each file, keyed by `commentFileKey` — the repository path, the
+   * file path and a fingerprint of the file's CONTENT, joined with NUL bytes.
+   *
+   * The fingerprint is what stops a comment outliving the diff it was about. Line numbers
+   * and a quote mean something against ONE state of a file, and the agent this app drives
+   * rewrites files continuously — so when a file moves its key moves with it, and the old
+   * entries stop resolving rather than re-attaching to whatever now sits at those line
+   * numbers. `diffFingerprint` carries the argument for deriving it from the content;
+   * `addFileComment` below is what keeps the entries left behind from piling up.
    *
    * Deliberately NOT in either `partialize`, and that absence is the feature. The store
    * is a module singleton, so these survive everything a reading session does to them:
@@ -281,10 +291,10 @@ interface AppState {
    * call site — the list view, a paste, an import — would otherwise have to remember to
    * mint both, the same way, from a counter living in a component file.
    */
-  addFileComment: (repoPath: string, path: string, comment: NewFileComment) => void
+  addFileComment: (target: CommentTarget, comment: NewFileComment) => void
   /** Rewrite a comment's body. The anchor and the quote are what the reader picked and never move. */
-  updateFileComment: (repoPath: string, path: string, id: string, body: string) => void
-  removeFileComment: (repoPath: string, path: string, id: string) => void
+  updateFileComment: (target: CommentTarget, id: string, body: string) => void
+  removeFileComment: (target: CommentTarget, id: string) => void
   closeFilePreview: () => void
 }
 
@@ -571,14 +581,31 @@ export const useStore = create<AppState>()(
           return { collapsedFiles: { ...state.collapsedFiles, [key]: !state.collapsedFiles[key] } }
         }),
 
-        addFileComment: (repoPath, path, comment) => set((state) => {
-          const key = reviewFileKey(repoPath, path)
+        addFileComment: (target, comment) => set((state) => {
+          const key = commentFileKey(target)
           const stored: FileComment = { ...comment, id: newCommentId(), createdAt: Date.now() }
-          return { fileComments: { ...state.fileComments, [key]: [...(state.fileComments[key] ?? []), stored] } }
+          // Every OTHER version of this file goes in the same write. Those entries are
+          // already unreachable — nothing left in the app can compute their key — so this
+          // is the moment to drop them: the file's map is being rewritten anyway, and the
+          // alternative is one entry per save of every file anyone commented on, for as
+          // long as the session lives.
+          //
+          // Only THIS file is swept, not the whole map: a review holds forty of them, and
+          // a comment written on one says nothing about whether the other thirty-nine have
+          // moved. The arrays are carried over by reference, so the other files' selectors
+          // still see the identity they saw before — which is what `NO_COMMENTS` exists to
+          // protect.
+          const prefix = commentFileKeyPrefix(target.repoPath, target.path)
+          const fileComments: Record<string, FileComment[]> = {}
+          for (const [existing, comments] of Object.entries(state.fileComments)) {
+            if (existing === key || !existing.startsWith(prefix)) fileComments[existing] = comments
+          }
+          fileComments[key] = [...(state.fileComments[key] ?? []), stored]
+          return { fileComments }
         }),
 
-        updateFileComment: (repoPath, path, id, body) => set((state) => {
-          const key = reviewFileKey(repoPath, path)
+        updateFileComment: (target, id, body) => set((state) => {
+          const key = commentFileKey(target)
           const comments = state.fileComments[key]
           // Nothing to do rather than an empty entry: writing one would hand every
           // selector reading this key a NEW array, which is exactly what NO_COMMENTS
@@ -592,8 +619,8 @@ export const useStore = create<AppState>()(
           }
         }),
 
-        removeFileComment: (repoPath, path, id) => set((state) => {
-          const key = reviewFileKey(repoPath, path)
+        removeFileComment: (target, id) => set((state) => {
+          const key = commentFileKey(target)
           const comments = state.fileComments[key]
           if (!comments) return {}
           const left = comments.filter(c => c.id !== id)

@@ -16,6 +16,8 @@
  * first. That is why every range below carries a `side`.
  */
 
+import { reviewFileKey } from './reviewLayout'
+
 /** Which file's numbering a line number belongs to. */
 export type LineSide = 'new' | 'old'
 
@@ -356,4 +358,85 @@ export function rangeLabel(range: LineRange): RangeLabel {
 export function clampQuote(text: string): string {
   if (text.length <= MAX_QUOTE_CHARS) return text
   return text.slice(0, MAX_QUOTE_CHARS) + '…'
+}
+
+/**
+ * Which VERSION of a file a comment was left on.
+ *
+ * A comment is line numbers and a quote, and both are relative to ONE state of one file.
+ * The agent this app drives edits files continuously, so a file's diff moves several
+ * times within a session — and comments re-rendered at the same numeric lines of a diff
+ * that has since moved do not point at nothing, they point at UNRELATED code, which the
+ * next story then hands to the agent as an instruction. So the version is part of the key
+ * the store files them under: once a file changes, its old comments stop resolving.
+ * Losing a comment whose file moved under it is the accepted cost; a comment pointing at
+ * the wrong lines is not.
+ *
+ * Derived from the file's CONTENT, and the first reason is what decides it: the content is
+ * the only input BOTH paths hold. CodeView reads `fileComments` and writes them from the
+ * same `content` prop through this one function, while the store holds no diff, no branch
+ * and no commit, and the row identities that would give a changed-line set only exist once
+ * the HTML is in the DOM — after the read. A fingerprint the two paths could spell
+ * differently is worse than none at all: every comment would become unreachable the
+ * instant it was saved.
+ *
+ * The second reason is that the content is what the ANCHORS are relative to. Hashing only
+ * the changed lines is the minimal thing that protects line NUMBERS, and it misses a line
+ * rewritten in place — the numbers still land, and the stored quote now says something the
+ * file does not. Content catches both. It is also the stabler of the two in the direction
+ * that matters: `git diff HEAD` moves the moment a commit is made without a byte of the
+ * file changing, and a comment's anchors — line numbers in the file as it stands — are
+ * still exactly right after that.
+ *
+ * It therefore moves for exactly one reason, the bytes changing, so everything that leaves
+ * the bytes alone keeps the comments: folding a card shut, scrolling forty files away,
+ * switching file, closing the drawer and opening it again, and a theme change or a re-read
+ * — those two replace the highlighted HTML and read the same file back, so `content` comes
+ * back byte for byte and this answers the same string.
+ */
+export function diffFingerprint(content: string): string {
+  // FNV-1a, 32-bit. Not cryptographic and not meant to be: the question is "are these the
+  // same bytes", asked of a string the caller already holds, and `crypto`'s digest is
+  // asynchronous — a key that arrives a tick after the render that needed it is a render
+  // with no comments on it.
+  let hash = 0x811c9dc5
+  for (let i = 0; i < content.length; i++) {
+    hash ^= content.charCodeAt(i)
+    // `Math.imul`, because `hash * 16777619` leaves the 32-bit range and starts losing low
+    // bits to the double's rounding — the very bits the next character mixes in.
+    hash = Math.imul(hash, 0x01000193)
+  }
+  // The length rides along: it costs nothing, and it takes the two files that would have to
+  // collide from "the same 32 bits" to "the same 32 bits at the same length".
+  return `${content.length.toString(36)}-${(hash >>> 0).toString(36)}`
+}
+
+/** A file as the comment store files it: which file, and which version of it. */
+export interface CommentTarget {
+  repoPath: string
+  path: string
+  /** `diffFingerprint(content)` of the file these comments belong to. */
+  fingerprint: string
+}
+
+/**
+ * How a file's comments are named in the store.
+ *
+ * `reviewFileKey` plus the fingerprint, and a function of its own rather than a third
+ * argument on that one: `reviewFileKey` also names the COLLAPSED-CARD entry, where the
+ * version must not appear. Folding a card is a fact about the file, and a card that
+ * un-folded itself every time the agent saved would be a worse bug than the one this fixes.
+ */
+export function commentFileKey(target: CommentTarget): string {
+  return `${reviewFileKey(target.repoPath, target.path)}\u0000${target.fingerprint}`
+}
+
+/**
+ * Every version of one file, as a key prefix — what the store prunes on a write.
+ *
+ * Sound because NUL is the one byte a path cannot contain and `diffFingerprint` never
+ * emits one, so this matches every entry of this file and nothing else in the map.
+ */
+export function commentFileKeyPrefix(repoPath: string, path: string): string {
+  return `${reviewFileKey(repoPath, path)}\u0000`
 }

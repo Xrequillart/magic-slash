@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
-  clampQuote, edgesByRow, extendRange, lineIdentityFromRow, markersByRow, normalizeRange,
-  rangeCovers, rangeLabel, rowsForComment, visibleRowForComment, MAX_QUOTE_CHARS,
-  type AnchoredComment, type LineRange, type RowAttributes, type RowIdentity,
+  clampQuote, commentFileKey, commentFileKeyPrefix, diffFingerprint, edgesByRow, extendRange,
+  lineIdentityFromRow, markersByRow, normalizeRange, rangeCovers, rangeLabel, rowsForComment,
+  visibleRowForComment, MAX_QUOTE_CHARS,
+  type AnchoredComment, type CommentTarget, type LineRange, type RowAttributes, type RowIdentity,
 } from './commentAnchors'
+import { reviewFileKey } from './reviewLayout'
 
 /** An ordinary row: its number is the new file's, and it carries no diff attribute. */
 function keptRow(line: number, overrides: Partial<RowAttributes> = {}): RowAttributes {
@@ -469,5 +471,96 @@ describe('clampQuote', () => {
     const clamped = clampQuote('x'.repeat(MAX_QUOTE_CHARS + 500))
     expect(clamped).toHaveLength(MAX_QUOTE_CHARS + 1)
     expect(clamped.endsWith('…')).toBe(true)
+  })
+})
+
+/**
+ * A file as it stands, and the same file after the agent has been over it.
+ *
+ * Three shapes, because the fingerprint has three jobs: `FILE` and `FILE_AGAIN` are the
+ * same bytes arriving twice (a theme change, a re-read), `FILE_REWRITTEN` is a line
+ * changed in place — the case line numbers alone survive and a quote does not — and
+ * `FILE_GROWN` is a line inserted above, which moves every number below it.
+ */
+const FILE = 'const a = 1\nconst b = 2\nexport default a + b\n'
+const FILE_AGAIN = 'const a = 1\nconst b = 2\nexport default a + b\n'
+const FILE_REWRITTEN = 'const a = 1\nconst b = 3\nexport default a + b\n'
+const FILE_GROWN = "import x from 'x'\nconst a = 1\nconst b = 2\nexport default a + b\n"
+
+/** The file a comment is filed under, as CodeView holds it. */
+function target(overrides: Partial<CommentTarget> = {}): CommentTarget {
+  return { repoPath: '/repo', path: 'src/a.ts', fingerprint: diffFingerprint(FILE), ...overrides }
+}
+
+describe('diffFingerprint', () => {
+  it('answers the same string for the same bytes, which is what makes a comment readable back', () => {
+    // The one thing that must hold: a theme change re-reads the file and replaces the whole
+    // highlighted document, and a fingerprint that moved with it would take every marker in
+    // the review with it.
+    expect(diffFingerprint(FILE_AGAIN)).toBe(diffFingerprint(FILE))
+  })
+
+  it('moves when a line is rewritten in place, where the numbers alone would not have', () => {
+    // Line 2 still exists and still numbers 2, so a comment on it would land — on code it
+    // was not about, with a stored quote that now says something the file does not.
+    expect(diffFingerprint(FILE_REWRITTEN)).not.toBe(diffFingerprint(FILE))
+  })
+
+  it('moves when a line is inserted above the comment, which is what shifts every number below', () => {
+    expect(diffFingerprint(FILE_GROWN)).not.toBe(diffFingerprint(FILE))
+  })
+
+  it('tells two files of the same length apart, which a length alone could not', () => {
+    expect(diffFingerprint('ab')).not.toBe(diffFingerprint('ba'))
+  })
+
+  it('answers for an empty file, since a file emptied is a file that changed', () => {
+    expect(diffFingerprint('')).not.toBe(diffFingerprint(FILE))
+    expect(diffFingerprint('')).toBe(diffFingerprint(''))
+  })
+
+  it('carries no separator of its own, so it cannot spell a second key', () => {
+    // The keys below join their parts with NUL. A fingerprint containing one would let two
+    // different files agree on a key by moving the seam.
+    expect(diffFingerprint(FILE)).not.toContain('\u0000')
+  })
+})
+
+describe('commentFileKey', () => {
+  it('files two versions of one file apart, which is the whole point of the fingerprint', () => {
+    const before = commentFileKey(target())
+    const after = commentFileKey(target({ fingerprint: diffFingerprint(FILE_REWRITTEN) }))
+    expect(after).not.toBe(before)
+  })
+
+  it('is the collapsed-card key with the version added, not a key of its own', () => {
+    // Collapse state is about the FILE and must not move when the agent edits it, so the
+    // two keys share a stem rather than a definition. `reviewLayout` still owns that stem.
+    expect(commentFileKey(target())).toBe(`${reviewFileKey('/repo', 'src/a.ts')}\u0000${diffFingerprint(FILE)}`)
+  })
+
+  it('keeps the same file in two repositories apart', () => {
+    expect(commentFileKey(target({ repoPath: '/one' }))).not.toBe(commentFileKey(target({ repoPath: '/two' })))
+  })
+
+  it('cannot be spelled two ways by moving the separator', () => {
+    expect(commentFileKey({ repoPath: 'a/b', path: 'c', fingerprint: 'f' }))
+      .not.toBe(commentFileKey({ repoPath: 'a', path: 'b/c', fingerprint: 'f' }))
+  })
+})
+
+describe('commentFileKeyPrefix', () => {
+  it('matches every version of the file it names', () => {
+    // What the store sweeps when a comment is written: the entries left behind by the
+    // versions before it are unreachable, and this is how they are found.
+    const prefix = commentFileKeyPrefix('/repo', 'src/a.ts')
+    expect(commentFileKey(target()).startsWith(prefix)).toBe(true)
+    expect(commentFileKey(target({ fingerprint: diffFingerprint(FILE_GROWN) })).startsWith(prefix)).toBe(true)
+  })
+
+  it('matches no other file, so pruning one cannot take another with it', () => {
+    const prefix = commentFileKeyPrefix('/repo', 'src/a.ts')
+    expect(commentFileKey(target({ path: 'src/ab.ts' })).startsWith(prefix)).toBe(false)
+    expect(commentFileKey(target({ repoPath: '/other' })).startsWith(prefix)).toBe(false)
   })
 })

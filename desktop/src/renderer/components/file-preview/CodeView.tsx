@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import CommentCard, { CommentAffordance } from './CommentCard'
 import {
-  clampQuote, edgesByRow, extendRange, lineIdentityFromRow, markersByRow, normalizeRange,
-  rangeCovers, visibleRowForComment,
-  type GutterPick, type LineRange, type RowEdges, type RowIdentity,
+  clampQuote, commentFileKey, diffFingerprint, edgesByRow, extendRange, lineIdentityFromRow,
+  markersByRow, normalizeRange, rangeCovers, visibleRowForComment,
+  type CommentTarget, type GutterPick, type LineRange, type RowEdges, type RowIdentity,
 } from '../../utils/commentAnchors'
-import { reviewFileKey } from '../../utils/reviewLayout'
 import { useStore, NO_COMMENTS, type FileComment } from '../../store'
 import { useT } from '../../i18n'
 
@@ -493,7 +492,30 @@ export default function CodeView({
   const t = useT()
 
   const commenting = commentable && repoPath !== undefined && filePath !== undefined
-  const commentKey = commenting ? reviewFileKey(repoPath, filePath) : null
+
+  /**
+   * Which version of this file the comments on screen belong to — see `diffFingerprint`.
+   *
+   * MEMOISED on the content, because this is a walk of the whole file and this component
+   * re-renders for reasons that have nothing to do with it: the panel above re-renders on
+   * every scroll frame to move the ruler's indicator, and a drag across the gutter sets
+   * state on every row it crosses. `content` is the only thing that can change the answer,
+   * so it is the only dependency — and a preview that cannot be commented on never hashes
+   * anything at all.
+   */
+  const fingerprint = useMemo(() => (commenting ? diffFingerprint(content) : null), [commenting, content])
+
+  /**
+   * The file these comments are filed under: the two paths and that fingerprint.
+   *
+   * ONE object, read by the store selector below and by the three handlers at the bottom,
+   * so the version the comments are READ under and the version they are WRITTEN under
+   * cannot come to differ — which is the whole failure mode a fingerprint introduces.
+   */
+  const target: CommentTarget | null = commenting && fingerprint !== null
+    ? { repoPath, path: filePath, fingerprint }
+    : null
+  const commentKey = target ? commentFileKey(target) : null
   // `NO_COMMENTS` rather than `?? []`: zustand compares a selector's result by identity,
   // and a fresh array per call would re-render every mounted CodeView on every unrelated
   // store mutation — the terminal state, the config, the five-second git poll.
@@ -949,17 +971,17 @@ export default function CodeView({
   }
 
   const handleSave = (body: string) => {
-    if (!commenting || !card) return
+    if (!target || !card) return
     if (card.mode === 'new') {
-      addFileComment(repoPath, filePath, { anchor: card.range, quote: card.quote, body })
+      addFileComment(target, { anchor: card.range, quote: card.quote, body })
     } else {
-      updateFileComment(repoPath, filePath, card.id, body)
+      updateFileComment(target, card.id, body)
     }
     setCard(null)
   }
 
   const handleDelete = () => {
-    if (commenting && card?.mode === 'existing') removeFileComment(repoPath, filePath, card.id)
+    if (target && card?.mode === 'existing') removeFileComment(target, card.id)
     setCard(null)
   }
 
