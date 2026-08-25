@@ -78,14 +78,20 @@ export interface RepoReview {
  * in the rendering. The rendering is not stable: the diff injects a row per deleted line,
  * the changes-only view drops whole regions, and a theme change re-reads the file and
  * swaps the entire HTML string. So the anchor is re-derived from these numbers on every
- * render, and nothing anywhere holds a reference to a row. `null` is a comment on the
- * file rather than on a line — nothing creates one yet, and the shape is here so that the
- * list view story 5 brings does not have to widen the type.
+ * render, and nothing anywhere holds a reference to a row.
  *
  * `quote` is what was selected, kept ALONGSIDE the line numbers rather than instead of
  * them. The numbers are what an agent can act on; the quote is what tells a reader — and
  * the agent — whether the lines still say what the comment was about, which is the one
  * thing line numbers cannot survive an edit and still answer.
+ *
+ * `null` is a comment with no line numbers, and it now means TWO things: the whole file when
+ * nothing was quoted, and a QUOTED PASSAGE when something was — a comment left on a markdown
+ * card switched to its rendered view, where the prose has no mapping back to the file's lines
+ * and the quote is therefore the whole of the anchor. That is why the shape did not have to
+ * widen for it, and why `commentAnchorKind` in `utils/commentAnchors` exists: one function
+ * reads these two fields together and answers which of the three a comment is, so the card,
+ * the list, the marker sweep and the text handed to the agent cannot come to disagree.
  */
 export interface FileComment {
   id: string

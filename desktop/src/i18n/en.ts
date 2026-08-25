@@ -1554,6 +1554,11 @@ export const en = {
   // English does not survive translation.
   'filePreview.comment': 'Comment',
   'filePreview.commentPlaceholder': 'What should the agent know about these lines?',
+  // Its twin for a comment on the RENDERED markdown, where there are no lines to ask about
+  // — the passage is the whole of the anchor. A second key rather than a vaguer sentence
+  // covering both: the composer prompt is where a reader learns what the comment will be
+  // attached to, and "these lines" over a quotation says something false about it.
+  'filePreview.commentQuotePlaceholder': 'What should the agent know about this passage?',
   'filePreview.commentDelete': 'Delete',
   // Two forms again, and the plural one carries the count as well as the gesture: the pill
   // on a commented line draws an icon rather than a number, so this tooltip is the only
@@ -1563,6 +1568,27 @@ export const en = {
   'filePreview.commentMarkers': 'Read these {count} comments — click again for the next',
   'filePreview.commentLine': 'Line {start}',
   'filePreview.commentLines': 'Lines {start}–{end}',
+  // The third form of the same label, for a comment on the rendered markdown. It names the
+  // KIND of anchor and not its position, because a quotation has none to name: the card and
+  // the list both show the passage itself right underneath, which is what says which one.
+  'filePreview.commentQuoted': 'Quoted passage',
+  // What the RAW diff says about the quote-anchored comments on the same file. They are
+  // still there — toggling a view is not a way to delete a comment — but their anchor is a
+  // passage of the rendered document, which this view is not showing. Two keys rather than a
+  // plural rule, the convention this catalogue keeps: the singular carries no count at all,
+  // since "1 comment" is a number a reader has to read before learning there is one.
+  'filePreview.commentQuoteOtherView.one':
+    'A comment here is anchored to a quoted passage — switch to the rendered view to see it in place.',
+  'filePreview.commentQuoteOtherView.other':
+    '{count} comments here are anchored to quoted passages — switch to the rendered view to see them in place.',
+  // And what the RENDERED view says about a quotation it can no longer find, the document
+  // having been rewritten under it. The comment is kept and says so: losing the text a
+  // comment was about is not a reason to lose the comment, and a marker silently missing
+  // would leave a reader to work out for themselves that anything had happened.
+  'filePreview.commentQuoteLost.one':
+    'A comment’s quoted passage is no longer in this document — the comment is kept, its anchor is lost.',
+  'filePreview.commentQuoteLost.other':
+    '{count} comments’ quoted passages are no longer in this document — the comments are kept, their anchors are lost.',
   // What the bar's trigger reads. Spelled out rather than left as a bare digit beside the
   // icon: a speech bubble and a number make the reader infer what is being counted, and the
   // one control that hands a whole review to the agent is worth naming. Two keys rather

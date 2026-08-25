@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { MessageSquarePlus, Pencil, Trash2 } from 'lucide-react'
+import { MessageSquare, MessageSquarePlus, Pencil, Trash2 } from 'lucide-react'
 import { useSelectionAnchoredPanel } from '../../hooks/useSelectionAnchoredPanel'
-import { rangeLabel, type LineRange } from '../../utils/commentAnchors'
+import { commentAnchorKind, commentLabel, type LineRange } from '../../utils/commentAnchors'
 import { BTN_DANGER, BTN_GHOST, BTN_PRIMARY, INPUT } from '../../theme/controls'
 import type { FileComment } from '../../store'
-import { useT } from '../../i18n'
+import { useT, type MessageKey } from '../../i18n'
 
 /**
  * Wide enough for a sentence about a line of code without becoming a second document.
@@ -109,6 +109,54 @@ function Quote({ quote }: { quote: string }) {
   )
 }
 
+interface NoticeProps {
+  /** How many comments the notice is about. Nothing is drawn for none — see the guard below. */
+  count: number
+  /** What to say about one, and about several. See the class docblock for why two keys. */
+  one: MessageKey
+  other: MessageKey
+  /**
+   * The horizontal padding to line the notice up with the content it sits above — the one
+   * thing that genuinely differs between the two views, `px-4` for the code slab and `px-5`
+   * for the prose, both taken from what the content below sets for itself.
+   */
+  className: string
+}
+
+/**
+ * What a view says about this file's comments that it cannot show.
+ *
+ * ONE component for both directions, because it is one fact stated twice. The raw diff has no
+ * row for a comment anchored to a quoted passage, and the rendered document may no longer
+ * contain a passage a comment quotes; in both cases the comment is KEPT — toggling a view is
+ * not a way to delete a comment, and losing the text a comment was about is not a reason to
+ * lose the note — and in both cases the reader has to be told, because silence there is
+ * indistinguishable from the comment having been dropped.
+ *
+ * It lives here rather than in the review's comment list, and here is the only place it can:
+ * the list is portalled to `<body>` with no idea which of the forty cards behind it is
+ * showing prose and which is showing a diff. Above the content rather than beside a row,
+ * because it is a fact about the FILE — there is no row it belongs to, which is the very
+ * thing it is saying.
+ *
+ * Two catalogue KEYS rather than one message with a plural rule, the convention this app
+ * keeps throughout: a suffix rule that works in English does not survive translation.
+ */
+export function CommentAnchorNotice({ count, one, other, className }: NoticeProps) {
+  const t = useT()
+  // `<= 0`, not `=== 0`: the rendered view DERIVES its count as a shortfall between the
+  // passages it is looking for and the pills it placed, and there is nothing to say about a
+  // shortfall of none — which a negative number, from whichever of the two the render caught
+  // first, is also not.
+  if (count <= 0) return null
+  return (
+    <div className={`flex items-start gap-1.5 pt-3 text-[11px] text-text-secondary ${className}`}>
+      <MessageSquare className="w-3 h-3 mt-0.5 shrink-0 text-orange" />
+      <span>{count === 1 ? t(one) : t(other, { count })}</span>
+    </div>
+  )
+}
+
 interface AffordanceProps {
   /**
    * Where the affordance should sit, asked again on every scroll frame. See
@@ -155,8 +203,15 @@ export function CommentAffordance({ anchorRect, onConfirm, onDismiss }: Affordan
 interface Props {
   /** The comment being read or edited, or `null` while a new one is being written. */
   comment: FileComment | null
-  /** The lines it is attached to — re-derived by the caller, never remembered by this card. */
-  range: LineRange
+  /**
+   * The lines it is attached to — re-derived by the caller, never remembered by this card.
+   *
+   * `null` when there are none, which is not merely the shape the store allows: a comment on
+   * the RENDERED markdown is anchored to a quoted passage instead, because the prose has no
+   * mapping back to the file's lines. `quote` below is then the anchor rather than context
+   * beside one, and the two together are what `commentLabel` reads to name the card.
+   */
+  range: LineRange | null
   /** What was selected. Taken from `comment` when there is one, so this is the new-comment case. */
   quote: string
   anchorRect: () => DOMRect | null
@@ -178,10 +233,27 @@ interface Props {
  */
 export default function CommentCard({ comment, range, quote, anchorRect, onSave, onDelete, onClose }: Props) {
   const t = useT()
-  // The lines this is about, as the reader reads them. `rangeLabel` picks between the
-  // singular and the plural KEY rather than a plural rule: "Lines 12–12" for one line
-  // survives review in English and reads as a bug in French.
-  const label = rangeLabel(range)
+  /**
+   * The quote, read ONCE: a stored comment's own, else the prop, which is the new-comment
+   * case. Read here rather than at each of the three places below that want it, so the
+   * label, the composer's prompt and the `Quote` cannot come to disagree about what this
+   * card is showing.
+   */
+  const shownQuote = comment?.quote ?? quote
+
+  /**
+   * What this comment is about, as the reader reads it — and the shape the composer's prompt
+   * takes with it. Both come off ONE reading of the discriminant.
+   *
+   * `commentLabel` picks the KEY rather than building a string, and picks between three of
+   * them rather than testing `range` here: a range names its lines (singular and plural
+   * being two keys, since "Lines 12–12" survives review in English and reads as a bug in
+   * French), a quotation names itself, and a comment on neither names the file. That choice
+   * lives in `commentAnchorKind` and nowhere else.
+   */
+  const anchoring = { anchor: range, quote: shownQuote }
+  const kind = commentAnchorKind(anchoring)
+  const label = commentLabel(anchoring)
   // A comment that does not exist yet opens straight into the box: nobody presses "Edit"
   // on an empty card.
   const [editing, setEditing] = useState(comment === null)
@@ -219,7 +291,7 @@ export default function CommentCard({ comment, range, quote, anchorRect, onSave,
       className="p-3 flex flex-col gap-2"
     >
       <span className="text-[11px] font-medium text-text-secondary">{t(label.key, label.vars)}</span>
-      <Quote quote={comment?.quote ?? quote} />
+      <Quote quote={shownQuote} />
 
       {editing ? (
         <>
@@ -227,7 +299,12 @@ export default function CommentCard({ comment, range, quote, anchorRect, onSave,
             ref={textareaRef}
             value={body}
             onChange={e => setBody(e.target.value)}
-            placeholder={t('filePreview.commentPlaceholder')}
+            /* Asked about the LINES or about the PASSAGE, whichever this comment is
+               attached to. One placeholder for both said "these lines" over a quotation,
+               which is the one thing the reader has to get right before typing. */
+            placeholder={t(kind === 'quote'
+              ? 'filePreview.commentQuotePlaceholder'
+              : 'filePreview.commentPlaceholder')}
             rows={4}
             /* `INPUT` composed, never re-spelled: this is the same field box as every
                other one in the app, plus the two things a comment box adds. */

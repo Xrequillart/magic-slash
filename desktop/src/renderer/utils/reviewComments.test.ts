@@ -258,6 +258,53 @@ describe('formatReviewComments', () => {
     ].join('\n'))
   })
 
+  it('names a quoted passage as the anchor, and not as the absence of one', () => {
+    // A comment left on the RENDERED markdown has no line number to emit — the prose has no
+    // mapping back to the file's lines — so the quote below IS what the comment points at.
+    // The agent has to be told that, or it reads the `>` lines as context beside an anchor
+    // that was never written.
+    const text = formatReviewComments(collected('docs/spec.md', [
+      comment('c1', { anchor: null, quote: 'the agent may refuse', body: 'Say why it would.' }),
+    ]))
+
+    expect(text).toBe([
+      'docs/spec.md',
+      '  (quoted passage)',
+      '    > the agent may refuse',
+      '    Say why it would.',
+    ].join('\n'))
+  })
+
+  it('still says `(whole file)` for an anchorless comment that quoted nothing', () => {
+    // The two now share `anchor: null`, and only the quote tells them apart. A whitespace
+    // quote is no quote: it is nothing a reader could recognise and nothing to relocate.
+    const text = formatReviewComments(collected('src/a.ts', [
+      comment('c1', { anchor: null, quote: '  \n ', body: 'Needs a test.' }),
+    ]))
+
+    expect(text).toContain('  (whole file)')
+    expect(text).not.toContain('quoted passage')
+  })
+
+  it('lists a quoted comment beside a line-anchored one, under the same path', () => {
+    // AC4 from the other side: the two kinds are one list, so the file heading is written
+    // once and each comment says for itself what it is attached to.
+    const text = formatReviewComments(collected('docs/spec.md', [
+      comment('c1', { anchor: newRange(4, 4), quote: '# Spec', body: 'Title it.' }),
+      comment('c2', { anchor: null, quote: 'must be idempotent', body: 'Prove it.' }),
+    ]))
+
+    expect(text).toBe([
+      'docs/spec.md',
+      '  L4',
+      '    > # Spec',
+      '    Title it.',
+      '  (quoted passage)',
+      '    > must be idempotent',
+      '    Prove it.',
+    ].join('\n'))
+  })
+
   it('emits the quote ALONGSIDE the range, not instead of it', () => {
     // The invariant `diffFingerprint` argues for: a comment re-rendered at the same
     // numbers of a diff that has moved points at unrelated code, so the agent gets the

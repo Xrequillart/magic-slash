@@ -891,6 +891,13 @@ export default function FilePreviewPanel() {
    * best answer available while the file is still being read, and `commentJumpRef` keeps
    * the jump open so the next content change finishes it.
    *
+   * The selector is the ATTRIBUTE alone rather than `.line[…]`, because a diff row is no
+   * longer the only thing that can carry a comment: a markdown card switched to its rendered
+   * view has no rows at all, and `MarkdownCommentLayer` stamps the same attribute on the pill
+   * it draws over the quoted passage. Widening it is what makes a jump from the list land on
+   * the passage rather than stopping at the top of the card. Nothing else in the app writes
+   * the attribute, so there is nothing for the loosened selector to pick up by accident.
+   *
    * Animated, unlike the anchor a few effects up, because this one IS a step the reader
    * asked for — the same travel the navigator's arrows make, for the same reason. It also
    * has the side effect of leaving the container somewhere the anchor did not put it, which
@@ -907,7 +914,7 @@ export default function FilePreviewPanel() {
     if (fileIndex < 0) return
     const card = cardFor(content, fileIndex)
     if (!card) return
-    const row = card.querySelector<HTMLElement>(`.line[data-comment-ids~="${focusedComment.id}"]`)
+    const row = card.querySelector<HTMLElement>(`[data-comment-ids~="${focusedComment.id}"]`)
     // Only a landing on the ROW counts as done. Reaching the card is a stop on the way.
     if (row) commentJumpRef.current = focusedComment.seq
 

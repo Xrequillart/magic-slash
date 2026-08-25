@@ -14,7 +14,7 @@
  * still typed structurally: nothing here reads a file's counts or its status.
  */
 
-import { commentFileKeyPrefix, type LineRange } from './commentAnchors'
+import { commentAnchorKind, commentFileKeyPrefix, type LineRange } from './commentAnchors'
 import { reviewFileKey } from './reviewLayout'
 
 /**
@@ -150,22 +150,44 @@ export function collectReviewComments(
 }
 
 /**
- * Where a comment points, in the shortest form that stays unambiguous.
+ * Where a comment points, in the shortest form that stays unambiguous — all three cases.
  *
  * `L12` for one line, `L12-18` for several, and `old:` in front of a range on the side of
  * the diff the file no longer has: `data-line="40"` on a removed row and `data-line="40"`
  * on an ordinary one are two different lines of two different files, so a range written
  * without its side is a range the agent could resolve to the wrong code.
  *
- * `null` for a comment on the file rather than on a line: there is no range to name, and
- * inventing one that covered the whole file would be a claim the reader never made.
+ * `(whole file)` is verbatim on purpose: it is what the agent has been reading since story 5,
+ * and a comment on nothing in particular is still that. No range is invented to cover the
+ * file, which would be a claim the reader never made.
+ *
+ * `(quoted passage)` is the new one, and it is a POSITIVE statement rather than the absence
+ * of a line number: a comment left on the rendered markdown is anchored to the text quoted
+ * on the `>` lines immediately below, and the agent has to be told that those lines ARE the
+ * anchor rather than context beside one. Deriving a source line from a rendered selection is
+ * out of scope by decision — the rendering has no mapping back to the file's lines — so this
+ * is also the honest limit of what is known about where the comment points.
+ *
+ * ONE function over `commentAnchorKind` rather than a range half returning `null` for the
+ * other two to catch: the subject here is "what stands in front of a comment", which has
+ * three answers, and a nullable half would have to carry a paragraph explaining that it
+ * cannot answer the question it is named for.
  */
-function rangeText(anchor: LineRange | null): string | null {
-  if (!anchor) return null
-  const lines = anchor.startLine === anchor.endLine
-    ? `L${anchor.startLine}`
-    : `L${anchor.startLine}-${anchor.endLine}`
-  return anchor.side === 'old' ? `old:${lines}` : lines
+function anchorText(comment: StoredComment): string {
+  switch (commentAnchorKind(comment)) {
+    case 'lines': {
+      // Non-null by the discriminant: `'lines'` is what having an anchor MEANS.
+      const anchor = comment.anchor as LineRange
+      const lines = anchor.startLine === anchor.endLine
+        ? `L${anchor.startLine}`
+        : `L${anchor.startLine}-${anchor.endLine}`
+      return anchor.side === 'old' ? `old:${lines}` : lines
+    }
+    case 'quote':
+      return '(quoted passage)'
+    case 'file':
+      return '(whole file)'
+  }
 }
 
 /**
@@ -174,7 +196,7 @@ function rangeText(anchor: LineRange | null): string | null {
  * ENGLISH, and not a catalogue key. Every prompt this app writes for an agent is an
  * English literal at its call site — see `UpdateOverlay`'s debug prompt and the Skills
  * page's — because the reader's interface language is not the agent's, and a comment
- * body is the reader's own words either way. `rangeLabel` in `commentAnchors` answers a
+ * body is the reader's own words either way. `commentLabel` in `commentAnchors` answers a
  * KEY instead, and that is the contrast rather than an inconsistency: it feeds a label a
  * person reads.
  *
@@ -191,6 +213,12 @@ function rangeText(anchor: LineRange | null): string | null {
  * by picking line numbers in the gutter has no selected text, and a blank `>` would say
  * the lines were empty.
  *
+ * On a comment left on the RENDERED markdown those `>` lines are not corroboration, they
+ * are the anchor itself: there is no line number to emit, so `(quoted passage)` names what
+ * the passage below is for. Nothing about the emission changes — the quote was always
+ * written out — only the line above it, which is what turns "here is what those lines said"
+ * into "this passage is what the comment is about".
+ *
  * No trailing newline. The one caller that is not the clipboard writes this into a
  * terminal as a bracketed paste that must NOT submit itself, and a trailing newline is
  * exactly the byte that would submit it.
@@ -201,10 +229,10 @@ export function formatReviewComments(groups: readonly ReviewCommentGroup[]): str
   for (const group of groups) {
     const lines: string[] = [group.path]
     for (const comment of group.comments) {
-      const range = rangeText(comment.anchor)
       // Indented under the path, so the file a comment belongs to is legible without
-      // repeating the path on every one of them.
-      lines.push(range === null ? '  (whole file)' : `  ${range}`)
+      // repeating the path on every one of them. One `push` for all three anchor kinds,
+      // because the indent is the same fact about all of them.
+      lines.push(`  ${anchorText(comment)}`)
       for (const quoteLine of comment.quote.split('\n')) {
         if (quoteLine.trim() !== '') lines.push(`    > ${quoteLine}`)
       }
