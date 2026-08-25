@@ -5,6 +5,13 @@ interface Props {
   /** 1-indexed, because this number is read by a human, not used as an index. */
   current: number
   total: number
+  /**
+   * Whether the repository has changes at all — from the store's own `additions`/`deletions`
+   * rather than from the measured rows, which is the whole reason it is a separate prop.
+   * `total` counts the blocks currently MOUNTED, and a reader who folds every file card away
+   * unmounts every row and takes it to zero without the repository having changed.
+   */
+  hasChanges: boolean
   onPrevious: () => void
   onNext: () => void
 }
@@ -68,15 +75,19 @@ const BUTTON_NEXT = `${BUTTON_BASE} pl-2 pr-1.5`
  * broad one lifts the card off the text; with those doing the work the border stays at
  * the ordinary `border-line` rather than competing with them.
  */
-export default function ChangeNavigator({ current, total, onPrevious, onNext }: Props) {
+export default function ChangeNavigator({ current, total, hasChanges, onPrevious, onNext }: Props) {
   const t = useT()
 
-  // Walking is now the bar's only job — the `+N −M` summary moved to the header, where
-  // it sits next to the file's name and is read once rather than navigated. So the bar
-  // bails on `total`, not on the counts: below two blocks there is nowhere to go, every
-  // track would be empty, and an empty bar is still a hairline and a band of padding.
-  // Kept here rather than at the call site so the panel's layout stays free of it.
-  if (total < 2) return null
+  // Walking is the bar's only job — the `+N −M` summary moved to the header, where it sits
+  // next to the file's name and is read once rather than navigated. So below two blocks there
+  // is nowhere to go, and a bar with nothing in it is still a hairline and a band of padding.
+  //
+  // `hasChanges` is what keeps that from firing on a repository that HAS changes and simply
+  // is not showing them: the blocks are measured off the mounted rows, so collapsing every
+  // file card takes `total` to zero — the exact moment a reader is standing back and looking
+  // at the whole review, and the last one to take the bar away from them. Kept here rather
+  // than at the call site so the panel's layout stays free of it.
+  if (total < 2 && !hasChanges) return null
 
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-4/5">
@@ -86,6 +97,13 @@ export default function ChangeNavigator({ current, total, onPrevious, onNext }: 
             than as elements of their own. */}
         <div />
         <div className="justify-self-center flex items-center gap-1">
+          {/* DISABLED with nothing mounted, not hidden, which is the same rule the two
+              already follow at the ends of the list — see `BUTTON_BASE`, where the 40%
+              opacity and the not-allowed cursor already live. Hiding them would leave the
+              middle track holding a counter and two gaps, and the bar would change shape
+              every time a reader folded the last open card away. It also needs no condition
+              of its own: with no blocks to walk, `current <= 1` and `current >= total` are
+              both already true. */}
           <button
             type="button"
             onClick={onPrevious}
@@ -97,9 +115,14 @@ export default function ChangeNavigator({ current, total, onPrevious, onNext }: 
             <ChevronLeft size={16} />
             {t('filePreview.previous')}
           </button>
-          {/* `tabular-nums` so the bar does not twitch as the counter passes 9 → 10. */}
+          {/* `tabular-nums` so the bar does not twitch as the counter passes 9 → 10.
+
+              `0 / 0 changes` while nothing is mounted, rather than the `1 / 0` a 1-indexed
+              position reads as with nothing to be first of. It says what the state is — the
+              repository's own totals are in the header a few pixels up, so the bar has no
+              second number to invent. */}
           <span className="text-xs text-text-secondary tabular-nums px-1.5 select-none">
-            {t('filePreview.changeCounter', { current, total })}
+            {t('filePreview.changeCounter', { current: total === 0 ? 0 : current, total })}
           </span>
           <button
             type="button"

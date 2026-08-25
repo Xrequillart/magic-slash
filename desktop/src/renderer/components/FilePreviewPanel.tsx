@@ -851,14 +851,20 @@ export default function FilePreviewPanel() {
               onJumpTo={handleJumpTo}
             />
           )}
-          {/* Repo-wide, both of them: the counter reads over every change in the
-              repository and the arrows walk the same flat list. `total < 2 → null` is
-              unchanged and needs no special case — with a repo-wide total it is the very
-              same rule, and it now hides the bar only when the WHOLE repository holds
-              fewer than two changes. */}
+          {/* Repo-wide, all of them: the counter reads over every change in the
+              repository and the arrows walk the same flat list.
+
+              `hasChanges` comes from the frozen file list, not from `blocks`, and that is
+              what keeps the bar on screen when every card is folded away: the blocks are
+              measured off the rows that are MOUNTED, so collapsing the review empties them
+              while the repository's own `+N −M` has not moved. `repoCounts` is already that
+              number — the one the header shows — so the two cannot come to disagree about
+              whether there is anything here. A single-file preview has no cards to fold and
+              no repository count, so it keeps the old behaviour untouched. */}
           <ChangeNavigator
             current={currentIndex + 1}
             total={blocks.length}
+            hasChanges={repoCounts.added + repoCounts.removed > 0}
             onPrevious={goToPrevious}
             onNext={goToNext}
           />
