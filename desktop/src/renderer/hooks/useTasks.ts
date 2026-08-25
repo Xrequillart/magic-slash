@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { TasksSnapshot } from '../../types'
 
 /**
@@ -16,23 +16,50 @@ import type { TasksSnapshot } from '../../types'
 export function useTasks() {
   const [snapshot, setSnapshot] = useState<TasksSnapshot | null>(null)
   const [loading, setLoading] = useState(true)
+  /**
+   * Sequence number of the most recently STARTED read.
+   *
+   * `reload` is wired to two buttons — the page's own and the disconnected
+   * panel's retry — as well as to the mount effect, so two reads are genuinely
+   * able to overlap. Reads are not equally fast (a repo that times out takes far
+   * longer than one that answers), so the older one can resolve LAST, and without
+   * this it would apply its response over the newer snapshot: a stale issue list,
+   * or the disconnected panel restored on top of a perfectly good result.
+   *
+   * A response is therefore applied only while it still carries the latest
+   * sequence number. There is nothing to abort on the other side of the bridge —
+   * the IPC call has no cancellation — so the fix is to ignore what came back,
+   * which is equivalent from here.
+   */
+  const latestRequest = useRef(0)
 
   const reload = useCallback(async () => {
+    const request = ++latestRequest.current
     setLoading(true)
     try {
-      setSnapshot(await window.electronAPI.tasks.listOpenIssues())
+      const next = await window.electronAPI.tasks.listOpenIssues()
+      if (request !== latestRequest.current) return
+      setSnapshot(next)
     } catch {
       // The IPC call itself failed — which is not the same as "GitHub said no", a
       // state the snapshot carries per repository. Nothing to show but the
       // disconnected panel, which is also the honest reading of it.
+      if (request !== latestRequest.current) return
       setSnapshot({ githubConnected: false, groups: [] })
     } finally {
-      setLoading(false)
+      // `finally` runs even on the early returns above, so it needs the same
+      // guard: an outdated read must not clear the spinner a newer one raised.
+      if (request === latestRequest.current) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     reload()
+    // Bumping the counter on unmount retires whatever is still in flight, so a
+    // response arriving after the page closed applies nothing.
+    return () => {
+      latestRequest.current++
+    }
   }, [reload])
 
   return { snapshot, loading, reload }

@@ -15,8 +15,13 @@ import { useT } from '../../i18n'
  * `setup.installPrerequisite('gh')`, with `onInstallProgress` tailing Homebrew's
  * output, because an install can be silent for a minute and a dead button is how
  * people conclude it is broken.
+ *
+ * `busy` is the page's own loading flag. The retry button reads it so a second
+ * read cannot be started on top of one already in flight — `useTasks` sequences
+ * its responses so an overlap is harmless either way, but a button that keeps
+ * accepting clicks while nothing visibly happens reads as broken too.
  */
-export function GitHubNotConnected({ onRetry }: { onRetry: () => void }) {
+export function GitHubNotConnected({ onRetry, busy }: { onRetry: () => void; busy: boolean }) {
   const t = useT()
   /** Null while the check is in flight — better a spinner than a wrong verdict. */
   const [setup, setSetup] = useState<SetupStatus | null>(null)
@@ -114,9 +119,10 @@ export function GitHubNotConnected({ onRetry }: { onRetry: () => void }) {
 
             <button
               onClick={onRetry}
-              className="self-center flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-text-secondary border border-line rounded-md hover:bg-surface hover:text-ink transition-colors"
+              disabled={busy || installing}
+              className="self-center flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-text-secondary border border-line rounded-md hover:bg-surface hover:text-ink transition-colors disabled:opacity-50"
             >
-              <RefreshCw className="w-3 h-3" />
+              <RefreshCw className={`w-3 h-3 ${busy ? 'animate-spin' : ''}`} />
               {t('tasks.reload')}
             </button>
           </div>

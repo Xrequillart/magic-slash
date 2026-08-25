@@ -80,7 +80,7 @@ export function TasksPage() {
   if (snapshot && !snapshot.githubConnected) {
     return (
       <div className="h-full flex flex-col">
-        <GitHubNotConnected onRetry={reload} />
+        <GitHubNotConnected onRetry={reload} busy={loading} />
       </div>
     )
   }
