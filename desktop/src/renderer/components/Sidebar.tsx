@@ -1,10 +1,9 @@
-import { useMemo, useState, useEffect, useCallback, memo } from 'react'
+import { useState, useEffect, useCallback, memo } from 'react'
 import { Plus, XCircle, Sparkles, X, Users, ListTodo, AlertTriangle } from 'lucide-react'
 import { useStore, type ModalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
-import { getProjectColorMap } from '../utils/projectColors'
 import { SidebarUsageCard } from './SidebarUsageCard'
 import { SidebarUpdateButton } from './SidebarUpdateButton'
 import { WaveLoader } from './WaveLoader'
@@ -34,17 +33,6 @@ const PAGE_SHORTCUTS: Record<string, ModalId> = {
   t: 'team',
 }
 
-// Project color dot component
-const ProjectDot = memo(function ProjectDot({ color, title }: { color: string; title: string }) {
-  return (
-    <span
-      className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-      style={{ backgroundColor: color }}
-      title={title}
-    />
-  )
-})
-
 /**
  * How many agents are stuck on the person: waiting on an answer, or dead on an
  * error. A count, NOT a group — the agents it counts stay exactly where they
@@ -70,12 +58,11 @@ interface AgentItemProps {
   isActive: boolean
   isSplitTarget: boolean
   onSelect: (e: React.MouseEvent) => void
-  colorMap: Record<string, string>
   now: number
   draggable?: boolean
 }
 
-const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, onSelect, colorMap, now: _now, draggable }: AgentItemProps) {
+const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, onSelect, now: _now, draggable }: AgentItemProps) {
   return (
     <button
       onClick={onSelect}
@@ -96,17 +83,6 @@ const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, o
       <div className="flex-1 text-left min-w-0">
         <div className="truncate font-medium">{terminal.metadata?.title || terminal.name}</div>
       </div>
-      {terminal.matchingProjects.length > 0 && (
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {terminal.matchingProjects.map((project) => (
-            <ProjectDot
-              key={project}
-              color={colorMap[project]}
-              title={project}
-            />
-          ))}
-        </div>
-      )}
       <AgentStateBadge state={terminal.state} />
     </button>
   )
@@ -120,7 +96,6 @@ interface AgentListProps {
   splitTerminalId: string | null
   isSplitMode: boolean
   onSelectTerminal: (id: string, e: React.MouseEvent) => void
-  colorMap: Record<string, string>
   now: number
   draggable?: boolean
 }
@@ -131,7 +106,6 @@ const AgentList = memo(function AgentList({
   splitTerminalId,
   isSplitMode,
   onSelectTerminal,
-  colorMap,
   now,
   draggable,
 }: AgentListProps) {
@@ -146,7 +120,6 @@ const AgentList = memo(function AgentList({
           isActive={activeTerminalId === terminal.id}
           isSplitTarget={isSplitMode && splitTerminalId === terminal.id}
           onSelect={(e) => onSelectTerminal(terminal.id, e)}
-          colorMap={colorMap}
           now={now}
           draggable={draggable}
         />
@@ -211,17 +184,11 @@ export function Sidebar() {
   }, [])
 
   // Agents, newest first — no grouping, no status-driven reordering
-  const { ordered, projectNames } = useOrderedTerminals()
+  const { ordered } = useOrderedTerminals()
   const { leftTerminals, rightTerminals } = useSplitOrderedTerminals()
 
   // Drag & drop state for split zones
   const [dragOverZone, setDragOverZone] = useState<'left' | 'right' | null>(null)
-
-  // Generate color map for projects (using configured colors if available)
-  const colorMap = useMemo(
-    () => getProjectColorMap(projectNames, config?.repositories),
-    [projectNames, config?.repositories]
-  )
 
 
   const handleSelectTerminal = useCallback((id: string, e?: React.MouseEvent) => {
@@ -426,7 +393,6 @@ export function Sidebar() {
                 splitTerminalId={null}
                 isSplitMode={false}
                 onSelectTerminal={handleSelectLeftTerminal}
-                colorMap={colorMap}
                 now={now}
                 draggable
               />
@@ -458,7 +424,6 @@ export function Sidebar() {
                 splitTerminalId={null}
                 isSplitMode={false}
                 onSelectTerminal={handleSelectRightTerminal}
-                colorMap={colorMap}
                 now={now}
                 draggable
               />
@@ -478,7 +443,6 @@ export function Sidebar() {
               splitTerminalId={splitTerminalId}
               isSplitMode={isSplitMode}
               onSelectTerminal={handleSelectTerminal}
-              colorMap={colorMap}
               now={now}
             />
           </>
