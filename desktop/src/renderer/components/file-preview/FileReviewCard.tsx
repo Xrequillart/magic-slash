@@ -1,10 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { ChevronDown } from 'lucide-react'
-import FileContentRenderer from './FileContentRenderer'
+import FileContentRenderer, { isMarkdownPath } from './FileContentRenderer'
 import ChangeCountChip from './ChangeCountChip'
-import { StatusBadge, WholeFileToggle } from './FileHeader'
+import { MarkdownModeToggle, StatusBadge, WholeFileToggle } from './FileHeader'
 import { reservedCardHeight, reviewFileKey } from '../../utils/reviewLayout'
+import type { MarkdownMode } from '../../utils/markdownPath'
 import { useStore } from '../../store'
 import { useT } from '../../i18n'
 import type { ChangedFile } from '../../../types'
@@ -43,12 +44,17 @@ interface Props {
  * One changed file in a repository review: a header that says what it is, and the diff
  * under it.
  *
- * The card owns the two pieces of state that BELONG to a file rather than to the drawer.
- * Both were panel-level while the drawer showed one file, and leaving them there would
- * have put a control for one file in a header describing forty:
+ * The card owns the three pieces of state that BELONG to a file rather than to the
+ * drawer. The first two were panel-level while the drawer showed one file, and leaving
+ * them there would have put a control for one file in a header describing forty:
  *
  * - `showWholeFile`, the story-220 toggle between the changed regions and the whole file
  * - `canExpand`, whether this particular read even produced a collapsed rendering
+ * - `markdownMode`, raw diff or formatted document, for the markdown files among them
+ *
+ * Card-local state is also what makes those choices per file and forgotten when the
+ * drawer is closed and opened again — the review reopens on the diff, which is the state
+ * a reader coming back to it means to be in.
  *
  * It deliberately does NOT own whether it is collapsed. That lives in the store, so it
  * survives the drawer closing and opening again, and so a card folding shut re-renders
@@ -70,6 +76,11 @@ function FileReviewCard({ repoPath, file, fileIndex, scrollerRef }: Props) {
 
   const [showWholeFile, setShowWholeFile] = useState(false)
   const [canExpand, setCanExpand] = useState(false)
+  const [markdownMode, setMarkdownMode] = useState<MarkdownMode>('raw')
+
+  // From the PATH, not from the read: the header is drawn while the body is still a
+  // skeleton, and a toggle that appeared a beat after its card would read as a glitch.
+  const isMarkdown = isMarkdownPath(file.path)
 
   // Whether the header is currently pinned to the top of the scroller, which is only
   // ever used to square off its top corners: rounded corners flush against the window
@@ -209,9 +220,18 @@ function FileReviewCard({ repoPath, file, fileIndex, scrollerRef }: Props) {
             right while it is collapsed and there is nothing to measure. */}
         <ChangeCountChip counts={{ added: file.additions, removed: file.deletions }} surface="bg-bg-secondary" />
 
+        {/* Only for markdown, which is the one file type with two readings. Per card and
+            hidden while folded, for the same reasons as the fold toggle beside it. */}
+        {isMarkdown && !collapsed && (
+          <MarkdownModeToggle mode={markdownMode} onChange={setMarkdownMode} />
+        )}
+
         {/* Per card, because the mode belongs to a FILE. A single toggle in the review
             header would claim to speak for forty of them. Hidden while the card is
-            folded shut — there is nothing on screen for it to change. */}
+            folded shut — there is nothing on screen for it to change.
+
+            `canExpand` already covers rendered markdown: the renderer reports false
+            whenever it is drawing prose, so there is no second test to make here. */}
         {canExpand && !collapsed && (
           <WholeFileToggle showWholeFile={showWholeFile} onToggle={handleToggleWholeFile} />
         )}
@@ -249,6 +269,7 @@ function FileReviewCard({ repoPath, file, fileIndex, scrollerRef }: Props) {
             filePath={file.path}
             status={file.status}
             showWholeFile={showWholeFile}
+            markdownMode={markdownMode}
             onCollapsibleChange={setCanExpand}
             reservedHeight={reservedCardHeight(file, ESTIMATED_LINE_HEIGHT_PX)}
           />

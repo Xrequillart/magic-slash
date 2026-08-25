@@ -1544,4 +1544,9 @@ export const en = {
   'filePreview.collapseFile': 'Collapse this file',
   'filePreview.expandFile': 'Expand this file',
   'filePreview.noChangedFiles': 'No changed files',
+  // Two segments naming both readings of a markdown file. "Raw" is the diff — the
+  // default — and "Rendered" the formatted document, which has no diff to show.
+  'filePreview.markdownMode': 'Markdown display mode',
+  'filePreview.markdownRaw': 'Raw',
+  'filePreview.markdownRendered': 'Rendered',
 }

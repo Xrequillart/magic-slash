@@ -2,6 +2,7 @@ import { FoldVertical, UnfoldVertical, X } from 'lucide-react'
 import { useT } from '../../i18n'
 import ChangeCountChip from './ChangeCountChip'
 import type { MarkerCounts } from '../../utils/diffMarkers'
+import type { MarkdownMode } from '../../utils/markdownPath'
 
 /**
  * How a git status is badged, and which colour the drawer's left rail takes.
@@ -82,6 +83,54 @@ export function WholeFileToggle({ showWholeFile, onToggle }: { showWholeFile: bo
     >
       {showWholeFile ? <FoldVertical className="w-3.5 h-3.5" /> : <UnfoldVertical className="w-3.5 h-3.5" />}
     </button>
+  )
+}
+
+/**
+ * Raw markdown or the formatted document, for the one file type that has two readings.
+ *
+ * A two-segment pill rather than a single icon button like `WholeFileToggle` beside it,
+ * because the two modes are not more-versus-less of the same thing: one is the diff, the
+ * other is the prose. Both states are therefore named on screen, and the pill is lifted
+ * verbatim from the one the skills page already uses for exactly this choice — a reader
+ * who has met it there should not have to learn a second control.
+ *
+ * RAW reads first, unlike that source, because raw is now the default here: a review card
+ * opens on the diff, and a segmented control whose first segment is not the current one
+ * reads as though something has already been changed.
+ *
+ * Lives next to `WholeFileToggle` so the card header's mode controls stay in one file —
+ * they are read together and they will be spaced together.
+ */
+export function MarkdownModeToggle({ mode, onChange }: { mode: MarkdownMode; onChange: (mode: MarkdownMode) => void }) {
+  const t = useT()
+
+  return (
+    // `shrink-0` like every other control in the card header: the path column beside it
+    // is `min-w-0 flex-1`, and without it the labels are what gives way on a narrow
+    // drawer. `role="group"` with a name because two sibling `aria-pressed` buttons
+    // labelled "Raw" and "Rendered" say nothing about what they are a mode OF.
+    <div
+      role="group"
+      aria-label={t('filePreview.markdownMode')}
+      className="shrink-0 flex items-center p-0.5 rounded-lg bg-surface-subtle border border-line-field"
+    >
+      {(['raw', 'rendered'] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onChange(option)}
+          aria-pressed={mode === option}
+          className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+            mode === option
+              ? 'bg-surface-strong text-ink'
+              : 'text-text-secondary hover:text-ink'
+          }`}
+        >
+          {t(option === 'raw' ? 'filePreview.markdownRaw' : 'filePreview.markdownRendered')}
+        </button>
+      ))}
+    </div>
   )
 }
 

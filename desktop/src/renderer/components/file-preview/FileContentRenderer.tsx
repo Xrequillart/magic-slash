@@ -8,6 +8,7 @@ import { formatSize } from '../../utils/formatSize'
 import { useCodeAppearance } from '../../hooks/useCodeAppearance'
 import { evictToBudget } from '../../utils/boundedCache'
 import { createTaskQueue } from '../../utils/taskQueue'
+import { isMarkdownPath, type MarkdownMode } from '../../utils/markdownPath'
 import { useT } from '../../i18n'
 
 interface Props {
@@ -64,12 +65,31 @@ interface Props {
    */
   showWholeFile?: boolean
   /**
-   * Whether the read came back with a changes-only rendering at all — the header's
-   * only way to know whether it has a toggle to offer, since the read lives in here.
+   * How a markdown file is drawn: as the raw document with its diff intact — the
+   * default — or as the formatted rendering. Ignored for anything that is not markdown.
+   *
+   * Raw by DEFAULT because the rendered view throws the review away: `annotateShikiHtml`
+   * marks the changed rows, and MarkdownView paints prose that has no rows to mark. A
+   * modified `.md` opening as prose showed a reader no diff at all.
+   *
+   * A mode, not a second read: both readings are drawn from the same `content` the read
+   * already returned — one through shiki's HTML, one through MarkdownView's parse — so
+   * flipping this re-renders and nothing else. It is deliberately NOT part of the cache
+   * key for that reason.
+   */
+  markdownMode?: MarkdownMode
+  /**
+   * Whether there is a collapsed rendering for a whole-file toggle to act on — the
+   * header's only way to know whether it has a toggle to offer, since the read lives
+   * in here.
    *
    * Reported rather than derived from the status: a modified file whose changes
    * already cover it gets no collapsed view either, and the status alone cannot
    * tell that.
+   *
+   * False as well whenever this is drawing a markdown file as prose, which no caller
+   * could work out for itself: that branch returns before `showWholeFile` is ever read,
+   * so a toggle offered on the strength of a `true` here would change nothing.
    */
   onCollapsibleChange?: (collapsible: boolean) => void
 }
@@ -79,7 +99,13 @@ interface Props {
 // is never softened by `notFoundLabel` into "the file is not written yet".
 type FileResult = FilePreviewResult | { error: 'unreadable' }
 
-const MARKDOWN_EXTS = new Set(['md', 'markdown'])
+// Re-exported from here rather than only from `utils/markdownPath`, because THIS is the
+// module that decides what a markdown file is rendered as, and the markdown branch below
+// is gated on this very function: a caller asking "is this markdown" is asking whether
+// that decision applies to its file, and gets the same answer this component will act on.
+// It lives one directory over because it has to be testable — the suite runs on the root
+// node_modules, where `react` does not resolve.
+export { isMarkdownPath }
 
 /**
  * Last read per file, so coming back to a file shows it instantly instead of
@@ -191,7 +217,7 @@ function changesOnlyOf(result: FileResult | null): string | undefined {
   return result.changesOnlyHtml
 }
 
-function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, reservedHeight, showWholeFile = false, onCollapsibleChange }: Props) {
+function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, reservedHeight, showWholeFile = false, markdownMode = 'raw', onCollapsibleChange }: Props) {
   const t = useT()
   const { appearance, blend } = useCodeAppearance()
   const key = cacheKeyFor(repoPath, filePath, status, appearance)
@@ -240,13 +266,22 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
 
   const changesOnlyHtml = changesOnlyOf(result)
 
+  // Whether this render ends at MarkdownView rather than CodeView. Derived from the
+  // PROPS, above the early returns, so the effect below can read it — and so it says the
+  // same thing whether or not the read has landed yet.
+  const rendersProse = markdownMode === 'rendered' && isMarkdownPath(filePath)
+
   // Told to the parent from an effect, never from the render path: this is a message
   // out of the component, and a parent state update issued while a child renders is
   // exactly the pattern React warns about. The value is a boolean, so a re-read that
   // reaches the same answer bails out before scheduling anything.
+  //
+  // `rendersProse` is folded in HERE rather than re-tested by each header, because the
+  // whole point of this prop is that a caller does not have to know what this component
+  // decided to draw.
   useEffect(() => {
-    onCollapsibleChange?.(changesOnlyHtml !== undefined)
-  }, [changesOnlyHtml, onCollapsibleChange])
+    onCollapsibleChange?.(!rendersProse && changesOnlyHtml !== undefined)
+  }, [rendersProse, changesOnlyHtml, onCollapsibleChange])
 
   if (loading) return <ContentSkeleton reservedHeight={reservedHeight} />
 
@@ -274,8 +309,6 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
     )
   }
 
-  const ext = result.mimeHint.toLowerCase()
-
   if (result.encoding === 'image') {
     return <ImageView dataUrl={result.content} alt={filePath} />
   }
@@ -284,7 +317,11 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
     return <BinaryPlaceholder size={result.size} />
   }
 
-  if (MARKDOWN_EXTS.has(ext)) {
+  // Only when the reader asked for it. Raw markdown falls through to CodeView below,
+  // which is the branch that carries the `+`/`-` annotation — the rendered document has
+  // no rows to annotate, so taking this branch unconditionally silently dropped the diff
+  // of every changed `.md` in a review.
+  if (rendersProse) {
     return <MarkdownView content={result.content} />
   }
 
