@@ -1549,4 +1549,18 @@ export const en = {
   'filePreview.markdownMode': 'Markdown display mode',
   'filePreview.markdownRaw': 'Raw',
   'filePreview.markdownRendered': 'Rendered',
+  // Commenting on a diff. `commentLine` and `commentLines` are two keys rather than one
+  // with a plural rule: "Lines 12–12" reads as a bug, and a suffix rule that works in
+  // English does not survive translation.
+  'filePreview.comment': 'Comment',
+  'filePreview.commentPlaceholder': 'What should the agent know about these lines?',
+  'filePreview.commentDelete': 'Delete',
+  // Two forms again, and the plural one carries the count as well as the gesture: the pill
+  // on a commented line draws an icon rather than a number, so this tooltip is the only
+  // thing that tells a reader a line holds more than one comment — and that clicking its
+  // marker again is how they reach the next.
+  'filePreview.commentMarker': 'Read this comment',
+  'filePreview.commentMarkers': 'Read these {count} comments — click again for the next',
+  'filePreview.commentLine': 'Line {start}',
+  'filePreview.commentLines': 'Lines {start}–{end}',
 }

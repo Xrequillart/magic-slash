@@ -12,7 +12,7 @@ import {
   type MarkerPosition, type ScrollView,
 } from '../utils/diffMarkers'
 import {
-  anchorScrollTop, buildReviewLayout, mergeRulerSegments, sumChangedFiles,
+  anchorScrollTop, buildReviewLayout, mergeRulerSegments, reviewFileKey, sumChangedFiles,
   EMPTY_REVIEW_LAYOUT, type FileMarkers, type ReviewLayout,
 } from '../utils/reviewLayout'
 import { cumulativeOffsetTop, findScrollContainer } from '../utils/scrollGeometry'
@@ -127,6 +127,11 @@ export default function FilePreviewPanel() {
   const selectedFile = useStore(s => s.selectedFile)
   const closeFilePreview = useStore(s => s.closeFilePreview)
   const activeTerminalId = useStore(s => s.activeTerminalId)
+  // The whole map, unlike the cards, which each subscribe to their own boolean: this panel
+  // has to count the folded ones, and there is no narrower selector for "how many". Its
+  // identity only changes when a card is toggled, so the cost is one re-render per fold —
+  // on a component that already re-renders on every scroll frame.
+  const collapsedFiles = useStore(s => s.collapsedFiles)
   const prevTerminalId = useRef(activeTerminalId)
   const [isClosing, setIsClosing] = useState(false)
   const isClosingRef = useRef(false)
@@ -620,6 +625,13 @@ export default function FilePreviewPanel() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // A comment composer owns its own Escape: it closes the card, not the review behind
+      // it — a reader who has just typed three lines about a diff and pressed Escape to
+      // dismiss the box has not asked for the diff to go away too. Same shape as the
+      // `.xterm` guard on the navigation listener below: a target test rather than a flag
+      // in the store, so there is no state to keep in step, nothing a card that unmounted
+      // can leave set, and it works for two composers open at once.
+      if (e.target instanceof Element && e.target.closest('[data-comment-composer]')) return
       if (e.key === 'Escape' && isOpen) {
         handleClose()
       }
@@ -641,7 +653,11 @@ export default function FilePreviewPanel() {
       // bubbles to the window, so it could not have cancelled that anyway; what it
       // must not do is act on a keystroke that was never aimed at the panel.
       // (`.xterm` is the class the library puts on the element it is opened into.)
-      if (e.target instanceof Element && e.target.closest('.xterm')) return
+      //
+      // A comment composer is guarded the same way and for the same reason: Alt+↑/↓ in a
+      // textarea moves the caret, and jumping the review to another file out from under
+      // someone mid-sentence would take the box they were typing in off screen.
+      if (e.target instanceof Element && e.target.closest('.xterm, [data-comment-composer]')) return
       // preventDefault only on the branches that act, so an Alt+arrow this panel does
       // not use keeps whatever meaning it has elsewhere.
       e.preventDefault()
@@ -673,6 +689,28 @@ export default function FilePreviewPanel() {
   // The repository's own total, from the frozen list rather than from the measurement:
   // it must not count up as cards resolve or down as the reader folds them away.
   const repoCounts = useMemo(() => (review ? sumChangedFiles(review.files) : NO_CHANGES), [review])
+
+  /**
+   * How many cards are folded shut over changed lines — the navigator's own reason to stay
+   * on screen with nothing mounted to walk. See its `foldedFiles` prop for why a count of
+   * files answers a question about blocks.
+   *
+   * Files with no changed line are skipped: a folded card that never had a marked row in it
+   * is not hiding a block, and counting it would put the bar over a review of forty
+   * unchanged files.
+   *
+   * The frozen list is what it walks, which is the same list the cards are rendered from —
+   * so a key built here cannot name a file the review does not hold.
+   */
+  const foldedFiles = useMemo(() => {
+    if (!review) return 0
+    let folded = 0
+    for (const file of review.files) {
+      if (file.additions + file.deletions === 0) continue
+      if (collapsedFiles[reviewFileKey(review.repoPath, file.path)]) folded++
+    }
+    return folded
+  }, [review, collapsedFiles])
 
   /**
    * The ruler's MARKS, which depend on the shape of the review and not on where it is
@@ -851,14 +889,20 @@ export default function FilePreviewPanel() {
               onJumpTo={handleJumpTo}
             />
           )}
-          {/* Repo-wide, both of them: the counter reads over every change in the
-              repository and the arrows walk the same flat list. `total < 2 → null` is
-              unchanged and needs no special case — with a repo-wide total it is the very
-              same rule, and it now hides the bar only when the WHOLE repository holds
-              fewer than two changes. */}
+          {/* Repo-wide, all of them: the counter reads over every change in the
+              repository and the arrows walk the same flat list.
+
+              `foldedFiles` is what keeps the bar on screen when the cards are folded away:
+              the blocks are measured off the rows that are MOUNTED, so folding a card takes
+              its changes out of `total` while they are still there to come back to. It is
+              deliberately NOT the repository's `+N −M` — that is true of a one-change review
+              as well, which is how this bar came to stand over a review with two greyed-out
+              arrows and nothing to point them at. A single-file preview has no cards to fold,
+              so it passes zero and keeps the behaviour it has always had. */}
           <ChangeNavigator
             current={currentIndex + 1}
             total={blocks.length}
+            foldedFiles={foldedFiles}
             onPrevious={goToPrevious}
             onNext={goToNext}
           />

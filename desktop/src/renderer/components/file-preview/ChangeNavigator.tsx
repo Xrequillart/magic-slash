@@ -5,6 +5,23 @@ interface Props {
   /** 1-indexed, because this number is read by a human, not used as an index. */
   current: number
   total: number
+  /**
+   * How many of the review's cards are folded shut over changed lines.
+   *
+   * `total` counts the blocks currently MOUNTED, so folding a card takes its changes out of
+   * that number — and a reader who has folded every card away, standing back to look at the
+   * whole review, is the one who most wants this bar. This is what tells that state from the
+   * other way `total` reaches zero: a repository that genuinely has nothing to walk.
+   *
+   * Read as a flag, not as a quantity: any card folded keeps the bar, and how many blocks it
+   * hides is neither known nor needed — nothing can know that until its rows are mounted. It
+   * stays a count rather than a boolean only because the caller has the number anyway and a
+   * count says what it measured; the guard below tests it against zero.
+   *
+   * Zero for a single-file preview, which has no cards to fold, so that caller keeps exactly
+   * the behaviour it has always had.
+   */
+  foldedFiles: number
   onPrevious: () => void
   onNext: () => void
 }
@@ -68,15 +85,29 @@ const BUTTON_NEXT = `${BUTTON_BASE} pl-2 pr-1.5`
  * broad one lifts the card off the text; with those doing the work the border stays at
  * the ordinary `border-line` rather than competing with them.
  */
-export default function ChangeNavigator({ current, total, onPrevious, onNext }: Props) {
+export default function ChangeNavigator({ current, total, foldedFiles, onPrevious, onNext }: Props) {
   const t = useT()
 
-  // Walking is now the bar's only job — the `+N −M` summary moved to the header, where
-  // it sits next to the file's name and is read once rather than navigated. So the bar
-  // bails on `total`, not on the counts: below two blocks there is nowhere to go, every
-  // track would be empty, and an empty bar is still a hairline and a band of padding.
+  // Walking is the bar's only job — the `+N −M` summary moved to the header, where it sits
+  // next to the file's name and is read once rather than navigated. So below two blocks there
+  // is nowhere to go, and a bar with nothing in it is still a hairline and a band of padding
+  // over the code.
+  //
+  // But a card FOLDED SHUT keeps the bar regardless, and that is the whole of the distinction:
+  // nothing to walk because the reader hid the rows is not nothing to walk because the
+  // repository holds fewer than two changes. Folding is a deliberate act — the reader standing
+  // back to look at the whole review is the one who most wants this bar — so one folded card is
+  // reason enough, and there is no need to guess how many blocks it hides. Counting folded
+  // FILES as a lower bound on blocks would read better as arithmetic and behave worse: a
+  // one-file review folded shut scores 1, and the bar would vanish at exactly the moment it
+  // was asked to stay.
+  //
+  // What this must NOT do is stand over a review that genuinely holds one block with nothing
+  // folded — a disabled `1 / 1` obstructing the code, navigating nothing. A repository-wide
+  // "has changes" flag cannot tell that apart, since it is true of the one-block review too.
+  //
   // Kept here rather than at the call site so the panel's layout stays free of it.
-  if (total < 2) return null
+  if (total < 2 && foldedFiles === 0) return null
 
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-4/5">
@@ -86,6 +117,13 @@ export default function ChangeNavigator({ current, total, onPrevious, onNext }: 
             than as elements of their own. */}
         <div />
         <div className="justify-self-center flex items-center gap-1">
+          {/* DISABLED with nothing mounted, not hidden, which is the same rule the two
+              already follow at the ends of the list — see `BUTTON_BASE`, where the 40%
+              opacity and the not-allowed cursor already live. Hiding them would leave the
+              middle track holding a counter and two gaps, and the bar would change shape
+              every time a reader folded the last open card away. It also needs no condition
+              of its own: with no blocks to walk, `current <= 1` and `current >= total` are
+              both already true. */}
           <button
             type="button"
             onClick={onPrevious}
@@ -97,9 +135,16 @@ export default function ChangeNavigator({ current, total, onPrevious, onNext }: 
             <ChevronLeft size={16} />
             {t('filePreview.previous')}
           </button>
-          {/* `tabular-nums` so the bar does not twitch as the counter passes 9 → 10. */}
+          {/* `tabular-nums` so the bar does not twitch as the counter passes 9 → 10.
+
+              `0 / 0 changes` rather than the `1 / 0` a 1-indexed position reads as with
+              nothing to be first of. That is now the folded state and only it — the guard
+              above has already sent every review with nothing in it away — so the reader
+              seeing it has just folded the rows away themselves, and the repository's own
+              totals are in the header a few pixels up. The bar has no second number to
+              invent. */}
           <span className="text-xs text-text-secondary tabular-nums px-1.5 select-none">
-            {t('filePreview.changeCounter', { current, total })}
+            {t('filePreview.changeCounter', { current: total === 0 ? 0 : current, total })}
           </span>
           <button
             type="button"

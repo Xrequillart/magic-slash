@@ -272,6 +272,9 @@ function FileReviewCard({ repoPath, file, fileIndex, scrollerRef }: Props) {
             markdownMode={markdownMode}
             onCollapsibleChange={setCanExpand}
             reservedHeight={reservedCardHeight(file, ESTIMATED_LINE_HEIGHT_PX)}
+            /* The ONE caller that turns commenting on — see `commentable` on
+               FileContentRenderer's props for why, and why the other two do not. */
+            commentable
           />
         </div>
       )}

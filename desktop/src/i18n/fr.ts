@@ -1506,4 +1506,11 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.markdownMode': "Mode d'affichage du markdown",
   'filePreview.markdownRaw': 'Brut',
   'filePreview.markdownRendered': 'Rendu',
+  'filePreview.comment': 'Commenter',
+  'filePreview.commentPlaceholder': "Que doit savoir l'agent à propos de ces lignes ?",
+  'filePreview.commentDelete': 'Supprimer',
+  'filePreview.commentMarker': 'Lire ce commentaire',
+  'filePreview.commentMarkers': 'Lire ces {count} commentaires — cliquez à nouveau pour le suivant',
+  'filePreview.commentLine': 'Ligne {start}',
+  'filePreview.commentLines': 'Lignes {start} à {end}',
 }
