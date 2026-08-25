@@ -620,6 +620,13 @@ export default function FilePreviewPanel() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // A comment composer owns its own Escape: it closes the card, not the review behind
+      // it — a reader who has just typed three lines about a diff and pressed Escape to
+      // dismiss the box has not asked for the diff to go away too. Same shape as the
+      // `.xterm` guard on the navigation listener below: a target test rather than a flag
+      // in the store, so there is no state to keep in step, nothing a card that unmounted
+      // can leave set, and it works for two composers open at once.
+      if (e.target instanceof Element && e.target.closest('[data-comment-composer]')) return
       if (e.key === 'Escape' && isOpen) {
         handleClose()
       }
@@ -641,7 +648,11 @@ export default function FilePreviewPanel() {
       // bubbles to the window, so it could not have cancelled that anyway; what it
       // must not do is act on a keystroke that was never aimed at the panel.
       // (`.xterm` is the class the library puts on the element it is opened into.)
-      if (e.target instanceof Element && e.target.closest('.xterm')) return
+      //
+      // A comment composer is guarded the same way and for the same reason: Alt+↑/↓ in a
+      // textarea moves the caret, and jumping the review to another file out from under
+      // someone mid-sentence would take the box they were typing in off screen.
+      if (e.target instanceof Element && e.target.closest('.xterm, [data-comment-composer]')) return
       // preventDefault only on the branches that act, so an Alt+arrow this panel does
       // not use keeps whatever meaning it has elsewhere.
       e.preventDefault()

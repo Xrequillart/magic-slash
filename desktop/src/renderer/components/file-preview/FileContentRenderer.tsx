@@ -92,6 +92,27 @@ interface Props {
    * so a toggle offered on the strength of a `true` here would change nothing.
    */
   onCollapsibleChange?: (collapsible: boolean) => void
+  /**
+   * Whether the reader may comment on this file's lines. FALSE by default, and the default
+   * is the safe one. THE reason each caller differs is written down here and nowhere else —
+   * CodeView's prop and FileReviewCard's call site both point at this comment.
+   *
+   * An opt-in rather than something inferred from the props, because the two callers that
+   * do not get it are excluded for two DIFFERENT reasons and only one of them is about the
+   * key. The SPEC panel must NEVER offer it: its `repoPath` is the spec's parent directory
+   * rather than a repository root, so `reviewFileKey(repoPath, path)` would file notes
+   * under a key that means something different from every other key in the map and that no
+   * review could ever read back. The single-file preview keys perfectly well — it passes a
+   * real repository path and a real status — and is simply not wired for it. Which is the
+   * point of a flag: turning it on there is a decision someone takes, not a consequence of
+   * the props that caller happened to be passing already.
+   *
+   * Handed straight down to CodeView with the two paths, which is a departure from this
+   * file's general rule that a store read beats a new prop — see CodeView's own props for
+   * why the store cannot answer "which file is this". All three are a string or a boolean,
+   * so `memo` below still holds.
+   */
+  commentable?: boolean
 }
 
 // `unreadable` is local to this component: the handler never returns it, it is
@@ -217,7 +238,7 @@ function changesOnlyOf(result: FileResult | null): string | undefined {
   return result.changesOnlyHtml
 }
 
-function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, reservedHeight, showWholeFile = false, markdownMode = 'raw', onCollapsibleChange }: Props) {
+function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, reservedHeight, showWholeFile = false, markdownMode = 'raw', onCollapsibleChange, commentable = false }: Props) {
   const t = useT()
   const { appearance, blend } = useCodeAppearance()
   const key = cacheKeyFor(repoPath, filePath, status, appearance)
@@ -334,6 +355,11 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
       highlightedHtml={showWholeFile ? result.highlightedHtml : (changesOnlyHtml ?? result.highlightedHtml)}
       appearance={appearance}
       blend={blend}
+      /* The file's identity, for the comments left on it. Only ever read when
+         `commentable` says this is a review card — see the prop above. */
+      repoPath={repoPath}
+      filePath={filePath}
+      commentable={commentable}
     />
   )
 }
