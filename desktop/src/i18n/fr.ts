@@ -19,6 +19,7 @@ export const fr: Record<keyof typeof en, string> = {
   'menu.zoomIn': 'Agrandir',
   'menu.zoomOut': 'Réduire',
   'menu.newAgent': 'Nouvel agent',
+  'menu.tasks': 'Tâches',
   'menu.skills': 'Skills',
   'menu.team': 'Équipe',
   'menu.account': 'Compte',
@@ -112,7 +113,9 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Barre latérale gauche ────────────────────────────────────────────────
   'sidebar.newAgent': 'Nouvel agent',
+  'sidebar.newAgentShortcut': 'Nouvel agent ({shortcut})',
   'sidebar.skills': 'Skills',
+  'sidebar.tasks': 'Tâches',
   'sidebar.team': 'Équipe',
   'sidebar.settings': 'Réglages',
   'sidebar.login': 'Connexion / Inscription',
@@ -1546,4 +1549,48 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.commentOnFile': 'Tout le fichier',
   'filePreview.sendToAgent': "Envoyer à l'agent",
   'filePreview.sendNoAgent': 'Aucun agent en cours — copiez les commentaires à la place',
+
+  // ── Tâches ───────────────────────────────────────────────────────────────
+  'tasks.title': 'Tâches',
+  'tasks.section': 'Tickets ouverts',
+  'tasks.loading': 'Lecture de votre backlog…',
+  'tasks.reload': 'Recharger',
+  'tasks.openIssue': 'Ouvrir sur GitHub',
+  'tasks.openCount.one': '{count} ouvert',
+  'tasks.openCount.other': '{count} ouverts',
+  'tasks.openCount.truncated': '{count} affichés sur {total} ouverts',
+  'tasks.authorHint': 'Ouvert par {login}',
+  'tasks.parent': '↳ #{number}',
+  'tasks.parentHint': 'Sous-ticket de #{number} — {title}',
+  'tasks.subIssues.one': '{count} sous-ticket · {completed} terminé',
+  'tasks.subIssues.other': '{count} sous-tickets · {completed} terminés',
+  'tasks.noOpenIssues': 'rien d’ouvert',
+  'tasks.failed': 'lecture impossible',
+  'tasks.noRepos': 'Aucun dépôt n’est suivi sur GitHub.',
+  'tasks.noReposHint':
+    'Ouvrez Réglages → Dépôts → Tracker et pointez un dépôt vers GitHub : ses tickets ouverts apparaîtront ici.',
+  'tasks.noAddress': 'Aucun dépôt suivi sur GitHub n’a d’adresse lisible.',
+  'tasks.noAddressHint':
+    'Leur URL de tickets ne ressemble pas à `https://github.com/owner/repo` — corrigez-la dans Réglages → Dépôts → Tickets, ou videz-la pour utiliser le remote du dépôt.',
+
+  // ── Tâches · GitHub n’est pas connecté ───────────────────────────────────
+  'tasks.github.title': 'GitHub n’est pas connecté.',
+  'tasks.github.body': 'Tâches lit votre backlog via la session du CLI GitHub.',
+  'tasks.github.checking': 'Vérification de GitHub…',
+  'tasks.github.notInstalled': 'La commande `gh` n’est pas installée sur cette machine.',
+  'tasks.github.install': 'Installer gh',
+  'tasks.github.installing': 'Installation…',
+  'tasks.github.loginStep': 'Lancez ensuite ceci dans un terminal, puis rechargez :',
+
+  // ── Tâches · pourquoi un dépôt n’a pas pu être lu ────────────────────────
+  'tasks.error.noToken': 'Aucun token GitHub',
+  'tasks.error.noTokenFix': 'Lancez `gh auth login` dans un terminal, puis rechargez.',
+  'tasks.error.notFound': 'Dépôt introuvable',
+  'tasks.error.notFoundFix': 'Il a peut-être été renommé ou supprimé, ou votre token n’y a pas accès.',
+  'tasks.error.forbidden': 'Accès refusé',
+  'tasks.error.forbiddenFix': 'Votre token n’a pas le scope `repo` — lancez `gh auth refresh -s repo`.',
+  'tasks.error.rateLimited': 'Limite de requêtes GitHub atteinte',
+  'tasks.error.rateLimitedFix': 'Attendez la réinitialisation du quota, puis rechargez.',
+  'tasks.error.network': 'GitHub injoignable',
+  'tasks.error.networkFix': 'Vérifiez votre connexion Internet, puis rechargez.',
 }

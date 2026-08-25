@@ -14,7 +14,7 @@ interface CloseAgentModalData {
 }
 
 /** Agents is the only page; everything else opens as a centered overlay. */
-export type ModalId = 'settings' | 'skills' | 'team'
+export type ModalId = 'settings' | 'skills' | 'team' | 'tasks'
 
 /**
  * The two windows the Skills page offers as presets — the ones worth comparing,

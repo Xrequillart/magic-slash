@@ -152,6 +152,70 @@ export function isPRStatusError<T extends object>(
   return 'error' in result
 }
 
+/**
+ * One OPEN GitHub issue, as the Tasks page lists it.
+ *
+ * Deliberately thin: the page shows a row, not a ticket. The body, the assignees
+ * and the comment counts are all one click away on GitHub, and every field kept
+ * here crosses IPC on every reload.
+ */
+export interface TaskIssue {
+  number: number
+  title: string
+  url: string
+  /** When the issue was OPENED, ISO-8601 as GitHub returns it; the rows are sorted on it, newest first. */
+  createdAt: string
+  /** The login that opened the issue. Absent when GitHub reports no author (deleted account). */
+  author?: string
+  /** Label names only, in GitHub's own order. Capped by the query at 5. */
+  labels: string[]
+  /** The issue this one is a sub-issue of, when GitHub reports one. Absent for a top-level issue. */
+  parent?: { number: number; title: string }
+  /** Set only when this issue HAS sub-issues; `total` is never 0 here. */
+  subIssues?: { total: number; completed: number }
+}
+
+/**
+ * The open issues of ONE repository, plus what went wrong if they could not be read.
+ *
+ * `error` is per group on purpose: a repository whose fetch fails is reported as
+ * failed in its own card while every other repository still renders. A global
+ * rejection would blank the page over one bad token scope.
+ *
+ * No `color` field. The dot's colour is derived in the renderer from the FULL
+ * repository list (see renderer/utils/taskRows.ts), so a repo's colour cannot
+ * change because another repo's tracker did — a value computed here would depend
+ * on the GitHub-tracked subset and drift.
+ */
+export interface TaskRepoGroup {
+  /** The key in `Config.repositories` — the identity the renderer's colour map uses. */
+  configKey: string
+  /** What the card is titled: the repository's name. */
+  name: string
+  issues: TaskIssue[]
+  /**
+   * How many issues are open in total, when the read said so.
+   *
+   * The query asks for a capped page (`first: 50`), so `issues.length` is what the
+   * card can SHOW, not what the repository has. Absent on a group that failed, and
+   * on one built before the count was read.
+   */
+  totalOpen?: number
+  error?: PRStatusError
+}
+
+/**
+ * Everything the Tasks page draws from one read.
+ *
+ * `githubConnected: false` is not "no issues": it is the state where `gh` is
+ * missing or logged out, and the page must say so and offer the fix rather than
+ * render an empty backlog.
+ */
+export interface TasksSnapshot {
+  githubConnected: boolean
+  groups: TaskRepoGroup[]
+}
+
 export interface TerminalUsage {
   costUsd?: number           // cost.total_cost_usd
   contextPercent?: number    // context_window.used_percentage (0-100)
@@ -855,7 +919,7 @@ export type SettingsTab =
  * agent" are renderer state — so these four travel over IPC and are replayed
  * against the store, exactly as the tray already does with its own commands.
  */
-export type MenuCommand = 'new-agent' | 'skills' | 'team' | 'account'
+export type MenuCommand = 'new-agent' | 'tasks' | 'skills' | 'team' | 'account'
 
 /** Signed-in cloud user identity (subset of the Supabase session). */
 export interface CloudUser {

@@ -27,7 +27,7 @@ import type {
   PRWatchError,
 } from '../types'
 
-const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
+export const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
 
 /** Deduped comment authors are capped here — the card shows a handful of avatars. */
 const MAX_COMMENT_AUTHORS = 8
@@ -246,7 +246,7 @@ interface GQLResponse {
  * FORBIDDEN and RATE_LIMITED. Mapping HTTP codes alone left those cases as
  * `data.repository === null`, no exception, and a mute card.
  */
-function mapErrorType(type: string | null | undefined): PRWatchError | null {
+export function mapErrorType(type: string | null | undefined): PRWatchError | null {
   switch ((type || '').toUpperCase()) {
     case 'NOT_FOUND':
       return 'not-found'
@@ -262,7 +262,7 @@ function mapErrorType(type: string | null | undefined): PRWatchError | null {
   }
 }
 
-function mapHttpStatus(status: number): PRWatchError {
+export function mapHttpStatus(status: number): PRWatchError {
   if (status === 401) return 'no-token'
   if (status === 403) return 'forbidden'
   if (status === 404) return 'not-found'
@@ -271,7 +271,7 @@ function mapHttpStatus(status: number): PRWatchError {
 }
 
 /** Absolute epoch ms before which the caller should not retry, when GitHub says so. */
-function parseRetryAtMs(headers: Headers, now: number): number | undefined {
+export function parseRetryAtMs(headers: Headers, now: number): number | undefined {
   const retryAfter = headers.get('Retry-After')
   if (retryAfter) {
     const seconds = Number.parseInt(retryAfter, 10)
@@ -288,7 +288,7 @@ function parseRetryAtMs(headers: Headers, now: number): number | undefined {
   return undefined
 }
 
-function toError(
+export function toError(
   error: PRWatchError,
   message: string,
   headers: Headers,

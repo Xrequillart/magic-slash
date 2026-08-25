@@ -21,6 +21,7 @@ export const en = {
   'menu.zoomIn': 'Zoom In',
   'menu.zoomOut': 'Zoom Out',
   'menu.newAgent': 'New Agent',
+  'menu.tasks': 'Tasks',
   'menu.skills': 'Skills',
   'menu.team': 'Team',
   'menu.account': 'Account',
@@ -133,7 +134,12 @@ export const en = {
 
   // ── Left sidebar ─────────────────────────────────────────────────────────
   'sidebar.newAgent': 'New agent',
+  // The same action as a compact chip on the AGENTS header, where there is no room
+  // for the visible shortcut hint the full-width entries carry — so the shortcut
+  // moves into the tooltip and the accessible name.
+  'sidebar.newAgentShortcut': 'New agent ({shortcut})',
   'sidebar.skills': 'Skills',
+  'sidebar.tasks': 'Tasks',
   'sidebar.team': 'Team',
   'sidebar.settings': 'Settings',
   'sidebar.login': 'Login / Sign up',
@@ -1627,4 +1633,66 @@ export const en = {
   // to say which of the two states this is.
   'filePreview.sendToAgent': 'Send to the agent',
   'filePreview.sendNoAgent': 'No agent is running — copy the comments instead',
+
+  // ── Tasks ────────────────────────────────────────────────────────────────
+  'tasks.title': 'Tasks',
+  'tasks.section': 'Open issues',
+  'tasks.loading': 'Reading your backlog…',
+  'tasks.reload': 'Reload',
+  'tasks.openIssue': 'Open on GitHub',
+  // The per-repository counter, and the page total above it. `.one` keeps `{count}`
+  // so both catalogues can decide whether to spell the number out.
+  'tasks.openCount.one': '{count} open',
+  'tasks.openCount.other': '{count} open',
+  // The query reads one capped page, so a big backlog comes back truncated. Saying
+  // "50 open" there would be a wrong number; this one says what was actually read.
+  'tasks.openCount.truncated': 'showing {count} of {total} open',
+  // GitHub's native issue hierarchy, both read in the same query as the rows.
+  // The badge carries the number because that is what fits on a row; the parent's
+  // title goes in the hover text, where there is room for it.
+  // The author is shown as a bare `@login` on the row — the sentence that says what
+  // that login IS lives in the hover text, where there is room for it.
+  'tasks.authorHint': 'Opened by {login}',
+  'tasks.parent': '↳ #{number}',
+  'tasks.parentHint': 'Sub-issue of #{number} — {title}',
+  // Shown only on an issue that HAS sub-issues, so `.one` starts at 1, never 0.
+  'tasks.subIssues.one': '{count} sub-issue · {completed} done',
+  'tasks.subIssues.other': '{count} sub-issues · {completed} done',
+  'tasks.noOpenIssues': 'nothing open',
+  'tasks.failed': 'could not be read',
+  // No repository resolves to GitHub at all — a different situation from an empty
+  // backlog, and the fix is a per-repository setting, so the hint says where it is.
+  'tasks.noRepos': 'No repository is tracked on GitHub.',
+  'tasks.noReposHint':
+    'Open Settings → Repositories → Tracker and point a repository at GitHub; its open issues show up here.',
+  // Repositories ARE tracked on GitHub — none of them has an address this page can
+  // turn into an owner and a repo, which is a different fix from the one above.
+  'tasks.noAddress': 'No GitHub-tracked repository has a readable address.',
+  'tasks.noAddressHint':
+    'Their issues URL does not look like `https://github.com/owner/repo` — fix it in Settings → Repositories → Issues, or clear it to use the repository’s own remote.',
+
+  // ── Tasks · GitHub is not connected ──────────────────────────────────────
+  'tasks.github.title': 'GitHub is not connected.',
+  'tasks.github.body': 'Tasks reads your backlog through the GitHub CLI’s login.',
+  'tasks.github.checking': 'Checking GitHub…',
+  'tasks.github.notInstalled': 'The `gh` command is not installed on this machine.',
+  'tasks.github.install': 'Install gh',
+  'tasks.github.installing': 'Installing…',
+  // The login is interactive and browser-bound: nothing here can run it, so the
+  // step is stated as a command rather than offered as a button.
+  'tasks.github.loginStep': 'Then run this in a terminal, and reload:',
+
+  // ── Tasks · why one repository could not be read ─────────────────────────
+  // Deliberately NOT `agentInfo.pr.error.*`: that copy says "Pull request not
+  // found", which is the wrong sentence on a repository group.
+  'tasks.error.noToken': 'No GitHub token',
+  'tasks.error.noTokenFix': 'Run `gh auth login` in a terminal, then reload.',
+  'tasks.error.notFound': 'Repository not found',
+  'tasks.error.notFoundFix': 'It may have been renamed or deleted, or your token cannot see it.',
+  'tasks.error.forbidden': 'Access denied',
+  'tasks.error.forbiddenFix': 'Your token lacks the `repo` scope — run `gh auth refresh -s repo`.',
+  'tasks.error.rateLimited': 'GitHub rate limit reached',
+  'tasks.error.rateLimitedFix': 'Wait for the quota to reset, then reload.',
+  'tasks.error.network': 'GitHub unreachable',
+  'tasks.error.networkFix': 'Check your internet connection, then reload.',
 }
