@@ -78,7 +78,7 @@ provide. Settings → Application → Machine setup reports the same thing at an
 3. Configures the MCP servers for that choice — both over OAuth, so there is no token to
    paste or store
 4. Installs the 8 skills into `~/.claude/skills/`
-5. Configures Claude Code's hooks, statusline and permission allowlist
+5. Configures Claude Code's hooks, statusline and permission allowlist — the statusline wrapper is what feeds the usage card, and it relays your own statusline if you have one
 6. Checks your prerequisites and reports what is missing
 
 Repositories are configured afterwards, in Settings → Repositories, or from the web app —
@@ -352,6 +352,7 @@ npm run desktop:package
 | `~/.config/magic-slash/profile.md`         | User profile — a local mirror of the cloud profile, read by the skills |
 | `~/.config/magic-slash/appearance.json`    | Theme and language, so a cold start paints correctly   |
 | `~/.config/magic-slash/cloud-session.enc`  | Your session, encrypted with the OS keychain           |
+| `~/.config/magic-slash/statusline.sh`      | Feeds the usage card, then renders the statusline: yours if you have one, otherwise `statusline-default.sh` (directory, model, auth) |
 | `~/.local/bin/magic-slash`                 | CLI command to launch the desktop app                  |
 
 > Settings and repositories are **not** in this list: there is no `config.json` any more.

@@ -17,6 +17,11 @@ const MAGIC_SLASH_HOOK_MARKER = 'magic-slash-desktop'
 const STATUSLINE_SCRIPT_PATH = path.join(STABLE_CONFIG_DIR, 'statusline.sh')
 const STATUSLINE_BACKUP_PATH = path.join(STABLE_CONFIG_DIR, 'statusline-original.json')
 const STATUSLINE_MARKER = 'magic-slash/statusline.sh'
+// Our own renderer, used as the inner statusline for anyone who has none of their own.
+// Before it existed the wrapper relayed nothing in that case, so Claude Code showed an
+// empty statusline — and users who removed theirs silently lost the sidebar usage card,
+// whose only data source is this payload.
+const STATUSLINE_DEFAULT_PATH = path.join(STABLE_CONFIG_DIR, 'statusline-default.sh')
 
 // Where the skill-telemetry hook spools its records, for the app to drain later (see
 // usage/skill-spool.ts). Kept relative so the generated hook expands $HOME at run
@@ -29,10 +34,61 @@ function shSingleQuote(s: string): string {
   return `'${s.replace(/'/g, `'\\''`)}'`
 }
 
-// Build the statusLine wrapper. The user's original command is baked in as the
-// fallback so a plain `claude` session started OUTSIDE the desktop app (where
-// MAGIC_SLASH_INNER_STATUSLINE is not injected) still renders the user's own
-// statusline. Inside the app the env var takes precedence.
+/**
+ * The statusline Magic Slash renders when the user has none of their own: working
+ * directory, model, and how this session authenticates.
+ *
+ * Deliberately three segments. It is a default, not a product surface — anyone who
+ * wants a cost readout or a context gauge already has the app sidebar, and anyone who
+ * wants more in the terminal writes their own statusLine, which this steps aside for.
+ *
+ * POSIX sh + jq only. jq is a required prerequisite (see setup/prerequisites.ts), and
+ * every field read here comes from the statusLine stdin schema except the org type,
+ * which Claude Code stores in ~/.claude.json.
+ */
+function buildDefaultStatusLineScript(): string {
+  return `#!/bin/sh
+# Managed by Magic Slash Desktop — the statusline used when you have none of your own.
+# Edit it and the next app launch overwrites you: set your own \`statusLine\` in
+# ~/.claude/settings.json instead, and Magic Slash will relay it rather than this.
+input=$(cat)
+
+dir=$(printf '%s' "$input" | jq -r '.workspace.current_dir // .cwd // empty')
+[ -n "$dir" ] && dir=$(basename "$dir")
+model=$(printf '%s' "$input" | jq -r '.model.display_name // empty')
+
+# How this session talks to Anthropic. The gateway env vars win over everything else
+# because they are what Claude Code itself checks first.
+auth=""
+case "$CLAUDE_CODE_USE_BEDROCK" in 1|true|yes) auth="Bedrock" ;; esac
+if [ -z "$auth" ]; then
+  case "$CLAUDE_CODE_USE_VERTEX" in 1|true|yes) auth="Vertex" ;; esac
+fi
+if [ -z "$auth" ] && [ -n "$ANTHROPIC_API_KEY" ]; then auth="API"; fi
+if [ -z "$auth" ]; then
+  case "$(jq -r '.oauthAccount.organizationType // empty' "$HOME/.claude.json" 2>/dev/null)" in
+    claude_team)       auth="Team" ;;
+    claude_enterprise) auth="Enterprise" ;;
+    claude_max)        auth="Max" ;;
+    claude_pro)        auth="Pro" ;;
+    "")                auth="" ;;
+    *)                 auth="OAuth" ;;
+  esac
+fi
+
+[ -n "$dir" ]   && printf '\\033[97;48;2;38;79;120m pwd:%s \\033[0m' "$dir"
+[ -n "$model" ] && printf ' \\033[97;48;2;75;75;75m %s \\033[0m' "$model"
+[ -n "$auth" ]  && printf ' \\033[97;48;2;75;75;75m auth:%s \\033[0m' "$auth"
+# Never exit non-zero: the last test above fails whenever its segment is empty, and
+# Claude Code reports a failing statusLine command to the user.
+exit 0
+`
+}
+
+// Build the statusLine wrapper. The inner command — the user's own statusline, or
+// ours when they have none — is baked in as the fallback so a plain `claude` session
+// started OUTSIDE the desktop app (where MAGIC_SLASH_INNER_STATUSLINE is not
+// injected) still renders it. Inside the app the env var takes precedence.
 function buildStatusLineScript(innerCommand: string): string {
   const baked = shSingleQuote(innerCommand)
   return `#!/usr/bin/env bash
@@ -504,7 +560,13 @@ export function configureClaudeHooks(options?: { atlassian?: boolean }): void {
 /**
  * Configure Claude Code's statusLine to point at our capture wrapper, preserving any
  * pre-existing user statusLine (chained via MAGIC_SLASH_INNER_STATUSLINE).
- * Returns the user's original statusLine command to chain (empty string if none).
+ *
+ * Whoever has no statusLine of their own gets ours (buildDefaultStatusLineScript) —
+ * the wrapper has to be installed either way for the sidebar usage card to have any
+ * data, and relaying nothing left those users staring at an empty statusline.
+ *
+ * Returns the statusLine command to chain: the user's own where there is one, ours
+ * otherwise, and an empty string only if our renderer could not be written.
  */
 export function configureStatusLine(): string {
   try {
@@ -550,6 +612,20 @@ export function configureStatusLine(): string {
       } catch {
         // non-fatal
       }
+    }
+
+    // Our renderer is refreshed on every launch so a released change to it reaches
+    // machines that already have the file — the wrapper is rewritten the same way.
+    try {
+      fs.writeFileSync(STATUSLINE_DEFAULT_PATH, buildDefaultStatusLineScript(), { mode: 0o755 })
+      fs.chmodSync(STATUSLINE_DEFAULT_PATH, 0o755)
+      // Nobody else's statusline to relay, so render ours. Quoted because it is
+      // reached through `eval` and a home directory may contain spaces.
+      if (!inner) inner = `sh ${shSingleQuote(STATUSLINE_DEFAULT_PATH)}`
+    } catch (e) {
+      // Non-fatal: an unwritable default costs the statusline, not the usage capture
+      // the wrapper exists for. Leave `inner` empty and relay nothing, as before.
+      console.error('Failed to write the default statusLine renderer:', e)
     }
 
     // Write the wrapper script (executable) with the original command baked in as

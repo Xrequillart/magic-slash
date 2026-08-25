@@ -14,10 +14,11 @@ vi.mock('os', async (importOriginal) => {
   return { ...actual, default: { ...actual, homedir: () => TMP_HOME }, homedir: () => TMP_HOME }
 })
 
-import { configureClaudeHooks, removeClaudeHooks } from './claude-hooks-config'
+import { configureClaudeHooks, configureStatusLine, removeClaudeHooks } from './claude-hooks-config'
 
 const SETTINGS = path.join(TMP_HOME, '.claude', 'settings.json')
 const SPOOL = path.join(TMP_HOME, '.config', 'magic-slash', 'pending-skills.ndjson')
+const STATUSLINE_BACKUP = path.join(TMP_HOME, '.config', 'magic-slash', 'statusline-original.json')
 
 interface Hook { matcher?: string; hooks?: { command?: string }[] }
 
@@ -425,5 +426,106 @@ describe('the pending-question hooks', () => {
     expect(remaining.some((c) => c.includes('/question'))).toBe(false)
     // The user's own hook is untouched — the filter is by marker, not by event.
     expect(remaining).toContain('mine.sh')
+  })
+})
+
+describe('the statusline', () => {
+  const STATUSLINE_PAYLOAD = JSON.stringify({
+    workspace: { current_dir: '/Users/someone/code/magic-slash' },
+    model: { display_name: 'Opus 5' },
+    context_window: { used_percentage: 12 },
+    cost: { total_cost_usd: 0.42 },
+  })
+
+  /**
+   * Render the configured statusLine the way Claude Code does — payload on stdin —
+   * and return what the terminal would show, colours stripped.
+   *
+   * MAGIC_SLASH_PORT is left unset so the wrapper's capture branch short-circuits
+   * instead of curling a server no test is running, and the two gateway variables are
+   * cleared because the machine running the suite may have them set.
+   */
+  function render(): string {
+    const command = (readSettings() as { statusLine: { command: string } }).statusLine.command
+    const out = execFileSync('/bin/sh', ['-c', command], {
+      input: STATUSLINE_PAYLOAD,
+      env: {
+        ...process.env,
+        HOME: TMP_HOME,
+        MAGIC_SLASH_PORT: '',
+        MAGIC_SLASH_TERMINAL_ID: '',
+        MAGIC_SLASH_INNER_STATUSLINE: '',
+        CLAUDE_CODE_USE_BEDROCK: '',
+        CLAUDE_CODE_USE_VERTEX: '',
+        ANTHROPIC_API_KEY: '',
+      },
+    })
+    return out.toString('utf-8').replace(/\x1b\[[0-9;]*m/g, '')
+  }
+
+  /** Claude Code stores the account's plan here; the auth segment reads it. */
+  function withAccount(organizationType: string): void {
+    fs.writeFileSync(path.join(TMP_HOME, '.claude.json'), JSON.stringify({ oauthAccount: { organizationType } }))
+  }
+
+  it('shows the directory, the model and how the session authenticates', () => {
+    withAccount('claude_max')
+    configureStatusLine()
+
+    expect(render()).toBe(' pwd:magic-slash   Opus 5   auth:Max ')
+  })
+
+  // The wrapper is installed for the usage card, whose only data source is this
+  // payload. Relaying nothing left anyone without a statusline of their own looking
+  // at an empty one, which reads as the app having broken it.
+  it('renders ours when the user has none of their own', () => {
+    configureStatusLine()
+
+    expect(readSettings().statusLine.command).toContain('magic-slash/statusline.sh')
+    expect(fs.readFileSync(STATUSLINE_BACKUP, 'utf-8')).toBe('null')
+    expect(render()).toContain('pwd:magic-slash')
+  })
+
+  it('relays the user\'s own statusline instead of ours, and backs it up', () => {
+    fs.mkdirSync(path.join(TMP_HOME, '.claude'), { recursive: true })
+    fs.writeFileSync(SETTINGS, JSON.stringify({
+      statusLine: { type: 'command', command: 'printf mine' },
+    }))
+
+    configureStatusLine()
+
+    expect(render()).toBe('mine')
+    expect(JSON.parse(fs.readFileSync(STATUSLINE_BACKUP, 'utf-8'))).toEqual({ type: 'command', command: 'printf mine' })
+  })
+
+  it('keeps rendering the same thing across repeated launches', () => {
+    withAccount('claude_max')
+    configureStatusLine()
+    const first = render()
+    // The second launch finds its own wrapper in settings and must recover the inner
+    // command from the backup — not bake the wrapper into itself, nesting it.
+    configureStatusLine()
+    configureStatusLine()
+
+    expect(render()).toBe(first)
+  })
+
+  it('gives the statusline back on uninstall', () => {
+    configureStatusLine()
+    removeClaudeHooks()
+
+    // Ours was the only one: the key goes away rather than leaving a dangling command
+    // pointing into a directory the uninstaller has just deleted.
+    expect(readSettings().statusLine).toBeUndefined()
+  })
+
+  it('gives the user their own statusline back on uninstall', () => {
+    fs.mkdirSync(path.join(TMP_HOME, '.claude'), { recursive: true })
+    fs.writeFileSync(SETTINGS, JSON.stringify({ statusLine: { type: 'command', command: 'printf mine' } }))
+
+    configureStatusLine()
+    removeClaudeHooks()
+
+    expect(readSettings().statusLine).toEqual({ type: 'command', command: 'printf mine' })
   })
 })
