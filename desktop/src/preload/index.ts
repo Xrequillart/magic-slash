@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand } from '../types'
+import type { PRComment, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -503,6 +503,13 @@ const prWatcherApi = {
    */
   refresh: (prUrl?: string): Promise<{ refreshed: boolean }> =>
     ipcRenderer.invoke('prWatcher:refresh', prUrl),
+  /**
+   * The comment bodies of one PR, fetched on demand — nothing polls this and
+   * nothing caches it. Resolves to a named error rather than rejecting when GitHub
+   * refuses; it only rejects on a malformed URL.
+   */
+  comments: (prUrl: string): Promise<PRComment[] | PRStatusError> =>
+    ipcRenderer.invoke('prWatcher:comments', prUrl),
   setAutoLaunchSkills: (enabled: boolean) =>
     ipcRenderer.invoke('prWatcher:setAutoLaunchSkills', enabled),
   sendCommand: (terminalId: string, command: string): Promise<{ launched: boolean; copied: boolean }> =>

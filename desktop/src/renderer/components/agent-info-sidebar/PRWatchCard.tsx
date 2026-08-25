@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   AlertTriangle,
   CheckCircle,
@@ -17,11 +17,13 @@ import {
   Users,
   XCircle,
 } from 'lucide-react'
+import { GitHubIcon } from './icons'
 import { formatTimestamp } from './utils'
 import { useStore } from '../../store'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 import { showToast } from '../Toast'
-import type { PRCheck, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
+import type { PRCheck, PRComment, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
+import { isPRStatusError } from '../../../types'
 
 interface PRWatchCardProps {
   /**
@@ -278,6 +280,148 @@ function ChecklistRow({
   )
 }
 
+/**
+ * GraphQL review verdicts, mapped onto the badge vocabulary the card already speaks.
+ * DISMISSED and PENDING never reach the list: the first is not feedback and the
+ * second is an unsubmitted draft only its author can see.
+ */
+const REVIEW_STATE_BADGE: Record<string, keyof typeof REVIEW_BADGE> = {
+  APPROVED: 'approved',
+  CHANGES_REQUESTED: 'changes-requested',
+  COMMENTED: 'commented',
+}
+
+/**
+ * How tall a folded body is allowed to be — roughly four lines.
+ *
+ * There is deliberately no counterpart for the unfolded state: expanding removes the
+ * ceiling outright rather than raising it. A bounded expansion means a scrollbar
+ * INSIDE a card that already sits inside a scrolling sidebar, and asking someone to
+ * find the right one of two nested scroll areas to finish a sentence is worse than a
+ * long card. The sidebar scrolls; a comment does not.
+ */
+const BODY_COLLAPSED = 'max-h-20'
+
+/**
+ * One comment: who, where, when, and what it says.
+ *
+ * The body is plain text on purpose (see `PRComment`), bounded by the heights above
+ * and unfolded by its own explicit button. Neither the text nor the card reacts to
+ * hover: the only clickable things here are the permalink and that button, and
+ * lighting the whole row up on hover claimed otherwise.
+ *
+ * A card per comment, on `bg-surface` — the same token the PR card itself is painted
+ * with, so the rows belong to the card rather than to a palette of their own. It
+ * still reads a shade lighter than that card: these are TRANSLUCENT overlays, and a
+ * comment sits on three of them (card, chip, comment), not one. The separation comes
+ * from the border, and the fill only has to stop the rows running together — which is
+ * also why this is not simply a call to `Chip`, whose own padding suits a single line.
+ */
+function CommentEntry({ comment, now, t }: { comment: PRComment; now: number; t: Translate }) {
+  const [expanded, setExpanded] = useState(false)
+  const [overflows, setOverflows] = useState(false)
+  const bodyRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * Does the folded body actually hide anything?
+   *
+   * MEASURED, not guessed from the text: a character count cannot know where the
+   * line breaks land in a column whose width follows the sidebar and whose font
+   * size follows the app's zoom, so it would offer "show more" on comments with
+   * nothing more to show and withhold it on ones that were cut.
+   *
+   * Only ever measured while COLLAPSED. Expanding raises the ceiling, which would
+   * read back as "fits now" and take the "show less" button away with it — so the
+   * observer is detached for the duration and the verdict from the folded state
+   * stands.
+   */
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el || expanded) return
+    const measure = () => setOverflows(el.scrollHeight > el.clientHeight + 1)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [comment.body, expanded])
+
+  const createdAt = comment.createdAt ? Date.parse(comment.createdAt) : NaN
+  const badge = comment.kind === 'review' ? REVIEW_STATE_BADGE[(comment.reviewState || '').toUpperCase()] : undefined
+
+  // The basename only: a sidebar column cannot hold `desktop/src/main/…/watcher.ts`,
+  // and the full path is one click away on GitHub. The title attribute keeps it.
+  const where = comment.kind === 'inline' && comment.path
+    ? `${comment.path.split('/').pop()}${typeof comment.line === 'number' ? `:${comment.line}` : ''}`
+    : undefined
+
+  return (
+    <li
+      className={`rounded-md border border-border/30 bg-surface px-2 py-1.5 space-y-1 ${
+        comment.resolved ? 'opacity-50' : ''
+      }`}
+    >
+      <div className="flex items-center gap-1.5 text-xs min-w-0">
+        <span className="font-medium text-ink/80 truncate">{comment.author}</span>
+        {badge && (
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 ${REVIEW_BADGE[badge].tone}`}>
+            {t(REVIEW_BADGE[badge].label)}
+          </span>
+        )}
+        {where && (
+          <span className="text-text-secondary/60 font-mono truncate" title={comment.path}>{where}</span>
+        )}
+        {comment.resolved && (
+          <span className="text-text-secondary/60 flex-shrink-0">{t('agentInfo.pr.commentResolved')}</span>
+        )}
+        {Number.isFinite(createdAt) && (
+          <span className="text-text-secondary/40 ml-auto flex-shrink-0">{formatTimestamp(createdAt, now, t)}</span>
+        )}
+      </div>
+      {/* `whitespace-pre-wrap` so a bullet list stays a list. `break-words` because a
+          stack trace or a URL in a 260 px column would otherwise push the card wide. */}
+      <div
+        ref={bodyRef}
+        className={`text-xs leading-relaxed text-text-secondary/80 whitespace-pre-wrap break-words ${
+          expanded ? '' : `${BODY_COLLAPSED} overflow-hidden`
+        }`}
+      >
+        {comment.body}
+      </div>
+      {/* Two flexible gutters around the toggle, so it is centred on the CARD rather
+          than on what is left of the row — the permalink on the right would otherwise
+          push it off-centre by its own width. The left gutter stays empty on purpose. */}
+      <div className="flex items-center gap-1">
+        <span className="flex-1" />
+        {(overflows || expanded) && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-text-secondary/50 bg-surface hover:text-ink hover:bg-surface-strong transition-colors"
+          >
+            <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            {t(expanded ? 'agentInfo.pr.commentLess' : 'agentInfo.pr.commentMore')}
+          </button>
+        )}
+        {/* The repository card's own GitHub button, verbatim: same dashed outline,
+            same wording, same hover — one treatment for "this opens GitHub", wherever
+            it appears in the sidebar. */}
+        <span className="flex-1 flex justify-end">
+          {comment.url && (
+            <button
+              onClick={() => window.electronAPI.shell.openExternal(comment.url)}
+              title={t('agentInfo.pr.commentOpen')}
+              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary/50 border border-dashed border-border/40 rounded hover:border-ink/50 hover:text-ink hover:bg-ink/5 transition-colors"
+            >
+              <GitHubIcon className="w-3 h-3" />
+              {t('agentInfo.openOnGitHub')}
+            </button>
+          )}
+        </span>
+      </div>
+    </li>
+  )
+}
+
 export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   const t = useT()
   const [refreshing, setRefreshing] = useState(false)
@@ -289,6 +433,17 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   // Comments start folded, always: the count is the answer most of the time, and who
   // said it is the follow-up question.
   const [commentsOpen, setCommentsOpen] = useState(false)
+  // The bodies themselves, which no poll carries and nothing persists — they are
+  // fetched the first time the fold is opened and live exactly as long as this card.
+  const [comments, setComments] = useState<PRComment[] | null>(null)
+  const [commentsError, setCommentsError] = useState<PRWatchError | null>(null)
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  /**
+   * What the loaded list is a picture OF. A ref rather than state: it gates the
+   * fetch inside the effect that also writes it, and as state that write would
+   * re-run the effect it just satisfied.
+   */
+  const loadedSignature = useRef<string | null>(null)
 
   // Absent means ON — the same reading as the watcher, the IPC handlers and the
   // Settings toggle. Anything else here would show "switched off" on a fresh
@@ -396,6 +551,50 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   const commentTotal = counts
     ? counts.inline + counts.conversation + counts.reviewSummaries
     : legacyCommentCount
+
+  /**
+   * Read the bodies when the fold opens, and again when the watcher reports that
+   * the comments moved.
+   *
+   * The signature is what the counts and the last review timestamp say together: a
+   * new comment moves the first, an edited or deleted one moves the second, and
+   * neither moving means the list on screen is still accurate — so re-opening the
+   * fold spends nothing. A failed read clears the signature so the next open is a
+   * genuine retry rather than a re-display of the error.
+   */
+  const commentsSignature = `${commentTotal}:${metadata?.prReviewUpdatedAt ?? 0}`
+  useEffect(() => {
+    if (!commentsOpen || loadedSignature.current === commentsSignature) return
+    loadedSignature.current = commentsSignature
+    let cancelled = false
+    setCommentsLoading(true)
+    window.electronAPI.prWatcher.comments(prUrl)
+      .then((result) => {
+        if (cancelled) return
+        if (isPRStatusError(result)) {
+          loadedSignature.current = null
+          setCommentsError(result.error)
+          setComments(null)
+        } else {
+          setComments(result)
+          setCommentsError(null)
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
+        loadedSignature.current = null
+        setCommentsError('network')
+        setComments(null)
+      })
+      .finally(() => {
+        setCommentsLoading(false)
+        // Closed (or replaced) before the read landed: nothing was stored, so the
+        // signature must not claim otherwise — it would leave the fold permanently
+        // empty until the counts happened to move.
+        if (cancelled) loadedSignature.current = null
+      })
+    return () => { cancelled = true }
+  }, [commentsOpen, commentsSignature, prUrl])
 
   // The checks line of the checklist: ticked only once the run is over AND nothing
   // in it failed — a run that is 9/10 green is still a red PR. A repo with no CI at
@@ -556,7 +755,13 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
               icon={<MessagesSquare className="w-3.5 h-3.5 text-blue" />}
               header={<span className="block text-xs truncate text-text-secondary/70">{t('agentInfo.pr.commentsLabel')}</span>}
               detail={commentTotal > 0 ? (
-                <span className="text-[10px] text-text-secondary/60 tabular-nums">{commentTotal}</span>
+                // The bare number needed the label beside it to be read as a count of
+                // comments rather than of whatever the line happened to be about. Two
+                // keys rather than one: the catalogue interpolates but does not
+                // pluralise, and "1 comments" is the kind of thing nobody unsees.
+                <span className="text-[10px] text-text-secondary/60 tabular-nums">
+                  {t(commentTotal === 1 ? 'agentInfo.pr.commentCount' : 'agentInfo.pr.commentsCount', { count: commentTotal })}
+                </span>
               ) : undefined}
               toggle={{ open: commentsOpen, onToggle: () => setCommentsOpen(!commentsOpen) }}
             >
@@ -573,11 +778,37 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                     ))}
                   </div>
                 )}
-                {authors.length > 0 && (
+                {/* Who spoke, until we know what they said. The list below names its
+                    own authors line by line, so keeping both would say it twice. */}
+                {authors.length > 0 && comments === null && (
                   <div className="flex items-start gap-1.5 text-[10px] text-text-secondary/70">
                     <Users className="w-3 h-3 flex-shrink-0 mt-0.5 text-text-secondary/60" />
                     <span className="min-w-0">{authors.join(', ')}</span>
                   </div>
+                )}
+                {commentsLoading && (
+                  <div className="flex items-center gap-1.5 text-[10px] text-text-secondary/50">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    {t('agentInfo.pr.commentsLoading')}
+                  </div>
+                )}
+                {commentsError && !commentsLoading && (
+                  <div className="text-[10px] text-red">
+                    {t(WATCH_ERROR_LABELS[commentsError].label)}
+                    <span className="block text-text-secondary/70">{t(WATCH_ERROR_LABELS[commentsError].fix)}</span>
+                  </div>
+                )}
+                {comments !== null && comments.length > 0 && (
+                  <ul className="space-y-1.5 pt-1">
+                    {comments.map((comment) => (
+                      <CommentEntry key={comment.id} comment={comment} now={now} t={t} />
+                    ))}
+                  </ul>
+                )}
+                {/* Counted but unreadable: every body came back empty, which on a PR
+                    with a count means bare approvals and nothing written. */}
+                {comments !== null && comments.length === 0 && !commentsLoading && (
+                  <div className="text-[10px] text-text-secondary/50">{t('agentInfo.pr.commentsEmpty')}</div>
                 )}
               </div>
             </ItemCard>
@@ -609,7 +840,10 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                         <span className="flex-shrink-0 flex" title={t(label)}>
                           <Icon className={`w-3 h-3 ${tone} ${spin ? 'animate-spin' : ''}`} />
                         </span>
-                        <span className="min-w-0 text-[10px] font-mono text-text-secondary/70 truncate" title={check.name}>
+                        {/* Sans, like every other label on this card: a check name is
+                            read as a name, not as code, and the mono face it used to
+                            carry was the one thing here in a different typeface. */}
+                        <span className="min-w-0 text-[10px] text-text-secondary/70 truncate" title={check.name}>
                           {check.name}
                         </span>
                       </li>

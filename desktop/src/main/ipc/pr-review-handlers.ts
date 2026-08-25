@@ -8,6 +8,7 @@ import type { PRReviewWatcher } from '../pr-review-watcher/watcher'
 // enforcement point can import them instead of restating the numbers.
 import { MIN_POLL_INTERVAL_MS, MAX_POLL_INTERVAL_MS } from '../pr-review-watcher/scheduling'
 import { parsePRUrl } from '../github'
+import { fetchPRCommentsGraphQL } from '../github-graphql'
 
 /** Whether a poll interval is one the watcher may actually be driven with. */
 function isValidPollInterval(ms: unknown): ms is number {
@@ -78,6 +79,27 @@ export function setupPRReviewHandlers(watcher: PRReviewWatcher) {
       throw new Error(`Invalid pull request URL: ${String(prUrl)}`)
     }
     return watcher.refresh(prUrl)
+  })
+
+  /**
+   * The comment BODIES of one PR, read on demand when the card's fold is opened.
+   *
+   * Outside the watcher entirely — no tick, no cache, nothing persisted. The watcher
+   * exists to keep a snapshot fresh in the jsonb; this exists to answer one question
+   * once, for one card, and the answer dies with it. Routed through this file only
+   * because that is where the PR handlers live.
+   *
+   * Never throws on a GitHub failure: the named error goes back to the renderer,
+   * which already has labels for every member of `PRWatchError`. Only a malformed
+   * URL — a programming error on our side, not a state of the world — throws.
+   */
+  ipcMain.handle('prWatcher:comments', async (_event, prUrl: unknown) => {
+    if (typeof prUrl !== 'string') {
+      throw new Error(`prWatcher:comments requires a pull request URL, got ${typeof prUrl}`)
+    }
+    const parsed = parsePRUrl(prUrl)
+    if (!parsed) throw new Error(`Invalid pull request URL: ${prUrl}`)
+    return fetchPRCommentsGraphQL(parsed.owner, parsed.repo, parsed.number)
   })
 
   ipcMain.handle('prWatcher:setInterval', async (_event, ms: number) => {

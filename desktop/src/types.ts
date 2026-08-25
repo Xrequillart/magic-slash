@@ -32,6 +32,42 @@ export interface PRCommentCounts {
 }
 
 /**
+ * One comment on a pull request, as the card lists it behind the comments fold.
+ *
+ * Deliberately NOT part of `PRStatusSnapshot`, and never written to
+ * `RepositoryMetadata`: that object is copied into the `agents` jsonb on every poll,
+ * and comment bodies are one or two orders of magnitude larger than the counts it
+ * carries today — the same reasoning that already keeps check URLs out of it (see
+ * the note above `checkList` in the watcher). These are fetched on demand when
+ * somebody opens the fold, held in renderer memory, and dropped with the card.
+ */
+export interface PRComment {
+  /** GraphQL node id — stable, and the React key. */
+  id: string
+  /** Which of the three buckets it came from; the card labels and groups by this. */
+  kind: 'inline' | 'conversation' | 'review'
+  author: string
+  /**
+   * PLAIN TEXT (`bodyText`), never the markdown source. A sidebar card clamps to a
+   * few lines, and Greptile/Claude Code bodies are mostly headings, code fences and
+   * tables — rendering them raw is noise, and rendering them properly is a markdown
+   * pipeline this card has no business carrying.
+   */
+  body: string
+  /** ISO-8601 as GitHub returns it; the card turns it into "2 h ago". */
+  createdAt: string
+  /** Permalink to the comment itself, not to the PR. */
+  url: string
+  /** Inline only: where in the diff the thread hangs. */
+  path?: string
+  line?: number
+  /** Inline only: the thread is settled, so the card can step it back. */
+  resolved?: boolean
+  /** Reviews only: the verdict the body was submitted with. */
+  reviewState?: string
+}
+
+/**
  * Every field is optional and every reader must tolerate its absence: this object is
  * persisted inside the `agents.metadata` jsonb and spread back verbatim, so rows
  * written by older versions carry none of the fields below `prClosed`.
@@ -105,8 +141,13 @@ export interface PRStatusError {
   retryAtMs?: number
 }
 
-export function isPRStatusError(
-  result: PRStatusSnapshot | PRStatusError
+/**
+ * Generic in the success arm, so the same guard serves every GitHub read that can
+ * come back as a named failure — the status snapshot, and the on-demand comment
+ * list. `'error' in result` is false for an array, so widening it costs nothing.
+ */
+export function isPRStatusError<T extends object>(
+  result: T | PRStatusError
 ): result is PRStatusError {
   return 'error' in result
 }
