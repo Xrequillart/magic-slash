@@ -95,6 +95,7 @@ function ReviewCommentsButton({
   const { triggerRef, panelRef, style } = useAnchoredPanel(open, close, PANEL_WIDTH)
 
   const removeFileComment = useStore(s => s.removeFileComment)
+  const clearFileComments = useStore(s => s.clearFileComments)
   // The terminal the paste would go to — and the subscription is narrowed to the ONE
   // question this component asks of it, so selecting a script terminal does not re-render
   // the bar for a value that was already `false`.
@@ -151,6 +152,18 @@ function ReviewCommentsButton({
       id,
       `${PASTE_START}${formatReviewComments(groups)}${PASTE_END}`,
     )
+    // The review has been handed over, so it stops being a draft here. Only what was
+    // actually written out is cleared — the targets are read off `groups`, the same list
+    // that produced the text — so comments on another review are untouched.
+    //
+    // After the write, never before: `formatReviewComments` reads `groups`, and clearing
+    // first would hand the agent an empty review. Nothing is recoverable once this runs,
+    // which is why Copy exists beside it and does not clear.
+    clearFileComments(groups.flatMap(group => group.comments.map(comment => ({
+      repoPath,
+      path: group.path,
+      fingerprint: comment.fingerprint,
+    }))))
     setOpen(false)
     onSent()
   }

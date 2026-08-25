@@ -336,6 +336,19 @@ interface AppState {
   updateFileComment: (target: CommentTarget, id: string, body: string) => void
   removeFileComment: (target: CommentTarget, id: string) => void
   /**
+   * Drop every comment of the files named, in one write.
+   *
+   * What "send to the agent" leaves behind. Sending is a HANDOVER: the review has left
+   * the app and the agent is acting on it, so the same notes sitting in the margins
+   * afterwards are not a record of that — they are an unsent review, indistinguishable
+   * from one still being written, and the next send would repeat every one of them.
+   *
+   * Takes the targets rather than a repository, so it clears exactly what was handed
+   * over: a target names one version of one file, and comments left on another review
+   * are none of its business.
+   */
+  clearFileComments: (targets: readonly CommentTarget[]) => void
+  /**
    * Take the reader to a comment: open its card, and light up the lines it is on.
    *
    * No `unfocusComment` beside it. The focus is not a mode the reader is in — it is a
@@ -688,6 +701,20 @@ export const useStore = create<AppState>()(
           if (left.length === 0) delete next[key]
           else next[key] = left
           return { fileComments: next }
+        }),
+
+        clearFileComments: (targets) => set((state) => {
+          const keys = new Set(targets.map(commentFileKey))
+          const fileComments: Record<string, FileComment[]> = {}
+          for (const [key, comments] of Object.entries(state.fileComments)) {
+            if (!keys.has(key)) fileComments[key] = comments
+          }
+          // A focus pointing into what was just cleared would send the next reader to a
+          // comment that no longer exists. `removeFileComment` can leave one dangling
+          // and it stays inert — one id among many — but here nothing survives to land on.
+          const focused = state.focusedComment
+          const dropFocus = focused !== null && keys.has(commentFileKey(focused.target))
+          return dropFocus ? { fileComments, focusedComment: null } : { fileComments }
         }),
 
         focusFileComment: (target, id) => set({
