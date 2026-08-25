@@ -1,8 +1,9 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Copy, MessageSquare, SendHorizontal, Trash2 } from 'lucide-react'
 import { useAnchoredPanel } from '../useAnchoredPanel'
 import { BUTTON_ACTION, BUTTON_COMMENTS } from './ChangeNavigator'
+import { isAgentTerminal } from '../../utils/agentTerminals'
 import { rangeLabel } from '../../utils/commentAnchors'
 import {
   formatReviewComments, type ReviewComment, type ReviewCommentGroup,
@@ -94,9 +95,16 @@ function ReviewCommentsButton({
   const { triggerRef, panelRef, style } = useAnchoredPanel(open, close, PANEL_WIDTH)
 
   const removeFileComment = useStore(s => s.removeFileComment)
-  // The terminal the paste would go to. `null` is an ordinary state — no agent has been
-  // started, or the last one was closed — and it is what disables Send below.
-  const activeTerminalId = useStore(s => s.activeTerminalId)
+  // The terminal the paste would go to — and the subscription is narrowed to the ONE
+  // question this component asks of it, so selecting a script terminal does not re-render
+  // the bar for a value that was already `false`.
+  //
+  // A truthy id is not enough: the store's terminal list also holds the sidebar's own
+  // terminal and the script runner's, and `activeTerminalId` names either of them whenever
+  // the user has one selected. Writing a review into a script terminal does not land in a
+  // prompt that ignores it — a plain shell reads every line of a multi-line paste as a
+  // command. `isAgentTerminal` is where the two reserved prefixes live.
+  const canSendToAgent = useStore(s => isAgentTerminal(s.activeTerminalId))
 
   // Deleting the last comment empties this list under the reader. The trigger disables itself
   // at zero, but the panel is PORTALLED — it is not the trigger's child, so nothing about a
@@ -108,22 +116,39 @@ function ReviewCommentsButton({
     if (total === 0) setOpen(false)
   }, [total])
 
+  // The copy confirmation's own timer, held so it can be cancelled.
+  //
+  // Not a formality here: this component unmounts on its own within those two seconds in the
+  // ordinary course of using it — the effect above closes the panel at zero comments, Send
+  // closes the drawer, and deleting the last comment unmounts the bar entirely. Without the
+  // cleanup that leaves a `setCopied` scheduled against a component that is gone.
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (copiedTimer.current) clearTimeout(copiedTimer.current)
+  }, [])
+
   const handleCopy = () => {
     // Confirmed only once the write has resolved. The swap to `Check` asserts the text IS on
     // the clipboard; a rejected write — no document focus, permission refused — must not make
     // that claim. Failure leaves the button reading "Copy", which is the truth.
     navigator.clipboard.writeText(formatReviewComments(groups)).then(() => {
       setCopied(true)
-      setTimeout(() => setCopied(false), COPIED_MS)
+      // Restarted, not stacked: a second press inside the window would otherwise let the
+      // first timer clear the confirmation early while the second one was still pending.
+      if (copiedTimer.current) clearTimeout(copiedTimer.current)
+      copiedTimer.current = setTimeout(() => setCopied(false), COPIED_MS)
     }, () => {})
   }
 
   const handleSend = () => {
-    // Guarded as well as disabled: the button can only be pressed with a terminal, but the
-    // id is read again here and the agent could have been closed in between.
-    if (!activeTerminalId) return
+    // Re-read from the store rather than trusted from the render, and guarded as well as
+    // disabled: the button can only be pressed while an agent is selected, but the selection
+    // can change between the render that enabled it and the click that fires it, and the
+    // wrong target here is a shell executing a review.
+    const id = useStore.getState().activeTerminalId
+    if (!isAgentTerminal(id) || !id) return
     window.electronAPI.terminal.write(
-      activeTerminalId,
+      id,
       `${PASTE_START}${formatReviewComments(groups)}${PASTE_END}`,
     )
     setOpen(false)
@@ -191,9 +216,9 @@ function ReviewCommentsButton({
         <button
           type="button"
           onClick={handleSend}
-          disabled={!activeTerminalId}
-          aria-label={t(activeTerminalId ? 'filePreview.sendToAgent' : 'filePreview.sendNoAgent')}
-          title={t(activeTerminalId ? 'filePreview.sendToAgent' : 'filePreview.sendNoAgent')}
+          disabled={!canSendToAgent}
+          aria-label={t(canSendToAgent ? 'filePreview.sendToAgent' : 'filePreview.sendNoAgent')}
+          title={t(canSendToAgent ? 'filePreview.sendToAgent' : 'filePreview.sendNoAgent')}
           className={BUTTON_ACTION}
         >
           <SendHorizontal size={18} />

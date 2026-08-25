@@ -38,6 +38,17 @@ interface Props {
    * the whole of it.
    */
   scrollerRef: RefObject<HTMLDivElement>
+  /**
+   * This file's live `diffFingerprint`, on its way to the panel.
+   *
+   * The card is only a relay — it has no use for the value itself. It belongs to the panel,
+   * which is the only thing that sees every file at once and therefore the only thing that
+   * can tell a comment on the current version of a file from one on a superseded version.
+   *
+   * MUST be referentially stable, like every other prop here. See the note at the
+   * `FileContentRenderer` call site below: an unstable one costs N shiki documents.
+   */
+  onFingerprintChange?: (path: string, fingerprint: string | undefined) => void
 }
 
 /**
@@ -60,7 +71,7 @@ interface Props {
  * survives the drawer closing and opening again, and so a card folding shut re-renders
  * itself alone rather than the whole review.
  */
-function FileReviewCard({ repoPath, file, fileIndex, scrollerRef }: Props) {
+function FileReviewCard({ repoPath, file, fileIndex, scrollerRef, onFingerprintChange }: Props) {
   const t = useT()
   // Built once per file rather than inside the selector: zustand runs every subscriber's
   // selector on every store mutation, and this store is a busy one — terminal state,
@@ -117,6 +128,15 @@ function FileReviewCard({ repoPath, file, fileIndex, scrollerRef }: Props) {
     [toggleCollapsed, repoPath, file.path],
   )
   const handleToggleWholeFile = useCallback(() => setShowWholeFile(v => !v), [])
+  // Binds this card's path onto the panel's handler, and MEMOISED for the reason spelled
+  // out at the `FileContentRenderer` call site: an inline arrow here would be a new identity
+  // on every render of this card, which defeats that component's `memo` and re-renders its
+  // shiki document — forty of them, on a parent that re-renders per scroll frame. Both
+  // dependencies are stable by contract (a string, and the panel's own `useCallback`).
+  const reportFingerprint = useCallback(
+    (fingerprint: string | undefined) => onFingerprintChange?.(file.path, fingerprint),
+    [onFingerprintChange, file.path],
+  )
 
   const fileName = file.path.split('/').pop() ?? file.path
   const bodyId = `review-file-${fileIndex}`
@@ -280,6 +300,7 @@ function FileReviewCard({ repoPath, file, fileIndex, scrollerRef }: Props) {
             showWholeFile={showWholeFile}
             markdownMode={markdownMode}
             onCollapsibleChange={setCanExpand}
+            onFingerprintChange={reportFingerprint}
             reservedHeight={reservedCardHeight(file, ESTIMATED_LINE_HEIGHT_PX)}
             /* The ONE caller that turns commenting on — see `commentable` on
                FileContentRenderer's props for why, and why the other two do not. */

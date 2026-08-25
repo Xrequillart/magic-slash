@@ -126,6 +126,75 @@ describe('collectReviewComments', () => {
   })
 })
 
+describe('collectReviewComments — live fingerprints', () => {
+  const twoVersions = {
+    [key('src/a.ts', 'old')]: [comment('c-stale')],
+    [key('src/a.ts', 'live')]: [comment('c-live')],
+  }
+  const files = [{ path: 'src/a.ts' }]
+
+  it('keeps only the live version when the path reports one', () => {
+    const groups = collectReviewComments(twoVersions, files, REPO, { 'src/a.ts': 'live' })
+    expect(groups).toHaveLength(1)
+    expect(groups[0].comments.map(c => c.id)).toEqual(['c-live'])
+    expect(groups[0].comments[0].fingerprint).toBe('live')
+  })
+
+  it('keeps every version when the path reports nothing — absent means unknown', () => {
+    // The card has not read yet, or is collapsed. Filtering here would empty the list of
+    // everything the reader has not scrolled past, which is worse than the bug it fixes.
+    const groups = collectReviewComments(twoVersions, files, REPO, {})
+    expect(groups[0].comments.map(c => c.id).sort()).toEqual(['c-live', 'c-stale'])
+  })
+
+  it('defaults to no filtering when the argument is omitted', () => {
+    expect(collectReviewComments(twoVersions, files, REPO)[0].comments).toHaveLength(2)
+  })
+
+  it('filters per path, so one file reporting does not filter another', () => {
+    const groups = collectReviewComments(
+      {
+        ...twoVersions,
+        [key('src/b.ts', 'b-old')]: [comment('c-b-old')],
+        [key('src/b.ts', 'b-new')]: [comment('c-b-new')],
+      },
+      [{ path: 'src/a.ts' }, { path: 'src/b.ts' }],
+      REPO,
+      { 'src/a.ts': 'live' },
+    )
+    expect(groups[0].comments.map(c => c.id)).toEqual(['c-live'])
+    expect(groups[1].comments.map(c => c.id).sort()).toEqual(['c-b-new', 'c-b-old'])
+  })
+
+  it('omits a file whose only comments are all superseded', () => {
+    // No empty group, and no heading over nothing: the file drops out entirely.
+    const groups = collectReviewComments(
+      { [key('src/a.ts', 'old')]: [comment('c-stale')] },
+      files,
+      REPO,
+      { 'src/a.ts': 'live' },
+    )
+    expect(groups).toEqual([])
+  })
+
+  it('ignores a reported fingerprint for a path the review does not hold', () => {
+    const groups = collectReviewComments(twoVersions, files, REPO, {
+      'src/a.ts': 'live',
+      'src/gone.ts': 'whatever',
+    })
+    expect(groups.map(g => g.path)).toEqual(['src/a.ts'])
+  })
+
+  it('drops the superseded comment from the compiled text too', () => {
+    // The reason this filter exists: a comment on a moved diff describes unrelated code, and
+    // this text is an instruction to the agent.
+    const groups = collectReviewComments(twoVersions, files, REPO, { 'src/a.ts': 'live' })
+    const text = formatReviewComments(groups)
+    expect(text).toContain('body of c-live')
+    expect(text).not.toContain('body of c-stale')
+  })
+})
+
 describe('formatReviewComments', () => {
   function collected(path: string, comments: StoredComment[]): ReviewCommentGroup[] {
     return collectReviewComments({ [key(path, 'f1')]: comments }, [{ path }], REPO)

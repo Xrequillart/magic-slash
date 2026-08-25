@@ -94,6 +94,19 @@ interface Props {
    */
   onCollapsibleChange?: (collapsible: boolean) => void
   /**
+   * The `diffFingerprint` this render is commenting under — the LIVE version of the file.
+   *
+   * Reported because nothing above can compute it: the fingerprint is hashed from the read
+   * result, and the read happens here. A parent that wants to tell a comment filed against
+   * this version from one filed against a superseded one has no other way to know which
+   * version is current.
+   *
+   * `undefined` whenever there is no key to file a comment under — not commentable, not read
+   * yet, an error, or a non-utf8 file. A parent must read that as "unknown", never as
+   * "no comments belong to this file": those are the states where it knows least, not most.
+   */
+  onFingerprintChange?: (fingerprint: string | undefined) => void
+  /**
    * Whether the reader may comment on this file's lines. FALSE by default, and the default
    * is the safe one. THE reason each caller differs is written down here and nowhere else —
    * CodeView's prop and FileReviewCard's call site both point at this comment.
@@ -269,7 +282,7 @@ function changesOnlyOf(result: FileResult | null): string | undefined {
   return result.changesOnlyHtml
 }
 
-function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, reservedHeight, showWholeFile = false, markdownMode = 'raw', onCollapsibleChange, commentable = false }: Props) {
+function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoundLabel, reservedHeight, showWholeFile = false, markdownMode = 'raw', onCollapsibleChange, onFingerprintChange, commentable = false }: Props) {
   const t = useT()
   const { appearance, blend } = useCodeAppearance()
   const key = cacheKeyFor(repoPath, filePath, status, appearance)
@@ -357,6 +370,17 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
   useEffect(() => {
     onCollapsibleChange?.(!rendersProse && changesOnlyHtml !== undefined)
   }, [rendersProse, changesOnlyHtml, onCollapsibleChange])
+
+  // Same rule as the effect above and for the same reason: a message OUT of the component
+  // belongs in an effect, never in the render path. `fingerprint` is memoised on the read, so
+  // a re-render that reaches the same string schedules nothing.
+  //
+  // Placed above the early returns so it runs in every branch: a file this component ends up
+  // refusing to draw still has to correct a fingerprint it reported earlier, and the way it
+  // does that is by reporting `undefined`.
+  useEffect(() => {
+    onFingerprintChange?.(fingerprint)
+  }, [fingerprint, onFingerprintChange])
 
   if (loading) return <ContentSkeleton reservedHeight={reservedHeight} />
 

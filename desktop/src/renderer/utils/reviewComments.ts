@@ -90,22 +90,39 @@ export interface ReviewCommentGroup {
  * a path can only be recovered by knowing the key's layout — see above. A review holds
  * tens of files and the map holds an entry per file anyone has commented, so the product
  * is small, and it is only ever recomputed when one of the two actually changes.
+ *
+ * `liveFingerprints` is what keeps a SUPERSEDED version's comments out of the list. The
+ * prefix matches every fingerprint a path has ever carried, and a comment filed against an
+ * older one is not merely untidy: no mounted card holds that key, so clicking it cannot
+ * open anything — the jump stops at the file — and its line numbers describe a diff that has
+ * since moved, which `commentAnchors` documents as pointing at unrelated code. Sent to the
+ * agent, that is an instruction about the wrong lines.
+ *
+ * The filter is deliberately NOT strict. A path is filtered only when its live fingerprint
+ * is actually known; a path absent from the map keeps all of its comments. Cards report
+ * their fingerprint once their read lands, so an unread or collapsed card has none to
+ * report — and dropping those comments would empty the list of everything the reader has not
+ * scrolled past yet, which is a worse failure than the one this fixes. Absent means unknown,
+ * never superseded.
  */
 export function collectReviewComments(
   fileComments: Record<string, readonly StoredComment[]>,
   files: readonly CommentedFile[],
   repoPath: string,
+  liveFingerprints: Readonly<Record<string, string>> = {},
 ): ReviewCommentGroup[] {
   const groups: ReviewCommentGroup[] = []
   const entries = Object.entries(fileComments)
 
   for (const { path } of files) {
     const prefix = commentFileKeyPrefix(repoPath, path)
+    const live = liveFingerprints[path]
     const comments: ReviewComment[] = []
 
     for (const [key, stored] of entries) {
       if (!key.startsWith(prefix)) continue
       const fingerprint = key.slice(prefix.length)
+      if (live !== undefined && fingerprint !== live) continue
       for (const comment of stored) {
         comments.push({
           id: comment.id,

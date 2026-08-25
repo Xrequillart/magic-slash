@@ -780,6 +780,46 @@ export default function FilePreviewPanel() {
   }, [review, collapsedFiles])
 
   /**
+   * The live `diffFingerprint` of every file a card has actually read, by path.
+   *
+   * The panel is the only thing that sees every file at once, so it is the only thing that
+   * can tell a comment filed against the CURRENT version of a file from one filed against a
+   * version that has since moved. The cards are the only things that read a file, so they are
+   * the only source: each reports its own once its read lands.
+   *
+   * A card reporting `undefined` deletes its entry rather than writing a blank, so a file that
+   * became unreadable stops claiming a version instead of claiming an empty one.
+   */
+  const [liveFingerprints, setLiveFingerprints] = useState<Record<string, string>>({})
+
+  // Dropped with the review, not left to be overwritten path by path. The paths belong to the
+  // repository that was open, so carrying them into the next one would let a file of the same
+  // name inherit a fingerprint from a different repository — and that is the one way this map
+  // can produce a WRONG answer rather than merely an unknown one: a stale entry filters real
+  // comments out of the list, where a missing entry only declines to filter.
+  useEffect(() => { setLiveFingerprints({}) }, [review])
+
+  // STABLE for the life of the panel — `useCallback` with no dependencies, closing over
+  // nothing but the setter. The cards rely on that: an unstable handler here defeats
+  // `FileReviewCard`'s memo and, through it, `FileContentRenderer`'s, which is forty shiki
+  // documents re-rendered on a panel that re-renders per scroll frame.
+  //
+  // The functional update bails out when the value has not changed, so a re-read that hashes
+  // the same content schedules no render at all.
+  const reportFingerprint = useCallback((path: string, fingerprint: string | undefined) => {
+    setLiveFingerprints(current => {
+      if (fingerprint === undefined) {
+        if (!(path in current)) return current
+        const next = { ...current }
+        delete next[path]
+        return next
+      }
+      if (current[path] === fingerprint) return current
+      return { ...current, [path]: fingerprint }
+    })
+  }, [])
+
+  /**
    * Every comment of the review, grouped by file — and, just below, how many that is.
    *
    * ONE computation, with the count derived from its result rather than counted again,
@@ -787,13 +827,20 @@ export default function FilePreviewPanel() {
    * screen, and the groups are what the panel it opens draws. A count from one source and
    * a list from another is the state where the bar says "3" over an empty list.
    *
+   * `liveFingerprints` is what keeps a superseded version's comments out of both. A path
+   * nothing has reported yet is absent from that map, and `collectReviewComments` reads absent
+   * as UNKNOWN rather than as superseded — see its docblock for why that distinction is the
+   * whole safety of this.
+   *
    * The arithmetic itself is in `reviewComments`, where it is tested. Worth memoising for
    * the ordinary reason in this file: the panel re-renders on every scroll event, and this
    * walks the review's file list against the comment map.
    */
   const commentGroups = useMemo(
-    () => (review ? collectReviewComments(fileComments, review.files, review.repoPath) : NO_GROUPS),
-    [review, fileComments],
+    () => (review
+      ? collectReviewComments(fileComments, review.files, review.repoPath, liveFingerprints)
+      : NO_GROUPS),
+    [review, fileComments, liveFingerprints],
   )
   // Derived on the spot rather than memoised: the result is a NUMBER, so there is no
   // identity to stabilise, and one addition per commented file is cheaper than the hook
@@ -1022,6 +1069,8 @@ export default function FilePreviewPanel() {
                       // `findScrollContainer` only answers once the content overflows,
                       // and cards mount before their reads have given them any height.
                       scrollerRef={scrollRef}
+                      // Stable by construction — see `reportFingerprint` above.
+                      onFingerprintChange={reportFingerprint}
                     />
                   ))
                 )
