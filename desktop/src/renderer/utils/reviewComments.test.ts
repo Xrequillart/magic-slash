@@ -4,6 +4,7 @@ import {
   type ReviewCommentGroup, type StoredComment,
 } from './reviewComments'
 import { commentFileKey } from './commentAnchors'
+import { reviewFileKey } from './reviewLayout'
 import type { LineRange } from './commentAnchors'
 
 const REPO = '/repos/magic-slash'
@@ -126,6 +127,11 @@ describe('collectReviewComments', () => {
   })
 })
 
+/** The live map's own key, built the same way the panel builds it. */
+function liveKey(path: string): string {
+  return reviewFileKey(REPO, path)
+}
+
 describe('collectReviewComments — live fingerprints', () => {
   const twoVersions = {
     [key('src/a.ts', 'old')]: [comment('c-stale')],
@@ -134,7 +140,7 @@ describe('collectReviewComments — live fingerprints', () => {
   const files = [{ path: 'src/a.ts' }]
 
   it('keeps only the live version when the path reports one', () => {
-    const groups = collectReviewComments(twoVersions, files, REPO, { 'src/a.ts': 'live' })
+    const groups = collectReviewComments(twoVersions, files, REPO, { [liveKey('src/a.ts')]: 'live' })
     expect(groups).toHaveLength(1)
     expect(groups[0].comments.map(c => c.id)).toEqual(['c-live'])
     expect(groups[0].comments[0].fingerprint).toBe('live')
@@ -160,7 +166,7 @@ describe('collectReviewComments — live fingerprints', () => {
       },
       [{ path: 'src/a.ts' }, { path: 'src/b.ts' }],
       REPO,
-      { 'src/a.ts': 'live' },
+      { [liveKey('src/a.ts')]: 'live' },
     )
     expect(groups[0].comments.map(c => c.id)).toEqual(['c-live'])
     expect(groups[1].comments.map(c => c.id).sort()).toEqual(['c-b-new', 'c-b-old'])
@@ -172,15 +178,24 @@ describe('collectReviewComments — live fingerprints', () => {
       { [key('src/a.ts', 'old')]: [comment('c-stale')] },
       files,
       REPO,
-      { 'src/a.ts': 'live' },
+      { [liveKey('src/a.ts')]: 'live' },
     )
     expect(groups).toEqual([])
   })
 
+  it('is keyed by repository, so another repo cannot filter this one', () => {
+    // Why the map needs no reset between reviews, and why it must not have one: a same-named
+    // file in another repository has a different key, so its fingerprint cannot reach here.
+    const groups = collectReviewComments(twoVersions, files, REPO, {
+      [reviewFileKey('/repos/other', 'src/a.ts')]: 'live',
+    })
+    expect(groups[0].comments.map(c => c.id).sort()).toEqual(['c-live', 'c-stale'])
+  })
+
   it('ignores a reported fingerprint for a path the review does not hold', () => {
     const groups = collectReviewComments(twoVersions, files, REPO, {
-      'src/a.ts': 'live',
-      'src/gone.ts': 'whatever',
+      [liveKey('src/a.ts')]: 'live',
+      [liveKey('src/gone.ts')]: 'whatever',
     })
     expect(groups.map(g => g.path)).toEqual(['src/a.ts'])
   })
@@ -188,7 +203,7 @@ describe('collectReviewComments — live fingerprints', () => {
   it('drops the superseded comment from the compiled text too', () => {
     // The reason this filter exists: a comment on a moved diff describes unrelated code, and
     // this text is an instruction to the agent.
-    const groups = collectReviewComments(twoVersions, files, REPO, { 'src/a.ts': 'live' })
+    const groups = collectReviewComments(twoVersions, files, REPO, { [liveKey('src/a.ts')]: 'live' })
     const text = formatReviewComments(groups)
     expect(text).toContain('body of c-live')
     expect(text).not.toContain('body of c-stale')

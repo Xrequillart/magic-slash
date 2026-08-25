@@ -780,24 +780,29 @@ export default function FilePreviewPanel() {
   }, [review, collapsedFiles])
 
   /**
-   * The live `diffFingerprint` of every file a card has actually read, by path.
+   * The live `diffFingerprint` of every file a card has actually read, keyed by `reviewFileKey`.
    *
    * The panel is the only thing that sees every file at once, so it is the only thing that
    * can tell a comment filed against the CURRENT version of a file from one filed against a
    * version that has since moved. The cards are the only things that read a file, so they are
    * the only source: each reports its own once its read lands.
    *
+   * NEVER RESET, and the key is what makes that safe. An earlier version keyed this by the
+   * bare path and cleared it whenever `review` changed, because two repositories hold files of
+   * the same name — and that reset was worse than the collision it avoided. Cards report from
+   * an effect on the fingerprint itself, so a card whose content has not changed never reports
+   * again; `openRepoReview` builds a NEW review object every call, including when the reader
+   * merely clicks another file of the same repository, and the cards do not remount for that.
+   * The map was therefore emptied and stayed empty, every file read as unknown, and the filter
+   * this exists for silently stopped filtering.
+   *
+   * With the repository inside the key there is no collision to avoid, so there is nothing to
+   * reset. Entries for files a later review does not hold are simply never looked up.
+   *
    * A card reporting `undefined` deletes its entry rather than writing a blank, so a file that
    * became unreadable stops claiming a version instead of claiming an empty one.
    */
   const [liveFingerprints, setLiveFingerprints] = useState<Record<string, string>>({})
-
-  // Dropped with the review, not left to be overwritten path by path. The paths belong to the
-  // repository that was open, so carrying them into the next one would let a file of the same
-  // name inherit a fingerprint from a different repository — and that is the one way this map
-  // can produce a WRONG answer rather than merely an unknown one: a stale entry filters real
-  // comments out of the list, where a missing entry only declines to filter.
-  useEffect(() => { setLiveFingerprints({}) }, [review])
 
   // STABLE for the life of the panel — `useCallback` with no dependencies, closing over
   // nothing but the setter. The cards rely on that: an unstable handler here defeats
@@ -806,16 +811,16 @@ export default function FilePreviewPanel() {
   //
   // The functional update bails out when the value has not changed, so a re-read that hashes
   // the same content schedules no render at all.
-  const reportFingerprint = useCallback((path: string, fingerprint: string | undefined) => {
+  const reportFingerprint = useCallback((fileKey: string, fingerprint: string | undefined) => {
     setLiveFingerprints(current => {
       if (fingerprint === undefined) {
-        if (!(path in current)) return current
+        if (!(fileKey in current)) return current
         const next = { ...current }
-        delete next[path]
+        delete next[fileKey]
         return next
       }
-      if (current[path] === fingerprint) return current
-      return { ...current, [path]: fingerprint }
+      if (current[fileKey] === fingerprint) return current
+      return { ...current, [fileKey]: fingerprint }
     })
   }, [])
 

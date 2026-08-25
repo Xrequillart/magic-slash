@@ -39,7 +39,9 @@ interface Props {
    */
   scrollerRef: RefObject<HTMLDivElement>
   /**
-   * This file's live `diffFingerprint`, on its way to the panel.
+   * This file's live `diffFingerprint`, on its way to the panel, under this card's
+   * `reviewFileKey` — the repository is in the key so the panel's map can outlive a review
+   * instead of having to be reset with one.
    *
    * The card is only a relay — it has no use for the value itself. It belongs to the panel,
    * which is the only thing that sees every file at once and therefore the only thing that
@@ -48,7 +50,7 @@ interface Props {
    * MUST be referentially stable, like every other prop here. See the note at the
    * `FileContentRenderer` call site below: an unstable one costs N shiki documents.
    */
-  onFingerprintChange?: (path: string, fingerprint: string | undefined) => void
+  onFingerprintChange?: (fileKey: string, fingerprint: string | undefined) => void
 }
 
 /**
@@ -134,8 +136,8 @@ function FileReviewCard({ repoPath, file, fileIndex, scrollerRef, onFingerprintC
   // shiki document — forty of them, on a parent that re-renders per scroll frame. Both
   // dependencies are stable by contract (a string, and the panel's own `useCallback`).
   const reportFingerprint = useCallback(
-    (fingerprint: string | undefined) => onFingerprintChange?.(file.path, fingerprint),
-    [onFingerprintChange, file.path],
+    (fingerprint: string | undefined) => onFingerprintChange?.(key, fingerprint),
+    [onFingerprintChange, key],
   )
 
   const fileName = file.path.split('/').pop() ?? file.path

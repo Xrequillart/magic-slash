@@ -15,6 +15,7 @@
  */
 
 import { commentFileKeyPrefix, type LineRange } from './commentAnchors'
+import { reviewFileKey } from './reviewLayout'
 
 /**
  * Just enough of a stored comment to list it and to write it out.
@@ -104,6 +105,14 @@ export interface ReviewCommentGroup {
  * report — and dropping those comments would empty the list of everything the reader has not
  * scrolled past yet, which is a worse failure than the one this fixes. Absent means unknown,
  * never superseded.
+ *
+ * Keyed by `reviewFileKey`, not by the bare path, and that is what lets the map OUTLIVE a
+ * review. Two repositories hold files of the same name, so a path-keyed map had to be emptied
+ * whenever the review changed — and a reset is the one thing this map cannot afford: cards
+ * report from an effect on the fingerprint itself, so a card whose content did not change
+ * never reports again, and a map cleared under it stays empty for as long as that card is
+ * mounted. Putting the repository in the key removes the collision, which removes the reason
+ * to reset, which removes the window where everything reads as unknown.
  */
 export function collectReviewComments(
   fileComments: Record<string, readonly StoredComment[]>,
@@ -116,7 +125,7 @@ export function collectReviewComments(
 
   for (const { path } of files) {
     const prefix = commentFileKeyPrefix(repoPath, path)
-    const live = liveFingerprints[path]
+    const live = liveFingerprints[reviewFileKey(repoPath, path)]
     const comments: ReviewComment[] = []
 
     for (const [key, stored] of entries) {
