@@ -1,0 +1,190 @@
+import { memo } from 'react'
+import { AlertTriangle, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
+import type { PRWatchError, TaskIssue } from '../../../types'
+import type { TaskRow } from '../../utils/taskRows'
+import { useT, type MessageKey, type Translate } from '../../i18n'
+import { StatusPill, TicketBadge } from '../Dashboard/parts'
+
+/**
+ * One repository's card, in the shape the Team page's `RepoCard` established:
+ * a collapsible header carrying the repo's colour dot and a count, and rows under
+ * it. Same markup, same classes — two lists of "things grouped by repository" that
+ * looked different would be a bug nobody could name.
+ */
+
+/** How many labels a row shows. Two pills is what fits next to a title that truncates. */
+const MAX_LABELS = 2
+
+/**
+ * Dedicated `tasks.error.*` copy, NOT the pull-request card's.
+ *
+ * `agentInfo.pr.error.notFound` reads "Pull request not found", which is simply
+ * wrong on a repository group — the same five failures need their own sentences here.
+ */
+const ERROR_KEYS: Record<PRWatchError, { title: MessageKey; fix: MessageKey }> = {
+  'no-token':     { title: 'tasks.error.noToken',     fix: 'tasks.error.noTokenFix' },
+  'not-found':    { title: 'tasks.error.notFound',    fix: 'tasks.error.notFoundFix' },
+  forbidden:      { title: 'tasks.error.forbidden',   fix: 'tasks.error.forbiddenFix' },
+  'rate-limited': { title: 'tasks.error.rateLimited', fix: 'tasks.error.rateLimitedFix' },
+  network:        { title: 'tasks.error.network',     fix: 'tasks.error.networkFix' },
+}
+
+/**
+ * "N open", picked on the same rule wherever it is shown — the cards here and the
+ * page total above them. Exported so the two cannot drift apart the day a locale
+ * needs a form English does not have.
+ *
+ * `totalOpen` is what the repository HAS; `count` is what this page could read,
+ * capped at the query's `first: 50`. When they differ the label says so — "showing
+ * 50 of 214" — because rendering the cap as the total is simply a wrong number.
+ */
+export function openCountLabel(count: number, t: Translate, totalOpen?: number): string {
+  if (typeof totalOpen === 'number' && totalOpen > count) {
+    return t('tasks.openCount.truncated', { count, total: totalOpen })
+  }
+  return t(count === 1 ? 'tasks.openCount.one' : 'tasks.openCount.other', { count })
+}
+
+/**
+ * "N sub-issues · M done", picked the way `openCountLabel` picks its form: one
+ * catalogue key per plural, never a suffix appended in code.
+ *
+ * Only ever reached for an issue that HAS sub-issues — the mapper omits the field
+ * entirely otherwise — so `total` is 1 or more and `.one` never renders a zero.
+ */
+function subIssuesLabel(subIssues: NonNullable<TaskIssue['subIssues']>, t: Translate): string {
+  return t(subIssues.total === 1 ? 'tasks.subIssues.one' : 'tasks.subIssues.other', {
+    count: subIssues.total,
+    completed: subIssues.completed,
+  })
+}
+
+/**
+ * `t` and the button's label arrive as props rather than from `useT()` here: this
+ * component is rendered once per issue, and a hook per row would register a
+ * catalogue listener per row to translate the very same two constants.
+ */
+function IssueRow({ issue, openLabel, t }: { issue: TaskIssue; openLabel: string; t: Translate }) {
+  return (
+    <div className="flex items-center gap-3 pl-9 pr-4 py-2 min-w-0 border-t border-line-subtle">
+      <TicketBadge ticketId={`#${issue.number}`} />
+      {issue.parent && (
+        // The `TicketBadge` shape, in `StatusPill`'s neutral tokens rather than the
+        // accent ones: two accent badges in a row would read as two tickets. The
+        // number is all that fits, so the parent's title goes in the hover text.
+        <span
+          title={t('tasks.parentHint', { number: issue.parent.number, title: issue.parent.title })}
+          className="text-xs text-text-secondary bg-surface px-2 py-0.5 rounded flex-shrink-0"
+        >
+          {t('tasks.parent', { number: issue.parent.number })}
+        </span>
+      )}
+      <span className="text-sm text-ink truncate flex-1">{issue.title}</span>
+      {issue.author && (
+        // First of the metadata that follows the title, so the row still reads
+        // ticket → title → who opened it → progress → labels. Muted and never
+        // wrapping, like the counts beside it: the title is the only element on
+        // the row allowed to give up its width.
+        <span
+          title={t('tasks.authorHint', { login: issue.author })}
+          className="text-xs text-text-secondary whitespace-nowrap flex-shrink-0"
+        >
+          @{issue.author}
+        </span>
+      )}
+      {issue.subIssues && (
+        // The counts register of the cards above: muted, never wrapping. The title
+        // beside it is the only thing on the row allowed to give up its width.
+        <span className="text-xs text-text-secondary whitespace-nowrap flex-shrink-0">
+          {subIssuesLabel(issue.subIssues, t)}
+        </span>
+      )}
+      {issue.labels.slice(0, MAX_LABELS).map((label) => (
+        <StatusPill key={label} status={label} />
+      ))}
+      <button
+        onClick={() => window.electronAPI.shell.openExternal(issue.url)}
+        title={openLabel}
+        className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-colors flex-shrink-0"
+      >
+        <ExternalLink className="w-3.5 h-3.5" />
+        <span>{openLabel}</span>
+      </button>
+    </div>
+  )
+}
+
+/**
+ * The failure of ONE repository, inside that repository's own card.
+ *
+ * Rendered here rather than as a page-level banner precisely so the other
+ * repositories keep rendering: a token that cannot see one private repo is not a
+ * reason to hide everyone else's backlog.
+ */
+function ErrorRow({ error }: { error: NonNullable<TaskRow['error']> }) {
+  const t = useT()
+  const keys = ERROR_KEYS[error.error]
+
+  return (
+    <div className="flex items-start gap-3 pl-9 pr-4 py-3 min-w-0 border-t border-line-subtle">
+      <AlertTriangle className="w-4 h-4 text-orange flex-shrink-0 mt-0.5" />
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span className="text-sm text-ink">{t(keys.title)}</span>
+        <span className="text-xs text-text-secondary/70">{t(keys.fix)}</span>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Memoised, and handed a `onToggle` that takes the key rather than a closure over
+ * it: folding one card must not re-render every other card's rows, and with a
+ * stable callback plus the memoised `row` it no longer does.
+ */
+export const TasksRepoSection = memo(function TasksRepoSection({
+  row,
+  expanded,
+  onToggle,
+}: {
+  row: TaskRow
+  expanded: boolean
+  onToggle: (configKey: string) => void
+}) {
+  const t = useT()
+  const openLabel = t('tasks.openIssue')
+  const Chevron = expanded ? ChevronDown : ChevronRight
+  // A failed group has no issues and still has something to unfold: the reason.
+  const hasRows = row.issues.length > 0 || !!row.error
+
+  return (
+    <div className="rounded-lg bg-surface-subtle border border-line-field overflow-hidden">
+      <button
+        onClick={() => onToggle(row.configKey)}
+        disabled={!hasRows}
+        className={`w-full flex items-center gap-3 px-4 py-3 min-w-0 text-left transition-colors ${
+          hasRows ? 'hover:bg-surface-strong' : 'cursor-default'
+        }`}
+      >
+        <Chevron className={`w-4 h-4 flex-shrink-0 ${hasRows ? 'text-text-secondary' : 'opacity-0'}`} />
+        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
+        <span className="text-sm font-medium text-ink truncate flex-1">{row.name}</span>
+        {row.error ? (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-orange/15 text-orange flex-shrink-0">
+            {t('tasks.failed')}
+          </span>
+        ) : (
+          <span className="text-xs text-text-secondary flex-shrink-0">
+            {row.issues.length === 0
+              ? t('tasks.noOpenIssues')
+              : openCountLabel(row.issues.length, t, row.totalOpen)}
+          </span>
+        )}
+      </button>
+
+      {expanded && row.error && <ErrorRow error={row.error} />}
+      {expanded && row.issues.map((issue) => (
+        <IssueRow key={issue.number} issue={issue} openLabel={openLabel} t={t} />
+      ))}
+    </div>
+  )
+})

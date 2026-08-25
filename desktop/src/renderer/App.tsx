@@ -16,6 +16,7 @@ import { ConfigPage } from './pages/Config'
 import { TerminalsPage } from './pages/Terminals'
 import { SkillsPage } from './pages/Skills'
 import { DashboardPage } from './pages/Dashboard'
+import { TasksPage } from './pages/Tasks'
 import { PageModal } from './components/PageModal'
 import { LiveIndicator } from './components/LiveIndicator'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -214,6 +215,9 @@ export function App() {
         // event its "+" button fires.
         case 'new-agent':
           window.dispatchEvent(new Event('new-terminal'))
+          break
+        case 'tasks':
+          store.openModal('tasks')
           break
         case 'skills':
           store.openModal('skills')
@@ -457,7 +461,7 @@ export function App() {
 
       <FilePreviewPanel />
 
-      {/* Page overlays — Settings, Skills and Team */}
+      {/* Page overlays — Settings, Skills, Team and Tasks */}
       {activeModal === 'settings' && (
         <PageModal title={t('sidebar.settings')} onClose={handleCloseModal}>
           <ConfigPage />
@@ -473,6 +477,12 @@ export function App() {
       {activeModal === 'team' && (
         <PageModal title={t('sidebar.team')} onClose={handleCloseModal} headerRight={<LiveIndicator />}>
           <DashboardPage />
+        </PageModal>
+      )}
+
+      {activeModal === 'tasks' && (
+        <PageModal title={t('tasks.title')} onClose={handleCloseModal}>
+          <TasksPage />
         </PageModal>
       )}
 

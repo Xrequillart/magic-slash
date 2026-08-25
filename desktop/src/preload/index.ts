@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { PRComment, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand } from '../types'
+import type { PRComment, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -597,6 +597,12 @@ const authApi = {
   },
 }
 
+// Tasks API — the open GitHub issues of every GitHub-tracked repository.
+// One call, no subscription: the page reads on open and on an explicit reload.
+const tasksApi = {
+  listOpenIssues: (): Promise<TasksSnapshot> => ipcRenderer.invoke('tasks:listOpenIssues'),
+}
+
 // Org API (organization membership + invitations + multi-org management)
 const orgApi = {
   current: (): Promise<Org | null> => ipcRenderer.invoke('org:current'),
@@ -733,6 +739,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setup: setupApi,
   auth: authApi,
   org: orgApi,
+  tasks: tasksApi,
   connectivity: connectivityApi,
   theme: themeApi,
   zoom: zoomApi,
@@ -762,6 +769,7 @@ declare global {
       setup: typeof setupApi
       auth: typeof authApi
       org: typeof orgApi
+      tasks: typeof tasksApi
       connectivity: typeof connectivityApi
       theme: typeof themeApi
       zoom: typeof zoomApi

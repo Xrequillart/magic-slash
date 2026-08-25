@@ -37,6 +37,7 @@ import { setupProfileHandlers } from './ipc/profile-handlers'
 import { setupUsageHandlers } from './ipc/usage-handlers'
 import { setupAuthHandlers } from './ipc/auth-handlers'
 import { setupOrgHandlers } from './ipc/org-handlers'
+import { setupTasksHandlers } from './ipc/tasks-handlers'
 import { stopOrgAgentsRealtime } from './cloud/realtime'
 import { PRReviewWatcher } from './pr-review-watcher/watcher'
 import { setupPRReviewHandlers } from './ipc/pr-review-handlers'
@@ -119,7 +120,7 @@ function createMenu() {
           },
         ]
       : []),
-    // File menu — the four destinations the sidebar offers, reachable from the
+    // File menu — the destinations the sidebar offers, reachable from the
     // menu bar too. No accelerators on purpose: Cmd+N is already handled in the
     // renderer (Terminals/index.tsx), where it knows which pane has focus, and a
     // menu accelerator would swallow that keystroke and lose the split-view case.
@@ -128,6 +129,7 @@ function createMenu() {
       submenu: [
         { label: t('menu.newAgent'), click: () => sendMenuCommand('new-agent') },
         { type: 'separator' as const },
+        { label: t('menu.tasks'), click: () => sendMenuCommand('tasks') },
         { label: t('menu.skills'), click: () => sendMenuCommand('skills') },
         { label: t('menu.team'), click: () => sendMenuCommand('team') },
         { label: t('menu.account'), click: () => sendMenuCommand('account') },
@@ -286,6 +288,9 @@ function setupHandlers() {
   // blocks the whole app behind these until the backend reports 'ok'.
   setupAuthHandlers(() => mainWindow)
   setupOrgHandlers()
+  // The Tasks page's backlog read. No poller behind it: the page reads on open and
+  // on an explicit reload, so there is nothing to start here beyond the channel.
+  setupTasksHandlers()
   setupConnectivityHandlers(() => mainWindow)
   // Notification callback - only show when window is not focused.
   //

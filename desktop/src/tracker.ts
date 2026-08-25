@@ -74,3 +74,69 @@ export function resolveGitHubIssuesUrl(repo?: TrackerSource | null): string {
   const base = repo?.issues?.githubIssuesUrl || (repo?.remoteUrl ? `${repo.remoteUrl}/issues` : '')
   return base.replace(/\/+$/, '')
 }
+
+/** Where a repository's tickets are filed, once every fallback has been walked. */
+export type ResolvedTracker = 'github' | 'jira' | 'ask'
+
+/** github.com, in either shape an address is stored in: an https URL, or an ssh remote. */
+const ON_GITHUB_COM = /^(https?:\/\/(www\.)?github\.com\/|git@github\.com:)/i
+
+/**
+ * Whether this repo has GitHub coordinates at all — the qualification row 4 of the
+ * ladder makes on the remote.
+ *
+ * BOTH addresses are qualified on being on github.com, the override included. A
+ * non-github.com issues host — a GitHub Enterprise install, say — is not supported
+ * by the Tasks page: `main/github-issues.ts` posts to `api.github.com` and nowhere
+ * else, so calling such a repo `github` buys it a query against the wrong host and a
+ * permanent, misleading "Repository not found" card. Leaving it to `ask` (or to
+ * `jira`, when Jira coordinates are configured) is the honest answer, and the one
+ * the ladder already knows how to give.
+ *
+ * A github.com override on a non-GitHub remote still counts: a separate tracker
+ * repository is a real configuration, and that is what the key is for.
+ */
+function hasGitHubCoordinates(repo?: TrackerSource | null): boolean {
+  return ON_GITHUB_COM.test(repo?.issues?.githubIssuesUrl || '')
+    || ON_GITHUB_COM.test(repo?.remoteUrl || '')
+}
+
+/**
+ * Which tracker receives this repository's tickets.
+ *
+ * The ladder is the one documented in skills/magic-plan/references/trackers.md §1.0,
+ * restated here so the app and the skills cannot answer differently:
+ *
+ * | 1 | `plan.tracker` is `github` or `jira`            | that tracker            |
+ * | 2 | `ask`, and only ONE side is configured          | the one that is         |
+ * | 3 | `ask`, and both are                             | `ask`                   |
+ * | 4 | `ask`, neither is, but the remote is on GitHub  | `github`                |
+ * | 5 | nothing resolves                                | `ask`                   |
+ *
+ * Row 4 qualifies an address on being *on github.com* — the remote, or the
+ * `issues.githubIssuesUrl` override — and that qualification is the whole of
+ * `hasGitHubCoordinates` below. `resolveGitHubIssuesUrl` cannot stand in for it: it
+ * appends `/issues` to ANY remote, so reading it as "has GitHub coordinates"
+ * resolves a GitLab clone with no Jira config to `github`, queries github.com for a
+ * repository that is not there, and leaves a permanent "repository not found" card
+ * on the Tasks page.
+ *
+ * "Jira coordinates are configured" means the Jira project **or** the Jira site — a
+ * repo with a site and no project key is still Jira-destined, and calling it GitHub
+ * would file its tickets in the wrong backlog. Both are read through the resolve*
+ * chains above, so the legacy keys count exactly as the current ones do.
+ *
+ * `ask` is a real answer, not a failure: it means the question needs a human. A
+ * SURFACE that cannot ask it — the Tasks page lists what it can read, it does not
+ * hold a conversation — must exclude `ask` rather than guess a side.
+ */
+export function resolveTracker(repo?: TrackerSource | null): ResolvedTracker {
+  const configured = repo?.plan?.tracker
+  if (configured === 'github' || configured === 'jira') return configured
+
+  const hasJira = !!(resolveJiraProject(repo) || resolveJiraSite(repo))
+  const hasGitHub = hasGitHubCoordinates(repo)
+
+  if (hasJira) return hasGitHub ? 'ask' : 'jira'
+  return hasGitHub ? 'github' : 'ask'
+}
