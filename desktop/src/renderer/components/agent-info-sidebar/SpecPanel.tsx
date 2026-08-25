@@ -4,16 +4,17 @@ import { useStore } from '../../store'
 import FileContentRenderer from '../file-preview/FileContentRenderer'
 import { StatusPill } from './StatusPill'
 import { TicketMark } from './TicketMark'
-import { AgentTitleField, AgentDescriptionField, type AgentIdentity } from './AgentIdentityFields'
+import { AgentTitleField, type AgentIdentity } from './AgentIdentityFields'
 import { shouldAutoFollow } from './utils'
 import { useT } from '../../i18n'
 
 interface SpecPanelProps {
   /**
-   * Title and description, plus their editing state. In `replace` mode this panel
-   * is the ONLY card on screen, so it carries the agent's identity that TicketHeader
-   * would otherwise hold — read AND editable, so replacing the ticket card takes no
-   * capability away.
+   * The title, plus its editing state. In `replace` mode this panel is the ONLY card
+   * on screen, so it carries the agent's identity that TicketHeader would otherwise
+   * hold — read AND editable, so replacing the ticket card takes no capability away.
+   * The description is not rendered here: the spec itself is the planning agent's
+   * long-form text.
    */
   identity: AgentIdentity
   /**
@@ -178,12 +179,11 @@ export function SpecPanel({
           </div>
         </div>
 
-        {/* The agent's identity, carried here because the spec card replaces the
-            ticket card that normally holds it. */}
+        {/* The agent's title, carried here because the spec card replaces the
+            ticket card that normally holds it. The description is deliberately
+            absent: `/magic:plan` never fills it, and the spec below says everything
+            it would have said. */}
         <AgentTitleField identity={identity} />
-        <div className="mt-3">
-          <AgentDescriptionField identity={identity} />
-        </div>
       </div>
 
       <div className="relative flex flex-col flex-1 min-h-0">
