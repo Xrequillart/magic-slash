@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.80.1] - 2026-08-25
+
+### Added
+
+- **Desktop**: The planner spec panel opens at the top of the spec, with a back-to-top control once you scroll away
+
+### Changed
+
+- **Desktop**: The planner spec card no longer shows a description field
+- **Plan**: `/magic:plan` no longer writes an agent description in the metadata
+
 ## [0.80.0] - 2026-08-25
 
 ### Added
@@ -2391,6 +2402,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.80.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.80.1
 [0.80.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.80.0
 [0.79.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.79.0
 [0.78.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.78.0
