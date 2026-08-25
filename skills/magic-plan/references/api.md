@@ -69,7 +69,7 @@ Updates the agent metadata in the sidebar.
 | `id` | string | Yes | Terminal ID (`$MAGIC_SLASH_TERMINAL_ID`) |
 | `title` | string | No | Sidebar title (URL-encoded) |
 | `ticketId` | string | No | Ticket ID (e.g.: `PROJ-123`, `#456`) |
-| `description` | string | No | Short description (URL-encoded) |
+| `description` | string | No | Short description (URL-encoded). **Not for this skill** — a planning agent's card renders the spec, not this field, so `/magic:plan` never sends it |
 | `status` | string | No | `"in progress"`, `"committed"`, `"PR created"` |
 | `type` | string | No | `"coder"` or `"planner"`. Sent once, by the skill that establishes what the agent is; an unknown value is ignored |
 | `branchName` | string | No | Task branch actually checked out. Report it only from inside the worktree, once the branch exists — see the note below |

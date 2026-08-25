@@ -502,12 +502,11 @@ and becomes the record: months later it is the only place holding why the epic w
 
 ### 7.1: Metadata — third write
 
-Write `{TICKET_ID}: {TICKET_TITLE}` to `.magic/.mp-title` and the summarised `{DESCRIPTION}` to
-`.magic/.mp-desc`, both with the `Write` tool, then:
+Write `{TICKET_ID}: {TICKET_TITLE}` to `.magic/.mp-title` with the `Write` tool, then:
 
 ```bash
-[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&ticketId={TICKET_ID}&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&description=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-desc)&status=planned" > /dev/null 2>&1 || true
-rm -f .magic/.mp-title .magic/.mp-desc
+[ -n "$MAGIC_SLASH_PORT" ] && [ -n "$MAGIC_SLASH_TERMINAL_ID" ] && curl -s "http://127.0.0.1:$MAGIC_SLASH_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&ticketId={TICKET_ID}&title=$(jq -Rsr 'sub("\n$";"") | @uri' < .magic/.mp-title)&status=planned" > /dev/null 2>&1 || true
+rm -f .magic/.mp-title
 ```
 
 `{TICKET_ID}` is a tracker-issued identifier (`#412`, `PROJ-1234`) and is the one value still
@@ -517,9 +516,12 @@ substituted directly — it cannot carry shell syntax. Everything free-form goes
 the sidebar should show. `{TICKET_TITLE}` is capped at 30 characters, and the `TICKET-ID: Title`
 shape is the same convention `/magic:start` uses, so the two skills produce comparable rows.
 
-`{DESCRIPTION}` is **never passed raw**. Summarise it to 2-3 sentences first: it is URL-encoded into
-a query string, and a full spec section shoved through `jq -sRr @uri` produces a URL nobody wants to
-debug.
+**Never send `description`.** The planning agent's sidebar card shows the spec itself, not a
+description field — the field is not rendered there at all, so anything written to it would be
+invisible while still overwriting whatever the user had typed. The spec is this skill's long-form
+output and the tickets carry their own bodies; there is nothing left for a summary to say. This is
+about the **agent metadata** field only: the ticket descriptions composed in `trackers.md` §3.3 are
+a tracker field and are unaffected.
 
 Run this call even after a partial failure, carrying whatever ticket id does exist. A half-created
 plan is still a plan the sidebar should show.
@@ -614,7 +616,7 @@ Three writes, and nothing between them:
 | --- | --- |
 | Step 2.5 — repository chosen | `/repositories` with the repository path; then `title` (short idea), `status=planning`, `specPath` (absolute) |
 | Step 6.1 — structure approved | `title`, refined to the agreed epic/story wording |
-| Step 7.1 — tickets created | `ticketId`, `title` = `TICKET-ID: Title`, `description` (summarised), `status=planned` |
+| Step 7.1 — tickets created | `ticketId`, `title` = `TICKET-ID: Title`, `status=planned` — never `description`, see Step 7.1 |
 
 Plus two pings on `/plan/*`, which are notifications rather than metadata: they tell the desktop that
 something it already knows where to find has changed.
@@ -645,9 +647,9 @@ plan depends on the cloud, and the spec on disk is always the complete artefact.
 skill made itself would break that: it would need a secret, it would need to be online, and a plan
 would start being able to fail for reasons that have nothing to do with planning.
 
-**Free text never touches the command line.** Every free-form value — the idea, the agreed title,
-the description — is written to a file under `.magic/` with the `Write` tool, and the shell reads it
-back with `jq -Rsr 'sub("\n$";"") | @uri' < <path>`. The command line therefore contains nothing but
+**Free text never touches the command line.** Every free-form value — the idea, the agreed title —
+is written to a file under `.magic/` with the `Write` tool, and the shell reads it back with
+`jq -Rsr 'sub("\n$";"") | @uri' < <path>`. The command line therefore contains nothing but
 a fixed literal path. This is a correctness requirement, not a style preference, and it is the part
 of these blocks that must survive any later tidying:
 
