@@ -807,6 +807,15 @@ export type SettingsTab =
   | 'shortcuts'
   | 'about'
 
+/**
+ * A menu item the main process cannot act on alone.
+ *
+ * The native menu is built in the main process, but "open Skills" or "create an
+ * agent" are renderer state — so these four travel over IPC and are replayed
+ * against the store, exactly as the tray already does with its own commands.
+ */
+export type MenuCommand = 'new-agent' | 'skills' | 'team' | 'account'
+
 /** Signed-in cloud user identity (subset of the Supabase session). */
 export interface CloudUser {
   id: string

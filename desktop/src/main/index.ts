@@ -10,8 +10,8 @@ import { recordSkillInvocation } from './usage/skill-invocations'
 import { installShellIntegration } from './hooks/shell-integration'
 import { configureClaudeHooks, configureStatusLine } from './hooks/claude-hooks-config'
 import { setStatusServerPort, setInnerStatusLine, updateTerminalStateFromHook, updateTerminalMetadataFromHook, updateTerminalUsageFromHook, updateTerminalRepositoriesFromHook, writeToTerminal, getTerminalBuffer } from './pty/terminal-manager'
-import type { TerminalUsage, TrayAnswerChoice, TrayAnswerResult, TrayState, TrayUpdate } from '../types'
-import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, isUpdating, getUpdateStatus } from './updater'
+import type { MenuCommand, TerminalUsage, TrayAnswerChoice, TrayAnswerResult, TrayState, TrayUpdate } from '../types'
+import { setupAutoUpdater, setUpdaterMainWindow, checkForUpdatesOnStartup, checkForUpdates, isUpdating, getUpdateStatus } from './updater'
 import { updateSkills } from './skills-updater'
 import { setupSkillsHandlers } from './ipc/skills-handlers'
 import { setupScriptHandlers } from './ipc/script-handlers'
@@ -89,21 +89,52 @@ function createMenu() {
             submenu: [
               { role: 'about' as const },
               { type: 'separator' as const },
+              // Reveals the window first: the result lands in the sidebar's update
+              // row, which is worth nothing behind a hidden window.
+              {
+                label: t('menu.checkUpdates'),
+                click: () => { revealMainWindow(); void checkForUpdates() },
+              },
+              { type: 'separator' as const },
               { role: 'services' as const },
               { type: 'separator' as const },
               { role: 'hide' as const, accelerator: '' },
               { role: 'hideOthers' as const },
               { role: 'unhide' as const },
               { type: 'separator' as const },
-              { role: 'quit' as const },
+              // NOT `role: 'quit'`. That role's Cmd+Q never quit either — `before-quit`
+              // turns it into a hide while the tray lives — so the role's label promised
+              // something it did not do. These two split it in half and each says what
+              // it does: close the window, or actually leave.
+              {
+                label: t('menu.closeWindow'),
+                accelerator: 'CmdOrCtrl+Q',
+                click: () => mainWindow?.close(),
+              },
+              {
+                label: t('menu.quitApp'),
+                click: () => { forceQuit = true; app.quit() },
+              },
             ],
           },
         ]
       : []),
-    // File menu - without Cmd+W close window
+    // File menu — the four destinations the sidebar offers, reachable from the
+    // menu bar too. No accelerators on purpose: Cmd+N is already handled in the
+    // renderer (Terminals/index.tsx), where it knows which pane has focus, and a
+    // menu accelerator would swallow that keystroke and lose the split-view case.
     {
       label: t('menu.file'),
-      submenu: [isMac ? { role: 'close' as const, accelerator: '' } : { role: 'quit' as const }],
+      submenu: [
+        { label: t('menu.newAgent'), click: () => sendMenuCommand('new-agent') },
+        { type: 'separator' as const },
+        { label: t('menu.skills'), click: () => sendMenuCommand('skills') },
+        { label: t('menu.team'), click: () => sendMenuCommand('team') },
+        { label: t('menu.account'), click: () => sendMenuCommand('account') },
+        ...(isMac
+          ? []
+          : [{ type: 'separator' as const }, { role: 'quit' as const }]),
+      ],
     },
     // Edit menu
     {
@@ -396,6 +427,29 @@ function revealMainWindow(): void {
   // Terminal sessions are restored by the connectivity gate once the backend is
   // reachable + hydrated (see connectivity-handlers.ts), not here.
   if (mainWindow) setUpdaterMainWindow(mainWindow)
+}
+
+/**
+ * Hand a menu item's intent to the renderer, which owns the state it acts on.
+ *
+ * Reveals the window first — the menu bar is reachable with the window hidden,
+ * and opening Skills into a window nobody can see is not an outcome. When that
+ * reveal had to build the window from scratch the renderer is not listening yet,
+ * so the send waits for the load rather than firing into a page that will replace
+ * itself a moment later.
+ */
+function sendMenuCommand(command: MenuCommand): void {
+  revealMainWindow()
+  const win = mainWindow
+  if (!win || win.isDestroyed()) return
+
+  if (win.webContents.isLoading()) {
+    win.webContents.once('did-finish-load', () => {
+      if (!win.isDestroyed()) win.webContents.send('menu:command', command)
+    })
+    return
+  }
+  win.webContents.send('menu:command', command)
 }
 
 /** Show and focus the main window, then run an optional callback. */

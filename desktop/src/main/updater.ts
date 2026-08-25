@@ -124,14 +124,7 @@ export function setupAutoUpdater() {
   })
 
   // IPC handlers
-  ipcMain.handle('updater:check', async () => {
-    try {
-      return await autoUpdater.checkForUpdates()
-    } catch (err) {
-      console.error('[Updater] Check failed:', err)
-      return null
-    }
-  })
+  ipcMain.handle('updater:check', async () => checkForUpdates())
 
   ipcMain.handle('updater:download', async () => {
     // Guarded rather than trusting the caller: downloadUpdate() rejects when
@@ -188,6 +181,25 @@ export function setupAutoUpdater() {
 
 export function setUpdaterMainWindow(window: BrowserWindow) {
   mainWindow = window
+}
+
+/**
+ * Check on demand — what the tray panel's button and the app menu's
+ * "Check for Updates" both call.
+ *
+ * Unlike checkForUpdatesOnStartup() there is no dev guard and no delay: someone
+ * asked for it, so the failure is worth surfacing rather than swallowing. The
+ * outcome reaches the UI through autoUpdater's own events, which sendStatus()
+ * forwards on the 'updater:status' channel; the return value is only for the
+ * IPC caller.
+ */
+export async function checkForUpdates() {
+  try {
+    return await autoUpdater.checkForUpdates()
+  } catch (err) {
+    console.error('[Updater] Check failed:', err)
+    return null
+  }
 }
 
 export async function checkForUpdatesOnStartup() {

@@ -203,6 +203,32 @@ export function App() {
     return () => { unsubscribe() }
   }, [])
 
+  // Listen for menu:command IPC events (native File / app menu)
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.menu.onCommand((command) => {
+      const store = useStore.getState()
+      switch (command) {
+        // Re-dispatched rather than calling a launcher here: the agents page owns
+        // the guards (max agents, unreachable repos, one at a time) AND the
+        // split-view rule about which pane a new agent lands in. This is the same
+        // event its "+" button fires.
+        case 'new-agent':
+          window.dispatchEvent(new Event('new-terminal'))
+          break
+        case 'skills':
+          store.openModal('skills')
+          break
+        case 'team':
+          store.openModal('team')
+          break
+        case 'account':
+          store.openSettingsModal('account')
+          break
+      }
+    })
+    return () => { unsubscribe() }
+  }, [])
+
   // Reset the shared hash route on close so the next open lands on the modal's
   // home rather than a stale sub-page. Both Settings (#/repo/<name>) and Skills
   // (#/skill/<name>, #/new, #/repo-skill/<path>) route off window.location.hash.

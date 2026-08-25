@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult } from '../types'
+import type { TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -424,6 +424,15 @@ const trayApi = {
   },
 }
 
+// Native menu API — one channel for every item the menu cannot act on alone.
+const menuApi = {
+  onCommand: (callback: (command: MenuCommand) => void) => {
+    const listener = (_event: IpcRendererEvent, command: MenuCommand) => callback(command)
+    ipcRenderer.on('menu:command', listener)
+    return () => ipcRenderer.removeListener('menu:command', listener)
+  },
+}
+
 // Quick Launch API
 const quickLaunchApi = {
   dispatch: (ticketId: string, action: string) =>
@@ -709,6 +718,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   skills: skillsApi,
   scripts: scriptsApi,
   tray: trayApi,
+  menu: menuApi,
   quickLaunch: quickLaunchApi,
   prWatcher: prWatcherApi,
   profile: profileApi,
@@ -737,6 +747,7 @@ declare global {
       skills: typeof skillsApi
       scripts: typeof scriptsApi
       tray: typeof trayApi
+      menu: typeof menuApi
       quickLaunch: typeof quickLaunchApi
       prWatcher: typeof prWatcherApi
       profile: typeof profileApi

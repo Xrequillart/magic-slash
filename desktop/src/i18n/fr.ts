@@ -18,6 +18,13 @@ export const fr: Record<keyof typeof en, string> = {
   'menu.actualSize': 'Taille réelle',
   'menu.zoomIn': 'Agrandir',
   'menu.zoomOut': 'Réduire',
+  'menu.newAgent': 'Nouvel agent',
+  'menu.skills': 'Skills',
+  'menu.team': 'Équipe',
+  'menu.account': 'Compte',
+  'menu.checkUpdates': 'Rechercher les mises à jour…',
+  'menu.closeWindow': 'Fermer la fenêtre',
+  'menu.quitApp': 'Quitter Magic Slash',
 
   // ── Panneau de la barre de menus ─────────────────────────────────────────
   'tray.showWindow': 'Afficher la fenêtre',

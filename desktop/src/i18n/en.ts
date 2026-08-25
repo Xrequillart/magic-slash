@@ -20,6 +20,13 @@ export const en = {
   'menu.actualSize': 'Actual Size',
   'menu.zoomIn': 'Zoom In',
   'menu.zoomOut': 'Zoom Out',
+  'menu.newAgent': 'New Agent',
+  'menu.skills': 'Skills',
+  'menu.team': 'Team',
+  'menu.account': 'Account',
+  'menu.checkUpdates': 'Check for Updates…',
+  'menu.closeWindow': 'Close Window',
+  'menu.quitApp': 'Quit Magic Slash',
 
   // ── Menu bar panel ───────────────────────────────────────────────────────
   // The tray opens the app's own window (renderer/pages/TrayPopover), not a
