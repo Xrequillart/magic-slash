@@ -12,7 +12,7 @@ import {
   type MarkerPosition, type ScrollView,
 } from '../utils/diffMarkers'
 import {
-  anchorScrollTop, buildReviewLayout, mergeRulerSegments, sumChangedFiles,
+  anchorScrollTop, buildReviewLayout, mergeRulerSegments, reviewFileKey, sumChangedFiles,
   EMPTY_REVIEW_LAYOUT, type FileMarkers, type ReviewLayout,
 } from '../utils/reviewLayout'
 import { cumulativeOffsetTop, findScrollContainer } from '../utils/scrollGeometry'
@@ -127,6 +127,11 @@ export default function FilePreviewPanel() {
   const selectedFile = useStore(s => s.selectedFile)
   const closeFilePreview = useStore(s => s.closeFilePreview)
   const activeTerminalId = useStore(s => s.activeTerminalId)
+  // The whole map, unlike the cards, which each subscribe to their own boolean: this panel
+  // has to count the folded ones, and there is no narrower selector for "how many". Its
+  // identity only changes when a card is toggled, so the cost is one re-render per fold —
+  // on a component that already re-renders on every scroll frame.
+  const collapsedFiles = useStore(s => s.collapsedFiles)
   const prevTerminalId = useRef(activeTerminalId)
   const [isClosing, setIsClosing] = useState(false)
   const isClosingRef = useRef(false)
@@ -686,6 +691,28 @@ export default function FilePreviewPanel() {
   const repoCounts = useMemo(() => (review ? sumChangedFiles(review.files) : NO_CHANGES), [review])
 
   /**
+   * How many cards are folded shut over changed lines — the navigator's own reason to stay
+   * on screen with nothing mounted to walk. See its `foldedFiles` prop for why a count of
+   * files answers a question about blocks.
+   *
+   * Files with no changed line are skipped: a folded card that never had a marked row in it
+   * is not hiding a block, and counting it would put the bar over a review of forty
+   * unchanged files.
+   *
+   * The frozen list is what it walks, which is the same list the cards are rendered from —
+   * so a key built here cannot name a file the review does not hold.
+   */
+  const foldedFiles = useMemo(() => {
+    if (!review) return 0
+    let folded = 0
+    for (const file of review.files) {
+      if (file.additions + file.deletions === 0) continue
+      if (collapsedFiles[reviewFileKey(review.repoPath, file.path)]) folded++
+    }
+    return folded
+  }, [review, collapsedFiles])
+
+  /**
    * The ruler's MARKS, which depend on the shape of the review and not on where it is
    * scrolled to.
    *
@@ -865,17 +892,17 @@ export default function FilePreviewPanel() {
           {/* Repo-wide, all of them: the counter reads over every change in the
               repository and the arrows walk the same flat list.
 
-              `hasChanges` comes from the frozen file list, not from `blocks`, and that is
-              what keeps the bar on screen when every card is folded away: the blocks are
-              measured off the rows that are MOUNTED, so collapsing the review empties them
-              while the repository's own `+N −M` has not moved. `repoCounts` is already that
-              number — the one the header shows — so the two cannot come to disagree about
-              whether there is anything here. A single-file preview has no cards to fold and
-              no repository count, so it keeps the old behaviour untouched. */}
+              `foldedFiles` is what keeps the bar on screen when the cards are folded away:
+              the blocks are measured off the rows that are MOUNTED, so folding a card takes
+              its changes out of `total` while they are still there to come back to. It is
+              deliberately NOT the repository's `+N −M` — that is true of a one-change review
+              as well, which is how this bar came to stand over a review with two greyed-out
+              arrows and nothing to point them at. A single-file preview has no cards to fold,
+              so it passes zero and keeps the behaviour it has always had. */}
           <ChangeNavigator
             current={currentIndex + 1}
             total={blocks.length}
-            hasChanges={repoCounts.added + repoCounts.removed > 0}
+            foldedFiles={foldedFiles}
             onPrevious={goToPrevious}
             onNext={goToNext}
           />
