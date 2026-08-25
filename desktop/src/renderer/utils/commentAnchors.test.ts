@@ -6,6 +6,7 @@ import {
   type AnchoredComment, type CommentTarget, type LineRange, type RowAttributes, type RowIdentity,
 } from './commentAnchors'
 import { reviewFileKey } from './reviewLayout'
+import type { ChangedLines } from '../../types'
 
 /** An ordinary row: its number is the new file's, and it carries no diff attribute. */
 function keptRow(line: number, overrides: Partial<RowAttributes> = {}): RowAttributes {
@@ -487,6 +488,24 @@ const FILE_AGAIN = 'const a = 1\nconst b = 2\nexport default a + b\n'
 const FILE_REWRITTEN = 'const a = 1\nconst b = 3\nexport default a + b\n'
 const FILE_GROWN = "import x from 'x'\nconst a = 1\nconst b = 2\nexport default a + b\n"
 
+/**
+ * The diff's shape as the read reports it, in the states the fingerprint has to tell apart —
+ * the fifth being absent altogether, which has no fixture because it is the argument left
+ * out.
+ *
+ * `DIFF_AGAIN` is a DISTINCT object holding the same numbers, which is exactly what a theme
+ * change produces: the code appearance is part of the preview's cache key, so the file is
+ * re-read over IPC and the same diff comes back in a new object. `DIFF_MOVED` is the same
+ * working file against a HEAD that moved — a commit, an amend, a rebase — where an old-side
+ * comment would otherwise re-attach to unrelated deleted code. `DIFF_CLEARED` is present and
+ * empty, the file having been committed, which is a different state of the world from a file
+ * that has no diff to report at all.
+ */
+const DIFF: ChangedLines = { added: [2], removedBefore: [2] }
+const DIFF_AGAIN: ChangedLines = { added: [2], removedBefore: [2] }
+const DIFF_MOVED: ChangedLines = { added: [2, 3], removedBefore: [5] }
+const DIFF_CLEARED: ChangedLines = { added: [], removedBefore: [] }
+
 /** The file a comment is filed under, as CodeView holds it. */
 function target(overrides: Partial<CommentTarget> = {}): CommentTarget {
   return { repoPath: '/repo', path: 'src/a.ts', fingerprint: diffFingerprint(FILE), ...overrides }
@@ -519,10 +538,44 @@ describe('diffFingerprint', () => {
     expect(diffFingerprint('')).toBe(diffFingerprint(''))
   })
 
+  it('answers the same string when the same diff arrives in a new object, which is every re-read', () => {
+    // The theme-change criterion, and the one the whole file guards: a new appearance means a
+    // new read, so the numbers come back in an object that is never the one before it. Reading
+    // the object's identity instead of its values would move the key on every theme switch and
+    // take every marker in the review with it.
+    expect(diffFingerprint(FILE, DIFF_AGAIN)).toBe(diffFingerprint(FILE, DIFF))
+  })
+
+  it('moves when the diff moves under a file whose bytes did not change, which is what a commit does', () => {
+    // The old side's whole problem. The working file is untouched, so the content says nothing
+    // has happened — but "old line 5" now names a line of a different version of the file, and
+    // a removed row stamped with that number would take the comment.
+    expect(diffFingerprint(FILE, DIFF_MOVED)).not.toBe(diffFingerprint(FILE, DIFF))
+  })
+
+  it('tells a file with no diff at all from one whose diff was cleared', () => {
+    // Absent is "there was nothing to diff" — an added file, a read that threw, a preview
+    // outside a review. Present and empty is a file that HAD a diff and has just been
+    // committed, which is precisely when its old-side comments must stop resolving.
+    expect(diffFingerprint(FILE)).not.toBe(diffFingerprint(FILE, DIFF_CLEARED))
+  })
+
+  it('tells a moved addition from a moved deletion, rather than reading the two lists as one', () => {
+    expect(diffFingerprint(FILE, { added: [2], removedBefore: [] }))
+      .not.toBe(diffFingerprint(FILE, { added: [], removedBefore: [2] }))
+  })
+
+  it('still moves with the bytes when the diff stands still', () => {
+    // Both halves are load-bearing: a line rewritten in place can leave the changed-line
+    // positions exactly where they were, and only the content catches it.
+    expect(diffFingerprint(FILE_REWRITTEN, DIFF)).not.toBe(diffFingerprint(FILE, DIFF))
+  })
+
   it('carries no separator of its own, so it cannot spell a second key', () => {
     // The keys below join their parts with NUL. A fingerprint containing one would let two
     // different files agree on a key by moving the seam.
     expect(diffFingerprint(FILE)).not.toContain('\u0000')
+    expect(diffFingerprint(FILE, DIFF)).not.toContain('\u0000')
   })
 })
 

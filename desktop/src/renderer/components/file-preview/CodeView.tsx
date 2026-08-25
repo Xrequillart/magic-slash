@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import CommentCard, { CommentAffordance } from './CommentCard'
 import {
-  clampQuote, commentFileKey, diffFingerprint, edgesByRow, extendRange, lineIdentityFromRow,
+  clampQuote, commentFileKey, edgesByRow, extendRange, lineIdentityFromRow,
   markersByRow, normalizeRange, rangeCovers, visibleRowForComment,
   type CommentTarget, type GutterPick, type LineRange, type RowEdges, type RowIdentity,
 } from '../../utils/commentAnchors'
@@ -38,6 +38,18 @@ interface Props {
    */
   repoPath?: string
   filePath?: string
+  /**
+   * Which version of this file the comments on it belong to — `diffFingerprint` of the read
+   * FileContentRenderer got, its content and its diff both. Undefined wherever there is no
+   * read to fingerprint, which is every case that cannot be commented on anyway.
+   *
+   * Derived up there rather than here, and that is not an arbitrary split: the fingerprint
+   * needs the read's `changedLines`, which is what makes the key move when HEAD moves and
+   * which never reaches this component. It arrives as a STRING for the same reason the two
+   * paths above do — `memo(FileContentRenderer)` holds only while every prop is
+   * referentially stable, and `changedLines` is a fresh object on every read.
+   */
+  fingerprint?: string
   /**
    * Whether the reader may comment on this file. FALSE by default, and the default is the
    * safe one. Why each caller differs is written down ONCE, on `commentable` in
@@ -486,24 +498,19 @@ type OpenCard =
   | { mode: 'existing'; id: string }
 
 export default function CodeView({
-  content, highlightedHtml, appearance = 'dark', blend = true, repoPath, filePath, commentable = false,
+  content, highlightedHtml, appearance = 'dark', blend = true, repoPath, filePath, fingerprint,
+  commentable = false,
 }: Props) {
   const htmlRef = useRef<HTMLDivElement>(null)
   const t = useT()
 
-  const commenting = commentable && repoPath !== undefined && filePath !== undefined
-
   /**
-   * Which version of this file the comments on screen belong to — see `diffFingerprint`.
-   *
-   * MEMOISED on the content, because this is a walk of the whole file and this component
-   * re-renders for reasons that have nothing to do with it: the panel above re-renders on
-   * every scroll frame to move the ruler's indicator, and a drag across the gutter sets
-   * state on every row it crosses. `content` is the only thing that can change the answer,
-   * so it is the only dependency — and a preview that cannot be commented on never hashes
-   * anything at all.
+   * Whether this document takes comments at all: the reader may, and everything needed to
+   * file one under a version of this file arrived. Read as one fact rather than four checks
+   * because it gates the store selector, the pointer handlers and the marker sweep alike.
    */
-  const fingerprint = useMemo(() => (commenting ? diffFingerprint(content) : null), [commenting, content])
+  const commenting = commentable && repoPath !== undefined && filePath !== undefined
+    && fingerprint !== undefined
 
   /**
    * The file these comments are filed under: the two paths and that fingerprint.
@@ -512,9 +519,7 @@ export default function CodeView({
    * so the version the comments are READ under and the version they are WRITTEN under
    * cannot come to differ — which is the whole failure mode a fingerprint introduces.
    */
-  const target: CommentTarget | null = commenting && fingerprint !== null
-    ? { repoPath, path: filePath, fingerprint }
-    : null
+  const target: CommentTarget | null = commenting ? { repoPath, path: filePath, fingerprint } : null
   const commentKey = target ? commentFileKey(target) : null
   // `NO_COMMENTS` rather than `?? []`: zustand compares a selector's result by identity,
   // and a fresh array per call would re-render every mounted CodeView on every unrelated

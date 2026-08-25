@@ -16,6 +16,7 @@
  * first. That is why every range below carries a `side`.
  */
 
+import type { ChangedLines } from '../../types'
 import { reviewFileKey } from './reviewLayout'
 
 /** Which file's numbering a line number belongs to. */
@@ -372,50 +373,84 @@ export function clampQuote(text: string): string {
  * Losing a comment whose file moved under it is the accepted cost; a comment pointing at
  * the wrong lines is not.
  *
- * Derived from the file's CONTENT, and the first reason is what decides it: the content is
- * the only input BOTH paths hold. CodeView reads `fileComments` and writes them from the
- * same `content` prop through this one function, while the store holds no diff, no branch
- * and no commit, and the row identities that would give a changed-line set only exist once
- * the HTML is in the DOM — after the read. A fingerprint the two paths could spell
- * differently is worse than none at all: every comment would become unreachable the
- * instant it was saved.
+ * Two inputs, one per SIDE a comment can be on, because neither of them covers the other.
  *
- * The second reason is that the content is what the ANCHORS are relative to. Hashing only
- * the changed lines is the minimal thing that protects line NUMBERS, and it misses a line
- * rewritten in place — the numbers still land, and the stored quote now says something the
- * file does not. Content catches both. It is also the stabler of the two in the direction
- * that matters: `git diff HEAD` moves the moment a commit is made without a byte of the
- * file changing, and a comment's anchors — line numbers in the file as it stands — are
- * still exactly right after that.
+ * The CONTENT is what a `side: 'new'` comment is relative to, and the first reason for it is
+ * that both paths hold it: the fingerprint is derived ONCE from the read result and handed
+ * down as a string, so the version comments are read under and the version they are written
+ * under are literally the same value. The row identities that would give a changed-line set
+ * only exist once the HTML is in the DOM — after the read — and a fingerprint the two paths
+ * could spell differently is worse than none at all: every comment would become unreachable
+ * the instant it was saved. The second reason is that the content catches what line
+ * positions alone cannot, a line rewritten IN PLACE: the numbers still land, and the stored
+ * quote now says something the file does not.
  *
- * It therefore moves for exactly one reason, the bytes changing, so everything that leaves
- * the bytes alone keeps the comments: folding a card shut, scrolling forty files away,
- * switching file, closing the drawer and opening it again, and a theme change or a re-read
- * — those two replace the highlighted HTML and read the same file back, so `content` comes
- * back byte for byte and this answers the same string.
+ * The CHANGED LINES are for the OLD side, which the content cannot protect. A `side: 'new'`
+ * comment names line N of the working file, so while the bytes stand still it keeps pointing
+ * at the same code. A `side: 'old'` comment names line N of the file at HEAD — and HEAD
+ * moves on a commit, an amend, a rebase or a checkout without a byte of the working file
+ * changing. "Old line 40" then means a line of a different version of the file, and if the
+ * new diff happens to carry a removed row stamped `data-line="40"` the comment attaches to
+ * unrelated deleted code: `rangeCovers` compares a side and a number, and there is nothing
+ * else in an anchor that could stop it. `changedLines` is the one thing in the read that
+ * moves when the diff moves, so folding it in is what makes the key move with HEAD.
+ *
+ * Hashed by VALUE, never by object identity, because a fresh `ChangedLines` arrives on every
+ * read: the code appearance is part of the preview's cache key, so a theme change re-reads
+ * the file over IPC and gets the same numbers in a new object. That read has to answer the
+ * same string, or switching theme would take every marker in the review with it.
+ *
+ * ABSENT is its own answer rather than an empty diff. `changedLines` is undefined wherever
+ * there is no diff to describe — an added, untracked or deleted file, a read whose `git
+ * diff` threw, a preview outside a review — while a file whose diff was CLEARED (everything
+ * committed, so `git diff HEAD` reports nothing) is a different state of the world that has
+ * an empty diff to report. Collapsing the two would let a file's old-side comments survive
+ * exactly the commit that made them stale.
+ *
+ * So it moves for two reasons — the bytes changing, or the diff moving under them — and
+ * everything a reading session does keeps the comments: folding a card shut, scrolling forty
+ * files away, switching file, closing the drawer and opening it again, and a theme change or
+ * a re-read, which read the same file back at the same HEAD and so answer the same string.
  */
-export function diffFingerprint(content: string): string {
-  // FNV-1a, 32-bit. Not cryptographic and not meant to be: the question is "are these the
-  // same bytes", asked of a string the caller already holds, and `crypto`'s digest is
-  // asynchronous — a key that arrives a tick after the render that needed it is a render
-  // with no comments on it.
+export function diffFingerprint(content: string, changedLines?: ChangedLines): string {
+  // The diff is a SECOND segment rather than more bytes fed to the content's hash, so that
+  // "absent" can be spelled as nothing at all: `fnv1a` always emits at least one base-36
+  // digit, so an empty segment is a value no present diff can produce — which is what keeps
+  // absent from colliding with a diff whose two lists happen to be empty.
+  //
+  // The two lists are joined on a newline, which no decimal number contains, so an addition
+  // moving cannot be spelled the same way as a deletion moving.
+  const diff = changedLines
+    ? fnv1a(`${changedLines.added.join(',')}\n${changedLines.removedBefore.join(',')}`)
+    : ''
+  // The content's length rides along: it costs nothing, and it takes the two files that would
+  // have to collide from "the same 32 bits" to "the same 32 bits at the same length".
+  return `${content.length.toString(36)}-${fnv1a(content)}-${diff}`
+}
+
+/**
+ * FNV-1a, 32 bits, in base 36.
+ *
+ * Not cryptographic and not meant to be: the question is "are these the same values", asked
+ * of a string the caller already holds, and `crypto`'s digest is asynchronous — a key that
+ * arrives a tick after the render that needed it is a render with no comments on it.
+ */
+function fnv1a(text: string): string {
   let hash = 0x811c9dc5
-  for (let i = 0; i < content.length; i++) {
-    hash ^= content.charCodeAt(i)
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i)
     // `Math.imul`, because `hash * 16777619` leaves the 32-bit range and starts losing low
     // bits to the double's rounding — the very bits the next character mixes in.
     hash = Math.imul(hash, 0x01000193)
   }
-  // The length rides along: it costs nothing, and it takes the two files that would have to
-  // collide from "the same 32 bits" to "the same 32 bits at the same length".
-  return `${content.length.toString(36)}-${(hash >>> 0).toString(36)}`
+  return (hash >>> 0).toString(36)
 }
 
 /** A file as the comment store files it: which file, and which version of it. */
 export interface CommentTarget {
   repoPath: string
   path: string
-  /** `diffFingerprint(content)` of the file these comments belong to. */
+  /** `diffFingerprint` of the read these comments belong to: its content AND its diff. */
   fingerprint: string
 }
 

@@ -1,5 +1,5 @@
-import { memo, useEffect, useState } from 'react'
-import type { FilePreviewResult } from '../../../types'
+import { memo, useEffect, useMemo, useState } from 'react'
+import type { ChangedLines, FilePreviewResult } from '../../../types'
 import CodeView from './CodeView'
 import MarkdownView from './MarkdownView'
 import ImageView from './ImageView'
@@ -9,6 +9,7 @@ import { useCodeAppearance } from '../../hooks/useCodeAppearance'
 import { evictToBudget } from '../../utils/boundedCache'
 import { createTaskQueue } from '../../utils/taskQueue'
 import { isMarkdownPath, type MarkdownMode } from '../../utils/markdownPath'
+import { diffFingerprint } from '../../utils/commentAnchors'
 import { useT } from '../../i18n'
 
 interface Props {
@@ -107,10 +108,10 @@ interface Props {
    * point of a flag: turning it on there is a decision someone takes, not a consequence of
    * the props that caller happened to be passing already.
    *
-   * Handed straight down to CodeView with the two paths, which is a departure from this
-   * file's general rule that a store read beats a new prop — see CodeView's own props for
-   * why the store cannot answer "which file is this". All three are a string or a boolean,
-   * so `memo` below still holds.
+   * Handed straight down to CodeView with the two paths and the fingerprint derived below,
+   * which is a departure from this file's general rule that a store read beats a new prop —
+   * see CodeView's own props for why the store cannot answer "which file is this". All four
+   * are a string or a boolean, so `memo` below still holds.
    */
   commentable?: boolean
 }
@@ -232,6 +233,36 @@ function ContentSkeleton({ reservedHeight }: { reservedHeight?: number }) {
   )
 }
 
+/** The diff positions of a read, or undefined wherever the read describes no diff. */
+function changedLinesOf(value: FileResult): ChangedLines | undefined {
+  if ('error' in value || value.encoding !== 'utf8') return undefined
+  return value.changedLines
+}
+
+/**
+ * Whether a fresh read says the same thing as the one on screen, so the previous object can
+ * be KEPT — which is what stops a refresh that found no change from re-running the markdown
+ * parse over the whole document.
+ *
+ * The bytes are not the whole of "the same thing", and that is the point of this function
+ * rather than one comparison inline. `diffFingerprint` reads `changedLines` as well as the
+ * content, so keeping the previous object when HEAD has moved under unchanged bytes would
+ * keep the previous comment key — exactly the case the diff half of the fingerprint exists
+ * for. Compared by VALUE, since the read hands back a new object every time.
+ */
+function sameRead(prev: FileResult | null, next: FileResult): boolean {
+  if (!prev || !('content' in prev) || !('content' in next)) return false
+  if (prev.content !== next.content) return false
+  const before = changedLinesOf(prev)
+  const after = changedLinesOf(next)
+  if (before === undefined || after === undefined) return before === after
+  return sameNumbers(before.added, after.added) && sameNumbers(before.removedBefore, after.removedBefore)
+}
+
+function sameNumbers(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((n, i) => n === b[i])
+}
+
 /** The collapsed rendering of `result`, or undefined when the read produced none. */
 function changesOnlyOf(result: FileResult | null): string | undefined {
   if (!result || 'error' in result || result.encoding !== 'utf8') return undefined
@@ -269,12 +300,13 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
         if (cancelled) return Promise.resolve(null)
         return window.electronAPI.config.readFile(repoPath, filePath, status)
       })
-      // Identical bytes keep the previous object, so a refresh that found no change
-      // does not re-run the markdown parse over the whole document.
+      // An unchanged read keeps the previous object, so a refresh that found nothing new
+      // does not re-run the markdown parse over the whole document — see `sameRead` for
+      // why "unchanged" is the bytes AND the diff.
       .then((res: FileResult | null) => {
         if (cancelled || res === null) return
         remember(key, res)
-        setResult(prev => (prev && 'content' in prev && 'content' in res && prev.content === res.content ? prev : res))
+        setResult(prev => (sameRead(prev, res) ? prev : res))
       })
       // A failed read is never cached: the next mount must retry rather than serve
       // the error back instantly forever.
@@ -286,6 +318,28 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
   }, [repoPath, filePath, status, refreshToken, key])
 
   const changesOnlyHtml = changesOnlyOf(result)
+
+  /**
+   * Which VERSION of this file the comments on it belong to — see `diffFingerprint`.
+   *
+   * Derived HERE rather than down in CodeView because this is where the read result lives,
+   * and the fingerprint needs the diff's shape as well as the bytes: `changedLines` is what
+   * makes the key move when HEAD moves, and it exists only on the IPC result.
+   *
+   * What goes down is the STRING, never `changedLines` itself. `memo` below holds only while
+   * every prop is referentially stable across the panel's per-scroll-frame re-renders, and
+   * the read hands back a fresh `changedLines` object every time — passing it would re-render
+   * forty shiki documents sixty times a second. A string cannot.
+   *
+   * MEMOISED, because it is a walk of the whole file and this component re-renders for
+   * reasons that have nothing to do with it. `result` only changes when a read lands, so it
+   * is the only dependency there is to have — and a preview nobody may comment on hashes
+   * nothing at all.
+   */
+  const fingerprint = useMemo(() => {
+    if (!commentable || !result || 'error' in result || result.encoding !== 'utf8') return undefined
+    return diffFingerprint(result.content, result.changedLines)
+  }, [commentable, result])
 
   // Whether this render ends at MarkdownView rather than CodeView. Derived from the
   // PROPS, above the early returns, so the effect below can read it — and so it says the
@@ -359,6 +413,7 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
          `commentable` says this is a review card — see the prop above. */
       repoPath={repoPath}
       filePath={filePath}
+      fingerprint={fingerprint}
       commentable={commentable}
     />
   )
