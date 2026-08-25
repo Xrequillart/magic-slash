@@ -478,7 +478,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 py-2 text-xs text-text-secondary flex items-center justify-start gap-2">
-        <span className="opacity-60">v0.80.1</span>
+        <span className="opacity-60">v0.81.0</span>
       </div>
     </div>
   )

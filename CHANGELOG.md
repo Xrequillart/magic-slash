@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.81.0] - 2026-08-25
+
+### Added
+
+- **Desktop**: A tasks page listing the open GitHub issues of every tracked repository
+
+### Changed
+
+- **Desktop**: The sidebar agent rows no longer show a project color dot
+- **Docs**: The release skill forbids `sed -i` for version bumps
+
+### Fixed
+
+- **Desktop**: Task reload responses are sequenced so a stale reload can't overwrite a fresher one
+
 ## [0.80.1] - 2026-08-25
 
 ### Added
@@ -2402,6 +2417,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.81.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.81.0
 [0.80.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.80.1
 [0.80.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.80.0
 [0.79.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.79.0
