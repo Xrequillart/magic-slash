@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.79.0] - 2026-08-25
+
+### Added
+
+- **Desktop**: The file drawer became a review surface for the whole repository — every changed file stacked as a collapsible card in one scroll, GitHub "Files changed" style, opened by clicking any file in the sidebar and scrolled to it
+- **Desktop**: A file card shows only its changed regions with a few lines of context, and a header button expands it to the whole file when that is not enough
+- **Desktop**: Markdown files get their diff back — raw by default, with a toggle in the card header for the rendered view
+- **Desktop**: Comment on a diff, from a floating card anchored to a text selection or to the lines you picked
+- **Desktop**: Comment on the rendered markdown too, anchored to the passage you quoted rather than to a line number
+- **Desktop**: Hand the whole review to the agent — the floating bar groups every comment by file, sends the compiled text into the active terminal, and copies it for anywhere else
+- **Desktop**: The native menu bar carries navigation and quit entries
+- **Desktop**: Anyone without a statusline gets a default one
+- **Desktop**: The account status card shows a loading placeholder instead of an empty frame
+
+### Changed
+
+- **Desktop**: The review cards are raised off a darker drawer
+- **Desktop**: The repository cards are outlined and their branch rows aligned
+
+### Fixed
+
+- **Desktop**: A file's comments are invalidated when its content changes underneath them, and a comment's fingerprint no longer folds in the diff's own line numbers
+- **Desktop**: The change navigator stays visible when every file card is folded away, and hides on a one-block review with nothing folded
+- **Desktop**: Scrolls inside an anchored panel are ignored instead of moving the view behind it
+
 ## [0.78.0] - 2026-08-24
 
 ### Added
@@ -2359,6 +2384,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.79.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.79.0
 [0.78.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.78.0
 [0.77.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.77.1
 [0.77.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.77.0
