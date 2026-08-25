@@ -1346,6 +1346,7 @@ export const en = {
   'settings.defaultAgentType.title': 'Default agent type',
   'settings.defaultAgentType.description': 'What a new agent is, before any skill says otherwise. You can still switch it from the title bar until the agent reports a status.',
   'agentInfo.spec.open': 'Open the spec full screen',
+  'agentInfo.spec.scrollToTop': 'Back to top',
   'toast.commandSent': 'Sent {command} to the agent',
   'toast.commandCopied': 'Auto-launch disabled — {command} copied to clipboard',
   'toast.commandFailed': 'Failed to launch command',

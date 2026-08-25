@@ -1323,6 +1323,7 @@ export const fr: Record<keyof typeof en, string> = {
   'settings.defaultAgentType.title': 'Type d’agent par défaut',
   'settings.defaultAgentType.description': 'Ce qu’est un nouvel agent, avant qu’une skill n’en décide autrement. Tu peux encore le changer depuis la barre de titre tant que l’agent n’a pas remonté de statut.',
   'agentInfo.spec.open': 'Ouvrir la spec en plein écran',
+  'agentInfo.spec.scrollToTop': 'Revenir en haut',
   'toast.commandSent': '{command} envoyé à l’agent',
   'toast.commandCopied': 'Lancement automatique désactivé — {command} copié dans le presse-papiers',
   'toast.commandFailed': 'Impossible de lancer la commande',

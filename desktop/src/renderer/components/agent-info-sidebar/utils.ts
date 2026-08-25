@@ -266,23 +266,22 @@ export function splitSpecPath(specPath: string | undefined): { repoPath: string;
 }
 
 /**
- * Should the spec view stay pinned to the bottom as Claude Code appends to the file?
+ * Has the reader scrolled the spec away from its top?
  *
- * Takes the three numbers rather than an `Element` on purpose: the suite runs on
- * node with no DOM, so a signature that named `HTMLElement` would be untestable —
- * and this threshold is exactly the part worth testing.
+ * The spec panel opens at the TOP — a spec is read from its first line, not tailed
+ * like a log — so the only scroll question left is whether to offer the way back up.
  *
- * The tolerance absorbs sub-pixel scroll positions and the last partial line: a
- * strict equality would release the follow on almost every update and leave the
- * reader stranded mid-spec.
+ * Takes the number rather than an `Element` on purpose: the suite runs on node with
+ * no DOM, so a signature that named `HTMLElement` would be untestable — and this
+ * threshold is exactly the part worth testing.
+ *
+ * The tolerance absorbs sub-pixel scroll positions and the elastic overscroll macOS
+ * reports: a strict `> 0` would flash the control on a touchpad twitch.
  */
-export const SPEC_FOLLOW_TOLERANCE_PX = 32
+export const SPEC_SCROLL_TOLERANCE_PX = 32
 
-export function shouldAutoFollow(
-  metrics: { scrollTop: number; scrollHeight: number; clientHeight: number },
-): boolean {
-  const distanceFromBottom = metrics.scrollHeight - metrics.clientHeight - metrics.scrollTop
-  return distanceFromBottom <= SPEC_FOLLOW_TOLERANCE_PX
+export function hasScrolledFromTop(metrics: { scrollTop: number }): boolean {
+  return metrics.scrollTop > SPEC_SCROLL_TOLERANCE_PX
 }
 
 

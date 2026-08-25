@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Maximize2 } from 'lucide-react'
 import { useStore } from '../../store'
 import FileContentRenderer from '../file-preview/FileContentRenderer'
 import { StatusPill } from './StatusPill'
 import { TicketMark } from './TicketMark'
 import { AgentTitleField, type AgentIdentity } from './AgentIdentityFields'
-import { shouldAutoFollow } from './utils'
+import { hasScrolledFromTop } from './utils'
 import { useT } from '../../i18n'
 
 interface SpecPanelProps {
@@ -51,8 +51,8 @@ interface SpecPanelProps {
  * away. The expand control hands the same file to the existing FilePreviewPanel
  * drawer for the moments a wider read is wanted.
  *
- * Give it `key={specPath}` so a new file starts fresh: expanded, and pinned to the
- * bottom of the NEW spec rather than wherever the previous one had been left.
+ * Give it `key={specPath}` so a new file starts fresh: expanded, and at the top of
+ * the NEW spec rather than wherever the previous one had been left.
  */
 export function SpecPanel({
   identity,
@@ -70,47 +70,27 @@ export function SpecPanel({
   const setSelectedFile = useStore(s => s.setSelectedFile)
 
   const bodyRef = useRef<HTMLDivElement>(null)
-  const contentRef = useRef<HTMLDivElement>(null)
   // The panel does not collapse. It is the only card a planning agent has, and the
   // spec being on screen without a click is the whole point — a fold would put the
   // one thing worth reading one interaction away.
-  const [isFollowing, setIsFollowing] = useState(true)
+  //
+  // It opens at the TOP and stays where the reader puts it: a spec is a document to
+  // be read from its first line, not a log to be tailed, so nothing here chases the
+  // end of the file. A scroll container starts at 0 and keeps its offset as content
+  // is appended below, which is exactly the wanted behaviour — hence no effect.
+  const [showScrollToTop, setShowScrollToTop] = useState(false)
 
-  const pinToBottom = useCallback(() => {
+  const scrollToTop = useCallback(() => {
     const body = bodyRef.current
     if (!body) return
-    body.scrollTop = body.scrollHeight
+    body.scrollTop = 0
   }, [])
 
-  // Pin before the browser paints when the panel opens. The content itself lands
-  // later, when the read resolves — that is what the observer below is for.
-  useLayoutEffect(() => {
-    if (!isFollowing) return
-    pinToBottom()
-  }, [isFollowing, pinToBottom])
-
-  // The read is asynchronous, so the height that matters arrives after the effect
-  // above has run. Observing our own wrapper — a node that survives every swap
-  // FileContentRenderer makes between spinner, error and content — is what keeps
-  // the view pinned as Claude Code appends to the file.
-  useEffect(() => {
-    const content = contentRef.current
-    if (!content || !isFollowing) return
-
-    const observer = new ResizeObserver(pinToBottom)
-    observer.observe(content)
-    return () => observer.disconnect()
-  }, [isFollowing, pinToBottom])
-
-  // Scrolling up releases the follow; scrolling back to the bottom re-arms it.
+  // The control only earns its place once the top is actually off screen.
   const handleScroll = useCallback(() => {
     const body = bodyRef.current
     if (!body) return
-    setIsFollowing(shouldAutoFollow({
-      scrollTop: body.scrollTop,
-      scrollHeight: body.scrollHeight,
-      clientHeight: body.clientHeight,
-    }))
+    setShowScrollToTop(hasScrolledFromTop({ scrollTop: body.scrollTop }))
   }, [])
 
   // The card's heading. With no repository attached the spec's own file name stands
@@ -192,29 +172,24 @@ export function SpecPanel({
             onScroll={handleScroll}
             className="overflow-y-auto rounded-b-xl border-t border-line flex-1 min-h-0"
           >
-            <div ref={contentRef}>
-              {/* Pinned: a spec is read with `status: ''`, so it never gets diff
-                  annotation and raw markdown would cost the reader the formatting for
-                  nothing. */}
-              <FileContentRenderer
-                repoPath={repoPath}
-                filePath={filePath}
-                status=""
-                markdownMode="rendered"
-                refreshToken={refreshToken}
-                notFoundLabel={t('agentInfo.spec.drafting')}
-              />
-            </div>
+            {/* Pinned: a spec is read with `status: ''`, so it never gets diff
+                annotation and raw markdown would cost the reader the formatting for
+                nothing. */}
+            <FileContentRenderer
+              repoPath={repoPath}
+              filePath={filePath}
+              status=""
+              markdownMode="rendered"
+              refreshToken={refreshToken}
+              notFoundLabel={t('agentInfo.spec.drafting')}
+            />
           </div>
-          {!isFollowing && (
+          {showScrollToTop && (
             <button
-              onClick={() => {
-                setIsFollowing(true)
-                pinToBottom()
-              }}
+              onClick={scrollToTop}
               className="absolute bottom-3 right-3 z-10 bg-ink/15 hover:bg-ink/25 text-ink/70 px-3 py-1 rounded-full text-[10px] transition-all duration-200 border-none cursor-pointer"
             >
-              {t('terminalView.scrollToBottom')}
+              {t('agentInfo.spec.scrollToTop')}
             </button>
         )}
       </div>

@@ -8,8 +8,8 @@ import {
   buildTicketLink,
   getSpecPanelMode,
   splitSpecPath,
-  shouldAutoFollow,
-  SPEC_FOLLOW_TOLERANCE_PX,
+  hasScrolledFromTop,
+  SPEC_SCROLL_TOLERANCE_PX,
   STATUSES_BY_TYPE,
   resolveAgentType,
   canChangeAgentType,
@@ -240,35 +240,21 @@ describe('splitSpecPath', () => {
   })
 })
 
-describe('shouldAutoFollow', () => {
-  it('follows while the view sits at the bottom', () => {
-    expect(shouldAutoFollow({ scrollTop: 400, scrollHeight: 1000, clientHeight: 600 })).toBe(true)
+describe('hasScrolledFromTop', () => {
+  it('stays quiet at the top, where the panel opens', () => {
+    expect(hasScrolledFromTop({ scrollTop: 0 })).toBe(false)
   })
 
-  it('follows within the tolerance of the bottom', () => {
-    // 1000 - 600 - 380 = 20px from the bottom: a partial last line, not a reader
-    // who scrolled away.
-    expect(shouldAutoFollow({ scrollTop: 380, scrollHeight: 1000, clientHeight: 600 })).toBe(true)
-    expect(shouldAutoFollow({
-      scrollTop: 400 - SPEC_FOLLOW_TOLERANCE_PX,
-      scrollHeight: 1000,
-      clientHeight: 600,
-    })).toBe(true)
+  it('stays quiet within the tolerance', () => {
+    // A touchpad twitch or macOS overscroll, not a reader who moved down the spec.
+    expect(hasScrolledFromTop({ scrollTop: 12 })).toBe(false)
+    expect(hasScrolledFromTop({ scrollTop: SPEC_SCROLL_TOLERANCE_PX })).toBe(false)
   })
 
-  it('releases once the reader scrolls further up than the tolerance', () => {
-    expect(shouldAutoFollow({
-      scrollTop: 400 - SPEC_FOLLOW_TOLERANCE_PX - 1,
-      scrollHeight: 1000,
-      clientHeight: 600,
-    })).toBe(false)
-    expect(shouldAutoFollow({ scrollTop: 0, scrollHeight: 1000, clientHeight: 600 })).toBe(false)
+  it('offers the way back once the reader scrolls past the tolerance', () => {
+    expect(hasScrolledFromTop({ scrollTop: SPEC_SCROLL_TOLERANCE_PX + 1 })).toBe(true)
+    expect(hasScrolledFromTop({ scrollTop: 900 })).toBe(true)
   })
-
-  it('follows when the content is shorter than the view', () => {
-    expect(shouldAutoFollow({ scrollTop: 0, scrollHeight: 200, clientHeight: 600 })).toBe(true)
-  })
-
 })
 
 describe('canCloseAgent', () => {
