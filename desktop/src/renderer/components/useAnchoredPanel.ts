@@ -69,18 +69,42 @@ export function useAnchoredPanel(open: boolean, close: () => void, width: number
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
     }
+    /**
+     * A scroll anywhere but INSIDE the panel closes it.
+     *
+     * The listener has to be capture-phase — see below — which means it fires for a scroll
+     * in any descendant of the window, the panel's own content included. The panel's own
+     * scrolling moves nothing: there is no trigger to re-anchor to and nothing to close,
+     * and it is how you reach the entries past a `max-h`, so closing on it would make a
+     * long list unusable.
+     *
+     * This test is the twin's, word for word — `webapp/components/Dropdown.tsx` has always
+     * had it — so this is a DIVERGENCE being closed rather than a lesson learned from a new
+     * caller, and the parity claimed at the top of this file is what it restores. It was
+     * simply invisible here while every caller's panel was a short list that could not emit
+     * the event; nothing changes for those pickers.
+     *
+     * The half the hook cannot supply: a panel that scrolls must also carry
+     * `overscroll-contain`, or a wheel at either end of it chains outwards into a scroll
+     * this listener correctly reads as outside — and dismisses the panel at the moment the
+     * reader reaches the bottom of the list. The twin pairs the two the same way.
+     */
+    const onScroll = (e: Event) => {
+      if (e.target instanceof Node && panelRef.current?.contains(e.target)) return
+      close()
+    }
 
     document.addEventListener('mousedown', onPointerDown)
     document.addEventListener('keydown', onKeyDown)
     window.addEventListener('resize', close)
     // capture: a scroll on ANY ancestor moves the trigger and leaves the panel behind,
     // and scroll does not bubble.
-    window.addEventListener('scroll', close, true)
+    window.addEventListener('scroll', onScroll, true)
     return () => {
       document.removeEventListener('mousedown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('resize', close)
-      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('scroll', onScroll, true)
     }
   }, [open, close])
 
