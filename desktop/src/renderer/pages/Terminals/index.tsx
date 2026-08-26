@@ -12,6 +12,23 @@ import { BTN_PRIMARY } from '../../theme/controls'
 const DEFAULT_PATH = '~/Documents'
 const MAX_AGENTS = 12
 
+/**
+ * What a `new-terminal` event may carry.
+ *
+ * Every field is optional, and the whole payload may be absent, because most
+ * dispatchers send nothing at all: the sidebar's "+" fires a `CustomEvent` with no
+ * detail (`null`), the native File menu a plain `Event` (`undefined`), and ⌘N calls
+ * `createTerminal` directly. Those three must keep meaning "a new agent, wherever
+ * the default is" — the payload exists for the callers that DO know where the agent
+ * belongs and what to say to it, like the Tasks page starting one on an issue.
+ */
+export interface NewTerminalDetail {
+  /** Working directory to open the agent in. Falls back to DEFAULT_PATH. */
+  cwd?: string
+  /** First prompt handed to the fresh agent, e.g. `/magic:start <issue url>`. */
+  initialPrompt?: string
+}
+
 export function TerminalsPage() {
   const { terminals, activeTerminalId, launchClaudeTerminal, setActiveTerminal, duplicateAgent } = useTerminals()
   const { scriptTerminals } = useScriptRunner()
@@ -55,7 +72,16 @@ export function TerminalsPage() {
     return false
   }
 
-  const handleCreateTerminal = async () => {
+  /**
+   * The one way an agent is created on this page.
+   *
+   * Left and right pane were two copies of this, differing only in the three lines
+   * that place the new terminal — and the copies had already drifted: the right-hand
+   * one never closed the modal, so a page that launched an agent from inside one
+   * (Tasks, on an issue) stayed open over the agent it had just started. One body
+   * with a `pane` argument is what stops the next guard going missing the same way.
+   */
+  const createTerminal = async (detail?: NewTerminalDetail | null, pane: 'left' | 'right' = 'left') => {
     if (isCreating) return
 
     // Block creation if max agents reached
@@ -69,29 +95,13 @@ export function TerminalsPage() {
     setIsCreating(true)
     try {
       const name = getNextTerminalName()
-      await launchClaudeTerminal(name, DEFAULT_PATH)
+      const terminal = await launchClaudeTerminal(name, detail?.cwd || DEFAULT_PATH, detail?.initialPrompt)
+      if (pane === 'right') {
+        moveTerminalToPane(terminal.id, 'right')
+        setSplitTerminalId(terminal.id)
+        setFocusedPane('secondary')
+      }
       closeModal()
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : t('terminals.createFailed'), 'error')
-    } finally {
-      setIsCreating(false)
-    }
-  }
-
-  const handleCreateTerminalInRightPane = async () => {
-    if (isCreating) return
-    if (terminals.length >= MAX_AGENTS) {
-      showToast(t('terminals.maxAgents', { count: MAX_AGENTS }), 'error')
-      return
-    }
-    if (await blockOnInvalidRepos()) return
-    setIsCreating(true)
-    try {
-      const name = getNextTerminalName()
-      const terminal = await launchClaudeTerminal(name, DEFAULT_PATH)
-      moveTerminalToPane(terminal.id, 'right')
-      setSplitTerminalId(terminal.id)
-      setFocusedPane('secondary')
     } catch (error) {
       showToast(error instanceof Error ? error.message : t('terminals.createFailed'), 'error')
     } finally {
@@ -108,12 +118,13 @@ export function TerminalsPage() {
 
   // Listen for new terminal event from sidebar
   useEffect(() => {
-    const handleNewTerminal = () => {
-      if (isSplitMode && focusedPane === 'secondary') {
-        handleCreateTerminalInRightPane()
-      } else {
-        handleCreateTerminal()
-      }
+    const handleNewTerminal = (event: Event) => {
+      // Read through the cast rather than assuming it: `detail` is `null` on the
+      // sidebar's CustomEvent and missing entirely on the File menu's plain Event.
+      // `createTerminal` takes both, so either still means "a new agent, at the
+      // default, with nothing to say to it".
+      const detail = (event as CustomEvent<NewTerminalDetail | null>).detail
+      createTerminal(detail, isSplitMode && focusedPane === 'secondary' ? 'right' : 'left')
     }
 
     window.addEventListener('new-terminal', handleNewTerminal)
@@ -126,11 +137,7 @@ export function TerminalsPage() {
       // Check for Command+N (Mac) or Ctrl+N (Windows/Linux)
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault()
-        if (isSplitMode && focusedPane === 'secondary') {
-          handleCreateTerminalInRightPane()
-        } else {
-          handleCreateTerminal()
-        }
+        createTerminal(null, isSplitMode && focusedPane === 'secondary' ? 'right' : 'left')
       }
     }
 
@@ -285,7 +292,9 @@ export function TerminalsPage() {
           <p className="text-lg font-semibold mb-1.5">{t('terminals.emptyTitle')}</p>
           <p className="text-text-secondary text-sm leading-relaxed mb-6">{t('terminals.emptyHint')}</p>
           <button
-            onClick={handleCreateTerminal}
+            // Wrapped rather than passed straight through: the handler's first
+            // argument is now a launch detail, and a click event is not one.
+            onClick={() => createTerminal()}
             disabled={isCreating}
             className={`${BTN_PRIMARY} w-full justify-center disabled:opacity-50`}
           >
@@ -355,7 +364,7 @@ export function TerminalsPage() {
                     <Bot className="w-12 h-12 mx-auto mb-3 text-text-secondary opacity-30" />
                     <p className="text-sm text-text-secondary/50 mb-4">{t('terminals.paneEmpty')}</p>
                     <button
-                      onClick={handleCreateTerminalInRightPane}
+                      onClick={() => createTerminal(null, 'right')}
                       disabled={isCreating}
                       className={`${BTN_PRIMARY} disabled:opacity-50`}
                     >
