@@ -1647,6 +1647,11 @@ export const en = {
   'tasks.loading': 'Reading your backlog…',
   'tasks.reload': 'Reload',
   'tasks.openIssue': 'Open on GitHub',
+  // The row's copy control, and what it says once the write has landed. Two keys
+  // rather than one with a state suffix: "Copied" is a sentence about what just
+  // happened, not a variant of the verb, and a locale may not phrase it as one.
+  'tasks.copyLink': 'Copy the link',
+  'tasks.copyLinkDone': 'Link copied',
   // The per-repository counter, and the page total above it. `.one` keeps `{count}`
   // so both catalogues can decide whether to spell the number out.
   'tasks.openCount.one': '{count} open',

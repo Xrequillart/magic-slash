@@ -3,12 +3,12 @@ import { ArrowLeft, CircleCheck, CircleDot, ExternalLink, MessageSquare, Play } 
 import type { PRStatusError, RepositoryConfig, TaskIssue, TaskIssueDetail } from '../../../types'
 import { isPRStatusError } from '../../../types'
 import { useLocale, useT, type Translate } from '../../i18n'
-import { BTN, BTN_PRIMARY_STACKED } from '../../theme/controls'
+import { BTN, BTN_ICON, BTN_PRIMARY_STACKED } from '../../theme/controls'
 import { WaveLoader } from '../../components/WaveLoader'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import { StatusPill } from '../Dashboard/parts'
 import type { NewTerminalDetail } from '../Terminals'
-import { TaskErrorLines } from './TasksRepoSection'
+import { CopyLinkButton, TaskErrorLines } from './TasksRepoSection'
 
 /**
  * One issue, given the whole page — the Tasks page's second view, not a panel
@@ -379,13 +379,26 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, paneRef, onBa
         ) : (
           <span className="text-xs text-text-secondary/50 truncate">{repoName}</span>
         )}
-        <button
-          onClick={() => window.electronAPI.shell.openExternal(issue.url)}
-          className={`${BTN} ml-auto flex-shrink-0`}
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-          <span>{t('tasks.openIssue')}</span>
-        </button>
+        {/* `ml-auto` moved onto the pair's leading element: it is what pushes both
+            buttons to the right edge, and left on the second one it would have put
+            the whole gap between them instead. */}
+        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+          {/* `BTN_ICON` rather than hand-rolled classes: it is the module's
+              icon-only tier and stands the same 30px as the `BTN` beside it. */}
+          <CopyLinkButton
+            url={issue.url}
+            copyLabel={t('tasks.copyLink')}
+            copiedLabel={t('tasks.copyLinkDone')}
+            className={BTN_ICON}
+          />
+          <button
+            onClick={() => window.electronAPI.shell.openExternal(issue.url)}
+            className={`${BTN} flex-shrink-0`}
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>{t('tasks.openIssue')}</span>
+          </button>
+        </div>
       </div>
 
       {/* Title and byline, GitHub's order: what it is, then its number, then the

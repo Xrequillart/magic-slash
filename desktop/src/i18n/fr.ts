@@ -1560,6 +1560,8 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.loading': 'Lecture de votre backlog…',
   'tasks.reload': 'Recharger',
   'tasks.openIssue': 'Ouvrir sur GitHub',
+  'tasks.copyLink': 'Copier le lien',
+  'tasks.copyLinkDone': 'Lien copié',
   'tasks.openCount.one': '{count} ouvert',
   'tasks.openCount.other': '{count} ouverts',
   'tasks.openCount.truncated': '{count} affichés sur {total} ouverts',

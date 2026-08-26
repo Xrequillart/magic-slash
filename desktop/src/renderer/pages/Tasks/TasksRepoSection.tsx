@@ -1,5 +1,5 @@
-import { memo } from 'react'
-import { AlertTriangle, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
+import { memo, useEffect, useRef, useState } from 'react'
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Copy, ExternalLink } from 'lucide-react'
 import type { PRWatchError, TaskIssue } from '../../../types'
 import type { TaskRow } from '../../utils/taskRows'
 import { useT, type MessageKey, type Translate } from '../../i18n'
@@ -82,6 +82,88 @@ function subIssuesLabel(subIssues: NonNullable<TaskIssue['subIssues']>, t: Trans
 }
 
 /**
+ * How long the confirmation shows before the button goes back to offering the copy.
+ * The same two seconds the review-comments bar uses — long enough to be read, short
+ * enough that a row left on screen does not keep claiming a copy that has scrolled
+ * out of anyone's memory.
+ */
+const COPIED_MS = 2000
+
+/**
+ * The issue's URL, onto the clipboard.
+ *
+ * Icon-only in both places it appears, for the same reason each time: it sits
+ * immediately left of a worded "Open on GitHub", and a second set of words there
+ * takes its width from the one element that has none to give — the issue's title on
+ * a list row, the condensed title in the detail page's bar. The hover text is the
+ * label.
+ *
+ * Exported alongside `TaskErrorLines` and for the same reason: the copy offered on a
+ * list row and the copy offered on that issue's own page must not confirm
+ * differently, or hold the confirmation for a different length of time.
+ *
+ * Its own component rather than state on the caller, so the two seconds of `Check`
+ * for ONE issue do not re-render every other issue in the repository.
+ */
+export function CopyLinkButton({
+  url,
+  copyLabel,
+  copiedLabel,
+  className,
+}: {
+  url: string
+  copyLabel: string
+  copiedLabel: string
+  /**
+   * The button's box. Supplied by the caller for the reason `TaskErrorLines` takes
+   * its own: the two surfaces sit next to buttons of DIFFERENT sizes — a list row's
+   * hand-rolled pill, the detail bar's `BTN` — and a control that ignores its
+   * neighbour's height is what reads as broken. What must not vary is what this
+   * owns: the icon, the write, and how long the confirmation holds.
+   */
+  className: string
+}) {
+  const [copied, setCopied] = useState(false)
+
+  // Held so it can be cancelled: the list re-reads GitHub on a reload and on a repo
+  // being untracked, either of which unmounts this row inside the window and would
+  // otherwise leave a `setCopied` scheduled against a component that is gone.
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current)
+  }, [])
+
+  return (
+    <button
+      onClick={(e) => {
+        // On a list row, the surface underneath opens the issue's page. Without
+        // this, one click would copy AND navigate away from the confirmation.
+        // Harmless in the detail page's bar, which has nothing behind it.
+        e.stopPropagation()
+        // Confirmed only once the write has resolved: the swap to `Check` asserts
+        // the link IS on the clipboard, and a refused write must not claim it.
+        // Failure leaves the button offering the copy, which is the truth.
+        navigator.clipboard.writeText(url).then(() => {
+          setCopied(true)
+          // Restarted, not stacked: a second press inside the window would let the
+          // first timer clear the confirmation early.
+          if (timer.current) clearTimeout(timer.current)
+          timer.current = setTimeout(() => setCopied(false), COPIED_MS)
+        }, () => {})
+      }}
+      title={copied ? copiedLabel : copyLabel}
+      className={className}
+    >
+      {copied ? (
+        <Check className="w-3.5 h-3.5 text-green flex-shrink-0" />
+      ) : (
+        <Copy className="w-3.5 h-3.5 flex-shrink-0" />
+      )}
+    </button>
+  )
+}
+
+/**
  * One issue, on TWO lines: what it is, then what is known about it.
  *
  * Everything used to share the title's line, and the title was the only element
@@ -104,12 +186,16 @@ function subIssuesLabel(subIssues: NonNullable<TaskIssue['subIssues']>, t: Trans
 function IssueRow({
   issue,
   openLabel,
+  copyLabel,
+  copiedLabel,
   t,
   hasAgent,
   onSelect,
 }: {
   issue: TaskIssue
   openLabel: string
+  copyLabel: string
+  copiedLabel: string
   t: Translate
   hasAgent: boolean
   onSelect: (number: number) => void
@@ -178,6 +264,15 @@ function IssueRow({
           {t('tasks.hasAgent')}
         </span>
       )}
+      <CopyLinkButton
+        url={issue.url}
+        copyLabel={copyLabel}
+        copiedLabel={copiedLabel}
+        // The Open button's own box below, minus the label's horizontal room: same
+        // border, same radius, same vertical padding, so the two pills are one
+        // height.
+        className="flex items-center px-2 py-1 text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-colors flex-shrink-0"
+      />
       <button
         onClick={(e) => {
           // The row underneath opens the issue's page; this button opens a
@@ -235,6 +330,8 @@ export const TasksRepoSection = memo(function TasksRepoSection({
 }) {
   const t = useT()
   const openLabel = t('tasks.openIssue')
+  const copyLabel = t('tasks.copyLink')
+  const copiedLabel = t('tasks.copyLinkDone')
   const Chevron = expanded ? ChevronDown : ChevronRight
   // A failed group has no issues and still has something to unfold: the reason.
   const hasRows = row.issues.length > 0 || !!row.error
@@ -270,6 +367,8 @@ export const TasksRepoSection = memo(function TasksRepoSection({
           key={issue.number}
           issue={issue}
           openLabel={openLabel}
+          copyLabel={copyLabel}
+          copiedLabel={copiedLabel}
           t={t}
           hasAgent={agentedIssues.has(String(issue.number))}
           onSelect={(number) => onSelect(row.configKey, number)}
