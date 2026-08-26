@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.82.2] - 2026-08-26
+
+### Added
+
+- **Desktop**: Selecting lines in a review opens the comment box straight away, inline under those lines and the full width of the view, and every comment on a file stays open as you read it
+- **Desktop**: An issue can be handed to an agent to discuss rather than to build — explain it, refine it or rewrite it, without starting the work
+
 ## [0.82.1] - 2026-08-26
 
 ### Added
@@ -2440,6 +2447,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.82.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.82.2
 [0.82.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.82.1
 [0.82.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.82.0
 [0.81.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.81.0
