@@ -160,6 +160,7 @@ export const fr: Record<keyof typeof en, string> = {
   'common.save': 'Enregistrer',
   'common.saving': 'Enregistrement…',
   'common.close': 'Fermer',
+  'common.stop': 'Arrêter',
   'common.loading': 'Chargement…',
   'common.remove': 'Supprimer',
   'common.add': 'Ajouter',
@@ -1408,6 +1409,9 @@ export const fr: Record<keyof typeof en, string> = {
   'scripts.test': 'Test',
   'scripts.lint': 'Lint',
   'scripts.other': 'Autre',
+
+  // ── Modale du terminal de script ─────────────────────────────────────────
+  'scriptModal.exited': 'Script terminé — sortie conservée',
 
   // ── Coquille de l'application ────────────────────────────────────────────
   'app.connecting': 'Connexion…',

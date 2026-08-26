@@ -49,8 +49,19 @@ function registerExitListener() {
   window.electronAPI.terminal.onExit(async ({ id, exitCode }) => {
     if (!id.startsWith('script-')) return
 
-    const { scriptTerminals, removeScriptTerminal, updateScriptTerminalState, setActiveTerminal } = useStore.getState()
+    const { scriptTerminals, removeScriptTerminal, updateScriptTerminalState } = useStore.getState()
     const script = scriptTerminals.find(s => s.id === id)
+
+    // Card first, buffer second. Only the toast text needs the buffer, so awaiting the
+    // round trip before this would leave the card reading "running" — and the dialog's
+    // Stop button armed — for as long as it takes to ship up to 100 KB of output.
+    if (exitCode === 0) {
+      removeScriptTerminal(id)
+    } else {
+      updateScriptTerminalState(id, 'error')
+    }
+
+    if (!script) return
 
     // Try to parse test results from the terminal buffer
     let testInfo = ''
@@ -67,22 +78,15 @@ function registerExitListener() {
     }
 
     if (exitCode === 0) {
-      removeScriptTerminal(id)
-      if (script) {
-        showToast(`"${script.scriptName}" finished successfully${testInfo}`)
-        setActiveTerminal(script.agentId)
-      }
+      showToast(`"${script.scriptName}" finished successfully${testInfo}`)
     } else {
-      updateScriptTerminalState(id, 'error')
-      if (script) {
-        showToast(`"${script.scriptName}" failed${testInfo}`, 'error')
-      }
+      showToast(`"${script.scriptName}" failed${testInfo}`, 'error')
     }
   })
 }
 
 export function useScriptRunner() {
-  const { scriptTerminals, addScriptTerminal, removeScriptTerminal, setActiveTerminal } = useStore()
+  const { scriptTerminals, addScriptTerminal, removeScriptTerminal } = useStore()
 
   // Register the global exit listener once
   registerExitListener()
@@ -107,20 +111,17 @@ export function useScriptRunner() {
       state: 'running',
     }
 
+    // No `setActiveTerminal`: launching a script must leave the main pane on the agent
+    // that was already there. `ScriptTerminalModal` is where its output is read.
     addScriptTerminal(script)
-    setActiveTerminal(id)
-  }, [addScriptTerminal, setActiveTerminal])
+  }, [addScriptTerminal])
 
+  // Nothing to switch back to: the pane was never taken. Returning to the launching agent
+  // would now steal it from whichever agent is being watched.
   const stopScript = useCallback(async (id: string) => {
-    // Find the agent that launched this script to switch back to it
-    const script = scriptTerminals.find(s => s.id === id)
-    const agentId = script?.agentId
     await window.electronAPI.scripts.stop(id)
     removeScriptTerminal(id)
-    if (agentId) {
-      setActiveTerminal(agentId)
-    }
-  }, [scriptTerminals, removeScriptTerminal, setActiveTerminal])
+  }, [removeScriptTerminal])
 
   return { scriptTerminals, runScript, stopScript }
 }

@@ -23,6 +23,9 @@ interface RunningScriptsProps {
  *
  * `error` cards stay: a script that exited non-zero is the one thing worth keeping on
  * screen, and it leaves only when it is dismissed or stopped.
+ *
+ * A click opens the script's terminal in a dialog (`ScriptTerminalModal`), which `App`
+ * owns — a script never takes the main content pane.
  */
 export function RunningScripts({ repoPath, agentId }: RunningScriptsProps) {
   const t = useT()
@@ -31,7 +34,7 @@ export function RunningScripts({ repoPath, agentId }: RunningScriptsProps) {
   // six global terminal listeners and replays `loadExistingTerminals` on mount, and this
   // component is instantiated once per attached repository. Same idiom as
   // `openRepoReview` in `RepositoryCard`.
-  const setActiveTerminal = useStore(s => s.setActiveTerminal)
+  const openScriptTerminalModal = useStore(s => s.openScriptTerminalModal)
 
   // Same predicate `ScriptsDropdown` uses to grey out an already-running entry,
   // minus the script name: here every script of the pair is wanted, whatever its state.
@@ -44,7 +47,7 @@ export function RunningScripts({ repoPath, agentId }: RunningScriptsProps) {
       {scripts.map(script => (
         <button
           key={script.id}
-          onClick={() => setActiveTerminal(script.id)}
+          onClick={() => openScriptTerminalModal(script)}
           className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs transition-all rounded-lg group text-on-brand ${
             script.state === 'running' ? 'bg-purple' : 'bg-red'
           }`}

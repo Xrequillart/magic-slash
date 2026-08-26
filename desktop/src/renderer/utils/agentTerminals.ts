@@ -1,10 +1,18 @@
 /**
  * Which terminals are AGENTS, and which only look like one from the store.
  *
- * The store's `terminals` list is not all agents. Two other kinds live in it under reserved
- * id prefixes — the sidebar's own terminal (`sidebar-`) and the script runner's
- * (`script-`) — and `activeTerminalId` can name either of them, because they are terminals a
- * user selects and types in like any other.
+ * The store's `terminals` list is not all agents. Two other kinds exist under reserved id
+ * prefixes — the sidebar's own terminal (`sidebar-`) and the script runner's (`script-`) —
+ * and `activeTerminalId` can name the `sidebar-` one, because it is a terminal a user
+ * selects and types in like any other.
+ *
+ * `script-` ids are the codebase's canonical statement of a narrower invariant, and this
+ * is where it is stated: a script's terminal is read in a dialog
+ * (`components/ScriptTerminalModal.tsx`) and never rendered in the content pane, so a
+ * `script-` id never becomes `activeTerminalId` at all. The prefix stays in the list below
+ * regardless — the MAIN process holds all three kinds in one map, which is why
+ * `main/tray/agent-state-aggregator.ts` and `hooks/useTerminals.ts` must filter on it, and
+ * this module's guarantee should not depend on one page's rendering choices.
  *
  * So a truthy `activeTerminalId` is NOT "an agent is running". Anything that writes text
  * meant for an agent has to test the id, or it writes into a plain shell: for a multi-line
