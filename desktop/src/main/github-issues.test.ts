@@ -8,7 +8,7 @@ vi.mock('child_process', () => ({
 
 import { execFileSync } from 'child_process'
 import { clearGitHubTokenCache } from './github'
-import { fetchOpenIssues, OPEN_ISSUES_QUERY } from './github-issues'
+import { fetchIssueDetail, fetchOpenIssues, ISSUE_DETAIL_QUERY, OPEN_ISSUES_QUERY } from './github-issues'
 import { isPRStatusError } from '../types'
 import type { PRStatusError, TaskIssue } from '../types'
 
@@ -35,8 +35,9 @@ function payload(nodes: unknown[], totalCount?: number) {
   return { data: { rateLimit: { remaining: 4987 }, repository: { issues } } }
 }
 
-function okOf(result: IssuesResult): { issues: TaskIssue[]; totalOpen: number } {
-  if (isPRStatusError(result)) throw new Error(`expected issues, got ${JSON.stringify(result)}`)
+/** Generic over the success type: both reads in this file answer `T | PRStatusError`. */
+function okOf<T extends object>(result: T | PRStatusError): T {
+  if (isPRStatusError(result)) throw new Error(`expected a result, got ${JSON.stringify(result)}`)
   return result
 }
 
@@ -44,7 +45,7 @@ function issuesOf(result: IssuesResult): TaskIssue[] {
   return okOf(result).issues
 }
 
-function errorOf(result: IssuesResult): PRStatusError {
+function errorOf<T extends object>(result: T | PRStatusError): PRStatusError {
   if (!isPRStatusError(result)) throw new Error(`expected an error, got ${JSON.stringify(result)}`)
   return result
 }
@@ -177,7 +178,7 @@ describe('fetchOpenIssues', () => {
   it('asks for the parent and the sub-issue summary in the same read', () => {
     // GitHub's native hierarchy rides along in this query. If it ever leaves the
     // selection, the rows silently lose their badges — no error, just less.
-    expect(OPEN_ISSUES_QUERY).toContain('parent { number title }')
+    expect(OPEN_ISSUES_QUERY).toContain('parent { number title url }')
     expect(OPEN_ISSUES_QUERY).toContain('subIssuesSummary { total completed }')
   })
 
@@ -188,8 +189,33 @@ describe('fetchOpenIssues', () => {
         title: 'feat(desktop): tasks page',
         url: 'https://github.com/acme/api/issues/233',
         createdAt: '2026-08-20T10:00:00Z',
-        parent: { number: 232, title: 'epic: the backlog surface' },
+        parent: {
+          number: 232,
+          title: 'epic: the backlog surface',
+          url: 'https://github.com/acme/api/issues/232',
+        },
         subIssuesSummary: { total: 0, completed: 0 },
+      },
+    ])))
+
+    const [issue] = issuesOf(await fetchOpenIssues('acme', 'api'))
+    expect(issue.parent).toEqual({
+      number: 232,
+      title: 'epic: the backlog surface',
+      url: 'https://github.com/acme/api/issues/232',
+    })
+  })
+
+  it('keeps a parent GitHub reported without a url, minus the link', async () => {
+    // The number is the only field a parent cannot do without: the issue page then
+    // names it instead of linking to it, which beats dropping the hierarchy.
+    mockFetch.mockResolvedValue(graphQLResponse(payload([
+      {
+        number: 233,
+        title: 'feat(desktop): tasks page',
+        url: 'https://github.com/acme/api/issues/233',
+        createdAt: '2026-08-20T10:00:00Z',
+        parent: { number: 232, title: 'epic: the backlog surface', url: null },
       },
     ])))
 
@@ -301,5 +327,125 @@ describe('fetchOpenIssues', () => {
     const error = errorOf(await fetchOpenIssues('acme', 'api'))
     expect(error.error).toBe('network')
     expect(error.message).toContain('ENOTFOUND')
+  })
+})
+
+function detailPayload(issue: unknown) {
+  return { data: { rateLimit: { remaining: 4987 }, repository: { issue } } }
+}
+
+describe('fetchIssueDetail', () => {
+  beforeEach(() => {
+    mockExec.mockReset()
+    mockExec.mockReturnValue('gho_testtoken\n')
+    clearGitHubTokenCache()
+    mockFetch.mockReset()
+    vi.stubGlobal('fetch', mockFetch)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    clearGitHubTokenCache()
+  })
+
+  it('asks only for what the list read deliberately left behind', () => {
+    // The split is the whole point: anything asked for here AND in OPEN_ISSUES_QUERY
+    // would be paid for fifty times per repository per reload to be shown once.
+    expect(ISSUE_DETAIL_QUERY).toContain('issue(number:$number)')
+    expect(ISSUE_DETAIL_QUERY).toContain('body')
+    expect(ISSUE_DETAIL_QUERY).toContain('state')
+    expect(ISSUE_DETAIL_QUERY).toContain('comments { totalCount }')
+    expect(OPEN_ISSUES_QUERY).not.toContain('body')
+    // Logins and nothing else, for the same CSP reason as the list's author field.
+    expect(ISSUE_DETAIL_QUERY).toContain('assignees(first: 10){ nodes { login } }')
+    expect(ISSUE_DETAIL_QUERY).not.toContain('avatarUrl')
+  })
+
+  it('asks for one issue by number', async () => {
+    mockFetch.mockResolvedValue(graphQLResponse(detailPayload({ state: 'OPEN', body: '' })))
+
+    await fetchIssueDetail('acme', 'api', 234)
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.variables).toEqual({ owner: 'acme', repo: 'api', number: 234 })
+  })
+
+  it('maps the whole of an issue', async () => {
+    mockFetch.mockResolvedValue(graphQLResponse(detailPayload({
+      state: 'OPEN',
+      body: '## Goal\n\nA right-hand detail panel.',
+      assignees: { nodes: [{ login: 'xrequillart' }, { login: 'ghost' }] },
+      comments: { totalCount: 3 },
+    })))
+
+    expect(okOf(await fetchIssueDetail('acme', 'api', 234))).toEqual({
+      state: 'OPEN',
+      body: '## Goal\n\nA right-hand detail panel.',
+      assignees: ['xrequillart', 'ghost'],
+      commentCount: 3,
+    })
+  })
+
+  it('reports an issue closed since the list was read', async () => {
+    // The list query filters on OPEN; this one runs later and by number, so the
+    // panel must be able to say the issue is no longer open.
+    mockFetch.mockResolvedValue(graphQLResponse(detailPayload({ state: 'CLOSED', body: 'done' })))
+
+    expect(okOf(await fetchIssueDetail('acme', 'api', 234)).state).toBe('CLOSED')
+  })
+
+  it('reads anything that is not CLOSED as open', async () => {
+    // A null state, or an enum member GitHub adds later, must not invent a third
+    // state in a panel that was opened from a list of open issues.
+    mockFetch.mockResolvedValue(graphQLResponse(detailPayload({ state: null, body: '' })))
+
+    expect(okOf(await fetchIssueDetail('acme', 'api', 234)).state).toBe('OPEN')
+  })
+
+  it('turns every hole into an empty value rather than undefined', async () => {
+    // An issue with no body, nobody assigned and no comments is the common case,
+    // and the panel renders "no body" copy — not a blank where a string should be.
+    mockFetch.mockResolvedValue(graphQLResponse(detailPayload({ state: 'OPEN' })))
+
+    expect(okOf(await fetchIssueDetail('acme', 'api', 234))).toEqual({
+      state: 'OPEN',
+      body: '',
+      assignees: [],
+      commentCount: 0,
+    })
+  })
+
+  it('reports an issue number that does not exist as not-found', async () => {
+    // HTTP 200 with `issue: null` — GitHub's answer for a number nobody opened.
+    mockFetch.mockResolvedValue(graphQLResponse(detailPayload(null)))
+
+    const error = errorOf(await fetchIssueDetail('acme', 'api', 99999))
+    expect(error.error).toBe('not-found')
+    expect(error.message).toContain('#99999')
+  })
+
+  it('shares the list read’s error ladder', async () => {
+    // Same NOT_FOUND-at-HTTP-200 shape, same mapping: the two reads have one ladder
+    // precisely so a private repository cannot fail differently in the two places.
+    mockFetch.mockResolvedValue(graphQLResponse({
+      data: { repository: null },
+      errors: [{ type: 'FORBIDDEN', message: 'Resource not accessible' }],
+    }))
+
+    expect(errorOf(await fetchIssueDetail('acme', 'api', 234)).error).toBe('forbidden')
+  })
+
+  it('never leaves the machine without a token', async () => {
+    mockExec.mockImplementation(() => { throw new Error('gh: command not found') })
+    clearGitHubTokenCache()
+
+    expect(errorOf(await fetchIssueDetail('acme', 'api', 234)).error).toBe('no-token')
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it('reports an unreachable GitHub rather than throwing at the caller', async () => {
+    mockFetch.mockRejectedValue(new Error('getaddrinfo ENOTFOUND'))
+
+    expect(errorOf(await fetchIssueDetail('acme', 'api', 234)).error).toBe('network')
   })
 })

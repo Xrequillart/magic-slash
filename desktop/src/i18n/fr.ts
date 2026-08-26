@@ -1577,6 +1577,33 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.noAddressHint':
     'Leur URL de tickets ne ressemble pas à `https://github.com/owner/repo` — corrigez-la dans Réglages → Dépôts → Tickets, ou videz-la pour utiliser le remote du dépôt.',
 
+  // ── Tâches · le panneau de détail ────────────────────────────────────────
+  'tasks.detail.loading': 'Lecture du ticket…',
+  'tasks.detail.back': 'Tickets ouverts',
+  'tasks.detail.stateOpen': 'Ouvert',
+  'tasks.detail.stateClosed': 'Fermé',
+  'tasks.detail.openedBy': '@{login} a ouvert ce ticket le {date}',
+  'tasks.detail.openedOn': 'Ouvert le {date}',
+  'tasks.detail.commentCount.one': '{count} commentaire',
+  'tasks.detail.commentCount.other': '{count} commentaires',
+  'tasks.detail.commented': 'a écrit',
+  'tasks.detail.description': 'Description',
+  'tasks.detail.labels': 'Labels',
+  'tasks.detail.assignees': 'Assigné à',
+  'tasks.detail.subIssues': 'Sous-tickets',
+  'tasks.detail.subIssuesDone': '{completed} sur {count} terminés',
+  'tasks.detail.parent': 'Ticket parent',
+  'tasks.detail.none': 'aucun',
+  'tasks.detail.emptyBody': 'Ce ticket n’a pas de description.',
+  'tasks.startAgent': 'Démarrer un agent',
+  'tasks.startAgentHint': 'Ouvre un terminal dans ce dépôt et lance /magic:start sur ce ticket.',
+  'tasks.noLocalRepo': 'Aucun dossier local n’est associé à ce dépôt sur cette machine.',
+  'tasks.noLocalRepoHint':
+    'Indiquez son dossier dans Réglages → Dépôts, et un agent pourra être démarré sur ses tickets depuis ici.',
+  'tasks.startFailed': 'Ce ticket n’a pas pu être confié à un agent.',
+  'tasks.hasAgent': 'agent',
+  'tasks.hasAgentHint': 'Un agent travaille déjà sur ce ticket.',
+
   // ── Tâches · GitHub n’est pas connecté ───────────────────────────────────
   'tasks.github.title': 'GitHub n’est pas connecté.',
   'tasks.github.body': 'Tâches lit votre backlog via la session du CLI GitHub.',

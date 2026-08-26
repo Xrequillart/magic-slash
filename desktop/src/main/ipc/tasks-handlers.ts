@@ -1,10 +1,10 @@
 import { ipcMain } from 'electron'
-import type { RepositoryConfig, TaskRepoGroup, TasksSnapshot } from '../../types'
+import type { PRStatusError, RepositoryConfig, TaskIssueDetail, TaskRepoGroup, TasksSnapshot } from '../../types'
 import { isPRStatusError } from '../../types'
 import { resolveGitHubIssuesUrl, resolveTracker } from '../../tracker'
 import { readConfig } from '../config/config'
 import { getGitHubToken } from '../github'
-import { fetchOpenIssues } from '../github-issues'
+import { fetchIssueDetail, fetchOpenIssues } from '../github-issues'
 
 /**
  * The Tasks page's one read: the OPEN issues of every configured repository whose
@@ -96,4 +96,73 @@ export function setupTasksHandlers(): void {
 
     return { githubConnected: true, groups }
   })
+
+  /**
+   * Whether an IPC payload really is a (config key, issue number) pair.
+   *
+   * The handler below used to say `args: { configKey: string; number: number }` and
+   * leave it at that — a compile-time claim about a value that arrives over the
+   * bridge at RUNTIME, where the annotation is erased. The two reads it feeds sit
+   * outside the handler's try/catch, so an `args` that was not there at all threw
+   * where that handler promises a named failure, and a `number` that was not one
+   * rode down to api.github.com to be rejected there instead of here.
+   *
+   * `Number.isInteger` rather than `typeof === 'number'`: the number reaches GitHub
+   * as an `Int!`, and `NaN`, `Infinity` and `3.5` are all of type number. A blank
+   * key is rejected too — it can only ever miss.
+   */
+  const isIssueDetailArgs = (args: unknown): args is { configKey: string; number: number } => {
+    if (typeof args !== 'object' || args === null) return false
+    const { configKey, number } = args as { configKey?: unknown; number?: unknown }
+    return typeof configKey === 'string' && configKey !== '' && Number.isInteger(number)
+  }
+
+  /**
+   * ONE issue's body, state, assignees and comment count — the half of an issue the
+   * list read deliberately leaves behind (see `TaskIssue`). Called when the detail
+   * panel opens on a row, and only then.
+   *
+   * Takes the repository's CONFIG KEY, not an owner and a repo: the renderer holds
+   * the group it drew the row from, and re-parsing the issue URL there would put a
+   * second copy of `parseOwnerRepo` on the other side of the bridge — one the
+   * renderer could then get wrong, or be handed a URL to any host at all. Resolving
+   * the key through `githubRepos` also means a repository that stopped being
+   * GitHub-tracked between the list and the click answers "not found" rather than
+   * being queried against api.github.com anyway.
+   */
+  ipcMain.handle(
+    'tasks:getIssueDetail',
+    async (_event, args: unknown): Promise<TaskIssueDetail | PRStatusError> => {
+      // Before anything else, and before the token check: a payload this handler
+      // cannot read is not a question about GitHub at all. Reported as `not-found`
+      // like the unknown-key branch below — the two failures are the same one from
+      // the panel's side, "this handler cannot say which issue you mean" — and the
+      // message carries what actually happened, since only our own renderer can
+      // produce this.
+      if (!isIssueDetailArgs(args)) {
+        return {
+          error: 'not-found',
+          message: 'Malformed tasks:getIssueDetail payload: expected a config key and an issue number.',
+        }
+      }
+
+      if (!getGitHubToken()) {
+        return { error: 'no-token', message: 'No GitHub token: run `gh auth login` to read this issue.' }
+      }
+
+      const repo = githubRepos(readConfig().repositories ?? {})
+        .find((candidate) => candidate.configKey === args.configKey)
+      if (!repo) {
+        return { error: 'not-found', message: `No GitHub-tracked repository is configured as ${args.configKey}.` }
+      }
+
+      // Same reason as the group loop above: an unexpected throw must come back as
+      // a named failure the panel can render, not reject into an empty frame.
+      try {
+        return await fetchIssueDetail(repo.owner, repo.repo, args.number)
+      } catch (err) {
+        return { error: 'network', message: err instanceof Error ? err.message : String(err) }
+      }
+    },
+  )
 }
