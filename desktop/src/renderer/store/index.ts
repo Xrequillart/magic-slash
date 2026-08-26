@@ -331,7 +331,15 @@ interface AppState {
    * call site — the list view, a paste, an import — would otherwise have to remember to
    * mint both, the same way, from a counter living in a component file.
    */
-  addFileComment: (target: CommentTarget, comment: NewFileComment) => void
+  /**
+   * File a new comment, and answer the id it was filed under.
+   *
+   * The id is RETURNED rather than left for the caller to find again, because the card that
+   * wrote the comment stays open on it: it has to switch from "a new comment" to "this stored
+   * comment" in the same handler, and the alternative — reading the array back and taking the
+   * last entry — is a guess that happens to be right while nothing else writes.
+   */
+  addFileComment: (target: CommentTarget, comment: NewFileComment) => string
   /** Rewrite a comment's body. The anchor and the quote are what the reader picked and never move. */
   updateFileComment: (target: CommentTarget, id: string, body: string) => void
   removeFileComment: (target: CommentTarget, id: string) => void
@@ -650,28 +658,35 @@ export const useStore = create<AppState>()(
           return { collapsedFiles: { ...state.collapsedFiles, [key]: !state.collapsedFiles[key] } }
         }),
 
-        addFileComment: (target, comment) => set((state) => {
-          const key = commentFileKey(target)
-          const stored: FileComment = { ...comment, id: newCommentId(), createdAt: Date.now() }
-          // Every OTHER version of this file goes in the same write. Those entries are
-          // already unreachable — nothing left in the app can compute their key — so this
-          // is the moment to drop them: the file's map is being rewritten anyway, and the
-          // alternative is one entry per save of every file anyone commented on, for as
-          // long as the session lives.
-          //
-          // Only THIS file is swept, not the whole map: a review holds forty of them, and
-          // a comment written on one says nothing about whether the other thirty-nine have
-          // moved. The arrays are carried over by reference, so the other files' selectors
-          // still see the identity they saw before — which is what `NO_COMMENTS` exists to
-          // protect.
-          const prefix = commentFileKeyPrefix(target.repoPath, target.path)
-          const fileComments: Record<string, FileComment[]> = {}
-          for (const [existing, comments] of Object.entries(state.fileComments)) {
-            if (existing === key || !existing.startsWith(prefix)) fileComments[existing] = comments
-          }
-          fileComments[key] = [...(state.fileComments[key] ?? []), stored]
-          return { fileComments }
-        }),
+        addFileComment: (target, comment) => {
+          // Minted OUTSIDE the updater so it can be returned: a value read from inside a
+          // `set` callback has nowhere to go. Nothing is lost by taking it early — this
+          // action always writes, so the id is always the one that lands.
+          const id = newCommentId()
+          set((state) => {
+            const key = commentFileKey(target)
+            const stored: FileComment = { ...comment, id, createdAt: Date.now() }
+            // Every OTHER version of this file goes in the same write. Those entries are
+            // already unreachable — nothing left in the app can compute their key — so this
+            // is the moment to drop them: the file's map is being rewritten anyway, and the
+            // alternative is one entry per save of every file anyone commented on, for as
+            // long as the session lives.
+            //
+            // Only THIS file is swept, not the whole map: a review holds forty of them, and
+            // a comment written on one says nothing about whether the other thirty-nine have
+            // moved. The arrays are carried over by reference, so the other files' selectors
+            // still see the identity they saw before — which is what `NO_COMMENTS` exists to
+            // protect.
+            const prefix = commentFileKeyPrefix(target.repoPath, target.path)
+            const fileComments: Record<string, FileComment[]> = {}
+            for (const [existing, comments] of Object.entries(state.fileComments)) {
+              if (existing === key || !existing.startsWith(prefix)) fileComments[existing] = comments
+            }
+            fileComments[key] = [...(state.fileComments[key] ?? []), stored]
+            return { fileComments }
+          })
+          return id
+        },
 
         updateFileComment: (target, id, body) => set((state) => {
           const key = commentFileKey(target)

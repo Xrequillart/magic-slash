@@ -2,12 +2,12 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { MessageSquare } from 'lucide-react'
 import MarkdownView from './MarkdownView'
 import CommentCard, { CommentAnchorNotice } from './CommentCard'
-import { useInlineCommentHost } from '../../hooks/useInlineCommentHost'
+import { scrollCardIntoView, useInlineCommentHosts } from '../../hooks/useInlineCommentHosts'
 import {
   clampQuote, commentAnchorKind, commentFileKey, type CommentTarget,
 } from '../../utils/commentAnchors'
 import { locateQuote } from '../../utils/quoteAnchors'
-import { useStore, NO_COMMENTS, type FileComment } from '../../store'
+import { useStore, NO_COMMENTS } from '../../store'
 import { useT } from '../../i18n'
 
 /**
@@ -99,10 +99,24 @@ const PILL_STEP_PX = PILL_PX + 2
 /** No markers, as ONE array — so a pass that found none does not re-render on identity. */
 const NO_MARKERS: Marker[] = []
 
-/** Which card is open: one being written on a fresh selection, or one already stored. */
-type OpenCard =
-  | { mode: 'new'; quote: string }
-  | { mode: 'existing'; id: string }
+/**
+ * The comment being written, if there is one — the passage it quotes, which is its whole
+ * anchor in this view.
+ *
+ * There used to be a second shape beside it for "a stored comment whose card is open", and it
+ * went when every stored comment became permanently open. Which stored card exists is no
+ * longer a decision — it is one per comment — so the only thing left to hold is the one card
+ * that has no comment behind it yet.
+ */
+interface Composer {
+  quote: string
+}
+
+/** The composer's host key, in the same keyspace as the comment ids. See CodeView's own. */
+const COMPOSER_KEY = '#composer'
+
+/** No anchors, as ONE map — see `NO_HOSTS` in the hook for why the identity matters. */
+const NO_ANCHORS: ReadonlyMap<string, HTMLElement> = new Map()
 
 /** A relocated comment, as the overlay draws it: an id and a place inside the document. */
 interface Marker {
@@ -446,7 +460,7 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
       : null
   ))
 
-  const [card, setCard] = useState<OpenCard | null>(null)
+  const [composer, setComposer] = useState<Composer | null>(null)
   const [markers, setMarkers] = useState<Marker[]>(NO_MARKERS)
 
   /**
@@ -629,61 +643,63 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
   }, [highlightName])
 
   /**
-   * Open the card the review's comment list asked for.
+   * Which block each card is spliced in after: one per stored quotation, plus the composer's.
    *
-   * Modelled on `CodeView`'s, guard included: keyed on `seq` rather than on the target, so a
-   * second click on the same entry does the jump again and an unrelated store write does not
-   * reopen a card the reader has since dismissed.
+   * `endContainer`, not the range's start, for the reason the diff anchors on its range's LAST
+   * row — a card belongs under what it is about, and a quotation spanning three paragraphs is
+   * about all three.
    *
-   * Line-anchored comments are left alone rather than opened here. This view has nothing to
-   * anchor a card to for one of them — the whole reason they carry a notice in the diff — and
-   * a card hanging off no passage would sit at the corner of the window saying nothing.
+   * Read off the live `Range`s rather than by searching for each passage again, the same way
+   * the pills are placed: the ranges are kept as the document reflows, so this is a walk up a
+   * parent chain per comment rather than a search of the whole document.
+   *
+   * A comment whose passage is no longer findable has no entry, so no card — `rangesRef` only
+   * holds what the relocation pass could locate. That is the same shortfall `lost` counts and
+   * `CommentAnchorNotice` reports, so a comment with nowhere to go still says so.
+   *
+   * `markers` and `quoted` are in the dependencies as PROXIES for `rangesRef` having been
+   * rebuilt: the ranges live in a ref, which cannot be depended on, and the relocation pass that
+   * fills it commits the markers in the same breath. Without them a comment saved on a fresh
+   * passage would find no range here and get no card. BOTH, because either alone has a hole —
+   * `markers` compares equal when a pill happens to land where the last one did, and `quoted`
+   * does not change when a re-read moves a passage the comment list did not touch.
+   */
+  const anchorBlocks = useCallback((): ReadonlyMap<string, HTMLElement> => {
+    const prose = proseRef.current?.firstElementChild
+    if (!prose) return NO_ANCHORS
+    const anchors = new Map<string, HTMLElement>()
+    for (const [id, range] of rangesRef.current) {
+      const block = topBlockOf(range.endContainer, prose)
+      if (block) anchors.set(id, block)
+    }
+    if (composer && captureRef.current) {
+      const block = topBlockOf(captureRef.current.endContainer, prose)
+      if (block) anchors.set(COMPOSER_KEY, block)
+    }
+    return anchors
+  }, [composer, content, markers, quoted])
+
+  const hosts = useInlineCommentHosts(anchorBlocks)
+
+  /**
+   * Take the reader to the comment the review's list asked for.
+   *
+   * A SCROLL, where this used to open a card — opening is not a thing that can be asked for any
+   * more. Guarded on `seq` for the reason `CodeView`'s copy is: a second click on the same entry
+   * does the jump again, and an unrelated store write does not scroll the reader away.
+   *
+   * Line-anchored comments have no host here and so are skipped — the whole reason they carry a
+   * notice in the diff — which `hosts.get` answers without a second test.
    */
   useEffect(() => {
     if (!focus || focusRef.current === focus.seq) return
-    // `quoted` rather than `comments`, which IS the "left alone" above: a line-anchored
-    // comment is simply not in this set.
-    if (!quoted.some(c => c.id === focus.id)) return
+    const host = hosts.get(focus.id)
+    if (!host) return
     focusRef.current = focus.seq
-    setCard({ mode: 'existing', id: focus.id })
-  }, [focus, quoted])
+    scrollCardIntoView(host)
+  }, [focus, hosts])
 
-  /**
-   * The comment the open card is showing, or `null` while a new one is being written.
-   *
-   * Read back out of the store rather than remembered when the card was opened, the same rule
-   * the markers follow: the store is the only thing that survives the document being re-read.
-   */
-  const openComment: FileComment | null =
-    card?.mode === 'existing' ? comments.find(c => c.id === card.id) ?? null : null
-
-  /**
-   * The block to splice the card in after: the last one the passage runs into.
-   *
-   * `endContainer`, not the range's start, for the reason the diff anchors on its range's LAST
-   * row — the card belongs under what it is about, and a quotation that spans three paragraphs
-   * is about all three.
-   *
-   * Read off a live `Range` rather than by searching for the passage again, the same way the
-   * pills are placed: the ranges are kept as the document reflows, so this is a walk up a
-   * parent chain rather than a search of the whole document.
-   *
-   * `null` whenever there is no range to read or its nodes have gone, which the hook reads as
-   * "no host" — so the card is simply not rendered, rather than being attached somewhere that
-   * says nothing about the passage.
-   */
-  const anchorBlock = useCallback((): HTMLElement | null => {
-    const prose = proseRef.current?.firstElementChild
-    if (!prose) return null
-    const range = card?.mode === 'existing'
-      ? rangesRef.current.get(card.id) ?? null
-      : captureRef.current
-    return range ? topBlockOf(range.endContainer, prose) : null
-  }, [card, content])
-
-  const host = useInlineCommentHost(anchorBlock)
-
-  const closeCard = useCallback(() => setCard(null), [])
+  const closeComposer = useCallback(() => setComposer(null), [])
 
   /**
    * Read the selection as a quotation, and open the card on it.
@@ -702,30 +718,48 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
     if (!root || e.button !== 0) return
     const capture = captureQuote(root)
     captureRef.current = capture?.range ?? null
-    if (capture) setCard({ mode: 'new', quote: capture.quote })
+    if (capture) setComposer({ quote: capture.quote })
   }
 
   /**
    * Plain functions, the convention `CodeView` states: `useCallback` in a file like this MEANS
-   * the identity is read somewhere. These two go to the card, which is not memoised and does
-   * not put them in a dependency array.
+   * the identity is read somewhere. These go to the cards, which are not memoised and do not
+   * put them in a dependency array.
    */
-  const handleSave = (body: string) => {
-    if (!card) return
-    // `anchor: null` and a quote — the shape story 5 defined for exactly this, which is why
-    // no model change was needed. What tells it from a comment on the whole file is the
-    // quote, and only `commentAnchorKind` reads that.
-    if (card.mode === 'new') addFileComment(target, { anchor: null, quote: card.quote, body })
-    else updateFileComment(target, card.id, body)
-    setCard(null)
+
+  /**
+   * File what was being written, and let its own card take over — `CodeView`'s `saveComposer`
+   * is where the shared reasoning lives.
+   *
+   * `anchor: null` and a quote: the shape story 5 defined for exactly this, which is why no
+   * model change was needed. What tells it from a comment on the whole file is the quote, and
+   * only `commentAnchorKind` reads that.
+   *
+   * One thing is this view's alone. The card that replaces the composer is anchored off
+   * `rangesRef`, which the relocation pass fills by searching for each stored quote — so the
+   * new comment's range has to be in there by the time the host effect asks. It is, and not by
+   * luck: that pass is a layout effect declared above `useInlineCommentHosts`, so in the commit
+   * that adds the comment it has already run. Moving either one across the other would leave
+   * the comment with no card the instant it was saved.
+   */
+  const saveComposer = (body: string) => {
+    if (!composer) return
+    addFileComment(target, { anchor: null, quote: composer.quote, body })
+    setComposer(null)
   }
 
-  const handleDelete = () => {
-    if (card?.mode === 'existing') removeFileComment(target, card.id)
-    setCard(null)
-  }
+  /**
+   * Rewrite or drop one stored comment, named rather than inferred — there are as many cards as
+   * comments now, so "the card" is not a thing either of these can ask about.
+   */
+  const saveComment = (id: string, body: string) => updateFileComment(target, id, body)
+  const deleteComment = (id: string) => removeFileComment(target, id)
 
-  const openMarker = (id: string) => setCard({ mode: 'existing', id })
+  /**
+   * This file's QUOTED comments by id — the only ones this view can show — so the render can go
+   * from a host key to its comment without a linear scan per card.
+   */
+  const commentsById = new Map(quoted.map(c => [c.id, c]))
 
   const markerLabel = t('filePreview.commentMarker')
 
@@ -769,7 +803,15 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
               key={marker.id}
               type="button"
               data-comment-ids={marker.id}
-              onClick={() => openMarker(marker.id)}
+              /* Scrolls to the card rather than opening it: every comment's card is already
+                 mounted. Kept clickable where the diff's row markers were made inert, and the
+                 two views differ for a real reason — a card goes after the whole BLOCK its
+                 passage ends in, so a long list or table can put it well below the pill, where
+                 a diff's card is always the next row down. */
+              onClick={() => {
+                const host = hosts.get(marker.id)
+                if (host) scrollCardIntoView(host)
+              }}
               aria-label={markerLabel}
               title={markerLabel}
               style={{ top: marker.top, left: marker.left, width: PILL_PX, height: PILL_PX }}
@@ -781,30 +823,48 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
         </div>
       </div>
 
-      {/* Rendered only once the host node is in the document: the card portals INTO it, so
-          there is nowhere to draw before `useInlineCommentHost` has spliced it in after the
-          block the passage ends in. No `width` — prose does not scroll sideways, so the card
-          takes the full width of the column it is inserted into. */}
-      {card && host && (card.mode === 'new' || openComment !== null) && (
-        <CommentCard
-          /* Keyed on WHICH comment, so clicking a second pill while the first card is open
-             remounts it rather than inheriting the previous comment's draft body and its
-             read/edit mode, both of which are state local to the card.
+      {/* One card per host, and the hosts are the truth about which cards exist: a card
+          portals INTO its node, so there is nowhere to draw before `useInlineCommentHosts` has
+          spliced that node in after the block its passage ends in.
 
-             A new comment is keyed on its QUOTE — the passage IS its identity here, the way
-             the range is in the diff. See CodeView's own key for why a constant would carry
-             a half-written body onto the next passage selected. */
-          key={card.mode === 'new' ? `new:${card.quote}` : card.id}
-          comment={openComment}
-          /* No lines, and the card names itself from the quote instead — see its `range`. */
-          range={null}
-          quote={card.mode === 'new' ? card.quote : ''}
-          host={host}
-          onSave={handleSave}
-          onDelete={handleDelete}
-          onClose={closeCard}
-        />
-      )}
+          No `width`: prose does not scroll sideways, so `w-full` inside the column's own
+          padding already puts a card where the text it is about is. */}
+      {[...hosts].map(([key, host]) => (key === COMPOSER_KEY
+        ? composer && (
+          <CommentCard
+            /* Keyed on its QUOTE — the passage IS its identity here, the way the range is in
+               the diff. Selecting a second passage while the composer is open replaces the
+               state without unmounting anything, and under a stable key React would reuse the
+               component, carrying a half-written body onto the next passage. */
+            key={`${key}:${composer.quote}`}
+            comment={null}
+            /* No lines, and the card names itself from the quote instead — see its `range`. */
+            range={null}
+            quote={composer.quote}
+            host={host}
+            onSave={saveComposer}
+            /* Nothing to delete: this comment does not exist yet. Discarding it is what Cancel
+               does, which is `onClose`. */
+            onDelete={closeComposer}
+            onClose={closeComposer}
+          />
+        )
+        : commentsById.get(key) && (
+          <CommentCard
+            key={key}
+            comment={commentsById.get(key)!}
+            range={null}
+            /* The stored comment carries its own quote; the card reads that in preference to
+               this. Empty rather than undefined because the prop is what a NEW comment arrives
+               by. */
+            quote=""
+            host={host}
+            onSave={body => saveComment(key, body)}
+            onDelete={() => deleteComment(key)}
+            /* No `onClose`: a stored comment's card is never closed. See the prop. */
+          />
+        )
+      ))}
     </>
   )
 }

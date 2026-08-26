@@ -1593,7 +1593,7 @@ export const en = {
   // thing that tells a reader a line holds more than one comment — and that clicking its
   // marker again is how they reach the next.
   'filePreview.commentMarker': 'Read this comment',
-  'filePreview.commentMarkers': 'Read these {count} comments — click again for the next',
+  'filePreview.commentMarkers': '{count} comments on these lines',
   'filePreview.commentLine': 'Line {start}',
   'filePreview.commentLines': 'Lines {start}–{end}',
   // The third form of the same label, for a comment on the rendered markdown. It names the

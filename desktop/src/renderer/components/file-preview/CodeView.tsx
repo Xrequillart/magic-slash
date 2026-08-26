@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import CommentCard, { CommentAnchorNotice } from './CommentCard'
-import { useInlineCommentHost } from '../../hooks/useInlineCommentHost'
+import { scrollCardIntoView, useInlineCommentHosts } from '../../hooks/useInlineCommentHosts'
 import {
   clampQuote, commentAnchorKind, commentFileKey, edgesByRow, extendRange, lineIdentityFromRow,
   markersByRow, normalizeRange, rangeCovers, rowsForComment, visibleRowForComment,
   type CommentTarget, type GutterPick, type LineRange, type RowEdges, type RowIdentity,
 } from '../../utils/commentAnchors'
-import { useStore, NO_COMMENTS, type FileComment } from '../../store'
+import { useStore, NO_COMMENTS } from '../../store'
 import { useT } from '../../i18n'
 
 interface Props {
@@ -316,8 +316,9 @@ function codeStyles(c: CodeChrome): string {
   }
 
   /* Every row a comment covers, washed in orange, so the reader sees the commented RANGE at
-     a glance rather than one badge somewhere in it. The whole row is also the way back into
-     the comment — see handleClick — which is why the cursor is set here.
+     a glance rather than one badge somewhere in it. No cursor and no hit target: the comment's
+     own card is mounted directly under the block, permanently, so there is nothing for a click
+     on the row to reveal. The wash and the pill are markers now, not buttons.
 
      A background-IMAGE rather than a background-color, and that is what keeps a commented
      added line reading as added: the [data-diff] rules above paint the row's background
@@ -333,7 +334,6 @@ function codeStyles(c: CodeChrome): string {
      a row by a pixel. FilePreviewPanel's measurement sweep and ChangeRuler's offsets both
      stand on that. */
   .shiki code .line[data-comment-ids] {
-    cursor: pointer;
     background-image: linear-gradient(${c.commentRow}, ${c.commentRow});
   }
 
@@ -520,10 +520,29 @@ function rootFontSize(): number {
   return remPx
 }
 
-/** Which card is open: one being written, or one already stored. */
-type OpenCard =
-  | { mode: 'new'; range: LineRange; quote: string }
-  | { mode: 'existing'; id: string }
+/**
+ * The comment being written, if there is one: the lines it is about and what was selected.
+ *
+ * There used to be a second shape beside it for "a stored comment whose card is open", and it
+ * went when every stored comment became permanently open. Which stored card exists is no
+ * longer a decision — it is one per comment — so the only thing left to hold is the one card
+ * that has no comment behind it yet.
+ */
+interface Composer {
+  range: LineRange
+  quote: string
+}
+
+/**
+ * The host key for the composer, in the same map as the stored comments' own ids.
+ *
+ * A `#` prefix, which `newCommentId` cannot produce: the two live in one keyspace, and a
+ * composer that collided with a comment id would replace that comment's card with itself.
+ */
+const COMPOSER_KEY = '#composer'
+
+/** No anchors, as ONE map — see `NO_HOSTS` in the hook for why the identity matters. */
+const NO_ANCHORS: ReadonlyMap<string, HTMLElement> = new Map()
 
 /**
  * What the RAW diff says about the comments on this file that it cannot show.
@@ -604,7 +623,7 @@ export default function CodeView({
       : null
   ))
 
-  const [card, setCard] = useState<OpenCard | null>(null)
+  const [composer, setComposer] = useState<Composer | null>(null)
 
   /**
    * Where a gutter pick began, in a REF rather than in state.
@@ -649,17 +668,6 @@ export default function CodeView({
    */
   const dragRef = useRef<GutterPick | null>(null)
 
-  /**
-   * How far the last marker click had walked into the comments on one row.
-   *
-   * A REF for the same reason `pickRef` above is one: the open card dismisses itself on the
-   * mousedown of the very click that is about to walk to the next comment, so by the time
-   * the click lands `card` is already `null` and could not say where the walk had got to.
-   * Keyed on the row's own list of ids, so adding or deleting a comment starts again at the
-   * oldest rather than resuming at an index that now means a different comment.
-   */
-  const cycleRef = useRef<{ ids: string; index: number } | null>(null)
-
   /** Which `focusedComment.seq` this document has already acted on. See the effect below. */
   const focusRef = useRef<number | null>(null)
 
@@ -695,75 +703,17 @@ export default function CodeView({
   }, [highlightedHtml, t])
 
   /**
-   * The comment the open card is showing, or `null` while a new one is being written.
+   * The lines to paint as PICKED: the block being dragged, else the one being written about.
    *
-   * A plain const, like `activeRange` below: every branch answers a reference that already
-   * exists — the store's own comment object, or `null` — so memoising it would buy exactly
-   * the referential stability it already has, and the effects and callbacks that depend on
-   * it are no less stable for it.
-   */
-  const openComment: FileComment | null =
-    card?.mode === 'existing' ? comments.find(c => c.id === card.id) ?? null : null
-
-  /**
-   * The lines the open card is attached to.
-   *
-   * Read back out of the STORE for a stored comment rather than remembered when the card
-   * was opened, which is the same rule the markers follow: the anchor is the numbers, and
-   * the numbers are the only thing that survives the document being re-read.
-   *
-   * No `card` guard of its own: `openComment` above is already `null` whenever no card is
-   * open, so the second branch answers `null` for that case as well.
-   */
-  const cardRange: LineRange | null = card?.mode === 'new'
-    ? card.range
-    : openComment?.anchor ?? null
-
-  /**
-   * The lines to paint as picked: the block being dragged, else the one the card is open on.
-   *
-   * The drag comes FIRST because while the button is down it is the only truthful answer to
+   * The drag comes first because while the button is down it is the only truthful answer to
    * where the reader is — and because it is the live feedback the gesture needs, drawn by the
    * wash that was already there rather than by anything new.
    *
-   * There used to be a third term here, the offer's range. It is gone with the offer: a
-   * release now opens the card itself, so the range it was drawn from IS `cardRange` by the
-   * time anything paints.
+   * Stored comments are deliberately absent. They light their own rows through
+   * `data-comment-ids`, which is a separate wash keyed off `markersByRow`, and it has to be:
+   * this is ONE range and there are as many commented blocks as there are comments.
    */
-  const activeRange = dragRange ?? cardRange ?? null
-
-  /**
-   * Open the card the review's comment list asked for, and let the lines light up with it.
-   *
-   * Nothing here highlights anything, and that is the point. It writes the SAME state a
-   * click on a marker writes — `setCard({ mode: 'existing', id })` — which flows through
-   * `openComment` to `cardRange`, to `activeRange` above, and out to the `data-picked`
-   * wash the effect below stamps. There is no second highlighting path, as `dragRange`
-   * says a few declarations up, and there could not be one "without two things to keep in
-   * step": a temporary attribute of its own would need its own CSS in `CODE_STYLES` and
-   * would be wiped by the next `highlightedHtml` a re-read swaps in.
-   *
-   * An EFFECT rather than something the click handler could have done, because the card
-   * being jumped to is usually not mounted when the reader clicks: it is folded shut, or
-   * its read is still in flight. This document may therefore not exist yet at that moment
-   * — and when it mounts, this runs in its first render with a focus already waiting.
-   *
-   * Guarded on `seq` rather than on the target, so a second click on the same entry does
-   * the jump again — and so a card the reader has since dismissed is not reopened by an
-   * unrelated store write. `comments` is in the dependencies because the comment has to
-   * BE there to open, and the guard is what keeps that from reopening the card whenever
-   * the list changes.
-   */
-  useEffect(() => {
-    if (!focus || focusRef.current === focus.seq) return
-    if (!comments.some(c => c.id === focus.id)) return
-    focusRef.current = focus.seq
-    setCard({ mode: 'existing', id: focus.id })
-    // The marker walk starts again from the oldest comment on the row: it was left
-    // wherever a previous click on that row had got to, which says nothing about the
-    // comment just arrived at from the list.
-    cycleRef.current = null
-  }, [focus, comments])
+  const activeRange = dragRange ?? composer?.range ?? null
 
   /**
    * Re-derive every marker from the store, on every render that could have changed one.
@@ -823,18 +773,18 @@ export default function CodeView({
     const markers = markersByRow(comments, identities)
     for (const [index, ids] of markers) {
       const row = rows[index]
-      // The ids are what `handleClick` walks — what makes the second comment on a line
-      // reachable at all — and what the row's wash is keyed off. There is no per-row COUNT
-      // any more: the pill is stamped once, below, so a count on every row would be an
-      // attribute nothing draws.
+      // What the row's wash is keyed off, and what the review panel's jump finds a row by.
+      // Nothing WALKS them any longer — every one of these comments has its own card mounted
+      // under its own block — so the attribute is an index, not a cursor.
       row.dataset.commentIds = ids.join(' ')
-      // A `title` rather than an `aria-label`: the marker is a pseudo-element, so it is
-      // not in the accessibility tree and cannot carry one, and the row it is on is a
-      // `<span>` with no role for a label to describe. The tooltip is also what tells a
-      // reader who has not clicked one yet that the pill is a way back in — and, on a row
-      // carrying several, how many and that clicking again brings the next one. Since the
-      // pill draws an icon rather than a count, that number is the ONLY place a reader can
-      // learn that a row holds more than one comment, which is why it is passed in.
+      // A `title` rather than an `aria-label`: the marker is a pseudo-element, so it is not
+      // in the accessibility tree and cannot carry one, and the row it is on is a `<span>`
+      // with no role for a label to describe.
+      //
+      // Since the pill draws an icon rather than a count, this number stays the ONLY place a
+      // reader can learn that a row carries more than one comment — worth saying even now that
+      // both cards are on screen, because the second one sits under the LAST row of its own
+      // range and may be nowhere near this one.
       row.title = ids.length > 1
         ? t('filePreview.commentMarkers', { count: ids.length })
         : t('filePreview.commentMarker')
@@ -888,74 +838,130 @@ export default function CodeView({
   }, [highlightedHtml, comments, activeRange, t])
 
   /**
-   * Where the floating panel should sit right now.
+   * Which row each card hangs off: one entry per stored comment, plus the composer's.
    *
-   * Resolved from the numbers every time it is asked, which is what lets a card stay put
-   * over the line it belongs to while the review scrolls under it — and what makes it
-   * survive the document being replaced. `visibleRowForComment` is also what keeps a card
-   * anchored when its own line has been folded away, rather than leaving it stranded at
-   * the top of the file.
+   * The LAST row a range covers, because a card goes UNDER the lines it is about — the one
+   * thing "like a GitHub pull request" settles that a floating panel never had to answer.
+   * `rowsForComment` walks the rows the range actually covers, so a range whose middle is
+   * folded away still ends on its own last visible row; `visibleRowForComment` is the
+   * fallback for a range with nothing rendered at all, and it is what keeps a comment on a
+   * folded-away line anchored near where that line was instead of at the top of the file.
    *
-   * The LAST row the card's range covers, because the card goes UNDER the lines it is about
-   * — the one thing "like a GitHub pull request" settles that a floating panel never had to
-   * answer. `rowsForComment` walks the rows the range actually covers, so a range whose
-   * middle is folded away still ends on its own last visible row; `visibleRowForComment` is
-   * the fallback for a range with nothing rendered at all, and it is what keeps a comment on
-   * a folded-away line anchored near where that line was instead of at the top of the file.
+   * Resolved from the NUMBERS every time it is asked, never from a remembered node, which is
+   * what lets the cards survive the document being replaced under them.
    *
-   * Resolved from `cardRange`, NOT from `activeRange`: the host is a real node spliced into
-   * the document, and hanging it off the drag would tear it out and re-insert it on every row
-   * the pointer crossed.
+   * ONE walk of the rows for all of them. A per-comment callback would have meant a
+   * `querySelectorAll` and a `map` per comment, and a file with a dozen notes on it would pay
+   * for twelve passes over a document that has thousands of rows.
+   *
+   * A comment with no `anchor` is skipped: that is one left on the RENDERED markdown, which
+   * has no line to hang off here. `QuotedElsewhereNotice` is what tells the reader it exists.
+   *
+   * The composer is NOT resolved from `activeRange`: the hosts are real nodes spliced into the
+   * document, and hanging one off the drag would tear it out and re-insert it on every row the
+   * pointer crossed.
    *
    * `highlightedHtml` is a dependency because it is what the rows are resolved against. A
-   * re-read swaps the whole `<pre>`, taking the host node with it — see
-   * `useInlineCommentHost`, whose only dependency is this callback's identity.
+   * re-read swaps the whole `<pre>`, detaching every host node in it — see
+   * `useInlineCommentHosts`, whose only dependency is this callback's identity.
    */
-  const anchorRow = useCallback((): HTMLElement | null => {
+  const anchorRows = useCallback((): ReadonlyMap<string, HTMLElement> => {
     const root = htmlRef.current
-    if (!root || !cardRange) return null
+    if (!root) return NO_ANCHORS
     const rows = rowsOf(root)
     const identities = rows.map(identityOf)
-    const covered = rowsForComment(cardRange, identities)
-    const index = covered.length > 0
-      ? covered[covered.length - 1]
-      : visibleRowForComment(cardRange, identities)
-    return index === null ? null : rows[index]
-  }, [cardRange, highlightedHtml])
 
-  const host = useInlineCommentHost(anchorRow)
+    const lastRowOf = (range: LineRange): HTMLElement | null => {
+      const covered = rowsForComment(range, identities)
+      const index = covered.length > 0
+        ? covered[covered.length - 1]
+        : visibleRowForComment(range, identities)
+      return index === null ? null : rows[index]
+    }
+
+    const anchors = new Map<string, HTMLElement>()
+    for (const comment of comments) {
+      if (!comment.anchor) continue
+      const row = lastRowOf(comment.anchor)
+      if (row) anchors.set(comment.id, row)
+    }
+    if (composer) {
+      const row = lastRowOf(composer.range)
+      if (row) anchors.set(COMPOSER_KEY, row)
+    }
+    return anchors
+  }, [comments, composer, highlightedHtml])
+
+  const hosts = useInlineCommentHosts(anchorRows)
 
   /**
-   * How wide the card may be: the `<pre>`'s visible width, less its own padding.
+   * Take the reader to the comment the review's list asked for.
    *
-   * Measured rather than left to `width: 100%`, because the containing block here is as wide
-   * as the file's LONGEST LINE — see `InlinePanel`'s `width` prop for what that does to a
-   * card. Observed rather than read once, so a card open while the drawer is resized (or
-   * while the window's split moves) keeps matching the view it is in.
+   * A SCROLL, where this used to open a card. Opening is not a thing that can be asked for
+   * any more — every stored comment's card is already mounted — so the only part of the
+   * request left to honour is getting it on screen.
    *
-   * Bound only while a card is actually open, which is what keeps a review of forty
-   * documents from holding forty idle ResizeObservers.
+   * An EFFECT rather than something the click handler could have done, because the card being
+   * jumped to is usually not mounted when the reader clicks: it is folded shut, or its read is
+   * still in flight. This document may therefore not exist yet at that moment — and when it
+   * mounts, this runs in its first render with a focus already waiting.
+   *
+   * Guarded on `seq` rather than on the target, so a second click on the same entry does the
+   * jump again, and so an unrelated store write does not scroll the reader away from wherever
+   * they have got to since. `hosts` is a dependency because the node has to EXIST to be
+   * scrolled to, and the guard is what keeps that from re-scrolling every time the map is
+   * rebuilt.
+   */
+  useEffect(() => {
+    if (!focus || focusRef.current === focus.seq) return
+    const host = hosts.get(focus.id)
+    if (!host) return
+    focusRef.current = focus.seq
+    scrollCardIntoView(host)
+  }, [focus, hosts])
+
+  /**
+   * How wide the card runs: the visible slab, less the `<pre>`'s own padding — which is exactly
+   * the span a ROW of this file occupies, gutter included.
+   *
+   * The gutter is deliberately NOT subtracted. An earlier pass pushed the card past it so its
+   * left edge sat on the first character of code, and what that produced was a strip of empty
+   * gutter running down the side of the card: the card is anchored to the rows, and a card
+   * narrower than the row it hangs off reads as one that failed to reach its own edge. Starting
+   * at the content edge puts it under the line number, which is where the row starts.
+   *
+   * Measured at all because the containing block here is as wide as the file's LONGEST LINE —
+   * see `InlinePanel`'s `width` prop — and observed rather than read once, so a card open while
+   * the drawer is resized (or while the window's split moves) keeps matching the view.
+   *
+   * The `<pre>`'s padding is read rather than assumed to be `p-4`: the class is in this file's
+   * own `className`, but the value behind it is Tailwind's.
+   *
+   * Bound only while this document actually has a card in it, which is what keeps a review of
+   * forty files from holding forty idle ResizeObservers on the strength of one commented file.
    */
   const [slabWidth, setSlabWidth] = useState<number | null>(null)
 
   useLayoutEffect(() => {
-    const pre = card ? htmlRef.current?.querySelector('pre') : null
+    const pre = hosts.size > 0 ? htmlRef.current?.querySelector('pre') : null
     if (!pre) return
     const measure = () => {
       const style = getComputedStyle(pre)
-      const inner = pre.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+      const width = pre.clientWidth
+        - (parseFloat(style.paddingLeft) || 0)
+        - (parseFloat(style.paddingRight) || 0)
       // Compared before it is stored: this runs from a ResizeObserver, and the card's own
-      // width is one of the things that can change the `<pre>`'s scroll geometry. A fresh
+      // size is one of the things that can change the `<pre>`'s scroll geometry. A fresh
       // number on every callback would be a loop.
-      setSlabWidth(prev => (prev === inner ? prev : inner))
+      setSlabWidth(prev => (prev === width ? prev : width))
     }
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(pre)
     return () => observer.disconnect()
-  }, [card, highlightedHtml])
+  }, [hosts, highlightedHtml])
 
-  const closeCard = useCallback(() => setCard(null), [])
+  const closeComposer = useCallback(() => setComposer(null), [])
 
   /**
    * Stop a gutter press from becoming a text drag through the code, and start the pick.
@@ -1048,9 +1054,9 @@ export default function CodeView({
       // `pickRef` keeps the anchor, so a later shift-click extends from where this drag
       // began rather than from wherever it happened to stop.
       pickRef.current = drag
-      // Straight to the card, with no quote: a gutter pick names its lines and never
+      // Straight to the composer, with no quote: a gutter pick names its lines and never
       // selected any text, so `commentLabel` reads the range and the card says "Lines 12-14".
-      setCard({ mode: 'new', range: drag.range, quote: '' })
+      setComposer({ range: drag.range, quote: '' })
     }
 
     // The one release the page can never hear: the pointer left the window and the button
@@ -1102,41 +1108,9 @@ export default function CodeView({
         // The gutter numbers are NOT in here: `::before` content with `user-select: none`
         // is outside the selection, as are the elision labels — and now the open card too,
         // which is what `useInlineCommentHost` sets on the host node it splices in.
-        setCard({ mode: 'new', range: normalizeRange(start, end), quote: clampQuote(selection.toString()) })
+        setComposer({ range: normalizeRange(start, end), quote: clampQuote(selection.toString()) })
       }
     }
-  }
-
-  /**
-   * Open the comment a marker stands for.
-   *
-   * Delegated from the container rather than bound per row: the rows are shiki's HTML, so
-   * there is nothing to bind a handler to without walking thousands of them after every
-   * read. The whole row is the target because a `::after` hit-tests as its own element —
-   * the same reason `inGutter` exists — and a marker a reader cannot aim at is a marker
-   * that does not reopen anything.
-   *
-   * A row can carry SEVERAL comments — the row's tooltip says how many, the pill drawing an
-   * icon rather than a count — and clicking it again walks to the next one and wraps. That is
-   * the whole gesture for reaching the second comment on a line: no new surface, and the card
-   * it opens in is already the place to read, edit or delete whichever one it landed on.
-   */
-  const handleClick = (e: React.MouseEvent) => {
-    const root = htmlRef.current
-    if (!commenting || !root) return
-    const row = rowOf(e.target as Node, root)
-    const stamped = row?.dataset.commentIds
-    if (!row || !stamped) return
-    // The gutter belongs to picking, and a drag that happens to end on a commented row is
-    // a selection, not a click on its marker.
-    if (inGutter(e.clientX, row)) return
-    const selection = window.getSelection()
-    if (selection && !selection.isCollapsed) return
-    const ids = stamped.split(' ')
-    const previous = cycleRef.current
-    const index = previous && previous.ids === stamped ? (previous.index + 1) % ids.length : 0
-    cycleRef.current = { ids: stamped, index }
-    setCard({ mode: 'existing', id: ids[index] })
   }
 
   /**
@@ -1149,20 +1123,48 @@ export default function CodeView({
    * every render would splice the host node out and back in on every re-render of the
    * document, and the panel re-renders on every scroll frame.
    */
-  const handleSave = (body: string) => {
-    if (!target || !card) return
-    if (card.mode === 'new') {
-      addFileComment(target, { anchor: card.range, quote: card.quote, body })
-    } else {
-      updateFileComment(target, card.id, body)
-    }
-    setCard(null)
+  /**
+   * File what was being written, and let its own card take over.
+   *
+   * The composer closes and a STORED comment's card opens in the same commit, on the same
+   * lines: `setComposer(null)` drops the composer's host, and `comments` gaining an entry adds
+   * one keyed on the new id. The reader sees the note they just wrote stay exactly where they
+   * wrote it. Saving used to close everything, which made a saved comment indistinguishable
+   * from a discarded one.
+   *
+   * `addFileComment` answering the id is not needed for that — the anchors are rebuilt from
+   * `comments` either way — and it is kept because it is the only thing that makes the swap
+   * provable rather than incidental: the host that appears is the host for THIS comment.
+   */
+  const saveComposer = (body: string) => {
+    if (!target || !composer) return
+    addFileComment(target, { anchor: composer.range, quote: composer.quote, body })
+    setComposer(null)
   }
 
-  const handleDelete = () => {
-    if (target && card?.mode === 'existing') removeFileComment(target, card.id)
-    setCard(null)
+  /**
+   * Rewrite or drop one stored comment, named rather than inferred.
+   *
+   * The id is a parameter where it used to be read off the single open card: there are as many
+   * cards as comments now, so "the card" is not a thing either of these can ask about.
+   */
+  const saveComment = (id: string, body: string) => {
+    if (target) updateFileComment(target, id, body)
   }
+
+  const deleteComment = (id: string) => {
+    if (target) removeFileComment(target, id)
+  }
+
+  /**
+   * This file's comments by id, so the render can go from a host key to its comment without a
+   * linear scan per card.
+   *
+   * A plain `Map` built on every render rather than a memo: it is one pass over an array that
+   * is almost always shorter than ten, and a `useMemo` keyed on `comments` would cost the same
+   * comparison it saved.
+   */
+  const commentsById = new Map(comments.map(c => [c.id, c]))
 
   // How many of this file's comments are anchored to a passage of the rendered markdown, and
   // so have no row here to be marked on. Counted through `commentAnchorKind` rather than by
@@ -1179,7 +1181,6 @@ export default function CodeView({
           ref={htmlRef}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
-          onClick={handleClick}
           /* `!bg-transparent` beats the background shiki writes as an INLINE style on
              its own `<pre>` — nothing but `!important` can. Dropping it is what lets
              the panel's own surface show through, so the preview reads as one card
@@ -1187,40 +1188,55 @@ export default function CodeView({
           className={`text-sm [&>pre]:p-4 [&>pre]:min-h-full [&>pre]:font-mono [&>pre]:text-xs [&>pre]:leading-relaxed [&>pre]:overflow-auto ${blend ? '[&>pre]:!bg-transparent' : ''}`}
           dangerouslySetInnerHTML={{ __html: highlightedHtml }}
         />
-        {/* Rendered only once the host node is in the document: the card portals INTO it,
-            so there is nowhere to draw before `useInlineCommentHost` has spliced it in after
-            the range's last row. One render behind the state, and deliberately — the effect
-            that inserts the node is a layout one, so the two land in the same paint. */}
-        {card && cardRange && host && (
-          <CommentCard
-            /* Keyed on WHICH comment, so clicking a second marker while the first card is
-               open remounts the card rather than reusing it. Without this the new card
-               would inherit the previous comment's draft body and its read/edit mode,
-               both of which are state local to the card.
+        {/* One card per host, and the hosts are the truth about which cards exist: a card
+            portals INTO its node, so there is nowhere to draw before `useInlineCommentHosts`
+            has spliced that node in after the range's last row. Driven off the MAP rather than
+            off `comments` for that reason — a comment whose lines are all folded away has no
+            host and therefore no card, and iterating the comments would have needed the same
+            test a second time to say so.
 
-               A new comment is keyed on its LINES, not on the constant 'new', and that
-               became load-bearing when the offer went away: a selection now opens the card
-               directly, so selecting a second passage while one is open replaces the state
-               without unmounting anything. Under a constant key React reused the component
-               and the half-written body carried over — onto lines it was not about. */
-            key={card.mode === 'new'
-              ? `new:${card.range.side}:${card.range.startLine}-${card.range.endLine}`
-              : card.id}
-            comment={openComment}
-            range={cardRange}
-            quote={card.mode === 'new' ? card.quote : ''}
-            host={host}
-            /* `?? undefined` rather than the state's own null: the card reads "no width" as
-               "take the full width of your container", which is right for prose and wrong
-               here. Before the first measurement there is no honest number to give, and one
-               frame of a card at the file's longest-line width is what `sticky left-0` makes
-               invisible anyway. */
-            width={slabWidth ?? undefined}
-            onSave={handleSave}
-            onDelete={handleDelete}
-            onClose={closeCard}
-          />
-        )}
+            One render behind the state, and deliberately: the effect that inserts the nodes is
+            a layout one, so the node and the card it holds land in the same paint. */}
+        {[...hosts].map(([key, host]) => (key === COMPOSER_KEY
+          ? composer && (
+            <CommentCard
+              /* Keyed on its LINES rather than on the constant key: selecting a second
+                 passage while the composer is open replaces the state without unmounting
+                 anything, and under a stable key React would reuse the component — carrying
+                 a half-written body onto lines it was not about. */
+              key={`${key}:${composer.range.side}:${composer.range.startLine}-${composer.range.endLine}`}
+              comment={null}
+              range={composer.range}
+              quote={composer.quote}
+              host={host}
+              width={slabWidth ?? undefined}
+              onSave={saveComposer}
+              /* Nothing to delete: this comment does not exist yet. Discarding it is what
+                 Cancel does, which is `onClose`. */
+              onDelete={closeComposer}
+              onClose={closeComposer}
+            />
+          )
+          : commentsById.get(key) && (
+            <CommentCard
+              key={key}
+              comment={commentsById.get(key)!}
+              range={commentsById.get(key)!.anchor}
+              /* The stored comment carries its own quote; the card reads that in preference
+                 to this. Empty rather than undefined because the prop is what a NEW comment
+                 arrives by. */
+              quote=""
+              host={host}
+              /* Undefined until the first measurement, which the card reads as "take your
+                 container's full width". There is no honest number to give before then, and
+                 the measurement is a LAYOUT effect — so nothing is painted in that state. */
+              width={slabWidth ?? undefined}
+              onSave={body => saveComment(key, body)}
+              onDelete={() => deleteComment(key)}
+              /* No `onClose`: a stored comment's card is never closed. See the prop. */
+            />
+          )
+        ))}
       </>
     )
   }

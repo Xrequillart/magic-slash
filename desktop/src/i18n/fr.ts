@@ -1533,7 +1533,7 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.commentQuotePlaceholder': "Que doit savoir l'agent à propos de ce passage ?",
   'filePreview.commentDelete': 'Supprimer',
   'filePreview.commentMarker': 'Lire ce commentaire',
-  'filePreview.commentMarkers': 'Lire ces {count} commentaires — cliquez à nouveau pour le suivant',
+  'filePreview.commentMarkers': '{count} commentaires sur ces lignes',
   'filePreview.commentLine': 'Ligne {start}',
   'filePreview.commentLines': 'Lignes {start} à {end}',
   'filePreview.commentQuoted': 'Passage cité',

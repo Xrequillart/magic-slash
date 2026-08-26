@@ -1,24 +1,51 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { MessageSquare, Pencil, Trash2 } from 'lucide-react'
+import { MessageSquare, MessageSquarePlus, Pencil, Trash2 } from 'lucide-react'
 import { commentAnchorKind, commentLabel, type LineRange } from '../../utils/commentAnchors'
 import { BTN_DANGER, BTN_GHOST, BTN_PRIMARY, INPUT } from '../../theme/controls'
 import type { FileComment } from '../../store'
 import { useT, type MessageKey } from '../../i18n'
 
 /**
- * The card's own box, minus what only the code slab needs.
+ * The card's own box: a block in the code column, not a panel sitting on the file.
  *
- * `my-2` is the whole of the "it does not float" claim made visible: the card is a block
- * between two lines, and the two lines are pushed apart by exactly its height. Nothing
- * measures it, nothing clamps it to the window, and nothing repositions it on scroll —
- * see `useInlineCommentHost` for why every one of those disappeared with the floating.
+ * Two things went, and both said "floating panel" rather than "part of the document":
  *
- * `shadow-none` is not a default being restated: the floating card carried `shadow-2xl` to
- * lift it off the document, and a shadow on a card that is PART of the document reads as a
- * second surface sitting on the code.
+ * - the radius. Square corners are what let the box butt up against the row above and the
+ *   row below it. A rounded box between two square-edged lines of code reads as an object
+ *   dropped on them, however far into the flow it actually is.
+ * - the vertical margin. There is no gap to put between the box and the lines it is
+ *   about — the lines part by exactly its height and nothing else.
+ *
+ * The border is back on all four sides, where an earlier pass had it on two. That followed
+ * from the box running the full width of the slab, edges included, and it no longer does: it
+ * runs the width of the ROW, so left and right are its own edges and need drawing like the
+ * other two.
+ *
+ * The width of the row, which means starting where the line NUMBER starts and not where the
+ * code does. An earlier pass pushed it past the gutter, on the reasoning that a pull request's
+ * form lines up with the code — and it left a strip of empty gutter beside the box with
+ * nothing in it, which read as the box having failed to reach its own edge. The rows are what
+ * this is anchored to, so the rows are what it lines up with.
+ *
+ * The `p-3` is the one padding this component owns, and it is what keeps the textarea off
+ * that border.
+ *
+ * A ROW, where this was a column: the leading icon takes the first slot and everything that
+ * was in the card goes in the second. The stack itself did not change — it moved one level in.
+ *
+ * `bg-bg-tertiary`, where this was `bg-bg-secondary` and therefore invisible: that is the
+ * colour of the review card the code sits IN, so the box was painted exactly the shade of its
+ * own surroundings and only the border said it was there. Tertiary is the next step of the
+ * same ramp, so it reads as a raised surface rather than as a new colour, and it is defined by
+ * all nine themes — a `surface` token would have been translucent and let the orange wash on
+ * a commented row bleed up through a form.
+ *
+ * No shadow, and that was already true: the floating card carried `shadow-2xl` to lift it
+ * off the document, and a shadow on something that IS the document reads as a second
+ * surface.
  */
-const CARD = 'my-2 bg-bg-secondary border border-line rounded-xl p-3 flex flex-col gap-2'
+const CARD = 'bg-bg-tertiary border border-line p-3 flex gap-2.5'
 
 interface InlinePanelProps {
   panelRef: React.RefObject<HTMLDivElement>
@@ -27,15 +54,18 @@ interface InlinePanelProps {
   /** Any other key this particular card binds. */
   onKeyDown?: (e: React.KeyboardEvent) => void
   /**
-   * The visible width of the scroller the card sits in, in pixels — the code slab's case
-   * only, where it is paired with `sticky left-0`.
+   * How wide the box should be, in pixels — the code slab's case only.
    *
-   * A block inside a horizontally scrollable `<pre>` is as wide as the WIDEST LINE of the
-   * file, not as wide as the window: a card at `width: 100%` in a file with one 400-column
-   * line would be four screens across, and its buttons would be off the right of the
-   * viewport. Sticking it to the left of the scrollport at the scrollport's own width is
-   * what makes "full width" mean the width the reader can see — and it stays put when the
-   * code under it is scrolled sideways, rather than sliding out of the frame.
+   * Measured because `width: 100%` cannot answer it here: a block inside a horizontally
+   * scrollable `<pre>` resolves its percentage against the WIDEST LINE of the file, so in a
+   * file with one 400-column line the box would be four screens across and its buttons would
+   * be off the right of the world. The number handed down is the width of the slab the reader
+   * can actually see, less its own padding — the same span a row of code occupies.
+   *
+   * It does NOT stay put when the code is scrolled sideways — an earlier pass pinned it with
+   * `sticky left-0` and that was the wrong call: the box belongs to the lines it is about, so
+   * it travels with them. The cost is real and is the one that was chosen: scroll far enough
+   * along a very long line and the buttons go off the left with everything else.
    *
    * Omitted for prose, which has no horizontal scroll and no long-line problem: `w-full`
    * there is already the right answer.
@@ -86,7 +116,14 @@ function InlinePanel({ panelRef, onEscape, onKeyDown, width, children }: InlineP
       ref={panelRef}
       tabIndex={-1}
       onKeyDown={handleKeyDown}
-      style={width === undefined ? undefined : { width }}
+      /**
+       * The one number the caller measures. No offset beside it: the box starts at its
+       * container's content edge, which in the code slab is where the line numbers start.
+       *
+       * Nothing here is `position`ed either, so the box scrolls with the code — which is the
+       * whole of "the card follows the code".
+       */
+      style={{ width }}
       /* `focus-visible:outline-none` for the same reason the drawer's scroller has it: the
          app paints a 2px accent ring on `:focus-visible` globally, and Chromium matches it
          on a `tabindex="-1"` element that was focused by script. The ring would frame the
@@ -96,7 +133,7 @@ function InlinePanel({ panelRef, onEscape, onKeyDown, width, children }: InlineP
          `useInlineCommentHost` for why the host has to. A reader has to be able to select
          what they have written; what must stay unselectable is the gap AROUND the card
          inside the code, which the host still covers. */
-      className={`${CARD} ${width === undefined ? 'w-full' : 'sticky left-0'} select-text focus-visible:outline-none`}
+      className={`${CARD} ${width === undefined ? 'w-full' : ''} select-text focus-visible:outline-none`}
     >
       {children}
     </div>
@@ -193,11 +230,22 @@ interface Props {
    * means: a row of shiki's HTML for the diff, the block element a passage ends in for prose.
    */
   host: HTMLElement
-  /** The scrollport's width, for the code slab. See `InlinePanel`'s own prop. */
+  /** How wide the box should be, for the code slab. See `InlinePanel`'s own prop. */
   width?: number
   onSave: (body: string) => void
   onDelete: () => void
-  onClose: () => void
+  /**
+   * Discard this card entirely — passed ONLY for a comment being written.
+   *
+   * A stored comment has no close: every one of them is shown open, permanently, so there is
+   * no state for closing to return to. Its Cancel leaves EDIT mode and its card goes on
+   * standing where it was; a new comment's Cancel is the only one that makes a card go away,
+   * because a new comment's card is the only one that was not already there.
+   *
+   * Absent rather than a no-op function, so the read-mode footer can tell the two apart
+   * without being told twice.
+   */
+  onClose?: () => void
 }
 
 /**
@@ -212,8 +260,13 @@ interface Props {
  * the box already focused: the intermediate "Comment" button existed to keep a plain copy
  * gesture from popping a composer, and the cost of that — two clicks to write every comment,
  * the second one on a target that had just appeared — was worse than the thing it avoided.
- * Escape and Cancel close the card without leaving anything behind, which is what makes the
- * accidental case cheap again.
+ * Escape and Cancel close a card being written without leaving anything behind, which is what
+ * makes the accidental case cheap again.
+ *
+ * A STORED comment's card, by contrast, never goes away: the caller mounts one per comment and
+ * leaves them all open, so this component's two states are the two states of a note that is
+ * always on screen — being read, or being rewritten. `onClose` is what tells the two callers
+ * apart; see its own comment.
  */
 export default function CommentCard({ comment, range, quote, host, width, onSave, onDelete, onClose }: Props) {
   const t = useT()
@@ -261,67 +314,128 @@ export default function CommentCard({ comment, range, quote, host, width, onSave
 
   const saved = body.trim()
 
+  /**
+   * Hand the body up, then drop out of edit mode — the card stays open, showing what was
+   * just written.
+   *
+   * The second half is only reached for a comment that ALREADY existed. A new one is re-keyed
+   * by the caller the moment it has an id, so this component remounts and reads `editing` from
+   * `comment === null` all over again — which is false, since it now has one. Doing it here
+   * anyway is what keeps the two paths from needing to know about each other.
+   */
+  const save = () => {
+    onSave(saved)
+    setEditing(false)
+  }
+
+  /**
+   * Back out of what is being done, which is not the same thing in the two cards.
+   *
+   * A stored comment returns to being read, with the body it had before this edit — so
+   * Cancel undoes the typing rather than the comment. A new one has nothing to return to, so
+   * its caller takes the card away.
+   *
+   * Bound to Cancel and to Escape both, so the key and the button cannot come to disagree.
+   */
+  const dismiss = () => {
+    if (comment) {
+      setBody(comment.body)
+      setEditing(false)
+      return
+    }
+    onClose?.()
+  }
+
   /** Escape is `InlinePanel`'s. This is the one shortcut a box whose Enter key has to
    *  insert a newline still wants. */
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && editing && saved) {
       e.preventDefault()
-      onSave(saved)
+      save()
     }
   }
 
   return createPortal(
-    <InlinePanel panelRef={panelRef} onEscape={onClose} onKeyDown={handleKeyDown} width={width}>
-      <span className="text-[11px] font-medium text-text-secondary">{t(label.key, label.vars)}</span>
-      <Quote quote={shownQuote} />
+    <InlinePanel panelRef={panelRef} onEscape={dismiss} onKeyDown={handleKeyDown} width={width}>
+      {/* The marker, repeated inside the thing it marks.
+          The SAME icon the gutter pill draws — lucide's `message-square`, which CodeView has to
+          reproduce as a CSS mask because a pseudo-element cannot hold a React element — and the
+          same orange. That is what ties a card to the pill on the rows above it: a file with
+          three notes on it has three pills and three cards, and the icon is what says which
+          kind of thing each one is.
 
-      {editing ? (
-        <>
-          <textarea
-            ref={textareaRef}
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            /* Asked about the LINES or about the PASSAGE, whichever this comment is
-               attached to. One placeholder for both said "these lines" over a quotation,
-               which is the one thing the reader has to get right before typing. */
-            placeholder={t(kind === 'quote'
-              ? 'filePreview.commentQuotePlaceholder'
-              : 'filePreview.commentPlaceholder')}
-            /* Three, where the floating card wanted four: the box is the full width of the
-               view now, so a line of it holds two or three times the words it used to, and
-               four rows of that is a panel rather than a comment box. */
-            rows={3}
-            /* `INPUT` composed, never re-spelled: this is the same field box as every
-               other one in the app, plus the two things a comment box adds. */
-            className={`${INPUT} w-full resize-none`}
-          />
-          <div className="flex items-center justify-end gap-1.5">
-            <button type="button" onClick={onClose} className={BTN_GHOST}>
-              {t('common.cancel')}
-            </button>
-            {/* Disabled on an empty body rather than saving a comment with nothing in it:
-                an empty note is a marker on a line that says nothing, and the only way
-                back out of it would be to delete it. */}
-            <button type="button" disabled={!saved} onClick={() => onSave(saved)} className={`${BTN_PRIMARY} disabled:opacity-40 disabled:cursor-not-allowed`}>
-              {t('common.save')}
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          <p className="text-xs text-ink whitespace-pre-wrap break-words">{comment?.body}</p>
-          <div className="flex items-center justify-end gap-1.5">
-            <button type="button" onClick={onDelete} className={BTN_DANGER}>
-              <Trash2 className="w-3.5 h-3.5" />
-              {t('filePreview.commentDelete')}
-            </button>
-            <button type="button" onClick={() => setEditing(true)} className={BTN_GHOST}>
-              <Pencil className="w-3.5 h-3.5" />
-              {t('common.edit')}
-            </button>
-          </div>
-        </>
-      )}
+          `w-3.5` matches the pill's own 0.9rem, so the two read as one size. `mt-px` sits it on
+          the optical line of the 11px label beside it rather than on the box's top edge.
+
+          Plus-signed while there is nothing stored yet: this was the icon of the "Comment"
+          button that used to stand in front of the composer, and it goes on meaning the same
+          thing — a comment about to exist. `aria-hidden` because the label under it already
+          names the card, in words, to anything reading the tree. */}
+      {comment
+        ? <MessageSquare className="w-3.5 h-3.5 mt-px shrink-0 text-orange" aria-hidden="true" />
+        : <MessageSquarePlus className="w-3.5 h-3.5 mt-px shrink-0 text-orange" aria-hidden="true" />}
+
+      {/* `min-w-0` so the quote's `break-all` and the textarea have something to shrink
+          against: a flex child defaults to its content's width and would push the card wider
+          than the row it is spliced into. */}
+      <div className="flex flex-col gap-2 min-w-0 flex-1">
+        <span className="text-[11px] font-medium text-text-secondary">{t(label.key, label.vars)}</span>
+        <Quote quote={shownQuote} />
+
+        {editing ? (
+          <>
+            <textarea
+              ref={textareaRef}
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              /* Asked about the LINES or about the PASSAGE, whichever this comment is
+                 attached to. One placeholder for both said "these lines" over a quotation,
+                 which is the one thing the reader has to get right before typing. */
+              placeholder={t(kind === 'quote'
+                ? 'filePreview.commentQuotePlaceholder'
+                : 'filePreview.commentPlaceholder')}
+              /* Three, where the floating card wanted four: the box is the full width of the
+                 view now, so a line of it holds two or three times the words it used to, and
+                 four rows of that is a panel rather than a comment box. */
+              rows={3}
+              /* `INPUT` composed, never re-spelled: this is the same field box as every
+                 other one in the app, plus the two things a comment box adds. */
+              className={`${INPUT} w-full resize-none`}
+            />
+            <div className="flex items-center justify-end gap-1.5">
+              <button type="button" onClick={dismiss} className={BTN_GHOST}>
+                {t('common.cancel')}
+              </button>
+              {/* Disabled on an empty body rather than saving a comment with nothing in it:
+                  an empty note is a marker on a line that says nothing, and the only way
+                  back out of it would be to delete it. */}
+              <button type="button" disabled={!saved} onClick={save} className={`${BTN_PRIMARY} disabled:opacity-40 disabled:cursor-not-allowed`}>
+                {t('common.save')}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-xs text-ink whitespace-pre-wrap break-words">{comment?.body}</p>
+            <div className="flex items-center justify-end gap-1.5">
+              <button type="button" onClick={onDelete} className={BTN_DANGER}>
+                <Trash2 className="w-3.5 h-3.5" />
+                {t('filePreview.commentDelete')}
+              </button>
+              <button type="button" onClick={() => setEditing(true)} className={BTN_GHOST}>
+                <Pencil className="w-3.5 h-3.5" />
+                {t('common.edit')}
+              </button>
+              {/* No Close beside them, and it was here for one revision.
+                  It answered a real problem — saving left the card open with only Escape to get
+                  out of it — that stopped existing when every stored comment became permanently
+                  open: there is no closed state for a note to return to, so a button offering
+                  one would either lie or hide a comment the file still has. Delete is how a
+                  comment goes away now, and it says so. */}
+            </div>
+          </>
+        )}
+      </div>
     </InlinePanel>,
     host,
   )
