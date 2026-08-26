@@ -1678,6 +1678,62 @@ export const en = {
   'tasks.noAddressHint':
     'Their issues URL does not look like `https://github.com/owner/repo` — fix it in Settings → Repositories → Issues, or clear it to use the repository’s own remote.',
 
+  // ── Tasks · the issue page ───────────────────────────────────────────────
+  // Opened by clicking a row, it REPLACES the list and shows the half of an issue
+  // the list deliberately does not carry: the body, the state, the labels, who it
+  // is assigned to.
+  'tasks.detail.loading': 'Reading the issue…',
+  // The way back to the backlog. Says where it goes rather than "Back", which on a
+  // page reached from one place is a wasted word.
+  'tasks.detail.back': 'Open issues',
+  // The list only ever holds OPEN issues, but the page re-reads by number and the
+  // issue may have been closed since — so both states have a word here.
+  'tasks.detail.stateOpen': 'Open',
+  'tasks.detail.stateClosed': 'Closed',
+  // The byline under the title. Two forms because GitHub reports no author for an
+  // issue opened by an account that has since been deleted, and "opened this" with
+  // nobody in front of it is not a sentence.
+  'tasks.detail.openedBy': '@{login} opened this on {date}',
+  'tasks.detail.openedOn': 'Opened on {date}',
+  // How many comments the issue has. Reading them is on GitHub — this page says
+  // there are some, and the button next to the title is how you get to them.
+  'tasks.detail.commentCount.one': '{count} comment',
+  'tasks.detail.commentCount.other': '{count} comments',
+  // The header strip of the body box, GitHub's own wording: "@login commented".
+  // `description` is what it says when there is no author to attribute it to.
+  'tasks.detail.commented': 'commented',
+  'tasks.detail.description': 'Description',
+  'tasks.detail.labels': 'Labels',
+  'tasks.detail.assignees': 'Assigned to',
+  // Both shown only when GitHub reported the hierarchy: an empty "Sub-issues" block
+  // on the vast majority of issues would be a row of nothing on every page.
+  'tasks.detail.subIssues': 'Sub-issues',
+  'tasks.detail.subIssuesDone': '{completed} of {count} done',
+  'tasks.detail.parent': 'Parent issue',
+  // Said rather than left blank: an empty row next to a label reads as "not loaded
+  // yet", which is a different thing from "there are none".
+  'tasks.detail.none': 'none',
+  'tasks.detail.emptyBody': 'This issue has no description.',
+  // The page's one affirmative action: a terminal in the repository's local
+  // folder, pre-filled with `/magic:start` and this issue's URL. The second line
+  // is that sentence said plainly — the label alone says what the button IS, and
+  // people hesitate over a button whose consequence they have to guess.
+  'tasks.startAgent': 'Start an agent',
+  'tasks.startAgentHint': 'Opens a terminal in this repository and runs /magic:start on this issue.',
+  // Why the action is unavailable, said in place instead of failing on the click.
+  // A team repository that nobody has bound to a folder on THIS machine has no
+  // directory to open a terminal in, and the fix is a setting.
+  'tasks.noLocalRepo': 'No local folder is bound to this repository on this machine.',
+  'tasks.noLocalRepoHint':
+    'Set its folder in Settings → Repositories, and an agent can be started on its issues from here.',
+  // The backstop, for the case the check above passed and the launch still failed.
+  // Deliberately generic: the underlying error is an untranslated English sentence.
+  'tasks.startFailed': 'This issue could not be handed to an agent.',
+  // The row marker: an issue somebody is already working on. A word next to the
+  // dot, because a bare coloured dot says nothing on its own.
+  'tasks.hasAgent': 'agent',
+  'tasks.hasAgentHint': 'An agent is already working on this issue.',
+
   // ── Tasks · GitHub is not connected ──────────────────────────────────────
   'tasks.github.title': 'GitHub is not connected.',
   'tasks.github.body': 'Tasks reads your backlog through the GitHub CLI’s login.',

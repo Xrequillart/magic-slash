@@ -28,6 +28,19 @@ export const BTN = `${BTN_BASE} text-text-secondary border border-line hover:bg-
 /** The one affirmative action of a view. At most one per card. */
 export const BTN_PRIMARY = `${BTN_BASE} text-on-brand bg-accent hover:bg-accent-hover`
 
+/**
+ * The affirmative action of a view that has to explain itself: the label on one
+ * line, a quieter sentence under it, an icon beside both.
+ *
+ * A second tier rather than `BTN_PRIMARY` with a bigger padding appended, for the
+ * reason the header gives: two paddings from the same Tailwind group do not
+ * override each other by class order. Taller than the one gabarit on purpose —
+ * this is the single action of a page, not one control in a row of them — and its
+ * text is left-aligned, because two stacked lines centred read as a heading. The
+ * type scale lives on the two inner lines, so the caller sets it there.
+ */
+export const BTN_PRIMARY_STACKED = 'flex items-start gap-2.5 px-3.5 py-2.5 text-left rounded-lg transition-all text-on-brand bg-accent hover:bg-accent-hover'
+
 /** Destructive. Bordered rather than filled: it should read as available, not as the obvious next step. */
 export const BTN_DANGER = `${BTN_BASE} text-red border border-red/20 hover:bg-red/10`
 
