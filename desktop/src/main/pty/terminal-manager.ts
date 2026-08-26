@@ -8,6 +8,7 @@ import { readConfig } from '../config/config'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
 import { withDetectedBranch } from './initial-metadata'
 import { createTuiReadyScanner } from './tui-ready'
+import { retainedBufferOnExit } from './exited-buffer'
 import { expandPath } from '../config/validation'
 import { resolveAgentCwd } from './agent-cwd'
 import { getCommonPaths } from '../utils/paths'
@@ -324,7 +325,9 @@ export function createTerminal(
   // Handle exit
   disposables.push(ptyProcess.onExit(({ exitCode }) => {
     terminal.state = exitCode === 0 ? 'completed' : 'error'
-    displayBuffers.delete(id)
+    // The buffer OUTLIVES the process — see `retainedBufferOnExit` for what is kept and
+    // why the two exit codes are treated differently.
+    displayBuffers.set(id, retainedBufferOnExit(displayBuffers.get(id) ?? '', exitCode))
     // Nothing can answer a question whose process is gone.
     clearPendingQuestion(id)
     onExit(exitCode)
