@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.82.0] - 2026-08-26
+
+### Added
+
+- **Desktop**: Updates download themselves at launch, and the sidebar offers Restart or Later when one is ready
+- **Desktop**: The sidebar agent list can be sorted by recency, status or repository
+- **Desktop**: A task opens on a page of its own, with the whole issue and a button that starts an agent on it
+- **Desktop**: A new agent can be opened in a given repository with a first prompt already typed
+
+### Changed
+
+- **Docs**: The documented desktop update flow matches what the app now does
+
+### Fixed
+
+- **Desktop**: The issue-detail IPC payload is validated before it reaches the renderer
+
 ## [0.81.0] - 2026-08-25
 
 ### Added
@@ -2417,6 +2434,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.82.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.82.0
 [0.81.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.81.0
 [0.80.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.80.1
 [0.80.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.80.0
