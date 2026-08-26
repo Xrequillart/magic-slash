@@ -503,19 +503,39 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
               under it is what you read about the issue, this is what you do
               about it. */}
           <div className="rounded-xl bg-surface-subtle border border-line-field p-4 flex flex-col gap-2">
+            {/* ABOVE the buttons, not under them: it is the reason both are off, and a
+                reason printed below the thing it explains is read second — by which point
+                the faded pair has already been taken for a broken card. Bigger than the
+                hints inside the buttons and in `text-ink` for the same reason: at this
+                moment it is the card's message, and the actions are the footnote.
+
+                The dot is the list row's own marker for an issue somebody is on, so the
+                two surfaces say the same thing in the same vocabulary. */}
+            {hasAgent && (
+              <div className="flex items-start gap-2">
+                <span className="w-2 h-2 mt-1.5 rounded-full flex-shrink-0 bg-accent" />
+                <span className="text-sm font-medium leading-snug text-ink">
+                  {t('tasks.hasAgentHint')}
+                </span>
+              </div>
+            )}
             {/* The label alone said what the button was, never what it did. The
                 second line does, in the button rather than under it: the sentence
                 is part of the offer, and a hint floating below a filled button
                 reads as a warning. */}
             <button
               onClick={startAgent}
-              // Off once somebody is already on this issue, not merely discouraged:
-              // a second `/magic:start` on the same ticket is a second worktree and a
-              // second branch for one piece of work. The list's dot beside the row is
-              // the warning that comes before this.
+              // Both buttons go off once somebody is already on this issue: a second
+              // `/magic:start` on the same ticket is a second worktree and a second branch
+              // for one piece of work, and a third agent reading the same issue over the
+              // shoulder of the one working it is noise on the same ticket.
               disabled={!canStart || hasAgent}
-              title={hasAgent ? t('tasks.hasAgentHint') : undefined}
-              className={`${BTN_PRIMARY_STACKED} w-full disabled:opacity-40`}
+              // `pointer-events-none` while disabled, not a `disabled:` colour per state:
+              // hover lives in the shared `BTN_*_STACKED` tiers, and appending an override
+              // for it here would depend on Tailwind's emit order (see theme/controls.ts).
+              // Killing the pointer takes the hover, the cursor and the tooltip with it,
+              // which is what a control that cannot be used should offer.
+              className={`${BTN_PRIMARY_STACKED} w-full disabled:opacity-40 disabled:pointer-events-none`}
             >
               <Play className="w-3.5 h-3.5 mt-px flex-shrink-0 fill-current" />
               <span className="flex flex-col gap-0.5 min-w-0">
@@ -529,8 +549,8 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
                 issue, and side by side at this column's width both labels would wrap. */}
             <button
               onClick={discussAgent}
-              disabled={!canStart}
-              className={`${BTN_NEUTRAL_STACKED} w-full disabled:opacity-40`}
+              disabled={!canStart || hasAgent}
+              className={`${BTN_NEUTRAL_STACKED} w-full disabled:opacity-40 disabled:pointer-events-none`}
             >
               <MessagesSquare className="w-3.5 h-3.5 mt-px flex-shrink-0" />
               <span className="flex flex-col gap-0.5 min-w-0">
@@ -544,19 +564,6 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs text-ink">{t('tasks.noLocalRepo')}</span>
                 <span className="text-xs text-text-secondary/70">{t('tasks.noLocalRepoHint')}</span>
-              </div>
-            )}
-            {/* Said in words rather than left to a faded button: a disabled control with
-                no sentence beside it reads as broken. Only when nothing else is stopping
-                the start — the missing-folder lines above are the more fundamental answer,
-                and both at once would be two excuses for one greyed-out button. The dot is
-                the list row's own marker for this, so the two surfaces say it the same way.
-                Discussing the issue stays available, which is why this sits under the pair
-                rather than in place of them. */}
-            {canStart && hasAgent && (
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full flex-shrink-0 bg-accent" />
-                <span className="text-xs text-text-secondary">{t('tasks.hasAgentHint')}</span>
               </div>
             )}
             {startFailed && <span className="text-xs text-orange">{t('tasks.startFailed')}</span>}
