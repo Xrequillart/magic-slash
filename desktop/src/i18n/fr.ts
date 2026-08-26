@@ -30,7 +30,6 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Panneau de la barre de menus ─────────────────────────────────────────
   'tray.showWindow': 'Afficher la fenêtre',
   'tray.update.checking': 'Recherche de mises à jour…',
-  'tray.update.download': '↓ Télécharger la v{version}',
   'tray.update.downloadingVersion': 'Téléchargement de la v{version}…',
   'tray.update.downloadingProgress': 'Téléchargement de la mise à jour… {percent} %',
   'tray.update.restart': '↻ Redémarrer pour mettre à jour (v{version})',
@@ -1483,18 +1482,16 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Ligne de mise à jour de la barre latérale ────────────────────────────
   'sidebar.update.available': 'Mise à jour disponible',
-  'sidebar.update.downloadTitle': 'Télécharger la version {version}',
+  'sidebar.update.availableTitle': 'Version {version} trouvée — téléchargement en cours',
   'sidebar.update.downloading': 'Téléchargement…',
+  'sidebar.update.ready': 'Mise à jour prête',
   'sidebar.update.restart': 'Redémarrer pour installer',
+  'sidebar.update.restartNow': 'Redémarrer',
   'sidebar.update.restartTitle': 'Redémarrer pour installer la v{version}',
   'sidebar.update.retry': 'Téléchargement échoué — réessayer',
 
   // ── Overlay de mise à jour et nouveautés ─────────────────────────────────
-  'update.checking': 'Recherche de mises à jour…',
-  'update.downloading': 'Téléchargement de la mise à jour…',
-  'update.ready': 'Mise à jour prête !',
-  'update.restartNow': 'Redémarrer maintenant',
-  'update.checkFailed': 'La recherche de mise à jour a échoué. On continue…',
+  'update.installFailed': 'La mise à jour a bien été téléchargée, mais le redémarrage a échoué. Quittez puis relancez l’application.',
   'update.debugMenu': 'Menu de débogage',
   'whatsNew.gotIt': 'Compris',
 

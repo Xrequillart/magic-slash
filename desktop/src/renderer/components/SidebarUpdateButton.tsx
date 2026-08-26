@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Download, RotateCw } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Download, RotateCw } from 'lucide-react'
 import { useT } from '../i18n'
 
 /** Fixture version for the dev-only simulation below. */
@@ -14,15 +14,16 @@ type UpdateStatus =
   | { type: 'error'; message: string; phase?: 'check' | 'download' | 'install' }
 
 /**
- * The update entry point, pinned under the usage card at the bottom of the left
- * sidebar. It exists because the check is automatic but the download is not: the
- * app finds a release on its own and then waits here, so a ~150 MB transfer only
- * ever starts on a click.
+ * The whole update flow, pinned under the usage card at the bottom of the left
+ * sidebar. Check, download and restart all happen without a modal ever taking the
+ * screen: the app finds a release at launch, pulls it by itself, and this row is
+ * where that is reported and where the one remaining decision — restart now or
+ * later — is offered.
  *
- * Three states, one row each — offered, transferring, ready to restart — plus a
- * retryable failure. Everything else (checking, nothing found, an install that
- * failed) renders nothing: this row is for what the person can act on, and the
- * install failure has the overlay to itself.
+ * Four states, one row each: found, transferring, ready (a card with Restart and
+ * Later), and a retryable failure. Everything else (checking, nothing found, an
+ * install that failed) renders nothing — this row is for what the person can act
+ * on, and the install failure has the overlay to itself.
  *
  * Progress is drawn in place rather than in a modal, which is the whole point of
  * the row: the download runs while you keep working.
@@ -30,6 +31,11 @@ type UpdateStatus =
 export function SidebarUpdateButton() {
   const t = useT()
   const [status, setStatus] = useState<UpdateStatus | null>(null)
+  // The version "Later" was clicked on. Keyed by version rather than a bare flag,
+  // so a second release downloaded in the same session raises the card again — and
+  // deliberately component state and nothing more: a relaunch that still has the
+  // update pending shows the card too, which is the reminder.
+  const [postponedVersion, setPostponedVersion] = useState<string | null>(null)
   // The startup check fires a second after launch and can resolve before this
   // mounts, so the pushed event alone would be missed and the row would never
   // appear. getStatus() covers that gap — but it must lose to anything the stream
@@ -55,9 +61,10 @@ export function SidebarUpdateButton() {
   // ── Dev-only simulation ──────────────────────────────────────────────────
   // The updater short-circuits outside a packaged build, so no real status ever
   // reaches this row in development. The debug menu in UpdateOverlay pins a fake
-  // one here, and while it is pinned the row's own buttons drive a fake download
-  // instead of the IPC — which is the whole point: the click is what needs testing,
-  // and the real `updater:download` refuses anyway with nothing to fetch.
+  // one here, and while it is pinned the row drives a fake transfer instead of the
+  // IPC — which is the whole point: what the row looks like as it walks found →
+  // transferring → ready is what needs testing, and the real `updater:download`
+  // refuses anyway with nothing to fetch.
   const [simulated, setSimulated] = useState<UpdateStatus | null>(null)
   const simTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -70,7 +77,13 @@ export function SidebarUpdateButton() {
     if (!import.meta.env.DEV) return
     const handler = (event: Event) => {
       clearSimTimer()
-      setSimulated((event as CustomEvent<UpdateStatus | null>).detail)
+      const next = (event as CustomEvent<UpdateStatus | null>).detail
+      setSimulated(next)
+      setPostponedVersion(null)
+      // Pinning the offered state advances by itself, because the row it renders no
+      // longer has a button — same as the real thing, where autoDownload starts the
+      // transfer without being asked.
+      if (next?.type === 'available') simTimerRef.current = setTimeout(simulateDownload, 900)
     }
     window.addEventListener('debug:update-sim', handler)
     return () => {
@@ -112,18 +125,19 @@ export function SidebarUpdateButton() {
   const shown = simulating ? simulated : status
   if (!shown) return null
 
+  // Reported, not offered: the transfer is already starting on its own, so there is
+  // nothing to click here — the progress bar takes this row's place a beat later.
   if (shown.type === 'available') {
     return (
       <Row>
-        <button
-          onClick={startDownload}
-          title={t('sidebar.update.downloadTitle', { version: shown.version })}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-accent/15 border border-accent/30 text-accent hover:bg-accent/25 hover:border-accent/50 transition-colors"
+        <div
+          title={t('sidebar.update.availableTitle', { version: shown.version })}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-accent/15 border border-accent/30 text-accent"
         >
           <Download className="w-3.5 h-3.5 shrink-0" />
           <span className="text-[11px] font-medium truncate">{t('sidebar.update.available')}</span>
           <span className="ml-auto text-[10px] opacity-60 shrink-0">v{shown.version}</span>
-        </button>
+        </div>
       </Row>
     )
   }
@@ -149,17 +163,50 @@ export function SidebarUpdateButton() {
   }
 
   if (shown.type === 'downloaded') {
+    // "Later" does not dismiss the update, it only folds this card back into the
+    // one-line restart button — the download is on disk and there has to be a way
+    // back to it, since this row is now the only one anywhere in the main window.
+    if (postponedVersion === shown.version) {
+      return (
+        <Row>
+          <button
+            onClick={install}
+            title={t('sidebar.update.restartTitle', { version: shown.version })}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-accent/15 border border-accent/30 text-accent hover:bg-accent/25 hover:border-accent/50 transition-colors"
+          >
+            <RotateCw className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-[11px] font-medium truncate">{t('sidebar.update.restart')}</span>
+            <span className="ml-auto text-[10px] opacity-60 shrink-0">v{shown.version}</span>
+          </button>
+        </Row>
+      )
+    }
+
     return (
       <Row>
-        <button
-          onClick={install}
-          title={t('sidebar.update.restartTitle', { version: shown.version })}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-accent text-on-brand hover:bg-accent-hover transition-colors"
-        >
-          <RotateCw className="w-3.5 h-3.5 shrink-0" />
-          <span className="text-[11px] font-medium truncate">{t('sidebar.update.restart')}</span>
-          <span className="ml-auto text-[10px] opacity-70 shrink-0">v{shown.version}</span>
-        </button>
+        <div className="px-2 py-1.5 rounded-lg bg-surface-subtle border border-line-subtle">
+          <div className="flex items-center gap-1.5 mb-1.5 text-[10px]">
+            <CheckCircle className="w-3 h-3 text-accent shrink-0" />
+            <span className="text-text-secondary/60 truncate">{t('sidebar.update.ready')}</span>
+            <span className="ml-auto font-semibold text-accent shrink-0">v{shown.version}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={install}
+              title={t('sidebar.update.restartTitle', { version: shown.version })}
+              className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-md bg-accent text-on-brand text-[11px] font-medium hover:bg-accent-hover transition-colors"
+            >
+              <RotateCw className="w-3 h-3 shrink-0" />
+              <span className="truncate">{t('sidebar.update.restartNow')}</span>
+            </button>
+            <button
+              onClick={() => setPostponedVersion(shown.version)}
+              className="px-2 py-1 rounded-md border border-line-subtle text-text-secondary text-[11px] font-medium hover:text-ink hover:border-line transition-colors shrink-0"
+            >
+              {t('app.later')}
+            </button>
+          </div>
+        </div>
       </Row>
     )
   }

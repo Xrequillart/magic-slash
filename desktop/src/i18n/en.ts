@@ -35,7 +35,6 @@ export const en = {
   // Documentation, GitHub) took their strings with them.
   'tray.showWindow': 'Show Window',
   'tray.update.checking': 'Checking for updates…',
-  'tray.update.download': '↓ Download v{version}',
   'tray.update.downloadingVersion': 'Downloading v{version}…',
   'tray.update.downloadingProgress': 'Downloading update… {percent}%',
   'tray.update.restart': '↻ Restart to update (v{version})',
@@ -1525,18 +1524,16 @@ export const en = {
 
   // ── Sidebar update row ───────────────────────────────────────────────────
   'sidebar.update.available': 'Update available',
-  'sidebar.update.downloadTitle': 'Download version {version}',
+  'sidebar.update.availableTitle': 'Version {version} found — downloading it now',
   'sidebar.update.downloading': 'Downloading…',
+  'sidebar.update.ready': 'Update ready',
   'sidebar.update.restart': 'Restart to install',
+  'sidebar.update.restartNow': 'Restart',
   'sidebar.update.restartTitle': 'Restart to install v{version}',
   'sidebar.update.retry': 'Download failed — retry',
 
   // ── Update overlay & What’s New ──────────────────────────────────────────
-  'update.checking': 'Checking for updates…',
-  'update.downloading': 'Downloading update…',
-  'update.ready': 'Update ready!',
-  'update.restartNow': 'Restart now',
-  'update.checkFailed': 'Update check failed. Continuing…',
+  'update.installFailed': 'The update was downloaded, but the restart failed. Please quit and reopen the app.',
   'update.debugMenu': 'Debug menu',
   'whatsNew.gotIt': 'Got it',
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { CircleUserRound, Download, Power, RefreshCw, RotateCw } from 'lucide-react'
+import { CircleUserRound, Power, RefreshCw, RotateCw } from 'lucide-react'
 import { AgentStateBadge } from '../../components/AgentStateBadge'
 import { stateHoverBgColors } from '../../utils/stateColors'
 import { displayNameFromEmail } from '../../utils/displayName'
@@ -31,9 +31,9 @@ const ICON_BUTTON =
 /**
  * The app's update control — the menu bar panel replaced a native menu that had a
  * "Check for Updates" entry, and this is where that went. Icon only, sitting in
- * the header: idle, click to check; available, click to download; ready, an accent
- * button that restarts into the new version. In between it only reports. The
- * version it would otherwise print lives in the idle tooltip.
+ * the header: idle, click to check; ready, an accent button that restarts into the
+ * new version. In between it only reports — the download needs no button, it starts
+ * by itself. The version it would otherwise print lives in the idle tooltip.
  */
 function UpdateButton({ version, update, t }: { version: string; update: TrayUpdate; t: Translate }) {
   if (update.phase === 'ready') {
@@ -44,18 +44,6 @@ function UpdateButton({ version, update, t }: { version: string; update: TrayUpd
         className={`${ICON_BUTTON} bg-accent/15 text-accent hover:bg-accent/25`}
       >
         <RotateCw className="w-3.5 h-3.5" />
-      </button>
-    )
-  }
-
-  if (update.phase === 'available') {
-    return (
-      <button
-        onClick={() => window.electronAPI.updater.download()}
-        title={t('tray.update.download', { version: update.version })}
-        className={`${ICON_BUTTON} bg-accent/15 text-accent hover:bg-accent/25`}
-      >
-        <Download className="w-3.5 h-3.5" />
       </button>
     )
   }

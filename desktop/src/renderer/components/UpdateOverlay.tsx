@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Bot, Bug, Download, CheckCircle, FileText, Loader2, Play, ScrollText, Sparkles } from 'lucide-react'
+import { AlertTriangle, Bot, Bug, Download, FileText, PartyPopper, ScrollText, Sparkles } from 'lucide-react'
 import { useStore } from '../store'
 import { useT } from '../i18n'
 
@@ -17,17 +17,6 @@ type UpdateStatus =
  * those two are filtered out of the agent list, and the point here is to appear in it.
  */
 const DEBUG_PLANNING_AGENT_ID = 'debug-planning-agent'
-
-const DEBUG_SEQUENCE: UpdateStatus[] = [
-  { type: 'checking' },
-  { type: 'available', version: '1.0.0' },
-  { type: 'downloading', progress: 0 },
-  { type: 'downloading', progress: 25 },
-  { type: 'downloading', progress: 50 },
-  { type: 'downloading', progress: 75 },
-  { type: 'downloading', progress: 100 },
-  { type: 'downloaded', version: '1.0.0', releaseNotes: '<h3>🚀 New Features</h3><ul><li><strong>What\'s New modal</strong> — See release notes after each update</li><li>Improved terminal performance</li></ul><h3>🐛 Bug Fixes</h3><ul><li>Fixed sidebar toggle on small screens</li><li>Resolved config sync issue</li></ul>' },
-]
 
 const CONFETTI_COLORS = ['#393BFF', '#6366f1', '#22c55e', '#eab308', '#ef4444', '#a855f7', '#3b82f6', '#f97316']
 
@@ -110,15 +99,15 @@ function launchConfetti(canvas: HTMLCanvasElement) {
 export function UpdateOverlay() {
   const t = useT()
   const activeTerminalId = useStore((s) => s.activeTerminalId)
-  const [status, setStatus] = useState<UpdateStatus | null>(null)
-  const [visible, setVisible] = useState(false)
+  // The one thing left that is worth interrupting for: the download is on disk, the
+  // restart was asked for, and it did not happen. Everything else the updater has to
+  // say is reported by the sidebar row instead.
+  const [installError, setInstallError] = useState<string | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
-  const [debugRunning, setDebugRunning] = useState(false)
   const [debugMenuOpen, setDebugMenuOpen] = useState(false)
   const [emptyStatePinned, setEmptyStatePinned] = useState(false)
   const [planningAgentPinned, setPlanningAgentPinned] = useState(false)
   const [updateRowPinned, setUpdateRowPinned] = useState(false)
-  const debugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const debugMenuRef = useRef<HTMLDivElement>(null)
   const confettiRef = useRef<HTMLCanvasElement>(null)
   const lastStatusTypeRef = useRef<UpdateStatus['type'] | null>(null)
@@ -226,45 +215,24 @@ export function UpdateOverlay() {
   // `canvas.offsetWidth` is the real width rather than 0. Returning launchConfetti's
   // canceller also stops the animation loop if the overlay unmounts mid-burst, which
   // the discarded return value never did.
+  // The canvas also unmounts itself once the particles have fallen: it now floats
+  // over the live app rather than over a modal that was about to close, so leaving it
+  // mounted would leave a full-window element on top of the UI forever.
   useEffect(() => {
     if (!showConfetti || !confettiRef.current) return
-    return launchConfetti(confettiRef.current)
+    const cancel = launchConfetti(confettiRef.current)
+    const done = setTimeout(() => setShowConfetti(false), 4000)
+    return () => {
+      cancel?.()
+      clearTimeout(done)
+    }
   }, [showConfetti])
 
-  function startDebugSequence() {
-    if (debugRunning) return
+  /** Pins the install-failure overlay — the one state that still takes the screen. */
+  function toggleInstallFailure() {
     setDebugMenuOpen(false)
-    setDebugRunning(true)
-    setShowConfetti(false)
-    let i = 0
-    const next = () => {
-      if (i >= DEBUG_SEQUENCE.length) {
-        debugTimerRef.current = setTimeout(() => {
-          setVisible(false)
-          setStatus(null)
-          setDebugRunning(false)
-          setShowConfetti(false)
-        }, 2500)
-        return
-      }
-      const s = DEBUG_SEQUENCE[i]
-      setStatus(s)
-      setVisible(true)
-      // Trigger confetti when reaching "downloaded" (end of download)
-      if (s.type === 'downloaded') {
-        triggerConfetti()
-      }
-      i++
-      debugTimerRef.current = setTimeout(next, s.type === 'downloading' ? 600 : 1200)
-    }
-    next()
+    setInstallError((current) => (current ? null : 'quitAndInstall failed (simulated)'))
   }
-
-  useEffect(() => {
-    return () => {
-      if (debugTimerRef.current) clearTimeout(debugTimerRef.current)
-    }
-  }, [])
 
   // Close debug menu on click outside
   useEffect(() => {
@@ -278,10 +246,14 @@ export function UpdateOverlay() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [debugMenuOpen])
 
-  // The REAL update flow. startDebugSequence() below simulates the same statuses,
-  // and the two have to stay in step — the confetti used to be fired from the
-  // simulation only, so it played on every dev test and never once after an actual
-  // update.
+  // The real update flow, and all that is left of it here. The whole sequence —
+  // check, download, restart — is reported and driven by the sidebar update row now:
+  // nothing about an update in progress blacks out the app, not the automatic startup
+  // check, not the transfer, and not the finished download either (its Restart and
+  // Later sit in that row, next to the progress bar that preceded them).
+  //
+  // Two things still belong to this component: the burst of confetti when a download
+  // lands, and the overlay for a restart that failed.
   useEffect(() => {
     const unsubscribe = window.electronAPI.updater.onStatus((newStatus) => {
       // Only the TRANSITION into 'downloaded' celebrates. A manual re-check while an
@@ -290,31 +262,16 @@ export function UpdateOverlay() {
       const isFirstDownloaded = newStatus.type === 'downloaded' && lastStatusTypeRef.current !== 'downloaded'
       lastStatusTypeRef.current = newStatus.type
 
-      setStatus(newStatus)
       if (isFirstDownloaded) triggerConfetti()
 
-      // Only the finish line takes the screen. Checking, waiting to be offered, and
-      // transferring are all reported by the sidebar update row instead — those used
-      // to raise this overlay, which meant an automatic startup check blacked out the
-      // app before anyone had asked it for anything, and a download blocked the app
-      // for its whole duration. The download completing is different: it is the one
-      // moment that needs an answer (restart now, or later).
-      if (newStatus.type === 'downloaded') {
-        setVisible(true)
+      if (newStatus.type === 'error' && newStatus.phase === 'install') {
+        setInstallError(newStatus.message)
       }
 
-      // Hide overlay for terminal states
-      if (newStatus.type === 'not-available') {
-        // Small delay before hiding
-        setTimeout(() => setVisible(false), 500)
-      }
-
-      if (newStatus.type === 'error') {
-        // Install errors stay visible (user needs to restart manually)
-        // Other errors auto-hide after 3 seconds
-        if (newStatus.phase !== 'install') {
-          setTimeout(() => setVisible(false), 3000)
-        }
+      // A fresh check is someone trying again, so a failure from last time stops
+      // being the truth on screen.
+      if (newStatus.type === 'checking') {
+        setInstallError(null)
       }
     })
 
@@ -323,171 +280,120 @@ export function UpdateOverlay() {
     }
   }, [triggerConfetti])
 
-  if (!visible || !status) {
-    return (
-      <>
-        {/* Dev-only debug menu. Its button labels are deliberately NOT in the
-            catalogue: `import.meta.env.DEV` strips the whole block from a
-            production build, so no user ever reads them. The toasts it fires ARE
-            translated — those are the real ones, simulated. */}
-        {import.meta.env.DEV && (
-          <div ref={debugMenuRef} className="fixed bottom-3 right-3 z-[200]">
-            {debugMenuOpen && (
-              <div className="absolute bottom-full right-0 mb-2 w-52 py-1 rounded-lg bg-bg-secondary border border-border/50 shadow-xl animate-fade-in">
-                <button
-                  onClick={startDebugSequence}
-                  disabled={debugRunning}
-                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors disabled:opacity-40"
-                >
-                  <Play className="w-3.5 h-3.5" />
-                  Auto update steps
-                </button>
-                <button
-                  onClick={toggleUpdateRow}
-                  className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
-                    updateRowPinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
-                  }`}
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Sidebar update row
-                  {updateRowPinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
-                </button>
-                <button
-                  onClick={pinUpdateRowError}
-                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
-                >
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  Update row: failed
-                </button>
-                <button
-                  onClick={toggleEmptyState}
-                  className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
-                    emptyStatePinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
-                  }`}
-                >
-                  <Bot className="w-3.5 h-3.5" />
-                  Empty agents state
-                  {emptyStatePinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
-                </button>
-                <button
-                  onClick={togglePlanningAgent}
-                  className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
-                    planningAgentPinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  Fake planning agent
-                  {planningAgentPinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
-                </button>
-                <button
-                  onClick={showWhatsNew}
-                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  What&apos;s New modal
-                </button>
-                <button
-                  onClick={floodTerminal}
-                  disabled={!activeTerminalId}
-                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors disabled:opacity-40"
-                >
-                  <ScrollText className="w-3.5 h-3.5" />
-                  Flood terminal
-                </button>
-              </div>
-            )}
-            <button
-              onClick={() => setDebugMenuOpen((o) => !o)}
-              className={`p-2 rounded-lg border transition-colors ${
-                debugMenuOpen
-                  ? 'bg-red border-red text-on-brand'
-                  : 'bg-red/80 border-red/60 text-on-brand hover:bg-red'
-              }`}
-              title={t('update.debugMenu')}
-            >
-              <Bug className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-      </>
-    )
-  }
-
   return (
-    <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[100] animate-fade-in">
+    <>
+      {/* Over the live app, never blocking it: the update is ready, and clicking
+          straight through the celebration to keep working is the point. */}
       {showConfetti && (
-        <canvas ref={confettiRef} className="absolute inset-0 w-full h-full pointer-events-none z-[101]" />
+        <canvas ref={confettiRef} className="fixed inset-0 w-full h-full pointer-events-none z-[101]" />
       )}
-      <div className={`bg-bg-secondary/90 border border-border/50 rounded-2xl shadow-2xl w-80 py-10 flex items-center justify-center ${showConfetti ? 'animate-tada' : ''}`}>
-        <div className="flex flex-col items-center gap-5 px-10">
-          {/* Icon */}
-          <div className="w-16 h-16 flex items-center justify-center">
-            {status.type === 'checking' && (
-              <Loader2 className="w-12 h-12 text-[#393BFF] animate-spin" />
-            )}
-            {(status.type === 'available' || status.type === 'downloading') && (
-              <Download className="w-12 h-12 text-[#393BFF]" />
-            )}
-            {status.type === 'downloaded' && (
-              <CheckCircle className="w-12 h-12 text-[#393BFF]" />
-            )}
-          </div>
 
-          {/* Status Text */}
-          <div className="text-center">
-            {status.type === 'checking' && (
-              <p className="text-text-secondary text-lg">{t('update.checking')}</p>
-            )}
-            {status.type === 'available' && (
-              <p className="text-ink text-lg">
-                Update available: <span className="text-[#393BFF] font-semibold">v{status.version}</span>
-              </p>
-            )}
-            {status.type === 'downloading' && (
-              <>
-                <p className="text-ink text-lg mb-4">{t('update.downloading')}</p>
-                {/* Progress bar */}
-                <div className="w-64 h-2 bg-bg-tertiary rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#393BFF] transition-all duration-300 ease-out"
-                    style={{ width: `${status.progress}%` }}
-                  />
-                </div>
-                <p className="text-text-secondary text-sm mt-2">{Math.round(status.progress)}%</p>
-              </>
-            )}
-            {status.type === 'downloaded' && (
-              <>
-                <p className="text-[#393BFF] text-lg mb-4">{t('update.ready')}</p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setVisible(false)
-                      setShowConfetti(false)
-                    }}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary hover:text-ink border border-border/50 hover:border-border transition-colors"
-                  >
-                    {t('app.later')}
-                  </button>
-                  <button
-                    onClick={() => window.electronAPI.updater.install()}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-ink bg-[#393BFF] hover:bg-[#393BFF]/80 transition-colors"
-                  >
-                    {t('update.restartNow')}
-                  </button>
-                </div>
-              </>
-            )}
-            {status.type === 'error' && (
-              <p className="text-red text-sm">
-                {status.phase === 'install'
-                  ? 'Update downloaded but restart failed. Please quit and reopen the app.'
-                  : t('update.checkFailed')}
-              </p>
-            )}
+      {/* The restart did not happen and the terminals are already gone, so this one
+          does hold the screen — quitting and reopening is the only way out. */}
+      {installError && (
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[100] animate-fade-in">
+          <div className="bg-bg-secondary/90 border border-border/50 rounded-2xl shadow-2xl w-80 px-10 py-10 flex flex-col items-center gap-5">
+            <AlertTriangle className="w-12 h-12 text-red" />
+            <p className="text-center text-sm text-text-secondary">{t('update.installFailed')}</p>
           </div>
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* Dev-only debug menu. Its button labels are deliberately NOT in the
+          catalogue: `import.meta.env.DEV` strips the whole block from a
+          production build, so no user ever reads them. The toasts it fires ARE
+          translated — those are the real ones, simulated. */}
+      {import.meta.env.DEV && (
+        <div ref={debugMenuRef} className="fixed bottom-3 right-3 z-[200]">
+          {debugMenuOpen && (
+            <div className="absolute bottom-full right-0 mb-2 w-52 py-1 rounded-lg bg-bg-secondary border border-border/50 shadow-xl animate-fade-in">
+              <button
+                onClick={() => {
+                  setDebugMenuOpen(false)
+                  triggerConfetti()
+                }}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
+              >
+                <PartyPopper className="w-3.5 h-3.5" />
+                Download-ready confetti
+              </button>
+              <button
+                onClick={toggleInstallFailure}
+                className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
+                  installError ? 'text-purple' : 'text-text-secondary hover:text-ink'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Install failure overlay
+                {installError && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
+              </button>
+              <button
+                onClick={toggleUpdateRow}
+                className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
+                  updateRowPinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
+                }`}
+              >
+                <Download className="w-3.5 h-3.5" />
+                Sidebar update row
+                {updateRowPinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
+              </button>
+              <button
+                onClick={pinUpdateRowError}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Update row: failed
+              </button>
+              <button
+                onClick={toggleEmptyState}
+                className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
+                  emptyStatePinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
+                }`}
+              >
+                <Bot className="w-3.5 h-3.5" />
+                Empty agents state
+                {emptyStatePinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
+              </button>
+              <button
+                onClick={togglePlanningAgent}
+                className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-bg-tertiary ${
+                  planningAgentPinned ? 'text-purple' : 'text-text-secondary hover:text-ink'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Fake planning agent
+                {planningAgentPinned && <span className="ml-auto text-[10px] uppercase tracking-wider">on</span>}
+              </button>
+              <button
+                onClick={showWhatsNew}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                What&apos;s New modal
+              </button>
+              <button
+                onClick={floodTerminal}
+                disabled={!activeTerminalId}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-text-secondary hover:text-ink hover:bg-bg-tertiary transition-colors disabled:opacity-40"
+              >
+                <ScrollText className="w-3.5 h-3.5" />
+                Flood terminal
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() => setDebugMenuOpen((o) => !o)}
+            className={`p-2 rounded-lg border transition-colors ${
+              debugMenuOpen
+                ? 'bg-red border-red text-on-brand'
+                : 'bg-red/80 border-red/60 text-on-brand hover:bg-red'
+            }`}
+            title={t('update.debugMenu')}
+          >
+            <Bug className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+    </>
   )
 }

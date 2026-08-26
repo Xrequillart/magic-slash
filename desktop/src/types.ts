@@ -1629,8 +1629,7 @@ export interface TrayAgent {
 export type TrayUpdate =
   | { phase: 'idle' }
   | { phase: 'checking' }
-  /** Found, not fetched: the download waits on a click, here or in the sidebar. */
-  | { phase: 'available'; version: string }
+  /** Found AND being fetched — the download starts on its own (see `autoDownload`). */
   | { phase: 'downloading'; percent: number }
   | { phase: 'ready'; version: string }
   | { phase: 'error' }

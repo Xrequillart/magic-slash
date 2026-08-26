@@ -53,6 +53,11 @@ export type UpdateStatus =
   | { type: 'error'; message: string; phase?: 'check' | 'download' | 'install' }
 
 export let isUpdating = false
+// Raised while a transfer is in flight, so nothing pulls the same release twice in
+// parallel. With autoDownload on, electron-updater starts the download itself the
+// moment it emits 'update-available' — without this flag the tray's download button
+// (and the sidebar row's retry) would kick off a second one on top of it.
+let downloadInFlight = false
 let currentPhase: 'check' | 'download' | 'install' = 'check'
 let mainWindow: BrowserWindow | null = null
 let currentStatus: UpdateStatus = { type: 'not-available' }
@@ -79,8 +84,11 @@ export function onUpdateStatusChange(listener: (status: UpdateStatus) => void): 
 }
 
 export function setupAutoUpdater() {
-  // Configure auto-updater
-  autoUpdater.autoDownload = false
+  // Configure auto-updater. The download starts by itself: the check runs at launch
+  // and the transfer follows it without asking, because nothing about it interrupts
+  // the person — progress is drawn in the left sidebar and the app stays usable
+  // throughout. Only the restart is still a choice, offered by that same row.
+  autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
 
   // Event handlers
@@ -88,12 +96,13 @@ export function setupAutoUpdater() {
     sendStatus({ type: 'checking' })
   })
 
-  // Deliberately does NOT start the download. The check still runs by itself at
-  // launch, but pulling ~150 MB is the person's call: 'available' is what raises
-  // the update button at the bottom of the left sidebar, and that button is the
-  // only thing that calls `updater:download` below.
+  // A brief state now that autoDownload is on: electron-updater emits this and goes
+  // straight into the transfer, so the sidebar row shows the version found for a
+  // moment before the progress bar replaces it. `updater:download` below is still
+  // reachable — it is the retry path after a failed transfer.
   autoUpdater.on('update-available', (info: UpdateInfo) => {
     currentPhase = 'download'
+    downloadInFlight = autoUpdater.autoDownload
     sendStatus({ type: 'available', version: info.version })
   })
 
@@ -107,6 +116,7 @@ export function setupAutoUpdater() {
 
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
     currentPhase = 'install'
+    downloadInFlight = false
     const notes = typeof info.releaseNotes === 'string'
       ? info.releaseNotes
       : Array.isArray(info.releaseNotes)
@@ -120,6 +130,7 @@ export function setupAutoUpdater() {
 
   autoUpdater.on('error', (err: Error) => {
     console.error('[Updater] Error:', err.message)
+    downloadInFlight = false
     sendStatus({ type: 'error', message: err.message, phase: currentPhase })
   })
 
@@ -127,20 +138,26 @@ export function setupAutoUpdater() {
   ipcMain.handle('updater:check', async () => checkForUpdates())
 
   ipcMain.handle('updater:download', async () => {
-    // Guarded rather than trusting the caller: downloadUpdate() rejects when
+    // Guarded rather than trusting the caller. A transfer already running wins:
+    // autoDownload starts one by itself, so the callers that still offer a download
+    // button would otherwise duplicate it. And downloadUpdate() rejects when
     // electron-updater has no update info in hand, which is every state but these
-    // two. A failed download stays retryable — the error came from the transfer,
-    // not from the update being gone.
+    // two — a failed download stays retryable, since the error came from the
+    // transfer and not from the update being gone.
+    if (downloadInFlight) return
     if (currentStatus.type !== 'available' && !(currentStatus.type === 'error' && currentStatus.phase === 'download')) {
       return
     }
     try {
       currentPhase = 'download'
+      downloadInFlight = true
       await autoUpdater.downloadUpdate()
     } catch (err) {
       // The 'error' event has already reported this to the renderer; swallowing the
       // rejection here only keeps it from surfacing as an unhandled invoke failure.
       console.error('[Updater] Download failed:', (err as Error).message)
+    } finally {
+      downloadInFlight = false
     }
   })
 
