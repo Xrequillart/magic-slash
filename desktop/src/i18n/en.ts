@@ -160,8 +160,6 @@ export const en = {
   'sidebar.paneRight': 'Right',
   'sidebar.empty': 'No agents yet. Click “New agent” to start.',
   'sidebar.dropAgents': 'Drop agents here',
-  'sidebar.scripts': 'Scripts',
-  'sidebar.stopScript': 'Stop script',
 
   // ── Claude plan usage gauges ─────────────────────────────────────────────
   // The reset countdown is split per unit rather than assembled from a suffix:
@@ -1342,6 +1340,7 @@ export const en = {
   'agentInfo.openOnGitHub': 'Open',
   'agentInfo.openRepoOnGitHub': 'Open the repository on GitHub',
   'agentInfo.scripts': 'Scripts',
+  'agentInfo.stopScript': 'Stop script',
   'agentInfo.launchDone': 'Launch magic-done',
   'agentInfo.files.one': '{count} file',
   'agentInfo.files.other': '{count} files',

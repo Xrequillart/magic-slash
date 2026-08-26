@@ -2,6 +2,7 @@ import { GitBranch, Copy, Check, ArrowRight, X } from 'lucide-react'
 import { GitHubIcon, VSCodeIcon } from './icons'
 import { ScriptsDropdown } from './ScriptsDropdown'
 import { PRWatchCard } from './PRWatchCard'
+import { RunningScripts } from './RunningScripts'
 import { formatRelativeDate } from './utils'
 import { useT } from '../../i18n'
 import type { RepoGitData } from './types'
@@ -86,6 +87,10 @@ export function RepositoryCard({
           </button>
         </div>
       </div>
+
+      {/* Straight under the row that launched them, and renders nothing when this
+          repo/agent pair has no script running. */}
+      <RunningScripts repoPath={repoPath} agentId={agentId} />
 
       {/* Branch block */}
       {gitData?.branch && (

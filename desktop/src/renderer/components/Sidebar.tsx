@@ -1,18 +1,15 @@
 import { useState, useEffect, useCallback, memo } from 'react'
-import { Plus, XCircle, Sparkles, X, Users, ListTodo, AlertTriangle } from 'lucide-react'
+import { Plus, Sparkles, Users, ListTodo, AlertTriangle } from 'lucide-react'
 import { useStore, type ModalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
-import { useScriptRunner } from '../hooks/useScriptRunner'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
 import { AgentSortButton } from './AgentSortButton'
 import { SidebarUsageCard } from './SidebarUsageCard'
 import { SidebarUpdateButton } from './SidebarUpdateButton'
-import { WaveLoader } from './WaveLoader'
 import { AgentStateBadge } from './AgentStateBadge'
 import { SidebarAccount } from './SidebarAccount'
 import { stateBgColors, stateHoverBgColors } from '../utils/stateColors'
 import { useT } from '../i18n'
-import type { ScriptTerminalInfo } from '../../types'
 
 /**
  * Fixed, and deliberately not resizable. The agent list is a column of short labels
@@ -130,51 +127,9 @@ const AgentList = memo(function AgentList({
   )
 })
 
-interface ScriptItemProps {
-  script: ScriptTerminalInfo
-  isActive: boolean
-  onSelect: () => void
-  onStop: () => void
-}
-
-const ScriptItem = memo(function ScriptItem({ script, isActive, onSelect, onStop }: ScriptItemProps) {
-  const t = useT()
-  return (
-    <button
-      onClick={onSelect}
-      className={`
-        w-full flex items-center gap-2 px-2 py-1.5 text-xs transition-all rounded-lg group
-        ${isActive
-          ? 'bg-accent/20 text-ink'
-          : 'text-text-secondary hover:bg-accent/10 hover:text-ink'
-        }
-      `}
-    >
-      {script.state === 'running' ? (
-        <WaveLoader className="flex-shrink-0 text-accent" />
-      ) : (
-        <XCircle className="w-4 h-4 text-red flex-shrink-0" />
-      )}
-      <div className="flex-1 text-left min-w-0">
-        <div className="truncate text-xs font-medium">
-          {script.scriptName} <span className="text-text-secondary/50">({script.agentName})</span>
-        </div>
-      </div>
-      <span
-        onClick={(e) => { e.stopPropagation(); onStop() }}
-        className="p-0.5 rounded hover:bg-surface-strong opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-        title={t('sidebar.stopScript')}
-      >
-        <X className="w-3 h-3 text-text-secondary/50 hover:text-red" />
-      </span>
-    </button>
-  )
-})
-
 export function Sidebar() {
   const { terminals, activeTerminalId, config, leftSidebarVisible, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, moveTerminalToPane, rightPaneTerminalIds, openModal, closeModal, openSettingsModal } = useStore()
   const { setActiveTerminal } = useTerminals()
-  const { scriptTerminals, stopScript } = useScriptRunner()
   const t = useT()
 
   const [now, setNow] = useState(Date.now())
@@ -455,26 +410,6 @@ export function Sidebar() {
           </>
         )}
       </nav>
-
-      {/* Scripts section */}
-      {scriptTerminals.length > 0 && (
-        <>
-          <div className="px-2 pt-2 pb-1">
-            <div className="px-2 text-xs text-text-secondary/50 uppercase tracking-wider">{t('sidebar.scripts')}</div>
-          </div>
-          <div className="px-2 pb-2 flex flex-col gap-1">
-            {scriptTerminals.map(script => (
-              <ScriptItem
-                key={script.id}
-                script={script}
-                isActive={activeTerminalId === script.id}
-                onSelect={() => handleSelectTerminal(script.id)}
-                onStop={() => stopScript(script.id)}
-              />
-            ))}
-          </div>
-        </>
-      )}
 
       {/* Claude usage card — opt-out: shown unless explicitly disabled. */}
       {config?.usageCardEnabled !== false && <SidebarUsageCard />}
