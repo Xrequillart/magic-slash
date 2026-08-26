@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { ArrowLeft, CircleCheck, CircleDot, ExternalLink, MessageSquare, MessagesSquare, Play } from 'lucide-react'
-import type { PRStatusError, RepositoryConfig, TaskIssue, TaskIssueDetail } from '../../../types'
+import type { InitialPromptMode, PRStatusError, RepositoryConfig, TaskIssue, TaskIssueDetail } from '../../../types'
 import { isPRStatusError } from '../../../types'
 import { useLocale, useT, type Translate } from '../../i18n'
 import { BTN, BTN_ICON, BTN_NEUTRAL_STACKED, BTN_PRIMARY_STACKED } from '../../theme/controls'
@@ -328,12 +328,13 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
    * resolving the local path, the failure the page has to explain, and the fact that the
    * agents page rather than this one owns every guard on creating an agent.
    *
-   * The prompt MUST be a single line. It travels to the PTY as `claude "<prompt>"` with
-   * `JSON.stringify` doing the quoting, so a newline is escaped into a literal backslash-n
-   * that the shell hands to Claude Code verbatim — the prompt would arrive with `\n` in the
-   * middle of it rather than a line break.
+   * The prompt MUST be a single line, in either mode. Run, it travels to the PTY as
+   * `claude "<prompt>"` with `JSON.stringify` doing the quoting, so a newline is escaped
+   * into a literal backslash-n that the shell hands to Claude Code verbatim. Drafted, it
+   * is typed into the input box, where a Return IS the send — a two-line draft would post
+   * its first line and leave the second behind.
    */
-  const openAgent = useCallback(async (initialPrompt: string) => {
+  const openAgent = useCallback(async (initialPrompt: string, promptMode: InitialPromptMode = 'run') => {
     if (!repo?.path) return
     setStartFailed(false)
     try {
@@ -345,7 +346,7 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
       // The agents page owns every guard on creating one (max agents, unreachable
       // repositories, which pane it lands in), so this asks for an agent the same
       // way the sidebar's "+" does rather than launching one itself.
-      const launch: NewTerminalDetail = { cwd, initialPrompt }
+      const launch: NewTerminalDetail = { cwd, initialPrompt, promptMode }
       window.dispatchEvent(new CustomEvent<NewTerminalDetail>('new-terminal', { detail: launch }))
     } catch {
       // Never `err.message`: pickUpTask throws an English sentence with no
@@ -363,13 +364,19 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
    * inventing one would be a second surface to keep in step with eight others. The URL is what
    * the agent reads the issue through — `gh` is a prerequisite the app already checks for.
    *
-   * The last clause is the load-bearing one. Without it an agent handed a GitHub issue in a
-   * repository does the obvious thing and starts implementing it, which is precisely what the
+   * The "do not implement" clause is load-bearing. Without it an agent handed a GitHub issue in
+   * a repository does the obvious thing and starts implementing it, which is precisely what the
    * button above is for and precisely what this one is not.
+   *
+   * DRAFTED, not run, and that is the difference between the two buttons: starting work needs
+   * no elaboration, whereas a discussion is worth little without the sentence the person wanted
+   * to say — which side of it they want to talk about, what they are unsure of, who asked. So
+   * this fills the input box and stops, and the trailing space is where they carry on typing.
    */
   const discussAgent = useCallback(() => openAgent(
     `Let's discuss GitHub issue ${issue.url} — read it first, then help me explain, summarise, `
-    + 'refine or rewrite it. Do not implement it and do not create a branch.',
+    + 'refine or rewrite it. Do not implement it and do not create a branch. ',
+    'draft',
   ), [openAgent, issue.url])
 
   const openedOn = formatIssueDate(issue.createdAt, locale)

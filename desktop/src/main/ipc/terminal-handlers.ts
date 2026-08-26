@@ -490,7 +490,7 @@ export function setupTerminalHandlers(
   })
 
   // Launch Claude in a new terminal
-  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd, initialPrompt, agentType }) => {
+  ipcMain.handle('terminal:launchClaude', async (_event, { id, name, cwd, initialPrompt, promptMode, agentType }) => {
     if (typeof id !== 'string' || typeof name !== 'string') {
       throw new Error('terminal:launchClaude requires id (string) and name (string)')
     }
@@ -516,7 +516,12 @@ export function setupTerminalHandlers(
       { type: isValidAgentType(agentType) ? agentType : (readConfig().defaultAgentType ?? DEFAULT_AGENT_TYPE) },
       callbacks.onRepositoriesChange,
       undefined,
-      typeof initialPrompt === 'string' ? initialPrompt : undefined
+      typeof initialPrompt === 'string' ? initialPrompt : undefined,
+      undefined,
+      // Validated rather than forwarded: this crosses the IPC boundary, and `run` is
+      // the mode that must survive any junk arriving here — it is what every caller
+      // but the Tasks page's "Discuss" button wants.
+      promptMode === 'draft' ? 'draft' : 'run'
     )
 
     // Save agent to disk immediately

@@ -7,11 +7,12 @@ import { claudeThemeFlag } from '../claude-theme'
 import { readConfig } from '../config/config'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
 import { withDetectedBranch } from './initial-metadata'
+import { createTuiReadyScanner } from './tui-ready'
 import { expandPath } from '../config/validation'
 import { resolveAgentCwd } from './agent-cwd'
 import { getCommonPaths } from '../utils/paths'
 import { clearPendingQuestion, clearAllPendingQuestions } from '../questions/pending-questions'
-import type { TerminalMetadata, TerminalState, LaunchMode, TerminalUsage } from '../../types'
+import type { TerminalMetadata, TerminalState, LaunchMode, TerminalUsage, InitialPromptMode } from '../../types'
 export type { TerminalMetadata, TerminalState }
 
 const DEFAULT_PTY_ROWS = 40
@@ -210,6 +211,16 @@ const MAX_RESTARTS = 5
 const RESTART_WINDOW_MS = 60_000
 const RESTART_DELAYS = [500, 1000, 2000, 4000, 8000]
 const STABLE_RUN_MS = 30_000
+
+/**
+ * How long to wait for the input box to announce itself before typing a draft
+ * anyway. See `./tui-ready` for the announcement.
+ *
+ * The fallback is the whole reason this is a timeout and not a promise: if a future
+ * version stops enabling bracketed paste, the draft still arrives — a stray echo
+ * above the banner is a blemish, a prompt that never appears is a broken button.
+ */
+const TUI_READY_TIMEOUT_MS = 8_000
 
 // Track PTY listener disposables for cleanup (Phase 2.3)
 const ptyDisposables = new Map<string, Array<{ dispose: () => void }>>()
@@ -460,7 +471,8 @@ export function launchClaude(
   onRepositoriesChange?: (repositories: string[]) => void,
   initialRepositories?: string[],
   initialPrompt?: string,
-  launchModeOverride?: LaunchMode
+  launchModeOverride?: LaunchMode,
+  initialPromptMode: InitialPromptMode = 'run'
 ): Terminal {
   const shell = getDefaultShell()
   const expandedCwd = expandPath(cwd)
@@ -470,8 +482,15 @@ export function launchClaude(
   // Track when PTY process started for stable-run detection
   let ptyStartTime = Date.now()
 
-  // Only pass the prompt as a CLI arg on first spawn, not on restarts
-  let pendingPrompt = initialPrompt || null
+  // Only hand the prompt over on first spawn, not on restarts — a restart is a crash
+  // recovery, and re-running (or re-typing) the opening prompt into a session that may
+  // already have acted on it is worse than starting quiet.
+  //
+  // Two variables because the two modes reach Claude Code by different roads and can
+  // never both be taken: `run` puts the prompt on the command line, `draft` types it
+  // into the input box once the TUI is up. See `InitialPromptMode`.
+  let pendingPrompt = initialPromptMode === 'run' ? (initialPrompt || null) : null
+  let pendingDraft = initialPromptMode === 'draft' ? (initialPrompt || null) : null
 
   // Function to create and attach a new PTY process
   const createPtyProcess = (currentCwd: string, cols: number = 120, rows: number = DEFAULT_PTY_ROWS) => {
@@ -509,10 +528,57 @@ export function launchClaude(
     // Store disposables for this PTY's listeners
     const disposables: Array<{ dispose: () => void }> = []
 
+    /**
+     * The draft this spawn still owes the input box, and the machinery that gets it
+     * there — see `TUI_READY_MARKER`.
+     *
+     * Claimed out of `pendingDraft` here rather than read from it below, for the same
+     * reason `pendingPrompt` is nulled at the top: a restart must not retype it.
+     *
+     * Written with NO trailing carriage return, which is the entire point of the mode:
+     * the text lands in the box as if it had been typed, and the person adds their own
+     * words and presses Return themselves.
+     */
+    let pendingType = pendingDraft
+    pendingDraft = null
+    const tuiReady = createTuiReadyScanner()
+    let draftTimer: ReturnType<typeof setTimeout> | null = null
+
+    const typeDraft = () => {
+      const text = pendingType
+      pendingType = null
+      if (draftTimer) {
+        clearTimeout(draftTimer)
+        draftTimer = null
+      }
+      if (!text) return
+      try {
+        ptyProcess.write(text)
+      } catch (e) {
+        console.error(`[launchClaude] Failed to type the opening draft into terminal ${id}:`, e)
+      }
+    }
+
+    if (pendingType) {
+      draftTimer = setTimeout(typeDraft, TUI_READY_TIMEOUT_MS)
+      // Disposed with the listeners, so a terminal killed during startup does not fire
+      // a write at a PTY that is already gone.
+      disposables.push({
+        dispose: () => {
+          if (draftTimer) clearTimeout(draftTimer)
+          draftTimer = null
+          pendingType = null
+        },
+      })
+    }
+
     // Handle data output
     disposables.push(ptyProcess.onData((data: string) => {
       appendToDisplayBuffer(id, data)
       onData(data)
+
+      // The input box just opened: type the draft into it.
+      if (pendingType && tuiReady.seen(data)) typeDraft()
 
       // Reset restart counter if process has been running stably
       if (Date.now() - ptyStartTime > STABLE_RUN_MS) {
@@ -687,7 +753,9 @@ export function launchClaude(
     launchDir: workingDir,
     // A prompt handed over at launch counts as having talked to the session: the
     // conversation it starts is just as real as a typed one, and just as lost on
-    // a relaunch — even though no keystroke ever reached the PTY.
+    // a relaunch — even though no keystroke ever reached the PTY. True of a `draft`
+    // too, and for a plainer reason: a relaunch would wipe the text out of the input
+    // box, along with whatever the person had added to it.
     hasUserInput: Boolean(initialPrompt),
     respawn: respawnInCwd
   }

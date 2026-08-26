@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useStore } from '../store'
-import type { TerminalState, TerminalInfo, TerminalMetadata } from '../../types'
+import type { TerminalState, TerminalInfo, TerminalMetadata, InitialPromptMode } from '../../types'
 
 export function useTerminals() {
   const {
@@ -145,9 +145,16 @@ export function useTerminals() {
     loadExistingTerminals()
   }, [])
 
-  const launchClaudeTerminal = useCallback(async (name: string, cwd: string, initialPrompt?: string) => {
+  const launchClaudeTerminal = useCallback(async (
+    name: string,
+    cwd: string,
+    initialPrompt?: string,
+    // Left undefined by every caller that just wants the prompt run, which is the
+    // main process's own default — see `InitialPromptMode`.
+    promptMode?: InitialPromptMode,
+  ) => {
     const id = `claude-${Date.now()}`
-    const result = await window.electronAPI.terminal.launchClaude(id, name, cwd, initialPrompt)
+    const result = await window.electronAPI.terminal.launchClaude(id, name, cwd, initialPrompt, promptMode)
 
     const terminalInfo: TerminalInfo = {
       id: result.id,

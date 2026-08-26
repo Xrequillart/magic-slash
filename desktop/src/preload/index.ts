@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { AgentSortMode, PRComment, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot, TaskIssueDetail } from '../types'
+import type { AgentSortMode, PRComment, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot, TaskIssueDetail, InitialPromptMode } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -177,8 +177,11 @@ const terminalApi = {
   create: (id: string, name: string, cwd: string) =>
     ipcRenderer.invoke('terminal:create', { id, name, cwd }),
 
-  launchClaude: (id: string, name: string, cwd: string, initialPrompt?: string) =>
-    ipcRenderer.invoke('terminal:launchClaude', { id, name, cwd, initialPrompt }),
+  // `promptMode` decides what happens to `initialPrompt`: 'run' hands it to
+  // `claude` as an argument, 'draft' types it into the input box and waits for the
+  // person to press Return. See `InitialPromptMode` in types.ts.
+  launchClaude: (id: string, name: string, cwd: string, initialPrompt?: string, promptMode?: InitialPromptMode) =>
+    ipcRenderer.invoke('terminal:launchClaude', { id, name, cwd, initialPrompt, promptMode }),
 
   write: (id: string, data: string) =>
     ipcRenderer.invoke('terminal:write', { id, data }),

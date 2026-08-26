@@ -1727,7 +1727,7 @@ export const en = {
   // "Discuss with", not "Start a discussion with" — it sits directly under "Start an agent",
   // and two labels both opening on the same verb read as two ways of doing one thing.
   'tasks.discussAgent': 'Discuss with an agent',
-  'tasks.discussAgentHint': 'Opens a terminal and hands the issue over to explain, refine or rewrite — without starting the work.',
+  'tasks.discussAgentHint': 'Types the opening prompt into a terminal — add what you want to talk about, then press Return.',
   // Why the action is unavailable, said in place instead of failing on the click.
   // A team repository that nobody has bound to a folder on THIS machine has no
   // directory to open a terminal in, and the fix is a setting.

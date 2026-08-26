@@ -4,6 +4,7 @@ import { useTerminals } from '../../hooks/useTerminals'
 import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useOrderedTerminals } from '../../hooks/useOrderedTerminals'
 import { useStore } from '../../store'
+import type { InitialPromptMode } from '../../../types'
 import { TerminalView } from '../../components/TerminalView'
 import { showToast } from '../../components/Toast'
 import { useT } from '../../i18n'
@@ -27,6 +28,11 @@ export interface NewTerminalDetail {
   cwd?: string
   /** First prompt handed to the fresh agent, e.g. `/magic:start <issue url>`. */
   initialPrompt?: string
+  /**
+   * What to do with that prompt: run it, or type it into the input box and leave it
+   * there for the person to finish. Absent means run it — see `InitialPromptMode`.
+   */
+  promptMode?: InitialPromptMode
 }
 
 export function TerminalsPage() {
@@ -95,7 +101,7 @@ export function TerminalsPage() {
     setIsCreating(true)
     try {
       const name = getNextTerminalName()
-      const terminal = await launchClaudeTerminal(name, detail?.cwd || DEFAULT_PATH, detail?.initialPrompt)
+      const terminal = await launchClaudeTerminal(name, detail?.cwd || DEFAULT_PATH, detail?.initialPrompt, detail?.promptMode)
       if (pane === 'right') {
         moveTerminalToPane(terminal.id, 'right')
         setSplitTerminalId(terminal.id)

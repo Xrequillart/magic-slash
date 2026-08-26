@@ -660,6 +660,21 @@ export interface SpotlightConfig {
 export type LaunchMode = 'plan' | 'default' | 'acceptEdits' | 'auto' | 'bypassPermissions'
 
 /**
+ * What a launch does with the prompt it was handed.
+ *
+ * `run` is the original behaviour and the default: the prompt rides along as
+ * `claude "<prompt>"`, so the agent is already working by the time its terminal is
+ * on screen. That is right for `/magic:start`, where the prompt IS the whole
+ * instruction and there is nothing to add to it.
+ *
+ * `draft` types the prompt into Claude Code's input box and stops there — nothing
+ * is sent until the person presses Return. It exists for the openings that are the
+ * START of a conversation rather than an order: "discuss this issue with me" is
+ * worth almost nothing without the sentence the person wanted to say about it.
+ */
+export type InitialPromptMode = 'run' | 'draft'
+
+/**
  * What kind of work an agent does — the app's own notion, distinct from the status
  * it happens to be at.
  *
