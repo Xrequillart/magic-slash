@@ -23,6 +23,7 @@ const EVERY_FIELD: (keyof AdminUserSettings)[] = [
   'codeTheme',
   'launchMode',
   'defaultAgentType',
+  'agentSort',
   'usageCardEnabled',
   'usageCardMinimized',
   'agentContextEnabled',

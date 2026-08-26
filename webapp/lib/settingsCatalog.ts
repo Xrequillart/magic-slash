@@ -65,22 +65,24 @@ export const DEFAULTS = {
 } as const
 
 /**
- * All 25 `user_settings` columns, as the desktop app stores them. Every one is
+ * All 26 `user_settings` columns, as the desktop app stores them. Every one is
  * nullable and NULL is a third state distinct from false — it means the user
  * never chose, and the app applies its own default. Nothing here normalises a
  * null away: "never chose" is exactly what a support question needs to see.
  *
  * Extends the 21 fields `lib/settings.ts` already names (the ones the webapp lets
  * a user edit) rather than restating them, so a column rename is one edit and not
- * two camelCase lists that must silently agree. The 4 added below are the ones
- * `UserSettings` deliberately omits: per-machine properties and transient view
- * state, which the back-office reports precisely because it cannot edit them.
+ * two camelCase lists that must silently agree. The 5 added below are the ones
+ * `UserSettings` deliberately omits: per-machine properties, transient view state,
+ * and one desktop-window preference with no web control — all of which the
+ * back-office reports precisely because it cannot edit them.
  */
 export interface AdminUserSettings extends UserSettings {
   splitActive: boolean | null
   spotlightShortcut: string | null
   autoStartAtLogin: boolean | null
   atlassianIntegrationEnabled: boolean | null
+  agentSort: string | null
 }
 
 /**
@@ -90,7 +92,7 @@ export interface AdminUserSettings extends UserSettings {
  *
  * Extends `DEFAULTS` (lib/settings.ts) rather than restating it: those twenty-one are
  * the ones the webapp itself can edit, and their defaults are already documented
- * there. The four below are the admin-only columns, each verified against the line in
+ * there. The five below are the admin-only columns, each verified against the line in
  * the desktop app that resolves the unset value — cited, because a default invented
  * here would be a confident lie in the one tool used to answer "why is it behaving
  * like that":
@@ -104,6 +106,8 @@ export interface AdminUserSettings extends UserSettings {
  *  * atlassianIntegrationEnabled — INFERRED, not read: nothing in the desktop app
  *    defaults it, so an absent flag simply means the integration was never set up.
  *    Stated as false on that basis and not on a `??` somewhere.
+ *  * agentSort — DEFAULT_AGENT_SORT, the value the sidebar's sort control and its
+ *    ordering hook both read an absent column as. desktop/src/types.ts
  */
 export const SETTING_DEFAULTS: Record<keyof AdminUserSettings, string | number | boolean> = {
   ...DEFAULTS,
@@ -111,6 +115,7 @@ export const SETTING_DEFAULTS: Record<keyof AdminUserSettings, string | number |
   spotlightShortcut: 'Control+Space',
   autoStartAtLogin: false,
   atlassianIntegrationEnabled: false,
+  agentSort: 'recent',
 }
 
 export interface SettingGroup {
@@ -120,7 +125,7 @@ export interface SettingGroup {
 }
 
 /**
- * The twenty-five settings, grouped by FEATURE, in reading order. Also the field
+ * The twenty-six settings, grouped by FEATURE, in reading order. Also the field
  * allowlist — a column absent from here is a column the console does not show.
  *
  * The groups and their titles are the desktop app's own sections, verbatim and in its
@@ -156,6 +161,12 @@ export const SETTING_GROUPS: SettingGroup[] = [
   {
     title: 'Default agent type',
     fields: [{ field: 'defaultAgentType', label: 'New agent is a' }],
+  },
+  {
+    // The sidebar's own control, not a settings section — there is no box in the app
+    // to borrow a title from, so this one is named after what it orders.
+    title: 'Agent list',
+    fields: [{ field: 'agentSort', label: 'Sorted by' }],
   },
   {
     title: 'Usage card',

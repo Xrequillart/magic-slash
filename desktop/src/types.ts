@@ -637,6 +637,26 @@ export const AGENT_TYPES = ['coder', 'planner'] as const
 export type AgentType = (typeof AGENT_TYPES)[number]
 
 /**
+ * How the left sidebar orders its agent list, picked from the control beside the
+ * "new agent" button.
+ *
+ * `recent` is the default and stays the recommended one: an agent keeps the row it
+ * had for as long as it lives, so the list a person learned does not move under
+ * their cursor. The other two are opt-in for the sessions where that matters less
+ * than finding a group — a dozen agents across four repositories, or a list where
+ * the ones waiting on an answer are the only ones you care about.
+ */
+export const AGENT_SORT_MODES = ['recent', 'status', 'repository'] as const
+
+export type AgentSortMode = (typeof AGENT_SORT_MODES)[number]
+
+export const DEFAULT_AGENT_SORT: AgentSortMode = 'recent'
+
+export function isValidAgentSort(value: unknown): value is AgentSortMode {
+  return typeof value === 'string' && (AGENT_SORT_MODES as readonly string[]).includes(value)
+}
+
+/**
  * Available appearances, in the order the picker shows them. Adding one is a
  * single entry here plus its colours in the renderer's theme registry — the
  * registry is typed against this list, so TypeScript refuses a theme whose
@@ -816,6 +836,13 @@ export interface Config {
    * start is a property of the person, not of the machine.
    */
   defaultAgentType?: AgentType
+  /**
+   * How the left sidebar orders its agents. Absent = never chosen, and the app
+   * applies `recent` — the order the list has always had. Follows the account
+   * like the theme: how you like to read your own list of work is a property of
+   * the person, not of the machine.
+   */
+  agentSort?: AgentSortMode
   usageCardEnabled?: boolean    // show the Claude usage card in the left sidebar
   usageCardMinimized?: boolean  // left sidebar usage card collapsed to gauges only
   agentContextEnabled?: boolean // show the agent's context/session card in the right sidebar

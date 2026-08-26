@@ -2250,6 +2250,7 @@ describe('user settings', () => {
       auto_start_at_login: null,
       launch_mode: null,
       default_agent_type: null,
+      agent_sort: null,
       atlassian_integration_enabled: null,
       theme: null,
       language: null,

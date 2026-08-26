@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStore } from '../store'
-import type { CodeThemeMode, Config, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
+import type { AgentSortMode, CodeThemeMode, Config, LanguageId, PlanSettingsInput, RepositoryConfig, ThemeId } from '../../types'
 
 export function useConfig() {
   const { config, configLoading, configError, setConfig, setConfigLoading, setConfigError } = useStore()
@@ -132,6 +132,16 @@ export function useConfig() {
     return result
   }, [setConfig])
 
+  // How the left sidebar orders its agents. Recorded and nothing more: the list reads
+  // the choice straight off the config through `useOrderedTerminals`, so the sidebar
+  // re-orders as soon as this resolves — and on this account's other machines too, when
+  // the row reaches them over Realtime.
+  const updateAgentSort = useCallback(async (sort: AgentSortMode) => {
+    const result = await window.electronAPI.config.updateAgentSort(sort)
+    setConfig(result.config)
+    return result
+  }, [setConfig])
+
   // Repainting is the main process's job (it also owns the native chrome and
   // the other windows), so this only records the choice.
   const updateTheme = useCallback(async (theme: ThemeId) => {
@@ -249,6 +259,7 @@ export function useConfig() {
     updateSpotlight,
     updateLaunchMode,
     updateDefaultAgentType,
+    updateAgentSort,
     updateTheme,
     updateSyncClaudeTheme,
     updateCodeTheme,

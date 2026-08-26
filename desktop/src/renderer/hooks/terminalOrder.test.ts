@@ -17,7 +17,7 @@ const terminal = (
 })
 
 describe('orderTerminals', () => {
-  it('puts the newest agent first', () => {
+  it('puts the newest agent first by default', () => {
     const ordered = orderTerminals(
       [terminal('old', 100), terminal('newest', 300), terminal('middle', 200)],
       null,
@@ -25,7 +25,7 @@ describe('orderTerminals', () => {
     expect(ordered.map(t => t.id)).toEqual(['newest', 'middle', 'old'])
   })
 
-  it('keeps the order stable whatever the state or workflow status', () => {
+  it('keeps the default order stable whatever the state or workflow status', () => {
     const before = orderTerminals(
       [terminal('a', 100), terminal('b', 200, 'idle'), terminal('c', 300)],
       null,
@@ -47,6 +47,74 @@ describe('orderTerminals', () => {
       null,
     )
     expect(ordered.map(t => t.id)).toEqual(['dated', 'legacy-1', 'legacy-2'])
+  })
+
+  describe('by status', () => {
+    it('leads with the agents blocked on the person, then the ones still moving', () => {
+      const ordered = orderTerminals(
+        [
+          terminal('idle', 500),
+          terminal('completed', 400, 'completed'),
+          terminal('working', 300, 'working'),
+          terminal('error', 200, 'error'),
+          terminal('waiting', 100, 'waiting'),
+        ],
+        null,
+        'status',
+      )
+      expect(ordered.map(t => t.id)).toEqual(['waiting', 'error', 'working', 'completed', 'idle'])
+    })
+
+    it('reads each status group newest first', () => {
+      const ordered = orderTerminals(
+        [
+          terminal('old-waiting', 100, 'waiting'),
+          terminal('new-waiting', 300, 'waiting'),
+          terminal('newest-idle', 400),
+        ],
+        null,
+        'status',
+      )
+      expect(ordered.map(t => t.id)).toEqual(['new-waiting', 'old-waiting', 'newest-idle'])
+    })
+  })
+
+  describe('by repository', () => {
+    const config = {
+      repositories: {
+        web: { path: '/code/web' },
+        api: { path: '/code/api' },
+      },
+    } as never
+
+    const inRepo = (id: string, tsCreate: number, path?: string): TerminalInfo => ({
+      ...terminal(id, tsCreate),
+      repositories: path ? [path] : [],
+    })
+
+    it('groups by project name, A to Z, newest first inside a group', () => {
+      const ordered = orderTerminals(
+        [
+          inRepo('web-old', 100, '/code/web/src'),
+          inRepo('api', 200, '/code/api'),
+          inRepo('web-new', 300, '/code/web'),
+        ],
+        config,
+        'repository',
+      )
+      expect(ordered.map(t => t.id)).toEqual(['api', 'web-new', 'web-old'])
+    })
+
+    it('sorts the agents that belong to no configured repository last', () => {
+      // An empty name would otherwise sort above every letter and open the list with
+      // the agents that have no group at all.
+      const ordered = orderTerminals(
+        [inRepo('loose', 900), inRepo('web', 100, '/code/web')],
+        config,
+        'repository',
+      )
+      expect(ordered.map(t => t.id)).toEqual(['web', 'loose'])
+    })
   })
 
   it('tags each agent with the configured repositories it belongs to', () => {

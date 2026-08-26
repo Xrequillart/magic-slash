@@ -4,6 +4,7 @@ import { useStore, type ModalId } from '../store'
 import { useTerminals } from '../hooks/useTerminals'
 import { useScriptRunner } from '../hooks/useScriptRunner'
 import { useOrderedTerminals, useSplitOrderedTerminals, type TerminalWithRepos } from '../hooks/useOrderedTerminals'
+import { AgentSortButton } from './AgentSortButton'
 import { SidebarUsageCard } from './SidebarUsageCard'
 import { SidebarUpdateButton } from './SidebarUpdateButton'
 import { WaveLoader } from './WaveLoader'
@@ -88,8 +89,9 @@ const AgentItem = memo(function AgentItem({ terminal, isActive, isSplitTarget, o
   )
 })
 
-// Flat agent list — newest first, never reordered by workflow status so a row
-// stays exactly where the user last saw it.
+// Flat agent list, in whatever order `useOrderedTerminals` handed it: newest first by
+// default, so a row stays exactly where the user last saw it, and grouped by status or
+// by repository when they have asked for that instead.
 interface AgentListProps {
   terminals: TerminalWithRepos[]
   activeTerminalId: string | null
@@ -183,7 +185,8 @@ export function Sidebar() {
     return () => clearInterval(interval)
   }, [])
 
-  // Agents, newest first — no grouping, no status-driven reordering
+  // Agents in the order the person picked from the header control — newest first
+  // unless they said otherwise (see hooks/terminalOrder.ts).
   const { ordered } = useOrderedTerminals()
   const { leftTerminals, rightTerminals } = useSplitOrderedTerminals()
 
@@ -353,6 +356,9 @@ export function Sidebar() {
             width, so ordering the button before it would leave a permanent invisible
             gutter to its right. `mr-auto` on the label does the spacing a
             justify-between could not, for the same reason.
+            The sort control sits between the two, i.e. immediately left of the +: both
+            act on the list under them, and the one that CHANGES the list reads before
+            the one that adds to it.
             The event is unchanged: ⌘N (pages/Terminals) and the native File menu
             (App.tsx) dispatch this very same 'new-terminal'. */}
         <div className="pl-2 pt-3 pb-2 flex items-center gap-1">
@@ -360,6 +366,7 @@ export function Sidebar() {
           <span className={`text-[10px] bg-surface px-1.5 py-0.5 rounded transition-opacity duration-150 ${
             isSplitMode && terminals.length > 0 ? 'text-text-secondary/40 opacity-100' : 'opacity-0'
           }`}>{t('sidebar.paneLeft')}</span>
+          <AgentSortButton />
           <button
             onClick={() => {
               const event = new CustomEvent('new-terminal')

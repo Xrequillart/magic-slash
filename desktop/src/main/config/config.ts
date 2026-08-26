@@ -1,7 +1,7 @@
 import * as path from 'path'
 import * as os from 'os'
 import { randomUUID } from 'crypto'
-import type { AgentType, Config, RepositoryConfig, LanguageId, LaunchMode, OrgSharedConfig, PlanSettingsInput, SettingsInput, ThemeId } from '../../types'
+import type { AgentSortMode, AgentType, Config, RepositoryConfig, LanguageId, LaunchMode, OrgSharedConfig, PlanSettingsInput, SettingsInput, ThemeId } from '../../types'
 import { PLAN_ACCEPTANCE_CRITERIA_FORMATS, PLAN_SPLITTING_MODES, PLAN_TRACKERS } from '../../types'
 import { DEFAULT_REPOSITORY_FIELDS, DEFAULT_SPOTLIGHT, isValidSpotlightConfig } from './defaults'
 import {
@@ -919,6 +919,13 @@ export function updateLaunchMode(mode: LaunchMode): Config {
 export function updateDefaultAgentType(type: AgentType): Config {
   const config = readConfig()
   config.defaultAgentType = type
+  writeConfig(config)
+  return config
+}
+
+export function updateAgentSort(sort: AgentSortMode): Config {
+  const config = readConfig()
+  config.agentSort = sort
   writeConfig(config)
   return config
 }

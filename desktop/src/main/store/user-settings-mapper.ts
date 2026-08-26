@@ -1,5 +1,5 @@
 import type { Config, SpotlightConfig } from '../../types'
-import { isValidCodeThemeMode, isValidLanguage, isValidTheme } from '../../types'
+import { isValidAgentSort, isValidCodeThemeMode, isValidLanguage, isValidTheme } from '../../types'
 import { isValidAgentType, isValidLaunchMode, isValidSpotlightShortcut } from '../config/defaults'
 
 // ---------------------------------------------------------------------------
@@ -52,6 +52,7 @@ export interface UserSettingsRow {
   sync_claude_theme: boolean | null
   code_theme: string | null
   default_agent_type: string | null
+  agent_sort: string | null
 }
 
 export const USER_SETTINGS_COLUMNS =
@@ -62,7 +63,7 @@ export const USER_SETTINGS_COLUMNS =
   'notification_pr_changes_requested, split_enabled, split_active, pr_reviews_enabled, ' +
   'pr_reviews_poll_interval_ms, pr_reviews_auto_launch_skills, spotlight_enabled, ' +
   'spotlight_shortcut, auto_start_at_login, launch_mode, atlassian_integration_enabled, theme, ' +
-  'language, sync_claude_theme, code_theme, default_agent_type'
+  'language, sync_claude_theme, code_theme, default_agent_type, agent_sort'
 
 /**
  * Config keys that live in `user_settings`. Stripped from the org-scoped
@@ -90,6 +91,7 @@ export const SETTINGS_KEYS = [
   'autoStartAtLogin',
   'launchMode',
   'defaultAgentType',
+  'agentSort',
   'integrations',
   'theme',
   'language',
@@ -137,6 +139,7 @@ export function configToSettingsRow(config: Config): UserSettingsRow {
     sync_claude_theme: orNull(config.syncClaudeTheme),
     code_theme: orNull(config.codeTheme),
     default_agent_type: orNull(config.defaultAgentType),
+    agent_sort: orNull(config.agentSort),
   }
 }
 
@@ -177,6 +180,10 @@ export function applySettingsRow(config: Config, row: UserSettingsRow): void {
   // this one does not know, and that must read as "unset" rather than lay out an
   // agent as something this version cannot render.
   if (isValidAgentType(row.default_agent_type)) config.defaultAgentType = row.default_agent_type
+  // Re-validated like the four above: a sort mode this build does not know must read as
+  // "unset" — the list then falls back to newest-first, the order it always had, rather
+  // than to no order at all.
+  if (isValidAgentSort(row.agent_sort)) config.agentSort = row.agent_sort
 
   // Same shape as prReviews below: a partial object is fine, since every flag in
   // it defaults to ON when absent and the block itself is optional.

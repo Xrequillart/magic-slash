@@ -120,6 +120,13 @@ export const fr: Record<keyof typeof en, string> = {
   'sidebar.login': 'Connexion / Inscription',
   'sidebar.accountFallback': 'Compte',
   'sidebar.agents': 'Agents',
+  'sidebar.sort.title': 'Trier les agents — {mode}',
+  'sidebar.sort.recent': 'Du plus récent au plus ancien',
+  'sidebar.sort.recent.help': 'Un agent garde sa ligne tant qu’il existe.',
+  'sidebar.sort.status': 'Par statut',
+  'sidebar.sort.status.help': 'En attente et en erreur d’abord. La liste bouge quand les agents travaillent.',
+  'sidebar.sort.repository': 'Par dépôt',
+  'sidebar.sort.repository.help': 'Regroupés par projet, de A à Z. Les agents sans dépôt à la fin.',
   // Un compteur au-dessus de la liste, pas un en-tête de groupe : les agents
   // comptés gardent leur ligne.
   'sidebar.needsAttention': 'Demande une action',

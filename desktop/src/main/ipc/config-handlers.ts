@@ -24,6 +24,7 @@ import {
   updateSplitActive,
   updateLaunchMode,
   updateDefaultAgentType,
+  updateAgentSort,
   updateTheme,
   updateLanguage,
   updatePlanSyncEnabled,
@@ -36,7 +37,8 @@ import { getGitHubAuthStatus } from '../github'
 import { reRegisterSpotlightShortcut } from '../spotlight-shortcut'
 import { isValidSpotlightShortcut, isValidLaunchMode, isValidAgentType } from '../config/defaults'
 import {
-  codeAppearance, DEFAULT_CODE_THEME_MODE, isValidCodeThemeMode, isValidLanguage, isValidTheme,
+  AGENT_SORT_MODES, codeAppearance, DEFAULT_CODE_THEME_MODE, isValidAgentSort,
+  isValidCodeThemeMode, isValidLanguage, isValidTheme,
   type Config, type FilePreviewResult, type ChangedLines,
 } from '../../types'
 import { applyLanguage, applyTheme, currentTheme } from '../appearance'
@@ -482,6 +484,18 @@ export function setupConfigHandlers() {
       throw new Error(`Invalid agent type: '${type}'. Must be one of: coder, planner.`)
     }
     const config = updateDefaultAgentType(type)
+    return { config }
+  })
+
+  // How the left sidebar orders its agents. Validated for the same reason as the two
+  // handlers above: the annotation is erased at build time, and an unknown value would
+  // reach the renderer's sort as a mode it has no branch for — a list in no order at
+  // all, on every machine this account signs into.
+  ipcMain.handle('config:updateAgentSort', async (_event, { sort }: { sort: string }) => {
+    if (!isValidAgentSort(sort)) {
+      throw new Error(`Invalid agent sort: '${sort}'. Must be one of: ${AGENT_SORT_MODES.join(', ')}.`)
+    }
+    const config = updateAgentSort(sort)
     return { config }
   })
 
