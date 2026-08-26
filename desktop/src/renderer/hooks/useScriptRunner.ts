@@ -52,9 +52,9 @@ function registerExitListener() {
     const { scriptTerminals, removeScriptTerminal, updateScriptTerminalState } = useStore.getState()
     const script = scriptTerminals.find(s => s.id === id)
 
-    // Card first, buffer second. Only the toast text needs the buffer, so awaiting the
-    // round trip before this would leave the card reading "running" — and the dialog's
-    // Stop button armed — for as long as it takes to ship up to 100 KB of output.
+    // Card first, buffer second. Only the failure toast's test counts need the buffer, so
+    // awaiting that round trip before this would leave the card reading "running" — and
+    // the dialog's Stop button armed — for as long as it takes to ship up to 100 KB.
     if (exitCode === 0) {
       removeScriptTerminal(id)
     } else {
@@ -62,6 +62,13 @@ function registerExitListener() {
     }
 
     if (!script) return
+
+    if (exitCode === 0) {
+      // No buffer read: a clean exit keeps none (`main/pty/exited-buffer.ts`), so this
+      // would be an IPC round trip guaranteed to answer null.
+      showToast(`"${script.scriptName}" finished successfully`)
+      return
+    }
 
     // Try to parse test results from the terminal buffer
     let testInfo = ''
@@ -77,11 +84,7 @@ function registerExitListener() {
       // Buffer may already be gone, ignore
     }
 
-    if (exitCode === 0) {
-      showToast(`"${script.scriptName}" finished successfully${testInfo}`)
-    } else {
-      showToast(`"${script.scriptName}" failed${testInfo}`, 'error')
-    }
+    showToast(`"${script.scriptName}" failed${testInfo}`, 'error')
   })
 }
 

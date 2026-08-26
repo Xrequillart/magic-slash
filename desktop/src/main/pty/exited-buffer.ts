@@ -1,38 +1,32 @@
 /**
- * How much of a terminal's output survives its process.
+ * Whether a terminal's output survives its process.
  *
- * The display buffer deliberately OUTLIVES the PTY, which is what `launchClaude` always
- * did: dropping it in `createTerminal`'s exit handler is why `getBuffer` used to answer
- * null for anything that had exited, and why a dialog opened on a failed script would
- * show nothing at all.
+ * `createTerminal`'s exit handler used to drop the display buffer unconditionally, one
+ * line before the renderer was even told the process had gone — so `getBuffer` answered
+ * null for anything that had exited, and a dialog opened on a dead terminal showed
+ * nothing at all.
  *
- * Kept in its own module so the rule can be tested without `terminal-manager`'s native
- * node-pty import.
+ * Kept in its own module so the rule can be stated and tested without
+ * `terminal-manager`'s native node-pty import.
  */
 
 /**
- * How much of a cleanly-exited terminal's output is kept.
+ * True when the display buffer of a terminal that exited with `exitCode` must be kept.
  *
- * Enough for the tail a reader or a parser wants — a failure message, a test summary —
- * and 8 KB rather than `DISPLAY_BUFFER_MAX_SIZE`'s 100 KB because this is the branch with
- * no reclamation path: see `retainedBufferOnExit`.
+ * The question is not who might still READ the buffer — it is who can still FREE it:
+ *
+ * - **Non-zero** — kept. The script's card stays on screen precisely so the failure can
+ *   be read, and the dialog opened from it is the only place to read it. Dismissing or
+ *   stopping that card calls `killTerminal`, which deletes the buffer. Bounded, because
+ *   the retention lasts exactly as long as the card the user can see.
+ * - **Zero** — dropped. The card disappears the moment the exit listener removes the
+ *   script, so nothing can ever reopen that terminal *or* kill it: anything kept here
+ *   would live until `cleanupAllTerminals` on quit, growing the main process by one
+ *   buffer per successful run for the life of the session, with no reclamation path.
+ *
+ * The asymmetry is the whole design. A blanket "keep" leaks; a blanket "drop" is the bug
+ * above.
  */
-export const EXITED_BUFFER_TAIL = 8192
-
-/**
- * What to keep of `buffer` once the process behind it has exited with `exitCode`.
- *
- * The asymmetry is about who can still free it, not about who might still read it:
- *
- * - **Non-zero** — kept whole. Its card stays on screen until the reader dismisses it,
- *   and dismissing calls `killTerminal`, which deletes the buffer. Bounded, and a failure
- *   is the case where the whole scrollback is worth having.
- * - **Zero** — trimmed to the tail. The card disappears immediately, so nothing can ever
- *   reopen that terminal *or* kill it, and the entry lives until `cleanupAllTerminals` on
- *   quit. The only reader left is the toast's test-count parse, which matches a summary
- *   line at the end. So the cost is `EXITED_BUFFER_TAIL` per run for one session — 8 KB,
- *   next to the `terminals` entry and node-pty handle the same exit already never frees.
- */
-export function retainedBufferOnExit(buffer: string, exitCode: number): string {
-  return exitCode === 0 ? buffer.slice(-EXITED_BUFFER_TAIL) : buffer
+export function bufferOutlivesExit(exitCode: number): boolean {
+  return exitCode !== 0
 }
