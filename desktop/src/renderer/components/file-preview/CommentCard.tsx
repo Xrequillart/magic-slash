@@ -1,66 +1,72 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { MessageSquare, MessageSquarePlus, Pencil, Trash2 } from 'lucide-react'
-import { useSelectionAnchoredPanel } from '../../hooks/useSelectionAnchoredPanel'
+import { MessageSquare, Pencil, Trash2 } from 'lucide-react'
 import { commentAnchorKind, commentLabel, type LineRange } from '../../utils/commentAnchors'
 import { BTN_DANGER, BTN_GHOST, BTN_PRIMARY, INPUT } from '../../theme/controls'
 import type { FileComment } from '../../store'
 import { useT, type MessageKey } from '../../i18n'
 
 /**
- * Wide enough for a sentence about a line of code without becoming a second document.
+ * The card's own box, minus what only the code slab needs.
  *
- * A number rather than a Tailwind width, because the hook needs it: the panel is `fixed`
- * and clamped inside the window by hand, and a width only CSS knew about could not be
- * subtracted from `window.innerWidth`.
- */
-const CARD_WIDTH = 340
-
-/** The affordance is a single short verb — sized to it, not to the card. */
-const AFFORDANCE_WIDTH = 132
-
-/**
- * Above the drawer (`z-[60]`) and its backdrop (`z-[59]`), both of which this floats over.
+ * `my-2` is the whole of the "it does not float" claim made visible: the card is a block
+ * between two lines, and the two lines are pushed apart by exactly its height. Nothing
+ * measures it, nothing clamps it to the window, and nothing repositions it on scroll —
+ * see `useInlineCommentHost` for why every one of those disappeared with the floating.
  *
- * Portalled to `<body>`, so it is not a descendant of either — which is the point. The
- * drawer's scroller is `overflow-auto` with `will-change: transform`, so a panel rendered
- * inside it would be clipped by it AND would join its scrollable overflow.
+ * `shadow-none` is not a default being restated: the floating card carried `shadow-2xl` to
+ * lift it off the document, and a shadow on a card that is PART of the document reads as a
+ * second surface sitting on the code.
  */
-const FLOATING = 'z-[70] bg-bg-secondary border border-line rounded-xl shadow-2xl'
+const CARD = 'my-2 bg-bg-secondary border border-line rounded-xl p-3 flex flex-col gap-2'
 
-interface FloatingPanelProps {
+interface InlinePanelProps {
   panelRef: React.RefObject<HTMLDivElement>
-  style: React.CSSProperties
-  /** Escape: this panel closes, and the review behind it does not. */
+  /** Escape: this card closes, and the review behind it does not. */
   onEscape: () => void
-  /** Any other key this particular panel binds. */
+  /** Any other key this particular card binds. */
   onKeyDown?: (e: React.KeyboardEvent) => void
-  /** What this panel adds to `FLOATING`: its padding, and its own layout. */
-  className: string
+  /**
+   * The visible width of the scroller the card sits in, in pixels — the code slab's case
+   * only, where it is paired with `sticky left-0`.
+   *
+   * A block inside a horizontally scrollable `<pre>` is as wide as the WIDEST LINE of the
+   * file, not as wide as the window: a card at `width: 100%` in a file with one 400-column
+   * line would be four screens across, and its buttons would be off the right of the
+   * viewport. Sticking it to the left of the scrollport at the scrollport's own width is
+   * what makes "full width" mean the width the reader can see — and it stays put when the
+   * code under it is scrolled sideways, rather than sliding out of the frame.
+   *
+   * Omitted for prose, which has no horizontal scroll and no long-line problem: `w-full`
+   * there is already the right answer.
+   */
+  width?: number
   children: React.ReactNode
 }
 
 /**
- * The surface both panels float on: the offer, and then the card.
+ * The surface the card is drawn on, in the document rather than over it.
  *
- * ONE component rather than the same three lines on each of them, because the offer is the
- * card in an earlier state and everything here is what a reader expects of both — starting
- * with the criterion "Escape closes the composer and does NOT close the review drawer",
- * which was true of the card alone for exactly as long as the attribute was spelled once.
+ * What survived from the `FloatingPanel` this replaced is exactly what was never about
+ * floating: `data-comment-composer`, which FilePreviewPanel's Escape and Alt+↑/↓ listeners
+ * bail on via `closest('[data-comment-composer]')` — a target test rather than a flag in the
+ * store, on the model of the `.xterm` guard already there, so there is no state to keep in
+ * step and nothing a card that unmounted can leave set. The keystroke has to ARRIVE here for
+ * that to matter, which it only does if something in here holds the focus: hence
+ * `tabIndex={-1}`, focusable by script and never a tab stop, and `stopPropagation` to keep
+ * Escape off the `document` listeners.
  *
- * All three parts of that criterion live here. `data-comment-composer` is what
- * FilePreviewPanel's Escape and Alt+↑/↓ listeners bail on, via
- * `closest('[data-comment-composer]')` — a target test rather than a flag in the store, on
- * the model of the `.xterm` guard already there, so there is no state to keep in step and
- * nothing a panel that unmounted can leave set. The keystroke then has to ARRIVE here,
- * which it only does if something in here holds the focus: hence `tabIndex={-1}`, focusable
- * by script and never a tab stop. And `stopPropagation` is what keeps it off the `document`
- * listeners — the drawer's, and the outside-click helper's.
- *
- * A passive effect rather than a layout one: the hook places the panel from a LAYOUT
- * effect, and a `visibility: hidden` element cannot take focus.
+ * What did NOT survive is the outside-click dismissal, and its absence is deliberate. A
+ * floating panel has to close when the reader clicks past it, or it hangs over the document
+ * with no way out. A card in the flow has Cancel and Escape, and a mousedown on the code is
+ * how a reader selects the next passage they want to write about — throwing away a
+ * half-written comment for it is the behaviour GitHub does not have either.
  */
-function FloatingPanel({ panelRef, style, onEscape, onKeyDown, className, children }: FloatingPanelProps) {
+function InlinePanel({ panelRef, onEscape, onKeyDown, width, children }: InlinePanelProps) {
+  /**
+   * A passive effect, unlike the layout one that placed the floating card: there is nothing
+   * to measure before painting, and the node is already in the flow by the time this runs.
+   */
   useEffect(() => {
     panelRef.current?.focus()
   }, [panelRef])
@@ -74,31 +80,39 @@ function FloatingPanel({ panelRef, style, onEscape, onKeyDown, className, childr
     onKeyDown?.(e)
   }
 
-  return createPortal(
+  return (
     <div
       data-comment-composer
       ref={panelRef}
       tabIndex={-1}
       onKeyDown={handleKeyDown}
-      style={style}
+      style={width === undefined ? undefined : { width }}
       /* `focus-visible:outline-none` for the same reason the drawer's scroller has it: the
          app paints a 2px accent ring on `:focus-visible` globally, and Chromium matches it
          on a `tabindex="-1"` element that was focused by script. The ring would frame the
-         whole panel on open and tell the reader nothing. */
-      className={`${FLOATING} focus-visible:outline-none ${className}`}
+         whole card on open and tell the reader nothing.
+
+         `select-text` re-enables the selection the host node turns off — see
+         `useInlineCommentHost` for why the host has to. A reader has to be able to select
+         what they have written; what must stay unselectable is the gap AROUND the card
+         inside the code, which the host still covers. */
+      className={`${CARD} ${width === undefined ? 'w-full' : 'sticky left-0'} select-text focus-visible:outline-none`}
     >
       {children}
-    </div>,
-    document.body,
+    </div>
   )
 }
 
 /**
  * What was selected, as context rather than as content.
  *
- * Clamped to three lines: the quote is there to tell the reader — and, in story 5, the
- * agent — whether the lines still say what the comment was about. It is not a second copy
- * of the file, and a card that grew with the selection would cover the code it describes.
+ * Clamped to three lines: the quote is there to tell the reader — and the agent the review
+ * is handed to — whether the lines still say what the comment was about. It is not a second
+ * copy of the file.
+ *
+ * It stays clamped now that the card is full width and could afford more, because the reason
+ * was never the width: the card sits BETWEEN two halves of the file, and one that grew with
+ * the selection would push the lines below it off the screen.
  */
 function Quote({ quote }: { quote: string }) {
   if (!quote.trim()) return null
@@ -157,49 +171,6 @@ export function CommentAnchorNotice({ count, one, other, className }: NoticeProp
   )
 }
 
-interface AffordanceProps {
-  /**
-   * Where the affordance should sit, asked again on every scroll frame. See
-   * `useSelectionAnchoredPanel` for why this is a function.
-   */
-  anchorRect: () => DOMRect | null
-  /** Confirmed — open the composer on this selection. */
-  onConfirm: () => void
-  /** Dismissed with Escape, or by a click that landed somewhere else. */
-  onDismiss: () => void
-}
-
-/**
- * The offer, before the card.
- *
- * Selecting text is not a request to comment — it is also how code gets copied — so the
- * composer does not open on a selection. This button is what turns one into the other,
- * and it is the reason the criterion reads "offers to comment, and CONFIRMING opens a
- * floating card".
- *
- * `onMouseDown` is cancelled so that pressing it does not collapse the selection it was
- * offered for: the quote is read at mouseup on the code, but the highlight the reader can
- * still see is what makes the offer legible.
- */
-export function CommentAffordance({ anchorRect, onConfirm, onDismiss }: AffordanceProps) {
-  const t = useT()
-  const { panelRef, style } = useSelectionAnchoredPanel(onDismiss, AFFORDANCE_WIDTH, anchorRect)
-
-  return (
-    <FloatingPanel panelRef={panelRef} style={style()} onEscape={onDismiss} className="p-1">
-      <button
-        type="button"
-        onMouseDown={e => e.preventDefault()}
-        onClick={onConfirm}
-        className={`${BTN_GHOST} w-full justify-center`}
-      >
-        <MessageSquarePlus className="w-3.5 h-3.5" />
-        {t('filePreview.comment')}
-      </button>
-    </FloatingPanel>
-  )
-}
-
 interface Props {
   /** The comment being read or edited, or `null` while a new one is being written. */
   comment: FileComment | null
@@ -214,7 +185,16 @@ interface Props {
   range: LineRange | null
   /** What was selected. Taken from `comment` when there is one, so this is the new-comment case. */
   quote: string
-  anchorRect: () => DOMRect | null
+  /**
+   * The node in the document's flow to render into, from `useInlineCommentHost` — inserted
+   * after the last line the comment is about, which is what puts the card BELOW them.
+   *
+   * Taken as a prop rather than made here, because only the caller knows what "the last line"
+   * means: a row of shiki's HTML for the diff, the block element a passage ends in for prose.
+   */
+  host: HTMLElement
+  /** The scrollport's width, for the code slab. See `InlinePanel`'s own prop. */
+  width?: number
   onSave: (body: string) => void
   onDelete: () => void
   onClose: () => void
@@ -228,10 +208,14 @@ interface Props {
  * wrote, presses Edit, and the box they type in has to be exactly where the text they were
  * reading was.
  *
- * Everything that makes it a floating panel — the attribute the drawer's keyboard listeners
- * bail on, the focus, Escape — is `FloatingPanel` above, shared with the offer.
+ * There is no longer an offer in front of it. Selecting lines opens this card directly, with
+ * the box already focused: the intermediate "Comment" button existed to keep a plain copy
+ * gesture from popping a composer, and the cost of that — two clicks to write every comment,
+ * the second one on a target that had just appeared — was worse than the thing it avoided.
+ * Escape and Cancel close the card without leaving anything behind, which is what makes the
+ * accidental case cheap again.
  */
-export default function CommentCard({ comment, range, quote, anchorRect, onSave, onDelete, onClose }: Props) {
+export default function CommentCard({ comment, range, quote, host, width, onSave, onDelete, onClose }: Props) {
   const t = useT()
   /**
    * The quote, read ONCE: a stored comment's own, else the prop, which is the new-comment
@@ -259,21 +243,25 @@ export default function CommentCard({ comment, range, quote, anchorRect, onSave,
   const [editing, setEditing] = useState(comment === null)
   const [body, setBody] = useState(comment?.body ?? '')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const { panelRef, style } = useSelectionAnchoredPanel(onClose, CARD_WIDTH, anchorRect)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   /**
-   * Which part of the card holds the focus `FloatingPanel` has already taken for it: the
-   * box being typed in whenever there is one, so the reader can start writing — and
-   * pressing Edit moves it there without a second click.
+   * Which part of the card holds the focus `InlinePanel` has already taken for it: the box
+   * being typed in whenever there is one, so the reader can start writing — and pressing
+   * Edit moves it there without a second click.
+   *
+   * This is what makes a selection land in a composer rather than on a button. It was true
+   * of the card before as well; what changed is that the card now opens on the selection
+   * itself, so it is the FIRST thing that happens rather than the second.
    */
   useEffect(() => {
     if (editing) textareaRef.current?.focus()
     else panelRef.current?.focus()
-  }, [editing, panelRef])
+  }, [editing])
 
   const saved = body.trim()
 
-  /** Escape is `FloatingPanel`'s. This is the one shortcut a box whose Enter key has to
+  /** Escape is `InlinePanel`'s. This is the one shortcut a box whose Enter key has to
    *  insert a newline still wants. */
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && editing && saved) {
@@ -282,14 +270,8 @@ export default function CommentCard({ comment, range, quote, anchorRect, onSave,
     }
   }
 
-  return (
-    <FloatingPanel
-      panelRef={panelRef}
-      style={style()}
-      onEscape={onClose}
-      onKeyDown={handleKeyDown}
-      className="p-3 flex flex-col gap-2"
-    >
+  return createPortal(
+    <InlinePanel panelRef={panelRef} onEscape={onClose} onKeyDown={handleKeyDown} width={width}>
       <span className="text-[11px] font-medium text-text-secondary">{t(label.key, label.vars)}</span>
       <Quote quote={shownQuote} />
 
@@ -305,7 +287,10 @@ export default function CommentCard({ comment, range, quote, anchorRect, onSave,
             placeholder={t(kind === 'quote'
               ? 'filePreview.commentQuotePlaceholder'
               : 'filePreview.commentPlaceholder')}
-            rows={4}
+            /* Three, where the floating card wanted four: the box is the full width of the
+               view now, so a line of it holds two or three times the words it used to, and
+               four rows of that is a panel rather than a comment box. */
+            rows={3}
             /* `INPUT` composed, never re-spelled: this is the same field box as every
                other one in the app, plus the two things a comment box adds. */
             className={`${INPUT} w-full resize-none`}
@@ -337,6 +322,7 @@ export default function CommentCard({ comment, range, quote, anchorRect, onSave,
           </div>
         </>
       )}
-    </FloatingPanel>
+    </InlinePanel>,
+    host,
   )
 }

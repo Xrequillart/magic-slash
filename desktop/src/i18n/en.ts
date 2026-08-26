@@ -1581,7 +1581,6 @@ export const en = {
   // Commenting on a diff. `commentLine` and `commentLines` are two keys rather than one
   // with a plural rule: "Lines 12–12" reads as a bug, and a suffix rule that works in
   // English does not survive translation.
-  'filePreview.comment': 'Comment',
   'filePreview.commentPlaceholder': 'What should the agent know about these lines?',
   // Its twin for a comment on the RENDERED markdown, where there are no lines to ask about
   // — the passage is the whole of the anchor. A second key rather than a vaguer sentence

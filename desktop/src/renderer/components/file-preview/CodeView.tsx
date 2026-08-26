@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import CommentCard, { CommentAffordance, CommentAnchorNotice } from './CommentCard'
+import CommentCard, { CommentAnchorNotice } from './CommentCard'
+import { useInlineCommentHost } from '../../hooks/useInlineCommentHost'
 import {
   clampQuote, commentAnchorKind, commentFileKey, edgesByRow, extendRange, lineIdentityFromRow,
-  markersByRow, normalizeRange, rangeCovers, visibleRowForComment,
+  markersByRow, normalizeRange, rangeCovers, rowsForComment, visibleRowForComment,
   type CommentTarget, type GutterPick, type LineRange, type RowEdges, type RowIdentity,
 } from '../../utils/commentAnchors'
 import { useStore, NO_COMMENTS, type FileComment } from '../../store'
@@ -603,21 +604,15 @@ export default function CodeView({
       : null
   ))
 
-  /**
-   * The lines offered for a comment, and the text that was selected — the state the
-   * affordance is drawn from, before the reader has confirmed anything.
-   */
-  const [pending, setPending] = useState<{ range: LineRange; quote: string } | null>(null)
   const [card, setCard] = useState<OpenCard | null>(null)
 
   /**
    * Where a gutter pick began, in a REF rather than in state.
    *
-   * Shift-click has to extend from the row the reader first clicked, and `pending` is not
-   * a safe place to remember it: the affordance closes on the mousedown of the very click
-   * that is about to extend the pick (that is what its outside-mousedown listener is for),
-   * so a shift-click would be extending from nothing. A ref survives that, and nothing
-   * renders from it.
+   * Shift-click has to extend from the row the reader first clicked, and the open card is
+   * not a safe place to remember it: a shift-click on a second row is a mousedown on the
+   * code, which ends the pick in progress a few lines below — so a shift-click would be
+   * extending from nothing. A ref survives that, and nothing renders from it.
    */
   const pickRef = useRef<GutterPick | null>(null)
 
@@ -631,9 +626,8 @@ export default function CodeView({
    * also what arms the document listeners below; it is therefore set on MOUSEDOWN, from the
    * row pressed, so one piece of state says both "a drag is on" and "this is what it covers".
    *
-   * Setting state on mousedown is safe where setting `pending` is not: what closes the
-   * affordance on an outside mousedown is `useClickOutside`, and all it does is clear the
-   * panel's own state. Nothing anywhere clears this.
+   * Set on mousedown, where the PICK is still only committed on mouseup — see
+   * `handleMouseDown` for the ordering that forces the two apart.
    */
   const [dragRange, setDragRange] = useState<LineRange | null>(null)
 
@@ -726,13 +720,17 @@ export default function CodeView({
     : openComment?.anchor ?? null
 
   /**
-   * The lines to paint as picked: the block being dragged, else the card's, else the offer's.
+   * The lines to paint as picked: the block being dragged, else the one the card is open on.
    *
    * The drag comes FIRST because while the button is down it is the only truthful answer to
    * where the reader is — and because it is the live feedback the gesture needs, drawn by the
    * wash that was already there rather than by anything new.
+   *
+   * There used to be a third term here, the offer's range. It is gone with the offer: a
+   * release now opens the card itself, so the range it was drawn from IS `cardRange` by the
+   * time anything paints.
    */
-  const activeRange = dragRange ?? cardRange ?? pending?.range ?? null
+  const activeRange = dragRange ?? cardRange ?? null
 
   /**
    * Open the card the review's comment list asked for, and let the lines light up with it.
@@ -760,8 +758,6 @@ export default function CodeView({
     if (!focus || focusRef.current === focus.seq) return
     if (!comments.some(c => c.id === focus.id)) return
     focusRef.current = focus.seq
-    // A pick in progress is not what the reader is looking at any more.
-    setPending(null)
     setCard({ mode: 'existing', id: focus.id })
     // The marker walk starts again from the oldest comment on the row: it was left
     // wherever a previous click on that row had got to, which says nothing about the
@@ -900,34 +896,79 @@ export default function CodeView({
    * anchored when its own line has been folded away, rather than leaving it stranded at
    * the top of the file.
    *
-   * ONE callback for both panels, because `activeRange` is already the range of whichever
-   * of them is mounted and they are never mounted together.
+   * The LAST row the card's range covers, because the card goes UNDER the lines it is about
+   * — the one thing "like a GitHub pull request" settles that a floating panel never had to
+   * answer. `rowsForComment` walks the rows the range actually covers, so a range whose
+   * middle is folded away still ends on its own last visible row; `visibleRowForComment` is
+   * the fallback for a range with nothing rendered at all, and it is what keeps a comment on
+   * a folded-away line anchored near where that line was instead of at the top of the file.
+   *
+   * Resolved from `cardRange`, NOT from `activeRange`: the host is a real node spliced into
+   * the document, and hanging it off the drag would tear it out and re-insert it on every row
+   * the pointer crossed.
+   *
+   * `highlightedHtml` is a dependency because it is what the rows are resolved against. A
+   * re-read swaps the whole `<pre>`, taking the host node with it — see
+   * `useInlineCommentHost`, whose only dependency is this callback's identity.
    */
-  const anchorRect = useCallback((): DOMRect | null => {
+  const anchorRow = useCallback((): HTMLElement | null => {
     const root = htmlRef.current
-    if (!root || !activeRange) return null
+    if (!root || !cardRange) return null
     const rows = rowsOf(root)
-    const index = visibleRowForComment(activeRange, rows.map(identityOf))
-    return index === null ? null : rows[index].getBoundingClientRect()
-  }, [activeRange])
+    const identities = rows.map(identityOf)
+    const covered = rowsForComment(cardRange, identities)
+    const index = covered.length > 0
+      ? covered[covered.length - 1]
+      : visibleRowForComment(cardRange, identities)
+    return index === null ? null : rows[index]
+  }, [cardRange, highlightedHtml])
 
-  const dismissPending = useCallback(() => setPending(null), [])
+  const host = useInlineCommentHost(anchorRow)
+
+  /**
+   * How wide the card may be: the `<pre>`'s visible width, less its own padding.
+   *
+   * Measured rather than left to `width: 100%`, because the containing block here is as wide
+   * as the file's LONGEST LINE — see `InlinePanel`'s `width` prop for what that does to a
+   * card. Observed rather than read once, so a card open while the drawer is resized (or
+   * while the window's split moves) keeps matching the view it is in.
+   *
+   * Bound only while a card is actually open, which is what keeps a review of forty
+   * documents from holding forty idle ResizeObservers.
+   */
+  const [slabWidth, setSlabWidth] = useState<number | null>(null)
+
+  useLayoutEffect(() => {
+    const pre = card ? htmlRef.current?.querySelector('pre') : null
+    if (!pre) return
+    const measure = () => {
+      const style = getComputedStyle(pre)
+      const inner = pre.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+      // Compared before it is stored: this runs from a ResizeObserver, and the card's own
+      // width is one of the things that can change the `<pre>`'s scroll geometry. A fresh
+      // number on every callback would be a loop.
+      setSlabWidth(prev => (prev === inner ? prev : inner))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(pre)
+    return () => observer.disconnect()
+  }, [card, highlightedHtml])
+
   const closeCard = useCallback(() => setCard(null), [])
 
   /**
    * Stop a gutter press from becoming a text drag through the code, and start the pick.
    *
    * "Start", not "make": the pick is still COMMITTED on mouseup, and the order is the
-   * reason. The affordance closes itself on any mousedown that lands outside it, and that
-   * listener is on `document` — so it runs AFTER React's own handlers on this container. A
-   * pick made on mousedown would be set and then immediately cleared by it. On mouseup the
-   * sequence is the other way round, and shift-clicking a second row extends the pick
-   * instead of flickering it away.
+   * reason. A pick made on mousedown would open the card on the press, so a drag down three
+   * rows would splice a card into the document under the pointer mid-gesture — moving the
+   * very rows being dragged over.
    *
    * What mousedown does is record the drag's ANCHOR, and that is why the anchor lives in a
-   * ref: a ref is untouched by the affordance clearing its own state a moment later. The
-   * range in `dragRange` is state because something has to be painted, but nothing outside
-   * this component knows it exists — see its own comment.
+   * ref: nothing clears it, so a shift-click after the card has been closed still extends
+   * from where the pick began. The range in `dragRange` is state because something has to be
+   * painted, but nothing outside this component knows it exists — see its own comment.
    *
    * Shift is read here rather than on release, so a shift-DRAG is the same gesture as a
    * shift-click with a moving end: both extend from where the pick began.
@@ -1007,7 +1048,9 @@ export default function CodeView({
       // `pickRef` keeps the anchor, so a later shift-click extends from where this drag
       // began rather than from wherever it happened to stop.
       pickRef.current = drag
-      setPending({ range: drag.range, quote: '' })
+      // Straight to the card, with no quote: a gutter pick names its lines and never
+      // selected any text, so `commentLabel` reads the range and the card says "Lines 12-14".
+      setCard({ mode: 'new', range: drag.range, quote: '' })
     }
 
     // The one release the page can never hear: the pointer left the window and the button
@@ -1031,7 +1074,7 @@ export default function CodeView({
 
   /**
    * `e.button !== 0` on both handlers: native mouseup fires for the secondary and middle
-   * buttons too, so without it a right-click on a line number pops the offer — and the
+   * buttons too, so without it a right-click on a line number opens a composer — and the
    * mousedown above would have preventDefault'd that button as well.
    */
   const handleMouseUp = (e: React.MouseEvent) => {
@@ -1040,7 +1083,7 @@ export default function CodeView({
     // A gutter pick — one click or a whole drag — is committed by the listener above,
     // wherever it was released. Standing aside rather than racing it: a drag released over
     // the code would otherwise fall through to the selection branch, find nothing selected
-    // (its mousedown was preventDefault'd) and clear the very offer the drag is making.
+    // (its mousedown was preventDefault'd) and open a card on nothing.
     if (dragRef.current) return
 
     const selection = window.getSelection()
@@ -1057,13 +1100,11 @@ export default function CodeView({
       if (start && end) {
         pickRef.current = null
         // The gutter numbers are NOT in here: `::before` content with `user-select: none`
-        // is outside the selection, as are the elision labels.
-        setPending({ range: normalizeRange(start, end), quote: clampQuote(selection.toString()) })
-        return
+        // is outside the selection, as are the elision labels — and now the open card too,
+        // which is what `useInlineCommentHost` sets on the host node it splices in.
+        setCard({ mode: 'new', range: normalizeRange(start, end), quote: clampQuote(selection.toString()) })
       }
     }
-
-    setPending(null)
   }
 
   /**
@@ -1095,7 +1136,6 @@ export default function CodeView({
     const previous = cycleRef.current
     const index = previous && previous.ids === stamped ? (previous.index + 1) % ids.length : 0
     cycleRef.current = { ids: stamped, index }
-    setPending(null)
     setCard({ mode: 'existing', id: ids[index] })
   }
 
@@ -1103,22 +1143,12 @@ export default function CodeView({
    * Plain functions, like the three pointer handlers above — and that is the convention:
    * `useCallback` in this file MEANS the identity is read somewhere.
    *
-   * A fresh identity every render costs these three nothing. They go to
-   * `CommentAffordance` and `CommentCard`, neither of which is memoised, and neither lands
-   * in any dep array. `anchorRect`, `dismissPending` and `closeCard` keep theirs because
-   * the panel hook holds them in its own effect deps, where a new function every render
-   * would tear the listeners down and rebind them on every scroll frame.
+   * A fresh identity every render costs these two nothing: they go to `CommentCard`, which
+   * is not memoised and lands in no dep array. `anchorRow` and `closeCard` keep theirs
+   * because `useInlineCommentHost` holds the first in its own effect deps — a new function
+   * every render would splice the host node out and back in on every re-render of the
+   * document, and the panel re-renders on every scroll frame.
    */
-  const handleConfirm = () => {
-    // Read straight out of `pending` rather than out of a `setPending` updater: the
-    // affordance is only mounted WHILE `pending` is non-null, so there is no staler value
-    // an updater could be protecting against — and a `setCard` inside one would fire twice
-    // under StrictMode in dev.
-    if (!pending) return
-    setCard({ mode: 'new', range: pending.range, quote: pending.quote })
-    setPending(null)
-  }
-
   const handleSave = (body: string) => {
     if (!target || !card) return
     if (card.mode === 'new') {
@@ -1157,26 +1187,35 @@ export default function CodeView({
           className={`text-sm [&>pre]:p-4 [&>pre]:min-h-full [&>pre]:font-mono [&>pre]:text-xs [&>pre]:leading-relaxed [&>pre]:overflow-auto ${blend ? '[&>pre]:!bg-transparent' : ''}`}
           dangerouslySetInnerHTML={{ __html: highlightedHtml }}
         />
-        {/* The offer, and then the card. Never both: confirming the one opens the other,
-            and a second floating panel over the same line would cover it. */}
-        {pending && !card && (
-          <CommentAffordance
-            anchorRect={anchorRect}
-            onConfirm={handleConfirm}
-            onDismiss={dismissPending}
-          />
-        )}
-        {card && cardRange && (
+        {/* Rendered only once the host node is in the document: the card portals INTO it,
+            so there is nowhere to draw before `useInlineCommentHost` has spliced it in after
+            the range's last row. One render behind the state, and deliberately — the effect
+            that inserts the node is a layout one, so the two land in the same paint. */}
+        {card && cardRange && host && (
           <CommentCard
             /* Keyed on WHICH comment, so clicking a second marker while the first card is
                open remounts the card rather than reusing it. Without this the new card
                would inherit the previous comment's draft body and its read/edit mode,
-               both of which are state local to the card. */
-            key={card.mode === 'new' ? 'new' : card.id}
+               both of which are state local to the card.
+
+               A new comment is keyed on its LINES, not on the constant 'new', and that
+               became load-bearing when the offer went away: a selection now opens the card
+               directly, so selecting a second passage while one is open replaces the state
+               without unmounting anything. Under a constant key React reused the component
+               and the half-written body carried over — onto lines it was not about. */
+            key={card.mode === 'new'
+              ? `new:${card.range.side}:${card.range.startLine}-${card.range.endLine}`
+              : card.id}
             comment={openComment}
             range={cardRange}
             quote={card.mode === 'new' ? card.quote : ''}
-            anchorRect={anchorRect}
+            host={host}
+            /* `?? undefined` rather than the state's own null: the card reads "no width" as
+               "take the full width of your container", which is right for prose and wrong
+               here. Before the first measurement there is no honest number to give, and one
+               frame of a card at the file's longest-line width is what `sticky left-0` makes
+               invisible anyway. */
+            width={slabWidth ?? undefined}
             onSave={handleSave}
             onDelete={handleDelete}
             onClose={closeCard}

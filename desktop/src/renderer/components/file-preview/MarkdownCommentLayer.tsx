@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { MessageSquare } from 'lucide-react'
 import MarkdownView from './MarkdownView'
-import CommentCard, { CommentAffordance, CommentAnchorNotice } from './CommentCard'
+import CommentCard, { CommentAnchorNotice } from './CommentCard'
+import { useInlineCommentHost } from '../../hooks/useInlineCommentHost'
 import {
   clampQuote, commentAnchorKind, commentFileKey, type CommentTarget,
 } from '../../utils/commentAnchors'
@@ -154,6 +155,27 @@ function blockOf(node: Node, root: Element): Element {
     element = element.parentElement
   }
   return root
+}
+
+/**
+ * The OUTERMOST block a node sits in — the one whose parent is the prose container itself.
+ *
+ * `blockOf` above answers the innermost, which is what the text walk wants: a break belongs
+ * between two `<li>`s. This answers the other end of the same chain, because the card is
+ * spliced in as a SIBLING of what it is about, and a `<div>` inserted after an `<li>` lands
+ * inside the `<ul>` — rendered as a list item, indented under a bullet it has nothing to do
+ * with. After the whole list, it is a block between two blocks.
+ *
+ * `null` when the node is not in this document at all, which is the same containment test
+ * `captureQuote` makes for the same reason: a review stacks forty of these in one scroller.
+ */
+function topBlockOf(node: Node, prose: Element): HTMLElement | null {
+  let element = node instanceof Element ? node : node.parentElement
+  if (!element || !prose.contains(element)) return null
+  while (element.parentElement && element.parentElement !== prose) {
+    element = element.parentElement
+  }
+  return element.parentElement === prose ? (element as HTMLElement) : null
 }
 
 /**
@@ -424,26 +446,19 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
       : null
   ))
 
-  /**
-   * The passage offered for a comment, before the reader has confirmed anything.
-   *
-   * The quote itself, not an object carrying it. `CodeView`'s wrapper earns its keep by
-   * holding a range alongside the text; here the anchor IS the text, so there is no second
-   * field for a wrapper to keep it company — and `captureQuote` guarantees a non-empty
-   * string, so `null` is the whole of "nothing is offered".
-   */
-  const [pending, setPending] = useState<string | null>(null)
   const [card, setCard] = useState<OpenCard | null>(null)
   const [markers, setMarkers] = useState<Marker[]>(NO_MARKERS)
 
   /**
-   * The live range the OFFER and the card that follows it are anchored to.
+   * The live range the open card is anchored to.
    *
-   * A ref, and a range rather than a rect. A rect is in viewport coordinates and is stale one
-   * scroll event later, which is the whole reason `useSelectionAnchoredPanel` asks for a
-   * function; a live `Range` survives scrolling and reflow and can be asked again. And a REF
-   * rather than state because the selection is collapsed by the very click that confirms the
-   * offer — by then there is nothing left to read it back out of.
+   * A range rather than a rect, and it outlived the floating panel that needed it: a rect is
+   * in viewport coordinates and stale one scroll event later, while a live `Range` survives
+   * scrolling and reflow and can be asked again. The card no longer needs a POSITION, but it
+   * still needs to know which block the passage ends in — see `anchorBlock`.
+   *
+   * A REF rather than state, because the selection that produced it is collapsed by the very
+   * next click in the document: by then there is nothing left to read it back out of.
    */
   const captureRef = useRef<Range | null>(null)
 
@@ -630,7 +645,6 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
     // comment is simply not in this set.
     if (!quoted.some(c => c.id === focus.id)) return
     focusRef.current = focus.seq
-    setPending(null)
     setCard({ mode: 'existing', id: focus.id })
   }, [focus, quoted])
 
@@ -644,53 +658,58 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
     card?.mode === 'existing' ? comments.find(c => c.id === card.id) ?? null : null
 
   /**
-   * Where the floating panel should sit right now, asked again on every scroll frame.
+   * The block to splice the card in after: the last one the passage runs into.
    *
-   * Read off a live `Range` rather than by searching for the passage again, which is what
-   * keeps a hook that runs on every scroll event from walking the whole document sixty times
-   * a second. A zero-sized rect is answered as `null` — that is a range whose nodes have gone,
-   * and the hook reads `null` as "the anchor is not on screen" and hides the panel, which is
-   * the truthful answer rather than pinning a card to the corner of the window.
+   * `endContainer`, not the range's start, for the reason the diff anchors on its range's LAST
+   * row — the card belongs under what it is about, and a quotation that spans three paragraphs
+   * is about all three.
+   *
+   * Read off a live `Range` rather than by searching for the passage again, the same way the
+   * pills are placed: the ranges are kept as the document reflows, so this is a walk up a
+   * parent chain rather than a search of the whole document.
+   *
+   * `null` whenever there is no range to read or its nodes have gone, which the hook reads as
+   * "no host" — so the card is simply not rendered, rather than being attached somewhere that
+   * says nothing about the passage.
    */
-  const anchorRect = useCallback((): DOMRect | null => {
+  const anchorBlock = useCallback((): HTMLElement | null => {
+    const prose = proseRef.current?.firstElementChild
+    if (!prose) return null
     const range = card?.mode === 'existing'
       ? rangesRef.current.get(card.id) ?? null
       : captureRef.current
-    if (!range) return null
-    const rect = firstRectOf(range)
-    return rect.width === 0 && rect.height === 0 ? null : rect
-  }, [card])
+    return range ? topBlockOf(range.endContainer, prose) : null
+  }, [card, content])
 
-  const dismissPending = useCallback(() => setPending(null), [])
+  const host = useInlineCommentHost(anchorBlock)
+
   const closeCard = useCallback(() => setCard(null), [])
 
   /**
-   * Read the selection as a quotation, and offer to comment on it.
+   * Read the selection as a quotation, and open the card on it.
    *
    * The reading itself is `captureQuote` above — a pure function, so this is only the state
-   * machine. Both the range and the offer are written on EVERY release, the failures included:
-   * a stale range left behind by a previous selection is a range nothing may read, and the one
-   * assignment is cheaper to trust than the invariant that nothing does.
+   * machine. The range is written on EVERY release, the failures included: a stale range left
+   * behind by a previous selection is a range nothing may read, and the one assignment is
+   * cheaper to trust than the invariant that nothing does.
+   *
+   * A release that captured nothing leaves the open card alone rather than closing it. The
+   * card is in the flow now and holds text being written; a stray click in the prose is not a
+   * reason to throw a draft away — Escape and Cancel are.
    */
   const handleMouseUp = (e: React.MouseEvent) => {
     const root = proseRef.current
     if (!root || e.button !== 0) return
     const capture = captureQuote(root)
     captureRef.current = capture?.range ?? null
-    setPending(capture?.quote ?? null)
+    if (capture) setCard({ mode: 'new', quote: capture.quote })
   }
 
   /**
    * Plain functions, the convention `CodeView` states: `useCallback` in a file like this MEANS
-   * the identity is read somewhere. These three go to the offer and the card, neither of which
-   * is memoised and neither of which puts them in a dependency array.
+   * the identity is read somewhere. These two go to the card, which is not memoised and does
+   * not put them in a dependency array.
    */
-  const handleConfirm = () => {
-    if (!pending) return
-    setCard({ mode: 'new', quote: pending })
-    setPending(null)
-  }
-
   const handleSave = (body: string) => {
     if (!card) return
     // `anchor: null` and a quote — the shape story 5 defined for exactly this, which is why
@@ -706,10 +725,7 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
     setCard(null)
   }
 
-  const openMarker = (id: string) => {
-    setPending(null)
-    setCard({ mode: 'existing', id })
-  }
+  const openMarker = (id: string) => setCard({ mode: 'existing', id })
 
   const markerLabel = t('filePreview.commentMarker')
 
@@ -765,26 +781,25 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
         </div>
       </div>
 
-      {/* The offer, and then the card. Never both: confirming the one opens the other, and a
-          second floating panel over the same passage would cover it. */}
-      {pending && !card && (
-        <CommentAffordance
-          anchorRect={anchorRect}
-          onConfirm={handleConfirm}
-          onDismiss={dismissPending}
-        />
-      )}
-      {card && (card.mode === 'new' || openComment !== null) && (
+      {/* Rendered only once the host node is in the document: the card portals INTO it, so
+          there is nowhere to draw before `useInlineCommentHost` has spliced it in after the
+          block the passage ends in. No `width` — prose does not scroll sideways, so the card
+          takes the full width of the column it is inserted into. */}
+      {card && host && (card.mode === 'new' || openComment !== null) && (
         <CommentCard
           /* Keyed on WHICH comment, so clicking a second pill while the first card is open
              remounts it rather than inheriting the previous comment's draft body and its
-             read/edit mode, both of which are state local to the card. */
-          key={card.mode === 'new' ? 'new' : card.id}
+             read/edit mode, both of which are state local to the card.
+
+             A new comment is keyed on its QUOTE — the passage IS its identity here, the way
+             the range is in the diff. See CodeView's own key for why a constant would carry
+             a half-written body onto the next passage selected. */
+          key={card.mode === 'new' ? `new:${card.quote}` : card.id}
           comment={openComment}
           /* No lines, and the card names itself from the quote instead — see its `range`. */
           range={null}
           quote={card.mode === 'new' ? card.quote : ''}
-          anchorRect={anchorRect}
+          host={host}
           onSave={handleSave}
           onDelete={handleDelete}
           onClose={closeCard}
