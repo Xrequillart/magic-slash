@@ -41,6 +41,24 @@ export const BTN_PRIMARY = `${BTN_BASE} text-on-brand bg-accent hover:bg-accent-
  */
 export const BTN_PRIMARY_STACKED = 'flex items-start gap-2.5 px-3.5 py-2.5 text-left rounded-lg transition-all text-on-brand bg-accent hover:bg-accent-hover'
 
+/**
+ * The stacked tier's second action: filled, and the highest contrast the theme has.
+ *
+ * `bg-ink`, not `bg-white`. Four of the eight themes are light, and a white button on a
+ * light surface is an outline of nothing — whereas ink is by definition whatever reads
+ * against the background, so this is white on the dark themes and near-black on the light
+ * ones. The pairing with `text-bg` inverts with it, so the label follows for free.
+ *
+ * A tier here rather than `BTN_PRIMARY_STACKED` with colours appended, which is this
+ * module's own rule: two Tailwind utilities from the same group do not override each other
+ * by class order, so `${BTN_PRIMARY_STACKED} bg-ink` would keep whichever the generated
+ * stylesheet happened to emit last.
+ *
+ * It reads as a real button rather than a quiet one on purpose: it sits directly under the
+ * primary as an alternative to it, not as a lesser version of it.
+ */
+export const BTN_NEUTRAL_STACKED = 'flex items-start gap-2.5 px-3.5 py-2.5 text-left rounded-lg transition-all text-bg bg-ink hover:bg-ink/90'
+
 /** Destructive. Bordered rather than filled: it should read as available, not as the obvious next step. */
 export const BTN_DANGER = `${BTN_BASE} text-red border border-red/20 hover:bg-red/10`
 

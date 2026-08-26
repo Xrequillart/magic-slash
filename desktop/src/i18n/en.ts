@@ -1724,6 +1724,11 @@ export const en = {
   // people hesitate over a button whose consequence they have to guess.
   'tasks.startAgent': 'Start an agent',
   'tasks.startAgentHint': 'Opens a terminal in this repository and runs /magic:start on this issue.',
+  // The alternative to starting the work: an agent that reads the issue and talks about it.
+  // "Discuss with", not "Start a discussion with" — it sits directly under "Start an agent",
+  // and two labels both opening on the same verb read as two ways of doing one thing.
+  'tasks.discussAgent': 'Discuss with an agent',
+  'tasks.discussAgentHint': 'Opens a terminal and hands the issue over to explain, refine or rewrite — without starting the work.',
   // Why the action is unavailable, said in place instead of failing on the click.
   // A team repository that nobody has bound to a folder on THIS machine has no
   // directory to open a terminal in, and the fix is a setting.

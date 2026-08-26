@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { ArrowLeft, CircleCheck, CircleDot, ExternalLink, MessageSquare, Play } from 'lucide-react'
+import { ArrowLeft, CircleCheck, CircleDot, ExternalLink, MessageSquare, MessagesSquare, Play } from 'lucide-react'
 import type { PRStatusError, RepositoryConfig, TaskIssue, TaskIssueDetail } from '../../../types'
 import { isPRStatusError } from '../../../types'
 import { useLocale, useT, type Translate } from '../../i18n'
-import { BTN, BTN_ICON, BTN_PRIMARY_STACKED } from '../../theme/controls'
+import { BTN, BTN_ICON, BTN_NEUTRAL_STACKED, BTN_PRIMARY_STACKED } from '../../theme/controls'
 import { WaveLoader } from '../../components/WaveLoader'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import { StatusPill } from '../Dashboard/parts'
@@ -313,26 +313,56 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, paneRef, onBa
    */
   const canStart = !!repo && !repo.needsLocalPath && !!repo.path
 
-  const startAgent = useCallback(async () => {
+  /**
+   * Open an agent in this issue's repository with a first prompt already typed.
+   *
+   * ONE launcher for both buttons, because everything except that prompt is identical —
+   * resolving the local path, the failure the page has to explain, and the fact that the
+   * agents page rather than this one owns every guard on creating an agent.
+   *
+   * The prompt MUST be a single line. It travels to the PTY as `claude "<prompt>"` with
+   * `JSON.stringify` doing the quoting, so a newline is escaped into a literal backslash-n
+   * that the shell hands to Claude Code verbatim — the prompt would arrive with `\n` in the
+   * middle of it rather than a line break.
+   */
+  const openAgent = useCallback(async (initialPrompt: string) => {
     if (!repo?.path) return
     setStartFailed(false)
     try {
-      // Only `cwd` is kept: pickUpTask's own initialPrompt is `/magic:continue`,
-      // which is the wrong verb for an issue nobody has started yet. The matching
-      // itself is left exactly as it is — this passes it the local path it already
-      // knows, so it resolves to that same repository.
+      // Only `cwd` is kept: pickUpTask's own initialPrompt is `/magic:continue`, which is
+      // the wrong verb for either of these. The matching itself is left exactly as it is —
+      // this passes it the local path it already knows, so it resolves to that same
+      // repository, and `expandPath` on the way out is why this is worth calling at all.
       const { cwd } = await window.electronAPI.org.pickUpTask(String(issue.number), [repo.path])
-      const launch: NewTerminalDetail = { cwd, initialPrompt: `/magic:start ${issue.url}` }
       // The agents page owns every guard on creating one (max agents, unreachable
       // repositories, which pane it lands in), so this asks for an agent the same
       // way the sidebar's "+" does rather than launching one itself.
+      const launch: NewTerminalDetail = { cwd, initialPrompt }
       window.dispatchEvent(new CustomEvent<NewTerminalDetail>('new-terminal', { detail: launch }))
     } catch {
       // Never `err.message`: pickUpTask throws an English sentence with no
       // catalogue entry, and this page is translated.
       setStartFailed(true)
     }
-  }, [issue.number, issue.url, repo?.path])
+  }, [issue.number, repo?.path])
+
+  const startAgent = useCallback(() => openAgent(`/magic:start ${issue.url}`), [openAgent, issue.url])
+
+  /**
+   * The other thing a reader might want from an issue: to think about it rather than do it.
+   *
+   * A plain-prose prompt rather than a skill, because there is no `/magic:` verb for this and
+   * inventing one would be a second surface to keep in step with eight others. The URL is what
+   * the agent reads the issue through — `gh` is a prerequisite the app already checks for.
+   *
+   * The last clause is the load-bearing one. Without it an agent handed a GitHub issue in a
+   * repository does the obvious thing and starts implementing it, which is precisely what the
+   * button above is for and precisely what this one is not.
+   */
+  const discussAgent = useCallback(() => openAgent(
+    `Let's discuss GitHub issue ${issue.url} — read it first, then help me explain, summarise, `
+    + 'refine or rewrite it. Do not implement it and do not create a branch.',
+  ), [openAgent, issue.url])
 
   const openedOn = formatIssueDate(issue.createdAt, locale)
 
@@ -479,6 +509,21 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, paneRef, onBa
                 <span className="text-sm font-medium leading-snug">{t('tasks.startAgent')}</span>
                 <span className="text-[11px] leading-snug text-on-brand/70">
                   {t('tasks.startAgentHint')}
+                </span>
+              </span>
+            </button>
+            {/* Under the primary rather than beside it: they are alternatives on the same
+                issue, and side by side at this column's width both labels would wrap. */}
+            <button
+              onClick={discussAgent}
+              disabled={!canStart}
+              className={`${BTN_NEUTRAL_STACKED} w-full disabled:opacity-40`}
+            >
+              <MessagesSquare className="w-3.5 h-3.5 mt-px flex-shrink-0" />
+              <span className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-sm font-medium leading-snug">{t('tasks.discussAgent')}</span>
+                <span className="text-[11px] leading-snug text-bg/70">
+                  {t('tasks.discussAgentHint')}
                 </span>
               </span>
             </button>
