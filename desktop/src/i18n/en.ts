@@ -189,6 +189,7 @@ export const en = {
   'common.save': 'Save',
   'common.saving': 'Saving…',
   'common.close': 'Close',
+  'common.stop': 'Stop',
   'common.loading': 'Loading…',
   'common.remove': 'Remove',
   'common.add': 'Add',
@@ -1453,6 +1454,9 @@ export const en = {
   'scripts.test': 'Test',
   'scripts.lint': 'Lint',
   'scripts.other': 'Other',
+
+  // ── Script terminal modal ────────────────────────────────────────────────
+  'scriptModal.exited': 'Script ended — output kept',
 
   // ── App shell ────────────────────────────────────────────────────────────
   'app.connecting': 'Connecting…',

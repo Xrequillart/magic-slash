@@ -123,6 +123,15 @@ export function useTerminals() {
             )
             if (terminalStillExists && !rightIds.includes(savedActiveTerminalId)) {
               setActiveTerminal(savedActiveTerminalId)
+            } else if (isScriptTerminal(savedActiveTerminalId)) {
+              // A stored script id is not merely "not restored" — the value hydrated from
+              // sessionStorage is ALREADY in the store, and the branch above only ever
+              // overwrites it. Left there it names a terminal nothing renders any more
+              // (scripts are read in a dialog), i.e. a blank content pane. Clear it.
+              //
+              // `isScriptTerminal`, NOT `shouldIgnoreTerminal`: a `sidebar-` id is a
+              // legitimate `activeTerminalId` — see `utils/agentTerminals.ts`.
+              setActiveTerminal(null)
             }
           }
 

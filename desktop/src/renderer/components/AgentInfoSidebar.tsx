@@ -41,23 +41,17 @@ function sidebarWidth(viewportWidth: number, planning: boolean) {
 }
 
 export function AgentInfoSidebar() {
-  const { rightSidebar, terminals, activeTerminalId, config, setConfig, isSplitMode, focusedPane, splitTerminalId, scriptTerminals } = useStore()
+  const { rightSidebar, terminals, activeTerminalId, config, setConfig, isSplitMode, focusedPane, splitTerminalId } = useStore()
   const { updateTerminalMetadata, updateTerminalRepositories } = useTerminals()
   const t = useT()
 
   // Derived before the width state on purpose: the sidebar's default width depends
   // on whether the inspected agent is a planning one.
-  const focusedTerminalId = isSplitMode && focusedPane === 'secondary'
+  // Named `inspected` rather than `focused` because it is what the panel DESCRIBES, which
+  // is the same thing now that a script terminal is never selected.
+  const inspectedTerminalId = isSplitMode && focusedPane === 'secondary'
     ? splitTerminalId
     : activeTerminalId
-  // A script terminal has no sidebar of its own: it belongs to the agent that launched
-  // it, and that agent's repository card is where the script's own card — and its stop
-  // control — lives. Resolving the id back to that agent is what keeps both on screen
-  // while the script's output is being read, which is the whole point of moving the
-  // indicator into the repository card.
-  const inspectedTerminalId = focusedTerminalId?.startsWith('script-')
-    ? scriptTerminals.find(s => s.id === focusedTerminalId)?.agentId ?? null
-    : focusedTerminalId
   const activeTerminal = terminals.find(t => t.id === inspectedTerminalId)
   const metadata = activeTerminal?.metadata
   const specMode = getSpecPanelMode(metadata?.type)

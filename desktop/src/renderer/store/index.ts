@@ -190,6 +190,24 @@ interface AppState {
   // Script terminals
   scriptTerminals: ScriptTerminalInfo[]
 
+  /**
+   * The script whose terminal dialog is showing, and whether that dialog is open.
+   *
+   * A full SNAPSHOT rather than an id, because the script it names may already be gone
+   * from `scriptTerminals`: the exit listener removes a script that exited 0, and the
+   * dialog has to keep showing that output rather than vanish with it.
+   *
+   * Payload and flag are separate for the reason `WhatsNewModal` gives: the dialog needs
+   * its content while it animates out, so closing clears only the flag. The next open
+   * overwrites the payload.
+   *
+   * Both live here, and not in the repository card the script is clicked from, because
+   * that card is only rendered for the INSPECTED agent — switching agents would unmount
+   * the dialog mid-read, and an agent sharing the same repository path would inherit it.
+   */
+  scriptTerminalModal: ScriptTerminalInfo | null
+  scriptTerminalModalOpen: boolean
+
   // Close agent modal
   closeAgentModal: CloseAgentModalData | null
 
@@ -311,6 +329,8 @@ interface AppState {
   addScriptTerminal: (script: ScriptTerminalInfo) => void
   removeScriptTerminal: (id: string) => void
   updateScriptTerminalState: (id: string, state: 'running' | 'error') => void
+  openScriptTerminalModal: (script: ScriptTerminalInfo) => void
+  closeScriptTerminalModal: () => void
 
   // Launch repository-setup modal actions
   setRepoSetupDismissed: (dismissed: boolean) => void
@@ -399,6 +419,8 @@ export const useStore = create<AppState>()(
         skillsContextWindow: 'auto',
 
         scriptTerminals: [],
+        scriptTerminalModal: null,
+        scriptTerminalModalOpen: false,
 
         closeAgentModal: null,
         repoSetupDismissed: false,
@@ -497,6 +519,8 @@ export const useStore = create<AppState>()(
             rightPaneTerminalIds: [],
             focusedPane: 'primary',
             scriptTerminals: [],
+            scriptTerminalModal: null,
+            scriptTerminalModalOpen: false,
             closeAgentModal: null,
             selectedFile: null,
             review: null,
@@ -611,6 +635,9 @@ export const useStore = create<AppState>()(
             scriptTerminals: [...state.scriptTerminals, script],
           })),
 
+        // `scriptTerminalModal` is deliberately NOT cleared: a script that exits 0 is
+        // removed from this list, and its dialog has to keep showing the output that
+        // was just produced rather than close under the reader.
         removeScriptTerminal: (id) =>
           set((state) => ({
             scriptTerminals: state.scriptTerminals.filter((s) => s.id !== id),
@@ -625,6 +652,10 @@ export const useStore = create<AppState>()(
               s.id === id ? { ...s, state: newState } : s
             ),
           })),
+
+        openScriptTerminalModal: (script) =>
+          set({ scriptTerminalModal: script, scriptTerminalModalOpen: true }),
+        closeScriptTerminalModal: () => set({ scriptTerminalModalOpen: false }),
 
         // Launch repository-setup modal actions
         setRepoSetupDismissed: (repoSetupDismissed) => set({ repoSetupDismissed }),

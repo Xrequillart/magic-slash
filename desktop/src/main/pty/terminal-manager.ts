@@ -8,6 +8,7 @@ import { readConfig } from '../config/config'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
 import { withDetectedBranch } from './initial-metadata'
 import { createTuiReadyScanner } from './tui-ready'
+import { bufferOutlivesExit } from './exited-buffer'
 import { expandPath } from '../config/validation'
 import { resolveAgentCwd } from './agent-cwd'
 import { getCommonPaths } from '../utils/paths'
@@ -324,7 +325,11 @@ export function createTerminal(
   // Handle exit
   disposables.push(ptyProcess.onExit(({ exitCode }) => {
     terminal.state = exitCode === 0 ? 'completed' : 'error'
-    displayBuffers.delete(id)
+    // A FAILED process leaves its output behind — that is what makes it readable in the
+    // dialog opened from the card the failure leaves on screen, and `killTerminal` is
+    // what frees it when that card goes. A clean exit keeps nothing: see
+    // `bufferOutlivesExit` for why the two are not symmetric.
+    if (!bufferOutlivesExit(exitCode)) displayBuffers.delete(id)
     // Nothing can answer a question whose process is gone.
     clearPendingQuestion(id)
     onExit(exitCode)

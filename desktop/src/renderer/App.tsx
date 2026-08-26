@@ -12,6 +12,7 @@ import { AgentInfoSidebar } from './components/AgentInfoSidebar'
 import { ToastContainer, showToast } from './components/Toast'
 import { UpdateOverlay } from './components/UpdateOverlay'
 import { WhatsNewModal } from './components/WhatsNewModal'
+import { ScriptTerminalModal } from './components/ScriptTerminalModal'
 import { ConfigPage } from './pages/Config'
 import { TerminalsPage } from './pages/Terminals'
 import { SkillsPage } from './pages/Skills'
@@ -451,11 +452,10 @@ export function App() {
           </div>
         </main>
 
-        {/* Right Sidebar - Hidden only with no agent at all. A script terminal used to
-            hide it too, which is no longer right: the running-script card and its stop
-            control now live in the repository card, so hiding the sidebar would put them
-            out of reach exactly while the script is on screen. `AgentInfoSidebar`
-            resolves a script terminal back to the agent that launched it. */}
+        {/* Right Sidebar - Hidden only with no agent at all. A script terminal cannot
+            hide it: a script is never the selected terminal, and its card and stop control
+            live in the repository card here — which has to stay reachable while the
+            script's own dialog is open over it. */}
         {terminals.length > 0 && (
           <ErrorBoundary fallbackLabel="Sidebar error">
             <AgentInfoSidebar />
@@ -489,6 +489,9 @@ export function App() {
           <TasksPage />
         </PageModal>
       )}
+
+      {/* Mounted unconditionally on purpose — see the component. */}
+      <ScriptTerminalModal />
 
       {/* Toast Notifications */}
       <ToastContainer />

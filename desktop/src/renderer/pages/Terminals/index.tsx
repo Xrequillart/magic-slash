@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Bot } from 'lucide-react'
 import { useTerminals } from '../../hooks/useTerminals'
-import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useOrderedTerminals } from '../../hooks/useOrderedTerminals'
 import { useStore } from '../../store'
 import type { InitialPromptMode } from '../../../types'
@@ -37,7 +36,6 @@ export interface NewTerminalDetail {
 
 export function TerminalsPage() {
   const { terminals, activeTerminalId, launchClaudeTerminal, setActiveTerminal, duplicateAgent } = useTerminals()
-  const { scriptTerminals } = useScriptRunner()
   const { flatVisualOrder } = useOrderedTerminals()
   const { toggleRightSidebar, closeModal, isSplitMode, splitTerminalId, focusedPane, setSplitTerminalId, setFocusedPane, rightPaneTerminalIds, moveTerminalToPane, openSettingsModal } = useStore()
   const t = useT()
@@ -333,19 +331,6 @@ export function TerminalsPage() {
                   isFocused={terminal.id === activeTerminalId && focusedPane === 'primary'}
                 />
               ))}
-              {scriptTerminals.map((script) => (
-                <TerminalView
-                  key={script.id}
-                  terminal={{
-                    id: script.id,
-                    name: `${script.scriptName} (${script.agentName})`,
-                    state: script.state === 'running' ? 'working' : 'error',
-                    repositories: [script.projectPath],
-                  }}
-                  isVisible={script.id === activeTerminalId}
-                  isFocused={script.id === activeTerminalId && focusedPane === 'primary'}
-                />
-              ))}
             </div>
             {/* Divider */}
             <div className="w-px bg-surface-strong flex-shrink-0" />
@@ -391,19 +376,6 @@ export function TerminalsPage() {
                 terminal={terminal}
                 isVisible={terminal.id === activeTerminalId}
                 isFocused={terminal.id === activeTerminalId}
-              />
-            ))}
-            {scriptTerminals.map((script) => (
-              <TerminalView
-                key={script.id}
-                terminal={{
-                  id: script.id,
-                  name: `${script.scriptName} (${script.agentName})`,
-                  state: script.state === 'running' ? 'working' : 'error',
-                  repositories: [script.projectPath],
-                }}
-                isVisible={script.id === activeTerminalId}
-                isFocused={script.id === activeTerminalId}
               />
             ))}
           </>
