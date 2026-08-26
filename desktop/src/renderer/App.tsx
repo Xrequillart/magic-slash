@@ -59,7 +59,7 @@ function ErrorScreen({ error }: { error: string }) {
 
 export function App() {
   const t = useT()
-  const { closeAgentModal, closeCloseAgentModal, terminals, activeTerminalId, setActiveTerminal, rightPaneTerminalIds, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, setConfig, repoSetupDismissed, setRepoSetupDismissed, activeModal, closeModal } = useStore()
+  const { closeAgentModal, closeCloseAgentModal, terminals, setActiveTerminal, rightPaneTerminalIds, toggleLeftSidebar, toggleSplitActive, isWideScreen, splitEnabled, config, setConfig, repoSetupDismissed, setRepoSetupDismissed, activeModal, closeModal } = useStore()
   const { configLoading, configError, loadConfig } = useConfig()
   const { killTerminal, launchClaudeTerminal } = useTerminals()
   const { flatVisualOrder } = useOrderedTerminals()
@@ -451,8 +451,12 @@ export function App() {
           </div>
         </main>
 
-        {/* Right Sidebar - Hidden with no agent at all, and when viewing a script terminal */}
-        {terminals.length > 0 && !activeTerminalId?.startsWith('script-') && (
+        {/* Right Sidebar - Hidden only with no agent at all. A script terminal used to
+            hide it too, which is no longer right: the running-script card and its stop
+            control now live in the repository card, so hiding the sidebar would put them
+            out of reach exactly while the script is on screen. `AgentInfoSidebar`
+            resolves a script terminal back to the agent that launched it. */}
+        {terminals.length > 0 && (
           <ErrorBoundary fallbackLabel="Sidebar error">
             <AgentInfoSidebar />
           </ErrorBoundary>

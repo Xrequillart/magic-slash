@@ -134,8 +134,6 @@ export const fr: Record<keyof typeof en, string> = {
   'sidebar.paneRight': 'Droite',
   'sidebar.empty': 'Aucun agent pour l’instant. Cliquez sur « Nouvel agent » pour démarrer.',
   'sidebar.dropAgents': 'Déposez des agents ici',
-  'sidebar.scripts': 'Scripts',
-  'sidebar.stopScript': 'Arrêter le script',
 
   // ── Jauges d'usage du forfait Claude ─────────────────────────────────────
   'usage.reset.soon': 'bientôt',
@@ -1318,6 +1316,7 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.openOnGitHub': 'Ouvrir',
   'agentInfo.openRepoOnGitHub': 'Ouvrir le dépôt sur GitHub',
   'agentInfo.scripts': 'Scripts',
+  'agentInfo.stopScript': 'Arrêter le script',
   'agentInfo.launchDone': 'Lancer magic-done',
   'agentInfo.files.one': '{count} fichier',
   'agentInfo.files.other': '{count} fichiers',
