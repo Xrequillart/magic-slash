@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.83.0] - 2026-08-26
+
+### Added
+
+- **Desktop**: A running script opens in a modal instead of taking over the main pane
+- **Desktop**: The discuss prompt is drafted for you rather than sent straight away
+- **Desktop**: Starting an agent on an issue another agent already holds is now blocked
+- **Desktop**: The repository card lists the scripts currently running
+
+### Fixed
+
+- **Desktop**: A terminal that exits cleanly drops its buffer instead of retaining it
+- **Desktop**: A terminal's output stays readable after its process exits
+- **Desktop**: Both agent actions lead with the reason they are unavailable
+- **Desktop**: The agent sidebar stays visible on a script terminal
+
 ## [0.82.2] - 2026-08-26
 
 ### Added
@@ -2447,6 +2463,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.83.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.83.0
 [0.82.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.82.2
 [0.82.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.82.1
 [0.82.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.82.0
