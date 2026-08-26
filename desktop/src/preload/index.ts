@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { AgentSortMode, PRComment, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot } from '../types'
+import type { AgentSortMode, PRComment, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot, TaskIssueDetail } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -604,6 +604,11 @@ const authApi = {
 // One call, no subscription: the page reads on open and on an explicit reload.
 const tasksApi = {
   listOpenIssues: (): Promise<TasksSnapshot> => ipcRenderer.invoke('tasks:listOpenIssues'),
+  // The other half of ONE issue, read when the detail panel opens on it. Keyed by
+  // the repository's config key rather than by owner/repo or a URL: the main
+  // process owns the parsing, and the renderer has no business naming a host.
+  getIssueDetail: (configKey: string, number: number): Promise<TaskIssueDetail | PRStatusError> =>
+    ipcRenderer.invoke('tasks:getIssueDetail', { configKey, number }),
 }
 
 // Org API (organization membership + invitations + multi-org management)

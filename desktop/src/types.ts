@@ -155,9 +155,11 @@ export function isPRStatusError<T extends object>(
 /**
  * One OPEN GitHub issue, as the Tasks page lists it.
  *
- * Deliberately thin: the page shows a row, not a ticket. The body, the assignees
- * and the comment counts are all one click away on GitHub, and every field kept
- * here crosses IPC on every reload.
+ * Deliberately thin: the page shows a row, not a ticket. Every field kept here
+ * crosses IPC for all fifty issues of every repository on every reload, so what
+ * only the DETAIL panel needs — the body, the state, the assignees, the comment
+ * count — is not here: it is read one issue at a time by `tasks:getIssueDetail`
+ * into a `TaskIssueDetail`, when someone actually opens that issue.
  */
 export interface TaskIssue {
   number: number
@@ -169,10 +171,48 @@ export interface TaskIssue {
   author?: string
   /** Label names only, in GitHub's own order. Capped by the query at 5. */
   labels: string[]
-  /** The issue this one is a sub-issue of, when GitHub reports one. Absent for a top-level issue. */
-  parent?: { number: number; title: string }
+  /**
+   * The issue this one is a sub-issue of, when GitHub reports one. Absent for a
+   * top-level issue.
+   *
+   * `url` is what makes the parent reachable rather than merely named, and it is
+   * optional for the reason the mapper gives: a parent GitHub reports without one
+   * is still a parent worth showing, just not one worth clicking.
+   */
+  parent?: { number: number; title: string; url?: string }
   /** Set only when this issue HAS sub-issues; `total` is never 0 here. */
   subIssues?: { total: number; completed: number }
+}
+
+/**
+ * The rest of ONE issue, read on demand when the detail panel opens on it.
+ *
+ * Split from `TaskIssue` rather than folded into it because the two reads have
+ * opposite lifetimes — the same trade-off `PR_COMMENTS_QUERY` makes next door.
+ * The list is read for every GitHub-tracked repository on every page open, fifty
+ * issues at a time; this is read once, for the single issue on screen. A body of
+ * a few kilobytes is nothing on its own and is hundreds of kilobytes per reload
+ * when it rides along with the list.
+ *
+ * Carries no `number`, `title` or `url`: the panel already holds the `TaskIssue`
+ * it was opened on, and a second copy of those fields could only disagree with it.
+ */
+export interface TaskIssueDetail {
+  /** The issue body, GitHub-flavoured markdown. `''` when the issue has none. */
+  body: string
+  /**
+   * Asked for even though `OPEN_ISSUES_QUERY` filters on `states: OPEN`: this read
+   * happens later, by number, and an issue closed in the meantime must not go on
+   * calling itself open in the panel that just fetched it.
+   */
+  state: 'OPEN' | 'CLOSED'
+  /**
+   * Assignee logins only — no avatars. The renderer's CSP is `default-src 'self'`
+   * with no `img-src`, so a remote avatar could only be fetched and blocked.
+   */
+  assignees: string[]
+  /** How many comments the issue has. The panel says so; reading them is on GitHub. */
+  commentCount: number
 }
 
 /**

@@ -1,13 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { Config, RepositoryConfig, TasksSnapshot } from '../../types'
+import type { Config, PRStatusError, RepositoryConfig, TaskIssueDetail, TasksSnapshot } from '../../types'
 
 // Hoisted above the import of the module under test, in the style of
 // config-handlers.test.ts: ipcMain.handle would throw outside Electron, and the
 // registration is captured so the handler can be invoked directly.
-const handlers = new Map<string, () => Promise<TasksSnapshot>>()
+//
+// Typed loosely on purpose: the two channels here take different arguments, and
+// each accessor below narrows its own — a single precise signature could only be
+// wrong for one of them.
+type IpcHandler = (event: unknown, args?: unknown) => Promise<unknown>
+const handlers = new Map<string, IpcHandler>()
 vi.mock('electron', () => ({
   ipcMain: {
-    handle: vi.fn((channel: string, handler: () => Promise<TasksSnapshot>) => {
+    handle: vi.fn((channel: string, handler: IpcHandler) => {
       handlers.set(channel, handler)
     }),
   },
@@ -28,8 +33,10 @@ vi.mock('../github', () => ({
 }))
 
 const mockFetchOpenIssues = vi.fn()
+const mockFetchIssueDetail = vi.fn()
 vi.mock('../github-issues', () => ({
   fetchOpenIssues: (...args: unknown[]) => mockFetchOpenIssues(...args),
+  fetchIssueDetail: (...args: unknown[]) => mockFetchIssueDetail(...args),
 }))
 
 import { setupTasksHandlers } from './tasks-handlers'
@@ -47,12 +54,24 @@ function withRepos(repositories: Record<string, RepositoryConfig>): void {
   mockReadConfig.mockReturnValue({ repositories } as unknown as Config)
 }
 
-/** Registers the handlers and returns the one the Tasks page calls. */
+/** Registers the handlers and returns the one the Tasks page calls on open. */
 function listOpenIssues(): () => Promise<TasksSnapshot> {
   setupTasksHandlers()
   const handler = handlers.get('tasks:listOpenIssues')
   if (!handler) throw new Error('tasks:listOpenIssues was never registered')
-  return handler
+  return () => handler(null) as Promise<TasksSnapshot>
+}
+
+/** Registers the handlers and returns the one the detail panel calls on select. */
+function getIssueDetail(): (args: { configKey: string; number: number }) => Promise<TaskIssueDetail | PRStatusError> {
+  setupTasksHandlers()
+  const handler = handlers.get('tasks:getIssueDetail')
+  if (!handler) throw new Error('tasks:getIssueDetail was never registered')
+  return (args) => handler(null, args) as Promise<TaskIssueDetail | PRStatusError>
+}
+
+function detail(overrides: Partial<TaskIssueDetail> = {}): TaskIssueDetail {
+  return { body: 'the body', state: 'OPEN', assignees: [], commentCount: 0, ...overrides }
 }
 
 describe('tasks:listOpenIssues', () => {
@@ -63,6 +82,8 @@ describe('tasks:listOpenIssues', () => {
     mockGetGitHubToken.mockReturnValue('gho_testtoken')
     mockFetchOpenIssues.mockReset()
     mockFetchOpenIssues.mockResolvedValue({ issues: [], totalOpen: 0 })
+    mockFetchIssueDetail.mockReset()
+    mockFetchIssueDetail.mockResolvedValue({ body: '', state: 'OPEN', assignees: [], commentCount: 0 })
   })
 
   it('reads the open issues of every GitHub-tracked repository', async () => {
@@ -223,5 +244,77 @@ describe('tasks:listOpenIssues', () => {
     expect(snapshot.groups.find((g) => g.configKey === 'web')?.error)
       .toEqual({ error: 'network', message: 'boom' })
     expect(snapshot.groups.find((g) => g.configKey === 'api')?.issues).toEqual([])
+  })
+})
+
+describe('tasks:getIssueDetail', () => {
+  beforeEach(() => {
+    handlers.clear()
+    mockReadConfig.mockReset()
+    mockGetGitHubToken.mockReset()
+    mockGetGitHubToken.mockReturnValue('gho_testtoken')
+    mockFetchOpenIssues.mockReset()
+    mockFetchOpenIssues.mockResolvedValue({ issues: [], totalOpen: 0 })
+    mockFetchIssueDetail.mockReset()
+    mockFetchIssueDetail.mockResolvedValue(detail())
+  })
+
+  it('resolves the repository’s config key to an owner and a repo', async () => {
+    // The renderer sends the key it drew the row from, never a URL: the parsing —
+    // and the host check inside it — stays on this side of the bridge.
+    withRepos({ api: githubRepo('api'), web: githubRepo('web') })
+
+    expect(await getIssueDetail()({ configKey: 'web', number: 234 })).toEqual(detail())
+    expect(mockFetchIssueDetail).toHaveBeenCalledWith('acme', 'web', 234)
+  })
+
+  it('follows the explicit issues URL, like the list read does', async () => {
+    withRepos({
+      api: githubRepo('api', { issues: { githubIssuesUrl: 'https://github.com/acme/tracker/issues' } }),
+    })
+
+    await getIssueDetail()({ configKey: 'api', number: 12 })
+
+    expect(mockFetchIssueDetail).toHaveBeenCalledWith('acme', 'tracker', 12)
+  })
+
+  it('answers that there is no token without reading the config', async () => {
+    mockGetGitHubToken.mockReturnValue(null)
+    withRepos({ api: githubRepo('api') })
+
+    const result = await getIssueDetail()({ configKey: 'api', number: 234 })
+
+    expect(result).toEqual({ error: 'no-token', message: expect.stringContaining('gh auth login') })
+    expect(mockFetchIssueDetail).not.toHaveBeenCalled()
+    expect(mockReadConfig).not.toHaveBeenCalled()
+  })
+
+  // The config can change between the list read and the click — a repository
+  // renamed, deleted, or switched to Jira. Querying api.github.com anyway would
+  // ask about a repository this app no longer tracks there.
+  it('reports a key that is no longer a GitHub-tracked repository as not-found', async () => {
+    withRepos({ billing: repo({ name: 'billing', plan: { tracker: 'jira' }, jira: { projectKey: 'PROJ' } }) })
+
+    expect(await getIssueDetail()({ configKey: 'billing', number: 234 }))
+      .toEqual({ error: 'not-found', message: expect.stringContaining('billing') })
+    expect(mockFetchIssueDetail).not.toHaveBeenCalled()
+  })
+
+  it('passes the read’s own failure straight through', async () => {
+    // The panel renders the same five named failures the repository cards do, so
+    // the handler must not flatten them into one.
+    withRepos({ api: githubRepo('api') })
+    mockFetchIssueDetail.mockResolvedValue({ error: 'rate-limited', message: 'slow down' })
+
+    expect(await getIssueDetail()({ configKey: 'api', number: 234 }))
+      .toEqual({ error: 'rate-limited', message: 'slow down' })
+  })
+
+  it('captures an unexpected throw instead of rejecting at the panel', async () => {
+    withRepos({ api: githubRepo('api') })
+    mockFetchIssueDetail.mockRejectedValue(new Error('boom'))
+
+    expect(await getIssueDetail()({ configKey: 'api', number: 234 }))
+      .toEqual({ error: 'network', message: 'boom' })
   })
 })

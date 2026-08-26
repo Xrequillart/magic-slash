@@ -1,10 +1,10 @@
 import { ipcMain } from 'electron'
-import type { RepositoryConfig, TaskRepoGroup, TasksSnapshot } from '../../types'
+import type { PRStatusError, RepositoryConfig, TaskIssueDetail, TaskRepoGroup, TasksSnapshot } from '../../types'
 import { isPRStatusError } from '../../types'
 import { resolveGitHubIssuesUrl, resolveTracker } from '../../tracker'
 import { readConfig } from '../config/config'
 import { getGitHubToken } from '../github'
-import { fetchOpenIssues } from '../github-issues'
+import { fetchIssueDetail, fetchOpenIssues } from '../github-issues'
 
 /**
  * The Tasks page's one read: the OPEN issues of every configured repository whose
@@ -96,4 +96,40 @@ export function setupTasksHandlers(): void {
 
     return { githubConnected: true, groups }
   })
+
+  /**
+   * ONE issue's body, state, assignees and comment count — the half of an issue the
+   * list read deliberately leaves behind (see `TaskIssue`). Called when the detail
+   * panel opens on a row, and only then.
+   *
+   * Takes the repository's CONFIG KEY, not an owner and a repo: the renderer holds
+   * the group it drew the row from, and re-parsing the issue URL there would put a
+   * second copy of `parseOwnerRepo` on the other side of the bridge — one the
+   * renderer could then get wrong, or be handed a URL to any host at all. Resolving
+   * the key through `githubRepos` also means a repository that stopped being
+   * GitHub-tracked between the list and the click answers "not found" rather than
+   * being queried against api.github.com anyway.
+   */
+  ipcMain.handle(
+    'tasks:getIssueDetail',
+    async (_event, args: { configKey: string; number: number }): Promise<TaskIssueDetail | PRStatusError> => {
+      if (!getGitHubToken()) {
+        return { error: 'no-token', message: 'No GitHub token: run `gh auth login` to read this issue.' }
+      }
+
+      const repo = githubRepos(readConfig().repositories ?? {})
+        .find((candidate) => candidate.configKey === args.configKey)
+      if (!repo) {
+        return { error: 'not-found', message: `No GitHub-tracked repository is configured as ${args.configKey}.` }
+      }
+
+      // Same reason as the group loop above: an unexpected throw must come back as
+      // a named failure the panel can render, not reject into an empty frame.
+      try {
+        return await fetchIssueDetail(repo.owner, repo.repo, args.number)
+      } catch (err) {
+        return { error: 'network', message: err instanceof Error ? err.message : String(err) }
+      }
+    },
+  )
 }
