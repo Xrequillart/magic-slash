@@ -232,6 +232,9 @@ export function TasksPage() {
             configKey={selection.row.configKey}
             repoName={selection.row.name}
             repo={config?.repositories?.[selection.row.configKey]}
+            // Read out of the same index the list's dot reads, so the page and the
+            // row it was opened from can never disagree about this issue.
+            hasAgent={agentedIssues[selection.row.configKey]?.has(String(selection.issue.number)) ?? false}
             paneRef={paneRef}
             onBack={back}
           />

@@ -197,6 +197,14 @@ interface TaskDetailPageProps {
   /** That repository's configuration, when it still has one. Absent means nothing can be launched. */
   repo?: RepositoryConfig
   /**
+   * Whether an agent is already on this issue — the same answer the list's dot gives.
+   *
+   * Computed by the Tasks page rather than here: `buildAgentedIssues` unions the org
+   * roster with the local terminals in one pass for the whole page, and asking the
+   * question again per detail page would be a second, differently-shaped answer to it.
+   */
+  hasAgent: boolean
+  /**
    * The scrolling pane this page sits in — the Tasks page owns it, because the
    * list scrolls in it too.
    *
@@ -210,7 +218,7 @@ interface TaskDetailPageProps {
   onBack: () => void
 }
 
-export function TaskDetailPage({ issue, configKey, repoName, repo, paneRef, onBack }: TaskDetailPageProps) {
+export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, paneRef, onBack }: TaskDetailPageProps) {
   const t = useT()
   const locale = useLocale()
 
@@ -501,7 +509,12 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, paneRef, onBa
                 reads as a warning. */}
             <button
               onClick={startAgent}
-              disabled={!canStart}
+              // Off once somebody is already on this issue, not merely discouraged:
+              // a second `/magic:start` on the same ticket is a second worktree and a
+              // second branch for one piece of work. The list's dot beside the row is
+              // the warning that comes before this.
+              disabled={!canStart || hasAgent}
+              title={hasAgent ? t('tasks.hasAgentHint') : undefined}
               className={`${BTN_PRIMARY_STACKED} w-full disabled:opacity-40`}
             >
               <Play className="w-3.5 h-3.5 mt-px flex-shrink-0 fill-current" />
@@ -531,6 +544,19 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, paneRef, onBa
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs text-ink">{t('tasks.noLocalRepo')}</span>
                 <span className="text-xs text-text-secondary/70">{t('tasks.noLocalRepoHint')}</span>
+              </div>
+            )}
+            {/* Said in words rather than left to a faded button: a disabled control with
+                no sentence beside it reads as broken. Only when nothing else is stopping
+                the start — the missing-folder lines above are the more fundamental answer,
+                and both at once would be two excuses for one greyed-out button. The dot is
+                the list row's own marker for this, so the two surfaces say it the same way.
+                Discussing the issue stays available, which is why this sits under the pair
+                rather than in place of them. */}
+            {canStart && hasAgent && (
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full flex-shrink-0 bg-accent" />
+                <span className="text-xs text-text-secondary">{t('tasks.hasAgentHint')}</span>
               </div>
             )}
             {startFailed && <span className="text-xs text-orange">{t('tasks.startFailed')}</span>}
