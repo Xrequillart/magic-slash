@@ -62,8 +62,14 @@ function listOpenIssues(): () => Promise<TasksSnapshot> {
   return () => handler(null) as Promise<TasksSnapshot>
 }
 
-/** Registers the handlers and returns the one the detail panel calls on select. */
-function getIssueDetail(): (args: { configKey: string; number: number }) => Promise<TaskIssueDetail | PRStatusError> {
+/**
+ * Registers the handlers and returns the one the detail panel calls on select.
+ *
+ * `unknown` and not the payload's own type: half the point of the handler's guard is
+ * what it does with a payload the annotation says is impossible, and a helper typed
+ * to that annotation could not express those cases without a cast per test.
+ */
+function getIssueDetail(): (args: unknown) => Promise<TaskIssueDetail | PRStatusError> {
   setupTasksHandlers()
   const handler = handlers.get('tasks:getIssueDetail')
   if (!handler) throw new Error('tasks:getIssueDetail was never registered')
@@ -308,6 +314,28 @@ describe('tasks:getIssueDetail', () => {
 
     expect(await getIssueDetail()({ configKey: 'api', number: 234 }))
       .toEqual({ error: 'rate-limited', message: 'slow down' })
+  })
+
+  // The payload crosses the bridge, so its shape is an assumption rather than a
+  // guarantee: the annotation on the handler is erased at runtime. Each of these
+  // reached a dereference or api.github.com before the guard existed.
+  it.each([
+    ['no payload at all', undefined],
+    ['a payload that is not an object', 'api'],
+    ['a missing config key', { number: 234 }],
+    ['a blank config key', { configKey: '', number: 234 }],
+    ['an issue number that is not a number', { configKey: 'api', number: '234' }],
+    ['an issue number that is not an integer', { configKey: 'api', number: 23.4 }],
+    ['an issue number that is NaN', { configKey: 'api', number: Number.NaN }],
+  ])('refuses %s without reading the config or the network', async (_label, args) => {
+    withRepos({ api: githubRepo('api') })
+
+    expect(await getIssueDetail()(args)).toEqual({
+      error: 'not-found',
+      message: expect.stringContaining('Malformed'),
+    })
+    expect(mockFetchIssueDetail).not.toHaveBeenCalled()
+    expect(mockReadConfig).not.toHaveBeenCalled()
   })
 
   it('captures an unexpected throw instead of rejecting at the panel', async () => {
