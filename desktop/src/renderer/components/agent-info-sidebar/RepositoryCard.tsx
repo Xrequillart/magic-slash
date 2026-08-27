@@ -113,9 +113,9 @@ export function RepositoryCard({
           {resolvedBaseBranch && (
             <>
               <div className="self-stretch flex items-center gap-1.5 px-2 py-1.5 bg-surface rounded-md border border-line-subtle min-w-0">
-                <GitBranch className="w-3 h-3 text-text-secondary/50 flex-shrink-0" />
+                <GitBranch className="w-3.5 h-3.5 text-text-secondary flex-shrink-0" />
                 <span
-                  className="text-text-secondary/70 text-[10px] font-medium truncate"
+                  className="text-text-secondary text-xs font-medium truncate"
                   title={resolvedBaseBranch}
                 >
                   {resolvedBaseBranch}
