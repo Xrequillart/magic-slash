@@ -6,6 +6,11 @@
  * exist across every file of it, and what they say when they are read together — by a
  * person scanning the list, and by the agent the list is sent to.
  *
+ * `collectDocumentComments` answers the FIRST of those for a document that is not a review at
+ * all — the live spec in the agent sidebar, which is one path rather than a list of them. It
+ * emits the same group shape on purpose: the panel that draws the list, and
+ * `formatReviewComments` below, then work for both without knowing which they were handed.
+ *
  * Free of DOM types and of React, like `commentAnchors` and `reviewLayout`, and free of
  * the STORE as well. The renderer suite runs on node with no jsdom, so the input types
  * below are structural rather than imports of `FileComment` and of the store's map — the
@@ -14,7 +19,10 @@
  * still typed structurally: nothing here reads a file's counts or its status.
  */
 
-import { commentAnchorKind, commentFileKeyPrefix, type LineRange } from './commentAnchors'
+import {
+  commentAnchorKind, commentFileKey, commentFileKeyPrefix,
+  type CommentTarget, type LineRange,
+} from './commentAnchors'
 import { reviewFileKey } from './reviewLayout'
 
 /**
@@ -157,6 +165,54 @@ export function collectReviewComments(
   }
 
   return groups
+}
+
+/**
+ * The comments on ONE document, as the same group list the review's panel is built from.
+ *
+ * A second collector rather than an argument on `collectReviewComments`, and the reason is the
+ * shape of the input and not a preference: that function walks a review's `files` list, and a
+ * live document has no list to walk — it is one path, keyed once. Threading an optional
+ * "actually, just this one file" through a loop over files would leave every line of that loop
+ * reading as dead code in the case that matters, and its `liveFingerprints` filter would sit
+ * there answering a question this caller cannot ask.
+ *
+ * ONE key is read, `commentFileKey(target)`, and the whole key rather than a prefix. That is the
+ * difference in full: a review does not know which version of a file the reader is looking at, so
+ * it matches every version under a prefix and then filters by the fingerprint the mounted card
+ * reported. A live document knows — the spec panel files everything under `SPEC_FINGERPRINT`, one
+ * name for every version of the file, precisely so a comment survives the agent rewriting the
+ * document under it. There is no superseded version to filter out, so there is no filter.
+ *
+ * NOTHING is dropped for a lost anchor either, and that is not an omission. `locateQuote` reports
+ * a quotation it can no longer find, and the layer draws a notice instead of a pill — but the
+ * comment is still the reader's note, and it still has to reach the list and the compiled text.
+ * The alternative is a comment that vanishes because the agent edited the paragraph it was about,
+ * which is the one moment it was most worth reading.
+ *
+ * A single group, or none at all. An empty group is never returned, on `collectReviewComments`'
+ * precedent: every caller counts comments, and an empty group draws a heading over nothing.
+ */
+export function collectDocumentComments(
+  fileComments: Record<string, readonly StoredComment[]>,
+  target: CommentTarget,
+): ReviewCommentGroup[] {
+  const stored = fileComments[commentFileKey(target)]
+  if (stored === undefined || stored.length === 0) return []
+
+  return [{
+    path: target.path,
+    comments: stored.map(comment => ({
+      id: comment.id,
+      // The target's own, not sliced back off the key: this caller HAS the fingerprint — it
+      // built the key from it — and reading it back out of the string would be the one place in
+      // this module that re-derives a value it was handed.
+      fingerprint: target.fingerprint,
+      anchor: comment.anchor,
+      quote: comment.quote,
+      body: comment.body,
+    })),
+  }]
 }
 
 /**

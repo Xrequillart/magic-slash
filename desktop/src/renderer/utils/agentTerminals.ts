@@ -49,3 +49,42 @@ export function isAgentTerminal(id: string | null | undefined): boolean {
   if (!id) return false
   return !NON_AGENT_PREFIXES.some(prefix => id.startsWith(prefix))
 }
+
+/** A terminal as the store lists it. `TerminalInfo` satisfies it — the ID is all this reads. */
+export interface KnownTerminal {
+  id: string
+}
+
+/**
+ * WHICH terminal a hand-off should be written to, or `null` when there is nowhere to write.
+ *
+ * The two questions above, asked once. A control that hands text to an agent needs the answer
+ * twice — to decide whether its button is enabled, and again at the click, because the selection
+ * can change between the render that enabled it and the press that fires it — and answering it
+ * in both places is how the two drift apart. So it is one function, and the caller's disabled
+ * state and its guard are the same computation with the same inputs.
+ *
+ * `explicit` is the caller NAMING its target, and `undefined` means it has none: fall back to
+ * whatever is selected. The distinction between `undefined` and `null` is load-bearing — a
+ * caller that names its target and currently has none must NOT silently inherit the selection,
+ * which is the whole failure this exists to prevent: a document's comments handed to whichever
+ * agent the reader happened to click last.
+ *
+ * A NAMED target is also checked against the list, where a selected one is not. It has to be:
+ * the selection names a terminal the store is rendering, but an id a component is holding stays
+ * well-formed forever, so an agent closed while the control is on screen would leave a button
+ * writing into a pty nobody is reading. `isAgentTerminal` cannot see that — it reads a prefix.
+ *
+ * No store import and no DOM types, like the rest of this module, so the node suite can load it.
+ */
+export function resolveAgentTarget(
+  explicit: string | null | undefined,
+  active: string | null | undefined,
+  terminals: readonly KnownTerminal[],
+): string | null {
+  const named = explicit !== undefined
+  const id = named ? explicit : active
+  if (!id || !isAgentTerminal(id)) return null
+  if (named && !terminals.some(terminal => terminal.id === id)) return null
+  return id
+}

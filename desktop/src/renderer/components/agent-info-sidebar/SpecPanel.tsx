@@ -1,7 +1,12 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Maximize2 } from 'lucide-react'
-import { useStore } from '../../store'
+import { NO_COMMENTS, useStore } from '../../store'
 import FileContentRenderer from '../file-preview/FileContentRenderer'
+import ReviewCommentsButton from '../file-preview/ReviewCommentsButton'
+import { commentFileKey, SPEC_FINGERPRINT, type CommentTarget } from '../../utils/commentAnchors'
+import {
+  collectDocumentComments, type ReviewComment, type ReviewCommentGroup,
+} from '../../utils/reviewComments'
 import { StatusPill } from './StatusPill'
 import { TicketMark } from './TicketMark'
 import { AgentTitleField, type AgentIdentity } from './AgentIdentityFields'
@@ -9,6 +14,17 @@ import { hasScrolledFromTop } from './utils'
 import { useT } from '../../i18n'
 
 interface SpecPanelProps {
+  /**
+   * The terminal of the agent this spec belongs to — the send target for its comments.
+   *
+   * NOT `activeTerminalId`, and that is the one thing this prop exists to say. A review belongs
+   * to no agent in particular, so `ReviewCommentsButton` writes it to whichever is selected; a
+   * spec belongs to exactly one — this panel is open FOR a named planning agent, and it is the
+   * only agent that can act on the document — so the target travels with the panel rather than
+   * with the selection. Handing the comments to whatever the reader happened to click last is
+   * the failure this replaces.
+   */
+  agentId: string
   /**
    * The title, plus its editing state. In `replace` mode this panel is the ONLY card
    * on screen, so it carries the agent's identity that TicketHeader would otherwise
@@ -55,6 +71,7 @@ interface SpecPanelProps {
  * the NEW spec rather than wherever the previous one had been left.
  */
 export function SpecPanel({
+  agentId,
   identity,
   repoNames,
   status,
@@ -68,6 +85,69 @@ export function SpecPanel({
 }: SpecPanelProps) {
   const t = useT()
   const setSelectedFile = useStore(s => s.setSelectedFile)
+  const focusFileComment = useStore(s => s.focusFileComment)
+
+  /**
+   * How this document's comments are named in the store — the same key the layer below writes
+   * them under, built the same way.
+   *
+   * `SPEC_FINGERPRINT` and not a content hash, which is the whole reason a comment survives the
+   * agent rewriting the spec: one name for every version of the file. `SPEC_FINGERPRINT`'s own
+   * docblock carries that argument, and the proof that this key space cannot collide with a
+   * review's.
+   *
+   * Rebuilt on a render rather than memoised: it is two string joins, and the memo cell that
+   * guarded them would cost more than they do. What IS memoised is the group list below, which
+   * walks the entries.
+   */
+  const target: CommentTarget = { repoPath, path: filePath, fingerprint: SPEC_FINGERPRINT }
+  const commentKey = commentFileKey(target)
+  // `NO_COMMENTS` rather than `?? []`, for the reason it exists: zustand compares a selector's
+  // result by identity, and a fresh array per call re-renders this panel on every unrelated
+  // store mutation — with a spec being re-read every few seconds, that is not theoretical.
+  const comments = useStore(s => s.fileComments[commentKey] ?? NO_COMMENTS)
+
+  /**
+   * The comments as the popover's own shape, and how many that is.
+   *
+   * ONE computation with the count derived from its result, on `FilePreviewPanel`'s precedent
+   * and for its reason: the count is what puts the control on screen and the groups are what it
+   * draws, so a count from one source and a list from another is the state where the header says
+   * "3" over an empty list.
+   */
+  const groups = useMemo(
+    // A ONE-ENTRY map rather than the store's, and the key is deliberately spelled twice — once
+    // for the selector above, once by the collector. The selector has to be narrow: subscribing
+    // to `fileComments` itself would re-render this panel whenever anyone comments on any file
+    // of any review. And the collector has to take a map, because reading exactly one key out of
+    // one is the property its suite asserts — a review's key on this very path must not leak
+    // into a spec's list. Two string joins is what that costs.
+    () => collectDocumentComments({ [commentKey]: comments }, target),
+    // `target` is rebuilt on every render, so the two values it is made of stand in for it:
+    // `commentKey` is a pure function of `repoPath` and `filePath`, so naming those as well
+    // would be the same dependency twice.
+    [commentKey, comments],
+  )
+  // Off the memo rather than off `comments`, so the number that puts the control on screen and
+  // the list it opens cannot disagree. `groups[0]` and not a reduce: this collector returns one
+  // group or none, and spelling that out is worth more here than a loop that reads as if it
+  // might one day walk several.
+  const commentCount = groups[0]?.comments.length ?? 0
+
+  /**
+   * Take the reader from the list to the passage.
+   *
+   * A call into the store and nothing else — no scrolling here. `MarkdownCommentLayer` already
+   * selects `focusedComment` by this document's own key and scrolls the pill it drew into view,
+   * which is the mechanism the review's list uses too. Nothing has to be unfolded first either:
+   * a review's card can be collapsed, this document is the panel.
+   *
+   * The group is ignored — this list has exactly one, for the only path this panel reads — but
+   * the signature is the popover's, and narrowing it here would fork the component.
+   */
+  const handleJumpToComment = useCallback((_group: ReviewCommentGroup, comment: ReviewComment) => {
+    focusFileComment({ repoPath, path: filePath, fingerprint: comment.fingerprint }, comment.id)
+  }, [focusFileComment, repoPath, filePath])
 
   const bodyRef = useRef<HTMLDivElement>(null)
   // The panel does not collapse. It is the only card a planning agent has, and the
@@ -142,6 +222,27 @@ export function SpecPanel({
                   {ticketId}
                 </span>
               )
+            )}
+            {/* The comments on the spec, from the first one — and only from the first one. A
+                header row has no other job that would keep it there at zero, unlike the review's
+                footer bar which stays for the changes; an empty control in a title row is a
+                permanently dead affordance.
+
+                Before the status and the expand control rather than after: it belongs to the
+                document, and those two describe the agent and the frame around it. `gap-1.5` on
+                the row is what spaces it, so it needs no margin of its own. */}
+            {commentCount > 0 && (
+              <ReviewCommentsButton
+                variant="header"
+                repoPath={repoPath}
+                groups={groups}
+                total={commentCount}
+                /* The agent that OWNS this spec, whatever terminal is active. */
+                targetTerminalId={agentId}
+                onJump={handleJumpToComment}
+                /* No `onSent`: the panel sits beside the terminal the paste landed in rather
+                   than over it, so there is nothing to get out of the way. */
+              />
             )}
             {/* TicketHeader is not on screen for a planning agent, and it is the only
                 other place that renders the status — without this the panel would

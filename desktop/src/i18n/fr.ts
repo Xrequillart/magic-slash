@@ -1552,9 +1552,12 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.commentCount.one': '1 commentaire',
   'filePreview.commentCount.other': '{count} commentaires',
   'filePreview.reviewComments': 'Commentaires de cette revue',
+  'filePreview.documentComments': 'Commentaires de ce document',
   'filePreview.commentOnFile': 'Tout le fichier',
   'filePreview.sendToAgent': "Envoyer à l'agent",
   'filePreview.sendNoAgent': 'Aucun agent en cours — copiez les commentaires à la place',
+  'filePreview.sendAgentGone':
+    "L'agent propriétaire de ce document n'est plus en cours — copiez les commentaires à la place",
 
   // ── Tâches ───────────────────────────────────────────────────────────────
   'tasks.title': 'Tâches',
