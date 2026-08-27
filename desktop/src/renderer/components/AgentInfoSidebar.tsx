@@ -478,6 +478,10 @@ export function AgentInfoSidebar() {
                 // A new file starts fresh: expanded, and pinned to its own bottom
                 // rather than wherever the previous spec had been left.
                 key={specPath}
+                // The agent the panel is open FOR, which is where its comments are sent.
+                // Non-null wherever `spec` is: the path came off this terminal's own metadata,
+                // the same assertion `RepositoryCard` makes below for the same reason.
+                agentId={inspectedTerminalId!}
                 identity={identity}
                 repoNames={configuredAttachedRepos.map(getRepoName)}
                 status={metadata?.status ?? ''}

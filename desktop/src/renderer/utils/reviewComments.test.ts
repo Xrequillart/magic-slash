@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  collectReviewComments, formatReviewComments,
+  collectDocumentComments, collectReviewComments, formatReviewComments,
   type ReviewCommentGroup, type StoredComment,
 } from './reviewComments'
 import { commentFileKey, SPEC_FINGERPRINT } from './commentAnchors'
@@ -264,6 +264,85 @@ describe('collectReviewComments — the live spec’s own comments', () => {
     // directly, so if the two spellings agreed it would be showing a review's notes on the
     // document it is drawing.
     expect(specKey(`${REPO}/docs/spec.md`)).not.toBe(key('docs/spec.md', SPEC_FINGERPRINT))
+  })
+})
+
+describe('collectDocumentComments', () => {
+  const SPEC = `${REPO}/docs`
+  const SPEC_FILE = 'spec.md'
+  const specTarget = { repoPath: SPEC, path: SPEC_FILE, fingerprint: SPEC_FINGERPRINT }
+
+  /** The live document's own key, built the store's way, like `key` above. */
+  function liveKey(fingerprint = SPEC_FINGERPRINT): string {
+    return commentFileKey({ repoPath: SPEC, path: SPEC_FILE, fingerprint })
+  }
+
+  it('returns one group for the document, in the store order', () => {
+    const groups = collectDocumentComments(
+      { [liveKey()]: [comment('first'), comment('second'), comment('third')] },
+      specTarget,
+    )
+
+    expect(groups.map(g => g.path)).toEqual([SPEC_FILE])
+    expect(groups[0].comments.map(c => c.id)).toEqual(['first', 'second', 'third'])
+  })
+
+  it('reads its own key and nothing else', () => {
+    // The point of taking the whole map: a review of the repository the spec lives in holds
+    // entries for the same FILE NAME, and one of them keyed under a content fingerprint is
+    // exactly what must not appear in the spec's list. The key is the whole discriminant here —
+    // there is no prefix and no fingerprint filter to fall back on.
+    const groups = collectDocumentComments(
+      {
+        [liveKey()]: [comment('c-spec')],
+        [liveKey('f1')]: [comment('c-other-version')],
+        [key(SPEC_FILE, 'f1')]: [comment('c-review')],
+      },
+      specTarget,
+    )
+
+    expect(groups[0].comments.map(c => c.id)).toEqual(['c-spec'])
+  })
+
+  it('gives every comment the target’s own fingerprint', () => {
+    // What the caller rebuilds a `CommentTarget` from — to delete a comment, or to focus it.
+    const groups = collectDocumentComments({ [liveKey()]: [comment('c1'), comment('c2')] }, specTarget)
+
+    expect(groups[0].comments.map(c => c.fingerprint)).toEqual([SPEC_FINGERPRINT, SPEC_FINGERPRINT])
+  })
+
+  it('keeps a comment whose anchor is lost', () => {
+    // The one the review's collector would also keep, and it matters more here: a spec is
+    // rewritten under the reader every few seconds, so a quotation the agent has since edited
+    // away is the ordinary case rather than the edge one. The note is still the reader's, and
+    // it still has to reach the list and the text the agent is handed.
+    const groups = collectDocumentComments(
+      { [liveKey()]: [comment('c-lost', { anchor: null, quote: 'a paragraph since rewritten' })] },
+      specTarget,
+    )
+
+    expect(groups[0].comments.map(c => c.id)).toEqual(['c-lost'])
+    expect(formatReviewComments(groups)).toBe([
+      SPEC_FILE,
+      '  (quoted passage)',
+      '    > a paragraph since rewritten',
+      '    body of c-lost',
+    ].join('\n'))
+  })
+
+  it('returns nothing for a document with no comments, and nothing for an empty entry', () => {
+    // No empty group either way — a heading over nothing, and a count of zero that the caller
+    // would have to test for a second time.
+    expect(collectDocumentComments({}, specTarget)).toEqual([])
+    expect(collectDocumentComments({ [liveKey()]: [] }, specTarget)).toEqual([])
+  })
+
+  it('agrees with the key the spec panel actually files under', () => {
+    // `splitSpecPath` is what the sidebar hands the panel, and the panel keys on its answer.
+    // Asserted through the real function rather than by re-deriving the split here, on the
+    // precedent of `specKey` above: the shape of that split IS the invariant.
+    const split = splitSpecPath(`${REPO}/docs/${SPEC_FILE}`)
+    expect(split).toEqual({ repoPath: SPEC, filePath: SPEC_FILE })
   })
 })
 

@@ -21,6 +21,9 @@ const term = vi.hoisted(() => ({
   getTerminal: vi.fn(),
   createTerminal: vi.fn(),
   killTerminal: vi.fn(),
+  // Routed through `term` rather than mocked inline in the factory below, because one test
+  // needs to CONTROL its answer: the handler is supposed to hand that boolean back.
+  writeToTerminal: vi.fn((..._args: unknown[]): boolean => true),
   noteTerminalUserInput: vi.fn((_id: string) => {}),
   syncTerminalCwd: vi.fn((_id: string): { action: string; cwd?: string; from?: string } => ({ action: 'none' })),
   relaunchTerminalInResolvedCwd: vi.fn((_id: string): string | null => null),
@@ -35,7 +38,7 @@ vi.mock('../pty/terminal-manager', () => ({
     return { id: args[0], name: args[1], state: 'idle', repositories: [], branchName: null }
   },
   launchClaude: vi.fn(),
-  writeToTerminal: vi.fn(),
+  writeToTerminal: (...args: unknown[]) => term.writeToTerminal(...args),
   resizeTerminal: vi.fn(),
   killTerminal: (...args: unknown[]) => term.killTerminal(...args),
   getTerminal: (...args: unknown[]) => term.getTerminal(...args),
@@ -327,6 +330,25 @@ describe('the pending question and a write from the terminal view (terminal:writ
     await invoke('terminal:write', { id: 'claude-1', data: undefined })
 
     expect(noteTerminalInput).not.toHaveBeenCalled()
+  })
+
+  it('reports whether the bytes reached a pty', async () => {
+    // The terminal view ignores this, and one caller cannot: `ReviewCommentsButton` clears the
+    // reader's comments once they have been handed over, and the store cannot tell it that the
+    // session is dead — an exited terminal keeps its entry with `state` set to
+    // `completed`/`error`, which is also what an agent idle at its prompt reports. So the
+    // handler's own answer is the only thing separating a delivered paste from a lost one.
+    term.writeToTerminal.mockReturnValueOnce(true)
+    await expect(invoke('terminal:write', { id: 'claude-1', data: 'y' })).resolves.toBe(true)
+
+    term.writeToTerminal.mockReturnValueOnce(false)
+    await expect(invoke('terminal:write', { id: 'claude-1', data: 'y' })).resolves.toBe(false)
+  })
+
+  it('reports a rejected write as undelivered rather than as nothing', async () => {
+    // The early return guards a malformed call, and `undefined` would read as falsy by accident
+    // rather than by decision — a caller that clears state on success must get a definite no.
+    await expect(invoke('terminal:write', { id: 'claude-1', data: undefined })).resolves.toBe(false)
   })
 
   it('marks the session as talked to, so it is no longer relaunched silently', async () => {

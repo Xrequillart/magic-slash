@@ -183,7 +183,10 @@ const terminalApi = {
   launchClaude: (id: string, name: string, cwd: string, initialPrompt?: string, promptMode?: InitialPromptMode) =>
     ipcRenderer.invoke('terminal:launchClaude', { id, name, cwd, initialPrompt, promptMode }),
 
-  write: (id: string, data: string) =>
+  // `Promise<boolean>` spelled out rather than left to `invoke`'s `any`: the answer is
+  // load-bearing for a caller that destroys state once the write has landed, and an
+  // implicit `any` would let a missing `await` pass tsc as a truthy Promise.
+  write: (id: string, data: string): Promise<boolean> =>
     ipcRenderer.invoke('terminal:write', { id, data }),
 
   resize: (id: string, cols: number, rows: number) =>

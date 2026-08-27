@@ -1644,6 +1644,12 @@ export const en = {
   // The list itself, as the trigger's tooltip and the panel's heading. It says what the
   // button opens, where the label above says what the button counts.
   'filePreview.reviewComments': 'Comments on this review',
+  // The same list, opened from a card HEADER rather than from a review's footer bar — the
+  // live spec in the agent sidebar. A separate sentence and not the one above: what it opens
+  // there is one document's comments, and a spec is not a review. The COUNT beside it is the
+  // `commentCount.*` triple, shared with the bar — the header changes the type scale, not the
+  // wording.
+  'filePreview.documentComments': 'Comments on this document',
   // What a comment with no line range is about. Nothing creates one today; the list has
   // to name it anyway, since the store's shape allows it.
   'filePreview.commentOnFile': 'Whole file',
@@ -1652,6 +1658,20 @@ export const en = {
   // to say which of the two states this is.
   'filePreview.sendToAgent': 'Send to the agent',
   'filePreview.sendNoAgent': 'No agent is running — copy the comments instead',
+  // The same disabled control, one placement over, where the reason is a different one: the
+  // send has ONE possible target — the agent the document belongs to — so "no agent is
+  // running" would be false in the ordinary case of another agent being selected. This names
+  // what actually happened, and points at Copy beside it.
+  'filePreview.sendAgentGone':
+    'The agent this document belongs to is no longer running — copy the comments instead',
+  // The send did not reach a pty. TWO keys, on the pattern above: the short one is the button's
+  // own text, the hint is its tooltip — and the hint says the part that actually matters, which
+  // is that nothing was thrown away. The store cannot warn about this in advance: an exited
+  // terminal keeps its entry with `state` set to `completed`/`error`, the same two values an
+  // agent idle at its prompt reports, so the failure is only knowable after the write.
+  'filePreview.sendFailed': 'Not delivered',
+  'filePreview.sendFailedHint':
+    'Could not reach the agent — your comments were kept, copy them instead',
 
   // ── Tasks ────────────────────────────────────────────────────────────────
   'tasks.title': 'Tasks',
