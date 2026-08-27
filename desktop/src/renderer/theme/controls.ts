@@ -72,7 +72,7 @@ export const BTN_GHOST = `${BTN_BASE} text-text-secondary hover:bg-surface-stron
 export const BTN_COMPACT = 'inline-flex items-center gap-1.5 h-7 px-2 text-[11px] font-medium rounded-lg transition-all text-text-secondary bg-surface border border-line hover:bg-surface-strong hover:text-ink'
 
 /** Square, icon only. Same height as BTN_COMPACT so the two align in a row. */
-export const BTN_ICON = 'flex items-center justify-center h-7 w-7 shrink-0 rounded-lg transition-all text-text-secondary/60 bg-surface border border-line hover:bg-surface-strong hover:text-ink'
+export const BTN_ICON = 'flex items-center justify-center h-7 w-7 shrink-0 rounded-lg transition-all text-icon bg-surface border border-line hover:bg-surface-strong hover:text-ink'
 
 /**
  * Text field. Same 30px box as the buttons above, deliberately: a field and the
