@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Ticket, Link2, Unlink, RefreshCw, Loader2, ShieldAlert } from 'lucide-react'
 import type { JiraConnectFailure, JiraDisconnectReason } from '../../../types'
 import { useJiraAuth } from '../../hooks/useJiraAuth'
@@ -25,7 +25,10 @@ import { useT, type MessageKey } from '../../i18n'
  *
  * The wait between the click and the credential is a browser round-trip, so `pending`
  * below is local optimism only: what actually flips this section is the push the hook
- * subscribes to, which is also where a cancelled or expired attempt is explained.
+ * subscribes to, which is also where a cancelled or expired attempt is explained. And
+ * because a consent screen the user simply CLOSES sends no answer at all, that optimism
+ * also has to expire on its own — coming back to this window is what ends it, and the
+ * focus effect below is where that is spelled out.
  */
 
 /** The reason codes, as messages. A record so the mapping is total and typo-proof. */
@@ -59,14 +62,56 @@ export function JiraAccountSection() {
 
   const [pending, setPending] = useState(false)
 
+  // `pending`, readable from the effects below without making them depend on it. The
+  // outcome effect is keyed on `lastEvent` identity alone — adding `pending` to its
+  // deps would replay the last explanation every time the spinner moved.
+  const pendingRef = useRef(false)
+  useEffect(() => { pendingRef.current = pending }, [pending])
+
   // The outcome of an attempt that ended in the browser. Keyed on the event object,
   // which changes identity on every push — two cancellations in a row are two
   // explanations, not one.
   useEffect(() => {
     if (!lastEvent) return
+    const wasPending = pendingRef.current
     setPending(false)
+    // The TTL expiring on an attempt the user already walked away from (see the focus
+    // effect below) is not news: the spinner has been gone for minutes, and the
+    // sentence would be about a browser tab they closed on purpose. A timeout the user
+    // IS still waiting on is the other branch, and it keeps its toast — as does every
+    // other reason, abandoned attempt or not.
+    if (lastEvent.reason === 'timeout' && !wasPending) return
     showToast(t(REASON_MESSAGE[lastEvent.reason]), 'error')
   }, [lastEvent])
+
+  // Coming back to this window with an attempt still in flight means the user left the
+  // consent screen without finishing it — closed the tab, hit Escape, changed their
+  // mind. Nothing reports that: the browser owns the screen for the whole round trip
+  // and only ever calls back on an answer, so regaining focus is the only evidence
+  // there is. Without it the section sits on a disabled spinner for the full five
+  // minutes of the main process's TTL, which is exactly as long as the user cannot
+  // reopen the consent screen they meant to go back to.
+  //
+  // A LOCAL RESET, and nothing more. The attempt keeps its verifier and its timer in
+  // the main process, so a user who returns to the browser and finally accepts is
+  // still connected by the push. All this drops is the spinner and the disabled state
+  // — which is the whole point, since clicking Connect again is what starts over.
+  //
+  // Armed only while pending, and only after a blur: `shell.openExternal` is what
+  // takes the focus away, so a focus event with no blur before it is this window
+  // never having lost it — there was no consent screen to leave.
+  useEffect(() => {
+    if (!pending) return
+    let leftForBrowser = false
+    const onBlur = () => { leftForBrowser = true }
+    const onFocus = () => { if (leftForBrowser) setPending(false) }
+    window.addEventListener('blur', onBlur)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      window.removeEventListener('blur', onBlur)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [pending])
 
   // A successful connection also arrives through the push; drop the spinner on any
   // transition into "connected".
