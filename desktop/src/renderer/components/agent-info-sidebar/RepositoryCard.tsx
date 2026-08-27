@@ -1,4 +1,4 @@
-import { GitBranch, Copy, Check, ArrowRight, X, FolderGit } from 'lucide-react'
+import { GitBranch, Copy, Check, ArrowRight, X, FolderGit2 } from 'lucide-react'
 import { GitHubIcon, VSCodeIcon } from './icons'
 import { ScriptsDropdown } from './ScriptsDropdown'
 import { PRWatchCard } from './PRWatchCard'
@@ -59,10 +59,14 @@ export function RepositoryCard({
     <div className="bg-surface rounded-xl p-3">
       {/* Repo header */}
       <div className="flex items-center gap-2 mb-2">
-        <FolderGit
-          className="w-4 h-4 flex-shrink-0"
-          style={{ color: repoColor }}
-        />
+        {/* The webapp's repository tile, at sidebar scale: the colour tints the icon
+            and its backdrop rather than standing alone as a dot. */}
+        <span
+          className="flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0"
+          style={{ backgroundColor: `${repoColor}1f`, color: repoColor }}
+        >
+          <FolderGit2 className="w-3.5 h-3.5" />
+        </span>
         <span className="text-ink/90 font-medium text-sm truncate" title={repoPath}>
           {repoName}
         </span>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode } from 'react'
-import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, Bot, type LucideIcon } from 'lucide-react'
+import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit, FolderGit2, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, Bot, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage, resolveActiveOrgId } from './OrgPage'
@@ -633,11 +633,15 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         href={`#/repo/${encodeURIComponent(name)}`}
         className="group flex items-center gap-3 px-4 py-3 bg-surface hover:bg-surface-strong border border-line-strong hover:border-line-strong rounded-xl transition-all"
       >
-        {/* Color dot */}
+        {/* Repository tile — the same one the webapp's repository list and the
+            agent sidebar's cards use: the repo's colour tints the icon and its
+            backdrop, instead of a bare dot that named nothing. */}
         <span
-          className="w-3 h-3 rounded-full flex-shrink-0"
-          style={{ backgroundColor: color }}
-        />
+          className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0"
+          style={{ backgroundColor: `${color}1f`, color }}
+        >
+          <FolderGit2 className="w-4 h-4" />
+        </span>
 
         {/* Repo info */}
         <div className="flex-1 min-w-0">
