@@ -133,10 +133,16 @@ interface Props {
    * any file can produce that fingerprint, so no review can mint the key, and none can read it
    * back. `collectReviewComments` states the same invariant from its own side.
    *
-   * The single-file preview (`FilePreviewPanel`) stays excluded, and it is excluded for no
-   * reason of soundness at all: it keys perfectly well — a real repository path, a real status
-   * — and is simply not wired for it. Which is the point of a flag. Turning it on there is a
-   * decision someone takes, not a consequence of the props that caller was already passing.
+   * The single-file preview (`FilePreviewPanel`) now passes `'spec'` too — but for a SPEC and
+   * for nothing else, and it reads that off the `spec` marker `SpecPanel` puts on
+   * `selectedFile` rather than inferring it from the file. Expanding a spec has to keep the
+   * comments just written on it, and since the two surfaces spell the key identically there is
+   * nothing to move: the capability is the only thing that had to be opened on the second one.
+   * Every OTHER file opened there keeps the refusal, and that is now a scoping decision rather
+   * than missing wiring — those files key perfectly well, so what stops them is that nobody has
+   * decided the single-file preview should take comments on arbitrary files. Which is the point
+   * of a flag: opting in stays something a caller does per document, not a consequence of the
+   * props it was already passing.
    *
    * Handed down with the two paths and the fingerprint derived below — to CodeView for the
    * diff, and to MarkdownCommentLayer for a markdown file switched to its rendered view, which

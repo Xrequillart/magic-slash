@@ -23,6 +23,11 @@ interface SpecPanelProps {
    * only agent that can act on the document — so the target travels with the panel rather than
    * with the selection. Handing the comments to whatever the reader happened to click last is
    * the failure this replaces.
+   *
+   * It travels one step further than the panel now: `handleExpand` puts it on `selectedFile`,
+   * because the expanded preview shows the same document with the same comments and hands them
+   * to the same agent. Nothing about "which agent owns this spec" is recoverable from the file
+   * path, so it has to be carried rather than looked up on the other side.
    */
   agentId: string
   /**
@@ -181,8 +186,12 @@ export function SpecPanel({
     // Empty status on purpose: the spec is not a git change, and any of the
     // `modified`/`added`/… values would send the read down the `git diff HEAD`
     // path in config:readFile and badge the file in the drawer.
-    setSelectedFile({ repoPath, path: filePath, status: '' })
-  }, [setSelectedFile, repoPath, filePath])
+    // `spec` and not a bare marker: it opens commenting on the drawer's copy of the document
+    // AND names the agent those comments are handed to. The comments themselves need nothing —
+    // the key is `SPEC_FINGERPRINT` over the same two paths on both surfaces, so the drawer
+    // reads back exactly what was written here.
+    setSelectedFile({ repoPath, path: filePath, status: '', spec: { agentId } })
+  }, [setSelectedFile, repoPath, filePath, agentId])
 
   return (
     // No `overflow-hidden` on the card: StatusPill's picker is an absolutely

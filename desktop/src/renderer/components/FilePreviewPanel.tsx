@@ -17,8 +17,9 @@ import {
   EMPTY_REVIEW_LAYOUT, type FileMarkers, type ReviewLayout,
 } from '../utils/reviewLayout'
 import {
-  collectReviewComments, type ReviewComment, type ReviewCommentGroup,
+  collectDocumentComments, collectReviewComments, type ReviewComment, type ReviewCommentGroup,
 } from '../utils/reviewComments'
+import { SPEC_FINGERPRINT, type CommentTarget } from '../utils/commentAnchors'
 import { cumulativeOffsetTop, findScrollContainer } from '../utils/scrollGeometry'
 import { useT } from '../i18n'
 
@@ -882,6 +883,82 @@ export default function FilePreviewPanel() {
   }, [review, toggleReviewFileCollapsed, focusFileComment])
 
   /**
+   * How the SPEC's comments are named in the store, when the drawer is showing a spec.
+   *
+   * The same key the sidebar's panel writes them under and the layer below reads back —
+   * `SPEC_FINGERPRINT` over the spec's two paths — which is the whole of why the comments
+   * written in the sidebar are already here waiting: nothing is copied across surfaces,
+   * there is one key space and both surfaces spell it the same way. `SPEC_FINGERPRINT` and
+   * not a content fingerprint so that a comment survives the agent rewriting the document;
+   * its own docblock carries that argument.
+   *
+   * Null for anything else, and that is the whole gate: an ordinary file opened in the
+   * single-file preview has no `spec` marker, so it gets no target, no groups, no button
+   * and no `commentable` — see `FileContentRenderer`'s prop for why that refusal is
+   * deliberate rather than a gap.
+   *
+   * Memoised, and NOT on `SpecPanel`'s precedent — there the per-render `target` is read
+   * outside its memo, by `commentFileKey`, so rebuilding it earns its keep. Here it has two
+   * readers that both want it stable: the group memo below, and the jump callback under that.
+   * Built once, it is the SINGLE place the drawer spells how a spec's comments are named, so
+   * the two cannot drift; and both dependency arrays get to name the value their body reads
+   * instead of naming `selectedFile` and arguing that it stands in.
+   */
+  const specTarget = useMemo<CommentTarget | null>(
+    () => (selectedFile?.spec
+      ? { repoPath: selectedFile.repoPath, path: selectedFile.path, fingerprint: SPEC_FINGERPRINT }
+      : null),
+    [selectedFile],
+  )
+
+  /**
+   * The spec's comments, and — just below — how many that is.
+   *
+   * ONE computation with the count derived from its result, for the reason `commentGroups`
+   * above gives: a count from one source over a list from another is the state where the
+   * header says "3" over an empty list.
+   *
+   * Handed the WHOLE `fileComments` map, which this panel already subscribes to for the
+   * review's sake. `collectDocumentComments` reads exactly one key out of whatever map it is
+   * given — that is the property its suite asserts, and it is what keeps a review's entries
+   * on this very path out of the spec's list — so a narrow selector or a one-entry map here
+   * would buy nothing and add a second place the key is spelled.
+   *
+   * `NO_GROUPS` on the null branch rather than `[]`, for that constant's own reason: the
+   * button is memoised, and a fresh array per render of a component that re-renders on every
+   * scroll frame would re-render it and its portalled panel along with it.
+   */
+  const specGroups = useMemo(
+    () => (specTarget ? collectDocumentComments(fileComments, specTarget) : NO_GROUPS),
+    [specTarget, fileComments],
+  )
+  // Off the memo, so the number that puts the control on screen and the list it opens cannot
+  // disagree. `specGroups[0]` and not a reduce: this collector returns one group or none.
+  const specCommentCount = specGroups[0]?.comments.length ?? 0
+
+  /**
+   * Take the reader from the spec's list to the passage.
+   *
+   * A call into the store and nothing else. `MarkdownCommentLayer` selects `focusedComment`
+   * by this document's own key and scrolls the pill it drew into view — the same mechanism
+   * the sidebar's list rides — so the panel's own `[data-comment-ids~=]` effect below stays
+   * review-only and no second scroll is wired here.
+   *
+   * The group is ignored: this list has exactly one, for the only path the drawer is showing.
+   * The signature is the popover's, and narrowing it here would fork the component.
+   *
+   * `specTarget` itself, rather than a target rebuilt around `comment.fingerprint`: every
+   * comment in this list came out of `collectDocumentComments`, which stamps each one with the
+   * fingerprint of the target it was given, so the two are the same string by construction —
+   * and re-deriving it here would put a second copy of the key's shape in the one place where
+   * getting it wrong fails silently, with the jump landing nowhere and nothing thrown.
+   */
+  const handleJumpToSpecComment = useCallback((_group: ReviewCommentGroup, comment: ReviewComment) => {
+    if (!specTarget) return
+    focusFileComment(specTarget, comment.id)
+  }, [specTarget, focusFileComment])
+
+  /**
    * Scroll onto the focused comment, and keep trying until its line is actually there.
    *
    * The row is found through the marker CodeView stamps — `data-comment-ids` is a
@@ -1020,6 +1097,31 @@ export default function FilePreviewPanel() {
             canExpand={canExpand}
             showWholeFile={showWholeFile}
             counts={layout.counts}
+            /* The spec's comments, reachable from the expanded view — the same control the
+               sidebar's card header carries, mounted on the same condition it uses: only for a
+               spec, and only once there is something in it. In the HEADER and not in the
+               navigator below, because the navigator is a review's bar; and mounted only above
+               zero rather than disabled at zero, because unlike the review's bar this row has
+               no arrows whose greyed-out state already sets that expectation.
+
+               `specGroups` comes from the memo and `handleJumpToSpecComment` from a callback
+               because `ReviewCommentsButton` is memoised — see `NO_GROUPS`.
+
+               `targetTerminalId` is the agent the SPEC belongs to, carried here on the payload.
+               Without it `resolveAgentTarget` would fall back to whichever terminal happens to
+               be selected, which in split mode is not that agent at all. */
+            trailing={selectedFile.spec && specCommentCount > 0 ? (
+              <ReviewCommentsButton
+                variant="header"
+                repoPath={selectedFile.repoPath}
+                groups={specGroups}
+                total={specCommentCount}
+                targetTerminalId={selectedFile.spec.agentId}
+                onJump={handleJumpToSpecComment}
+                /* The paste is waiting for Enter in a prompt that is behind this drawer. */
+                onSent={handleClose}
+              />
+            ) : undefined}
             onToggleWholeFile={handleToggleWholeFile}
             onClose={handleClose}
           />
@@ -1096,6 +1198,11 @@ export default function FilePreviewPanel() {
                   status={selectedFile.status}
                   markdownMode="rendered"
                   showWholeFile={showWholeFile}
+                  /* Only for a spec, and keyed exactly as the sidebar's panel keys it. No
+                     `onFingerprintChange` beside it: the key is the `SPEC_FINGERPRINT`
+                     constant, so there is no live fingerprint to report and none of the
+                     `liveFingerprints` machinery above applies here. */
+                  commentable={selectedFile.spec ? 'spec' : undefined}
                   onCollapsibleChange={setCanExpand}
                 />
               )}
@@ -1126,7 +1233,9 @@ export default function FilePreviewPanel() {
               disables itself at zero — the same rule the arrows follow at the ends of the
               list, and for the same reason: a control that appears the moment there is
               something in it changes the bar's shape under the cursor. The single-file
-              preview gets none: it is not a review, and nothing there can be commented. */}
+              preview gets none HERE: it is not a review, so the bar has no list to open over
+              it. Its document — a spec, and only a spec — can be commented, and its button
+              lives in the header instead, where the sidebar's card puts it too. */}
           <ChangeNavigator
             current={currentIndex + 1}
             total={blocks.length}

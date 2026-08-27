@@ -111,10 +111,12 @@ const PANEL_SEND =
  * footer BAR: two controls, the trigger that opens the list and — only with something to send
  * — the button that hands the review over, both in the bar's own bespoke constants from next
  * door (`BUTTON_COMMENTS`, `BUTTON_ACTION`) so they read as siblings of the two arrows rather
- * than as form buttons that wandered in. In the agent sidebar it is a card HEADER, where
+ * than as form buttons that wandered in. Otherwise it is a card HEADER — the agent sidebar's
+ * spec card, and the preview drawer's title bar showing that same spec expanded — where
  * `StatusPill` and the expand control set the scale: there is room for one small control, so
  * Send goes back into the popover's footer beside Copy. `variant` is that choice, and it is
- * the only thing it decides.
+ * the only thing it decides; the two header call sites read the same document under the same
+ * key, so they are one placement mounted twice rather than two.
  *
  * Either way the caller drops the result into one flex cell, which is why this returns a
  * fragment.
@@ -297,9 +299,9 @@ function ReviewCommentsButton({
 
   const header = variant === 'header'
   /* What the list is OF, and it is not the same sentence in the two placements: the bar's list
-     is a review's, the header's is one document's. Naming the review in the sidebar would be
-     wrong in the only place this is mounted there — a spec is not a review — and naming neither
-     would leave a speech bubble with a number beside it. */
+     is a review's, the header's is one document's. Naming the review would be wrong at either
+     header call site — a spec is not a review, in the sidebar or expanded in the drawer — and
+     naming neither would leave a speech bubble with a number beside it. */
   const label = t(header ? 'filePreview.documentComments' : 'filePreview.reviewComments')
   /* Two ways to be unable to send, and they are not the same sentence: the bar's target is the
      selection, so "no agent is running" is the truth there; the header's target is one named

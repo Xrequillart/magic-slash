@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { FoldVertical, UnfoldVertical, X } from 'lucide-react'
 import { useT } from '../../i18n'
 import ChangeCountChip from './ChangeCountChip'
@@ -204,17 +205,28 @@ interface Props {
   counts: MarkerCounts
   onToggleWholeFile: () => void
   onClose: () => void
+  /**
+   * A control of the CALLER's, dropped at the start of the right-hand group.
+   *
+   * A slot rather than a prop per control, because what goes here is not this component's
+   * business: the drawer's single-file mode mounts a spec's comment list, and a header that
+   * knew what a spec was would be a header that has to learn what the next surface is too.
+   * It sits before the chips so the two things that describe the FILE — how much of it
+   * changed, and what kind of file it is — stay adjacent to the name they qualify, and so
+   * the controls that act on the drawer keep the right edge.
+   */
+  trailing?: ReactNode
 }
 
 /**
- * The preview drawer's title bar: what the file is, and the two things that can be
- * done to the card itself.
+ * The preview drawer's title bar: what the file is, what can be done to the card itself,
+ * and whatever the caller has to put beside those.
  *
  * Its own component rather than JSX inline in FilePreviewPanel, which is where it
  * lived until the expand toggle joined it — the panel is four hundred lines of
  * scroll geometry, and the header shares none of it.
  */
-export default function FileHeader({ filePath, status, canExpand, showWholeFile, counts, onToggleWholeFile, onClose }: Props) {
+export default function FileHeader({ filePath, status, canExpand, showWholeFile, counts, trailing, onToggleWholeFile, onClose }: Props) {
   const fileName = filePath.split('/').pop() ?? filePath
 
   return (
@@ -227,6 +239,7 @@ export default function FileHeader({ filePath, status, canExpand, showWholeFile,
         </div>
       </div>
       <div className="flex items-center gap-2 ml-3 shrink-0">
+        {trailing}
         {/* The same pill as the extension label beside it — same type scale, background,
             border and radius — so the header reads as one row of chips rather than as a
             loose figure next to a chip. Only the two numbers keep their own colour.

@@ -41,6 +41,38 @@ export type SkillsContextWindow = 200_000 | 1_000_000
 export type SkillsContextWindowSetting = 'auto' | SkillsContextWindow
 
 /**
+ * The single-file preview's payload, which is now the SPEC panel's surface alone.
+ *
+ * A changed file in a repository no longer opens this — it opens `RepoReview` below, with
+ * every changed file of that repository stacked. What is left here is the one preview
+ * that is not a git change at all: `status: ''`, and a `repoPath` that is the spec's
+ * parent directory rather than a repository root.
+ *
+ * Named rather than spelled inline at the two places that mention it — the state field and
+ * its setter — on `RepoReview`'s precedent below and for a sharper reason: those two are the
+ * halves of one contract, and while the shape was a literal each side, the next field added
+ * to one of them type-checks perfectly well without the other. A setter that accepts what the
+ * state cannot hold, or the reverse, surfaces only as a value quietly lost at runtime.
+ */
+export interface SelectedFile {
+  repoPath: string
+  path: string
+  status: string
+  /**
+   * Present only for a `/magic:plan` spec, and it is what the drawer READS rather than
+   * assumes. It opens commenting on the expanded view: the comments already exist under the
+   * spec's key, but the capability has to be turned on where the document is being shown.
+   *
+   * It carries the owning agent's terminal id, because that is the send target for those
+   * comments, and ONE field carries both facts so that a spec without its agent is a state
+   * nobody can write down. `resolveAgentTarget` falls back to whichever terminal is SELECTED
+   * when no target is given, which in split mode is not the agent whose spec this is — see
+   * `SpecPanel`'s `agentId` prop for the failure that fallback would silently reintroduce.
+   */
+  spec?: { agentId: string }
+}
+
+/**
  * A repository being reviewed: every changed file at once, in one scroll.
  *
  * `files` is a COPY taken at click time, never a live read of the sidebar's git data.
@@ -215,15 +247,8 @@ interface AppState {
   // storage, so it survives a renderer reload but comes back on the next launch.
   repoSetupDismissed: boolean
 
-  /**
-   * The single-file preview, which is now the SPEC panel's surface alone.
-   *
-   * A changed file in a repository no longer opens this — it opens `review` below, with
-   * every changed file of that repository stacked. What is left here is the one preview
-   * that is not a git change at all: `status: ''`, and a `repoPath` that is the spec's
-   * parent directory rather than a repository root.
-   */
-  selectedFile: { repoPath: string; path: string; status: string } | null
+  /** The single-file preview, when one is open — see `SelectedFile` for what it carries. */
+  selectedFile: SelectedFile | null
 
   /** The repository review, when one is open. Mutually exclusive with `selectedFile`. */
   review: RepoReview | null
@@ -346,7 +371,7 @@ interface AppState {
   // Launch repository-setup modal actions
   setRepoSetupDismissed: (dismissed: boolean) => void
 
-  setSelectedFile: (file: { repoPath: string; path: string; status: string } | null) => void
+  setSelectedFile: (file: SelectedFile | null) => void
   /**
    * Open the review of a repository, scrolled to `anchorPath`.
    *
