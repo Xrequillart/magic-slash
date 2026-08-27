@@ -1662,6 +1662,14 @@ export const en = {
   // what actually happened, and points at Copy beside it.
   'filePreview.sendAgentGone':
     'The agent this document belongs to is no longer running — copy the comments instead',
+  // The send did not reach a pty. TWO keys, on the pattern above: the short one is the button's
+  // own text, the hint is its tooltip — and the hint says the part that actually matters, which
+  // is that nothing was thrown away. The store cannot warn about this in advance: an exited
+  // terminal keeps its entry with `state` set to `completed`/`error`, the same two values an
+  // agent idle at its prompt reports, so the failure is only knowable after the write.
+  'filePreview.sendFailed': 'Not delivered',
+  'filePreview.sendFailedHint':
+    'Could not reach the agent — your comments were kept, copy them instead',
 
   // ── Tasks ────────────────────────────────────────────────────────────────
   'tasks.title': 'Tasks',

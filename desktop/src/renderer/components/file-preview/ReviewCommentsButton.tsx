@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, Copy, MessageSquare, SendHorizontal, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, Copy, MessageSquare, SendHorizontal, Trash2 } from 'lucide-react'
 import { useAnchoredPanel } from '../useAnchoredPanel'
 import { BUTTON_ACTION, BUTTON_COMMENTS } from './ChangeNavigator'
 import { resolveAgentTarget } from '../../utils/agentTerminals'
@@ -29,6 +29,16 @@ const PANEL_WIDTH = 380
  * looking.
  */
 const COPIED_MS = 2000
+
+/**
+ * How long the failed-send notice stays before the button goes back to "Send".
+ *
+ * Longer than `COPIED_MS`, and not for symmetry: a confirmation is a courtesy the reader can
+ * miss without cost, while this one carries the fact that their comments were NOT handed over
+ * and are still in the list. Two seconds is enough to acknowledge a success and too short to
+ * read a failure.
+ */
+const SEND_FAILED_MS = 6000
 
 /**
  * A paste, as a terminal reads one.
@@ -165,6 +175,14 @@ function ReviewCommentsButton({
   const t = useT()
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  /**
+   * The last send did not reach a pty, and the comments were kept.
+   *
+   * A state rather than a silent retry, because the reader has to know two things: that the
+   * hand-off failed, and — more importantly — that their notes are still here. The button is
+   * the place they are looking, exactly as with `copied` next door.
+   */
+  const [sendFailed, setSendFailed] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const { triggerRef, panelRef, style } = useAnchoredPanel(open, close, PANEL_WIDTH)
 
@@ -203,8 +221,10 @@ function ReviewCommentsButton({
   // closes the drawer, and deleting the last comment unmounts the bar entirely. Without the
   // cleanup that leaves a `setCopied` scheduled against a component that is gone.
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const failedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => {
     if (copiedTimer.current) clearTimeout(copiedTimer.current)
+    if (failedTimer.current) clearTimeout(failedTimer.current)
   }, [])
 
   const handleCopy = () => {
@@ -220,7 +240,7 @@ function ReviewCommentsButton({
     }, () => {})
   }
 
-  const handleSend = () => {
+  const handleSend = async () => {
     // Re-read from the store rather than trusted from the render, and guarded as well as
     // disabled: the button can only be pressed while an agent is selected, but the selection —
     // or the agent this document belongs to — can change between the render that enabled it and
@@ -231,10 +251,29 @@ function ReviewCommentsButton({
     const state = useStore.getState()
     const id = resolveAgentTarget(targetTerminalId, state.activeTerminalId, state.terminals)
     if (!id) return
-    window.electronAPI.terminal.write(
+
+    // AWAITED, and the answer is acted on. `terminal:write` reports whether the bytes reached
+    // a pty, and that is the only thing here that can tell a live session from a dead one: an
+    // exited terminal is not removed from the store, it has its `state` set to
+    // `completed`/`error` — the same two values Claude Code's hooks use for an agent that
+    // finished its turn and is sitting at a prompt. So `resolveAgentTarget` cannot rule it out,
+    // and clearing on an unverified write is how the reader's notes disappear into a process
+    // that is no longer running.
+    const delivered = await window.electronAPI.terminal.write(
       id,
       `${PASTE_START}${formatReviewComments(groups)}${PASTE_END}`,
     )
+
+    if (!delivered) {
+      // NOTHING is cleared and the list stays open, which is the whole point: Copy is right
+      // there in the footer, and the comments are still in it. The notice is on the control
+      // that was pressed, on `copied`'s model.
+      setSendFailed(true)
+      if (failedTimer.current) clearTimeout(failedTimer.current)
+      failedTimer.current = setTimeout(() => setSendFailed(false), SEND_FAILED_MS)
+      return
+    }
+
     // The review has been handed over, so it stops being a draft here. Only what was
     // actually written out is cleared — the targets are read off `groups`, the same list
     // that produced the text — so comments on another review are untouched.
@@ -267,10 +306,16 @@ function ReviewCommentsButton({
      agent, so the reason is that THAT agent is gone — with another one selected the bar's
      wording would be a plain falsehood. */
   const sendLabel = t(
-    canSendToAgent
-      ? 'filePreview.sendToAgent'
-      : header ? 'filePreview.sendAgentGone' : 'filePreview.sendNoAgent',
+    sendFailed
+      ? 'filePreview.sendFailedHint'
+      : canSendToAgent
+        ? 'filePreview.sendToAgent'
+        : header ? 'filePreview.sendAgentGone' : 'filePreview.sendNoAgent',
   )
+  /* The button's own text, which is not its tooltip: a control has room for two words and the
+     tooltip has room for the sentence that matters — that the comments were kept. Same split
+     as the disabled states above. */
+  const sendText = t(sendFailed ? 'filePreview.sendFailed' : 'filePreview.sendToAgent')
 
   return (
     <>
@@ -342,8 +387,8 @@ function ReviewCommentsButton({
           title={sendLabel}
           className={BUTTON_ACTION}
         >
-          <SendHorizontal size={18} />
-          {t('filePreview.sendToAgent')}
+          {sendFailed ? <AlertTriangle size={18} /> : <SendHorizontal size={18} />}
+          {sendText}
         </button>
       )}
 
@@ -460,8 +505,10 @@ function ReviewCommentsButton({
                 title={sendLabel}
                 className={`${PANEL_SEND} flex-1 justify-center`}
               >
-                <SendHorizontal className="w-3.5 h-3.5" />
-                {t('filePreview.sendToAgent')}
+                {sendFailed
+                  ? <AlertTriangle className="w-3.5 h-3.5" />
+                  : <SendHorizontal className="w-3.5 h-3.5" />}
+                {sendText}
               </button>
             )}
           </div>

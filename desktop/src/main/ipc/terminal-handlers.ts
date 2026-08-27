@@ -549,8 +549,17 @@ export function setupTerminalHandlers(
   })
 
   // Write to terminal
+  // Returns whether the bytes reached a pty, which the app's own writes need and the
+  // terminal view ignores. A write the RENDERER cannot verify is a write it has to
+  // assume succeeded, and one caller cannot afford that: `ReviewCommentsButton` clears
+  // the reader's comments once they have been handed over. The store is no help there —
+  // `terminal:exited` sets `state` to `completed`/`error` rather than removing the entry,
+  // and those are the very two values Claude Code's hooks use for an agent that merely
+  // finished its turn with its pty alive and at a prompt. So a dead session and an idle
+  // one are indistinguishable from the renderer, and only `writeToTerminal`'s own answer
+  // separates them.
   ipcMain.handle('terminal:write', async (_event, { id, data }) => {
-    if (typeof id !== 'string' || typeof data !== 'string') return
+    if (typeof id !== 'string' || typeof data !== 'string') return false
     // Someone may be answering this agent's question right here, in the terminal —
     // which changes what the menu bar panel is still allowed to do with it (AC4).
     // What exactly, and why it is not a plain clear, is in noteTerminalInput: this
@@ -568,7 +577,7 @@ export function setupTerminalHandlers(
     // silent relaunch in syncTerminalCwd — once a session has been talked to, its
     // conversation is worth more than its working directory being right.
     if (isUserInput(data)) noteTerminalUserInput(id)
-    writeToTerminal(id, data)
+    return writeToTerminal(id, data)
   })
 
   // Resize terminal

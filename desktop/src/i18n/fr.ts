@@ -1558,6 +1558,9 @@ export const fr: Record<keyof typeof en, string> = {
   'filePreview.sendNoAgent': 'Aucun agent en cours — copiez les commentaires à la place',
   'filePreview.sendAgentGone':
     "L'agent propriétaire de ce document n'est plus en cours — copiez les commentaires à la place",
+  'filePreview.sendFailed': 'Non délivré',
+  'filePreview.sendFailedHint':
+    'Impossible de joindre l’agent — vos commentaires ont été conservés, copiez-les à la place',
 
   // ── Tâches ───────────────────────────────────────────────────────────────
   'tasks.title': 'Tâches',
