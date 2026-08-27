@@ -1,4 +1,4 @@
-import { GitBranch, Copy, Check, ArrowRight, X } from 'lucide-react'
+import { GitBranch, Copy, Check, ArrowRight, X, FolderGit } from 'lucide-react'
 import { GitHubIcon, VSCodeIcon } from './icons'
 import { ScriptsDropdown } from './ScriptsDropdown'
 import { PRWatchCard } from './PRWatchCard'
@@ -8,6 +8,7 @@ import { useT } from '../../i18n'
 import type { RepoGitData } from './types'
 import type { RepositoryMetadata } from '../../../types'
 import { useStore } from '../../store'
+import { getProjectColorMap } from '../../utils/projectColors'
 
 interface RepositoryCardProps {
   repoPath: string
@@ -45,6 +46,11 @@ export function RepositoryCard({
 }: RepositoryCardProps) {
   const t = useT()
   const openRepoReview = useStore(s => s.openRepoReview)
+  const repositories = useStore(s => s.config?.repositories)
+  /* The icon wears the colour the repo was given in its settings. The map is built
+     over the FULL repository list, not this card alone, so a repo with no colour set
+     still gets the same palette fallback the dots on Dashboard and Tasks give it. */
+  const repoColor = getProjectColorMap(Object.keys(repositories ?? {}), repositories)[repoName]
   const hasChanges = gitData?.stats?.isGitRepo && gitData.stats.filesChanged > 0
   const hasCommits = gitData?.commits && gitData.commits.commits.length > 0
   const resolvedBaseBranch = baseBranch || gitData?.commits?.baseBranch
@@ -53,6 +59,10 @@ export function RepositoryCard({
     <div className="bg-surface rounded-xl p-3">
       {/* Repo header */}
       <div className="flex items-center gap-2 mb-2">
+        <FolderGit
+          className="w-4 h-4 flex-shrink-0"
+          style={{ color: repoColor }}
+        />
         <span className="text-ink/90 font-medium text-sm truncate" title={repoPath}>
           {repoName}
         </span>
