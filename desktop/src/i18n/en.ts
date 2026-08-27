@@ -848,6 +848,37 @@ export const en = {
   'toast.accountDeleted': 'Your account has been deleted',
   'toast.accountDeleteFailed': 'Failed to delete account',
 
+  // ── Settings → Account → Atlassian account ───────────────────────────────
+  'jira.section': 'Atlassian account',
+  'jira.notConfigured': 'Atlassian sign-in is not available in this build',
+  'jira.notConfiguredHint': 'This copy of Magic Slash was built without an Atlassian application id.',
+  'jira.notConnected': 'Not connected',
+  'jira.notConnectedHint': 'Connect your own Atlassian account to let the skills read your Jira tickets.',
+  'jira.connect': 'Connect Atlassian',
+  'jira.connecting': 'Waiting for your browser…',
+  'jira.connectedFallback': 'Atlassian account connected',
+  'jira.connectedHint': 'Connected to {site}',
+  'jira.connectedHintNoSite': 'Connected to your Atlassian site',
+  'jira.disconnect': 'Disconnect',
+  'jira.unverified': 'Atlassian refused this connection',
+  'jira.unverifiedHint':
+    'The stored credential is no longer accepted — most likely the app was removed from your Atlassian account. Reconnect to grant access again.',
+  'jira.reconnect': 'Reconnect',
+  'jira.privacy':
+    'The credential is nominative, encrypted by your operating system keychain, and stays on this machine. It is never sent to Magic Slash servers.',
+  'jira.toast.cancelled': 'Connection cancelled in your browser',
+  'jira.toast.timeout': 'Your browser never came back — the connection attempt expired',
+  'jira.toast.failed': 'Could not connect your Atlassian account',
+  'jira.toast.keychain':
+    'Your operating system keychain is unavailable, so the Atlassian credential could not be stored encrypted. Nothing was saved — unlock your keychain and try again.',
+  'jira.toast.notConfigured':
+    'This build of Magic Slash has no Atlassian application id, so there is nothing to connect to.',
+  'jira.toast.noCallbackServer':
+    'Magic Slash cannot listen for your browser to come back. Restart the app and try again.',
+  'jira.toast.connectFailed': 'Could not open the Atlassian sign-in page',
+  'jira.toast.connectUnexpected': 'Could not start the Atlassian connection',
+  'jira.toast.disconnectFailed': 'Could not disconnect your Atlassian account',
+
   // ── Membership roles (RoleSelect) ────────────────────────────────────────
   'role.user': 'User',
   'role.user.help': 'Can see the team and work on shared repositories',

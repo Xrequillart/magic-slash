@@ -32,6 +32,7 @@ import {
   setSpecPathCallback,
   setPlanSpecCallback,
   setPlanTicketsCallback,
+  setJiraCallbackHandler,
   parsePlanTickets,
 } from './status-server'
 
@@ -520,6 +521,67 @@ describe('read-back endpoints', () => {
       expect((await httpGet('/plan/tickets?id=term-1')).status).toBe(200)
       expect((await httpGet(`/plan/tickets?id=sidebar-1&tickets=${encode([{ key: 'A', url: 'u', kind: 'story' }])}`)).status).toBe(200)
       expect(received).toEqual([])
+    })
+  })
+
+  describe('GET /jira/callback', () => {
+    // The one route a BROWSER lands on rather than a hook's curl: the webapp
+    // callback bounces the user here after the Atlassian consent screen.
+    type Received = { code: string | null; error: string | null; state: string | null }
+    let received: Received[] = []
+
+    const NONCE = 'abcdefghijklmnopqrst'
+
+    beforeEach(() => {
+      received = []
+      setJiraCallbackHandler((params) => received.push(params))
+    })
+
+    it('forwards the code and the bare nonce, and tells the user to close the tab', async () => {
+      const { status, body } = await httpGet(`/jira/callback?code=the-code&state=${NONCE}`)
+      expect(status).toBe(200)
+      expect(received).toEqual([{ code: 'the-code', error: null, state: NONCE }])
+      expect(body).toContain('close this tab')
+    })
+
+    it('forwards a declined consent screen as an error, and answers 400', async () => {
+      // The user pressed Cancel. A distinct status code keeps the two outcomes
+      // apart for anything watching this route.
+      const { status, body } = await httpGet(`/jira/callback?error=access_denied&state=${NONCE}`)
+      expect(status).toBe(400)
+      expect(received).toEqual([{ code: null, error: 'access_denied', state: NONCE }])
+      expect(body).toContain('Connection cancelled')
+    })
+
+    it('treats a callback with neither code nor error as a failure', async () => {
+      const { status } = await httpGet(`/jira/callback?state=${NONCE}`)
+      expect(status).toBe(400)
+      expect(received).toEqual([{ code: null, error: null, state: NONCE }])
+    })
+
+    it('passes the state through unvalidated — only the pending attempt can judge it', async () => {
+      // This module holds no verifier, so it has no way to tell a stale nonce from a
+      // live one. Guessing here would either drop a valid callback or invent trust.
+      await httpGet('/jira/callback?code=c&state=short')
+      expect(received).toEqual([{ code: 'c', error: null, state: 'short' }])
+    })
+
+    it('never reflects the code or the state into the page it renders', async () => {
+      // A reflected query parameter on a loopback page is an XSS any local process
+      // could fire, and echoing the code would put it back in the browser after all
+      // the trouble taken to keep it out.
+      const { body } = await httpGet(`/jira/callback?code=THE-SECRET-CODE&state=${NONCE}`)
+      expect(body).not.toContain('THE-SECRET-CODE')
+      expect(body).not.toContain(NONCE)
+    })
+
+    it('answers the browser even when the handler throws', async () => {
+      // The window can be gone, or the app mid-teardown. The user is still looking
+      // at a tab that has to resolve into something.
+      setJiraCallbackHandler(() => { throw new Error('boom') })
+      const { status, body } = await httpGet(`/jira/callback?code=c&state=${NONCE}`)
+      expect(status).toBe(200)
+      expect(body).toContain('Magic Slash')
     })
   })
 

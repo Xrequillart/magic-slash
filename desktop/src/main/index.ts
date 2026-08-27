@@ -36,6 +36,7 @@ import { t } from './i18n'
 import { setupProfileHandlers } from './ipc/profile-handlers'
 import { setupUsageHandlers } from './ipc/usage-handlers'
 import { setupAuthHandlers } from './ipc/auth-handlers'
+import { setupJiraHandlers } from './ipc/jira-handlers'
 import { setupOrgHandlers } from './ipc/org-handlers'
 import { setupTasksHandlers } from './ipc/tasks-handlers'
 import { stopOrgAgentsRealtime } from './cloud/realtime'
@@ -296,6 +297,10 @@ function setupHandlers() {
   // Cloud is MANDATORY: auth + organization + connectivity gate. The renderer
   // blocks the whole app behind these until the backend reports 'ok'.
   setupAuthHandlers(() => mainWindow)
+  // The user's OWN Atlassian account, connected by SSO from Settings. Registers the
+  // loopback `/jira/callback` route as well as the three channels: the flow finishes
+  // in the browser, so the credential arrives long after `jira:connect` returned.
+  setupJiraHandlers(() => mainWindow)
   setupOrgHandlers()
   // The Tasks page's backlog read. No poller behind it: the page reads on open and
   // on an explicit reload, so there is nothing to start here beyond the channel.

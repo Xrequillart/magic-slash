@@ -837,6 +837,37 @@ export const fr: Record<keyof typeof en, string> = {
   'toast.accountDeleted': 'Votre compte a été supprimé',
   'toast.accountDeleteFailed': 'Impossible de supprimer le compte',
 
+  // ── Réglages → Compte → Compte Atlassian ─────────────────────────────────
+  'jira.section': 'Compte Atlassian',
+  'jira.notConfigured': 'La connexion Atlassian n’est pas disponible dans cette version',
+  'jira.notConfiguredHint': 'Cette copie de Magic Slash a été compilée sans identifiant d’application Atlassian.',
+  'jira.notConnected': 'Non connecté',
+  'jira.notConnectedHint': 'Connectez votre propre compte Atlassian pour que les skills lisent vos tickets Jira.',
+  'jira.connect': 'Connecter Atlassian',
+  'jira.connecting': 'En attente de votre navigateur…',
+  'jira.connectedFallback': 'Compte Atlassian connecté',
+  'jira.connectedHint': 'Connecté à {site}',
+  'jira.connectedHintNoSite': 'Connecté à votre site Atlassian',
+  'jira.disconnect': 'Déconnecter',
+  'jira.unverified': 'Atlassian a refusé cette connexion',
+  'jira.unverifiedHint':
+    'L’identifiant enregistré n’est plus accepté — l’application a probablement été retirée de votre compte Atlassian. Reconnectez-vous pour redonner l’accès.',
+  'jira.reconnect': 'Reconnecter',
+  'jira.privacy':
+    'L’identifiant est nominatif, chiffré par le trousseau de votre système d’exploitation, et reste sur cette machine. Il n’est jamais envoyé aux serveurs Magic Slash.',
+  'jira.toast.cancelled': 'Connexion annulée dans votre navigateur',
+  'jira.toast.timeout': 'Votre navigateur n’est jamais revenu — la tentative de connexion a expiré',
+  'jira.toast.failed': 'Impossible de connecter votre compte Atlassian',
+  'jira.toast.keychain':
+    'Le trousseau de votre système d’exploitation est indisponible : l’identifiant Atlassian n’a pas pu être stocké chiffré. Rien n’a été enregistré — déverrouillez votre trousseau puis réessayez.',
+  'jira.toast.notConfigured':
+    'Cette version de Magic Slash n’a pas d’identifiant d’application Atlassian : il n’y a rien à connecter.',
+  'jira.toast.noCallbackServer':
+    'Magic Slash ne peut pas écouter le retour de votre navigateur. Redémarrez l’application puis réessayez.',
+  'jira.toast.connectFailed': 'Impossible d’ouvrir la page de connexion Atlassian',
+  'jira.toast.connectUnexpected': 'Impossible de démarrer la connexion Atlassian',
+  'jira.toast.disconnectFailed': 'Impossible de déconnecter votre compte Atlassian',
+
   // ── Rôles d'organisation (RoleSelect) ────────────────────────────────────
   'role.user': 'Membre',
   'role.user.help': 'Peut voir l’équipe et travailler sur les dépôts partagés',

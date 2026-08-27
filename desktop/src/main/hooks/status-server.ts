@@ -101,6 +101,22 @@ type SpecPathCallback = (terminalId: string, specPath: string) => void
 type PlanSpecCallback = (terminalId: string) => void
 /** The planning session created its tickets. Parsed from the request's JSON array. */
 type PlanTicketsCallback = (terminalId: string, tickets: PlanTicket[]) => void
+/**
+ * The user's browser came back from the Atlassian consent screen.
+ *
+ * The one route here that a BROWSER calls rather than a hook's `curl`, and the one
+ * whose caller is a human waiting on a page. It carries an authorization `code`, or
+ * an `error` when the user declined — never a token: the exchange is a separate
+ * HTTPS call the main process makes itself, precisely so no credential ever reaches
+ * this loopback leg or the browser's history.
+ *
+ * `code`, `error` and `state` are passed on RAW and unvalidated, because this module
+ * cannot judge them: the nonce inside `state` only means something to the process
+ * holding the pending attempt's verifier (`main/jira/connect.ts`), which is also
+ * where an unknown one is refused. Registered by `ipc/jira-handlers.ts` rather than
+ * by `main/index.ts`, so this module stays importable without Electron.
+ */
+type JiraCallbackHandler = (params: { code: string | null; error: string | null; state: string | null }) => void
 
 let server: http.Server | null = null
 let serverPort: number = 0
@@ -120,6 +136,7 @@ let prUrlCallback: PRUrlCallback | null = null
 let specPathCallback: SpecPathCallback | null = null
 let planSpecCallback: PlanSpecCallback | null = null
 let planTicketsCallback: PlanTicketsCallback | null = null
+let jiraCallbackHandler: JiraCallbackHandler | null = null
 /**
  * Last PR URL seen per `terminalId:repoPath`, so the callback only fires on a
  * NEW one. `/magic:pr` re-sends the same metadata on later runs, and a tick per
@@ -158,6 +175,10 @@ export function setPlanSpecCallback(callback: PlanSpecCallback) {
 
 export function setPlanTicketsCallback(callback: PlanTicketsCallback) {
   planTicketsCallback = callback
+}
+
+export function setJiraCallbackHandler(callback: JiraCallbackHandler) {
+  jiraCallbackHandler = callback
 }
 
 export function setCommandStartCallback(callback: CommandStartCallback) {
@@ -348,6 +369,45 @@ export function parsePlanTickets(raw: string): PlanTicket[] {
       ...(typeof parentKey === 'string' && parentKey !== '' ? { parentKey } : {}),
     }]
   })
+}
+
+/**
+ * The "you can close this tab" page the Atlassian callback lands on.
+ *
+ * FULLY STATIC, with nothing interpolated from the request — not the `code`, not
+ * the `state`, not Atlassian's `error` string. Two reasons, and both matter: a
+ * reflected query parameter on a loopback page is an XSS any local process could
+ * fire, and echoing the `code` would put it in the rendered page (and its Reader
+ * view, and its cache) after all the trouble taken to keep it out of the browser.
+ *
+ * English only, unlike everything the app itself renders: this module is
+ * deliberately free of `electron`, so it cannot reach the user's language
+ * preference — and the sentence the user actually acts on is the one waiting for
+ * them in Settings.
+ */
+function jiraCallbackPage(failed: boolean): string {
+  const title = failed ? 'Connection cancelled' : 'Atlassian account connected'
+  const body = failed
+    ? 'Nothing was connected. You can close this tab and try again from Magic Slash.'
+    : 'You can close this tab and go back to Magic Slash.'
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magic Slash</title>
+<style>
+  :root { color-scheme: light dark }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center;
+         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif }
+  main { max-width: 28rem; padding: 2rem; text-align: center }
+  h1 { font-size: 1.125rem; margin: 0 0 .5rem }
+  p { margin: 0; opacity: .7 }
+</style>
+</head>
+<body><main><h1>${title}</h1><p>${body}</p></main></body>
+</html>
+`
 }
 
 export function startStatusServer(): Promise<number> {
@@ -763,6 +823,35 @@ export function startStatusServer(): Promise<number> {
 
           res.writeHead(200)
           res.end('OK')
+        } else if (url.pathname === '/jira/callback') {
+          // The browser's landing leg of the Atlassian connect flow: the webapp
+          // callback validated the state and bounced the user here.
+          //
+          // Everything interesting happens BEHIND the handler — the code exchange is
+          // an HTTPS call the main process makes on its own, so this route's only
+          // job is to hand the parameters over and give the human a page saying they
+          // can close the tab. It answers immediately rather than awaiting the
+          // exchange: a browser staring at a spinner while a token round-trip
+          // happens is worse than a page that tells the user to look at the app, and
+          // the app pushes the result to Settings either way (jira:statusChanged).
+          const code = url.searchParams.get('code')
+          const error = url.searchParams.get('error')
+          const state = url.searchParams.get('state')
+
+          try {
+            jiraCallbackHandler?.({ code, error, state })
+          } catch (e) {
+            // Never fails loudly: the user is looking at a browser tab, and there is
+            // nothing they could do with a 500 here.
+            console.error('[StatusServer] Jira callback handler failed:', e)
+          }
+
+          // A declined consent screen (or a callback with no code) is not a success,
+          // and saying so in the status code keeps the two outcomes distinguishable
+          // for anything that watches this route.
+          const failed = Boolean(error) || !code
+          res.writeHead(failed ? 400 : 200, { 'Content-Type': 'text/html; charset=utf-8' })
+          res.end(jiraCallbackPage(failed))
         } else if (url.pathname === '/ping') {
           res.writeHead(200)
           res.end('pong')
