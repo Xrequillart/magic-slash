@@ -126,7 +126,7 @@ export function AccountChecklistCard() {
                 <li key={step.key} className="flex items-center gap-2">
                   {step.done
                     ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-green" />
-                    : <Circle className="w-3.5 h-3.5 shrink-0 text-text-secondary/30" />}
+                    : <Circle className="w-3.5 h-3.5 shrink-0 text-icon-muted" />}
                   <span className={`text-xs ${step.done ? 'text-text-secondary/60' : 'text-ink'}`}>
                     {t(step.key)}
                   </span>

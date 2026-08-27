@@ -85,7 +85,7 @@ export function UsageCard({ usage, minimized, onMinimizedChange }: UsageCardProp
         <button
           onClick={() => onMinimizedChange(false)}
           title={t('usage.expand')}
-          className="p-0.5 rounded text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
+          className="p-0.5 rounded text-icon hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
         >
           <Plus className="w-3 h-3" />
         </button>
@@ -99,7 +99,7 @@ export function UsageCard({ usage, minimized, onMinimizedChange }: UsageCardProp
         <span className="flex items-center gap-2">
           <span className="text-xs text-text-secondary/50 uppercase tracking-wider">{t('agentInfo.session')}</span>
           {relative && (
-            <span className="flex items-center gap-1 text-[11px] text-text-secondary/50 normal-case tracking-normal">
+            <span className="flex items-center gap-1 text-[11px] text-icon normal-case tracking-normal">
               <RefreshCw className="w-3 h-3" />
               {relative === t('relative.now') ? t('relative.justNow') : t('relative.ago', { time: relative })}
             </span>
@@ -118,7 +118,7 @@ export function UsageCard({ usage, minimized, onMinimizedChange }: UsageCardProp
           <button
             onClick={() => onMinimizedChange(true)}
             title={t('usage.minimize')}
-            className="self-stretch px-1 flex items-center justify-center rounded-md text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
+            className="self-stretch px-1 flex items-center justify-center rounded-md text-icon hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
           >
             <Minus className="w-3 h-3" />
           </button>

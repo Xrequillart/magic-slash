@@ -153,7 +153,7 @@ function FormatSelect({ minimized, onChange, ariaLabel, errorMessage }: FormatSe
         <option value="full">{t('settings.appearance.sidebars.format.full')}</option>
         <option value="minimized">{t('settings.appearance.sidebars.format.minimized')}</option>
       </select>
-      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
     </div>
   )
 }
@@ -208,7 +208,7 @@ function CodeThemeSelect() {
             <option key={mode} value={mode}>{t(`settings.appearance.codeTheme.${mode}`)}</option>
           ))}
         </select>
-        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
       </div>
     </div>
   )

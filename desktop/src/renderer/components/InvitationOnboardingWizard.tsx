@@ -540,7 +540,7 @@ export function InvitationOnboardingWizard({ isOpen, onClose, initialToken = '' 
                   once, remembered after" half of the flow has no way in. */}
               {cloneDestination && (
                 <div className="flex items-center gap-2 px-3 py-2 bg-surface border border-line-field rounded-lg">
-                  <Folder className="w-3.5 h-3.5 text-text-secondary/60 flex-shrink-0" />
+                  <Folder className="w-3.5 h-3.5 text-icon flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-[11px] text-text-secondary/60">{t('invite.wizard.cloneDestination')}</div>
                     <div className="text-xs truncate" title={cloneDestination}>{cloneDestination}</div>

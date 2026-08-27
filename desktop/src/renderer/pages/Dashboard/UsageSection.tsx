@@ -115,7 +115,7 @@ export function UsageSection() {
           {!loading &&
             (rows.length === 0 ? (
               <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
-                <Coins className="w-8 h-8 opacity-30" />
+                <Coins className="w-8 h-8 text-icon-muted" />
                 {/* Neutral on purpose. With no active organization the read resolves to no
                     rows too, which is indistinguishable here from an organization that has
                     genuinely recorded nothing — so this must not claim the team did no work. */}

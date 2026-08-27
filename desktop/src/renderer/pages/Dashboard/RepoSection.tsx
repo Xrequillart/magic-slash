@@ -212,7 +212,7 @@ export function RepoSection() {
 
         {rows.length === 0 ? (
           <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
-            <FolderGit2 className="w-8 h-8 opacity-30" />
+            <FolderGit2 className="w-8 h-8 text-icon-muted" />
             {/* An empty TAB is a different situation from having no team repo at
                 all, and only the latter deserves the "go share one" nudge. */}
             <p>{tabs.length > 1 ? t('dashboard.repos.noReposInScope') : t('dashboard.repos.noRepos')}</p>

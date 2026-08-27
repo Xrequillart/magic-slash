@@ -226,7 +226,7 @@ function ItemCard({
       {detail !== undefined && <span className="flex-shrink-0">{detail}</span>}
       {toggle && (
         <ChevronDown
-          className={`w-3 h-3 flex-shrink-0 text-text-secondary/50 group-hover:text-ink transition-all ${toggle.open ? '' : '-rotate-90'}`}
+          className={`w-3 h-3 flex-shrink-0 text-icon group-hover:text-ink transition-all ${toggle.open ? '' : '-rotate-90'}`}
         />
       )}
     </>
@@ -396,7 +396,7 @@ function CommentEntry({ comment, now, t }: { comment: PRComment; now: number; t:
         {(overflows || expanded) && (
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-text-secondary/50 bg-surface hover:text-ink hover:bg-surface-strong transition-colors"
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-icon bg-surface hover:text-ink hover:bg-surface-strong transition-colors"
           >
             <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
             {t(expanded ? 'agentInfo.pr.commentLess' : 'agentInfo.pr.commentMore')}
@@ -410,7 +410,7 @@ function CommentEntry({ comment, now, t }: { comment: PRComment; now: number; t:
             <button
               onClick={() => window.electronAPI.shell.openExternal(comment.url)}
               title={t('agentInfo.pr.commentOpen')}
-              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary/50 border border-dashed border-border/40 rounded hover:border-ink/50 hover:text-ink hover:bg-ink/5 transition-colors"
+              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-icon border border-dashed border-border/40 rounded hover:border-ink/50 hover:text-ink hover:bg-ink/5 transition-colors"
             >
               <GitHubIcon className="w-3 h-3" />
               {t('agentInfo.openOnGitHub')}
@@ -703,7 +703,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
       {watcherOff ? (
         <div className="border-t border-line-subtle p-2">
           <div className="flex items-start gap-2 rounded-md bg-surface-sunken px-2 py-1.5">
-            <EyeOff className="w-3.5 h-3.5 text-text-secondary/60 flex-shrink-0 mt-px" />
+            <EyeOff className="w-3.5 h-3.5 text-icon flex-shrink-0 mt-px" />
             <div className="min-w-0 flex-1">
               <div className="text-[11px] text-ink/80 font-medium">{t('agentInfo.pr.watcherOff')}</div>
               <div className="text-[10px] text-text-secondary/70">
@@ -782,12 +782,12 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                     own authors line by line, so keeping both would say it twice. */}
                 {authors.length > 0 && comments === null && (
                   <div className="flex items-start gap-1.5 text-[10px] text-text-secondary/70">
-                    <Users className="w-3 h-3 flex-shrink-0 mt-0.5 text-text-secondary/60" />
+                    <Users className="w-3 h-3 flex-shrink-0 mt-0.5 text-icon" />
                     <span className="min-w-0">{authors.join(', ')}</span>
                   </div>
                 )}
                 {commentsLoading && (
-                  <div className="flex items-center gap-1.5 text-[10px] text-text-secondary/50">
+                  <div className="flex items-center gap-1.5 text-[10px] text-icon">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     {t('agentInfo.pr.commentsLoading')}
                   </div>

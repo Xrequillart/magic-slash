@@ -69,7 +69,7 @@ export function RunningScripts({ repoPath, agentId }: RunningScriptsProps) {
             className="p-0.5 rounded hover:bg-surface-strong opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
             title={t('agentInfo.stopScript')}
           >
-            <X className="w-3 h-3 text-on-brand/60 hover:text-on-brand" />
+            <X className="w-3 h-3 text-on-brand" />
           </span>
         </button>
       ))}

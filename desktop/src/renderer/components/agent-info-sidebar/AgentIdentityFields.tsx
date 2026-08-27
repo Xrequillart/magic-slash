@@ -66,7 +66,7 @@ export function AgentTitleField({ identity }: { identity: AgentIdentity }) {
       ) : (
         <h2 className="flex-1 text-text-secondary/40 italic text-sm">{t('agentInfo.addTitle')}</h2>
       )}
-      <Edit2 className="w-3.5 h-3.5 text-text-secondary/30 hover:text-text-secondary/60 transition-colors flex-shrink-0 mt-0.5" />
+      <Edit2 className="w-3.5 h-3.5 text-icon-muted hover:text-icon transition-colors flex-shrink-0 mt-0.5" />
     </div>
   )
 }
@@ -117,7 +117,7 @@ export function AgentDescriptionField({ identity }: { identity: AgentIdentity })
         ) : (
           <span className="flex-1 text-xs text-text-secondary/40 italic">{t('agentInfo.addDescription')}</span>
         )}
-        <Edit2 className="w-3 h-3 text-text-secondary/30 hover:text-text-secondary/60 transition-colors flex-shrink-0 mt-0.5" />
+        <Edit2 className="w-3 h-3 text-icon-muted hover:text-icon transition-colors flex-shrink-0 mt-0.5" />
       </div>
     </div>
   )

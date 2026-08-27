@@ -261,7 +261,7 @@ export function TasksPage() {
 
             {rows.length === 0 ? (
               <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
-                <ListTodo className="w-8 h-8 opacity-30" />
+                <ListTodo className="w-8 h-8 text-icon-muted" />
                 {/* Not "no issues": either no repository asked the question, or the
                     ones that did have no readable address. Both fixes are a
                     per-repository setting, so each hint names its own. */}

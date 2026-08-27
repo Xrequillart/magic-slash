@@ -116,7 +116,7 @@ export function SidebarUsageCard() {
           <button
             onClick={toggleMinimized}
             title={t('usage.expand')}
-            className="p-0.5 rounded text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
+            className="p-0.5 rounded text-icon hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
           >
             <Plus className="w-3 h-3" />
           </button>
@@ -124,7 +124,7 @@ export function SidebarUsageCard() {
       ) : (
         <>
           <div className="flex items-center justify-between mb-2 gap-2">
-            <span className="flex items-center gap-1.5 text-[11px] text-text-secondary/60 min-w-0">
+            <span className="flex items-center gap-1.5 text-[11px] text-icon min-w-0">
               <User className="w-3 h-3 shrink-0" />
               <span className="truncate">
                 {account?.displayName ?? account?.emailAddress ?? t('usage.claudeAccount')}
@@ -133,7 +133,7 @@ export function SidebarUsageCard() {
             <button
               onClick={toggleMinimized}
               title={t('usage.minimize')}
-              className="p-0.5 rounded text-text-secondary/50 hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
+              className="p-0.5 rounded text-icon hover:text-ink hover:bg-surface-strong transition-colors shrink-0"
             >
               <Minus className="w-3 h-3" />
             </button>

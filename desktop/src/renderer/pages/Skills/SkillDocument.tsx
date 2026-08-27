@@ -88,7 +88,7 @@ export default function SkillDocument({ skill }: { skill: SkillDetail }) {
               <span className={`px-1.5 py-0.5 text-xs font-medium rounded ${badge.className}`}>
                 {badge.label}
               </span>
-              <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded bg-surface text-text-secondary/70 border border-line-field">
+              <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded bg-surface text-icon border border-line-field">
                 <Lock className="w-3 h-3" />
                 {t('skills.doc.readOnly')}
               </span>
@@ -122,7 +122,7 @@ export default function SkillDocument({ skill }: { skill: SkillDetail }) {
         )}
 
         {sourcePath && (
-          <div className="mt-2.5 flex items-center gap-1.5 text-xs text-text-secondary/40 min-w-0">
+          <div className="mt-2.5 flex items-center gap-1.5 text-xs text-icon-muted min-w-0">
             <FileText className="w-3.5 h-3.5 shrink-0" />
             <span className="font-mono truncate" title={sourcePath}>{sourcePath}</span>
           </div>

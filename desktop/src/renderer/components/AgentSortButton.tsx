@@ -59,7 +59,7 @@ export function AgentSortButton() {
         className={`p-1.5 rounded transition-all flex-shrink-0 ${
           open || current !== DEFAULT_AGENT_SORT
             ? 'text-accent bg-accent/10 hover:bg-accent/20'
-            : 'text-text-secondary/70 hover:bg-text-secondary/10 hover:text-ink'
+            : 'text-icon hover:bg-text-secondary/10 hover:text-ink'
         }`}
       >
         <ArrowDownUp className="w-4 h-4" />

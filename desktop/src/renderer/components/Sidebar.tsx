@@ -329,7 +329,7 @@ export function Sidebar() {
             }}
             title={t('sidebar.newAgentShortcut', { shortcut: shortcutKey })}
             aria-label={t('sidebar.newAgentShortcut', { shortcut: shortcutKey })}
-            className="p-1.5 text-text-secondary/70 rounded hover:bg-text-secondary/10 hover:text-ink transition-all flex-shrink-0"
+            className="p-1.5 text-icon rounded hover:bg-text-secondary/10 hover:text-ink transition-all flex-shrink-0"
           >
             <Plus className="w-4 h-4" />
           </button>

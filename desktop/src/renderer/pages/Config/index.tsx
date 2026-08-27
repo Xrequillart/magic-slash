@@ -395,7 +395,7 @@ function OrgRailItems({
             onClick={() => onSelect(org.id)}
             aria-current={isActive ? 'true' : undefined}
             className={`relative w-full flex items-center gap-2 px-2 py-1.5 text-[13px] rounded-lg transition-colors text-left ${
-              isActive ? 'text-ink font-medium' : 'text-text-secondary/70 hover:text-ink hover:bg-surface'
+              isActive ? 'text-ink font-medium' : 'text-icon hover:text-ink hover:bg-surface'
             }`}
           >
             {/* Sits on top of the container's hairline, marking the open org */}
@@ -680,7 +680,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
         )}
 
         {/* Arrow */}
-        <ChevronRight className="w-4 h-4 text-text-secondary/30 group-hover:text-text-secondary transition-colors" />
+        <ChevronRight className="w-4 h-4 text-icon-muted group-hover:text-icon transition-colors" />
       </a>
     )
   }
@@ -906,7 +906,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
             disabled={isAdding}
             className="w-full py-8 text-center border border-dashed border-border/50 rounded-xl hover:border-text-secondary/50 hover:bg-surface transition-colors"
           >
-            <Folder className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
+            <Folder className="w-8 h-8 text-icon-muted mx-auto mb-3" />
             <div className="text-sm text-text-secondary/50 mb-1">{t('settings.repos.emptyTitle')}</div>
             <div className="text-xs text-text-secondary/30">{t('settings.repos.emptyHint')}</div>
           </button>
@@ -914,7 +914,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
           <div className="flex flex-col gap-6">
             {/* Personal */}
             <div>
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-text-secondary/50 mb-2">
+              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-icon mb-2">
                 <Lock className="w-3 h-3" />
                 <span>{t('settings.repos.personal')}</span>
                 <span className="text-text-secondary/30">{personalRepos.length}</span>
@@ -933,7 +933,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
               const orgRepos = reposByOrg.get(org.id) ?? []
               return (
                 <div key={org.id}>
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-text-secondary/50 mb-2">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-icon mb-2">
                     <Building2 className="w-3 h-3" />
                     <span>{org.name}</span>
                     <span className="text-text-secondary/30">{orgRepos.length}</span>
@@ -1016,7 +1016,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                   <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
             </div>
           </div>
           <div className="text-xs text-text-secondary/50">
@@ -1046,7 +1046,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                   <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
             </div>
           </div>
           <div className="text-xs text-text-secondary/50">
@@ -1221,7 +1221,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
               </div>
             </div>
           </div>
@@ -1328,7 +1328,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
                       <option value={120_000}>{t('settings.application.prWatcher.interval2m')}</option>
                       <option value={300_000}>{t('settings.application.prWatcher.interval5m')}</option>
                     </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
                   </div>
                 </div>
               </div>

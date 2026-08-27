@@ -62,7 +62,7 @@ export function RepositorySelector({
                 onClick={() => onToggleRepository(repo.path)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface transition-colors text-left"
               >
-                <Folder className="w-4 h-4 text-purple/50 flex-shrink-0" />
+                <Folder className="w-4 h-4 text-purple flex-shrink-0" />
                 <span className="flex-1 text-ink/80 font-medium text-xs">{repo.name}</span>
                 {isAttached && (
                   <Check className="w-4 h-4 text-green" />

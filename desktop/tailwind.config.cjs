@@ -52,6 +52,16 @@ module.exports = {
         ink: 'rgb(var(--c-ink) / <alpha-value>)',
         /** Text on a solid brand fill — stays legible whatever the theme. */
         'on-brand': 'rgb(var(--c-on-brand) / <alpha-value>)',
+        /**
+         * Icons, and only icons. Two opaque weights: `text-icon` for anything
+         * that can be clicked or read, `text-icon-muted` for decoration. They
+         * exist so an icon never needs an alpha modifier — `text-icon/50` is a
+         * bug, not a shade. Text keeps using `ink` / `text-secondary`.
+         */
+        icon: {
+          DEFAULT: 'rgb(var(--c-icon) / <alpha-value>)',
+          muted: 'rgb(var(--c-icon-muted) / <alpha-value>)',
+        },
         surface: {
           subtle: 'var(--c-surface-subtle)',
           DEFAULT: 'var(--c-surface)',

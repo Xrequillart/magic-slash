@@ -39,6 +39,19 @@ export interface ThemeTokens {
   /** Text sitting on a solid brand fill (accent buttons, danger buttons). */
   onBrandRgb: string
 
+  /**
+   * Icons. Opaque on purpose — an icon never wears an alpha modifier in this
+   * app. The transparent forms icons used to be given (`text-text-secondary/50`,
+   * `opacity-30`) washed out over the window's vibrancy and drifted from theme
+   * to theme, since the same 30% reads nothing alike over black and over white.
+   * These are real colours instead, tuned per theme, and there are exactly two
+   * of them: an icon is either present or quiet, never a third of something.
+   */
+  /** The default weight — a shade below secondary text, still fully legible. */
+  iconRgb: string
+  /** The quiet one: decorative empty-state glyphs, unset affordances. */
+  iconMutedRgb: string
+
   // Surfaces, faintest to loudest
   surfaceSubtle: string
   surface: string
@@ -136,6 +149,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       inkRgb: '255 255 255',
       textSecondaryRgb: '161 161 170',
       onBrandRgb: '255 255 255',
+      iconRgb: '138 138 146',
+      iconMutedRgb: '101 101 106',
 
       surfaceSubtle: 'rgba(255, 255, 255, 0.04)',
       surface: 'rgba(255, 255, 255, 0.06)',
@@ -195,6 +210,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       inkRgb: '237 240 252',
       textSecondaryRgb: '148 158 190',
       onBrandRgb: '255 255 255',
+      iconRgb: '127 137 166',
+      iconMutedRgb: '93 101 127',
 
       // A blue window is lighter than a near-black one, so each level carries a
       // touch more alpha to keep the same separation.
@@ -256,6 +273,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       inkRgb: '245 238 230',
       textSecondaryRgb: '176 160 145',
       onBrandRgb: '255 255 255',
+      iconRgb: '154 139 126',
+      iconMutedRgb: '116 104 94',
 
       // Tinted warm rather than pure white, so the shading belongs to the wood
       // rather than sitting on top of it as grey.
@@ -321,6 +340,10 @@ export const THEMES: Record<ThemeId, Theme> = {
       textSecondaryRgb: '224 224 224',
       // Every brand fill here is a bright colour, so its text is black.
       onBrandRgb: '0 0 0',
+      // No dimming here: muting an icon is exactly the contrast this theme
+      // exists to refuse, so both weights stay near secondary text.
+      iconRgb: '224 224 224',
+      iconMutedRgb: '176 176 176',
 
       surfaceSubtle: 'rgba(255, 255, 255, 0.08)',
       surface: 'rgba(255, 255, 255, 0.12)',
@@ -381,6 +404,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       inkRgb: '24 24 27',
       textSecondaryRgb: '82 82 91',
       onBrandRgb: '255 255 255',
+      iconRgb: '108 108 116',
+      iconMutedRgb: '151 151 157',
 
       // Black over a bright window disappears at the dark theme's alphas, so
       // every level here is pitched to read the same, not to match the number.
@@ -442,6 +467,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       inkRgb: '15 23 42',
       textSecondaryRgb: '71 85 105',
       onBrandRgb: '255 255 255',
+      iconRgb: '97 109 127',
+      iconMutedRgb: '140 150 163',
 
       surfaceSubtle: 'rgba(15, 23, 42, 0.035)',
       surface: 'rgba(15, 23, 42, 0.05)',
@@ -501,6 +528,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       inkRgb: '43 35 26',
       textSecondaryRgb: '109 94 76',
       onBrandRgb: '255 255 255',
+      iconRgb: '130 117 100',
+      iconMutedRgb: '165 155 141',
 
       // Warm-tinted rather than neutral black, so the shading matches the paper.
       surfaceSubtle: 'rgba(74, 54, 28, 0.035)',
@@ -565,6 +594,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       // Near-black, not a muted grey: secondary text has to stay comfortable.
       textSecondaryRgb: '38 38 38',
       onBrandRgb: '255 255 255',
+      iconRgb: '71 71 71',
+      iconMutedRgb: '125 125 125',
 
       surfaceSubtle: 'rgba(0, 0, 0, 0.06)',
       surface: 'rgba(0, 0, 0, 0.09)',

@@ -71,7 +71,7 @@ export function GitHubNotConnected({ onRetry, busy }: { onRetry: () => void; bus
   return (
     <div className="flex-1 flex items-center justify-center p-6">
       <div className="max-w-md w-full flex flex-col items-center gap-4 py-10 px-6 bg-surface-subtle border border-line-subtle rounded-xl text-center">
-        <Github className="w-8 h-8 text-text-secondary opacity-40" />
+        <Github className="w-8 h-8 text-icon-muted" />
 
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium text-ink">{t('tasks.github.title')}</p>

@@ -352,7 +352,7 @@ export function TerminalsPage() {
               ) : (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center">
-                    <Bot className="w-12 h-12 mx-auto mb-3 text-text-secondary opacity-30" />
+                    <Bot className="w-12 h-12 mx-auto mb-3 text-icon-muted" />
                     <p className="text-sm text-text-secondary/50 mb-4">{t('terminals.paneEmpty')}</p>
                     <button
                       onClick={() => createTerminal(null, 'right')}

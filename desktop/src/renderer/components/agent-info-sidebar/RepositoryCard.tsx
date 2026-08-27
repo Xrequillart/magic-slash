@@ -75,7 +75,7 @@ export function RepositoryCard({
           {/* Open in VSCode button */}
           <button
             onClick={() => window.electronAPI.shell.openInVSCode(repoPath)}
-            className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary/50 border border-dashed border-border/40 rounded hover:border-[#007ACC]/50 hover:text-[#007ACC] hover:bg-[#007ACC]/5 transition-colors"
+            className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-icon border border-dashed border-border/40 rounded hover:border-[#007ACC]/50 hover:text-[#007ACC] hover:bg-[#007ACC]/5 transition-colors"
           >
             <VSCodeIcon className="w-3 h-3" />
             {t('agentInfo.openInEditor')}
@@ -84,7 +84,7 @@ export function RepositoryCard({
           {repoUrl && (
             <button
               onClick={() => window.electronAPI.shell.openExternal(repoUrl)}
-              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary/50 border border-dashed border-border/40 rounded hover:border-ink/50 hover:text-ink hover:bg-ink/5 transition-colors"
+              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-icon border border-dashed border-border/40 rounded hover:border-ink/50 hover:text-ink hover:bg-ink/5 transition-colors"
               title={t('agentInfo.openRepoOnGitHub')}
             >
               <GitHubIcon className="w-3 h-3" />
@@ -94,7 +94,7 @@ export function RepositoryCard({
           {/* Remove repository button */}
           <button
             onClick={onRemove}
-            className="flex items-center justify-center p-1 text-text-secondary/50 rounded hover:text-red hover:bg-red/10 transition-colors"
+            className="flex items-center justify-center p-1 text-icon rounded hover:text-red hover:bg-red/10 transition-colors"
             title={t('agentInfo.removeRepository')}
           >
             <X className="w-3.5 h-3.5" />
@@ -121,12 +121,12 @@ export function RepositoryCard({
                   {resolvedBaseBranch}
                 </span>
               </div>
-              <ArrowRight className="w-3 h-3 text-text-secondary/30 flex-shrink-0" />
+              <ArrowRight className="w-3 h-3 text-icon-muted flex-shrink-0" />
             </>
           )}
           {/* Current branch (right) */}
           <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1.5 bg-surface rounded-md border border-line-subtle">
-            <GitBranch className="w-3.5 h-3.5 text-green/70 flex-shrink-0" />
+            <GitBranch className="w-3.5 h-3.5 text-green flex-shrink-0" />
             <span
               className="text-green text-xs font-medium truncate"
               title={gitData.branch}
@@ -141,7 +141,7 @@ export function RepositoryCard({
               {copiedBranch === gitData.branch ? (
                 <Check className="w-3 h-3 text-green" />
               ) : (
-                <Copy className="w-3 h-3 text-text-secondary/50 group-hover:text-ink transition-colors" />
+                <Copy className="w-3 h-3 text-icon group-hover:text-ink transition-colors" />
               )}
             </button>
           </div>
@@ -239,7 +239,7 @@ export function RepositoryCard({
                 </span>
                 <button
                   onClick={() => onCopyCommitHash(commit.hash)}
-                  className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-surface border border-border/30 rounded text-text-secondary/70 font-mono text-xs hover:bg-surface-strong hover:text-ink transition-colors"
+                  className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-surface border border-border/30 rounded text-icon font-mono text-xs hover:bg-surface-strong hover:text-ink transition-colors"
                   title={`Copy full hash: ${commit.hash}`}
                 >
                   {commit.shortHash}
@@ -252,7 +252,7 @@ export function RepositoryCard({
                 {commit.isPushed && gitData.gitHubUrl && (
                   <button
                     onClick={() => window.electronAPI.shell.openExternal(`${gitData.gitHubUrl}/commit/${commit.hash}`)}
-                    className="flex-shrink-0 p-1 bg-surface border border-border/30 rounded text-text-secondary/50 hover:bg-surface-strong hover:text-ink transition-colors"
+                    className="flex-shrink-0 p-1 bg-surface border border-border/30 rounded text-icon hover:bg-surface-strong hover:text-ink transition-colors"
                     title={t('agentInfo.viewOnGitHub')}
                   >
                     <GitHubIcon className="w-3 h-3" />

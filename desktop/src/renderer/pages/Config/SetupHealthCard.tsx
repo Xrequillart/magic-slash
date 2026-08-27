@@ -159,7 +159,7 @@ export function SetupHealthCard() {
           <div className="flex items-start gap-2.5">
             {checkFailed
               ? <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-red" />
-              : <Loader2 className="w-4 h-4 mt-0.5 shrink-0 text-text-secondary/60 animate-spin" />}
+              : <Loader2 className="w-4 h-4 mt-0.5 shrink-0 text-icon animate-spin" />}
             <div className="text-xs text-text-secondary/70">
               {checkFailed
                 ? t('settings.application.setup.checkFailed')
@@ -286,7 +286,7 @@ export function SetupHealthCard() {
                     <option value="both">{t('setup.wizard.integrations.both')}</option>
                     <option value="github">{t('setup.wizard.integrations.githubOnly')}</option>
                   </select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
                 </div>
               </div>
               {confirmingOff && (

@@ -1053,7 +1053,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                       <option key={o.id} value={o.id}>{o.name}</option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
                 </div>
               ) : (
                 <p className="text-xs text-text-secondary/40 text-right">{t('repo.scope.joinOrg')}</p>
@@ -1254,7 +1254,7 @@ export function RepoPage({ repoName }: RepoPageProps) {
                     <option key={branch} value={branch}>{branch}</option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary/50 pointer-events-none" />
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-icon pointer-events-none" />
               </div>
             </SettingRow>
           </fieldset>

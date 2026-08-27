@@ -165,7 +165,7 @@ function OrganizationCard({
                       </td>
                       <td className="w-px whitespace-nowrap px-1 py-2">
                         {rowBusy ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-text-secondary/50" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-icon" />
                         ) : isAdmin ? (
                           <RoleSelect value={m.role} onChange={(role) => onChangeRole(org.id, m.userId, role)} />
                         ) : (
@@ -182,7 +182,7 @@ function OrganizationCard({
                           {!isSelf && !rowBusy && (
                             <button
                               onClick={() => onRemoveMember(org.id, m.userId)}
-                              className="flex items-center justify-center h-7 w-7 shrink-0 text-text-secondary/60 bg-surface border border-line rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all"
+                              className="flex items-center justify-center h-7 w-7 shrink-0 text-icon bg-surface border border-line rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all"
                               title={t('org.removeMember')}
                             >
                               <X className="w-3.5 h-3.5" />
@@ -240,7 +240,7 @@ function OrganizationCard({
                   <button
                     onClick={() => onDeleteInvitation(inv.id)}
                     disabled={deletingInvite === inv.id}
-                    className="flex items-center justify-center h-7 w-7 shrink-0 text-text-secondary/60 bg-surface border border-line rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all disabled:opacity-50"
+                    className="flex items-center justify-center h-7 w-7 shrink-0 text-icon bg-surface border border-line rounded-lg hover:text-red hover:border-red/20 hover:bg-red/10 transition-all disabled:opacity-50"
                     title={t('org.deleteInvitation')}
                   >
                     {deletingInvite === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
@@ -463,7 +463,7 @@ export function OrgPage() {
       <div className="flex flex-col gap-6">
         <SectionHeader icon={Cloud} title={t('org.section')} spacing="none" />
         <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
-          <Cloud className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
+          <Cloud className="w-8 h-8 text-icon-muted mx-auto mb-3" />
           <div className="text-sm text-text-secondary/60">{t('org.cloudDisabled')}</div>
           <div className="text-xs text-text-secondary/40 mt-1">{t('org.cloudDisabledHint')}</div>
         </div>
@@ -474,7 +474,7 @@ export function OrgPage() {
   if (!status.loggedIn) {
     return (
       <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
-        <Building2 className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
+        <Building2 className="w-8 h-8 text-icon-muted mx-auto mb-3" />
         <div className="text-sm text-text-secondary/60">{t('org.signInTitle')}</div>
         <div className="text-xs text-text-secondary/40 mt-1">{t('org.signInHint')}</div>
       </div>
@@ -508,12 +508,12 @@ export function OrgPage() {
       />
 
       {orgLoading && orgs.length === 0 ? (
-        <div className="flex items-center justify-center py-8 text-text-secondary/50">
+        <div className="flex items-center justify-center py-8 text-icon">
           <Loader2 className="w-4 h-4 animate-spin" />
         </div>
       ) : orgs.length === 0 ? (
         <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
-          <Users className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
+          <Users className="w-8 h-8 text-icon-muted mx-auto mb-3" />
           <div className="text-sm text-text-secondary/60">{t('org.emptyTitle')}</div>
           <div className="text-xs text-text-secondary/40 mt-1">{t('org.emptyHint')}</div>
         </div>

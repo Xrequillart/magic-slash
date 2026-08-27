@@ -323,7 +323,7 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
       <div>
         <button
           onClick={() => setShowHow((v) => !v)}
-          className="flex items-center gap-1.5 text-xs text-text-secondary/50 hover:text-text-secondary transition-colors"
+          className="flex items-center gap-1.5 text-xs text-icon hover:text-text-secondary transition-colors"
         >
           <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showHow ? 'rotate-90' : ''}`} />
           <span>{t('skills.budget.how')}</span>
@@ -376,7 +376,7 @@ function TokenBudgetGauge({ skills, repoSkills }: { skills: SkillInfo[]; repoSki
         <div>
           <button
             onClick={() => setShowBreakdown((v) => !v)}
-            className="flex items-center gap-1.5 text-xs text-text-secondary/50 hover:text-text-secondary transition-colors"
+            className="flex items-center gap-1.5 text-xs text-icon hover:text-text-secondary transition-colors"
           >
             <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showBreakdown ? 'rotate-90' : ''}`} />
             <span>{t('skills.budget.details')}</span>
@@ -549,7 +549,7 @@ function SkillCard({
       </div>
 
       {/* Arrow */}
-      <ChevronRight className="w-4 h-4 text-text-secondary/30 group-hover:text-text-secondary/60 transition-colors flex-shrink-0" />
+      <ChevronRight className="w-4 h-4 text-icon-muted group-hover:text-icon transition-colors flex-shrink-0" />
     </button>
   )
 }
@@ -625,7 +625,7 @@ function SkillsRail({
       <img src={url} alt={name} className="w-5 h-5 rounded object-cover shrink-0" />
     ) : (
       <span className="w-5 h-5 rounded bg-surface-strong flex items-center justify-center shrink-0">
-        <Image className="w-3 h-3 text-text-secondary/50" />
+        <Image className="w-3 h-3 text-icon" />
       </span>
     )
   }
@@ -666,7 +666,7 @@ function SkillsRail({
             <button
               onClick={onNew}
               title={t('skills.new')}
-              className="p-0.5 rounded text-text-secondary/50 hover:text-ink hover:bg-surface transition-colors"
+              className="p-0.5 rounded text-icon hover:text-ink hover:bg-surface transition-colors"
             >
               <Plus className="w-3 h-3" />
             </button>
@@ -698,7 +698,7 @@ function SkillsRail({
                 `repo-skill:${rs.filePath}`,
                 rs.name,
                 `#/repo-skill/${encodeURIComponent(rs.filePath)}`,
-                <GitFork className="w-4 h-4 shrink-0 text-text-secondary/40" />
+                <GitFork className="w-4 h-4 shrink-0 text-icon-muted" />
               )
             )}
           </div>

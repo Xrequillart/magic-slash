@@ -119,7 +119,7 @@ export function CloudAccountSection() {
       <div>
         <SectionHeader icon={Cloud} title={t('cloud.section')} />
         <div className="bg-surface border border-line-strong rounded-xl p-6 text-center">
-          <Cloud className="w-8 h-8 text-text-secondary/30 mx-auto mb-3" />
+          <Cloud className="w-8 h-8 text-icon-muted mx-auto mb-3" />
           <div className="text-sm text-text-secondary/60">{t('org.cloudDisabled')}</div>
           <div className="text-xs text-text-secondary/40 mt-1">{t('org.cloudDisabledHint')}</div>
         </div>

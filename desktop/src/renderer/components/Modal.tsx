@@ -61,7 +61,7 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
             {hero}
             <button
               onClick={onClose}
-              className="absolute top-3 right-3 p-1.5 text-on-brand/70 hover:text-on-brand bg-black/30 hover:bg-black/50 rounded-lg transition-all"
+              className="absolute top-3 right-3 p-1.5 text-on-brand hover:text-on-brand bg-black/30 hover:bg-black/50 rounded-lg transition-all"
             >
               <X className="w-4 h-4" />
             </button>

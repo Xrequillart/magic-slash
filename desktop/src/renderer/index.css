@@ -59,6 +59,8 @@
   --c-ink: 255 255 255;
   --c-text-secondary: 161 161 170;
   --c-on-brand: 255 255 255;
+  --c-icon: 138 138 146;
+  --c-icon-muted: 101 101 106;
 
   --c-surface-subtle: rgba(255, 255, 255, 0.04);
   --c-surface: rgba(255, 255, 255, 0.06);

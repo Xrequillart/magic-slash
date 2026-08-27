@@ -141,7 +141,7 @@ export function ScriptsDropdown({ repoPath, agentId, agentName }: ScriptsDropdow
       <button
         ref={triggerRef}
         onClick={handleToggle}
-        className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary/50 border border-dashed border-border/40 rounded hover:border-accent/50 hover:text-accent hover:bg-accent/5 transition-colors"
+        className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-icon border border-dashed border-border/40 rounded hover:border-accent/50 hover:text-accent hover:bg-accent/5 transition-colors"
       >
         <Play className="w-3 h-3" />
         {t('agentInfo.scripts')}

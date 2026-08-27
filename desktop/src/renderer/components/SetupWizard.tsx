@@ -133,7 +133,7 @@ export function SetupWizard({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
         <div className="px-5 pb-5 min-h-[220px]">
           {!status ? (
-            <div className="flex items-center gap-2 text-sm text-text-secondary/60 py-8 justify-center">
+            <div className="flex items-center gap-2 text-sm text-icon py-8 justify-center">
               <Loader2 className="w-4 h-4 animate-spin" />
               {t('setup.wizard.checking')}
             </div>
