@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode } from 'react'
-import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit, FolderGit2, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, Bot, type LucideIcon } from 'lucide-react'
+import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit2, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, Bot, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage, resolveActiveOrgId } from './OrgPage'
@@ -63,7 +63,7 @@ const AGENT_TYPE_OPTIONS: { value: AgentType; labelKey: MessageKey; descriptionK
 const SETTINGS_TABS: { id: SettingsTab; labelKey: MessageKey; icon: LucideIcon }[] = [
   { id: 'account', labelKey: 'settings.tab.account', icon: CircleUserRound },
   { id: 'organization', labelKey: 'settings.tab.organization', icon: Building2 },
-  { id: 'repositories', labelKey: 'settings.tab.repositories', icon: FolderGit },
+  { id: 'repositories', labelKey: 'settings.tab.repositories', icon: FolderGit2 },
   { id: 'application', labelKey: 'settings.tab.application', icon: AppWindow },
   { id: 'claude-code', labelKey: 'settings.tab.claudeCode', icon: SquareTerminal },
   { id: 'notifications', labelKey: 'settings.tab.notifications', icon: Bell },
@@ -885,7 +885,7 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* Repositories tab */}
       {contentTab === 'repositories' && <div>
         <SectionHeader
-          icon={FolderGit}
+          icon={FolderGit2}
           title={t('settings.repos.section')}
           action={
             <button
