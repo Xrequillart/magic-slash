@@ -3,6 +3,7 @@ import {
   clampQuote, commentAnchorKind, commentFileKey, commentFileKeyPrefix, commentLabel,
   diffFingerprint, edgesByRow, extendRange, lineIdentityFromRow, markersByRow, normalizeRange,
   rangeCovers, rowsForComment, unclampQuote, visibleRowForComment, MAX_QUOTE_CHARS,
+  SPEC_FINGERPRINT,
   type AnchoredComment, type CommentTarget, type LineRange, type RowAttributes, type RowIdentity,
 } from './commentAnchors'
 import { reviewFileKey } from './reviewLayout'
@@ -580,6 +581,32 @@ function target(overrides: Partial<CommentTarget> = {}): CommentTarget {
   return { repoPath: '/repo', path: 'src/a.ts', fingerprint: diffFingerprint(FILE), ...overrides }
 }
 
+/**
+ * `addFileComment`'s write, reduced to the KEY arithmetic it performs: append to this
+ * version's entry, and drop every other entry of the same file.
+ *
+ * Written out here rather than imported, because the store cannot be loaded in this suite —
+ * it builds a persisted zustand store against `sessionStorage`, and the renderer tests run
+ * on node with no DOM. What is actually under test is this module's business either way:
+ * whether the entry a write is ABOUT survives the prune that same write performs, which is
+ * a question about the two key functions and nothing else. The predicate is copied verbatim,
+ * `existing === key` first, since the order of those two tests is the whole answer.
+ */
+function sweep(
+  fileComments: Record<string, string[]>,
+  written: CommentTarget,
+  body: string,
+): Record<string, string[]> {
+  const key = commentFileKey(written)
+  const prefix = commentFileKeyPrefix(written.repoPath, written.path)
+  const next: Record<string, string[]> = {}
+  for (const [existing, comments] of Object.entries(fileComments)) {
+    if (existing === key || !existing.startsWith(prefix)) next[existing] = comments
+  }
+  next[key] = [...(fileComments[key] ?? []), body]
+  return next
+}
+
 describe('diffFingerprint', () => {
   it('answers the same string for the same bytes, which is what makes a comment readable back', () => {
     // The one thing that must hold: a theme change re-reads the file and replaces the whole
@@ -645,6 +672,45 @@ describe('diffFingerprint', () => {
     // different files agree on a key by moving the seam.
     expect(diffFingerprint(FILE)).not.toContain('\u0000')
     expect(diffFingerprint(FILE, DIFF)).not.toContain('\u0000')
+  })
+})
+
+describe('SPEC_FINGERPRINT', () => {
+  it('is a string no read of any file can spell, by the shape of what a read produces', () => {
+    // The collision argument, asserted rather than trusted. Three `-`-joined segments whose
+    // first is a base-36 length: a value of that shape can never be four letters, so the
+    // isolation is structural and not a name that merely happens to be free today.
+    for (const content of ['', 'a', FILE, FILE_GROWN, FILE_REWRITTEN]) {
+      for (const diff of [undefined, DIFF, DIFF_CLEARED, DIFF_MOVED]) {
+        const fingerprint = diffFingerprint(content, diff)
+        expect(fingerprint).not.toBe(SPEC_FINGERPRINT)
+        expect(fingerprint.split('-')).toHaveLength(3)
+        expect(fingerprint.split('-')[0]).toMatch(/^[0-9a-z]+$/)
+      }
+    }
+  })
+
+  it('lets two comments written across a save coexist, which is what the sweep would undo', () => {
+    // The heart of it. Two comments on the same live document, with the agent rewriting the
+    // file between them — the store's write appends to the entry it already has, because the
+    // key it computes is the one that is already there.
+    const spec = target({ fingerprint: SPEC_FINGERPRINT })
+    const first = sweep({}, spec, 'this section is thin')
+    const second = sweep(first, spec, 'and this heading is wrong')
+
+    expect(Object.keys(second)).toEqual([commentFileKey(spec)])
+    expect(second[commentFileKey(spec)]).toEqual(['this section is thin', 'and this heading is wrong'])
+  })
+
+  it('is the difference: the same two writes lose the first comment when the key moves', () => {
+    // The failure the sentinel exists to prevent, run through the very same predicate. A
+    // content-derived key mints a SECOND name under the same prefix on the next save, and a
+    // second name under that prefix is exactly what the sweep is written to remove.
+    const first = sweep({}, target(), 'this section is thin')
+    const second = sweep(first, target({ fingerprint: diffFingerprint(FILE_REWRITTEN) }), 'and this heading is wrong')
+
+    expect(Object.keys(second)).toHaveLength(1)
+    expect(second[commentFileKey(target())]).toBeUndefined()
   })
 })
 

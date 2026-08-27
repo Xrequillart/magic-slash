@@ -174,7 +174,16 @@ export function SpecPanel({
           >
             {/* Pinned: a spec is read with `status: ''`, so it never gets diff
                 annotation and raw markdown would cost the reader the formatting for
-                nothing. */}
+                nothing.
+
+                `commentable="spec"`, and the string rather than `true` is the whole of it:
+                the reader may quote a passage of the spec and leave a note on it, and those
+                notes are keyed so that they survive the agent rewriting the document
+                underneath them. `FileContentRenderer`'s own prop carries the argument, and
+                `SPEC_FINGERPRINT` the key arithmetic behind it. Nothing else here changes —
+                `refreshToken` already re-reads in place rather than remounting, which is what
+                lets a marker settle back onto its passage instead of being unmounted with the
+                subtree it was in. */}
             <FileContentRenderer
               repoPath={repoPath}
               filePath={filePath}
@@ -182,6 +191,7 @@ export function SpecPanel({
               markdownMode="rendered"
               refreshToken={refreshToken}
               notFoundLabel={t('agentInfo.spec.drafting')}
+              commentable="spec"
             />
           </div>
           {showScrollToTop && (

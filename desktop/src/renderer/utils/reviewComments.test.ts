@@ -3,8 +3,9 @@ import {
   collectReviewComments, formatReviewComments,
   type ReviewCommentGroup, type StoredComment,
 } from './reviewComments'
-import { commentFileKey } from './commentAnchors'
+import { commentFileKey, SPEC_FINGERPRINT } from './commentAnchors'
 import { reviewFileKey } from './reviewLayout'
+import { splitSpecPath } from '../components/agent-info-sidebar/utils'
 import type { LineRange } from './commentAnchors'
 
 const REPO = '/repos/magic-slash'
@@ -207,6 +208,62 @@ describe('collectReviewComments — live fingerprints', () => {
     const text = formatReviewComments(groups)
     expect(text).toContain('body of c-live')
     expect(text).not.toContain('body of c-stale')
+  })
+})
+
+describe('collectReviewComments — the live spec’s own comments', () => {
+  /**
+   * A comment left on the spec in the agent sidebar, keyed the way that panel keys it:
+   * `splitSpecPath`'s answer — the spec file's parent DIRECTORY — as the repository path, the
+   * bare file name as the path, and `SPEC_FINGERPRINT` as the version.
+   *
+   * Calls the real `splitSpecPath` rather than re-deriving its split by hand: that function is
+   * pure string logic with nothing that would make it unsafe in this node-environment suite,
+   * and the shape of the split IS what the invariant rests on — a second, narrower copy of it
+   * here could quietly drift from what the spec panel actually keys with.
+   */
+  function specKey(specPath: string): string {
+    const split = splitSpecPath(specPath)
+    if (!split) throw new Error(`not an absolute spec path: ${specPath}`)
+    return commentFileKey({ repoPath: split.repoPath, path: split.filePath, fingerprint: SPEC_FINGERPRINT })
+  }
+
+  it('never surfaces in a review, not even for the very file the review holds', () => {
+    // The spec lives inside the repository and the review has it as a changed file, which is
+    // the worst case and the only one worth asserting. The two keys put their NUL in different
+    // places, so the prefix does not match and the entry is never looked at.
+    const groups = collectReviewComments(
+      { [specKey(`${REPO}/docs/spec.md`)]: [comment('c-spec')] },
+      [{ path: 'docs/spec.md' }],
+      REPO,
+    )
+
+    expect(groups).toEqual([])
+  })
+
+  it('is not stopped by the fingerprint filter, which is why the prefix has to be the rampart', () => {
+    // The filter that does NOT hold it back, written down so nobody mistakes it for the one
+    // that does: with no live fingerprint reported — an unread or collapsed card — every
+    // fingerprint under the prefix passes, `SPEC_FINGERPRINT` included. The review's own
+    // comment comes through and the spec's does not, and the difference is the prefix alone.
+    const groups = collectReviewComments(
+      {
+        [specKey(`${REPO}/docs/spec.md`)]: [comment('c-spec')],
+        [key('docs/spec.md', 'f1')]: [comment('c-review')],
+      },
+      [{ path: 'docs/spec.md' }],
+      REPO,
+      {},
+    )
+
+    expect(groups[0].comments.map(c => c.id)).toEqual(['c-review'])
+  })
+
+  it('cannot read a review’s comments back either, the seam cutting both ways', () => {
+    // Symmetric, and it has to be: the spec panel reads the store through `commentFileKey`
+    // directly, so if the two spellings agreed it would be showing a review's notes on the
+    // document it is drawing.
+    expect(specKey(`${REPO}/docs/spec.md`)).not.toBe(key('docs/spec.md', SPEC_FINGERPRINT))
   })
 })
 

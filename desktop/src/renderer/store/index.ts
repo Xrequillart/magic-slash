@@ -242,14 +242,25 @@ interface AppState {
 
   /**
    * The comments left on each file, keyed by `commentFileKey` — the repository path, the
-   * file path and a fingerprint of the file's CONTENT, joined with NUL bytes.
+   * file path and a fingerprint of the version being commented on, joined with NUL bytes.
    *
-   * The fingerprint is what stops a comment outliving the diff it was about. Line numbers
-   * and a quote mean something against ONE state of a file, and the agent this app drives
-   * rewrites files continuously — so when a file moves its key moves with it, and the old
-   * entries stop resolving rather than re-attaching to whatever now sits at those line
-   * numbers. `diffFingerprint` carries the argument for deriving it from the content;
-   * `addFileComment` below is what keeps the entries left behind from piling up.
+   * On a file read as a DIFF, that fingerprint is derived from the content, and it is what
+   * stops a comment outliving the diff it was about. Line numbers and a quote mean something
+   * against ONE state of a file, and the agent this app drives rewrites files continuously —
+   * so when a file moves its key moves with it, and the old entries stop resolving rather
+   * than re-attaching to whatever now sits at those line numbers. `diffFingerprint` carries
+   * the argument for deriving it from the content; `addFileComment` below is what keeps the
+   * entries left behind from piling up.
+   *
+   * On a file read LIVE — the agent sidebar's spec panel, which re-reads the document every
+   * time `/magic:plan` saves it — the key carries `SPEC_FINGERPRINT` instead, one string for
+   * every version. That is not an exception to the reasoning above so much as the same
+   * reasoning reaching the other conclusion: a content-derived key would mint a new name on
+   * every save, and there the reader is still looking at the passage they commented on. The
+   * comment is anchored to a QUOTE and nothing else, so it has no line numbers to be wrong
+   * about — `locateQuote` re-searches the passage in the text as it now stands, and reports a
+   * lost anchor when the agent has rewritten it away. So the two key spaces cohabit here, and
+   * `SPEC_FINGERPRINT` is where the proof that they cannot collide lives.
    *
    * Deliberately NOT in either `partialize`, and that absence is the feature. The store
    * is a module singleton, so these survive everything a reading session does to them:
@@ -702,6 +713,12 @@ export const useStore = create<AppState>()(
             // is the moment to drop them: the file's map is being rewritten anyway, and the
             // alternative is one entry per save of every file anyone commented on, for as
             // long as the session lives.
+            //
+            // INERT for a live document, which is the whole reason the spec panel is safe
+            // sharing this map: a spec carries one key for all of its versions, so the entry
+            // this write is about is the only one under the prefix — and `existing === key` is
+            // tested FIRST, so that entry is kept rather than swept. A second comment on the
+            // same spec appends beside the first instead of replacing it.
             //
             // Only THIS file is swept, not the whole map: a review holds forty of them, and
             // a comment written on one says nothing about whether the other thirty-nine have

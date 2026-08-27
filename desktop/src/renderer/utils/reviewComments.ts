@@ -129,6 +129,16 @@ export function collectReviewComments(
     const comments: ReviewComment[] = []
 
     for (const [key, stored] of entries) {
+      // THE PREFIX is what keeps a live document's comments out of a review, and it is the
+      // only thing that can be: the fingerprint test below is deliberately non-strict — see
+      // above — so before a card has reported anything it lets every fingerprint through,
+      // `SPEC_FINGERPRINT` included. What separates the two key spaces is the REPOSITORY PATH
+      // inside the prefix. The spec panel keys on `splitSpecPath`'s answer, which is the spec
+      // file's parent DIRECTORY and never a repository root, so no `repoPath` a review is
+      // built from can spell this prefix — and `commentFileKey`'s own suite proves the seam
+      // cannot be moved to make one match the other. The sentinel is the second rampart
+      // behind it: no read of a file can produce that fingerprint, so even a spec keyed
+      // under a genuine repository root could not pass as this review's live version.
       if (!key.startsWith(prefix)) continue
       const fingerprint = key.slice(prefix.length)
       if (live !== undefined && fingerprint !== live) continue

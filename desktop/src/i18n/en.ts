@@ -1589,6 +1589,14 @@ export const en = {
   // — the passage is the whole of the anchor. A second key rather than a vaguer sentence
   // covering both: the composer prompt is where a reader learns what the comment will be
   // attached to, and "these lines" over a quotation says something false about it.
+  //
+  // This whole quote-anchored family now serves the agent sidebar's LIVE SPEC as well as a
+  // review card, and it needed nothing added for it — which is worth writing down, because a
+  // reader looking for the spec panel's own strings would otherwise go looking for keys that
+  // do not exist. Not one of them names a diff, a review or a pull request: they speak of a
+  // passage, of a document, and of an anchor that can no longer be found, which is exactly
+  // what a spec rewritten under the reader produces. `filePreview` is the namespace of the
+  // component doing the rendering, not of the review it was first written for.
   'filePreview.commentQuotePlaceholder': 'What should the agent know about this passage?',
   'filePreview.commentDelete': 'Delete',
   // Two forms again, and the plural one carries the count as well as the gesture: the pill
