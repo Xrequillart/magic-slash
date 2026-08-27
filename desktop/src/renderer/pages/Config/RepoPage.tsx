@@ -2,14 +2,14 @@ import { useState, useEffect, useRef, type ReactNode } from 'react'
 import {
   Trash2, Check, AlertTriangle, Plus, Loader2, ChevronDown, ArrowLeft, Building2, Lock, FolderOpen,
   Ticket, Settings2, Languages, GitBranch, GitCommitHorizontal, MessageSquare, GitPullRequest,
-  ClipboardList, type LucideIcon
+  ClipboardList, FolderGit2, type LucideIcon
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useConfig } from '../../hooks/useConfig'
 import { useOrg } from '../../hooks/useOrg'
 import { Modal } from '../../components/Modal'
 import { showToast } from '../../components/Toast'
-import { PROJECT_COLORS } from '../../utils/projectColors'
+import { PROJECT_COLORS, getProjectColorMap } from '../../utils/projectColors'
 import { useT, type MessageKey } from '../../i18n'
 import { Switch } from '../../components/Switch'
 import { LanguageSelect } from '../../components/LanguageSelect'
@@ -385,6 +385,12 @@ export function RepoPage({ repoName }: RepoPageProps) {
 
   // Form state
   const repo = config?.repositories?.[repoName]
+  /* Built over the FULL repository list so the colour matches the rail item and the
+     list row this page was opened from, palette fallback included. */
+  const repoColor = getProjectColorMap(
+    Object.keys(config?.repositories ?? {}),
+    config?.repositories,
+  )[repoName]
   const scopeOrg = repo?.orgId ? orgs.find((o) => o.id === repo.orgId) : null
 
   /**
@@ -913,6 +919,14 @@ export function RepoPage({ repoName }: RepoPageProps) {
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
+          {/* Same repository tile as the rail, the list it was opened from and the
+              agent sidebar's cards — at page-title scale. */}
+          <span
+            className="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0"
+            style={{ backgroundColor: `${repoColor}1f`, color: repoColor }}
+          >
+            <FolderGit2 className="w-5 h-5" />
+          </span>
           <h1 className="text-2xl font-semibold">{repoName}</h1>
         </div>
         <p className="text-text-secondary text-sm">

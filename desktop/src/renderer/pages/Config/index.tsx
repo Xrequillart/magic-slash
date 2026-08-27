@@ -291,10 +291,11 @@ function RepoRailItems({ repos, colorMap, activeName }: RepoRailContent) {
             {isActive && (
               <span className="absolute -left-[13px] top-1 bottom-1 w-[2px] rounded-full bg-accent" />
             )}
-            <span
-              className="w-2 h-2 rounded-full shrink-0"
-              style={{ backgroundColor: colorMap[name] }}
-            />
+            {/* The repo tile's icon, bare and tinted rather than in its backdrop:
+                these rows are 13px and sit right next to the organization ones,
+                which carry a plain Building2 — a filled tile here would outweigh
+                both. The colour still comes across. */}
+            <FolderGit2 className="w-3 h-3 shrink-0" style={{ color: colorMap[name] }} />
             <span className="truncate">{name}</span>
           </a>
         )
