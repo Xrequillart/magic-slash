@@ -10,7 +10,7 @@ import { useCodeAppearance } from '../../hooks/useCodeAppearance'
 import { evictToBudget } from '../../utils/boundedCache'
 import { createTaskQueue } from '../../utils/taskQueue'
 import { isMarkdownPath, type MarkdownMode } from '../../utils/markdownPath'
-import { diffFingerprint } from '../../utils/commentAnchors'
+import { diffFingerprint, SPEC_FINGERPRINT } from '../../utils/commentAnchors'
 import { useT } from '../../i18n'
 
 interface Props {
@@ -108,28 +108,46 @@ interface Props {
    */
   onFingerprintChange?: (fingerprint: string | undefined) => void
   /**
-   * Whether the reader may comment on this file's lines. FALSE by default, and the default
-   * is the safe one. THE reason each caller differs is written down here and nowhere else —
-   * CodeView's prop and FileReviewCard's call site both point at this comment.
+   * Whether the reader may comment on this file — and, if so, under WHICH key. FALSE by
+   * default, and the default is the safe one. THE reason each caller differs is written down
+   * here and nowhere else: CodeView's prop and every call site point at this comment.
    *
-   * An opt-in rather than something inferred from the props, because the two callers that
-   * do not get it are excluded for two DIFFERENT reasons and only one of them is about the
-   * key. The SPEC panel must NEVER offer it: its `repoPath` is the spec's parent directory
-   * rather than a repository root, so `reviewFileKey(repoPath, path)` would file notes
-   * under a key that means something different from every other key in the map and that no
-   * review could ever read back. The single-file preview keys perfectly well — it passes a
-   * real repository path and a real status — and is simply not wired for it. Which is the
-   * point of a flag: turning it on there is a decision someone takes, not a consequence of
-   * the props that caller happened to be passing already.
+   * `true` is a FROZEN read — a review card — whose comments are filed under the
+   * `diffFingerprint` derived below, so a comment stops resolving the moment the content or
+   * the diff moves under it rather than re-attaching to whatever now sits at those lines.
+   * `'spec'` is a LIVE document — the agent sidebar's spec panel — whose comments are filed
+   * under `SPEC_FINGERPRINT`, one key for every version of the file, because a document the
+   * agent rewrites every few seconds would otherwise mint a new key on each save and take the
+   * reader's comment with it. `SPEC_FINGERPRINT` carries that argument in full.
    *
-   * Handed straight down with the two paths and the fingerprint derived below — to CodeView
-   * for the diff, and to MarkdownCommentLayer for a markdown card switched to its rendered
-   * view, which takes comments on QUOTED PASSAGES rather than on lines. That is a departure
-   * from this file's general rule that a store read beats a new prop; see CodeView's own
-   * props for why the store cannot answer "which file is this". All four are a string or a
-   * boolean, so `memo` below still holds.
+   * ONE prop rather than two, so "commentable, but keyed how?" is a state nobody can express:
+   * a caller either opts in AND says what kind of document it is handing over, or it says
+   * nothing at all. `commentsDiff` below is the single place that distinction is read back,
+   * for the same reason — two ad-hoc comparisons are two things that can drift apart.
+   *
+   * The spec panel's key now MEANS something, which is what changed. `splitSpecPath` hands
+   * this component a `repoPath` that is the spec file's parent directory rather than a
+   * repository root, and under a content fingerprint its entries were indistinguishable in
+   * kind from a review's while resolving in no review — which is what used to keep this prop
+   * away from that panel. The sentinel settles it by construction and not by care: no read of
+   * any file can produce that fingerprint, so no review can mint the key, and none can read it
+   * back. `collectReviewComments` states the same invariant from its own side.
+   *
+   * The single-file preview (`FilePreviewPanel`) stays excluded, and it is excluded for no
+   * reason of soundness at all: it keys perfectly well — a real repository path, a real status
+   * — and is simply not wired for it. Which is the point of a flag. Turning it on there is a
+   * decision someone takes, not a consequence of the props that caller was already passing.
+   *
+   * Handed down with the two paths and the fingerprint derived below — to CodeView for the
+   * diff, and to MarkdownCommentLayer for a markdown file switched to its rendered view, which
+   * takes comments on QUOTED PASSAGES rather than on lines. That is a departure from this
+   * file's general rule that a store read beats a new prop; see CodeView's own props for why
+   * the store cannot answer "which file is this". CodeView's prop stays a plain `boolean` and
+   * `'spec'` must never reach it: a spec is rendered prose, so there is no diff there whose
+   * lines could be commented on. All four remain a string or a boolean — a union of the two is
+   * still a primitive — so `memo` below still holds.
    */
-  commentable?: boolean
+  commentable?: boolean | 'spec'
 }
 
 // `unreadable` is local to this component: the handler never returns it, it is
@@ -336,7 +354,21 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
   const changesOnlyHtml = changesOnlyOf(result)
 
   /**
-   * Which VERSION of this file the comments on it belong to — see `diffFingerprint`.
+   * Whether the document being commented on is a FROZEN read with a diff behind it, as
+   * opposed to the live spec — the one question `commentable`'s two truthy values answer.
+   *
+   * Named once and read twice, at the fingerprint below and at the CodeView call at the
+   * bottom, rather than comparing the prop against `true` in both places: those are two
+   * statements of the same rule, and a rule stated twice is a rule that can end up meaning
+   * two things. It also gives CodeView's `boolean` prop a value of the right type by
+   * construction, which is what keeps `'spec'` out of a component that draws diffs.
+   */
+  const commentsDiff = commentable === true
+
+  /**
+   * Which VERSION of this file the comments on it belong to — see `diffFingerprint`, and
+   * `SPEC_FINGERPRINT` beside it for the case where the answer is deliberately "always this
+   * one".
    *
    * Derived HERE rather than down in CodeView because this is where the read result lives,
    * and the fingerprint needs the diff's shape as well as the bytes: `changedLines` is what
@@ -347,15 +379,21 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
    * the read hands back a fresh `changedLines` object every time — passing it would re-render
    * forty shiki documents sixty times a second. A string cannot.
    *
-   * MEMOISED, because it is a walk of the whole file and this component re-renders for
-   * reasons that have nothing to do with it. `result` only changes when a read lands, so it
-   * is the only dependency there is to have — and a preview nobody may comment on hashes
-   * nothing at all.
+   * The three guards on `result` stand for the spec case as well, which is not a detail the
+   * sentinel makes redundant: they are not there to protect the hash, they are what makes
+   * `undefined` mean "there is no key to file a comment under yet". A spec panel opens on a
+   * file `/magic:plan` has not written a byte of, and reporting a key for a read that failed
+   * or has not landed would offer to comment on a document nobody is looking at.
+   *
+   * MEMOISED, because in the frozen case it is a walk of the whole file and this component
+   * re-renders for reasons that have nothing to do with it. `result` only changes when a read
+   * lands, so it is the only dependency there is to have beyond the two props — and a preview
+   * nobody may comment on hashes nothing at all.
    */
   const fingerprint = useMemo(() => {
     if (!commentable || !result || 'error' in result || result.encoding !== 'utf8') return undefined
-    return diffFingerprint(result.content, result.changedLines)
-  }, [commentable, result])
+    return commentsDiff ? diffFingerprint(result.content, result.changedLines) : SPEC_FINGERPRINT
+  }, [commentable, commentsDiff, result])
 
   // Whether this render ends at MarkdownView rather than CodeView. Derived from the
   // PROPS, above the early returns, so the effect below can read it — and so it says the
@@ -429,9 +467,11 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
   // what makes the Skills document's own use of it incapable of growing a comment affordance,
   // there being no path from it to the layer at all.
   //
-  // Gated on the SAME opt-in CodeView is, `commentable` plus a fingerprint to file the
-  // comments under. `repoPath` and `filePath` are not tested because they are required props
-  // of this component: CodeView takes them optionally and has to, this does not.
+  // Gated on the same opt-in CodeView is, `commentable` plus a fingerprint to file the
+  // comments under — but on EITHER of its truthy values, where CodeView below takes only
+  // `true`. This is the branch a spec renders through, and a quotation is the only anchor
+  // rendered prose has to offer. `repoPath` and `filePath` are not tested because they are
+  // required props of this component: CodeView takes them optionally and has to, this does not.
   if (rendersProse) {
     if (!commentable || fingerprint === undefined) return <MarkdownView content={result.content} />
     return (
@@ -458,7 +498,10 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
       repoPath={repoPath}
       filePath={filePath}
       fingerprint={fingerprint}
-      commentable={commentable}
+      /* `commentsDiff` and not `commentable`, which is now a union: a diff is the only thing
+         CodeView can anchor a comment to, so `'spec'` reaching here would be an offer to
+         comment on lines of a document that is never drawn as lines. */
+      commentable={commentsDiff}
     />
   )
 }

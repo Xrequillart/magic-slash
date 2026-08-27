@@ -517,6 +517,36 @@ export function diffFingerprint(content: string, changedLines?: ChangedLines): s
 }
 
 /**
+ * The fingerprint a LIVE document files its comments under — one string, for every version
+ * of it. Placed against `diffFingerprint` above because the two only make sense read
+ * together: this is the case where everything that function buys is worth nothing.
+ *
+ * `diffFingerprint` exists to stop a comment outliving the diff it was about, and that is
+ * the right answer for a REVIEW: the read is frozen, the reader is commenting on one state
+ * of one file, and a comment whose lines moved under it points at unrelated code. A spec is
+ * the other kind of document. The agent rewrites it every few seconds while the reader is
+ * still reading it, so a content-derived key mints a new name on every save — the layer's
+ * selector stops matching the entry that was just written, the marker disappears, and
+ * `addFileComment`'s sweep then deletes it outright, that sweep being written precisely to
+ * drop every OTHER version of a file when one of them is commented. The purpose has no
+ * meaning for a live document and it actively destroys the comment it was written to protect.
+ *
+ * Nothing is given up by pinning it, because nothing in a comment on a spec is stated in
+ * coordinates. The anchor is a QUOTE, `locateQuote` re-searches that passage in the current
+ * text on every render, and a passage the agent deleted reports a lost anchor rather than
+ * re-attaching to whatever now sits where it used to be. The version string was never what
+ * made a quote anchor sound — it was what made a LINE anchor sound, and a spec has none.
+ *
+ * The two key spaces cannot collide, by construction and not by convention: every
+ * `diffFingerprint` is three `-`-joined segments, the first a base-36 length and the second
+ * at least one base-36 digit out of `fnv1a`, so no read of any file in any repository can
+ * ever answer `spec`. An entry carrying this sentinel is reachable only from a caller that
+ * asked for it by name — which is what lets a live document share one map with every review
+ * without either one being able to see the other's comments.
+ */
+export const SPEC_FINGERPRINT = 'spec'
+
+/**
  * FNV-1a, 32 bits, in base 36.
  *
  * Not cryptographic and not meant to be: the question is "are these the same values", asked
@@ -538,7 +568,21 @@ function fnv1a(text: string): string {
 export interface CommentTarget {
   repoPath: string
   path: string
-  /** `diffFingerprint` of the read these comments belong to: its content AND its diff. */
+  /**
+   * Which version of the file these comments belong to — and there are two answers, because
+   * there are two kinds of document being commented on.
+   *
+   * A `diffFingerprint` for a FROZEN read — a review card — where it buys the guarantee that
+   * a comment stops resolving the moment the content or the diff moves under it, rather than
+   * re-attaching to whatever now sits at those line numbers. Or `SPEC_FINGERPRINT` for a LIVE
+   * one — the spec panel — where it buys the opposite guarantee: the key holds still while
+   * the agent rewrites the file, which is what gives the quote anchor the chance to re-find
+   * its passage that a key moving on every save would have denied it.
+   *
+   * Both are opaque here. This module only ever joins the string into a key and slices it
+   * back out; which of the two it is, is the caller's decision and is documented at the two
+   * places that take it — `FileContentRenderer`'s `commentable` prop, and `SPEC_FINGERPRINT`.
+   */
   fingerprint: string
 }
 
@@ -557,8 +601,9 @@ export function commentFileKey(target: CommentTarget): string {
 /**
  * Every version of one file, as a key prefix — what the store prunes on a write.
  *
- * Sound because NUL is the one byte a path cannot contain and `diffFingerprint` never
- * emits one, so this matches every entry of this file and nothing else in the map.
+ * Sound because NUL is the one byte a path cannot contain and neither `diffFingerprint` nor
+ * `SPEC_FINGERPRINT` emits one, so this matches every entry of this file and nothing else in
+ * the map.
  */
 export function commentFileKeyPrefix(repoPath: string, path: string): string {
   return `${reviewFileKey(repoPath, path)}\u0000`
