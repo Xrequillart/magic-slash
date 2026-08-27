@@ -396,3 +396,82 @@ describe('a disconnect is final, even against a call already in flight', () => {
     expect(emissions).toEqual([])
   })
 })
+
+/**
+ * The mirror of the block above, and the half that was missing.
+ *
+ * `disconnect()` has always bumped the generation; `beginConnect()` only called
+ * `clearPending()`. But `clearPending()` discards a verifier still WAITING for a
+ * browser — it says nothing to an operation already past its own await. So an exchange,
+ * a refresh or a site re-resolution belonging to the previous credential still matched
+ * the generation it had captured, sailed through `superseded()`, and landed AFTER the
+ * new credential: the user connects account B and is left holding account A's tokens,
+ * or A's cloud id, under B's name. Starting over is the same event as disconnecting,
+ * seen from the other side, and it has to end the old credential's claim the same way.
+ */
+describe('a fresh connect is final, even against a call already in flight', () => {
+  it('is not undone by a code exchange that was in flight when it started', async () => {
+    const held = gate()
+    let exchanges = 0
+    tokenRoute = async () => {
+      exchanges += 1
+      if (exchanges > 1) return happyToken('access-token-b', 'refresh-token-b')
+      await held.wait
+      return happyToken('access-token-a', 'refresh-token-a')
+    }
+
+    // Attempt A gets its callback and stalls mid-exchange. Its nonce is already
+    // consumed, so there is nothing left for `clearPending()` to take away — which is
+    // exactly why the generation has to do the work.
+    await connect.beginConnect()
+    const exchangingA = connect.completeConnect({ code: CODE, state: pendingNonce() })
+    await settle()
+    expect(exchanges, 'A is genuinely in flight').toBe(1)
+
+    // The user starts over and goes all the way through.
+    await connectFully()
+    expect(storedCredential()).toMatchObject({ access_token: 'access-token-b' })
+
+    // Only now does A come back.
+    held.open()
+    await exchangingA
+
+    expect(storedCredential(), 'B survived A landing late').toMatchObject({
+      access_token: 'access-token-b',
+      refresh_token: 'refresh-token-b',
+    })
+    expect(connect.getStatus().connected).toBe(true)
+  })
+
+  it('is not undone by a refresh that was in flight when it started', async () => {
+    // The rotating-token path. A refresh for the OLD credential must not write its
+    // rotated pair over the new one — that would leave the file holding a refresh token
+    // Atlassian has already spent for an account the user is no longer on.
+    await connectFully()
+    expireAccessToken()
+
+    const held = gate()
+    let calls = 0
+    tokenRoute = async () => {
+      calls += 1
+      if (calls > 1) return happyToken('access-token-b', 'refresh-token-b')
+      await held.wait
+      return happyToken('access-token-a2', 'refresh-token-a2')
+    }
+
+    const refreshing = connect.withFreshAccessToken()
+    await settle()
+    expect(calls, 'the refresh is genuinely in flight').toBe(1)
+
+    await connectFully()
+    expect(storedCredential()).toMatchObject({ access_token: 'access-token-b' })
+
+    held.open()
+    expect(await refreshing, 'a superseded refresh hands back no token').toBeNull()
+
+    expect(storedCredential(), 'B survived the old refresh landing late').toMatchObject({
+      access_token: 'access-token-b',
+      refresh_token: 'refresh-token-b',
+    })
+  })
+})

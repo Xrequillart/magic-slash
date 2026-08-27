@@ -151,7 +151,8 @@ let credential: StoredJiraCredential | null | undefined
 let refreshing: Promise<{ accessToken: string; cloudId: string } | null> | null = null
 
 /**
- * Which credential this module is on. Bumped by `disconnect()`, and by nothing else.
+ * Which credential this module is on. Bumped by the two events that end the current
+ * one's claim on this module: `disconnect()`, and `beginConnect()` starting over.
  *
  * WHY A COUNTER RATHER THAN CLEARING WHAT IS IN FLIGHT. Every write to the credential
  * — the file AND the cache — sits after an `await` on a network call: the code
@@ -161,7 +162,7 @@ let refreshing: Promise<{ accessToken: string; cloudId: string } | null> | null 
  * still run its `tokenStore.save()` and its `credential =` line — putting back on disk,
  * and back in memory, the credential the user just removed. So each of those paths
  * captures the generation BEFORE its first await and re-checks it before it writes:
- * NO WRITE MAY OUTLIVE THE DISCONNECT THAT PRECEDED IT.
+ * NO WRITE MAY OUTLIVE THE DISCONNECT — OR THE FRESH CONNECT — THAT PRECEDED IT.
  *
  * A counter and not a boolean, because a disconnect can be followed by a reconnect
  * while the same stale call is still in flight — and the write would then land on the
@@ -171,15 +172,16 @@ let refreshing: Promise<{ accessToken: string; cloudId: string } | null> | null 
 let generation = 0
 
 /**
- * Whether a disconnect has landed since `epoch` was captured — i.e. whether this write
- * is about a credential that no longer exists. Called immediately before every
- * `tokenStore.save()` and every `credential =` assignment that follows an await.
+ * Whether a disconnect or a fresh connect has landed since `epoch` was captured — i.e.
+ * whether this write is about a credential this module has already moved on from.
+ * Called immediately before every `tokenStore.save()` and every `credential =`
+ * assignment that follows an await.
  */
 function superseded(epoch: number): boolean {
   if (epoch === generation) return false
   // Worth a line: it is the difference between a refresh that failed and one that
   // succeeded and was deliberately thrown away. Names nothing — see `describe()`.
-  console.error('[Jira] Dropped a credential write that a disconnect had already overtaken')
+  console.error('[Jira] Dropped a credential write that a disconnect or reconnect had already overtaken')
   return true
 }
 
@@ -254,8 +256,19 @@ export async function beginConnect(): Promise<JiraConnectResult> {
     return { started: false, failure: 'noCallbackServer' }
   }
 
-  // A new click supersedes whatever was pending: the user is starting over, and the
-  // older verifier is of no use to them.
+  // A new click supersedes whatever was pending OR already in flight: the user is
+  // starting over, so no older attempt may commit after this one.
+  //
+  // The generation bump is the half that is easy to miss, and dropping it is a real
+  // defect rather than a tidiness point. `clearPending()` only discards the verifier
+  // waiting for a browser callback; it says nothing to an operation that is already
+  // past its own await — a refresh, a site re-resolution, or a previous callback still
+  // exchanging its code. Those captured an epoch that would still equal `generation`,
+  // so `superseded()` would wave them through and let them land AFTER the new
+  // credential, overwriting the account the user just connected with the previous
+  // one's tokens and site. `disconnect()` has always bumped for exactly this reason;
+  // starting over is the same event seen from the other side.
+  generation += 1
   clearPending()
 
   const { verifier, challenge } = createPkcePair()
