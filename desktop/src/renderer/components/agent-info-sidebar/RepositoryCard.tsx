@@ -53,7 +53,11 @@ export function RepositoryCard({
   const repoColor = getProjectColorMap(Object.keys(repositories ?? {}), repositories)[repoName]
   const hasChanges = gitData?.stats?.isGitRepo && gitData.stats.filesChanged > 0
   const hasCommits = gitData?.commits && gitData.commits.commits.length > 0
-  const resolvedBaseBranch = baseBranch || gitData?.commits?.baseBranch
+  /* The parent branch is only worth a card of its own when it is somewhere else:
+     on the base branch itself, `base -> current` would just say the same name
+     twice, so both the card and the arrow drop out. */
+  const rawBaseBranch = baseBranch || gitData?.commits?.baseBranch
+  const resolvedBaseBranch = rawBaseBranch === gitData?.branch ? undefined : rawBaseBranch
 
   return (
     <div className="bg-surface rounded-xl p-3">
