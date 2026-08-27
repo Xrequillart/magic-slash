@@ -14,6 +14,12 @@ import { useT, type MessageKey } from '../../i18n'
  * - the radius. Square corners are what let the box butt up against the row above and the
  *   row below it. A rounded box between two square-edged lines of code reads as an object
  *   dropped on them, however far into the flow it actually is.
+ *
+ *   ONE caller gets it back, and it is the same argument read backwards rather than an
+ *   exception to it. The agent sidebar's live spec is PROSE: there is no square-edged row
+ *   above or below for the box to meet, so square corners there read as a box that forgot
+ *   its radius rather than as part of the document. `spec` on the props below is what asks
+ *   for it, and `rounded-lg` is what the rest of the app spells a raised surface with.
  * - the vertical margin. There is no gap to put between the box and the lines it is
  *   about — the lines part by exactly its height and nothing else.
  *
@@ -71,6 +77,12 @@ interface InlinePanelProps {
    * there is already the right answer.
    */
   width?: number
+  /**
+   * Whether this box is the live spec's rather than a review's. See `spec` on `CommentCard`'s
+   * own props for what it means and why one flag drives both of the things it changes; here
+   * it buys the radius alone.
+   */
+  spec?: boolean
   children: React.ReactNode
 }
 
@@ -92,7 +104,7 @@ interface InlinePanelProps {
  * how a reader selects the next passage they want to write about — throwing away a
  * half-written comment for it is the behaviour GitHub does not have either.
  */
-function InlinePanel({ panelRef, onEscape, onKeyDown, width, children }: InlinePanelProps) {
+function InlinePanel({ panelRef, onEscape, onKeyDown, width, spec, children }: InlinePanelProps) {
   /**
    * A passive effect, unlike the layout one that placed the floating card: there is nothing
    * to measure before painting, and the node is already in the flow by the time this runs.
@@ -133,7 +145,7 @@ function InlinePanel({ panelRef, onEscape, onKeyDown, width, children }: InlineP
          `useInlineCommentHost` for why the host has to. A reader has to be able to select
          what they have written; what must stay unselectable is the gap AROUND the card
          inside the code, which the host still covers. */
-      className={`${CARD} ${width === undefined ? 'w-full' : ''} select-text focus-visible:outline-none`}
+      className={`${CARD} ${spec ? 'rounded-lg' : ''} ${width === undefined ? 'w-full' : ''} select-text focus-visible:outline-none`}
     >
       {children}
     </div>
@@ -232,6 +244,29 @@ interface Props {
   host: HTMLElement
   /** How wide the box should be, for the code slab. See `InlinePanel`'s own prop. */
   width?: number
+  /**
+   * Whether this card belongs to the agent sidebar's live spec rather than to a review.
+   *
+   * ONE flag for two changes, because they are one fact about where the card is: the spec's
+   * card sits in prose, a few lines under the passage it is about, in a 720px rail that shows
+   * the highlighted passage AT THE SAME TIME.
+   *
+   * - It draws no `Quote`. Echoing the passage inside the card is what a review needs, where
+   *   forty files are stacked in a scroller and the lines a comment was about may be far off
+   *   screen by the time it is read. Beside the highlight it is a second copy of a sentence
+   *   the reader can already see, and in a narrow rail it is the copy that costs the room.
+   * - It gets the radius back. See the `CARD` docblock above: square corners are for meeting
+   *   square-edged rows of code, and prose has none to meet.
+   *
+   * The LABEL stays either way — it names the kind of anchor, which is the one thing the
+   * highlight does not say — and so does everything the quote is read for besides drawing it:
+   * `commentLabel` still discriminates on it, and the composer's prompt still asks about a
+   * passage rather than about lines. Hiding the echo changes what is painted and nothing else.
+   *
+   * Named after the caller, like `commentable="spec"` on `FileContentRenderer` that this
+   * travels down from, and false by default so a review card keeps what it had.
+   */
+  spec?: boolean
   onSave: (body: string) => void
   onDelete: () => void
   /**
@@ -268,7 +303,7 @@ interface Props {
  * always on screen — being read, or being rewritten. `onClose` is what tells the two callers
  * apart; see its own comment.
  */
-export default function CommentCard({ comment, range, quote, host, width, onSave, onDelete, onClose }: Props) {
+export default function CommentCard({ comment, range, quote, host, width, spec, onSave, onDelete, onClose }: Props) {
   const t = useT()
   /**
    * The quote, read ONCE: a stored comment's own, else the prop, which is the new-comment
@@ -356,7 +391,7 @@ export default function CommentCard({ comment, range, quote, host, width, onSave
   }
 
   return createPortal(
-    <InlinePanel panelRef={panelRef} onEscape={dismiss} onKeyDown={handleKeyDown} width={width}>
+    <InlinePanel panelRef={panelRef} onEscape={dismiss} onKeyDown={handleKeyDown} width={width} spec={spec}>
       {/* The marker, repeated inside the thing it marks.
           The SAME icon the gutter pill draws — lucide's `message-square`, which CodeView has to
           reproduce as a CSS mask because a pseudo-element cannot hold a React element — and the
@@ -380,7 +415,10 @@ export default function CommentCard({ comment, range, quote, host, width, onSave
           than the row it is spliced into. */}
       <div className="flex flex-col gap-2 min-w-0 flex-1">
         <span className="text-[11px] font-medium text-text-secondary">{t(label.key, label.vars)}</span>
-        <Quote quote={shownQuote} />
+        {/* Drawn for a review, not for the spec — `spec` on the props carries the whole of why.
+            The quote itself is still READ above it: it is what names the card and what shapes
+            the composer's prompt, so this is the one of its three uses that goes. */}
+        {!spec && <Quote quote={shownQuote} />}
 
         {editing ? (
           <>

@@ -480,6 +480,10 @@ function FileContentRenderer({ repoPath, filePath, status, refreshToken, notFoun
         repoPath={repoPath}
         filePath={filePath}
         fingerprint={fingerprint}
+        /* The negation of `commentsDiff` and not a second equality against `'spec'`: the prop
+           is a union of exactly two truthy values, and reading it once as "the diff one" keeps
+           the two call sites below from ever disagreeing about what the other one is. */
+        spec={!commentsDiff}
       />
     )
   }

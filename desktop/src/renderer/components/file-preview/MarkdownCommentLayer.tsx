@@ -49,6 +49,21 @@ interface Props {
   repoPath: string
   filePath: string
   fingerprint: string
+  /**
+   * Whether this layer is the agent sidebar's live spec rather than a review's rendered file.
+   *
+   * Handed straight to every card and read nowhere else here: what it changes is what a CARD
+   * paints, and this component's own job — capturing a passage, relocating it after a rewrite,
+   * placing a host — is the same either way. See `CommentCard`'s `spec` for the two changes.
+   *
+   * NOT derived from `fingerprint === SPEC_FINGERPRINT`, which would have needed no new prop
+   * at all. That value is a KEY, and a key is the wrong thing to read a presentation decision
+   * off: the two would then be locked together, so a later story that wanted the spec's card
+   * in a review's shape — or a second live document keyed some other way — would have to
+   * change what the store files comments under to do it. A flag says which it is and costs one
+   * boolean, which `memo` above still holds across.
+   */
+  spec?: boolean
 }
 
 /**
@@ -435,7 +450,7 @@ function captureQuote(root: HTMLElement): Capture | null {
  * with no DOM mutation at all, so it cannot, and it follows a reflow without being
  * re-measured. The absolutely positioned overlay is left carrying only the clickable pill.
  */
-export default function MarkdownCommentLayer({ content, repoPath, filePath, fingerprint }: Props) {
+export default function MarkdownCommentLayer({ content, repoPath, filePath, fingerprint, spec }: Props) {
   const t = useT()
   const proseRef = useRef<HTMLDivElement>(null)
 
@@ -847,6 +862,7 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
                does, which is `onClose`. */
             onDelete={closeComposer}
             onClose={closeComposer}
+            spec={spec}
           />
         )
         : commentsById.get(key) && (
@@ -861,6 +877,7 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
             host={host}
             onSave={body => saveComment(key, body)}
             onDelete={() => deleteComment(key)}
+            spec={spec}
             /* No `onClose`: a stored comment's card is never closed. See the prop. */
           />
         )
