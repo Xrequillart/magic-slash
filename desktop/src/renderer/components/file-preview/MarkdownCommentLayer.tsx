@@ -488,6 +488,10 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
    *
    * A REF rather than state, because the selection that produced it is collapsed by the very
    * next click in the document: by then there is nothing left to read it back out of.
+   *
+   * Written by the selection, and RE-written by `composerBlock` when a re-read has detached it.
+   * The quote is the durable anchor here as it is everywhere else in this file; this range is a
+   * cache of where that quote currently is, which is why replacing it costs nothing.
    */
   const captureRef = useRef<Range | null>(null)
 
@@ -658,6 +662,53 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
   }, [highlightName])
 
   /**
+   * Which block the COMPOSER's card is spliced in after — the one anchor that is not a stored
+   * comment's, and the one that had to be taught the rule the rest of this file already obeys.
+   *
+   * `captureRef` holds the `Range` the selection produced, and reading its `endContainer` is
+   * right for as long as that node is still in the document. On a LIVE spec it stops being:
+   * `/magic:plan` saves, the panel re-reads, `MarkdownView` replaces the prose wholesale, and
+   * the captured range is left over nodes nothing contains. `topBlockOf` then answers null, the
+   * composer gets no entry, and `useInlineCommentHosts` removes its host as orphaned — which
+   * unmounts the card and takes the half-written comment with it. A stored comment never had
+   * this problem because it is never read off a kept range: the relocation pass SEARCHES for
+   * its quote in whatever text is on screen now.
+   *
+   * So the composer is relocated the same way, and only when it has to be. The captured range
+   * is tried first — it is exact, it costs a parent walk, and it is what every render before
+   * the first rewrite gets — and a detached one falls back to `locateQuote` over the current
+   * document, exactly as `quoted` is relocated above. The recovered range is written back to
+   * `captureRef` so the next pass is a parent walk again rather than a second search, and so
+   * that saving files the passage as it now stands.
+   *
+   * A quotation the agent DELETED while it was being composed on finds nothing, and the draft
+   * is lost as before. That is the residual case and it is not one this can fix: there is no
+   * block to splice the card after when the text it is about is gone. What it does buy is that
+   * the far more common rewrite — a section appended somewhere else in the document — no longer
+   * touches the draft at all.
+   *
+   * A `useCallback` because `anchorBlocks` holds it in its dependency array, per this file's
+   * convention that memoising MEANS the identity is read somewhere.
+   */
+  const composerBlock = useCallback((
+    root: HTMLElement,
+    prose: Element,
+    quote: string,
+  ): HTMLElement | null => {
+    const captured = captureRef.current
+    if (captured) {
+      const block = topBlockOf(captured.endContainer, prose)
+      if (block) return block
+    }
+    const rendered = readRendered(root)
+    const at = locateQuote(rendered.text, quote)
+    const range = at ? rangeOf(rendered, at.start, at.end) : null
+    if (!range) return null
+    captureRef.current = range
+    return topBlockOf(range.endContainer, prose)
+  }, [])
+
+  /**
    * Which block each card is spliced in after: one per stored quotation, plus the composer's.
    *
    * `endContainer`, not the range's start, for the reason the diff anchors on its range's LAST
@@ -680,19 +731,20 @@ export default function MarkdownCommentLayer({ content, repoPath, filePath, fing
    * does not change when a re-read moves a passage the comment list did not touch.
    */
   const anchorBlocks = useCallback((): ReadonlyMap<string, HTMLElement> => {
-    const prose = proseRef.current?.firstElementChild
-    if (!prose) return NO_ANCHORS
+    const root = proseRef.current
+    const prose = root?.firstElementChild
+    if (!root || !prose) return NO_ANCHORS
     const anchors = new Map<string, HTMLElement>()
     for (const [id, range] of rangesRef.current) {
       const block = topBlockOf(range.endContainer, prose)
       if (block) anchors.set(id, block)
     }
-    if (composer && captureRef.current) {
-      const block = topBlockOf(captureRef.current.endContainer, prose)
+    if (composer) {
+      const block = composerBlock(root, prose, composer.quote)
       if (block) anchors.set(COMPOSER_KEY, block)
     }
     return anchors
-  }, [composer, content, markers, quoted])
+  }, [composer, composerBlock, content, markers, quoted])
 
   const hosts = useInlineCommentHosts(anchorBlocks)
 
