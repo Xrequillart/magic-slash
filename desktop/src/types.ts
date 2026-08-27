@@ -1431,6 +1431,80 @@ export interface GitHubAuthStatus {
   account?: string
 }
 
+/**
+ * Atlassian account connection — DISPLAY ONLY.
+ *
+ * The credential itself never crosses the bridge: it is encrypted by the OS
+ * keychain and lives only in the main process (`main/jira/token-store.ts`, whose
+ * `StoredJiraCredential` is deliberately NOT declared here). What the renderer gets
+ * is a name to show, a site to name, and two booleans to branch on.
+ *
+ * `unverified` means Atlassian last refused the stored credential — the user
+ * probably revoked the app. It is a MARK, not a deletion (a site outage answers 401
+ * too), and it is what lets Settings offer "Reconnect" instead of a generic error.
+ *
+ * `configured` is about the BUILD, not the user: false when no Atlassian client id
+ * was baked in, in which case the section says so rather than offering a button
+ * that could only fail.
+ */
+export interface JiraAuthStatus {
+  connected: boolean
+  accountName?: string
+  siteUrl?: string
+  unverified?: boolean
+  configured: boolean
+}
+
+/**
+ * Why a connect attempt ended without a credential — DISPLAY ONLY, and the reason
+ * the renderer can say something specific instead of leaving the section unchanged.
+ *
+ * A code rather than a sentence: the message is translated in the renderer, which
+ * is the side that knows the user's language.
+ *
+ * `keychain` is `failed`'s one named special case, and it is named because the
+ * acceptance criteria ask for it: when the OS keychain is unavailable the credential
+ * cannot be encrypted, so nothing is stored and nothing is claimed. Told apart from a
+ * generic failure it is actionable (unlock the keychain, or sign in to the desktop
+ * session properly); folded into `failed` it is "Could not connect", which sends the
+ * user to look for a problem with their Atlassian account instead.
+ */
+export type JiraDisconnectReason = 'cancelled' | 'timeout' | 'failed' | 'keychain'
+
+/**
+ * Why a connect attempt could not even be STARTED — the synchronous half of the
+ * outcome, answered by `jira:connect` itself.
+ *
+ * A code, exactly like `JiraDisconnectReason`, and for exactly the same reason: the
+ * main process authors no user-facing sentence, because it cannot know the user's
+ * language. The renderer maps each code to a message in `i18n/en.ts` / `i18n/fr.ts`,
+ * so every string the user reads goes through both catalogues.
+ *
+ *  • `notConfigured`  — no Atlassian client id in this build (see `jira/constants.ts`)
+ *  • `noCallbackServer` — the loopback status server is not listening, so the browser
+ *    would have nowhere to come back to
+ *  • `browser` — `shell.openExternal` refused; the consent screen never opened
+ *  • `unexpected` — the bridge call itself failed. Synthesised by the RENDERER, never
+ *    sent by the main process: a rejected `ipcRenderer.invoke` carries Electron's own
+ *    wrapper text (`Error invoking remote method …`), and that must never reach a toast.
+ */
+export type JiraConnectFailure = 'notConfigured' | 'noCallbackServer' | 'browser' | 'unexpected'
+
+/**
+ * What `jira:connect` answers.
+ *
+ * `started: true` means the consent screen is on its way and nothing more: the
+ * credential arrives minutes later, through the loopback server, and is announced by
+ * `jira:statusChanged`. The status carried here is therefore still the disconnected
+ * one — it exists so an awaiting caller gets the same object the push will replace.
+ *
+ * A failure RESOLVES rather than rejecting, so the renderer never has to read an
+ * `Error.message` to find out what happened.
+ */
+export type JiraConnectResult =
+  | { started: true; status: JiraAuthStatus }
+  | { started: false; failure: JiraConnectFailure }
+
 export interface PRTemplate {
   exists: boolean
   path?: string

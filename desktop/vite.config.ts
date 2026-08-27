@@ -11,6 +11,12 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const supabaseUrl = env.MAGIC_SLASH_SUPABASE_URL || process.env.MAGIC_SLASH_SUPABASE_URL || ''
   const supabaseAnonKey = env.MAGIC_SLASH_SUPABASE_ANON_KEY || process.env.MAGIC_SLASH_SUPABASE_ANON_KEY || ''
+  // The Atlassian OAuth client id. A PUBLIC identifier (it rides in the authorize
+  // URL the user's own browser opens), which is why it travels the same way as the
+  // Supabase anon key rather than through any secret path. Absent → the desktop
+  // reports `configured: false` and Settings says the feature is not available in
+  // this build, which is the correct state until the Atlassian app is registered.
+  const atlassianClientId = env.MAGIC_SLASH_ATLASSIAN_CLIENT_ID || process.env.MAGIC_SLASH_ATLASSIAN_CLIENT_ID || ''
 
   return {
   plugins: [
@@ -22,13 +28,15 @@ export default defineConfig(({ mode }) => {
           args.startup()
         },
         vite: {
-          // Bundle the Supabase URL + anon key into the MAIN process build.
+          // Bundle the Supabase URL + anon key, and the Atlassian OAuth client id,
+          // into the MAIN process build.
           // The anon key is public/safe to ship (RLS enforces access). When these
           // env vars are absent at build time they resolve to undefined and the
           // cloud client stays disabled — the app still boots and works offline.
           define: {
             'process.env.MAGIC_SLASH_SUPABASE_URL': JSON.stringify(supabaseUrl),
             'process.env.MAGIC_SLASH_SUPABASE_ANON_KEY': JSON.stringify(supabaseAnonKey),
+            'process.env.MAGIC_SLASH_ATLASSIAN_CLIENT_ID': JSON.stringify(atlassianClientId),
           },
           build: {
             outDir: 'dist/main',

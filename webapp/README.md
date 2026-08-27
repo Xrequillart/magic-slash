@@ -15,6 +15,7 @@ grow into the web dashboard (settings, stats).
 ```bash
 cd webapp
 cp .env.local.example .env.local   # fill NEXT_PUBLIC_SUPABASE_ANON_KEY
+                                   # (and the ATLASSIAN_* pair to work on /api/atlassian/*)
 npm install
 npm run dev                        # http://localhost:3000
 ```
@@ -25,6 +26,13 @@ npm run dev                        # http://localhost:3000
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (same as desktop) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Publishable/anon key — RLS-protected, browser-safe |
+| `ATLASSIAN_CLIENT_ID` | Atlassian OAuth 2.0 (3LO) app id, from the [developer console](https://developer.atlassian.com/console). Public value, but kept server-side alongside the secret |
+| `ATLASSIAN_CLIENT_SECRET` | Its client secret. **Server-only — never `NEXT_PUBLIC_*`**, which would inline it into the browser bundle |
+
+`/api/atlassian/token` hard-requires the two Atlassian variables: without both it
+answers `500 { "error": "server_not_configured" }` and the desktop app can never
+complete a connection. They live here rather than in the desktop app because an
+Electron binary on a laptop cannot hold a secret — see `lib/atlassianState.ts`.
 
 ## Routes
 
@@ -53,6 +61,12 @@ npm run dev                        # http://localhost:3000
   platform/arch breakdown, and devices gone quiet
 - `/invite/[token]` — public invitation funnel: preview org → sign up (or sign in)
   → accept the invitation (then a link to download the desktop app)
+- `/api/atlassian/callback` — the redirect URI registered with Atlassian. Validates
+  the desktop's `state` (`<nonce>.<port>`) and bounces the browser to that machine's
+  loopback server. Never exchanges anything; reflects no request parameter
+- `/api/atlassian/token` — the token exchange (`authorization_code` and
+  `refresh_token`), the one place the Atlassian client secret is used. Returns the
+  tokens to the desktop and stores nothing — no Supabase, no log line
 
 ## Supabase surface used
 
@@ -86,5 +100,8 @@ npm run dev                        # http://localhost:3000
 
 - **Root Directory:** `webapp`
 - Framework preset: Next.js
-- Set the two env vars above (Production + Preview)
+- Set the env vars above (Production + Preview). The two Supabase ones are
+  required; the two `ATLASSIAN_*` ones are required only for the desktop app's
+  Atlassian account connection, and `/api/atlassian/token` answers
+  `500 server_not_configured` until both are set
 - Domain: `app.magic-slash.io`

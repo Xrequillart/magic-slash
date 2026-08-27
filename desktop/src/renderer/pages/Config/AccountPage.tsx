@@ -1,5 +1,6 @@
 import { AccountChecklistCard } from './AccountChecklistCard'
 import { CloudAccountSection } from './CloudAccountSection'
+import { JiraAccountSection } from './JiraAccountSection'
 import { ProfileSection } from './ProfileSection'
 
 /**
@@ -16,6 +17,7 @@ export function AccountPage() {
     <div className="flex flex-col gap-8">
       <AccountChecklistCard />
       <CloudAccountSection />
+      <JiraAccountSection />
       <ProfileSection />
     </div>
   )
