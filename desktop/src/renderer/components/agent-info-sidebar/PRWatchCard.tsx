@@ -22,6 +22,7 @@ import { formatTimestamp } from './utils'
 import { useStore } from '../../store'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 import { showToast } from '../Toast'
+import { CopyLinkButton } from '../CopyLinkButton'
 import type { PRCheck, PRComment, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
 import { isPRStatusError } from '../../../types'
 
@@ -303,6 +304,24 @@ const REVIEW_STATE_BADGE: Record<string, keyof typeof REVIEW_BADGE> = {
 const BODY_COLLAPSED = 'max-h-20'
 
 /**
+ * The dashed pill the two actions under a comment are drawn in — the repository
+ * card's GitHub button, verbatim, minus its box: same outline, same hover, one
+ * treatment for "this acts on the thing above", wherever it appears in the sidebar.
+ *
+ * One constant rather than the classes spelled twice, because the pair has to stand
+ * the SAME height and the content was deciding it: `text-[10px]` sets a font size
+ * and no line-height, so the worded button took its height from an inherited line
+ * box while the icon-only one took its from a 12px glyph, and they landed a few
+ * pixels apart. `h-5` takes that decision away from the text — the same reason
+ * `BTN_ICON` and `BTN_COMPACT` in theme/controls.ts state `h-7` outright.
+ *
+ * Height only: the widths differ on purpose, one carrying a label and the other a
+ * square glyph.
+ */
+const COMMENT_ACTION =
+  'flex items-center justify-center h-5 text-[10px] font-semibold text-icon border border-dashed border-border/40 rounded hover:border-ink/50 hover:text-ink hover:bg-ink/5 transition-colors'
+
+/**
  * One comment: who, where, when, and what it says.
  *
  * The body is plain text on purpose (see `PRComment`), bounded by the heights above
@@ -402,19 +421,31 @@ function CommentEntry({ comment, now, t }: { comment: PRComment; now: number; t:
             {t(expanded ? 'agentInfo.pr.commentLess' : 'agentInfo.pr.commentMore')}
           </button>
         )}
-        {/* The repository card's own GitHub button, verbatim: same dashed outline,
-            same wording, same hover — one treatment for "this opens GitHub", wherever
-            it appears in the sidebar. */}
-        <span className="flex-1 flex justify-end">
+        {/* The copy sits immediately left of the GitHub button, both in the shared
+            pill above, so the pair reads as one control with two halves rather than
+            as two buttons that happen to be near. The copy is square — a label there
+            would take its width from the one element that has none to give. */}
+        <span className="flex-1 flex justify-end items-center gap-1">
           {comment.url && (
-            <button
-              onClick={() => window.electronAPI.shell.openExternal(comment.url)}
-              title={t('agentInfo.pr.commentOpen')}
-              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-icon border border-dashed border-border/40 rounded hover:border-ink/50 hover:text-ink hover:bg-ink/5 transition-colors"
-            >
-              <GitHubIcon className="w-3 h-3" />
-              {t('agentInfo.openOnGitHub')}
-            </button>
+            <>
+              <CopyLinkButton
+                url={comment.url}
+                copyLabel={t('agentInfo.pr.commentCopyLink')}
+                copiedLabel={t('agentInfo.pr.commentCopyLinkDone')}
+                className={`${COMMENT_ACTION} w-5`}
+                // `w-3`, matching the GitHub glyph beside it rather than the
+                // component's `w-3.5` default, which is sized for the Tasks page.
+                iconClassName="w-3 h-3"
+              />
+              <button
+                onClick={() => window.electronAPI.shell.openExternal(comment.url)}
+                title={t('agentInfo.pr.commentOpen')}
+                className={`${COMMENT_ACTION} gap-1 px-1.5`}
+              >
+                <GitHubIcon className="w-3 h-3" />
+                {t('agentInfo.openOnGitHub')}
+              </button>
+            </>
           )}
         </span>
       </div>

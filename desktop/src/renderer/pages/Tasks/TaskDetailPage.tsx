@@ -8,7 +8,8 @@ import { WaveLoader } from '../../components/WaveLoader'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import { StatusPill } from '../Dashboard/parts'
 import type { NewTerminalDetail } from '../Terminals'
-import { CopyLinkButton, TaskErrorLines } from './TasksRepoSection'
+import { TaskErrorLines } from './TasksRepoSection'
+import { CopyLinkButton } from '../../components/CopyLinkButton'
 
 /**
  * One issue, given the whole page — the Tasks page's second view, not a panel

@@ -1403,6 +1403,8 @@ export const en = {
   'agentInfo.pr.commentsEmpty': 'Nothing written — approvals only.',
   'agentInfo.pr.commentResolved': 'resolved',
   'agentInfo.pr.commentOpen': 'Open on GitHub',
+  'agentInfo.pr.commentCopyLink': 'Copy the link',
+  'agentInfo.pr.commentCopyLinkDone': 'Link copied',
   'agentInfo.pr.commentMore': 'Show more',
   'agentInfo.pr.commentLess': 'Show less',
   'agentInfo.pr.lastChecked': 'checked {time}',

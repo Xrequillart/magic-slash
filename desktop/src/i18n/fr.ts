@@ -1366,6 +1366,8 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.pr.commentsEmpty': 'Rien d’écrit — que des approbations.',
   'agentInfo.pr.commentResolved': 'résolu',
   'agentInfo.pr.commentOpen': 'Ouvrir sur GitHub',
+  'agentInfo.pr.commentCopyLink': 'Copier le lien',
+  'agentInfo.pr.commentCopyLinkDone': 'Lien copié',
   'agentInfo.pr.commentMore': 'Voir plus',
   'agentInfo.pr.commentLess': 'Voir moins',
   'agentInfo.pr.lastChecked': 'vérifié {time}',
