@@ -91,6 +91,12 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           MAGIC_SLASH_SUPABASE_URL: ${{ secrets.MAGIC_SLASH_SUPABASE_URL }}
           MAGIC_SLASH_SUPABASE_ANON_KEY: ${{ secrets.MAGIC_SLASH_SUPABASE_ANON_KEY }}
+          # Public by the OAuth spec — it appears in the authorize URL — but baked in at
+          # build time by vite's `define`, so a release built without it ships an empty
+          # client id and every user sees "Atlassian sign-in is not available in this
+          # build". No error at build time, so this line is the only thing standing
+          # between the secret existing and the feature working.
+          MAGIC_SLASH_ATLASSIAN_CLIENT_ID: ${{ secrets.MAGIC_SLASH_ATLASSIAN_CLIENT_ID }}
 
   notify:
     name: Post-Release
