@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.85.0] - 2026-08-27
+
+### Added
+
+- **Desktop**: The spec comments are kept when the spec is expanded
+- **Desktop**: The spec comments are handed to its agent from the header
+- **Desktop**: A PR comment's link can be copied from the sidebar
+- **Desktop**: Comment on the live spec in the agent sidebar
+
+### Changed
+
+- **Desktop**: The icon button is given an opaque glyph
+- **Desktop**: Every icon is given an opaque colour
+- **Desktop**: The spec comment card is rounded and its quote echo dropped
+
+### Fixed
+
+- **Desktop**: The comments are kept when the send does not reach a pty
+- **Desktop**: The spec composer is relocated by quote after a rewrite
+
 ## [0.84.1] - 2026-08-27
 
 ### Added
@@ -2483,6 +2503,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.85.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.85.0
 [0.84.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.84.1
 [0.84.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.84.0
 [0.83.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.83.0
