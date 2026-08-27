@@ -342,6 +342,16 @@ const windowApi = {
   maximize: () => ipcRenderer.invoke('window:maximize'),
   close: () => ipcRenderer.invoke('window:close'),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+
+  // Native fullscreen hides the macOS traffic lights; the title bar reads this to
+  // drop the gutter it keeps for them.
+  isFullScreen: (): Promise<boolean> => ipcRenderer.invoke('window:isFullScreen'),
+
+  onFullScreenChanged: (callback: (isFullScreen: boolean) => void) => {
+    const listener = (_event: IpcRendererEvent, isFullScreen: boolean) => callback(isFullScreen)
+    ipcRenderer.on('window:fullscreen-changed', listener)
+    return () => ipcRenderer.removeListener('window:fullscreen-changed', listener)
+  },
 }
 
 // Dialog API

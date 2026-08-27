@@ -3,6 +3,7 @@ import { Archive } from 'lucide-react'
 import { useStore } from '../store'
 import { canChangeAgentType, canCloseAgent, resolveAgentType } from './agent-info-sidebar/utils'
 import { useTerminals } from '../hooks/useTerminals'
+import { useIsFullScreen } from '../hooks/useIsFullScreen'
 import type { AgentType } from '../../types'
 import { useT } from '../i18n'
 
@@ -44,6 +45,7 @@ export function TitleBar() {
   const t = useT()
   const { terminals, activeTerminalId, rightSidebar, leftSidebarVisible, toggleRightSidebar, toggleLeftSidebar, openCloseAgentModal, isSplitMode, splitTerminalId, focusedPane, isWideScreen, splitEnabled, splitActive, toggleSplitActive } = useStore()
   const { updateTerminalMetadata } = useTerminals()
+  const isFullScreen = useIsFullScreen()
   const activeTerminal = terminals.find((t) => t.id === activeTerminalId)
   const splitTerminal = terminals.find((t) => t.id === splitTerminalId)
 
@@ -109,8 +111,11 @@ export function TitleBar() {
     >
       {/* Left side - Traffic lights space + Left sidebar toggle */}
       <div className="flex items-center gap-2">
-        {/* Space for macOS traffic lights */}
-        <div className="w-16 flex-shrink-0" />
+        {/* Space for macOS traffic lights. In native fullscreen they are gone, and
+            the gutter with them — otherwise the toggle sits behind a hole nothing
+            fills. The flex gap disappears with the element, so the button lands
+            flush against the title bar's own padding. */}
+        {!isFullScreen && <div className="w-16 flex-shrink-0" />}
 
         {/* Left sidebar toggle + Split view toggle */}
         <div

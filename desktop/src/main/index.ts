@@ -247,6 +247,15 @@ function createWindow() {
     mainWindow = null
   })
 
+  // In native fullscreen macOS hides the traffic lights, so the gutter the title
+  // bar reserves for them becomes a hole. The renderer closes it, and only the
+  // main process knows when to.
+  const sendFullScreen = (isFullScreen: boolean) => {
+    mainWindow?.webContents.send('window:fullscreen-changed', isFullScreen)
+  }
+  mainWindow.on('enter-full-screen', () => sendFullScreen(true))
+  mainWindow.on('leave-full-screen', () => sendFullScreen(false))
+
 
   // Intercept navigation to external URLs and open them in the default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -355,6 +364,10 @@ function setupHandlers() {
 
   ipcMain.handle('window:isMaximized', () => {
     return mainWindow?.isMaximized() ?? false
+  })
+
+  ipcMain.handle('window:isFullScreen', () => {
+    return mainWindow?.isFullScreen() ?? false
   })
 
   // Shell handlers
