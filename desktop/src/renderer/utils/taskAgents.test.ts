@@ -40,9 +40,24 @@ describe('normalizeTicketId', () => {
   })
 
   it('leaves a Jira key alone', () => {
-    // Nothing on this page is a Jira ticket, but the function must not mangle one
-    // if a repository's agents carry both kinds.
     expect(normalizeTicketId('PER-5030')).toBe('PER-5030')
+  })
+
+  it('folds the two spellings of a Jira key together', () => {
+    // Jira itself is case-insensitive about keys — `per-5030` browses to `PER-5030`
+    // — so an agent whose ticket id was typed in lower case is on the same sprint
+    // ticket, and the marker has to find it.
+    expect(normalizeTicketId('per-5030')).toBe('PER-5030')
+    expect(normalizeTicketId('Per-5030')).toBe('PER-5030')
+    expect(normalizeTicketId(' #per-5030 ')).toBe('PER-5030')
+  })
+
+  it('upper-cases nothing that is not a Jira key', () => {
+    // The rule is deliberately narrow: this function must invent no equivalence it
+    // cannot justify, so a branch name or any other free-text id is left as typed.
+    expect(normalizeTicketId('234')).toBe('234')
+    expect(normalizeTicketId('feature/some-branch')).toBe('feature/some-branch')
+    expect(normalizeTicketId('per-5030-extra')).toBe('per-5030-extra')
   })
 })
 
@@ -62,6 +77,18 @@ describe('buildAgentedIssues', () => {
     ])
 
     expect(index['magic-slash'].has('234')).toBe(true)
+  })
+
+  it('joins an agent to a sprint ticket whatever case its key was written in', () => {
+    // The sprint rows carry Jira's own spelling (`PER-5030`); an agent's ticket id
+    // is whatever /magic:start was handed. Both go through `normalizeTicketId`, so
+    // the two meet — which is what decides whether an In Progress ticket is shown
+    // at all.
+    const index = buildAgentedIssues(KEYS, REPOS, [
+      agent({ ticketId: 'per-5030', repositoryIds: ['r1'] }),
+    ])
+
+    expect(index['magic-slash'].has('PER-5030')).toBe(true)
   })
 
   it('ignores an agent that is on the repository but on no issue', () => {

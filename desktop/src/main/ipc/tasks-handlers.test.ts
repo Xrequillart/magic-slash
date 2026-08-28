@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { Config, PRStatusError, RepositoryConfig, TaskIssueDetail, TasksSnapshot } from '../../types'
+import type {
+  Config,
+  JiraAuthStatus,
+  JiraTaskRepoGroup,
+  PRStatusError,
+  RepositoryConfig,
+  TaskIssueDetail,
+  TasksSnapshot,
+} from '../../types'
+import { AtlassianApiError } from '../jira/atlassian-api'
 
 // Hoisted above the import of the module under test, in the style of
 // config-handlers.test.ts: ipcMain.handle would throw outside Electron, and the
@@ -39,6 +48,30 @@ vi.mock('../github-issues', () => ({
   fetchIssueDetail: (...args: unknown[]) => mockFetchIssueDetail(...args),
 }))
 
+// `jira/connect` is mocked for TWO reasons, and the second is why it cannot simply
+// be left alone. It imports `electron` (`shell`, `safeStorage`), which the root
+// node_modules does not hold — and, through `token-store.ts`, it computes
+// `path.join(CONFIG_DIR, …)` at module load, where `CONFIG_DIR` is `undefined`
+// because this suite replaces the whole config module above. Importing
+// `tasks-handlers.ts` would therefore throw before a single test ran.
+const mockJiraStatus = vi.fn<() => JiraAuthStatus>()
+const mockWithFreshAccessToken = vi.fn<() => Promise<{ accessToken: string; cloudId: string } | null>>()
+const mockReportUnauthorized = vi.fn(async () => {})
+vi.mock('../jira/connect', () => ({
+  getStatus: () => mockJiraStatus(),
+  withFreshAccessToken: () => mockWithFreshAccessToken(),
+  reportUnauthorized: () => mockReportUnauthorized(),
+}))
+
+// Only the one CALL is replaced. `AtlassianApiError` is left real on purpose: the
+// failure ladder narrows on `instanceof` and on `.status`, so a stand-in class
+// would test the stand-in.
+const mockFetchSprintIssues = vi.fn()
+vi.mock('../jira/atlassian-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../jira/atlassian-api')>()),
+  fetchSprintIssues: (...args: unknown[]) => mockFetchSprintIssues(...args),
+}))
+
 import { setupTasksHandlers } from './tasks-handlers'
 
 function repo(overrides: Partial<RepositoryConfig> = {}): RepositoryConfig {
@@ -48,6 +81,29 @@ function repo(overrides: Partial<RepositoryConfig> = {}): RepositoryConfig {
 /** A repo the ladder resolves to `github`: an ordinary normalized GitHub remote. */
 function githubRepo(name: string, overrides: Partial<RepositoryConfig> = {}): RepositoryConfig {
   return repo({ name, remoteUrl: `https://github.com/acme/${name}`, ...overrides })
+}
+
+/** A repo the ladder resolves to `jira`, with the project key the query needs. */
+function jiraRepo(name: string, overrides: Partial<RepositoryConfig> = {}): RepositoryConfig {
+  return repo({ name, plan: { tracker: 'jira' }, jira: { projectKey: 'PROJ' }, ...overrides })
+}
+
+/** Jira's own issue shape, as `/rest/api/3/search/jql` returns it. */
+function sprintIssue(key: string, category = 'new', name = 'To Do') {
+  return {
+    key,
+    fields: {
+      summary: `Ticket ${key}`,
+      created: '2026-08-01T10:00:00.000+0200',
+      status: { name, statusCategory: { key: category } },
+    },
+  }
+}
+
+/** The Jira group of one repository, narrowed out of the snapshot. */
+function jiraGroupOf(snapshot: TasksSnapshot, configKey: string): JiraTaskRepoGroup | undefined {
+  const group = snapshot.groups.find((candidate) => candidate.configKey === configKey)
+  return group?.tracker === 'jira' ? group : undefined
 }
 
 function withRepos(repositories: Record<string, RepositoryConfig>): void {
@@ -80,15 +136,36 @@ function detail(overrides: Partial<TaskIssueDetail> = {}): TaskIssueDetail {
   return { body: 'the body', state: 'OPEN', assignees: [], commentCount: 0, ...overrides }
 }
 
+/**
+ * The premise every suite below starts from: no handlers registered, a usable GitHub
+ * token, both reads answering empty, and NO Atlassian credential.
+ *
+ * Hoisted to the file so each `describe` states only what makes it different. Vitest
+ * runs the outer hook first, so an inner `mockReturnValue` overrides the default
+ * rather than fighting it — and a mock added to the module above is reset in one
+ * place instead of three.
+ */
+beforeEach(() => {
+  handlers.clear()
+  mockReadConfig.mockReset()
+  mockGetGitHubToken.mockReset()
+  mockGetGitHubToken.mockReturnValue('gho_testtoken')
+  mockFetchOpenIssues.mockReset()
+  mockFetchOpenIssues.mockResolvedValue({ issues: [], totalOpen: 0 })
+  mockFetchIssueDetail.mockReset()
+  // Disconnected by default: the GitHub tests must not depend on an Atlassian
+  // credential existing, and a Jira test that wants one says so.
+  mockJiraStatus.mockReset()
+  mockJiraStatus.mockReturnValue({ connected: false, configured: true })
+  mockWithFreshAccessToken.mockReset()
+  mockWithFreshAccessToken.mockResolvedValue({ accessToken: 'atl-access', cloudId: 'cloud-1' })
+  mockReportUnauthorized.mockReset()
+  mockFetchSprintIssues.mockReset()
+  mockFetchSprintIssues.mockResolvedValue({ issues: [], nextPageToken: null })
+})
+
 describe('tasks:listOpenIssues', () => {
   beforeEach(() => {
-    handlers.clear()
-    mockReadConfig.mockReset()
-    mockGetGitHubToken.mockReset()
-    mockGetGitHubToken.mockReturnValue('gho_testtoken')
-    mockFetchOpenIssues.mockReset()
-    mockFetchOpenIssues.mockResolvedValue({ issues: [], totalOpen: 0 })
-    mockFetchIssueDetail.mockReset()
     mockFetchIssueDetail.mockResolvedValue({ body: '', state: 'OPEN', assignees: [], commentCount: 0 })
   })
 
@@ -101,26 +178,25 @@ describe('tasks:listOpenIssues', () => {
 
     const snapshot = await listOpenIssues()()
 
-    expect(snapshot.githubConnected).toBe(true)
+    expect(snapshot.connected.github).toBe(true)
     expect(snapshot.groups.map((g) => g.configKey).sort()).toEqual(['api', 'web'])
     // The owner and the repo are parsed here, not by the query.
     expect(mockFetchOpenIssues).toHaveBeenCalledWith('acme', 'api')
     // The page cap is a cap: the total the repository reported has to survive the trip.
-    expect(snapshot.groups[0].totalOpen).toBe(214)
+    const group = snapshot.groups[0]
+    expect(group.tracker === 'github' && group.totalOpen).toBe(214)
   })
 
-  // Acceptance criterion 2: "nothing open" and "tracked somewhere else" are
-  // different statements, so a Jira repo gets no group rather than an empty one.
-  it('shows no group for a repository tracked in Jira', async () => {
-    withRepos({
-      api: githubRepo('api'),
-      billing: repo({ name: 'billing', plan: { tracker: 'jira' }, jira: { projectKey: 'PROJ' } }),
-    })
+  // A Jira repository no longer sits this page out — it gets a group of its own,
+  // read from Jira. What must not happen is its being queried on api.github.com.
+  it('does not send a Jira-tracked repository to GitHub', async () => {
+    withRepos({ api: githubRepo('api'), billing: jiraRepo('billing') })
 
     const snapshot = await listOpenIssues()()
 
-    expect(snapshot.groups.map((g) => g.configKey)).toEqual(['api'])
+    expect(snapshot.groups.map((g) => g.tracker).sort()).toEqual(['github', 'jira'])
     expect(mockFetchOpenIssues).toHaveBeenCalledTimes(1)
+    expect(mockFetchOpenIssues).toHaveBeenCalledWith('acme', 'api')
   })
 
   // `ask` is a real answer, and one this page cannot put to anybody: both sides are
@@ -186,9 +262,8 @@ describe('tasks:listOpenIssues', () => {
     mockGetGitHubToken.mockReturnValue(null)
     withRepos({ api: githubRepo('api') })
 
-    expect(await listOpenIssues()()).toEqual({ githubConnected: false, groups: [] })
+    expect(await listOpenIssues()()).toEqual({ connected: { github: false, jira: false }, groups: [] })
     expect(mockFetchOpenIssues).not.toHaveBeenCalled()
-    expect(mockReadConfig).not.toHaveBeenCalled()
   })
 
   it('keeps a failing repository from taking the others down with it', async () => {
@@ -230,7 +305,7 @@ describe('tasks:listOpenIssues', () => {
 
     const snapshot = await listOpenIssues()()
 
-    expect(snapshot.githubConnected).toBe(true)
+    expect(snapshot.connected.github).toBe(true)
     expect(snapshot.groups).toEqual([])
     expect(mockFetchOpenIssues).not.toHaveBeenCalled()
   })
@@ -246,22 +321,235 @@ describe('tasks:listOpenIssues', () => {
 
     const snapshot = await listOpenIssues()()
 
-    expect(snapshot.githubConnected).toBe(true)
+    expect(snapshot.connected.github).toBe(true)
     expect(snapshot.groups.find((g) => g.configKey === 'web')?.error)
       .toEqual({ error: 'network', message: 'boom' })
     expect(snapshot.groups.find((g) => g.configKey === 'api')?.issues).toEqual([])
   })
 })
 
+describe('tasks:listOpenIssues — the Jira half', () => {
+  beforeEach(() => {
+    // The two premises this suite adds to the file's: an Atlassian account is
+    // connected, unless the test is about not being, and the sprint has a ticket in
+    // it, unless the test is about it not having one.
+    mockJiraStatus.mockReturnValue({
+      connected: true,
+      configured: true,
+      accountName: 'Ada',
+      siteUrl: 'https://acme.atlassian.net',
+    })
+    mockFetchSprintIssues.mockResolvedValue({ issues: [sprintIssue('PROJ-1')], nextPageToken: null })
+  })
+
+  // Acceptance criterion 1.
+  it('lists the active sprint of every Jira-tracked repository', async () => {
+    withRepos({ billing: jiraRepo('billing'), infra: jiraRepo('infra', { jira: { projectKey: 'INFRA' } }) })
+
+    const snapshot = await listOpenIssues()()
+
+    expect(snapshot.groups.map((g) => g.configKey).sort()).toEqual(['billing', 'infra'])
+    // One query per project, resolving the board through `openSprints()` — no board
+    // id, and nothing on the `/rest/agile` surface the OAuth scope does not cover.
+    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(2)
+    expect(mockFetchSprintIssues.mock.calls[0][1]).toMatchObject({
+      accessToken: 'atl-access',
+      cloudId: 'cloud-1',
+      jql: 'project = "PROJ" AND sprint in openSprints() ORDER BY created DESC',
+    })
+  })
+
+  it('shows the To Do column and hides what is finished', async () => {
+    // In Progress crosses IPC and is narrowed in the renderer, which is the only
+    // side that knows who has an agent on what. `done` never leaves this process.
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchSprintIssues.mockResolvedValue({
+      issues: [
+        sprintIssue('PROJ-1', 'new', 'To Do'),
+        sprintIssue('PROJ-2', 'indeterminate', 'In Progress'),
+        sprintIssue('PROJ-3', 'done', 'Done'),
+      ],
+      nextPageToken: null,
+    })
+
+    const group = jiraGroupOf(await listOpenIssues()(), 'billing')
+
+    expect(group?.issues.map((issue) => issue.key)).toEqual(['PROJ-1', 'PROJ-2'])
+    expect(group?.issues[1].statusCategory).toBe('indeterminate')
+    // The site's own word for the column, not ours: every Atlassian site renames
+    // its statuses, and the reader knows their board by its labels.
+    expect(group?.issues[1].statusName).toBe('In Progress')
+  })
+
+  // Acceptance criterion 5: a board with no sprint running is not an empty backlog.
+  it('says a project has no active sprint, distinctly from having nothing to do', async () => {
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchSprintIssues.mockResolvedValue({ issues: [], nextPageToken: null })
+
+    const group = jiraGroupOf(await listOpenIssues()(), 'billing')
+
+    expect(group?.error?.error).toBe('no-active-sprint')
+    expect(group?.issues).toEqual([])
+  })
+
+  it('reports a sprint whose only tickets are finished as having nothing to do', async () => {
+    // The same query, a non-empty answer: the sprint IS running. No error, and an
+    // empty list — which the card words as "nothing to do".
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchSprintIssues.mockResolvedValue({ issues: [sprintIssue('PROJ-9', 'done', 'Done')], nextPageToken: null })
+
+    const group = jiraGroupOf(await listOpenIssues()(), 'billing')
+
+    expect(group?.error).toBeUndefined()
+    expect(group?.issues).toEqual([])
+  })
+
+  // Acceptance criterion 4.
+  it('gives every Jira repository a not-connected group when no account is connected', async () => {
+    withRepos({ billing: jiraRepo('billing'), infra: jiraRepo('infra') })
+    mockJiraStatus.mockReturnValue({ connected: false, configured: true })
+
+    const snapshot = await listOpenIssues()()
+
+    expect(snapshot.connected.jira).toBe(false)
+    expect(snapshot.groups.map((g) => g.error?.error)).toEqual(['not-connected', 'not-connected'])
+    // Said per group rather than once for the page, so each card can carry the
+    // route to Settings — and never as an empty card, which reads as "no tickets".
+    expect(mockFetchSprintIssues).not.toHaveBeenCalled()
+  })
+
+  it('treats a credential Atlassian has refused as not connected', async () => {
+    // `unverified` is a mark, not a deletion. Reading anyway would earn a 401 per
+    // repository and tell the user nothing Settings is not already telling them.
+    withRepos({ billing: jiraRepo('billing') })
+    mockJiraStatus.mockReturnValue({ connected: true, configured: true, unverified: true })
+
+    const snapshot = await listOpenIssues()()
+
+    expect(snapshot.connected.jira).toBe(false)
+    expect(jiraGroupOf(snapshot, 'billing')?.error?.error).toBe('not-connected')
+    expect(mockFetchSprintIssues).not.toHaveBeenCalled()
+  })
+
+  // The distinction the plan insists on: `withFreshAccessToken()` answers null for a
+  // missing credential, a failed refresh AND a dead keychain, so translating it into
+  // "reconnect" would tell someone with a perfectly good credential to reconnect.
+  it('does not read a null access token as a missing account', async () => {
+    withRepos({ billing: jiraRepo('billing') })
+    mockWithFreshAccessToken.mockResolvedValue(null)
+
+    const snapshot = await listOpenIssues()()
+
+    expect(jiraGroupOf(snapshot, 'billing')?.error?.error).toBe('offline')
+    // The credential IS there; the page must not contradict Settings about it.
+    expect(snapshot.connected.jira).toBe(true)
+  })
+
+  it('skips a Jira repository with no project key', async () => {
+    // The one value the query cannot be built without. Qualified on it rather than
+    // on the site host, which no request is ever addressed to.
+    withRepos({ billing: repo({ name: 'billing', plan: { tracker: 'jira' } }) })
+
+    expect((await listOpenIssues()()).groups).toEqual([])
+    expect(mockFetchSprintIssues).not.toHaveBeenCalled()
+  })
+
+  // Acceptance criterion 6.
+  it('confines a failing project to its own group', async () => {
+    withRepos({ billing: jiraRepo('billing'), infra: jiraRepo('infra', { jira: { projectKey: 'INFRA' } }) })
+    mockFetchSprintIssues.mockImplementation(async (_deps: unknown, args: { jql: string }) => {
+      if (args.jql.includes('INFRA')) throw new AtlassianApiError('Jira sprint search', 400)
+      return { issues: [sprintIssue('PROJ-1')], nextPageToken: null }
+    })
+
+    const snapshot = await listOpenIssues()()
+
+    // 400 is the likeliest Jira failure here: a project key that does not exist, or
+    // one with no Jira Software in it, where `sprint` is not a field.
+    expect(jiraGroupOf(snapshot, 'infra')?.error?.error).toBe('invalid-query')
+    expect(jiraGroupOf(snapshot, 'billing')?.issues.map((i) => i.key)).toEqual(['PROJ-1'])
+  })
+
+  it('captures a throw that is not an Atlassian failure at all', async () => {
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchSprintIssues.mockRejectedValue(new Error('boom'))
+
+    expect(jiraGroupOf(await listOpenIssues()(), 'billing')?.error)
+      .toEqual({ error: 'server-error', message: 'boom' })
+  })
+
+  it('funnels a 401 through the one place allowed to conclude anything from it', async () => {
+    // A 401 has three causes and only one is a revocation; `reportUnauthorized` is
+    // what rules out the repairable one (a cloud id that moved) before marking.
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchSprintIssues.mockRejectedValue(new AtlassianApiError('Jira sprint search', 401))
+
+    expect(jiraGroupOf(await listOpenIssues()(), 'billing')?.error?.error).toBe('unauthorized')
+    expect(mockReportUnauthorized).toHaveBeenCalledTimes(1)
+  })
+
+  it('marks a sprint that did not fit in one page', async () => {
+    // Jira's search returns no `total`, so "50 of 214" cannot be said — only that
+    // there is another page.
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchSprintIssues.mockResolvedValue({ issues: [sprintIssue('PROJ-1')], nextPageToken: 'next' })
+
+    expect(jiraGroupOf(await listOpenIssues()(), 'billing')?.truncated).toBe(true)
+  })
+
+  it('builds the browse link from the repository’s own site, then the credential’s', async () => {
+    withRepos({
+      // Configured as a browse BASE, which is how the settings form stores it.
+      billing: jiraRepo('billing', { jira: { projectKey: 'PROJ', siteUrl: 'https://own.atlassian.net/browse/' } }),
+      infra: jiraRepo('infra'),
+    })
+    const snapshot = await listOpenIssues()()
+
+    expect(jiraGroupOf(snapshot, 'billing')?.issues[0].url).toBe('https://own.atlassian.net/browse/PROJ-1')
+    // No site on the repository: the connected account's own site is the fallback,
+    // because `url` drives the row's Open and Copy buttons.
+    expect(jiraGroupOf(snapshot, 'infra')?.issues[0].url).toBe('https://acme.atlassian.net/browse/PROJ-1')
+  })
+
+  // Acceptance criterion 3: the page no longer short-circuits on the GitHub token.
+  it('shows a Jira-only user their sprint with no GitHub CLI at all', async () => {
+    mockGetGitHubToken.mockReturnValue(null)
+    withRepos({ billing: jiraRepo('billing') })
+
+    const snapshot = await listOpenIssues()()
+
+    expect(snapshot.connected).toEqual({ github: false, jira: true })
+    expect(jiraGroupOf(snapshot, 'billing')?.issues.map((i) => i.key)).toEqual(['PROJ-1'])
+  })
+
+  it('reads a project at most once per refresh floor', async () => {
+    // The page has no poller, but Reload does not rate-limit itself: opening and
+    // closing the modal three times must not be three round trips per project.
+    withRepos({ billing: jiraRepo('billing') })
+    const handler = listOpenIssues()
+
+    await handler()
+    await handler()
+
+    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not cache a failure', async () => {
+    // A failure is usually something the reader is in the middle of fixing, and a
+    // Reload answering from a stale one would look like the fix had not worked.
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchSprintIssues.mockRejectedValue(new AtlassianApiError('Jira sprint search', 500))
+    const handler = listOpenIssues()
+
+    await handler()
+    await handler()
+
+    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe('tasks:getIssueDetail', () => {
   beforeEach(() => {
-    handlers.clear()
-    mockReadConfig.mockReset()
-    mockGetGitHubToken.mockReset()
-    mockGetGitHubToken.mockReturnValue('gho_testtoken')
-    mockFetchOpenIssues.mockReset()
-    mockFetchOpenIssues.mockResolvedValue({ issues: [], totalOpen: 0 })
-    mockFetchIssueDetail.mockReset()
     mockFetchIssueDetail.mockResolvedValue(detail())
   })
 

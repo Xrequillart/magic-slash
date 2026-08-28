@@ -1,14 +1,18 @@
-import type { RepositoryConfig, TaskIssue, TaskRepoGroup } from '../../types'
+import type { JiraTaskIssue, JiraTaskRepoGroup, RepositoryConfig, TaskRepoGroup } from '../../types'
 import { getProjectColorMap } from './projectColors'
+import { NO_AGENTS, normalizeTicketId } from './taskAgents'
 
 /**
  * One repository's card on the Tasks page: the group the main process read, plus
- * the two things only the renderer can decide — what colour its dot is, and what
- * order its issues are in.
+ * the three things only the renderer can decide — what colour its dot is, what
+ * order its issues are in, and (for a Jira sprint) which of its In Progress tickets
+ * somebody is actually on.
+ *
+ * An intersection rather than an `extends`, because `TaskRepoGroup` is a union: the
+ * `color` distributes over both members, so a row narrows on `tracker` exactly as
+ * the group it was built from does.
  */
-export interface TaskRow extends TaskRepoGroup {
-  color: string
-}
+export type TaskRow = TaskRepoGroup & { color: string }
 
 /**
  * Newest first — most recently OPENED first — on the field the query already
@@ -18,7 +22,7 @@ export interface TaskRow extends TaskRepoGroup {
  * the ordering has to survive anything the main process concatenates or retries,
  * and an issue with no `createdAt` must sink rather than jump to the top.
  */
-export function sortIssues(issues: TaskIssue[]): TaskIssue[] {
+export function sortIssues<T extends { createdAt: string }>(issues: T[]): T[] {
   // A plain relational compare, not `localeCompare`: these are ISO-8601 strings,
   // which already sort lexicographically, and a collator is an order of magnitude
   // dearer per comparison for an answer that cannot differ.
@@ -27,6 +31,27 @@ export function sortIssues(issues: TaskIssue[]): TaskIssue[] {
     const right = b.createdAt || ''
     return right < left ? -1 : right > left ? 1 : 0
   })
+}
+
+/**
+ * The sprint tickets this repository's card actually shows.
+ *
+ * The main process sends the whole sprint minus what is finished, because only
+ * THIS side can apply the rule the ticket asks for: an In Progress ticket appears
+ * only when a Magic Slash agent — the reader's own, or a teammate's — is on it. The
+ * agent roster is cloud and store state that never crosses the bridge, so the
+ * filter cannot live where the read does.
+ *
+ * The rule is not "hide what nobody is doing". A sprint's In Progress column is
+ * everyone's work in flight, and listing all of it on a page whose one affirmative
+ * action is "start an agent" would offer to duplicate work already under way. What
+ * is left is what the page can honestly propose: the To Do column, plus the tickets
+ * an agent is on — those marked as taken.
+ */
+function visibleIssues(group: JiraTaskRepoGroup, agented: ReadonlySet<string>): JiraTaskIssue[] {
+  return group.issues.filter(
+    (issue) => issue.statusCategory !== 'indeterminate' || agented.has(normalizeTicketId(issue.key)),
+  )
 }
 
 /**
@@ -48,14 +73,26 @@ export function sortIssues(issues: TaskIssue[]): TaskIssue[] {
 export function buildTaskRows(
   groups: TaskRepoGroup[],
   repositories: Record<string, RepositoryConfig>,
+  /**
+   * Which ticket ids already have an agent, per repository config key — the index
+   * `buildAgentedIssues` produces. Required rather than optional: a caller that
+   * forgot it would silently list every In Progress ticket in the sprint, which is
+   * the one outcome `visibleIssues` exists to prevent.
+   */
+  agentedIssues: Record<string, ReadonlySet<string>>,
 ): TaskRow[] {
   const colorMap = getProjectColorMap(Object.keys(repositories), repositories)
 
-  const rows: TaskRow[] = groups.map((group) => ({
-    ...group,
-    color: colorMap[group.configKey],
-    issues: sortIssues(group.issues),
-  }))
+  // One arm per tracker, and they cannot be folded into one: `group` is a union, and
+  // TypeScript narrows it — and therefore `sortIssues`' element type — only inside a
+  // branch. Folded, the sort would widen to `(TaskIssue | JiraTaskIssue)[]` and fit
+  // neither member. Only the issues differ, so only the issues are written twice.
+  const rows: TaskRow[] = groups.map((group) => {
+    const color = colorMap[group.configKey]
+    return group.tracker === 'jira'
+      ? { ...group, color, issues: sortIssues(visibleIssues(group, agentedIssues[group.configKey] ?? NO_AGENTS)) }
+      : { ...group, color, issues: sortIssues(group.issues) }
+  })
 
   rows.sort((a, b) =>
     Number(!!b.error) - Number(!!a.error)
@@ -66,21 +103,28 @@ export function buildTaskRows(
   return rows
 }
 
-/** How many open issues the page is showing, across every repository that answered. */
+/** How many tickets the page is showing, across every repository that answered. */
 export function countOpenIssues(rows: TaskRow[]): number {
   return rows.reduce((total, row) => total + row.issues.length, 0)
 }
 
 /**
- * How many open issues those repositories actually HAVE.
+ * How many tickets those repositories actually HAVE.
  *
  * Different from `countOpenIssues` the moment any repository hit the query's
  * `first: 50` cap. The page shows both, so the header can say "showing 50 of 214"
  * rather than presenting a capped page as the whole backlog.
  *
  * A group with no `totalOpen` — one that failed, or one read before the count was
- * asked for — contributes what it could show, never less.
+ * asked for — contributes what it could show, never less. EVERY Jira group is in
+ * that position and always will be: `/rest/api/3/search/jql` returns no `total` at
+ * all (see `JiraTaskRepoGroup`), so a truncated sprint contributes the page it
+ * could read. The number is therefore a floor rather than a census, which is the
+ * same claim it already made for a failed GitHub group.
  */
 export function countTotalOpen(rows: TaskRow[]): number {
-  return rows.reduce((total, row) => total + (row.totalOpen ?? row.issues.length), 0)
+  return rows.reduce(
+    (total, row) => total + (row.tracker === 'github' ? row.totalOpen ?? row.issues.length : row.issues.length),
+    0,
+  )
 }

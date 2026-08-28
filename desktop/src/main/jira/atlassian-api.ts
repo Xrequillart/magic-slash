@@ -362,3 +362,72 @@ export async function fetchMyself(
     displayName: typeof displayName === 'string' && displayName !== '' ? displayName : accountId,
   }
 }
+
+/**
+ * ONE page of a JQL search — the only Jira READ this feature makes.
+ *
+ * `/rest/api/3/search/jql` rather than `/rest/agile/1.0/board/{id}/sprint`: the
+ * agile surface needs a board id (which nothing in our config holds) and a scope
+ * we do not ask for. `read:jira-work` covers this endpoint and nothing on
+ * `/rest/agile`, so the query says `sprint in openSprints()` and lets Jira resolve
+ * the board itself. See `SCOPES` in `constants.ts`.
+ *
+ * Paginated by TOKEN, not by offset, and with NO `total` in the response: the
+ * caller can learn that there is more (`nextPageToken`), never how much more.
+ *
+ * The issues come back RAW. Shaping them is a decision about values, and it lives
+ * in `sprint-issues.ts`, which is pure and tested for exactly that; this file keeps
+ * only the invariant it exists for — an operation name and a status code, never a
+ * response body, in any error or log.
+ */
+export interface JiraSearchPage {
+  /** The `issues` array verbatim. Mapped by `sprint-issues.ts`. */
+  issues: unknown[]
+  /** Jira's cursor for the next page; null when this page was the last. */
+  nextPageToken: string | null
+}
+
+export async function fetchSprintIssues(
+  deps: AtlassianDeps,
+  args: {
+    accessToken: string
+    cloudId: string
+    jql: string
+    /** The fields to read back. Anything not asked for is not sent, and not billed for. */
+    fields: string[]
+    maxResults: number
+    pageToken?: string
+  },
+): Promise<JiraSearchPage> {
+  const operation = 'Jira sprint search'
+  // Encoded for `fetchMyself`'s reason: the cloudId comes from Atlassian but it
+  // lands in a URL path, so a malformed one must fail as a 404 rather than reshape
+  // the URL.
+  const url = `${deps.apiBaseUrl}/ex/jira/${encodeURIComponent(args.cloudId)}/rest/api/3/search/jql`
+  const response = await send(deps, operation, url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${args.accessToken}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      jql: args.jql,
+      fields: args.fields,
+      maxResults: args.maxResults,
+      ...(args.pageToken ? { nextPageToken: args.pageToken } : {}),
+    }),
+  })
+  const body = await readJson(response, operation)
+  // A body with no `issues` array is not an empty sprint, it is an answer we did
+  // not understand — and reporting it as "nothing to do" would hide a broken read
+  // behind an ordinary-looking empty card.
+  if (!Array.isArray(body.issues)) {
+    throw new AtlassianApiError(`${operation} (unexpected body)`, response.status)
+  }
+  const token = body.nextPageToken
+  return {
+    issues: body.issues,
+    nextPageToken: typeof token === 'string' && token !== '' ? token : null,
+  }
+}

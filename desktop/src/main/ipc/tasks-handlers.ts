@@ -1,24 +1,55 @@
 import { ipcMain } from 'electron'
-import type { PRStatusError, RepositoryConfig, TaskIssueDetail, TaskRepoGroup, TasksSnapshot } from '../../types'
+import type {
+  GitHubTaskRepoGroup,
+  JiraTaskRepoGroup,
+  PRStatusError,
+  RepositoryConfig,
+  TaskIssueDetail,
+  TaskRepoGroup,
+  TasksSnapshot,
+} from '../../types'
 import { isPRStatusError } from '../../types'
-import { resolveGitHubIssuesUrl, resolveTracker } from '../../tracker'
+import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite, resolveTracker } from '../../tracker'
 import { readConfig } from '../config/config'
 import { getGitHubToken } from '../github'
 import { fetchIssueDetail, fetchOpenIssues } from '../github-issues'
+import { fetchSprintIssues, type AtlassianDeps } from '../jira/atlassian-api'
+import { ATLASSIAN_API_BASE_URL, TOKEN_URL } from '../jira/constants'
+import { getStatus as jiraStatus, reportUnauthorized, withFreshAccessToken } from '../jira/connect'
+import {
+  buildSprintJql,
+  classifyUnexpected,
+  mapSprintIssues,
+  SPRINT_FIELDS,
+  SPRINT_PAGE_SIZE,
+} from '../jira/sprint-issues'
 
 /**
- * The Tasks page's one read: the OPEN issues of every configured repository whose
- * RESOLVED tracker is GitHub.
+ * The Tasks page's one read: what is waiting on every configured repository, from
+ * whichever tracker owns its tickets.
+ *
+ * TWO HALVES, and neither is allowed to speak for the other:
+ *  • a repository whose RESOLVED tracker is GitHub contributes its open issues;
+ *  • one that resolves to Jira contributes its project's ACTIVE SPRINT — the To Do
+ *    column, plus the In Progress tickets, which the renderer then narrows to the
+ *    ones an agent is actually on (it is the only side that knows).
  *
  * Resolved, not configured: `plan.tracker` is `ask` on most repositories, and the
  * ladder in `tracker.ts` is what turns that into an answer. A repo that resolves to
- * `jira` — or to `ask`, which a page cannot put to anybody — gets no group at all
- * rather than an empty one, because "no issues here" and "issues are somewhere else"
- * are different statements.
+ * `ask` — a question a page cannot put to anybody — still gets no group at all,
+ * because "no issues here" and "nobody has said where the issues are" are different
+ * statements.
+ *
+ * WHY THE CONNECTION STATE IS PER SOURCE. This handler used to return
+ * `{ githubConnected: false, groups: [] }` before it had even read the config, so a
+ * user whose repositories are all in Jira and who has never installed `gh` was shown
+ * a "GitHub is not connected" wall in place of their sprint. Each half now consults
+ * only its own credential, and a source with nothing tracked on it is never
+ * consulted at all.
  *
  * NO POLLER. The page reads on open and on an explicit reload, and nothing else:
  * a backlog is not a live object the way a PR under review is, and a poll on it
- * would spend GraphQL budget on a page nobody is looking at.
+ * would spend GraphQL and Jira budget on a page nobody is looking at.
  */
 
 /**
@@ -65,36 +96,277 @@ function githubRepos(repositories: Record<string, RepositoryConfig>): GitHubRepo
   return result
 }
 
+interface JiraRepo {
+  configKey: string
+  name: string
+  projectKey: string
+  /** The site the browse links are built on; `''` when the repo declares none. */
+  siteUrl: string
+}
+
+/**
+ * The Jira-tracked repositories that have somewhere to read FROM.
+ *
+ * Qualified on the PROJECT KEY, and on nothing else. The ticket asked for the Jira
+ * site to be checked for an `atlassian.net` host, as `parseOwnerRepo` checks
+ * github.com — but the two are not the same kind of value. `parseOwnerRepo`
+ * extracts the API coordinates from the address, whereas every Jira read is
+ * addressed to `api.atlassian.com/ex/jira/{cloudId}` and the site URL only ever
+ * becomes a browse link. Qualifying on the host would refuse perfectly readable
+ * projects (an Atlassian Cloud custom domain, or a repo that declares a key and no
+ * site at all) and protect against nothing, since no request is built from it.
+ *
+ * The intent behind the ticket's rule is kept: a repository declared Jira without
+ * coordinates must not produce a call. `resolveJiraProject` is the value the query
+ * actually needs, so it is the value the guard is on — the same qualification
+ * /magic:plan makes (skills/magic-plan/references/trackers.md §1).
+ */
+function jiraRepos(repositories: Record<string, RepositoryConfig>): JiraRepo[] {
+  const result: JiraRepo[] = []
+  for (const [configKey, repo] of Object.entries(repositories)) {
+    if (resolveTracker(repo) !== 'jira') continue
+    const projectKey = resolveJiraProject(repo)
+    if (!projectKey) continue
+    result.push({
+      configKey,
+      name: repo.name || configKey,
+      projectKey,
+      siteUrl: resolveJiraSite(repo),
+    })
+  }
+  return result
+}
+
+/**
+ * The transport for the sprint read.
+ *
+ * `connect.ts` binds its own copy for the OAuth legs and does not export it; a
+ * second literal here is three lines against making the credential module's
+ * internals public. `tokenUrl` is never used by this file's one call and is part of
+ * the interface, so it is filled in rather than faked.
+ */
+const atlassianDeps: AtlassianDeps = {
+  fetch: (url, init) => fetch(url, init),
+  tokenUrl: TOKEN_URL,
+  apiBaseUrl: ATLASSIAN_API_BASE_URL,
+}
+
+/**
+ * How long a successful sprint read stands before another one is made.
+ *
+ * The floor `pr-review-watcher/scheduling.ts` puts on its poll
+ * (`MIN_POLL_INTERVAL_MS`), for the same reason and with none of the machinery: the
+ * page has no poller, but its Reload button does not rate-limit itself, and opening
+ * and closing the modal three times must not be three round trips per project.
+ *
+ * ONLY SUCCESSES ARE CACHED. A failure is very often something the reader is in the
+ * middle of fixing — a project key just corrected, an Atlassian account just
+ * connected — and a Reload that answered from a thirty-second-old failure would
+ * look like the fix had not worked.
+ */
+const JIRA_MIN_REFRESH_MS = 30_000
+
+/**
+ * The cache key: the repository AND the project it is currently pointed at.
+ *
+ * Changing a project key in Settings has to invalidate, and it is the one edit a
+ * user makes precisely because the current answer is wrong.
+ *
+ * Joined on `\u0000` — the ESCAPE, never the byte itself, which is the separator
+ * `renderer/utils/taskAgents.ts` already composes keys with. A literal NUL in the
+ * source makes git treat the whole file as binary and grep skip it silently.
+ */
+function sprintKey(repo: JiraRepo): string {
+  return `${repo.configKey}\u0000${repo.projectKey}`
+}
+
+/**
+ * The Jira half of the snapshot, and the memory it keeps between reads.
+ *
+ * A factory rather than module-level maps, so the cache belongs to a HANDLER
+ * REGISTRATION rather than to the process. `setupTasksHandlers()` is called once at
+ * startup, so this changes nothing in production — and it means the state has an
+ * owner, which module-level mutable maps never do.
+ */
+function createSprintReader() {
+  /** One repository's last successful sprint read, and when it was made. */
+  const sprintCache = new Map<string, { at: number; group: JiraTaskRepoGroup }>()
+
+  /**
+   * The reads currently in flight, one entry per repository.
+   *
+   * Shared rather than merely deduplicated over time: two overlapping page opens
+   * (the modal reopened while the first read is still out) would otherwise send two
+   * identical queries per project, and — with an expired access token — race each
+   * other through `withFreshAccessToken`. That refresh is single-flighted on its own
+   * side, so this is about the Jira call, not the credential.
+   */
+  const sprintInFlight = new Map<string, Promise<JiraTaskRepoGroup>>()
+
+  /**
+   * One repository's active sprint, as a group.
+   *
+   * Never throws: every failure — including one from our own code — comes back as a
+   * named error on this repository's own card, so the `Promise.all` below can never
+   * reject the whole page over one bad project key (acceptance criterion 6).
+   */
+  async function readSprintGroup(repo: JiraRepo, credentialSiteUrl: string): Promise<JiraTaskRepoGroup> {
+    const base = { tracker: 'jira' as const, configKey: repo.configKey, name: repo.name }
+
+    const key = sprintKey(repo)
+    const cached = sprintCache.get(key)
+    if (cached && Date.now() - cached.at < JIRA_MIN_REFRESH_MS) return cached.group
+    const running = sprintInFlight.get(key)
+    if (running) return running
+
+    const attempt = (async (): Promise<JiraTaskRepoGroup> => {
+      // Asked for AFTER the connection check the caller made, and separately, because
+      // `withFreshAccessToken()` answers null for three different situations and only
+      // one of them is "reconnect": a missing credential, a refresh that failed, and a
+      // keychain that has gone away all return the same null (see its doc in
+      // connect.ts). The caller has already established that a verified credential is
+      // stored, so a null HERE is the machine or the network, not the user's account —
+      // and telling someone to reconnect an account that is fine is the failure this
+      // split exists to avoid.
+      const fresh = await withFreshAccessToken()
+      if (!fresh) {
+        return { ...base, issues: [], error: { error: 'offline', message: 'No usable Atlassian access token for this read.' } }
+      }
+
+      try {
+        const page = await fetchSprintIssues(atlassianDeps, {
+          accessToken: fresh.accessToken,
+          cloudId: fresh.cloudId,
+          jql: buildSprintJql(repo.projectKey),
+          fields: SPRINT_FIELDS,
+          maxResults: SPRINT_PAGE_SIZE,
+        })
+
+        // An empty answer to a query with no status filter is the project having no
+        // sprint in progress at all — a statement of its own, and not the same as a
+        // sprint whose To Do column happens to be empty (acceptance criterion 5).
+        if (page.issues.length === 0) {
+          return { ...base, issues: [], error: { error: 'no-active-sprint', message: `No open sprint in ${repo.projectKey}.` } }
+        }
+
+        const group: JiraTaskRepoGroup = {
+          ...base,
+          issues: mapSprintIssues(page.issues, repo.siteUrl || credentialSiteUrl),
+          ...(page.nextPageToken ? { truncated: true } : {}),
+        }
+        sprintCache.set(key, { at: Date.now(), group })
+        return group
+      } catch (error) {
+        return { ...base, issues: [], error: classifyUnexpected(error) }
+      }
+    })().finally(() => {
+      // Identity-checked for `withFreshAccessToken`'s reason: by the time this settles
+      // a later caller may already have started its own attempt, and clearing the slot
+      // blindly would let a third caller start a duplicate.
+      if (sprintInFlight.get(key) === attempt) sprintInFlight.delete(key)
+    })
+
+    sprintInFlight.set(key, attempt)
+    return attempt
+  }
+
+  /**
+   * The Jira half of the snapshot: one group per Jira-tracked repository.
+   *
+   * A repository whose read cannot even be attempted gets its own `not-connected`
+   * group rather than the page saying it once. That DIVERGES from the GitHub half
+   * deliberately — acceptance criterion 4 asks that each Jira group say so and offer
+   * the Settings route, which is only possible if each group exists — and it costs
+   * nothing, because the alternative is a card that renders empty and reads as "this
+   * sprint has nothing in it".
+   */
+  async function jiraGroups(repos: JiraRepo[]): Promise<{ connected: boolean; groups: JiraTaskRepoGroup[] }> {
+    // The credential is read ONCE for the page, and only when a repository depends on
+    // it: `getStatus()` touches the keychain on its first call, which a user with no
+    // Jira repository has no reason to be prompted for.
+    const status = jiraStatus()
+    // `unverified` counts as not connected here: Atlassian refused this credential the
+    // last time it was used, and the Settings section is already offering Reconnect.
+    // Sending the read anyway would earn a 401 per repository and say nothing the user
+    // has not been told.
+    const connected = status.connected && !status.unverified
+
+    if (!connected) {
+      return {
+        connected,
+        groups: repos.map((repo) => ({
+          tracker: 'jira',
+          configKey: repo.configKey,
+          name: repo.name,
+          issues: [],
+          error: { error: 'not-connected', message: 'No verified Atlassian credential on this machine.' },
+        })),
+      }
+    }
+
+    const groups = await Promise.all(repos.map((repo) => readSprintGroup(repo, status.siteUrl ?? '')))
+
+    // Every 401 funnels through `reportUnauthorized` — it is the only thing that can
+    // repair the one repairable cause (a cloud id that moved) and the only place
+    // allowed to mark a credential unverified.
+    //
+    // ONCE for the page, not once per repository. A refused credential is a fact
+    // about the account, so every Jira read above fails together — and
+    // `reportUnauthorized` is not single-flighted: N calls would mean N
+    // accessible-resources round trips, racing each other to decide whether the site
+    // moved. The first to finish repairs it; the rest then see an unchanged site and
+    // mark the credential unverified, putting a Reconnect prompt in front of an
+    // account that was just fixed. Not awaited for its answer either way: it works in
+    // the background and the NEXT read is the one that benefits.
+    if (groups.some((group) => group.error?.error === 'unauthorized')) {
+      void reportUnauthorized()
+    }
+
+    return { connected, groups }
+  }
+
+  return jiraGroups
+}
+
 export function setupTasksHandlers(): void {
+  const readJiraGroups = createSprintReader()
+
   // Every failure is captured into its own group: a repository whose read fails is
   // reported as failed and the others still render. The try/catch is not redundant
   // with fetchOpenIssues' error return — it covers the unexpected throw, which a
   // Promise.all would otherwise turn into a blank page.
   ipcMain.handle('tasks:listOpenIssues', async (): Promise<TasksSnapshot> => {
-    // Asked once, for the page as a whole, and BEFORE the config is walked: with no
-    // token every group would carry the same `no-token` error, which is a connection
-    // state and deserves saying once — and resolving every repository's tracker only
-    // to throw the answer away is work the logged-out path does not owe anybody.
-    if (!getGitHubToken()) return { githubConnected: false, groups: [] }
+    const repositories = readConfig().repositories ?? {}
 
-    const repos = githubRepos(readConfig().repositories ?? {})
+    // Asked once, for the GitHub half as a whole: with no token every GitHub group
+    // would carry the same `no-token` error, which is a connection state and
+    // deserves saying once. What it no longer does is short-circuit the PAGE — the
+    // Jira half below has its own credential and its own answer.
+    const githubConnected = !!getGitHubToken()
+    const github = githubConnected ? githubRepos(repositories) : []
 
-    const groups = await Promise.all(repos.map(async (repo): Promise<TaskRepoGroup> => {
-      const base = { configKey: repo.configKey, name: repo.name }
-      try {
-        const result = await fetchOpenIssues(repo.owner, repo.repo)
-        if (isPRStatusError(result)) return { ...base, issues: [], error: result }
-        return { ...base, issues: result.issues, totalOpen: result.totalOpen }
-      } catch (err) {
-        return {
-          ...base,
-          issues: [],
-          error: { error: 'network', message: err instanceof Error ? err.message : String(err) },
+    // Both halves at once. A slow Jira site must not hold the GitHub cards back, and
+    // vice versa; each repository's failure is already confined to its own group.
+    const [githubGroupList, jira] = await Promise.all([
+      Promise.all(github.map(async (repo): Promise<GitHubTaskRepoGroup> => {
+        const base = { tracker: 'github' as const, configKey: repo.configKey, name: repo.name }
+        try {
+          const result = await fetchOpenIssues(repo.owner, repo.repo)
+          if (isPRStatusError(result)) return { ...base, issues: [], error: result }
+          return { ...base, issues: result.issues, totalOpen: result.totalOpen }
+        } catch (err) {
+          return {
+            ...base,
+            issues: [],
+            error: { error: 'network', message: err instanceof Error ? err.message : String(err) },
+          }
         }
-      }
-    }))
+      })),
+      readJiraGroups(jiraRepos(repositories)),
+    ])
 
-    return { githubConnected: true, groups }
+    const groups: TaskRepoGroup[] = [...githubGroupList, ...jira.groups]
+    return { connected: { github: githubConnected, jira: jira.connected }, groups }
   })
 
   /**

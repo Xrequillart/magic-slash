@@ -30,20 +30,38 @@ export interface TaskAgentRef {
   repositoryIds?: string[]
 }
 
-/** The one empty set every agent-free repository is given. See `buildAgentedIssues`. */
-const NO_AGENTS: ReadonlySet<string> = new Set<string>()
+/**
+ * The one empty set every agent-free repository is given. See `buildAgentedIssues`.
+ *
+ * Exported because `taskRows.ts` needs the SAME instance for its own fallback: two
+ * empty sets would be equal in content and different in identity, which is the one
+ * property this constant exists for.
+ */
+export const NO_AGENTS: ReadonlySet<string> = new Set<string>()
+
+/** A Jira issue key — `PROJ-123` — in any casing anyone might have typed it in. */
+const JIRA_KEY = /^[a-z]+-\d+$/i
 
 /**
- * A ticket id in the one form this page compares on: the bare number GitHub
- * agents are actually written with.
+ * A ticket id in the one form this page compares on.
  *
- * `/magic:start` writes `agents.ticket_id` as `"234"`, and the display code is
- * what adds the `#`. A hand-typed `#234` is a real thing to find in that column
- * though, so both fold to the same key rather than silently failing to match.
+ * `/magic:start` writes `agents.ticket_id` as `"234"` for a GitHub issue, and the
+ * display code is what adds the `#`. A hand-typed `#234` is a real thing to find
+ * in that column though, so both fold to the same key rather than silently
+ * failing to match.
+ *
+ * A JIRA-SHAPED key is upper-cased on top of that, and nothing else is. Jira
+ * itself is case-insensitive about keys — `per-1234` browses to `PER-1234` — so
+ * the two spellings are one ticket and have to fold together, or a sprint row
+ * would show no agent against work somebody is visibly doing. The rule is
+ * deliberately narrow: upper-casing every id would turn a GitHub branch name or
+ * some other free-text value into a different string for no reason, and this
+ * function's whole job is to invent no equivalences it cannot justify.
  */
 export function normalizeTicketId(id?: string): string {
   if (!id) return ''
-  return id.trim().replace(/^#/, '').trim()
+  const bare = id.trim().replace(/^#/, '').trim()
+  return JIRA_KEY.test(bare) ? bare.toUpperCase() : bare
 }
 
 /**
