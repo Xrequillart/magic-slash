@@ -61,31 +61,59 @@ function quoteJql(value: string): string {
 }
 
 /**
- * The one query this feature sends: everything in the project's open sprints.
+ * The query that fills a card: the unfinished work of the project's open sprints.
  *
- * NO STATUS FILTER, deliberately. The page wants two answers from one call — the
- * To Do column, and the In Progress tickets an agent is on — and it also has to
- * tell "this project has no active sprint" from "the sprint has nothing left to
- * do". An empty result to THIS query means the first; a result with no To Do in it
- * means the second. Two filtered queries would double the latency and still not
- * separate those two cases without a third.
+ * FILTERED SERVER-SIDE, and that is the whole point. `SPRINT_PAGE_SIZE` caps the
+ * SERVER's result, so every row the cap spends on something this feature then
+ * discards is a row the user does not get. Two earlier shapes of this query both
+ * failed that way: unfiltered and ordered by date, finished tickets ate the budget;
+ * unfiltered and ordered by category ascending, To Do ate it and pushed the In
+ * Progress rows — the ones an agent is actually on — off the only page fetched. In
+ * both cases the rows vanished silently, because the visible count sat under the cap
+ * and no truncation hint appeared. Excluding `Done` here means the budget is spent
+ * only on rows that can reach the card.
  *
- * ORDERED BY CATEGORY FIRST, and that is not cosmetic — it is what makes the
- * unfiltered query safe under `SPRINT_PAGE_SIZE`. The cap applies to the SERVER's
- * result, before `mapSprintIssues` drops the `done` ones here; so on a sprint
- * larger than the cap, any ordering that mixes categories lets finished tickets
- * spend the budget and pushes real To Do rows onto a page nobody fetches. They
- * would then be missing from the card with no truncation hint to explain it,
- * because the visible count would sit under the cap. Jira orders the category
- * sequence To Do → In Progress → Done, which is exactly the priority the page
- * wants, so the tail the cap discards is always the least interesting one.
+ * ORDERED BY CATEGORY DESCENDING. Jira sequences the categories To Do → In Progress
+ * → Done, so with `Done` already excluded, descending puts In Progress first. That
+ * is the order this page wants: an In Progress ticket appears only when an agent is
+ * on it, which makes it the row the user most needs to see, while a truncated To Do
+ * column is what the `truncated` flag is for. If a site ever sequenced its
+ * categories differently the worst case is the previous behaviour, not a failure.
  *
  * Creation date breaks the tie inside a category, so the rows still arrive in the
  * order the renderer sorts them into anyway.
+ *
+ * The cost of filtering is that an empty answer no longer distinguishes "no active
+ * sprint" from "this sprint has nothing left to do" — see `buildOpenSprintProbeJql`,
+ * which buys that distinction back without spending a call on the common case.
  */
 export function buildSprintJql(projectKey: string): string {
-  return `project = ${quoteJql(projectKey)} AND sprint in openSprints() ORDER BY statusCategory ASC, created DESC`
+  return `project = ${quoteJql(projectKey)} AND sprint in openSprints() AND statusCategory != Done ORDER BY statusCategory DESC, created DESC`
 }
+
+/**
+ * The follow-up asked ONLY when `buildSprintJql` came back empty: does this project
+ * have an open sprint at all?
+ *
+ * Same query without the status filter, so a sprint whose every ticket is finished
+ * still answers with something. Non-empty means the sprint exists and the card is
+ * legitimately empty; empty means there is no sprint to show, which is a different
+ * sentence to put in front of the user (acceptance criterion 5).
+ *
+ * A second round trip, but only on a card that is about to be empty — never on the
+ * common path, which is what an earlier no-filter design paid instead. One row is
+ * enough to answer a yes/no question, hence `PROBE_PAGE_SIZE`.
+ *
+ * One case stays out of reach: an open sprint with no issues in it at all answers
+ * empty here too, and is reported as no sprint. Telling those apart needs the board
+ * id and the Agile API, which is a scope this app does not request.
+ */
+export function buildOpenSprintProbeJql(projectKey: string): string {
+  return `project = ${quoteJql(projectKey)} AND sprint in openSprints()`
+}
+
+/** One row is enough to answer the probe's yes/no question. */
+export const PROBE_PAGE_SIZE = 1
 
 /**
  * `https://acme.atlassian.net/browse/PROJ-123`, or `''` when there is no site to

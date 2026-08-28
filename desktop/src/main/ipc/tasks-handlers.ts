@@ -17,9 +17,11 @@ import { fetchSprintIssues, type AtlassianDeps } from '../jira/atlassian-api'
 import { ATLASSIAN_API_BASE_URL, TOKEN_URL } from '../jira/constants'
 import { getStatus as jiraStatus, reportUnauthorized, withFreshAccessToken } from '../jira/connect'
 import {
+  buildOpenSprintProbeJql,
   buildSprintJql,
   classifyUnexpected,
   mapSprintIssues,
+  PROBE_PAGE_SIZE,
   SPRINT_FIELDS,
   SPRINT_PAGE_SIZE,
 } from '../jira/sprint-issues'
@@ -242,11 +244,28 @@ function createSprintReader() {
           maxResults: SPRINT_PAGE_SIZE,
         })
 
-        // An empty answer to a query with no status filter is the project having no
-        // sprint in progress at all — a statement of its own, and not the same as a
-        // sprint whose To Do column happens to be empty (acceptance criterion 5).
+        // The card is empty. That is two different sentences — "this project has no
+        // sprint running" and "the sprint has nothing left to do" — and the filtered
+        // query cannot tell them apart, since it excludes the finished tickets that
+        // would prove a sprint exists. So ask, with one row, and only here: this
+        // costs a round trip exactly when the card would otherwise say nothing
+        // useful, and never on the common path (acceptance criterion 5).
         if (page.issues.length === 0) {
-          return { ...base, issues: [], error: { error: 'no-active-sprint', message: `No open sprint in ${repo.projectKey}.` } }
+          const probe = await fetchSprintIssues(atlassianDeps, {
+            accessToken: fresh.accessToken,
+            cloudId: fresh.cloudId,
+            jql: buildOpenSprintProbeJql(repo.projectKey),
+            fields: SPRINT_FIELDS,
+            maxResults: PROBE_PAGE_SIZE,
+          })
+          if (probe.issues.length === 0) {
+            return { ...base, issues: [], error: { error: 'no-active-sprint', message: `No open sprint in ${repo.projectKey}.` } }
+          }
+          // A sprint is running and everything in it is done. An empty group, not an
+          // error: the card says "nothing to do", which is the truth.
+          const done: JiraTaskRepoGroup = { ...base, issues: [] }
+          sprintCache.set(key, { at: Date.now(), group: done })
+          return done
         }
 
         const group: JiraTaskRepoGroup = {

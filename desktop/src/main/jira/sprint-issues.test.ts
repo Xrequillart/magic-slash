@@ -2,11 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { AtlassianApiError } from './atlassian-api'
 import {
   browseUrl,
+  buildOpenSprintProbeJql,
   buildSprintJql,
   classify,
   classifyUnexpected,
   mapIssue,
   mapSprintIssues,
+  PROBE_PAGE_SIZE,
   SPRINT_FIELDS,
 } from './sprint-issues'
 
@@ -30,33 +32,49 @@ function rawIssue(overrides: Record<string, unknown> = {}, fields: Record<string
 }
 
 describe('buildSprintJql', () => {
-  it('asks one project for everything in its open sprints', () => {
+  it('asks one project for the unfinished work of its open sprints', () => {
     // No board id, and no `/rest/agile` call: `openSprints()` resolves the board
     // itself, which is what keeps the read inside the `read:jira-work` scope.
     expect(buildSprintJql('PROJ')).toBe(
-      'project = "PROJ" AND sprint in openSprints() ORDER BY statusCategory ASC, created DESC',
+      'project = "PROJ" AND sprint in openSprints() AND statusCategory != Done ORDER BY statusCategory DESC, created DESC',
     )
   })
 
-  it('filters on no status at all', () => {
-    // Deliberate: an EMPTY answer to this query is what says "no active sprint",
-    // and a status filter would make an empty To Do column indistinguishable from
-    // a board with no sprint running.
-    expect(buildSprintJql('PROJ')).not.toContain('status =')
-    expect(buildSprintJql('PROJ')).not.toContain('statusCategory in')
-    expect(buildSprintJql('PROJ')).not.toContain('!=')
+  it('excludes Done server-side so the page cap is never spent on it', () => {
+    // The cap applies to the SERVER's result. Every row it spends on something this
+    // feature then discards is a row the user does not get — and it disappears
+    // silently, because the visible count sits under the cap and no truncation hint
+    // is shown. Filtering here is what keeps the budget on rows that can be seen.
+    expect(buildSprintJql('PROJ')).toContain('statusCategory != Done')
   })
 
-  it('orders by category so the page cap never discards a To Do', () => {
-    // The cap applies to the SERVER's result, before `mapSprintIssues` drops the
-    // `done` ones. On a sprint bigger than `SPRINT_PAGE_SIZE`, any ordering that
-    // mixes categories lets finished tickets spend the budget and pushes real To Do
-    // rows onto a page nobody fetches — invisible, because the visible count would
-    // sit under the cap and show no truncation hint. Category first is what makes
-    // the discarded tail always the least interesting one.
+  it('orders In Progress ahead of To Do', () => {
+    // Jira sequences the categories To Do → In Progress → Done, so with Done
+    // excluded, DESCENDING puts In Progress first. That is the priority this page
+    // wants: an In Progress ticket only ever shows when an agent is on it, so it is
+    // the row the user most needs, and a truncated To Do column is what the
+    // `truncated` flag exists to report. Ordering ascending instead was the bug —
+    // a long To Do column pushed every agented ticket off the only page fetched.
     const jql = buildSprintJql('PROJ')
-    expect(jql).toContain('ORDER BY statusCategory ASC')
-    expect(jql.indexOf('statusCategory')).toBeLessThan(jql.indexOf('created'))
+    expect(jql).toContain('ORDER BY statusCategory DESC')
+    expect(jql.indexOf('statusCategory DESC')).toBeLessThan(jql.indexOf('created DESC'))
+  })
+
+  it('probes for an open sprint without the status filter', () => {
+    // Asked only when the filtered query came back empty. Without the filter, a
+    // sprint whose every ticket is finished still answers with something — which is
+    // what separates "nothing left to do" from "no sprint running".
+    expect(buildOpenSprintProbeJql('PROJ')).toBe(
+      'project = "PROJ" AND sprint in openSprints()',
+    )
+    expect(buildOpenSprintProbeJql('PROJ')).not.toContain('statusCategory')
+    expect(PROBE_PAGE_SIZE).toBe(1)
+  })
+
+  it('escapes the project key in the probe too', () => {
+    // Same free-text field, same hazard: the probe is a second query and would break
+    // on its own if the escaping lived only in the first.
+    expect(buildOpenSprintProbeJql('A"B')).toContain('project = "A\\"B"')
   })
 
   it('escapes a project key that would otherwise break the query', () => {

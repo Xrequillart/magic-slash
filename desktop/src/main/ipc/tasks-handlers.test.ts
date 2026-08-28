@@ -355,7 +355,7 @@ describe('tasks:listOpenIssues — the Jira half', () => {
     expect(mockFetchSprintIssues.mock.calls[0][1]).toMatchObject({
       accessToken: 'atl-access',
       cloudId: 'cloud-1',
-      jql: 'project = "PROJ" AND sprint in openSprints() ORDER BY statusCategory ASC, created DESC',
+      jql: 'project = "PROJ" AND sprint in openSprints() AND statusCategory != Done ORDER BY statusCategory DESC, created DESC',
     })
   })
 
@@ -383,6 +383,7 @@ describe('tasks:listOpenIssues — the Jira half', () => {
 
   // Acceptance criterion 5: a board with no sprint running is not an empty backlog.
   it('says a project has no active sprint, distinctly from having nothing to do', async () => {
+    // Both the filtered query AND the probe come back empty: there is no sprint.
     withRepos({ billing: jiraRepo('billing') })
     mockFetchSprintIssues.mockResolvedValue({ issues: [], nextPageToken: null })
 
@@ -393,15 +394,38 @@ describe('tasks:listOpenIssues — the Jira half', () => {
   })
 
   it('reports a sprint whose only tickets are finished as having nothing to do', async () => {
-    // The same query, a non-empty answer: the sprint IS running. No error, and an
-    // empty list — which the card words as "nothing to do".
+    // The filtered query excludes Done, so a fully-finished sprint answers empty and
+    // is indistinguishable from no sprint at all — until the probe, which drops the
+    // filter and finds the finished ticket. No error, and an empty list, which the
+    // card words as "nothing to do".
     withRepos({ billing: jiraRepo('billing') })
-    mockFetchSprintIssues.mockResolvedValue({ issues: [sprintIssue('PROJ-9', 'done', 'Done')], nextPageToken: null })
+    mockFetchSprintIssues
+      .mockResolvedValueOnce({ issues: [], nextPageToken: null })
+      .mockResolvedValueOnce({ issues: [sprintIssue('PROJ-9', 'done', 'Done')], nextPageToken: null })
 
     const group = jiraGroupOf(await listOpenIssues()(), 'billing')
 
     expect(group?.error).toBeUndefined()
     expect(group?.issues).toEqual([])
+    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(2)
+    expect(mockFetchSprintIssues.mock.calls[1][1]).toMatchObject({
+      jql: 'project = "PROJ" AND sprint in openSprints()',
+      maxResults: 1,
+    })
+  })
+
+  it('does not probe when the sprint has work to show', async () => {
+    // The probe is the price of filtering server-side, and it must stay off the
+    // common path: one call, not two, whenever the card has anything on it.
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchSprintIssues.mockResolvedValue({
+      issues: [sprintIssue('PROJ-1', 'new', 'To Do')],
+      nextPageToken: null,
+    })
+
+    await listOpenIssues()()
+
+    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
   })
 
   // Acceptance criterion 4.
