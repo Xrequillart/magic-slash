@@ -20,7 +20,7 @@ import { StatusPill } from '../Dashboard/parts'
 import type { NewTerminalDetail } from '../Terminals'
 import { JiraErrorLines, JiraStatusPill, TaskErrorLines } from './TasksRepoSection'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
-import { TrackerMark, TrackerTile } from '../../components/icons/TrackerIcons'
+import { TrackerTile } from '../../components/icons/TrackerIcons'
 
 /**
  * One ticket, given the whole page — the Tasks page's second view, not a panel
@@ -732,8 +732,13 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           <>
             {/* Ahead of the status, not after it: the mark answers "which tracker is
                 this" and the pill answers "where is it up to", and the first question
-                is the one a reader who has scrolled away from the title is asking. */}
-            <TrackerMark tracker={tracker} title={trackerName} />
+                is the one a reader who has scrolled away from the title is asking.
+
+                On its tile, at the bar's own size: a bare mark here was the only
+                tracker icon in the app without a ground under it, which read as a
+                different, flatter kind of thing from the tile in the title it
+                stands in for. */}
+            <TrackerTile tracker={tracker} size="xs" title={trackerName} />
             {statusChip}
             <span className="text-xs text-ink truncate min-w-0" title={title}>
               {title}
@@ -778,14 +783,14 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           key used to be a badge on the byline instead, which is the same fact in a
           different place on a page a reader moves between. */}
       <div ref={titleRef} className="flex flex-col gap-3 pb-5 border-b border-line">
-        {/* The mark sits on the title's first line and OUTSIDE the heading text, as a
-            flex sibling: inlined into the `h1` it would ride the text baseline and
-            sink below it on a title that wraps to two lines. The tile is the list
-            row's own, at the repository tile's size — `mt-0.5` is the optical
-            centring for the first line's cap height, which `items-center` on a
-            two-line heading would get wrong by half a line. */}
-        <div className="flex items-start gap-3 min-w-0">
-          <TrackerTile tracker={tracker} size="md" title={trackerName} className="mt-0.5" />
+        {/* The mark sits beside the heading and OUTSIDE its text, as a flex sibling:
+            inlined into the `h1` it would ride the text baseline and sink below it on
+            a title that wraps to two lines. The tile is the list row's own, at the
+            repository tile's size, and `items-center` centres the two on their
+            HEIGHTS — the tile used to hang from the first line's cap height, which
+            left it visibly high on the one-line titles that are most of them. */}
+        <div className="flex items-center gap-3 min-w-0">
+          <TrackerTile tracker={tracker} size="md" title={trackerName} />
           <h1 className="text-2xl font-semibold text-ink leading-snug min-w-0">
             {title}
             {/* The ticket's id after the title and in grey, on BOTH halves. GitHub's

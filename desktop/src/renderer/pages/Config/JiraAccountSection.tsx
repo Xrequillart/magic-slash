@@ -193,14 +193,20 @@ export function JiraAccountSection() {
             drawn at in Settings — this is the same kind of row (a thing you have
             connected, and what to do about it) and it was the only one with nothing
             in front of its name. Outside the state branches so all three wear it,
-            and `items-start` so it stays level with the first line when the revoked
-            branch below adds a second block under it. */}
+            and `items-start` so it stays level with the FIRST block when the revoked
+            branch below adds a second one under it — `items-center` there would
+            centre the tile on the pair and leave it floating between them.
+
+            The centring the name and its subtitle want is bought on the header row
+            instead (`min-h-12`, the tile's own height, with `items-center`): the
+            tile fills that row exactly, so the two lines sit on its middle in both
+            branches without the tile moving when the second block appears. */}
         <div className="flex items-start gap-4">
           <TrackerTile tracker="jira" size="lg" title="Jira" />
           <div className="flex-1 min-w-0">
             {status.connected ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between min-h-12">
                   <div>
                     <div className="text-sm font-medium">{status.accountName || t('jira.connectedFallback')}</div>
                     <div className="text-xs text-text-secondary/50 mt-0.5">
@@ -242,7 +248,7 @@ export function JiraAccountSection() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between min-h-12">
                 <div>
                   <div className="text-sm font-medium">{t('jira.notConnected')}</div>
                   <div className="text-xs text-text-secondary/50 mt-0.5">{t('jira.notConnectedHint')}</div>

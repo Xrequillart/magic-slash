@@ -10,8 +10,8 @@ import { useId } from 'react'
  * (#2684FF / #0052CC, sampled straight from the brand asset) because a brand mark
  * recoloured by the theme stops being the brand mark.
  *
- * Shown next to a ticket ID in the agent sidebar (`agent-info-sidebar/TicketHeader`)
- * and, through `TrackerMark` below, on every Tasks row and ticket page.
+ * Shown next to a ticket ID in the agent sidebar (`agent-info-sidebar/TicketMark`)
+ * and, through `TrackerTile` below, on every Tasks row and ticket page.
  */
 
 interface TrackerIconProps {
@@ -51,35 +51,6 @@ export function JiraMark({ className }: TrackerIconProps) {
 }
 
 /**
- * Whichever mark belongs to this tracker — the form every Tasks surface wants.
- *
- * The Tasks page shows the mark in four places (a list row, the page title, the
- * pinned bar, and both of those for either tracker), and each of them held the same
- * `tracker === 'jira' ? <JiraMark/> : <GithubMark/>` ternary. One component instead,
- * so a third tracker is a change here rather than a hunt through the page.
- *
- * `title` rather than `aria-hidden`: on a mixed page the mark is the only thing
- * saying which tracker a row came from, so it is content and not decoration. The
- * marks themselves stay hidden from the tree — the accessible name belongs on the
- * wrapper, or a screen reader would read the tracker twice.
- */
-export function TrackerMark({
-  tracker,
-  className = 'w-3.5 h-3.5',
-  title,
-}: {
-  tracker: 'github' | 'jira'
-  className?: string
-  title?: string
-}) {
-  return (
-    <span className="flex-shrink-0 inline-flex" title={title} role="img" aria-label={title}>
-      {tracker === 'jira' ? <JiraMark className={className} /> : <GithubMark className={className} />}
-    </span>
-  )
-}
-
-/**
  * The tracker's mark on a tile of its own — the repository tile's shape, applied to
  * the two trackers.
  *
@@ -95,12 +66,17 @@ export function TrackerMark({
  * only emits classes it can see, so an arbitrary value would also have to be spelled
  * out per size.
  *
- * `title` rather than `aria-hidden`, for `TrackerMark`'s reason: on a mixed page the
- * mark is the only thing saying which tracker a row came from, so it is content. The
+ * `title` rather than `aria-hidden`: on a mixed page the mark is the only thing
+ * saying which tracker a row came from, so it is content and not decoration. The
  * mark inside stays hidden from the tree — the accessible name is on the tile, or a
  * screen reader would read the tracker twice.
  */
 const TILE_SIZES = {
+  /**
+   * The pinned bar, where the mark stands beside 12px type and a 30px button: a
+   * list row's tile there would be taller than the text it introduces.
+   */
+  xs: { tile: 'w-6 h-6 rounded-md', mark: 'w-3.5 h-3.5' },
   /** A list row: big enough to centre on two lines of text without crowding them. */
   sm: { tile: 'w-8 h-8 rounded-lg', mark: 'w-4 h-4' },
   /** A page title, and the repository tile's own size. */
