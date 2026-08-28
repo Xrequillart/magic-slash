@@ -57,12 +57,34 @@ export const REDIRECT_URI = `${WEBAPP_BASE_URL}/api/atlassian/callback`
 export const TOKEN_URL = `${WEBAPP_BASE_URL}/api/atlassian/token`
 
 /**
- * The least we can ask for and still be useful.
+ * The least we can ask for and still be useful. All three are read-only or
+ * mechanical; none of them can write to a Jira site.
  *
- * `read:jira-work` is read-only; `offline_access` is what yields a refresh token,
- * without which the user would face the consent screen again every hour.
+ * `read:jira-work` covers the two reads this feature makes — the sprint search and
+ * one issue by key (see `atlassian-api.ts`). `offline_access` is what yields a
+ * refresh token, without which the user would face the consent screen again every
+ * hour.
+ *
+ * `read:jira-user` is the one that is easy to leave out and fatal to omit.
+ * `GET /rest/api/3/myself` — the verification step `completeConnect` runs BEFORE it
+ * persists anything — is not covered by `read:jira-work`; without this scope
+ * Atlassian answers it `401 {"code":401,"message":"Unauthorized; scope does not
+ * match"}`, and every connect attempt dies there. The failure is invisible from the
+ * browser, which is the trap: the code exchange and accessible-resources both
+ * succeed, so Atlassian's consent screen reports success and the app reports
+ * `failed` a second later with no credential written.
+ *
+ * It is also no widening of what the user exposes. `read:jira-work` already returns
+ * the display names of reporters and assignees on every issue read (the detail panel
+ * shows them), so this grants nothing about other people that the sprint list did
+ * not already carry — it only lets us name the account we just connected, which is
+ * the whole point of the verification.
+ *
+ * ADDING A SCOPE HERE IS HALF THE CHANGE. The app's own permission list in the
+ * Atlassian developer console has to hold it too, or `authorize` refuses the request
+ * outright instead of merely failing later.
  */
-export const SCOPES = ['read:jira-work', 'offline_access']
+export const SCOPES = ['read:jira-work', 'read:jira-user', 'offline_access']
 
 /** Atlassian's own consent screen — the only URL the user's browser is sent to. */
 export const AUTHORIZE_URL = 'https://auth.atlassian.com/authorize'

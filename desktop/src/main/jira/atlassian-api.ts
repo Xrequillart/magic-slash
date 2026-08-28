@@ -356,6 +356,12 @@ export async function fetchAccessibleResources(
  * A 401 here, once a credential is already stored, is the other revocation path —
  * see `connect.ts`. It is not proof on its own (a site outage answers 401 too),
  * which is why it marks rather than deletes.
+ *
+ * THIS ENDPOINT NEEDS `read:jira-user`, and it is the only one here that does —
+ * `read:jira-work` does not cover it, however much a display name looks like part of
+ * "work". Omitting the scope makes every connect fail on this line with
+ * `401 "Unauthorized; scope does not match"`, after the browser has already reported
+ * success. See `SCOPES` in `constants.ts`.
  */
 export async function fetchMyself(
   deps: AtlassianDeps,
