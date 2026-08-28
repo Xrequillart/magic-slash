@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.86.0] - 2026-08-28
+
+### Added
+
+- **Desktop**: An Atlassian account is connected to Magic Slash by SSO
+- **Desktop**: The active sprint's To Do is listed in the Tasks tab for every Jira-tracked repository
+- **Desktop**: A Jira ticket's detail is opened and an agent is started on it
+- **Desktop**: The resolved PR comments are collapsed to a single line
+
+### Changed
+
+- **Desktop**: The Atlassian client id is passed to the release build
+
+### Fixed
+
+- **Desktop**: The done sprint tickets are filtered server-side and the sprint is probed
+- **Desktop**: The ticket id is normalized before its tracker is detected
+- **Desktop**: One Jira key pattern is shared between the card and the sidebar
+- **Desktop**: The Atlassian connect button is reset on an abandoned consent
+- **Desktop**: The parent branch is hidden when it is the current one
+- **PR**: The generation is bumped when a connect starts over
+
 ## [0.85.0] - 2026-08-27
 
 ### Added
@@ -2503,6 +2525,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.86.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.0
 [0.85.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.85.0
 [0.84.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.84.1
 [0.84.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.84.0
