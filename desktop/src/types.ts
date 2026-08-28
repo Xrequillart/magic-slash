@@ -595,6 +595,23 @@ interface TaskRepoGroupBase {
   configKey: string
   /** What the card is titled: the repository's name. */
   name: string
+  /**
+   * WHERE these tickets were read from, as a comparable string — `github:owner/repo`
+   * or `jira:site|PROJECT`.
+   *
+   * Two repositories can be pointed at ONE tracker target: two folders of the same
+   * GitHub repo, or two services planned in a single Jira project. Their groups then
+   * hold the same tickets, and the page used to draw the same backlog twice under
+   * two names. This is what lets the renderer recognise that and merge them into one
+   * card — see `buildTaskRows`.
+   *
+   * Built HERE and not in the renderer, because only this side knows the coordinates
+   * the read actually used: a repository that declares no Jira site falls back to the
+   * connected account's, which never crosses the bridge. Normalised (lower-cased,
+   * trailing slash off, project key upper-cased) so that two spellings of one target
+   * produce one string.
+   */
+  sourceKey: string
 }
 
 /**

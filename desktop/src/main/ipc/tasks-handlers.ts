@@ -94,6 +94,35 @@ interface GitHubRepo {
   name: string
   owner: string
   repo: string
+  /** `github:owner/repo`, lower-cased. See `TaskRepoGroupBase.sourceKey`. */
+  sourceKey: string
+}
+
+/**
+ * The two spellings of one GitHub target folded into one string.
+ *
+ * Lower-cased because GitHub is case-insensitive about both halves — `Poppins/PEX`
+ * and `poppins/pex` are the same repository and the same issues — so two config
+ * entries that differ only in casing must not read as two different backlogs.
+ */
+function githubSourceKey(owner: string, repo: string): string {
+  return `github:${owner.toLowerCase()}/${repo.toLowerCase()}`
+}
+
+/**
+ * The same for a Jira project: the site the tickets live on, and the project key.
+ *
+ * `credentialSiteUrl` is the fallback a repository that declares no site of its own
+ * is actually read against (it is also what its browse links are built on), so it
+ * is what makes such a repo fold onto a sibling that names the site explicitly.
+ *
+ * The site is normalised the way a URL typed by hand needs to be — case and a
+ * trailing slash carry no meaning in a host — and the project key upper-cased,
+ * since Jira resolves `per-1` and `PER-1` to one ticket.
+ */
+function jiraSourceKey(siteUrl: string, projectKey: string, credentialSiteUrl: string): string {
+  const site = (siteUrl || credentialSiteUrl).trim().replace(/\/+$/, '').toLowerCase()
+  return `jira:${site}|${projectKey.toUpperCase()}`
 }
 
 /**
@@ -115,7 +144,12 @@ function githubRepos(repositories: Record<string, RepositoryConfig>): GitHubRepo
     if (!readsFrom(repo, 'github')) continue
     const parsed = parseOwnerRepo(resolveGitHubIssuesUrl(repo))
     if (!parsed) continue
-    result.push({ configKey, name: repo.name || configKey, ...parsed })
+    result.push({
+      configKey,
+      name: repo.name || configKey,
+      ...parsed,
+      sourceKey: githubSourceKey(parsed.owner, parsed.repo),
+    })
   }
   return result
 }
@@ -202,18 +236,15 @@ const atlassianDeps: AtlassianDeps = {
 const JIRA_MIN_REFRESH_MS = 30_000
 
 /**
- * The cache key: the repository AND the project it is currently pointed at.
+ * What one sprint read produces, WITHOUT the repository it was read for.
  *
- * Changing a project key in Settings has to invalidate, and it is the one edit a
- * user makes precisely because the current answer is wrong.
- *
- * Joined on `\u0000` — the ESCAPE, never the byte itself, which is the separator
- * `renderer/utils/taskAgents.ts` already composes keys with. A literal NUL in the
- * source makes git treat the whole file as binary and grep skip it silently.
+ * The split is the whole of how two repositories planned in one Jira project cost
+ * one call instead of two: this half depends only on the project, so it is what the
+ * cache below holds, while `configKey` and `name` are put back per repository by
+ * `readSprintGroup`. Caching whole groups would hand the second repository the
+ * first one's name.
  */
-function sprintKey(repo: JiraRepo): string {
-  return `${repo.configKey}\u0000${repo.projectKey}`
-}
+type SprintPayload = Omit<JiraTaskRepoGroup, 'tracker' | 'configKey' | 'name' | 'sourceKey'>
 
 /**
  * The Jira half of the snapshot, and the memory it keeps between reads.
@@ -224,19 +255,31 @@ function sprintKey(repo: JiraRepo): string {
  * owner, which module-level mutable maps never do.
  */
 function createSprintReader() {
-  /** One repository's last successful sprint read, and when it was made. */
-  const sprintCache = new Map<string, { at: number; group: JiraTaskRepoGroup }>()
+  /**
+   * One PROJECT's last successful sprint read, and when it was made.
+   *
+   * Keyed by `sourceKey` — the site and the project — and not by the repository, so
+   * two repositories planned in one Jira project answer from one read. They used to
+   * be keyed by `(configKey, projectKey)`, which made the same query twice and
+   * returned the same tickets under two names.
+   *
+   * A project key changed in Settings still invalidates: it is half of the key.
+   */
+  const sprintCache = new Map<string, { at: number; payload: SprintPayload }>()
 
   /**
-   * The reads currently in flight, one entry per repository.
+   * The reads currently in flight, one entry per PROJECT.
    *
    * Shared rather than merely deduplicated over time: two overlapping page opens
    * (the modal reopened while the first read is still out) would otherwise send two
    * identical queries per project, and — with an expired access token — race each
    * other through `withFreshAccessToken`. That refresh is single-flighted on its own
    * side, so this is about the Jira call, not the credential.
+   *
+   * On the same key as the cache, which is what makes the two repositories of one
+   * project share the FIRST page open as well as every later one.
    */
-  const sprintInFlight = new Map<string, Promise<JiraTaskRepoGroup>>()
+  const sprintInFlight = new Map<string, Promise<SprintPayload>>()
 
   /**
    * The custom-field ids this site gave the two things the page asks for by id.
@@ -332,22 +375,23 @@ function createSprintReader() {
   }
 
   /**
-   * One repository's active sprint, as a group.
+   * One PROJECT's active sprint, as the half of a group that depends on nothing but
+   * the project.
    *
    * Never throws: every failure — including one from our own code — comes back as a
-   * named error on this repository's own card, so the `Promise.all` below can never
+   * named error on this project's own card, so the `Promise.all` below can never
    * reject the whole page over one bad project key (acceptance criterion 6).
+   *
+   * `key` is passed in rather than derived, because the site it names is resolved
+   * against the connected account (see `jiraSourceKey`) and only the caller has it.
    */
-  async function readSprintGroup(repo: JiraRepo, credentialSiteUrl: string): Promise<JiraTaskRepoGroup> {
-    const base = { tracker: 'jira' as const, configKey: repo.configKey, name: repo.name }
-
-    const key = sprintKey(repo)
+  async function readSprint(repo: JiraRepo, credentialSiteUrl: string, key: string): Promise<SprintPayload> {
     const cached = sprintCache.get(key)
-    if (cached && Date.now() - cached.at < JIRA_MIN_REFRESH_MS) return cached.group
+    if (cached && Date.now() - cached.at < JIRA_MIN_REFRESH_MS) return cached.payload
     const running = sprintInFlight.get(key)
     if (running) return running
 
-    const attempt = (async (): Promise<JiraTaskRepoGroup> => {
+    const attempt = (async (): Promise<SprintPayload> => {
       // Asked for AFTER the connection check the caller made, and separately, because
       // `withFreshAccessToken()` answers null for three different situations and only
       // one of them is "reconnect": a missing credential, a refresh that failed, and a
@@ -358,7 +402,7 @@ function createSprintReader() {
       // split exists to avoid.
       const fresh = await withFreshAccessToken()
       if (!fresh) {
-        return { ...base, issues: [], error: { error: 'offline', message: 'No usable Atlassian access token for this read.' } }
+        return { issues: [], error: { error: 'offline', message: 'No usable Atlassian access token for this read.' } }
       }
 
       try {
@@ -393,14 +437,14 @@ function createSprintReader() {
             maxResults: PROBE_PAGE_SIZE,
           })
           if (probe.issues.length === 0) {
-            return { ...base, issues: [], error: { error: 'no-active-sprint', message: `No open sprint in ${repo.projectKey}.` } }
+            return { issues: [], error: { error: 'no-active-sprint', message: `No open sprint in ${repo.projectKey}.` } }
           }
           // A sprint is running and everything in it is done. An empty group, not an
           // error: the card says "nothing to do", which is the truth — and it can
           // still say WHICH sprint has nothing left in it, off the probe's one row.
           const doneSprint = pickSprintName(probe.issues, fieldId)
-          const done: JiraTaskRepoGroup = { ...base, issues: [], ...(doneSprint ? { sprintName: doneSprint } : {}) }
-          sprintCache.set(key, { at: Date.now(), group: done })
+          const done: SprintPayload = { issues: [], ...(doneSprint ? { sprintName: doneSprint } : {}) }
+          sprintCache.set(key, { at: Date.now(), payload: done })
           return done
         }
 
@@ -415,16 +459,15 @@ function createSprintReader() {
           fieldIds.epicColors,
         )
 
-        const group: JiraTaskRepoGroup = {
-          ...base,
+        const payload: SprintPayload = {
           issues,
           ...(sprintName ? { sprintName } : {}),
           ...(page.nextPageToken ? { truncated: true } : {}),
         }
-        sprintCache.set(key, { at: Date.now(), group })
-        return group
+        sprintCache.set(key, { at: Date.now(), payload })
+        return payload
       } catch (error) {
-        return { ...base, issues: [], error: classifyUnexpected(error) }
+        return { issues: [], error: classifyUnexpected(error) }
       }
     })().finally(() => {
       // Identity-checked for `withFreshAccessToken`'s reason: by the time this settles
@@ -435,6 +478,20 @@ function createSprintReader() {
 
     sprintInFlight.set(key, attempt)
     return attempt
+  }
+
+  /**
+   * One repository's card: the project's sprint, with the repository put back on it.
+   *
+   * The two halves are joined HERE and only here, which is what lets two
+   * repositories share a read and still be told apart on screen — each gets its own
+   * `configKey` and `name`, and they carry the same `sourceKey` so the renderer can
+   * fold their identical cards into one.
+   */
+  async function readSprintGroup(repo: JiraRepo, credentialSiteUrl: string): Promise<JiraTaskRepoGroup> {
+    const sourceKey = jiraSourceKey(repo.siteUrl, repo.projectKey, credentialSiteUrl)
+    const payload = await readSprint(repo, credentialSiteUrl, sourceKey)
+    return { tracker: 'jira', configKey: repo.configKey, name: repo.name, sourceKey, ...payload }
   }
 
   /**
@@ -465,6 +522,13 @@ function createSprintReader() {
           tracker: 'jira',
           configKey: repo.configKey,
           name: repo.name,
+          // Named even here, so that two repositories on one project still fold into
+          // one card while the account is disconnected: the reader would otherwise be
+          // told the same thing twice, which is exactly what the merge exists to stop.
+          // `status.siteUrl` is what a repo declaring no site of its own would be read
+          // against, and it is `''` only when no credential has ever been stored — in
+          // which case every group here shares that same fallback anyway.
+          sourceKey: jiraSourceKey(repo.siteUrl, repo.projectKey, status.siteUrl ?? ''),
           issues: [],
           error: { error: 'not-connected', message: 'No verified Atlassian credential on this machine.' },
         })),
@@ -514,11 +578,29 @@ export function setupTasksHandlers(): void {
 
     // Both halves at once. A slow Jira site must not hold the GitHub cards back, and
     // vice versa; each repository's failure is already confined to its own group.
+    // One read per TARGET, not per repository: two config entries pointed at the same
+    // GitHub repo hold the same issues, and asking twice would spend a second GraphQL
+    // budget on an answer already in hand. Shared as the promise rather than awaited
+    // in turn, so the two groups are still built in parallel with everything else.
+    const issuesByTarget = new Map<string, ReturnType<typeof fetchOpenIssues>>()
+    const openIssues = (repo: GitHubRepo) => {
+      const running = issuesByTarget.get(repo.sourceKey)
+      if (running) return running
+      const attempt = fetchOpenIssues(repo.owner, repo.repo)
+      issuesByTarget.set(repo.sourceKey, attempt)
+      return attempt
+    }
+
     const [githubGroupList, jira] = await Promise.all([
       Promise.all(github.map(async (repo): Promise<GitHubTaskRepoGroup> => {
-        const base = { tracker: 'github' as const, configKey: repo.configKey, name: repo.name }
+        const base = {
+          tracker: 'github' as const,
+          configKey: repo.configKey,
+          name: repo.name,
+          sourceKey: repo.sourceKey,
+        }
         try {
-          const result = await fetchOpenIssues(repo.owner, repo.repo)
+          const result = await openIssues(repo)
           if (isPRStatusError(result)) return { ...base, issues: [], error: result }
           return { ...base, issues: result.issues, totalOpen: result.totalOpen }
         } catch (err) {

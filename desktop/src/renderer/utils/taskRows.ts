@@ -12,21 +12,54 @@ import { NO_AGENTS, normalizeTicketId } from './taskAgents'
  * `color` distributes over both members, so a row narrows on `tracker` exactly as
  * the group it was built from does.
  */
+export interface TaskRowRepo {
+  /** The key in `Config.repositories`. */
+  configKey: string
+  /** What the header calls it. */
+  name: string
+  /** Its dot, from the page's one colour map. */
+  color: string
+}
+
 export type TaskRow = TaskRepoGroup & {
   color: string
   /**
    * Whether this card has to name its tracker to be identifiable.
    *
-   * True exactly when the same repository contributes a second card — the undecided
-   * case, where a GitHub backlog and a Jira sprint both belong to it. Two cards
-   * carrying nothing but the repo name would read as a rendering bug; two carrying
-   * `ai-agents · GitHub` and `ai-agents · Jira` read as what they are.
+   * True exactly when one of its repositories contributes a second card — the
+   * undecided case, where a GitHub backlog and a Jira sprint both belong to it. Two
+   * cards carrying nothing but the repo name would read as a rendering bug; two
+   * carrying `ai-agents · GitHub` and `ai-agents · Jira` read as what they are.
    *
    * Off for everybody else, and that is the point: a repository with one tracker has
    * nothing to disambiguate, and stamping every card in the list with a source it
    * shares with all its neighbours is noise the reader has to look past.
    */
   showTracker: boolean
+  /**
+   * EVERY repository this one card stands for, in config order, never empty.
+   *
+   * One entry is the ordinary case and the one this page had only ever drawn. Two or
+   * more is a shared tracker target: two folders of the same GitHub repository, or —
+   * the case this was built for — two services planned in a single Jira project. Their
+   * groups hold the same tickets, so a card each meant reading the same backlog twice
+   * under two names and starting an agent on whichever one happened to be clicked.
+   *
+   * `configKey`, `name` and `color` on the row itself are the FIRST of these, and they
+   * stay the card's identity: the selection, the detail read and the folded set are all
+   * keyed on them. This array is what the header lists and what the repository filter
+   * matches against.
+   */
+  repos: TaskRowRepo[]
+  /**
+   * The ticket ids somebody already has an agent on, across ALL of `repos`.
+   *
+   * Unioned here rather than looked up per card, because a merged card's tickets belong
+   * to every repository under it: an agent started in one of them is on the ticket, and
+   * a lookup on the primary key alone would leave the row's dot off — and, on a Jira
+   * sprint, hide the In Progress ticket that agent is on (see `visibleIssues`).
+   */
+  agentedIssues: ReadonlySet<string>
 }
 
 /**
@@ -83,6 +116,26 @@ function visibleIssues(group: JiraTaskRepoGroup, agented: ReadonlySet<string>): 
 }
 
 /**
+ * The agent index read for every repository of one card, as a single set.
+ *
+ * The one-repository case — every card until a target turned out to be shared —
+ * returns the index's OWN set rather than a copy of it: the cards are memoised, and a
+ * fresh empty `Set` per rebuild would give every one of them a new prop identity on
+ * every rebuild. That is `NO_AGENTS`' whole reason for existing (see `taskAgents.ts`).
+ */
+function unionAgents(
+  bucket: TaskRepoGroup[],
+  agentedIssues: Record<string, ReadonlySet<string>>,
+): ReadonlySet<string> {
+  if (bucket.length === 1) return agentedIssues[bucket[0].configKey] ?? NO_AGENTS
+  const union = new Set<string>()
+  for (const group of bucket) {
+    for (const id of agentedIssues[group.configKey] ?? NO_AGENTS) union.add(id)
+  }
+  return union.size > 0 ? union : NO_AGENTS
+}
+
+/**
  * Build the page's rows from the snapshot's groups and the FULL repository config.
  *
  * The colour map is built from every configured repository, not from the
@@ -97,6 +150,13 @@ function visibleIssues(group: JiraTaskRepoGroup, agented: ReadonlySet<string>): 
  * Order: failed groups first, then the fullest backlog, then alphabetical. A
  * failure is the one thing on this page that asks something of the reader, so it
  * cannot sit at the bottom where an empty repo would put it.
+ *
+ * ONE CARD PER TRACKER TARGET, not per repository — see `TaskRow.repos`. Two
+ * repositories pointed at one Jira project (or one GitHub repo) are handed the same
+ * tickets by the read, and drawing a card each meant printing the same backlog twice
+ * and inviting the reader to start an agent on whichever copy they happened to click.
+ * They are folded into one card that names both, on `sourceKey` — the coordinates the
+ * main process actually read from, which is the only side that knows them.
  */
 export function buildTaskRows(
   groups: TaskRepoGroup[],
@@ -111,24 +171,63 @@ export function buildTaskRows(
 ): TaskRow[] {
   const colorMap = getProjectColorMap(Object.keys(repositories), repositories)
 
-  // How many cards each repository contributes, so a card can tell whether it has a
-  // twin to be told apart from. Counted over the GROUPS rather than the config,
-  // because that is the set actually on screen: a repo whose Jira read was skipped
-  // for want of a project key has one card and needs no label.
-  const cardsPerRepo = new Map<string, number>()
-  for (const group of groups) cardsPerRepo.set(group.configKey, (cardsPerRepo.get(group.configKey) ?? 0) + 1)
+  // The groups that belong on ONE card, in the order they arrived — which is config
+  // order, so the first repository of a shared target is stable from read to read and
+  // can be the card's identity. Keyed on the tracker as well as the target: the two
+  // never collide today, and naming both means this does not have to rely on that.
+  const buckets = new Map<string, TaskRepoGroup[]>()
+  for (const group of groups) {
+    const key = `${group.tracker}\u0000${group.sourceKey}`
+    const bucket = buckets.get(key)
+    if (bucket) bucket.push(group)
+    else buckets.set(key, [group])
+  }
 
-  // One arm per tracker, and they cannot be folded into one: `group` is a union, and
-  // TypeScript narrows it — and therefore `sortIssues`' element type — only inside a
-  // branch. Folded, the sort would widen to `(TaskIssue | JiraTaskIssue)[]` and fit
-  // neither member. Only the issues differ, so only the issues are written twice.
-  const rows: TaskRow[] = groups.map((group) => {
-    const color = colorMap[group.configKey]
-    const showTracker = (cardsPerRepo.get(group.configKey) ?? 0) > 1
-    return group.tracker === 'jira'
-      ? { ...group, color, showTracker, issues: sortIssues(visibleIssues(group, agentedIssues[group.configKey] ?? NO_AGENTS)) }
-      : { ...group, color, showTracker, issues: sortIssues(group.issues) }
-  })
+  // How many cards each repository appears on, so a card can tell whether it has a
+  // twin to be told apart from. Counted over the CARDS rather than the groups, which
+  // is the set actually on screen: a repo whose Jira read was skipped for want of a
+  // project key has one card and needs no label, and one that shares its sprint with
+  // a sibling has one card for the two groups.
+  const cardsPerRepo = new Map<string, number>()
+  for (const bucket of buckets.values()) {
+    for (const group of bucket) cardsPerRepo.set(group.configKey, (cardsPerRepo.get(group.configKey) ?? 0) + 1)
+  }
+
+  const rows: TaskRow[] = []
+  for (const bucket of buckets.values()) {
+    // The card's IDENTITY is the first repository of the target and nothing else, so
+    // that a selection, a folded card and a scroll position survive a reload in which
+    // one of the two reads failed. What it SHOWS comes from whichever group actually
+    // came back — the same tickets either way, since they share their coordinates.
+    const primary = bucket[0]
+    const read = bucket.find((group) => !group.error) ?? primary
+    const repos = bucket.map((group) => ({
+      configKey: group.configKey,
+      name: group.name,
+      color: colorMap[group.configKey],
+    }))
+    // Unioned across the card, because an agent started in either repository is an
+    // agent on the ticket. See `TaskRow.agentedIssues`.
+    const agented = unionAgents(bucket, agentedIssues)
+    const shared = {
+      configKey: primary.configKey,
+      name: primary.name,
+      color: colorMap[primary.configKey],
+      // ANY of the card's repositories having a second card is enough: the label is
+      // there so two cards naming the same repository can be told apart, and a merged
+      // card names several.
+      showTracker: bucket.some((group) => (cardsPerRepo.get(group.configKey) ?? 0) > 1),
+      repos,
+      agentedIssues: agented,
+    }
+    // One arm per tracker, and they cannot be folded into one: `read` is a union, and
+    // TypeScript narrows it — and therefore `sortIssues`' element type — only inside a
+    // branch. Folded, the sort would widen to `(TaskIssue | JiraTaskIssue)[]` and fit
+    // neither member. Only the issues differ, so only the issues are written twice.
+    rows.push(read.tracker === 'jira'
+      ? { ...read, ...shared, issues: sortIssues(visibleIssues(read, agented)) }
+      : { ...read, ...shared, issues: sortIssues(read.issues) })
+  }
 
   // The tracker is the last tiebreak, and only a tiebreak: two cards of the same
   // repository sort by the rules above like any other pair, so they are adjacent
@@ -240,9 +339,12 @@ function matches(issue: TaskRow['issues'][number], query: string): boolean {
  * the suite runs in Node with no jsdom, so logic left in a `useMemo` is logic no
  * test can reach — and the rules below are the kind that are quietly wrong.
  *
- * THE REPOSITORY FILTER keeps a repo's cards, plural. An undecided repository has a
- * GitHub card and a Jira card (see `readsFrom` in `tracker.ts`), and picking that
- * repository means both of them: the control names a repository, not a backlog.
+ * THE REPOSITORY FILTER keeps a repo's cards, plural, and keeps a SHARED card that is
+ * only partly about it. An undecided repository has a GitHub card and a Jira card (see
+ * `readsFrom` in `tracker.ts`), and picking that repository means both of them: the
+ * control names a repository, not a backlog. A card standing for two repositories is
+ * kept when either one is picked, and goes on naming both — narrowing it to the picked
+ * half would be hiding the fact the merge exists to state.
  *
  * A ROW THAT FAILED IS NEVER SEARCHED AWAY. It has no issues to match — its read did
  * not come back — so dropping it would be the page asserting there is no `foo` in a
@@ -263,7 +365,7 @@ export function filterTaskRows(rows: TaskRow[], filter: TaskFilter): TaskRow[] {
 
   const kept: TaskRow[] = []
   for (const row of rows) {
-    if (filter.configKey && row.configKey !== filter.configKey) continue
+    if (filter.configKey && !row.repos.some((repo) => repo.configKey === filter.configKey)) continue
     if (!query && !filter.epicKey) {
       kept.push(row)
       continue
@@ -363,14 +465,20 @@ export function sortTaskRows(rows: TaskRow[], sort: TaskSort): TaskRow[] {
  *
  * Deduplicated, because an undecided repository contributes two rows and is still
  * one repository to choose.
+ *
+ * Every repository of a row and not just its first: a card shared by two of them is
+ * still two entries in the picker, and offering only the one the card is named after
+ * would leave the other unselectable while its tickets are on screen.
  */
-export function taskFilterRepos(rows: TaskRow[]): { configKey: string; name: string; color: string }[] {
+export function taskFilterRepos(rows: TaskRow[]): TaskRowRepo[] {
   const seen = new Set<string>()
-  const repos: { configKey: string; name: string; color: string }[] = []
+  const repos: TaskRowRepo[] = []
   for (const row of rows) {
-    if (seen.has(row.configKey)) continue
-    seen.add(row.configKey)
-    repos.push({ configKey: row.configKey, name: row.name, color: row.color })
+    for (const repo of row.repos) {
+      if (seen.has(repo.configKey)) continue
+      seen.add(repo.configKey)
+      repos.push(repo)
+    }
   }
   return repos
 }

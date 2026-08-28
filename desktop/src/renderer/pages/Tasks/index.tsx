@@ -49,15 +49,22 @@ function alwaysSideways(): boolean {
  *
  * Structurally `pages/Dashboard/index.tsx`: the same full-screen shell inside a
  * PageModal, whose title and chrome the modal renders. What it lists is one card
- * per repository PER TRACKER it can be read from — open GitHub issues, or the
- * active sprint of a Jira project, or both. A repo the ladder leaves at `ask` has
- * both configured and gets a card for each, labelled with its tracker; it used to
- * get none, which read as "nothing open here" when the truth was "nobody has said
- * which of your two trackers to look in". See `readsFrom` in `tracker.ts`.
+ * per TRACKER TARGET — the open issues of a GitHub repository, or the active sprint
+ * of a Jira project. Usually that is one card per repository per tracker: a repo the
+ * ladder leaves at `ask` has both configured and gets a card for each, labelled with
+ * its tracker; it used to get none, which read as "nothing open here" when the truth
+ * was "nobody has said which of your two trackers to look in". See `readsFrom` in
+ * `tracker.ts`.
  *
- * A card is therefore identified by `rowKey(row)` — repository AND tracker — and
- * not by the config key, which stopped being unique the day the second card
- * appeared.
+ * The other direction is the one card SEVERAL repositories share, and it is the same
+ * observation the other way up: two services planned in one Jira project are handed
+ * the same tickets by the read, so they get one card that names both rather than two
+ * copies of one backlog. `buildTaskRows` folds them on the coordinates the main
+ * process read from; everything below sees a row with two entries in `repos`.
+ *
+ * A card is therefore identified by `rowKey(row)` — the first repository AND the
+ * tracker — and not by the config key, which stopped being unique the day the second
+ * card appeared.
  *
  * The read happens in the main process (`tasks:listOpenIssues`) and arrives over
  * IPC: nothing here touches the network, and neither the GitHub token nor the
@@ -397,14 +404,20 @@ export function TasksPage() {
             {...(selection.tracker === 'jira'
               ? { tracker: 'jira' as const, issue: selection.issue }
               : { tracker: 'github' as const, issue: selection.issue })}
-            configKey={selection.row.configKey}
-            repoName={selection.row.name}
-            repo={config?.repositories?.[selection.row.configKey]}
-            // Read out of the same index the list's dot reads, so the page and the
+            // EVERY repository the card stands for, paired with its configuration —
+            // usually one, and two when a tracker target is shared (see `TaskRow.repos`).
+            // The page needs the whole list rather than the first: it is what the trail
+            // names, and what decides whether a repository can be picked for the agent
+            // at all or the choice has to be left to `/magic:start`.
+            repos={selection.row.repos.map((repo) => ({
+              ...repo,
+              config: config?.repositories?.[repo.configKey],
+            }))}
+            // Read out of the same set the list's dot reads, so the page and the
             // row it was opened from can never disagree about this ticket. `id` is
             // already in the index's own form (see the memo), so there is no second
             // place here that has to know the folding rule.
-            hasAgent={agentedIssues[selection.row.configKey]?.has(selection.id) ?? false}
+            hasAgent={selection.row.agentedIssues.has(selection.id)}
             paneRef={paneRef}
             onBack={back}
           />
@@ -491,7 +504,6 @@ export function TasksPage() {
                     expanded={!!filter.query.trim() || !collapsed.has(rowKey(row))}
                     onToggle={toggle}
                     onSelect={select}
-                    agentedIssues={agentedIssues[row.configKey]}
                   />
                 ))}
               </div>

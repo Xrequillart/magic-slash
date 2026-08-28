@@ -1,4 +1,4 @@
-import { memo, type KeyboardEvent } from 'react'
+import { Fragment, memo, type KeyboardEvent } from 'react'
 import {
   AlertTriangle,
   ChevronDown,
@@ -31,10 +31,14 @@ import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { TrackerTile } from '../../components/icons/TrackerIcons'
 
 /**
- * One repository's card, in the shape the Team page's `RepoCard` established:
- * a collapsible header carrying the repo's colour dot and a count, and rows under
- * it. Same markup, same classes — two lists of "things grouped by repository" that
- * looked different would be a bug nobody could name.
+ * One TRACKER TARGET's card, in the shape the Team page's `RepoCard` established:
+ * a collapsible header carrying a colour dot and a count, and rows under it. Same
+ * markup, same classes — two lists of "things grouped by repository" that looked
+ * different would be a bug nobody could name.
+ *
+ * Usually that target belongs to one repository and the header names one. When two
+ * repositories share it — one Jira project for two services — they share this card
+ * and the header names both: see `TaskRow.repos`.
  */
 
 /**
@@ -703,7 +707,6 @@ export const TasksRepoSection = memo(function TasksRepoSection({
   expanded,
   onToggle,
   onSelect,
-  agentedIssues,
 }: {
   row: TaskRow
   expanded: boolean
@@ -715,8 +718,6 @@ export const TasksRepoSection = memo(function TasksRepoSection({
   onToggle: (key: string) => void
   /** What the page opens on. See `TaskSelection`. */
   onSelect: (selection: TaskSelection) => void
-  /** Ticket ids of this repository's issues that already have an agent. Built once for the page. */
-  agentedIssues: ReadonlySet<string>
 }) {
   const t = useT()
   const openLabel = t(row.tracker === 'jira' ? 'tasks.jira.openIssue' : 'tasks.openIssue')
@@ -736,13 +737,28 @@ export const TasksRepoSection = memo(function TasksRepoSection({
         }`}
       >
         <Chevron className={`w-4 h-4 flex-shrink-0 ${hasRows ? 'text-text-secondary' : 'opacity-0'}`} />
-        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
         {/* Name and tracker in one flexing box rather than as two siblings of the
             header: the tracker has to sit NEXT TO the name, and the name is what
             gives way when the row is narrow. `min-w-0` so `truncate` can actually
             shrink it — a flex item's automatic minimum is its content otherwise. */}
         <span className="flex-1 min-w-0 flex items-baseline gap-1.5">
-          <span className="text-sm font-medium text-ink truncate">{row.name}</span>
+          {/* EVERY repository this card stands for, each with its own dot, in config
+              order. One is the ordinary case and looks exactly as it always did; two
+              is a shared tracker target — one Jira project planned for two services —
+              whose single backlog belongs to both of them, and saying so here is what
+              makes one card in place of two identical ones read as deliberate.
+
+              The dot is `items-center` inside a baseline-aligned row: a 2px circle
+              sitting ON the baseline reads as a full stop rather than as a marker. */}
+          {row.repos.map((repo, index) => (
+            <Fragment key={repo.configKey}>
+              {index > 0 && <span className="text-xs text-text-secondary/40 flex-shrink-0">·</span>}
+              <span className="flex items-center gap-1.5 min-w-0">
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: repo.color }} />
+                <span className="text-sm font-medium text-ink truncate">{repo.name}</span>
+              </span>
+            </Fragment>
+          ))}
           {/* Only when this repository has a twin card — see `TaskRow.showTracker`.
               Untranslated on purpose: "GitHub" and "Jira" are product names, and a
               catalogue entry per language would only offer somewhere for them to be
@@ -789,7 +805,7 @@ export const TasksRepoSection = memo(function TasksRepoSection({
           // Through the same normaliser the index was built with: Jira is
           // case-insensitive about keys, and an agent whose ticket was typed
           // `per-1234` is on `PER-1234`.
-          hasAgent={agentedIssues.has(normalizeTicketId(issue.key))}
+          hasAgent={row.agentedIssues.has(normalizeTicketId(issue.key))}
           onSelect={(key) => onSelect({ tracker: 'jira', configKey: row.configKey, key })}
         />
       ))}
@@ -801,7 +817,7 @@ export const TasksRepoSection = memo(function TasksRepoSection({
           copyLabel={copyLabel}
           copiedLabel={copiedLabel}
           t={t}
-          hasAgent={agentedIssues.has(String(issue.number))}
+          hasAgent={row.agentedIssues.has(String(issue.number))}
           onSelect={(number) => onSelect({ tracker: 'github', configKey: row.configKey, number })}
         />
       ))}

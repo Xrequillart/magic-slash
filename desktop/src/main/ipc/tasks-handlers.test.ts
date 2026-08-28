@@ -298,6 +298,21 @@ describe('tasks:listOpenIssues', () => {
     expect(mockFetchOpenIssues).not.toHaveBeenCalled()
   })
 
+  it('reads one GitHub repository once for the two config entries pointed at it', async () => {
+    // Two folders of the same repo — a worktree checkout kept alongside the clone —
+    // hold one backlog between them, and a second GraphQL page of it buys nothing.
+    withRepos({
+      api: githubRepo('api'),
+      'api-fork': githubRepo('api-fork', { issues: { githubIssuesUrl: 'https://github.com/Acme/API/issues' } }),
+    })
+
+    const snapshot = await listOpenIssues()()
+
+    expect(mockFetchOpenIssues).toHaveBeenCalledTimes(1)
+    // Case-folded, because GitHub is: `Acme/API` and `acme/api` are one repository.
+    expect(new Set(snapshot.groups.map((g) => g.sourceKey))).toEqual(new Set(['github:acme/api']))
+  })
+
   // The override is free text. A card saying "this is not a URL" belongs in the
   // settings form that accepted it, not on a backlog page.
   it('skips a GitHub repository whose issues address does not parse', async () => {
@@ -720,6 +735,50 @@ describe('tasks:listOpenIssues — the Jira half', () => {
     await handler()
 
     expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
+  })
+
+  it('reads one project once for the two repositories planned in it', async () => {
+    // Two services, one Jira project — and one sprint. The read used to be keyed by
+    // repository, so this was the same query twice for the same tickets, which the
+    // page then drew as two identical cards.
+    withRepos({ billing: jiraRepo('billing'), api: jiraRepo('api') })
+
+    const snapshot = await listOpenIssues()()
+
+    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
+    // Still one group each: the merge is the renderer's to make, and it needs both
+    // repositories to make it. They agree on where the tickets came from.
+    expect(snapshot.groups.map((g) => g.sourceKey)).toEqual([
+      'jira:https://acme.atlassian.net|PROJ',
+      'jira:https://acme.atlassian.net|PROJ',
+    ])
+    expect(snapshot.groups.map((g) => g.configKey).sort()).toEqual(['api', 'billing'])
+  })
+
+  it('names the same source for a repo that declares the site and one that does not', async () => {
+    // The site a repository leaves unset is the connected account's, which is what
+    // its browse links are built on too — so the two are one project, and only this
+    // side can say so.
+    withRepos({
+      billing: jiraRepo('billing', { jira: { projectKey: 'PROJ', siteUrl: 'https://acme.atlassian.net/' } }),
+      api: jiraRepo('api'),
+    })
+
+    const snapshot = await listOpenIssues()()
+
+    expect(new Set(snapshot.groups.map((g) => g.sourceKey)).size).toBe(1)
+    expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
+  })
+
+  it('names the source even while the account is disconnected', async () => {
+    // Two repositories on one project must not tell the reader the same thing twice
+    // just because nothing could be read.
+    mockJiraStatus.mockReturnValue({ connected: false, configured: true, siteUrl: 'https://acme.atlassian.net' })
+    withRepos({ billing: jiraRepo('billing'), api: jiraRepo('api') })
+
+    const snapshot = await listOpenIssues()()
+
+    expect(new Set(snapshot.groups.map((g) => g.sourceKey)).size).toBe(1)
   })
 
   it('does not cache a failure', async () => {

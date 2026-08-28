@@ -37,14 +37,22 @@ function issue(overrides: Partial<TaskIssue> = {}): TaskIssue {
   }
 }
 
+/**
+ * A GitHub group whose `sourceKey` follows its config key by default.
+ *
+ * Derived rather than fixed, because the page now folds two groups that share one
+ * into a single card: a constant here would silently merge every fixture in the
+ * suite. A test about the merge passes the same `sourceKey` to two groups on purpose.
+ */
 function group(overrides: Partial<Omit<GitHubTaskRepoGroup, 'tracker'>> = {}): GitHubTaskRepoGroup {
-  return {
-    tracker: 'github',
+  const merged = {
+    tracker: 'github' as const,
     configKey: 'api',
     name: 'api',
     issues: [],
     ...overrides,
   }
+  return { sourceKey: `github:acme/${merged.configKey}`, ...merged }
 }
 
 function jiraIssue(overrides: Partial<JiraTaskIssue> = {}): JiraTaskIssue {
@@ -60,14 +68,16 @@ function jiraIssue(overrides: Partial<JiraTaskIssue> = {}): JiraTaskIssue {
   }
 }
 
+/** The same for a sprint. See `group` on why `sourceKey` follows the config key. */
 function jiraGroup(overrides: Partial<Omit<JiraTaskRepoGroup, 'tracker'>> = {}): JiraTaskRepoGroup {
-  return {
-    tracker: 'jira',
+  const merged = {
+    tracker: 'jira' as const,
     configKey: 'jira-only',
     name: 'jira-only',
     issues: [],
     ...overrides,
   }
+  return { sourceKey: `jira:https://acme.atlassian.net|${merged.configKey.toUpperCase()}`, ...merged }
 }
 
 /**
@@ -330,6 +340,137 @@ describe('rowKey', () => {
 
   it('is stable for the same card', () => {
     expect(rowKey({ tracker: 'jira', configKey: 'api' })).toBe(rowKey({ tracker: 'jira', configKey: 'api' }))
+  })
+})
+
+describe('buildTaskRows — two repositories on one tracker target', () => {
+  /** The same Jira project, declared by two repositories. */
+  const SHARED = 'jira:https://acme.atlassian.net|PROJ'
+
+  function shared(configKey: string, issues = [jiraIssue()]) {
+    return jiraGroup({ configKey, name: configKey, sourceKey: SHARED, issues })
+  }
+
+  it('draws one card for the two of them', () => {
+    const rows = build([shared('magic-slash'), shared('poppins-pex')])
+
+    expect(rows).toHaveLength(1)
+    expect(keys(rows[0])).toEqual(['PROJ-1'])
+  })
+
+  it('names every repository behind it, in config order', () => {
+    const rows = build([shared('magic-slash'), shared('poppins-pex')])
+
+    expect(rows[0].repos.map((repo) => repo.configKey)).toEqual(['magic-slash', 'poppins-pex'])
+    // Each with its own dot, so the merge reads as two repositories and not as one
+    // repository with a strange name.
+    expect(new Set(rows[0].repos.map((repo) => repo.color)).size).toBe(2)
+  })
+
+  // The card's identity is the FIRST repository and stays put, so a folded card, a
+  // held selection and a scroll offset all survive a reload.
+  it('keeps the first repository as the card identity', () => {
+    const rows = build([shared('magic-slash'), shared('poppins-pex')])
+
+    expect(rows[0].configKey).toBe('magic-slash')
+    expect(rowKey(rows[0])).toBe('jira:magic-slash')
+  })
+
+  // ... including a reload in which the first repository's own read came back empty
+  // or broken: what the card SHOWS comes from whichever group answered.
+  it('shows the read that succeeded and still answers to the first repository', () => {
+    const rows = build([
+      jiraGroup({
+        configKey: 'magic-slash',
+        name: 'magic-slash',
+        sourceKey: SHARED,
+        error: { error: 'offline', message: 'no token' },
+      }),
+      shared('poppins-pex', [jiraIssue({ key: 'PROJ-7' })]),
+    ])
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0].configKey).toBe('magic-slash')
+    expect(rows[0].error).toBeUndefined()
+    expect(keys(rows[0])).toEqual(['PROJ-7'])
+  })
+
+  // Nothing came back at all: the card says so once rather than twice.
+  it('keeps the failure when every read failed', () => {
+    const rows = build([
+      jiraGroup({ configKey: 'magic-slash', name: 'magic-slash', sourceKey: SHARED, error: { error: 'offline', message: 'x' } }),
+      jiraGroup({ configKey: 'poppins-pex', name: 'poppins-pex', sourceKey: SHARED, error: { error: 'offline', message: 'x' } }),
+    ])
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0].error?.error).toBe('offline')
+  })
+
+  // An agent started in either repository is an agent on the ticket — and on a
+  // sprint that is what decides whether an In Progress ticket is shown at all.
+  it('unions the agent index across the card', () => {
+    const rows = build(
+      [
+        shared('magic-slash', [jiraIssue({ key: 'PROJ-9', statusCategory: 'indeterminate' })]),
+        shared('poppins-pex', [jiraIssue({ key: 'PROJ-9', statusCategory: 'indeterminate' })]),
+      ],
+      REPOS,
+      // Nobody is on it in the repository the card is named after.
+      { 'poppins-pex': new Set(['PROJ-9']) },
+    )
+
+    expect(keys(rows[0])).toEqual(['PROJ-9'])
+    expect(rows[0].agentedIssues.has('PROJ-9')).toBe(true)
+  })
+
+  // Two different projects are two backlogs, whatever else the repositories share.
+  it('leaves two different targets alone', () => {
+    const rows = build([
+      jiraGroup({ configKey: 'magic-slash', name: 'magic-slash', sourceKey: SHARED, issues: [jiraIssue()] }),
+      jiraGroup({
+        configKey: 'poppins-pex',
+        name: 'poppins-pex',
+        sourceKey: 'jira:https://acme.atlassian.net|OTHER',
+        issues: [jiraIssue({ key: 'OTHER-1' })],
+      }),
+    ])
+
+    expect(rows).toHaveLength(2)
+  })
+
+  // A GitHub target is the same rule: two config entries on one repository hold one
+  // backlog between them.
+  it('merges two config entries pointed at one GitHub repository', () => {
+    const rows = build([
+      group({ configKey: 'magic-slash', name: 'magic-slash', sourceKey: 'github:acme/api', issues: [issue()] }),
+      group({ configKey: 'poppins-pex', name: 'poppins-pex', sourceKey: 'github:acme/api', issues: [issue()] }),
+    ])
+
+    expect(rows).toHaveLength(1)
+    expect(numbers(rows[0])).toEqual([1])
+  })
+
+  // The merge is per tracker, so a repository that also has a GitHub backlog still
+  // gets its own card for it — and both cards say which tracker they are.
+  it('still separates the trackers, and labels the pair', () => {
+    const rows = build([
+      group({ configKey: 'magic-slash', name: 'magic-slash', issues: [issue()] }),
+      shared('magic-slash'),
+      shared('poppins-pex'),
+    ])
+
+    expect(rows).toHaveLength(2)
+    expect(rows.every((row) => row.showTracker)).toBe(true)
+  })
+
+  // The picker names repositories, not cards: both halves of a merged card must be
+  // selectable, and picking either keeps the whole card.
+  it('offers both repositories to the filter and keeps the card for either', () => {
+    const rows = build([shared('magic-slash'), shared('poppins-pex')])
+
+    expect(taskFilterRepos(rows).map((repo) => repo.configKey)).toEqual(['magic-slash', 'poppins-pex'])
+    expect(filterTaskRows(rows, { ...NO_FILTER, configKey: 'poppins-pex' })).toHaveLength(1)
+    expect(filterTaskRows(rows, { ...NO_FILTER, configKey: 'jira-only' })).toHaveLength(0)
   })
 })
 

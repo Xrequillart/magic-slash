@@ -390,14 +390,29 @@ function TicketComments({
   )
 }
 
+/** One of the repositories the ticket's card stands for, with its configuration. */
+export interface TaskDetailRepo {
+  configKey: string
+  name: string
+  /** Its entry in the config, when it still has one. Absent means nothing can be launched there. */
+  config?: RepositoryConfig
+}
+
 /** What the page needs whichever tracker the ticket came from. */
 interface TaskDetailPageBaseProps {
-  /** The config key of the repository the ticket came from — what the detail read is keyed by. */
-  configKey: string
-  /** That repository's name, for the trail back to the list it came from. */
-  repoName: string
-  /** That repository's configuration, when it still has one. Absent means nothing can be launched. */
-  repo?: RepositoryConfig
+  /**
+   * EVERY repository the ticket's card stands for, in config order, never empty.
+   *
+   * One is the ordinary case. Two or more is a shared tracker target — one Jira
+   * project planned for two services — and then the ticket genuinely belongs to
+   * none of them in particular, which is what the launch below has to respect
+   * rather than guess at. See `TaskRow.repos`.
+   *
+   * The FIRST is the card's identity, and the key the detail read is made on: the
+   * repositories of a card share their coordinates, so any of them would fetch the
+   * same ticket, and using the first keeps that read stable across reloads.
+   */
+  repos: TaskDetailRepo[]
   /**
    * Whether an agent is already on this ticket — the same answer the list's dot gives.
    *
@@ -437,7 +452,23 @@ type TaskDetailPageProps = TaskDetailPageBaseProps & (
 )
 
 export function TaskDetailPage(props: TaskDetailPageProps) {
-  const { configKey, repoName, repo, hasAgent, paneRef, onBack } = props
+  const { repos, hasAgent, paneRef, onBack } = props
+
+  /**
+   * The repository the detail read is keyed by, and the repositories the agent could
+   * be started in.
+   *
+   * `primary` is the first and nothing more — see `repos`. `startable` is every one
+   * of them the app could actually open a terminal in: the same question
+   * `AgentInfoSidebar` asks of a repository before offering it, since a team repo
+   * nobody has bound to a folder on this machine has no directory to launch in.
+   */
+  const primary = repos[0]
+  const configKey = primary.configKey
+  // The trail back to the list names the card, so it names what the card names: both
+  // repositories when they share this ticket, in the order the header lists them.
+  const repoName = repos.map((entry) => entry.name).join(' · ')
+  const startable = repos.filter((entry) => !!entry.config && !entry.config.needsLocalPath && !!entry.config.path)
   const t = useT()
   const locale = useLocale()
 
@@ -592,17 +623,20 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
   /**
    * Whether an agent can be started here AT ALL, answered locally.
    *
-   * The same question `AgentInfoSidebar` asks of a repository before offering it:
-   * a team repo nobody has bound to a folder on this machine has no directory to
-   * open a terminal in. Asked here rather than by letting `pickUpTask` throw,
-   * because that error is an untranslated English sentence and this one is a
-   * state the page can explain and act on — which is the whole of what makes a
-   * repository with no local path say so instead of failing silently.
+   * Asked here rather than by letting `pickUpTask` throw, because that error is an
+   * untranslated English sentence and this one is a state the page can explain and
+   * act on — which is the whole of what makes a repository with no local path say so
+   * instead of failing silently.
+   *
+   * ONE of the card's repositories being launchable is enough: on a shared ticket the
+   * agent is not started in a repository at all (see `openAgent`), so a sibling with
+   * no local folder is no reason to withhold the button.
    */
-  const canStart = !!repo && !repo.needsLocalPath && !!repo.path
+  const canStart = startable.length > 0
 
   /**
-   * Open an agent in this ticket's repository with a first prompt already typed.
+   * Open an agent on this ticket with a first prompt already typed — in its
+   * repository when the ticket has one of its own, and see below when it does not.
    *
    * ONE launcher for both buttons and both trackers, because everything except that
    * prompt is identical — resolving the local path, the failure the page has to
@@ -616,28 +650,43 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
    * its first line and leave the second behind.
    */
   const openAgent = useCallback(async (initialPrompt: string, promptMode: InitialPromptMode = 'run') => {
-    if (!repo?.path) return
+    if (startable.length === 0) return
+    const only = startable.length === 1 ? startable[0].config?.path : undefined
     setStartFailed(false)
     try {
-      // Only `cwd` is kept: pickUpTask's own initialPrompt is `/magic:continue`, which is
-      // the wrong verb for either of these. The matching itself is left exactly as it is —
-      // this passes it the local path it already knows, so it resolves to that same
-      // repository, and `expandPath` on the way out is why this is worth calling at all.
+      // WHERE the agent opens, and the one place this page is allowed to decide it.
       //
-      // `ticketId`, not the issue number: `pickUpTask` has always been ticket-id
-      // agnostic, and a Jira ticket reaching it as `"undefined"` would match nothing.
-      const { cwd } = await window.electronAPI.org.pickUpTask(ticketId, [repo.path])
+      // With ONE repository behind the ticket there is nothing to decide: the agent
+      // opens in it, as it always has. Only `cwd` is kept from `pickUpTask` — its own
+      // initialPrompt is `/magic:continue`, the wrong verb for either button. The
+      // matching is left exactly as it is: this passes the local path it already
+      // knows, so it resolves to that same repository, and `expandPath` on the way out
+      // is why the call is worth making.
+      //
+      // With SEVERAL — a Jira project two repositories are planned in — the ticket
+      // belongs to none of them in particular, and picking the first would start work
+      // in the wrong folder about half the time and say nothing. So no repository is
+      // chosen here at all: the agent opens at the default directory and `/magic:start`
+      // resolves the scope itself, which it does properly — it scores every configured
+      // repository against the ticket's labels, title and description and asks when the
+      // answer is not clear (skills/magic-start/SKILL.md §3). It reads that config over
+      // the app's local HTTP API rather than from its working directory, so starting it
+      // outside a repository costs it nothing. A multi-repo ticket is the case it is
+      // already built for.
+      const cwd = only
+        ? (await window.electronAPI.org.pickUpTask(ticketId, [only])).cwd
+        : undefined
       // The agents page owns every guard on creating one (max agents, unreachable
       // repositories, which pane it lands in), so this asks for an agent the same
       // way the sidebar's "+" does rather than launching one itself.
-      const launch: NewTerminalDetail = { cwd, initialPrompt, promptMode }
+      const launch: NewTerminalDetail = { ...(cwd ? { cwd } : {}), initialPrompt, promptMode }
       window.dispatchEvent(new CustomEvent<NewTerminalDetail>('new-terminal', { detail: launch }))
     } catch {
       // Never `err.message`: pickUpTask throws an English sentence with no
       // catalogue entry, and this page is translated.
       setStartFailed(true)
     }
-  }, [ticketId, repo?.path])
+  }, [ticketId, startable])
 
   /**
    * The page's one affirmative action, per tracker.
