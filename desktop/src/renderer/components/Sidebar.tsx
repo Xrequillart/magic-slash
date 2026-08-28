@@ -271,6 +271,22 @@ export function Sidebar() {
           <span className="ml-auto text-xs opacity-50">{tasksShortcutKey}</span>
         </button>
 
+        {/* Team dashboard button. Sits between Tasks and Skills on purpose: the two
+            around it are what the person and their team are WORKING ON, and Skills is
+            reference material — so the order reads as work, then the tooling for it,
+            rather than putting the reference list in the middle of the two views of
+            live activity. The keyboard shortcuts are keyed by letter (see
+            PAGE_SHORTCUTS) and do not follow this order, so moving a button here
+            changes nothing but the reading order. */}
+        <button
+          onClick={() => openModal('team')}
+          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-ink"
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>{t('sidebar.team')}</span>
+          <span className="ml-auto text-xs opacity-50">{teamShortcutKey}</span>
+        </button>
+
         {/* Skills button — opens an overlay, so no active state */}
         <button
           onClick={() => openModal('skills')}
@@ -279,16 +295,6 @@ export function Sidebar() {
           <Sparkles className="w-3.5 h-3.5" />
           <span>{t('sidebar.skills')}</span>
           <span className="ml-auto text-xs opacity-50">{skillsShortcutKey}</span>
-        </button>
-
-        {/* Team dashboard button */}
-        <button
-          onClick={() => openModal('team')}
-          className="w-full flex items-center justify-start gap-2 px-2 py-2 text-xs font-medium rounded-lg transition-all text-text-secondary hover:bg-text-secondary/10 hover:text-ink"
-        >
-          <Users className="w-3.5 h-3.5" />
-          <span>{t('sidebar.team')}</span>
-          <span className="ml-auto text-xs opacity-50">{teamShortcutKey}</span>
         </button>
 
         {/* Account / Settings — opens the settings modal (or login when signed out) */}
