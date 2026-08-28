@@ -138,9 +138,21 @@ describe('detectTicketProvider', () => {
     expect(detectTicketProvider('sup2-14')).toBe('jira')
   })
 
+  it('places an ID carrying a # or surrounding whitespace, exactly as the card does', () => {
+    // Sharing the pattern was not enough: `normalizeTicketId` trims and drops a
+    // leading `#` BEFORE testing the shape, so testing the raw value here still
+    // disagreed with it — ` #PROJ-123 ` folded to a Jira key on the Tasks card and
+    // to null in the sidebar, the same ticket losing its mark on one screen only.
+    expect(detectTicketProvider('#PROJ-123')).toBe('jira')
+    expect(detectTicketProvider(' PROJ-123 ')).toBe('jira')
+    expect(detectTicketProvider(' #sup2-14 ')).toBe('jira')
+    expect(detectTicketProvider(' 196 ')).toBe('github')
+  })
+
   it('returns null for anything it cannot place', () => {
     expect(detectTicketProvider(undefined)).toBeNull()
     expect(detectTicketProvider('')).toBeNull()
+    expect(detectTicketProvider('   ')).toBeNull()
     expect(detectTicketProvider('some free text')).toBeNull()
     expect(detectTicketProvider('#12a')).toBeNull()
     expect(detectTicketProvider('12-34-56')).toBeNull()
@@ -163,6 +175,15 @@ describe('buildTicketLink', () => {
 
   it('links a Jira ticket', () => {
     expect(buildTicketLink('PROJ-123', urls)).toBe('https://acme.atlassian.net/browse/PROJ-123')
+  })
+
+  it('builds a clean path from an ID carrying a # or whitespace', () => {
+    // The segment is the NORMALISED id. Appending the raw one would put a space and
+    // a `#` in the URL — and everything after a `#` is a fragment, so the link would
+    // open the tracker's home page rather than the ticket.
+    expect(buildTicketLink(' #PROJ-123 ', urls)).toBe('https://acme.atlassian.net/browse/PROJ-123')
+    expect(buildTicketLink(' #196 ', urls)).toBe('https://github.com/owner/repo/issues/196')
+    expect(buildTicketLink('proj-123', urls)).toBe('https://acme.atlassian.net/browse/PROJ-123')
   })
 
   it('does not double the separator on a base URL that ends with one', () => {
