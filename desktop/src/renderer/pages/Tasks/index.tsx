@@ -5,14 +5,14 @@ import { useOrgAgents } from '../../hooks/useOrgAgents'
 import { useTasks } from '../../hooks/useTasks'
 import { useStore } from '../../store'
 import { buildTaskRows, countOpenIssues, countTotalOpen } from '../../utils/taskRows'
-import { buildAgentedIssues, taskAgentRefs, terminalAgentSignature } from '../../utils/taskAgents'
+import { buildAgentedIssues, normalizeTicketId, taskAgentRefs, terminalAgentSignature } from '../../utils/taskAgents'
 import { resolveTracker } from '../../../tracker'
 import { useT, type MessageKey } from '../../i18n'
 import { WaveLoader } from '../../components/WaveLoader'
 import { SweepPane } from '../../components/SweepPane'
 import { GitHubNotConnected } from './GitHubNotConnected'
 import { TaskDetailPage } from './TaskDetailPage'
-import { openCountLabel, TasksRepoSection } from './TasksRepoSection'
+import { openCountLabel, TasksRepoSection, type TaskSelection } from './TasksRepoSection'
 
 /**
  * The two views this page swaps between, ranked. `SweepPane` reads the sign of
@@ -84,17 +84,19 @@ export function TasksPage() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   /**
-   * The selected issue as a (repository, number) PAIR, not as the issue object.
+   * The selected ticket as a (repository, identity) PAIR, not as the ticket object.
    *
-   * Issue numbers are per repository, so the key is half the identity. Holding the
-   * pair rather than the object also means a reload re-derives what the issue page
-   * shows from the fresh snapshot — and an issue that has been closed in the
-   * meantime sends the page back to the list instead of leaving a stale copy open.
+   * Issue numbers and Jira keys are both per repository, so the config key is half
+   * the identity either way; the other half is what `TaskSelection` is discriminated
+   * on. Holding the pair rather than the object also means a reload re-derives what
+   * the detail page shows from the fresh snapshot — and a ticket that has left the
+   * list in the meantime sends the page back to it instead of leaving a stale copy
+   * open.
    *
-   * Null is the list; anything else is that issue's page. One piece of state for
+   * Null is the list; anything else is that ticket's page. One piece of state for
    * both, so the two views cannot both believe they are on screen.
    */
-  const [selected, setSelected] = useState<{ configKey: string; number: number } | null>(null)
+  const [selected, setSelected] = useState<TaskSelection | null>(null)
 
   /**
    * The one scrolling element of the page, and the offset the backlog was left at.
@@ -147,18 +149,40 @@ export function TasksPage() {
   const selection = useMemo(() => {
     if (!selected) return null
     const row = rows.find((candidate) => candidate.configKey === selected.configKey)
-    // GitHub only, and not merely because that is what narrows the union: the detail
-    // page reads `tasks:getIssueDetail`, which is keyed by an issue NUMBER. A Jira
-    // row is not selectable in the first place (see `JiraIssueRow`), so this can only
-    // be reached by a repository that switched trackers under a held selection —
-    // exactly the case that has to send the page back to the list.
-    if (row?.tracker !== 'github') return null
+    if (!row) return null
+
+    if (selected.tracker === 'jira') {
+      // The tracker has to match as well as the key: a repository switched from Jira
+      // to GitHub under a held selection is exactly the case that must send the page
+      // back to the list rather than read a Jira key off a GitHub row.
+      if (row.tracker !== 'jira') return null
+      // WORTH KNOWING: this memo drops to null the moment the ticket leaves the list,
+      // and the Jira list is filtered to what is not `done` — so a Reload taken after
+      // an agent has moved a ticket to Done bounces an open panel back to the backlog.
+      // There is no poller on this page, so only an explicit Reload can do it.
+      const issue = row.issues.find((candidate) => candidate.key === selected.key)
+      // `id` in the form `buildAgentedIssues` keyed the index by, so the page can look
+      // an agent up without knowing the folding rule: Jira is case-insensitive about
+      // keys, and an agent whose ticket was typed `per-1234` is on `PER-1234`. It is
+      // also what the sweep's page key is built from, which is opaque either way.
+      return issue ? { tracker: 'jira' as const, row, issue, id: normalizeTicketId(issue.key) } : null
+    }
+
+    if (row.tracker !== 'github') return null
     const issue = row.issues.find((candidate) => candidate.number === selected.number)
-    return issue ? { row, issue } : null
+    return issue ? { tracker: 'github' as const, row, issue, id: String(issue.number) } : null
   }, [selected, rows])
 
-  /** Which of the two views is on screen. A change is what plays the sweep. */
-  const pageKey = selection ? `issue:${selection.row.configKey}#${selection.issue.number}` : 'list'
+  /**
+   * Which of the two views is on screen. A change is what plays the sweep.
+   *
+   * The TRACKER is part of it, structurally rather than incidentally. A GitHub key
+   * (`github:api#234`) and a Jira one (`jira:api#PROJ-234`) cannot collide today,
+   * because a Jira key always carries a letter prefix and a hyphen — but that is a
+   * fact about Jira's key format, and the page would be relying on it to tell two
+   * different tickets apart. Naming the tracker means it does not have to.
+   */
+  const pageKey = selection ? `${selection.tracker}:${selection.row.configKey}#${selection.id}` : 'list'
 
   useEffect(() => {
     paneRef.current?.scrollTo({ top: pageKey === 'list' ? listOffsetRef.current : 0 })
@@ -198,11 +222,14 @@ export function TasksPage() {
   }, [])
 
   // Stable for the same reason `toggle` is: it is handed to every memoised card.
-  const select = useCallback((configKey: string, number: number) => {
+  // ONE entry point for both trackers, which is what keeps the preserved scroll
+  // free: the offset is saved here, so a Jira row gets it by going through the same
+  // door a GitHub row does.
+  const select = useCallback((next: TaskSelection) => {
     // Read here rather than in the effect above: by the time that runs, the pane
-    // has already been scrolled to the top of the issue.
+    // has already been scrolled to the top of the ticket.
     listOffsetRef.current = paneRef.current?.scrollTop ?? 0
-    setSelected({ configKey, number })
+    setSelected(next)
   }, [])
 
   const back = useCallback(() => setSelected(null), [])
@@ -283,13 +310,20 @@ export function TasksPage() {
       >
         {selection ? (
           <TaskDetailPage
-            issue={selection.issue}
+            // Spread so the (tracker, issue) pair stays correlated: the page's props
+            // are a discriminated union, and passing the two separately would let a
+            // Jira ticket be handed to the GitHub branch.
+            {...(selection.tracker === 'jira'
+              ? { tracker: 'jira' as const, issue: selection.issue }
+              : { tracker: 'github' as const, issue: selection.issue })}
             configKey={selection.row.configKey}
             repoName={selection.row.name}
             repo={config?.repositories?.[selection.row.configKey]}
             // Read out of the same index the list's dot reads, so the page and the
-            // row it was opened from can never disagree about this issue.
-            hasAgent={agentedIssues[selection.row.configKey]?.has(String(selection.issue.number)) ?? false}
+            // row it was opened from can never disagree about this ticket. `id` is
+            // already in the index's own form (see the memo), so there is no second
+            // place here that has to know the folding rule.
+            hasAgent={agentedIssues[selection.row.configKey]?.has(selection.id) ?? false}
             paneRef={paneRef}
             onBack={back}
           />

@@ -1,7 +1,9 @@
 import { ipcMain } from 'electron'
 import type {
   GitHubTaskRepoGroup,
+  JiraTaskIssueDetail,
   JiraTaskRepoGroup,
+  JiraTaskStatusError,
   PRStatusError,
   RepositoryConfig,
   TaskIssueDetail,
@@ -13,12 +15,16 @@ import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite, resolveTra
 import { readConfig } from '../config/config'
 import { getGitHubToken } from '../github'
 import { fetchIssueDetail, fetchOpenIssues } from '../github-issues'
-import { fetchSprintIssues, type AtlassianDeps } from '../jira/atlassian-api'
+import { fetchJiraIssue, fetchSprintIssues, type AtlassianDeps } from '../jira/atlassian-api'
 import { ATLASSIAN_API_BASE_URL, TOKEN_URL } from '../jira/constants'
 import { getStatus as jiraStatus, reportUnauthorized, withFreshAccessToken } from '../jira/connect'
+import { DETAIL_FIELDS, mapIssueDetail as mapJiraIssueDetail } from '../jira/issue-detail'
 import {
   buildOpenSprintProbeJql,
   buildSprintJql,
+  // `classifyUnexpected` and not `classify`: it delegates to it for an
+  // `AtlassianApiError` and covers the throw that is a bug on our side, which must
+  // still land in the panel rather than reject at the bridge.
   classifyUnexpected,
   mapSprintIssues,
   PROBE_PAGE_SIZE,
@@ -453,6 +459,117 @@ export function setupTasksHandlers(): void {
         return await fetchIssueDetail(repo.owner, repo.repo, args.number)
       } catch (err) {
         return { error: 'network', message: err instanceof Error ? err.message : String(err) }
+      }
+    },
+  )
+
+  /**
+   * Whether an IPC payload really is a (config key, issue key) pair.
+   *
+   * `isIssueDetailArgs`' twin, and it exists for the same reason: the annotation on
+   * the handler is erased at runtime, and the reads it feeds sit outside the
+   * handler's try/catch.
+   *
+   * The KEY is checked against Jira's own shape rather than merely being a non-empty
+   * string, because it lands in a URL path. `fetchJiraIssue` encodes it, so nothing
+   * can reshape the address either way — but a key that cannot be one is a question
+   * this handler cannot answer, and answering it here costs no round trip. The
+   * pattern admits nothing but letters, digits, underscores and one hyphen, so
+   * control characters, spaces and path separators are all out by construction.
+   *
+   * MUST TRACK `JIRA_KEY` in `renderer/utils/taskAgents.ts`, which asks the same
+   * question on the other side of the bridge. The two cannot be shared today — that
+   * one is renderer-only — but they must not disagree: if this one is the stricter,
+   * the panel says "not found" about a ticket the list just drew, and the symptom
+   * points at neither file.
+   */
+  const JIRA_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]*-\d+$/
+
+  const isJiraIssueDetailArgs = (args: unknown): args is { configKey: string; key: string } => {
+    if (typeof args !== 'object' || args === null) return false
+    const { configKey, key } = args as { configKey?: unknown; key?: unknown }
+    return typeof configKey === 'string' && configKey !== ''
+      && typeof key === 'string' && JIRA_KEY_PATTERN.test(key)
+  }
+
+  /**
+   * ONE Jira ticket's description, status, people and labels — the half of a ticket
+   * the sprint read deliberately leaves behind (see `JiraTaskIssue`). Called when
+   * the detail panel opens on a sprint row, and only then.
+   *
+   * Takes the repository's CONFIG KEY for `tasks:getIssueDetail`'s reason: the site
+   * and the cloud id are the main process's business, and a repository that stopped
+   * being Jira-tracked between the list and the click answers "not found" rather
+   * than being queried anyway.
+   *
+   * The failure ladder is the sprint read's, unchanged — `classify` and
+   * `classifyUnexpected` are imported straight from `sprint-issues.ts`, so one Jira
+   * failure has one name and one sentence wherever it is met.
+   *
+   * NOT CACHED, where the sprint read is. A description is what someone opens a
+   * ticket to read, and the thirty-second window `JIRA_MIN_REFRESH_MS` buys the list
+   * would only mean a panel showing a version of the ticket its own reader had just
+   * edited in Jira. One read per open is what this costs.
+   */
+  ipcMain.handle(
+    'tasks:getJiraIssueDetail',
+    async (_event, args: unknown): Promise<JiraTaskIssueDetail | JiraTaskStatusError> => {
+      // Before anything else, and before the credential: a payload this handler
+      // cannot read is not a question about Jira at all. Reported as `not-found`
+      // like the unknown-key branch below — from the panel's side the two are the
+      // same failure, "this handler cannot say which ticket you mean".
+      if (!isJiraIssueDetailArgs(args)) {
+        return {
+          error: 'not-found',
+          message: 'Malformed tasks:getJiraIssueDetail payload: expected a config key and an issue key.',
+        }
+      }
+
+      // `unverified` counts as not connected here for `jiraGroups`' reason:
+      // Atlassian refused this credential the last time it was used, and the
+      // Settings section is already offering Reconnect.
+      const status = jiraStatus()
+      if (!status.connected || status.unverified) {
+        return { error: 'not-connected', message: 'No verified Atlassian credential on this machine.' }
+      }
+
+      // BEFORE the token, as on the GitHub side: `readConfig()` is an in-memory
+      // read, where `withFreshAccessToken` can spend an OAuth round trip AND rotate
+      // the stored refresh token. A repository that stopped being Jira-tracked
+      // between the list and the click is a question we can already answer, so it
+      // must not cost a credential refresh to answer it.
+      const repo = jiraRepos(readConfig().repositories ?? {})
+        .find((candidate) => candidate.configKey === args.configKey)
+      if (!repo) {
+        return { error: 'not-found', message: `No Jira-tracked repository is configured as ${args.configKey}.` }
+      }
+
+      // `offline`, NOT `not-connected`, and the distinction is the same one
+      // `readSprintGroup` spells out: a null here is a missing credential, a refresh
+      // that failed or a keychain that has gone away, and the check above has already
+      // established that a verified credential is stored. So this is the machine or
+      // the network, not the user's account — and telling someone to reconnect an
+      // account that is fine is the failure this split exists to avoid.
+      const fresh = await withFreshAccessToken()
+      if (!fresh) {
+        return { error: 'offline', message: 'No usable Atlassian access token for this read.' }
+      }
+
+      try {
+        return mapJiraIssueDetail(await fetchJiraIssue(atlassianDeps, {
+          accessToken: fresh.accessToken,
+          cloudId: fresh.cloudId,
+          key: args.key,
+          fields: DETAIL_FIELDS,
+        }))
+      } catch (error) {
+        const failure = classifyUnexpected(error)
+        // The one repairable cause of a 401 (a cloud id that moved) is repaired
+        // here as it is on the list read, and this is the only place allowed to
+        // mark a credential unverified. Not awaited: it works in the background
+        // and the NEXT read is the one that benefits.
+        if (failure.error === 'unauthorized') void reportUnauthorized()
+        return failure
       }
     },
   )

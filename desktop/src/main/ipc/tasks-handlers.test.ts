@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type {
   Config,
   JiraAuthStatus,
+  JiraTaskIssueDetail,
   JiraTaskRepoGroup,
+  JiraTaskStatusError,
   PRStatusError,
   RepositoryConfig,
   TaskIssueDetail,
@@ -67,9 +69,11 @@ vi.mock('../jira/connect', () => ({
 // failure ladder narrows on `instanceof` and on `.status`, so a stand-in class
 // would test the stand-in.
 const mockFetchSprintIssues = vi.fn()
+const mockFetchJiraIssue = vi.fn()
 vi.mock('../jira/atlassian-api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../jira/atlassian-api')>()),
   fetchSprintIssues: (...args: unknown[]) => mockFetchSprintIssues(...args),
+  fetchJiraIssue: (...args: unknown[]) => mockFetchJiraIssue(...args),
 }))
 
 import { setupTasksHandlers } from './tasks-handlers'
@@ -110,30 +114,52 @@ function withRepos(repositories: Record<string, RepositoryConfig>): void {
   mockReadConfig.mockReturnValue({ repositories } as unknown as Config)
 }
 
-/** Registers the handlers and returns the one the Tasks page calls on open. */
-function listOpenIssues(): () => Promise<TasksSnapshot> {
+/**
+ * Registers the handlers and hands back the one on `channel`, typed to what it
+ * answers.
+ *
+ * The ARGS stay `unknown` at every call site: half the point of a handler's guard is
+ * what it does with a payload its own annotation says is impossible, and a helper
+ * typed to that annotation could not express those cases without a cast per test.
+ */
+function handlerFor<T>(channel: string): (args?: unknown) => Promise<T> {
   setupTasksHandlers()
-  const handler = handlers.get('tasks:listOpenIssues')
-  if (!handler) throw new Error('tasks:listOpenIssues was never registered')
-  return () => handler(null) as Promise<TasksSnapshot>
+  const handler = handlers.get(channel)
+  if (!handler) throw new Error(`${channel} was never registered`)
+  return (args) => handler(null, args) as Promise<T>
 }
 
-/**
- * Registers the handlers and returns the one the detail panel calls on select.
- *
- * `unknown` and not the payload's own type: half the point of the handler's guard is
- * what it does with a payload the annotation says is impossible, and a helper typed
- * to that annotation could not express those cases without a cast per test.
- */
+/** The one the Tasks page calls on open. */
+function listOpenIssues(): () => Promise<TasksSnapshot> {
+  return handlerFor<TasksSnapshot>('tasks:listOpenIssues')
+}
+
+/** The one the detail panel calls on select. */
 function getIssueDetail(): (args: unknown) => Promise<TaskIssueDetail | PRStatusError> {
-  setupTasksHandlers()
-  const handler = handlers.get('tasks:getIssueDetail')
-  if (!handler) throw new Error('tasks:getIssueDetail was never registered')
-  return (args) => handler(null, args) as Promise<TaskIssueDetail | PRStatusError>
+  return handlerFor<TaskIssueDetail | PRStatusError>('tasks:getIssueDetail')
 }
 
 function detail(overrides: Partial<TaskIssueDetail> = {}): TaskIssueDetail {
   return { body: 'the body', state: 'OPEN', assignees: [], commentCount: 0, ...overrides }
+}
+
+/** The one the Jira detail panel calls on select. */
+function getJiraIssueDetail(): (args: unknown) => Promise<JiraTaskIssueDetail | JiraTaskStatusError> {
+  return handlerFor<JiraTaskIssueDetail | JiraTaskStatusError>('tasks:getJiraIssueDetail')
+}
+
+/** Jira's own single-issue shape, as `GET /rest/api/3/issue/{key}` returns it. */
+function rawJiraIssue(fields: Record<string, unknown> = {}) {
+  return {
+    key: 'PROJ-42',
+    fields: {
+      description: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Body' }] }] },
+      status: { name: 'In Progress', statusCategory: { key: 'indeterminate' } },
+      assignee: { displayName: 'Ada Lovelace', accountId: 'acc-1' },
+      labels: ['backend'],
+      ...fields,
+    },
+  }
 }
 
 /**
@@ -162,6 +188,7 @@ beforeEach(() => {
   mockReportUnauthorized.mockReset()
   mockFetchSprintIssues.mockReset()
   mockFetchSprintIssues.mockResolvedValue({ issues: [], nextPageToken: null })
+  mockFetchJiraIssue.mockReset()
 })
 
 describe('tasks:listOpenIssues', () => {
@@ -656,5 +683,137 @@ describe('tasks:getIssueDetail', () => {
 
     expect(await getIssueDetail()({ configKey: 'api', number: 234 }))
       .toEqual({ error: 'network', message: 'boom' })
+  })
+})
+
+describe('tasks:getJiraIssueDetail', () => {
+  beforeEach(() => {
+    // A connected, verified Atlassian account: the premise every test here but the
+    // credential ones starts from.
+    mockJiraStatus.mockReturnValue({ connected: true, configured: true, siteUrl: 'https://acme.atlassian.net' })
+    mockFetchJiraIssue.mockResolvedValue(rawJiraIssue())
+  })
+
+  it('reads the ticket for the repository’s configured project', async () => {
+    // The renderer sends the key it drew the row from, never a site or a cloud id:
+    // both are the main process's business, and only it holds the credential.
+    withRepos({ api: githubRepo('api'), billing: jiraRepo('billing') })
+
+    expect(await getJiraIssueDetail()({ configKey: 'billing', key: 'PROJ-42' })).toEqual({
+      description: 'Body',
+      assignee: 'Ada Lovelace',
+      labels: ['backend'],
+      statusName: 'In Progress',
+      statusCategory: 'indeterminate',
+    })
+    expect(mockFetchJiraIssue).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      accessToken: 'atl-access',
+      cloudId: 'cloud-1',
+      key: 'PROJ-42',
+      fields: ['description', 'status', 'assignee', 'reporter', 'labels'],
+    }))
+  })
+
+  it('re-reads the status rather than trusting the one the row carried', async () => {
+    // The row may have been listed minutes ago. A ticket somebody transitioned since
+    // must not go on showing the word the list captured.
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchJiraIssue.mockResolvedValue(rawJiraIssue({ status: { name: 'Done', statusCategory: { key: 'done' } } }))
+
+    expect(await getJiraIssueDetail()({ configKey: 'billing', key: 'PROJ-42' }))
+      .toMatchObject({ statusName: 'Done', statusCategory: 'done' })
+  })
+
+  // The payload crosses the bridge, so its shape is an assumption rather than a
+  // guarantee: the annotation on the handler is erased at runtime.
+  it.each([
+    ['no payload at all', undefined],
+    ['a payload that is not an object', 'billing'],
+    ['a missing config key', { key: 'PROJ-42' }],
+    ['a blank config key', { configKey: '', key: 'PROJ-42' }],
+    ['a key that is not a string', { configKey: 'billing', key: 42 }],
+    ['a key that is not shaped like a Jira key', { configKey: 'billing', key: 'not a key' }],
+    ['a key carrying a path separator', { configKey: 'billing', key: '../myself' }],
+    ['a key carrying a control character', { configKey: 'billing', key: 'PROJ-42\n' }],
+  ])('refuses %s without reading the config or the network', async (_label, args) => {
+    withRepos({ billing: jiraRepo('billing') })
+
+    expect(await getJiraIssueDetail()(args)).toEqual({
+      error: 'not-found',
+      message: expect.stringContaining('Malformed'),
+    })
+    expect(mockFetchJiraIssue).not.toHaveBeenCalled()
+    expect(mockReadConfig).not.toHaveBeenCalled()
+  })
+
+  it('says the Atlassian account is not connected before spending a token refresh', async () => {
+    mockJiraStatus.mockReturnValue({ connected: false, configured: true })
+    withRepos({ billing: jiraRepo('billing') })
+
+    expect(await getJiraIssueDetail()({ configKey: 'billing', key: 'PROJ-42' }))
+      .toEqual({ error: 'not-connected', message: expect.any(String) })
+    expect(mockWithFreshAccessToken).not.toHaveBeenCalled()
+    expect(mockFetchJiraIssue).not.toHaveBeenCalled()
+  })
+
+  it('treats an unverified credential as not connected', async () => {
+    // Atlassian refused it the last time it was used, and Settings is already
+    // offering Reconnect. Sending the read anyway earns a 401 and says nothing new.
+    mockJiraStatus.mockReturnValue({ connected: true, configured: true, unverified: true })
+    withRepos({ billing: jiraRepo('billing') })
+
+    expect(await getJiraIssueDetail()({ configKey: 'billing', key: 'PROJ-42' }))
+      .toMatchObject({ error: 'not-connected' })
+  })
+
+  it('reports no usable token as offline, not as a disconnected account', async () => {
+    // A null from `withFreshAccessToken` is a missing credential, a refresh that
+    // failed, or a keychain that has gone away — and the check above has already
+    // established that a verified credential is stored. Telling someone to reconnect
+    // an account that is fine is the failure this split exists to avoid.
+    mockWithFreshAccessToken.mockResolvedValue(null)
+    withRepos({ billing: jiraRepo('billing') })
+
+    expect(await getJiraIssueDetail()({ configKey: 'billing', key: 'PROJ-42' }))
+      .toEqual({ error: 'offline', message: expect.any(String) })
+    expect(mockFetchJiraIssue).not.toHaveBeenCalled()
+  })
+
+  // The config can change between the list read and the click — a repository
+  // renamed, deleted, or switched to GitHub.
+  it('reports a key that is no longer a Jira-tracked repository as not-found', async () => {
+    withRepos({ api: githubRepo('api') })
+
+    expect(await getJiraIssueDetail()({ configKey: 'api', key: 'PROJ-42' }))
+      .toEqual({ error: 'not-found', message: expect.stringContaining('api') })
+    expect(mockFetchJiraIssue).not.toHaveBeenCalled()
+  })
+
+  it('classifies a failed read on the sprint read’s own ladder', async () => {
+    // One Jira failure, one name, one sentence — wherever it is met. `classify`
+    // lives in `sprint-issues.ts` and is imported from there rather than copied.
+    withRepos({ billing: jiraRepo('billing') })
+    for (const [status, code] of [[400, 'invalid-query'], [403, 'forbidden'], [404, 'not-found'], [0, 'offline']] as const) {
+      mockFetchJiraIssue.mockRejectedValue(new AtlassianApiError('Jira issue read', status))
+      expect(await getJiraIssueDetail()({ configKey: 'billing', key: 'PROJ-42' }))
+        .toMatchObject({ error: code })
+    }
+  })
+
+  it('reports a 401 and asks for the credential to be re-checked', async () => {
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchJiraIssue.mockRejectedValue(new AtlassianApiError('Jira issue read', 401))
+
+    expect(await getJiraIssueDetail()({ configKey: 'billing', key: 'PROJ-42' }))
+      .toMatchObject({ error: 'unauthorized' })
+    expect(mockReportUnauthorized).toHaveBeenCalledTimes(1)
+  })
+
+  it('captures an unexpected throw instead of rejecting at the panel', async () => {
+    withRepos({ billing: jiraRepo('billing') })
+    mockFetchJiraIssue.mockRejectedValue(new Error('boom'))
+
+    expect(await getJiraIssueDetail()({ configKey: 'billing', key: 'PROJ-42' }))
+      .toEqual({ error: 'server-error', message: 'boom' })
   })
 })

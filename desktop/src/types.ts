@@ -261,6 +261,51 @@ export interface JiraTaskIssue {
 }
 
 /**
+ * The rest of ONE Jira ticket, read on demand when the detail panel opens on it.
+ *
+ * The Jira counterpart of `TaskIssueDetail`, and split from `JiraTaskIssue` for
+ * exactly its reason: the list is read for every Jira-tracked repository on every
+ * page open, fifty tickets at a time, while this is read once for the single ticket
+ * on screen. A description is a few kilobytes on its own and hundreds of kilobytes
+ * per reload if it rides along with the sprint.
+ *
+ * Carries no `key`, `title` or `url`: the panel already holds the `JiraTaskIssue`
+ * it was opened on, and a second copy of those fields could only disagree with it.
+ * The URL in particular is built in the main process from the resolved site (see
+ * `browseUrl` in `main/jira/sprint-issues.ts`) and there is nothing better to
+ * rebuild it from here.
+ *
+ * The STATUS is here even though the row already carries one, for
+ * `TaskIssueDetail.state`'s reason: this read happens later, by key, and a ticket
+ * somebody transitioned in the meantime must not go on showing the word the list
+ * captured. The panel prefers these two over the row's.
+ *
+ * No issue type and no story points: neither is on this story's field list, and
+ * every field named here is one more the read pays for.
+ */
+export interface JiraTaskIssueDetail {
+  /**
+   * The description, converted from Atlassian Document Format to markdown by
+   * `main/jira/issue-detail.ts`. `''` when the ticket has none.
+   *
+   * Markdown rather than ADF because the panel renders it with the same
+   * `MarkdownView` the GitHub body goes through — one renderer, one set of styles,
+   * and no HTML (the renderer's markdown pipeline has no `rehype-raw`).
+   */
+  description: string
+  /** The assignee's display name. Absent when the ticket is unassigned. */
+  assignee?: string
+  /** The reporter's display name. Absent when Jira reports none. */
+  reporter?: string
+  /** Label names, in Jira's own order. Empty when the ticket has none. */
+  labels: string[]
+  /** The status name as THIS site spells it, as of the detail read. Display only. */
+  statusName: string
+  /** What the panel's pill colours on, as of the detail read. See `JiraStatusCategory`. */
+  statusCategory: JiraStatusCategory
+}
+
+/**
  * Why one repository's Jira sprint could not be listed.
  *
  * The Jira twin of `PRWatchError`, and a separate union rather than a widening of
@@ -300,6 +345,20 @@ export type JiraTaskError =
 export interface JiraTaskStatusError {
   error: JiraTaskError
   message: string
+}
+
+/**
+ * `isPRStatusError` for the Jira reads — the same test, a different named failure.
+ *
+ * A sibling rather than a widening of that guard: it narrows to `PRStatusError`,
+ * whose `error` is a `PRWatchError`, and a caller handed a `JiraTaskStatusError`
+ * would be told it holds a GitHub failure code it can never hold. The two unions
+ * share no member names beyond three, and the sentences differ for all of them.
+ */
+export function isJiraStatusError<T extends object>(
+  result: T | JiraTaskStatusError
+): result is JiraTaskStatusError {
+  return 'error' in result
 }
 
 /** The fields every group carries, whichever tracker it was read from. */

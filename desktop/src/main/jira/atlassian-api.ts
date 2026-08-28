@@ -230,6 +230,23 @@ async function send(
   }
 }
 
+/**
+ * The address of one Jira REST endpoint behind Atlassian's cloud proxy.
+ *
+ * ONE function rather than the same template literal per read, because the encoding
+ * is the invariant and not the convenience: the cloudId comes back from Atlassian
+ * but it lands in a URL PATH, so a malformed one has to fail as a 404 instead of
+ * reshaping the address. Spelled out per call site that rule held in three places
+ * and only one of them said why.
+ *
+ * `path` is everything after `/rest/api/3` and is the caller's own literal — any
+ * value inside it that did not come from us is the caller's to encode (see
+ * `fetchJiraIssue`, whose key arrives from the renderer).
+ */
+function jiraApiUrl(deps: AtlassianDeps, cloudId: string, path: string): string {
+  return `${deps.apiBaseUrl}/ex/jira/${encodeURIComponent(cloudId)}/rest/api/3${path}`
+}
+
 /** Every token payload must at least carry a usable access token. */
 function toTokenPayload(body: Record<string, unknown>, operation: string): AtlassianTokenPayload {
   const accessToken = body.access_token
@@ -346,9 +363,7 @@ export async function fetchMyself(
   cloudId: string,
 ): Promise<AtlassianMyself> {
   const operation = 'Atlassian myself'
-  // The cloudId comes from Atlassian, but it lands in a URL path; encoding it costs
-  // nothing and means a malformed value fails as a 404 instead of reshaping the URL.
-  const url = `${deps.apiBaseUrl}/ex/jira/${encodeURIComponent(cloudId)}/rest/api/3/myself`
+  const url = jiraApiUrl(deps, cloudId, '/myself')
   const response = await send(deps, operation, url, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
   })
@@ -400,10 +415,7 @@ export async function fetchSprintIssues(
   },
 ): Promise<JiraSearchPage> {
   const operation = 'Jira sprint search'
-  // Encoded for `fetchMyself`'s reason: the cloudId comes from Atlassian but it
-  // lands in a URL path, so a malformed one must fail as a 404 rather than reshape
-  // the URL.
-  const url = `${deps.apiBaseUrl}/ex/jira/${encodeURIComponent(args.cloudId)}/rest/api/3/search/jql`
+  const url = jiraApiUrl(deps, args.cloudId, '/search/jql')
   const response = await send(deps, operation, url, {
     method: 'POST',
     headers: {
@@ -430,4 +442,50 @@ export async function fetchSprintIssues(
     issues: body.issues,
     nextPageToken: typeof token === 'string' && token !== '' ? token : null,
   }
+}
+
+/**
+ * ONE ticket, by key — what the detail panel opens on.
+ *
+ * A GET on `/rest/api/3/issue/{key}` rather than `fetchSprintIssues` with a
+ * `jql: key = "PROJ-123"`, which would also have worked and would have said
+ * something else. The search endpoint's answer is a page, so a ticket that has been
+ * deleted or moved comes back as an empty list — indistinguishable from a query
+ * that matched nothing — where this one answers 404 and lands on
+ * `tasks.jira.error.notFound` through the ladder every other Jira failure uses.
+ * There is also no JQL to quote, and therefore no way to malform.
+ *
+ * Covered by `read:jira-work` exactly as the search is, so no scope changes with it
+ * (see `SCOPES` in `constants.ts`).
+ *
+ * The issue comes back RAW, for `fetchSprintIssues`' reason: shaping it — and
+ * converting its ADF description — is a decision about values and lives in
+ * `issue-detail.ts`, which is pure and tested for exactly that. This file keeps only
+ * the invariant it exists for, an operation name and a status code and never a
+ * response body in any error or log.
+ */
+export async function fetchJiraIssue(
+  deps: AtlassianDeps,
+  args: {
+    accessToken: string
+    cloudId: string
+    /** The issue key, `PROJ-123`. */
+    key: string
+    /** The fields to read back. Anything not asked for is not sent. */
+    fields: string[]
+  },
+): Promise<Record<string, unknown>> {
+  const operation = 'Jira issue read'
+  // The KEY is encoded here, on top of the cloudId `jiraApiUrl` handles: it is the
+  // one value in this address a renderer supplies, and a key that reshaped the URL
+  // would address a different endpoint entirely rather than fail as a 404.
+  const url = jiraApiUrl(deps, args.cloudId, `/issue/${encodeURIComponent(args.key)}`)
+    + `?fields=${encodeURIComponent(args.fields.join(','))}`
+  const response = await send(deps, operation, url, {
+    headers: { Authorization: `Bearer ${args.accessToken}`, Accept: 'application/json' },
+  })
+  // No shape check beyond "it is an object": unlike the search, there is no array
+  // whose absence would turn a broken read into an innocuous-looking empty one —
+  // every field of this body is optional to the mapper by design.
+  return readJson(response, operation)
 }

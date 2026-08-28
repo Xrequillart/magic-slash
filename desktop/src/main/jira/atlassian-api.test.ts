@@ -3,6 +3,7 @@ import {
   AtlassianApiError,
   exchangeCode,
   fetchAccessibleResources,
+  fetchJiraIssue,
   fetchMyself,
   fetchSprintIssues,
   refreshCredential,
@@ -350,6 +351,86 @@ describe('fetchSprintIssues', () => {
   })
 })
 
+describe('fetchJiraIssue', () => {
+  const ARGS = {
+    accessToken: 'atl-access-token',
+    cloudId: 'cloud-1',
+    key: 'PROJ-123',
+    fields: ['description', 'status', 'assignee', 'reporter', 'labels'],
+  }
+
+  it('GETs the one issue from the Jira proxy for this cloud id', () => {
+    // A GET rather than the search endpoint with a `key = "…"` JQL: a ticket that
+    // has been deleted or moved answers 404 here, where the search would answer an
+    // empty page indistinguishable from a query that matched nothing.
+    const { deps, calls } = stub(() => ({ body: { key: 'PROJ-123', fields: {} } }))
+    return fetchJiraIssue(deps, ARGS).then(() => {
+      expect(calls).toHaveLength(1)
+      expect(calls[0].url).toBe(
+        'https://api.atlassian.com/ex/jira/cloud-1/rest/api/3/issue/PROJ-123'
+        + '?fields=description%2Cstatus%2Cassignee%2Creporter%2Clabels',
+      )
+      expect(calls[0].method).toBe('GET')
+      expect(calls[0].headers.Authorization).toBe('Bearer atl-access-token')
+    })
+  })
+
+  it('encodes the key rather than letting it reshape the URL', async () => {
+    // The key is the one value here that arrives from the renderer. Unencoded, a
+    // key with a slash in it would address a different endpoint rather than 404.
+    const { deps, calls } = stub(() => ({ body: {} }))
+    await fetchJiraIssue(deps, { ...ARGS, key: '../../myself' })
+
+    expect(calls[0].url).toContain('/rest/api/3/issue/..%2F..%2Fmyself?fields=')
+  })
+
+  it('encodes the cloud id too', async () => {
+    const { deps, calls } = stub(() => ({ body: {} }))
+    await fetchJiraIssue(deps, { ...ARGS, cloudId: '../../evil' })
+
+    expect(calls[0].url).toContain('/ex/jira/..%2F..%2Fevil/rest/api/3/issue/')
+  })
+
+  it('returns the issue untouched', async () => {
+    // Shaping it is `issue-detail.ts`'s job: this file owns the transport and the
+    // rule that no response body ever reaches an error or a log, and nothing else.
+    const body = { key: 'PROJ-123', fields: { description: { type: 'doc', content: [] } } }
+    const { deps } = stub(() => ({ body }))
+
+    expect(await fetchJiraIssue(deps, ARGS)).toEqual(body)
+  })
+
+  it.each([
+    ['a refused credential', 401],
+    ['a project the account cannot browse', 403],
+    ['a ticket that no longer exists', 404],
+  ])('propagates %s as an AtlassianApiError carrying its status', async (_label, status) => {
+    // The status is the whole payload: `classify` in `sprint-issues.ts` is what
+    // turns it into the sentence the panel prints.
+    const { deps } = stub(() => ({ status, body: { errorMessages: ['nope'] } }))
+    const error = await fetchJiraIssue(deps, ARGS).catch((e) => e)
+
+    expect(error).toBeInstanceOf(AtlassianApiError)
+    expect((error as AtlassianApiError).status).toBe(status)
+  })
+
+  it('flags a 401 as unauthorized, the revocation signal on the read path', async () => {
+    const { deps } = stub(() => ({ status: 401, body: {} }))
+    const error = await fetchJiraIssue(deps, ARGS).catch((e) => e)
+    expect((error as AtlassianApiError).unauthorized).toBe(true)
+  })
+
+  it('reports a transport failure as status 0', async () => {
+    const { deps } = stub(() => 'throw')
+    await expect(fetchJiraIssue(deps, ARGS)).rejects.toMatchObject({ status: 0 })
+  })
+
+  it('refuses a body that is not an object', async () => {
+    const { deps } = stub(() => ({ body: 'not an issue' }))
+    await expect(fetchJiraIssue(deps, ARGS)).rejects.toThrow('unexpected body')
+  })
+})
+
 describe('never leaking a secret into an error', () => {
   // The reason this module reports failures as an operation plus a status: the
   // natural `throw new Error(await res.text())` puts the echoed request — code,
@@ -389,6 +470,16 @@ describe('never leaking a secret into an error', () => {
       jql: 'project = "PROJ"',
       fields: ['summary'],
       maxResults: 50,
+    }).catch((e) => e))
+  })
+
+  it('keeps the access token out of a single-issue read failure', async () => {
+    const { deps } = stub(() => ({ status: 403, body: { errorMessages: ['atl-access-token cannot see PROJ-123'] } }))
+    assertClean(await fetchJiraIssue(deps, {
+      accessToken: 'atl-access-token',
+      cloudId: 'cloud-1',
+      key: 'PROJ-123',
+      fields: ['description'],
     }).catch((e) => e))
   })
 

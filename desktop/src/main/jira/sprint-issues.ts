@@ -150,8 +150,14 @@ const CATEGORIES: Record<string, JiraStatusCategory> = {
  * entirely out of the standard three. Such a ticket is in the sprint and is not
  * finished, so `new` (the To Do column) is where it belongs: it is the one default
  * that neither hides real work nor claims an agent is on something.
+ *
+ * EXPORTED for `issue-detail.ts`, which reads the same `status` object out of the
+ * same API for the same two values. A second copy would be a second answer to
+ * "what does a status with no category mean", and the detail panel re-colours the
+ * pill the list drew — so the two disagreeing would show as a ticket changing
+ * colour on being opened.
  */
-function readStatus(status: unknown): { name: string; category: JiraStatusCategory } {
+export function readStatus(status: unknown): { name: string; category: JiraStatusCategory } {
   const fields = (status && typeof status === 'object' ? status : {}) as Record<string, unknown>
   const name = fields.name
   const category = fields.statusCategory
