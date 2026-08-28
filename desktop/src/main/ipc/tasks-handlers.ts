@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import type {
   GitHubTaskRepoGroup,
+  JiraTaskIssue,
   JiraTaskIssueDetail,
   JiraTaskRepoGroup,
   JiraTaskStatusError,
@@ -20,9 +21,14 @@ import { ATLASSIAN_API_BASE_URL, TOKEN_URL } from '../jira/constants'
 import { getStatus as jiraStatus, reportUnauthorized, withFreshAccessToken } from '../jira/connect'
 import { DETAIL_FIELDS, mapIssueDetail as mapJiraIssueDetail } from '../jira/issue-detail'
 import {
+  applyEpicColors,
+  buildEpicColorJql,
   buildOpenSprintProbeJql,
   buildSprintJql,
+  epicKeys,
+  findEpicColorFieldIds,
   findSprintFieldId,
+  mapEpicColors,
   pickSprintName,
   // `classifyUnexpected` and not `classify`: it delegates to it for an
   // `AtlassianApiError` and covers the throw that is a bug on our side, which must
@@ -233,33 +239,96 @@ function createSprintReader() {
   const sprintInFlight = new Map<string, Promise<JiraTaskRepoGroup>>()
 
   /**
-   * This site's id for the Sprint field, resolved once and kept for the process.
+   * The custom-field ids this site gave the two things the page asks for by id.
    *
-   * "Sprint" is a custom field, so its id differs per site and the search will only
-   * return it when asked for by that id — see `fetchJiraFields`. Keyed by cloud id
-   * because a user can reconnect to a different site without restarting the app.
+   * Both are CUSTOM fields, so their ids differ per site and a search returns them
+   * only when named by that id — see `fetchJiraFields`. One `/rest/api/3/field` read
+   * answers for both, which is why they are resolved together rather than by a lookup
+   * each: the sprint name on the card header and the colour on an epic badge are two
+   * captions, and neither is worth a call of its own.
+   *
+   * Keyed by cloud id because a user can reconnect to a different site without
+   * restarting the app.
+   */
+  interface JiraFieldIds {
+    /** The Sprint field, or `''` on a site with no Jira Software on it. */
+    sprint: string
+    /** The epic colour fields in preference order; empty on a site that has neither. */
+    epicColors: string[]
+  }
+
+  /** What a site that answered nothing usable looks like, and what a failed lookup returns. */
+  const NO_FIELD_IDS: JiraFieldIds = { sprint: '', epicColors: [] }
+
+  /**
+   * That lookup, resolved once and kept for the process.
    *
    * Cached as a PROMISE, so the several repositories that read their sprints in
    * parallel on the first page open share one lookup rather than making one each.
    * A lookup that FAILS is dropped from the map, so the next page open tries again
-   * — the id is not knowledge worth keeping a network blip's answer for.
+   * — the ids are not knowledge worth keeping a network blip's answer for.
    */
-  const sprintFieldIds = new Map<string, Promise<string>>()
+  const fieldIdsBySite = new Map<string, Promise<JiraFieldIds>>()
 
-  function sprintFieldId(accessToken: string, cloudId: string): Promise<string> {
-    const cached = sprintFieldIds.get(cloudId)
+  function jiraFieldIds(accessToken: string, cloudId: string): Promise<JiraFieldIds> {
+    const cached = fieldIdsBySite.get(cloudId)
     if (cached) return cached
     const attempt = fetchJiraFields(atlassianDeps, { accessToken, cloudId })
-      .then(findSprintFieldId)
+      .then((fields) => ({ sprint: findSprintFieldId(fields), epicColors: findEpicColorFieldIds(fields) }))
       // Never fatal, and never reported: the sprint's NAME is a caption on the card
-      // header, and a card that shows its tickets without it is the whole feature
-      // working. Failing the read over it would trade the page for the caption.
+      // header and an epic's colour is a dot on a badge, and a card that shows its
+      // tickets without either is the whole feature working. Failing the read over
+      // them would trade the page for the caption.
       .catch(() => {
-        sprintFieldIds.delete(cloudId)
-        return ''
+        fieldIdsBySite.delete(cloudId)
+        return NO_FIELD_IDS
       })
-    sprintFieldIds.set(cloudId, attempt)
+    fieldIdsBySite.set(cloudId, attempt)
     return attempt
+  }
+
+  /**
+   * The same tickets with their epics' colours filled in.
+   *
+   * ONE EXTRA SEARCH PER CARD, and only when there is something to ask about: a
+   * sprint whose tickets hang off no epic, and a site with no colour field, both
+   * return before any request is made. Where it does ask, it asks about the DISTINCT
+   * epics — three or four for a sprint of fifty tickets (see `epicKeys`) — so the
+   * cost is one round trip, not one per row.
+   *
+   * WHY IT CANNOT RIDE ALONG WITH THE SPRINT READ. Jira sends `parent` inline with
+   * the key, the summary and the issue type, and no custom fields at all — so the
+   * epic's colour is simply not in the response the rows come from, whatever is asked
+   * for. The alternative to a second search is no colour.
+   *
+   * NEVER FATAL. The colour is a dot on a badge that already carries the epic's name;
+   * a failure here leaves the badges uncoloured and the card otherwise complete,
+   * which is strictly better than turning a readable sprint into an error row. That
+   * is the same trade `jiraFieldIds` makes one level up.
+   */
+  async function colourEpics(
+    issues: JiraTaskIssue[],
+    fresh: { accessToken: string; cloudId: string },
+    colorFieldIds: string[],
+  ): Promise<JiraTaskIssue[]> {
+    if (colorFieldIds.length === 0) return issues
+    const keys = epicKeys(issues)
+    if (keys.length === 0) return issues
+
+    try {
+      const page = await fetchSprintIssues(atlassianDeps, {
+        accessToken: fresh.accessToken,
+        cloudId: fresh.cloudId,
+        jql: buildEpicColorJql(keys),
+        fields: colorFieldIds,
+        // Exactly what was asked about: the query is `key in (...)`, so a larger cap
+        // could not return more and a smaller one would silently drop epics.
+        maxResults: keys.length,
+      })
+      return applyEpicColors(issues, mapEpicColors(page.issues, colorFieldIds))
+    } catch {
+      return issues
+    }
   }
 
   /**
@@ -297,7 +366,8 @@ function createSprintReader() {
         // search has to name to get the sprint back, and it is one call for the
         // whole process (see `sprintFieldId`). `''` on a site with no Jira Software
         // on it, which asks for nothing extra and shows no sprint name.
-        const fieldId = await sprintFieldId(fresh.accessToken, fresh.cloudId)
+        const fieldIds = await jiraFieldIds(fresh.accessToken, fresh.cloudId)
+        const fieldId = fieldIds.sprint
         const fields = fieldId ? [...SPRINT_FIELDS, fieldId] : SPRINT_FIELDS
 
         const page = await fetchSprintIssues(atlassianDeps, {
@@ -339,9 +409,15 @@ function createSprintReader() {
         // — one name per card rather than the same string on all fifty of them.
         const sprintName = pickSprintName(page.issues, fieldId)
 
+        const issues = await colourEpics(
+          mapSprintIssues(page.issues, repo.siteUrl || credentialSiteUrl),
+          fresh,
+          fieldIds.epicColors,
+        )
+
         const group: JiraTaskRepoGroup = {
           ...base,
-          issues: mapSprintIssues(page.issues, repo.siteUrl || credentialSiteUrl),
+          issues,
           ...(sprintName ? { sprintName } : {}),
           ...(page.nextPageToken ? { truncated: true } : {}),
         }

@@ -18,7 +18,7 @@ import { WaveLoader } from '../../components/WaveLoader'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import { StatusPill } from '../Dashboard/parts'
 import type { NewTerminalDetail } from '../Terminals'
-import { JiraErrorLines, JiraPriorityBadge, JiraStatusPill, TaskErrorLines } from './TasksRepoSection'
+import { JiraEpicBadge, JiraErrorLines, JiraPriorityBadge, JiraStatusPill, TaskErrorLines } from './TasksRepoSection'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { TrackerTile } from '../../components/icons/TrackerIcons'
 
@@ -825,6 +825,15 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
               in — the ticket's two moving facts, in the same sequence on both
               surfaces. Nothing at all when the ticket has no priority: see
               `JiraTaskIssue.priority`. */}
+          {/* Between the status and the priority, in the row's own order — the ticket
+              page and the row it was opened from read down the same sequence.
+
+              Off the ROW and not re-read, unlike the status and the priority beside
+              it. Those two are what a human moves between the list read and the click;
+              an epic link is a structural fact that is changed by re-planning, not in
+              the course of a day, so a field on the detail read for it would be paid
+              for on every open to catch a change nobody makes. */}
+          {tracker === 'jira' && props.issue.epic && <JiraEpicBadge epic={props.issue.epic} t={t} />}
           {jiraPriority && <JiraPriorityBadge priority={jiraPriority} t={t} />}
           <span className="text-xs text-text-secondary">
             {tracker === 'github' && props.issue.author

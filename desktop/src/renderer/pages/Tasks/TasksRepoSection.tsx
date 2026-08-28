@@ -12,6 +12,7 @@ import {
   Settings,
 } from 'lucide-react'
 import type {
+  JiraEpic,
   JiraPriority,
   JiraPriorityLevel,
   JiraStatusCategory,
@@ -524,6 +525,42 @@ export function JiraPriorityBadge({ priority, t }: { priority: JiraPriority; t: 
 }
 
 /**
+ * The epic a ticket hangs off, as a dot and its title.
+ *
+ * `JiraStatusPill`'s neutral ground rather than a colour of its own, with the epic's
+ * colour spent entirely on the DOT. The badge sits between the status and the
+ * priority, both of which are coloured to be read as a scale — a third filled pill in
+ * an unrelated colour would compete with them for the same glance, and an epic is not
+ * a state or a degree. The dot is the same 8px circle the repository wears in its own
+ * header and in the filter bar, so "coloured dot" means one thing on this page.
+ *
+ * NO DOT AT ALL when the site records no colour, rather than a grey stand-in: a
+ * neutral circle beside coloured ones reads as an epic whose colour is grey, which is
+ * a colour Jira actually offers. See `JiraEpic.color`.
+ *
+ * NOT A LINK, though the epic has a URL. Every row on this page opens its ticket, and
+ * an anchor inside it would give one strip of the row a different destination from the
+ * rest of it — the epic is reachable from the ticket page it leads to.
+ */
+export function JiraEpicBadge({ epic, t }: { epic: JiraEpic; t: Translate }) {
+  return (
+    // The hover text names the FIELD, for `JiraPriorityBadge`'s reason: a bare title
+    // between two coloured pills is a phrase with no column header, and an epic called
+    // "Data" or "Rebranding" gives the reader nothing to recognise it by. It carries
+    // the KEY as well, which is the half a truncated title loses first.
+    <span
+      title={t('tasks.jira.epicHint', { key: epic.key, title: epic.title })}
+      className="text-xs px-2 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-1.5 bg-surface text-text-secondary max-w-[14rem]"
+    >
+      {epic.color && (
+        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: epic.color }} />
+      )}
+      <span className="truncate">{epic.title}</span>
+    </span>
+  )
+}
+
+/**
  * One sprint ticket, in `IssueRow`'s layout — the same two lines, filled with Jira's
  * own facts.
  *
@@ -581,13 +618,18 @@ function JiraIssueRow({
             Guarded as a whole, for the GitHub row's reason: an empty second line
             would add a row's worth of height to every ticket that has none of the
             three. */}
-        {(issue.statusName || issue.priority || issue.reporter || issue.labels.length > 0) && (
+        {(issue.statusName || issue.epic || issue.priority || issue.reporter || issue.labels.length > 0) && (
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <JiraStatusPill name={issue.statusName} category={issue.statusCategory} />
-            {/* Directly after the status, and before the people: "where is it up to"
-                and "how urgent is it" are the two questions asked of a sprint row,
-                and they are asked together. Absent on a project that does not use
-                the field at all — see `JiraTaskIssue.priority`. */}
+            {/* Between the status and the priority, which is where the three of them
+                answer "where is it up to", "what is it part of" and "how urgent is
+                it" in the order a sprint row is actually scanned in. Absent for a
+                top-level ticket — see `JiraTaskIssue.epic`. */}
+            {issue.epic && <JiraEpicBadge epic={issue.epic} t={t} />}
+            {/* After the epic, and before the people: "where is it up to" and "how
+                urgent is it" are the two questions asked of a sprint row, and they
+                are asked together. Absent on a project that does not use the field
+                at all — see `JiraTaskIssue.priority`. */}
             {issue.priority && <JiraPriorityBadge priority={issue.priority} t={t} />}
             {issue.reporter && (
               // The display name bare, where the GitHub row prefixes a login with `@`:

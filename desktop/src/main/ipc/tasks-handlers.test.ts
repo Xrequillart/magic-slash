@@ -71,10 +71,12 @@ vi.mock('../jira/connect', () => ({
 // would test the stand-in.
 const mockFetchSprintIssues = vi.fn()
 const mockFetchJiraIssue = vi.fn()
+const mockFetchJiraFields = vi.fn()
 vi.mock('../jira/atlassian-api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../jira/atlassian-api')>()),
   fetchSprintIssues: (...args: unknown[]) => mockFetchSprintIssues(...args),
   fetchJiraIssue: (...args: unknown[]) => mockFetchJiraIssue(...args),
+  fetchJiraFields: (...args: unknown[]) => mockFetchJiraFields(...args),
 }))
 
 import { setupTasksHandlers } from './tasks-handlers'
@@ -203,6 +205,11 @@ beforeEach(() => {
   mockFetchSprintIssues.mockReset()
   mockFetchSprintIssues.mockResolvedValue({ issues: [], nextPageToken: null })
   mockFetchJiraIssue.mockReset()
+  // A site with no custom fields worth naming, which is what most of these tests are
+  // about: no Sprint field to caption the card with, and no colour field, so the epic
+  // colour read never happens. A test that wants either says so.
+  mockFetchJiraFields.mockReset()
+  mockFetchJiraFields.mockResolvedValue([])
 })
 
 describe('tasks:listOpenIssues', () => {
@@ -472,6 +479,102 @@ describe('tasks:listOpenIssues — the Jira half', () => {
     expect(mockFetchSprintIssues.mock.calls[1][1]).toMatchObject({
       jql: 'project = "PROJ" AND sprint in openSprints()',
       maxResults: 1,
+    })
+  })
+
+  // ── The epic on a sprint row, and the one extra call that colours it ──────
+  describe('epics', () => {
+    /** The `parent` Jira sends inline on a ticket that belongs to an epic. */
+    function withEpic(key: string, epicKey: string, summary: string) {
+      const issue = sprintIssue(key)
+      return {
+        ...issue,
+        fields: {
+          ...issue.fields,
+          parent: { key: epicKey, fields: { summary, issuetype: { name: 'Epic', hierarchyLevel: 1 } } },
+        },
+      }
+    }
+
+    /** A site that has the modern Issue Color field, and nothing else worth naming. */
+    function withColorField() {
+      mockFetchJiraFields.mockResolvedValue([
+        { id: 'customfield_10017', name: 'Issue Color', schema: { custom: 'com.pyxis.greenhopper.jira:jsw-issue-color' } },
+      ])
+    }
+
+    it('carries each ticket’s epic, and colours it from one extra search', async () => {
+      withRepos({ billing: jiraRepo('billing') })
+      withColorField()
+      mockFetchSprintIssues.mockImplementation(async (_deps: unknown, args: { jql: string }) =>
+        args.jql.startsWith('key in')
+          ? { issues: [{ key: 'PROJ-100', fields: { customfield_10017: 'green' } }], nextPageToken: null }
+          : {
+            issues: [withEpic('PROJ-1', 'PROJ-100', 'Remboursement'), withEpic('PROJ-2', 'PROJ-100', 'Remboursement')],
+            nextPageToken: null,
+          },
+      )
+
+      const group = jiraGroupOf(await listOpenIssues()(), 'billing')
+
+      // ONE extra call for the whole card, not one per ticket: the two rows share an
+      // epic, and `epicKeys` is what collapses them.
+      const colorCalls = mockFetchSprintIssues.mock.calls.filter((call) => call[1].jql.startsWith('key in'))
+      expect(colorCalls).toHaveLength(1)
+      expect(colorCalls[0][1]).toMatchObject({ jql: 'key in ("PROJ-100")', fields: ['customfield_10017'] })
+      expect(group?.issues[0].epic).toEqual({
+        key: 'PROJ-100',
+        title: 'Remboursement',
+        // Built off the same resolved site the TICKET's own link is, so the badge
+        // could be made to open the epic in Jira without a second answer to "which
+        // site is this".
+        url: 'https://acme.atlassian.net/browse/PROJ-100',
+        color: '#36B37E',
+      })
+    })
+
+    it('never asks for a colour when no ticket is in an epic', async () => {
+      // The extra call is bounded on both sides: no colour field, or no epic.
+      withRepos({ billing: jiraRepo('billing') })
+      withColorField()
+      mockFetchSprintIssues.mockResolvedValue({ issues: [sprintIssue('PROJ-1')], nextPageToken: null })
+
+      await listOpenIssues()()
+
+      expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
+    })
+
+    it('never asks for a colour on a site with no colour field', async () => {
+      withRepos({ billing: jiraRepo('billing') })
+      mockFetchSprintIssues.mockResolvedValue({
+        issues: [withEpic('PROJ-1', 'PROJ-100', 'Remboursement')],
+        nextPageToken: null,
+      })
+
+      const group = jiraGroupOf(await listOpenIssues()(), 'billing')
+
+      expect(mockFetchSprintIssues).toHaveBeenCalledTimes(1)
+      // The epic is still on the row — it came inline with the sprint read. Only the
+      // dot is missing, which is what `JiraEpic.color` being optional is for.
+      expect(group?.issues[0].epic?.title).toBe('Remboursement')
+      expect(group?.issues[0].epic).not.toHaveProperty('color')
+    })
+
+    it('keeps the card when the colour read fails', async () => {
+      // A dot on a badge that already carries the epic's name is not worth turning a
+      // readable sprint into an error row for.
+      withRepos({ billing: jiraRepo('billing') })
+      withColorField()
+      mockFetchSprintIssues.mockImplementation(async (_deps: unknown, args: { jql: string }) => {
+        if (args.jql.startsWith('key in')) throw new AtlassianApiError('Jira sprint search', 500)
+        return { issues: [withEpic('PROJ-1', 'PROJ-100', 'Remboursement')], nextPageToken: null }
+      })
+
+      const group = jiraGroupOf(await listOpenIssues()(), 'billing')
+
+      expect(group?.error).toBeUndefined()
+      expect(group?.issues[0].epic?.title).toBe('Remboursement')
+      expect(group?.issues[0].epic).not.toHaveProperty('color')
     })
   })
 

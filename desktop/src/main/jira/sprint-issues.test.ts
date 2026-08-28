@@ -1,16 +1,23 @@
 import { describe, it, expect } from 'vitest'
 import { AtlassianApiError } from './atlassian-api'
 import {
+  applyEpicColors,
   browseUrl,
+  buildEpicColorJql,
   buildOpenSprintProbeJql,
   buildSprintJql,
   classify,
   classifyUnexpected,
+  epicKeys,
+  findEpicColorFieldIds,
   findSprintFieldId,
+  mapEpicColors,
   mapIssue,
   mapSprintIssues,
   pickSprintName,
   PROBE_PAGE_SIZE,
+  readEpic,
+  readEpicColor,
   readPriority,
   readSprintName,
   SPRINT_FIELDS,
@@ -103,7 +110,7 @@ describe('SPRINT_FIELDS', () => {
     // carried its author and its labels. Both people are asked for and one is kept
     // — see `readReporter`.
     expect(SPRINT_FIELDS).toEqual(
-      ['summary', 'status', 'priority', 'created', 'labels', 'reporter', 'creator'],
+      ['summary', 'status', 'priority', 'created', 'labels', 'reporter', 'creator', 'parent'],
     )
   })
 
@@ -448,5 +455,215 @@ describe('classifyUnexpected', () => {
     // throw inside the Promise.all would otherwise blank the whole page.
     expect(classifyUnexpected(new Error('boom'))).toEqual({ error: 'server-error', message: 'boom' })
     expect(classifyUnexpected('boom')).toEqual({ error: 'server-error', message: 'boom' })
+  })
+})
+
+/** Jira's inline `parent` object, as the search returns it on a ticket in an epic. */
+function rawParent(key: string, summary: string, hierarchyLevel = 1) {
+  return {
+    id: '45454',
+    key,
+    fields: {
+      summary,
+      status: { name: 'Backlog', statusCategory: { key: 'new' } },
+      priority: { id: '3', name: 'Medium' },
+      issuetype: { id: '10000', name: 'Epic', subtask: false, hierarchyLevel },
+    },
+  }
+}
+
+describe('readEpic', () => {
+  it('reads the epic a ticket hangs off, with a link to it', () => {
+    expect(readEpic(rawParent('PER-5056', 'Pilotes US 2026'), 'https://acme.atlassian.net/browse/')).toEqual({
+      key: 'PER-5056',
+      title: 'Pilotes US 2026',
+      url: 'https://acme.atlassian.net/browse/PER-5056',
+    })
+  })
+
+  it('refuses a sub-task’s parent story', () => {
+    // `parent` is populated for two different relationships, and only one of them is
+    // an epic. A badge that took either would put a story's title behind an epic
+    // label on every sub-task in the sprint.
+    expect(readEpic(rawParent('PER-4000', 'A story', 0), 'https://acme.atlassian.net')).toBeUndefined()
+  })
+
+  it('accepts a parent above the epic level', () => {
+    // Atlassian Premium adds Initiative at level 2. A ticket parented straight to one
+    // has no epic in between, and naming the initiative beats naming nothing.
+    expect(readEpic(rawParent('PER-1', 'Initiative', 2), '')?.key).toBe('PER-1')
+  })
+
+  it('drops a parent with no hierarchy level rather than assuming one', () => {
+    // The field has been on every Jira Cloud response for years, so its absence means
+    // a shape this does not understand — and inventing an epic is worse than none.
+    expect(readEpic({ key: 'PER-1', fields: { summary: 'x' } }, '')).toBeUndefined()
+  })
+
+  it('falls back to the key when Jira sends no summary', () => {
+    const parent = rawParent('PER-9', '')
+    expect(readEpic(parent, '')?.title).toBe('PER-9')
+  })
+
+  it('answers nothing for a ticket with no parent at all', () => {
+    expect(readEpic(undefined, '')).toBeUndefined()
+    expect(readEpic(null, '')).toBeUndefined()
+    expect(readEpic({}, '')).toBeUndefined()
+  })
+})
+
+describe('readEpicColor', () => {
+  it('reads the modern Issue Color field, which answers a name', () => {
+    expect(readEpicColor('green')).toBe('#36B37E')
+    expect(readEpicColor('dark_purple')).toBe('#5243AA')
+  })
+
+  it('reads the legacy Epic Colour field, which answers a swatch id', () => {
+    // `ghx-label-6` is green and `ghx-label-8` is dark purple on every site — the
+    // same two epics the case above names through the other field.
+    expect(readEpicColor('ghx-label-6')).toBe('#36B37E')
+    expect(readEpicColor('ghx-label-8')).toBe('#5243AA')
+  })
+
+  it('answers nothing for an epic whose colour was never set', () => {
+    // Not a failure: `JiraEpic.color` is optional for exactly this, and the badge
+    // then draws no dot rather than an invented colour.
+    expect(readEpicColor(null)).toBeUndefined()
+    expect(readEpicColor('')).toBeUndefined()
+    expect(readEpicColor('chartreuse')).toBeUndefined()
+    expect(readEpicColor(6)).toBeUndefined()
+  })
+})
+
+describe('findEpicColorFieldIds', () => {
+  const fields = [
+    { id: 'customfield_10013', name: 'Epic Colour', schema: { custom: 'com.pyxis.greenhopper.jira:gh-epic-color' } },
+    { id: 'customfield_10017', name: 'Issue Color', schema: { custom: 'com.pyxis.greenhopper.jira:jsw-issue-color' } },
+    { id: 'customfield_10020', name: 'Sprint', schema: { custom: 'com.pyxis.greenhopper.jira:gh-sprint' } },
+    { id: 'summary', name: 'Summary' },
+  ]
+
+  it('finds both colour fields, modern first', () => {
+    // The order is the preference order `mapEpicColors` walks: they agree, and where
+    // one is empty the other stands in.
+    expect(findEpicColorFieldIds(fields)).toEqual(['customfield_10017', 'customfield_10013'])
+  })
+
+  it('matches on the schema type, never on the name', () => {
+    // The id is per site and the name is whatever an admin renamed it to, in whatever
+    // language. The type is the only stable handle.
+    expect(findEpicColorFieldIds([
+      { id: 'customfield_99', name: 'Couleur de l’epic', schema: { custom: 'com.pyxis.greenhopper.jira:gh-epic-color' } },
+      { id: 'customfield_98', name: 'Epic Colour' },
+    ])).toEqual(['customfield_99'])
+  })
+
+  it('catches a colour field whose suffix it has never seen, but ranks it last', () => {
+    // The safety net: a site whose Jira Software spells its colour field a third way
+    // would otherwise draw no dots at all — a failure with no symptom, since the badge
+    // still carries the epic's title. Last, because `readEpicColor` is written against
+    // the two known vocabularies and an unknown third is a guess.
+    expect(findEpicColorFieldIds([
+      { id: 'customfield_50', schema: { custom: 'com.pyxis.greenhopper.jira:gh-something-colour' } },
+      ...fields,
+    ])).toEqual(['customfield_10017', 'customfield_10013', 'customfield_50'])
+  })
+
+  it('never reaches outside Jira Software’s own namespace', () => {
+    // "Colour" is a word a site's own custom fields use freely — a Design Colour, a
+    // Brand Color — and none of them holds an epic swatch.
+    expect(findEpicColorFieldIds([
+      { id: 'customfield_60', name: 'Brand Colour', schema: { custom: 'com.acme.plugin:brand-colour' } },
+      { id: 'customfield_61', schema: { custom: 'com.pyxis.greenhopper.jira:gh-sprint' } },
+    ])).toEqual([])
+  })
+
+  it('answers nothing on a site with no colour field', () => {
+    // A team-managed project, whose epic badges simply draw no dot.
+    expect(findEpicColorFieldIds([{ id: 'summary', name: 'Summary' }])).toEqual([])
+  })
+
+  it('reads the same /field response the sprint id comes out of', () => {
+    // One lookup answers both, which is why they are resolved together.
+    expect(findSprintFieldId(fields)).toBe('customfield_10020')
+  })
+})
+
+describe('epicKeys and buildEpicColorJql', () => {
+  it('asks about each epic once, however many tickets hang off it', () => {
+    const issues = [
+      mapIssue(rawIssue({ key: 'PER-1' }, { parent: rawParent('PER-100', 'Remb') }), ''),
+      mapIssue(rawIssue({ key: 'PER-2' }, { parent: rawParent('PER-100', 'Remb') }), ''),
+      mapIssue(rawIssue({ key: 'PER-3' }, { parent: rawParent('PER-200', 'Pilotes') }), ''),
+      mapIssue(rawIssue({ key: 'PER-4' }), ''),
+    ].filter((issue) => issue !== null)
+
+    expect(epicKeys(issues)).toEqual(['PER-100', 'PER-200'])
+    expect(buildEpicColorJql(epicKeys(issues))).toBe('key in ("PER-100", "PER-200")')
+  })
+
+  it('answers no keys for a sprint whose tickets are all top-level', () => {
+    // What lets the caller return before making any request at all.
+    expect(epicKeys([mapIssue(rawIssue({ key: 'PER-1' }), '')!])).toEqual([])
+  })
+})
+
+describe('mapEpicColors and applyEpicColors', () => {
+  const fieldIds = ['customfield_10017', 'customfield_10013']
+
+  it('reads the colour out of the first field that answers', () => {
+    const raw = [
+      { key: 'PER-100', fields: { customfield_10017: 'yellow', customfield_10013: 'ghx-label-3' } },
+      // Only the legacy field is filled: the modern one stands aside rather than
+      // shadowing it with a null.
+      { key: 'PER-200', fields: { customfield_10017: null, customfield_10013: 'ghx-label-6' } },
+      // Neither: the epic appears in the response and not in the map.
+      { key: 'PER-300', fields: { customfield_10017: null, customfield_10013: null } },
+    ]
+
+    expect(mapEpicColors(raw, fieldIds)).toEqual({ 'PER-100': '#FFC400', 'PER-200': '#36B37E' })
+  })
+
+  it('colours the tickets of the epics it knows and leaves the rest alone', () => {
+    const issues = [
+      mapIssue(rawIssue({ key: 'PER-1' }, { parent: rawParent('PER-100', 'Remb') }), ''),
+      mapIssue(rawIssue({ key: 'PER-2' }, { parent: rawParent('PER-300', 'Data') }), ''),
+      mapIssue(rawIssue({ key: 'PER-3' }), ''),
+    ].filter((issue) => issue !== null)
+
+    const coloured = applyEpicColors(issues, { 'PER-100': '#FFC400' })
+
+    expect(coloured[0].epic).toEqual({ key: 'PER-100', title: 'Remb', url: '', color: '#FFC400' })
+    // Unchanged and IDENTICAL: the rows reach React through a memo, so an untouched
+    // ticket must not come back as a new object.
+    expect(coloured[1]).toBe(issues[1])
+    expect(coloured[1].epic).not.toHaveProperty('color')
+    expect(coloured[2]).toBe(issues[2])
+  })
+
+  it('returns a new array so the page has something to redraw on', () => {
+    const issues = [mapIssue(rawIssue({ key: 'PER-1' }, { parent: rawParent('PER-100', 'Remb') }), '')!]
+    expect(applyEpicColors(issues, { 'PER-100': '#FFC400' })).not.toBe(issues)
+  })
+})
+
+describe('mapIssue, the epic', () => {
+  it('carries the epic onto the row, colourless at this point', () => {
+    const issue = mapIssue(
+      rawIssue({ key: 'PER-5165' }, { parent: rawParent('PER-5056', 'Pilotes US 2026') }),
+      'https://acme.atlassian.net/browse/',
+    )
+
+    expect(issue?.epic).toEqual({
+      key: 'PER-5056',
+      title: 'Pilotes US 2026',
+      url: 'https://acme.atlassian.net/browse/PER-5056',
+    })
+  })
+
+  it('omits the field entirely on a top-level ticket', () => {
+    // Present-and-undefined is a shape every equality assertion downstream would then
+    // have to know about — the rule the two fields beside it follow.
+    expect(mapIssue(rawIssue({ key: 'PER-1' }), '')).not.toHaveProperty('epic')
   })
 })

@@ -266,6 +266,50 @@ export interface JiraPriority {
 }
 
 /**
+ * The epic a Jira ticket hangs off, as both surfaces that show it need it.
+ *
+ * `JiraPriority`'s arrangement — the whole thing is optional, because a ticket
+ * legitimately belongs to no epic and half an epic (a colour with no title) is not
+ * a state any renderer here should have to think about.
+ *
+ * WHAT COUNTS AS ONE. Jira's `parent` field is not "the epic": on a sub-task it is
+ * the story above it, which is a different fact and would put a story's title in a
+ * badge that says epic. `readEpic` therefore keeps a parent only at hierarchy level
+ * 1 or above, which is where Jira puts epics on every site regardless of what its
+ * issue types are called.
+ *
+ * NO STATUS AND NO PRIORITY, though `parent` carries both. The badge names the epic
+ * and nothing else — a second status pill beside the ticket's own would be two
+ * statuses on one row with nothing saying which belongs to what.
+ */
+export interface JiraEpic {
+  /** The epic's own issue key — `PROJ-42`. The identity, and what the epic filter groups on. */
+  key: string
+  /** The epic's summary, as the badge prints it. Falls back to the key when Jira sends none. */
+  title: string
+  /**
+   * `https://acme.atlassian.net/browse/PROJ-42`, or `''` when no site could be
+   * resolved — `JiraTaskIssue.url`'s rule, on the epic instead of the ticket.
+   */
+  url: string
+  /**
+   * The epic's colour as a hex string, when this site records one.
+   *
+   * A HEX and not Jira's own token, because the token is unrenderable on its own:
+   * a site answers either a name (`green`) or a legacy swatch id (`ghx-label-6`)
+   * depending on which colour field it has, and the renderer would have to learn
+   * both. `sprint-issues.ts` resolves both into one hex, so the badge draws a dot
+   * exactly as the repository dot beside it does.
+   *
+   * ABSENT rather than a default when the site records none — an epic whose colour
+   * was never set, or a project with no colour field at all. The badge then draws
+   * no dot rather than an invented colour, which is the same rule `priority`
+   * follows one field along.
+   */
+  color?: string
+}
+
+/**
  * One ticket of a Jira project's ACTIVE SPRINT, as the Tasks page lists it.
  *
  * The Jira counterpart of `TaskIssue`, and deliberately NOT the same interface: a
@@ -320,6 +364,16 @@ export interface JiraTaskIssue {
    * this is the one field on the row with no twin next door.
    */
   priority?: JiraPriority
+  /**
+   * The epic this ticket belongs to, when it belongs to one.
+   *
+   * On the ROW rather than only on the detail page, because it answers the question
+   * a sprint list is actually scanned with — which piece of work is this part of —
+   * and because the page's epic filter is built from it (see `taskFilterEpics`).
+   * Absent for a ticket with no parent, one whose parent is a story rather than an
+   * epic, and one read before this field was asked for; see `JiraEpic`.
+   */
+  epic?: JiraEpic
   /**
    * Label names, in Jira's own order. Empty when the ticket has none.
    *

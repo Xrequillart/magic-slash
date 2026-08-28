@@ -1,4 +1,4 @@
-import type { JiraPriority, JiraPriorityLevel, JiraStatusCategory, JiraTaskIssue, JiraTaskStatusError } from '../../types'
+import type { JiraEpic, JiraPriority, JiraPriorityLevel, JiraStatusCategory, JiraTaskIssue, JiraTaskStatusError } from '../../types'
 import { AtlassianApiError } from './atlassian-api'
 
 /**
@@ -42,13 +42,20 @@ import { AtlassianApiError } from './atlassian-api'
  * people are asked for and only one is kept — see `readReporter`, which is where
  * the choice between them is made and explained.
  *
+ * `parent` is what the epic badge is built from, and it is free in the sense that
+ * matters: Jira returns it INLINE — key, summary and issue type in the same response
+ * — so a ticket's epic costs no call of its own. Only the epic's COLOUR needs one,
+ * and that is a single extra search per card for the handful of distinct epics a
+ * sprint has (see `buildEpicColorJql`). Read through `readEpic`, which is where a
+ * sub-task's parent story is rejected as not being an epic.
+ *
  * Nothing else. Every field named here is serialised for every ticket of every Jira
  * repository on every reload, which is why what only the OPEN ticket needs — the
  * description, the assignee, the comments — stays in `DETAIL_FIELDS` next door. The
  * three added here cost a short array and one name per row; a description is
  * kilobytes per row.
  */
-export const SPRINT_FIELDS = ['summary', 'status', 'priority', 'created', 'labels', 'reporter', 'creator']
+export const SPRINT_FIELDS = ['summary', 'status', 'priority', 'created', 'labels', 'reporter', 'creator', 'parent']
 
 /**
  * How many tickets one repository's card can hold.
@@ -317,6 +324,292 @@ export function readReporter(fields: Record<string, unknown>): string {
 }
 
 /**
+ * Jira's fourteen epic colours, as the hex the badge actually draws.
+ *
+ * A LOOKUP AND NOT A FETCH, deliberately. The swatches are Atlassian's own product
+ * palette, fixed for every site — a Jira nobody has ever configured offers exactly
+ * these fourteen — so resolving them is a translation, not a read. The alternative
+ * is a call per site for a table that cannot change, which is the kind of dependency
+ * `feedback_no_external_api_for_owned_values` is about.
+ *
+ * The KEYS are the names a modern site answers with (`green`, `dark_purple`), which
+ * is the vocabulary of the Issue Color field. The legacy Epic Colour field answers
+ * `ghx-label-N` instead, and `GHX_LABEL_NAMES` below folds those onto these names
+ * rather than duplicating fourteen hexes under a second set of keys.
+ *
+ * The hexes are the Atlassian palette's own mid and dark steps. They are not read
+ * off the app's theme tokens on purpose: this dot claims to be the colour the user
+ * chose IN JIRA, so it has to be that colour in both themes rather than a token that
+ * shifts with the surface behind it.
+ */
+const EPIC_COLORS: Record<string, string> = {
+  grey: '#8993A4',
+  dark_grey: '#505F79',
+  blue: '#2684FF',
+  dark_blue: '#0052CC',
+  teal: '#00B8D9',
+  dark_teal: '#008DA6',
+  green: '#36B37E',
+  dark_green: '#006644',
+  yellow: '#FFC400',
+  dark_yellow: '#FF991F',
+  orange: '#FF8B00',
+  dark_orange: '#FF5630',
+  purple: '#8777D9',
+  dark_purple: '#5243AA',
+}
+
+/**
+ * The legacy Epic Colour field's swatch ids, onto the names `EPIC_COLORS` is keyed by.
+ *
+ * `ghx-label-N` is what a site with the ORIGINAL Jira Software epic field answers —
+ * an opaque id, in the sense that nothing about `ghx-label-6` says green. The mapping
+ * is Atlassian's and is fixed; it was confirmed against a site that carries both
+ * fields, where every epic's two values agree pair for pair.
+ *
+ * Kept as a second table rather than folded into the first because the two fields are
+ * genuinely different vocabularies for one palette, and a site can have either, both,
+ * or (a team-managed project) neither.
+ */
+const GHX_LABEL_NAMES: Record<string, string> = {
+  'ghx-label-1': 'dark_grey',
+  'ghx-label-2': 'dark_yellow',
+  'ghx-label-3': 'yellow',
+  'ghx-label-4': 'dark_blue',
+  'ghx-label-5': 'dark_teal',
+  'ghx-label-6': 'green',
+  'ghx-label-7': 'purple',
+  'ghx-label-8': 'dark_purple',
+  'ghx-label-9': 'orange',
+  'ghx-label-10': 'blue',
+  'ghx-label-11': 'teal',
+  'ghx-label-12': 'grey',
+  'ghx-label-13': 'dark_green',
+  'ghx-label-14': 'dark_orange',
+}
+
+/**
+ * One colour field's value as a hex, or `undefined` when it says nothing usable.
+ *
+ * BOTH vocabularies through one function, because a caller holding a field value does
+ * not know which field it came out of — the ids are per site and the two fields are
+ * asked for together. A name wins where both would match, which costs nothing: the
+ * two tables cannot disagree, since one is defined in terms of the other.
+ *
+ * `undefined` is the ordinary answer, not a failure: an epic whose colour was never
+ * set answers `null`, and a project with no colour field at all answers with the key
+ * absent. `JiraEpic.color` is optional for exactly those two cases.
+ */
+export function readEpicColor(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const token = value.trim().toLowerCase()
+  if (!token) return undefined
+  return EPIC_COLORS[token] ?? EPIC_COLORS[GHX_LABEL_NAMES[token] ?? ''] ?? undefined
+}
+
+/**
+ * How Jira identifies the two fields an epic's colour can live in, whatever ids this
+ * site gave them.
+ *
+ * `SPRINT_FIELD_SCHEMA`'s arrangement one field along, and for its reason: the id is
+ * per site (`customfield_10013` here, `customfield_10011` there) and the name is
+ * whatever an admin renamed it to, in whatever language, so the TYPE is the only
+ * stable handle.
+ *
+ * Two of them because Jira has shipped two. `jsw-issue-color` is the modern Issue
+ * Color and answers a name; `gh-epic-color` is the original Epic Colour and answers
+ * a `ghx-label-N`. A long-lived site carries both and they agree; a newer one may
+ * carry only the first; a team-managed project may carry neither, which is a site
+ * whose epic badges simply draw no dot.
+ */
+const EPIC_COLOR_SCHEMAS = [
+  'com.pyxis.greenhopper.jira:jsw-issue-color',
+  'com.pyxis.greenhopper.jira:gh-epic-color',
+]
+
+/**
+ * The namespace both live in, and the word that identifies them inside it.
+ *
+ * The SAFETY NET under `EPIC_COLOR_SCHEMAS`, and the reason this is not just an
+ * `includes` on that list. Those two strings are the ones Atlassian ships today, and
+ * a site whose Jira Software version spells its colour field with a third suffix
+ * would silently draw no dots — a failure with no symptom, since the badge still
+ * carries the epic's title. Matching the namespace plus `color`/`colour` catches that
+ * case and cannot reach anything else: `com.pyxis.greenhopper.jira` is Jira
+ * Software's own, and nothing in it is about colour but these.
+ *
+ * A NAME fallback would be the other option — `findSprintFieldId` has one, for
+ * "Sprint" — and is rejected here: that field is called Sprint on nearly every site
+ * because nobody renames it, while an epic's colour field is routinely renamed and
+ * localised, so a list of English names would be the less reliable of the two.
+ */
+const GREENHOPPER_NAMESPACE = 'com.pyxis.greenhopper.jira:'
+const COLOR_SUFFIX = /colou?r$/
+
+/**
+ * This site's ids for the epic colour fields, out of `GET /rest/api/3/field`.
+ *
+ * An ARRAY rather than one id, and in `EPIC_COLOR_SCHEMAS`' order, because all of
+ * them are asked for in the same search and `mapEpicColors` takes the first that
+ * answers. Anything matched by the net above and not named in that list comes LAST:
+ * the two known fields are the ones whose values `readEpicColor` is written against,
+ * so an unknown third is a guess and sorts below both.
+ *
+ * An empty array is a site with no colour field — never a failure, just a site whose
+ * badges are text and no dot.
+ *
+ * Read off the SAME `/field` response `findSprintFieldId` walks, so discovering it
+ * costs no call of its own; the handler makes one lookup per site and both functions
+ * read it.
+ */
+export function findEpicColorFieldIds(fields: unknown[]): string[] {
+  const bySchema = new Map<string, string>()
+  for (const entry of fields) {
+    if (!entry || typeof entry !== 'object') continue
+    const { id, schema } = entry as Record<string, unknown>
+    if (typeof id !== 'string' || id === '') continue
+    const custom = schema && typeof schema === 'object'
+      ? (schema as Record<string, unknown>).custom
+      : undefined
+    if (typeof custom !== 'string') continue
+    if (!custom.startsWith(GREENHOPPER_NAMESPACE) || !COLOR_SUFFIX.test(custom)) continue
+    // First id wins per schema: a site can carry two fields of one type after a
+    // project import, and the older of the two is the one every epic actually fills.
+    if (!bySchema.has(custom)) bySchema.set(custom, id)
+  }
+
+  const known = EPIC_COLOR_SCHEMAS.flatMap((schema) => {
+    const id = bySchema.get(schema)
+    return id ? [id] : []
+  })
+  const rest = [...bySchema]
+    .filter(([schema]) => !EPIC_COLOR_SCHEMAS.includes(schema))
+    .map(([, id]) => id)
+  return [...known, ...rest]
+}
+
+/**
+ * The epic a ticket hangs off, out of Jira's `parent` field — or `undefined`.
+ *
+ * THE HIERARCHY LEVEL IS THE WHOLE TEST, and it is why this is not just "map the
+ * parent". `parent` is populated for two different relationships: a story's epic,
+ * and a sub-task's story. Both arrive in the same field, in the same shape, and a
+ * badge that took either would put a story's title behind an epic label on every
+ * sub-task in the sprint. Jira puts epics at level 1 and everything schedulable at
+ * level 0, on every site and under every localised issue-type name, so `>= 1` reads
+ * the relationship rather than guessing at the noun.
+ *
+ * `>= 1` and not `=== 1` because Atlassian Premium adds levels above the epic —
+ * Initiative at 2, and whatever an admin defines above that. A ticket parented
+ * directly to one of those has no epic in between, and naming the initiative is a
+ * truer answer than naming nothing.
+ *
+ * NO COLOUR HERE. It is not in the inline `parent` object — Jira sends the parent's
+ * status, priority and issue type and nothing else — so it is filled in afterwards by
+ * `applyEpicColors`, off a search this cannot make.
+ */
+export function readEpic(parent: unknown, siteUrl: string): JiraEpic | undefined {
+  if (!parent || typeof parent !== 'object') return undefined
+  const { key, fields } = parent as Record<string, unknown>
+  if (typeof key !== 'string' || key === '') return undefined
+
+  const parentFields = (fields && typeof fields === 'object' ? fields : {}) as Record<string, unknown>
+  const issuetype = parentFields.issuetype
+  const level = issuetype && typeof issuetype === 'object'
+    ? (issuetype as Record<string, unknown>).hierarchyLevel
+    : undefined
+  // A parent with NO hierarchy level at all is dropped rather than assumed: the field
+  // has been on every Jira Cloud response for years, so its absence means a shape
+  // this does not understand — and inventing an epic is worse than showing none.
+  if (typeof level !== 'number' || level < 1) return undefined
+
+  const summary = parentFields.summary
+  return {
+    key,
+    title: typeof summary === 'string' && summary !== '' ? summary : key,
+    url: browseUrl(siteUrl, key),
+  }
+}
+
+/**
+ * The distinct epics a page of tickets hangs off, in first-seen order.
+ *
+ * What `buildEpicColorJql` is given, and the reason the colour read is one call
+ * rather than fifty: a sprint of fifty tickets routinely has three or four epics
+ * behind it, and asking about each ticket's parent separately would ask the same
+ * question a dozen times over.
+ */
+export function epicKeys(issues: JiraTaskIssue[]): string[] {
+  const seen = new Set<string>()
+  for (const issue of issues) {
+    if (issue.epic) seen.add(issue.epic.key)
+  }
+  return [...seen]
+}
+
+/**
+ * The one query that colours a card's epics: those keys, that colour field.
+ *
+ * `key in (...)` rather than a call per epic. Quoted through `quoteJql` like every
+ * other value here — an issue key cannot contain a quote, but the function is where
+ * that guarantee is enforced rather than assumed.
+ *
+ * Unordered on purpose: the answer is a lookup table, and asking Jira to sort it
+ * would be work spent on a shape nothing iterates in order.
+ */
+export function buildEpicColorJql(keys: string[]): string {
+  return `key in (${keys.map(quoteJql).join(', ')})`
+}
+
+/**
+ * That query's answer as `epic key → hex`.
+ *
+ * The FIELDS ARRAY IS IN PREFERENCE ORDER and the first that answers wins, which is
+ * what lets a site carrying both colour fields be read without deciding, per site,
+ * which one to trust: they agree, and where one is empty the other stands in.
+ *
+ * An epic whose colour is unset appears in the response and not in this map, so the
+ * caller leaves `JiraEpic.color` absent — which is the state the badge draws as no
+ * dot.
+ */
+export function mapEpicColors(raw: unknown[], fieldIds: string[]): Record<string, string> {
+  const colors: Record<string, string> = {}
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue
+    const { key, fields } = entry as Record<string, unknown>
+    if (typeof key !== 'string' || key === '') continue
+    const issueFields = (fields && typeof fields === 'object' ? fields : {}) as Record<string, unknown>
+    for (const fieldId of fieldIds) {
+      const color = readEpicColor(issueFields[fieldId])
+      if (color) {
+        colors[key] = color
+        break
+      }
+    }
+  }
+  return colors
+}
+
+/**
+ * The same tickets with their epics coloured in.
+ *
+ * A NEW ARRAY, and new objects only where something changed. The rows reach React
+ * through a `useMemo` keyed on the snapshot, so mutating the issues in place would
+ * colour them without the page having any reason to redraw.
+ *
+ * A missing colour leaves the epic exactly as it was rather than writing
+ * `color: undefined` onto it, for the reason `mapIssue` spreads its optional fields:
+ * a key present and undefined is a shape every equality assertion downstream then has
+ * to know about.
+ */
+export function applyEpicColors(issues: JiraTaskIssue[], colors: Record<string, string>): JiraTaskIssue[] {
+  return issues.map((issue) => {
+    const color = issue.epic && colors[issue.epic.key]
+    return color && issue.epic ? { ...issue, epic: { ...issue.epic, color } } : issue
+  })
+}
+
+/**
  * How Jira Software identifies its own Sprint field, whatever id this site gave it.
  *
  * `schema.custom` is the field's TYPE and is the same string on every Jira site;
@@ -436,6 +729,7 @@ export function mapIssue(raw: unknown, siteUrl: string): JiraTaskIssue | null {
   const status = readStatus(issueFields.status)
   const reporter = readReporter(issueFields)
   const priority = readPriority(issueFields.priority)
+  const epic = readEpic(issueFields.parent, siteUrl)
 
   return {
     key,
@@ -447,6 +741,10 @@ export function mapIssue(raw: unknown, siteUrl: string): JiraTaskIssue | null {
     // Omitted rather than present-and-empty for `reporter`'s reason: a ticket whose
     // project has no priority field must not carry one that renders.
     ...(priority ? { priority } : {}),
+    // Colourless at this point, always: the hex is not in the inline `parent` object
+    // and is patched on afterwards by `applyEpicColors`. Omitted on the same terms as
+    // the two fields around it when the ticket hangs off no epic at all.
+    ...(epic ? { epic } : {}),
     // Omitted rather than `''` when Jira names nobody: the field is optional in the
     // type, and an empty string would be a person whose name is blank.
     ...(reporter ? { reporter } : {}),

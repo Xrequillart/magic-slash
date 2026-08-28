@@ -1897,6 +1897,10 @@ export const en = {
   // FIELD, because the badge shows only its value — a site whose priorities are
   // called "P1"…"P4" gives the reader nothing to recognise it by otherwise.
   'tasks.jira.priorityHint': 'Priority: {name}',
+  // The epic badge's hover text, on both the row and the ticket page. Names the FIELD
+  // for `priorityHint`'s reason, and carries the KEY as well: the title is what the
+  // badge truncates first, and the key is what identifies the epic in Jira itself.
+  'tasks.jira.epicHint': 'Epic {key}: {title}',
   'tasks.jira.sprintHint': 'Active sprint: {sprint}',
   // ── The ticket's conversation, which the Jira half renders in full ───────
   // The GitHub panel carries a count and sends the reader to github.com; Jira sends
