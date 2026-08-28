@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.86.4] - 2026-08-28
+
+### Added
+
+- **Desktop**: A Jira ticket carries its priority, on its row in the list and on its page — Jira's own arrow, coloured by how urgent it is, and the site's own word for it
+
+### Fixed
+
+- **Desktop**: A tracker's logo tile is centred on the title it heads, on a ticket page and on the Atlassian card in Settings
+- **Desktop**: The logo in a ticket page's pinned bar sits on its tile, like every other icon in the app
+
 ## [0.86.3] - 2026-08-28
 
 ### Added
@@ -2557,6 +2568,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.86.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.4
 [0.86.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.3
 [0.86.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.2
 [0.86.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.1
