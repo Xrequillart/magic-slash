@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.86.3] - 2026-08-28
+
+### Added
+
+- **Desktop**: A Jira tasks card names the sprint its tickets are in, next to the repository name
+- **Desktop**: Each tracker's logo sits on a framed tile — blue for Jira, grey for GitHub — centred on the whole ticket row, and on the Atlassian card in Settings
+- **Desktop**: A Jira ticket's key sits in grey beside the title, where a GitHub issue's number already did
+
+### Fixed
+
+- **Desktop**: A table in a Jira description renders as a table instead of a pile of loose cells; panels and checklists keep their shape too
+
 ## [0.86.2] - 2026-08-28
 
 ### Added
@@ -2545,6 +2557,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.86.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.3
 [0.86.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.2
 [0.86.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.1
 [0.86.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.0
