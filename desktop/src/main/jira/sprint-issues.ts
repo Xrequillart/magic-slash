@@ -70,12 +70,21 @@ function quoteJql(value: string): string {
  * means the second. Two filtered queries would double the latency and still not
  * separate those two cases without a third.
  *
- * Ordered by creation date so the cap, when it bites, keeps the oldest work rather
- * than an arbitrary slice — and so the rows arrive in the order the renderer sorts
- * them into anyway.
+ * ORDERED BY CATEGORY FIRST, and that is not cosmetic — it is what makes the
+ * unfiltered query safe under `SPRINT_PAGE_SIZE`. The cap applies to the SERVER's
+ * result, before `mapSprintIssues` drops the `done` ones here; so on a sprint
+ * larger than the cap, any ordering that mixes categories lets finished tickets
+ * spend the budget and pushes real To Do rows onto a page nobody fetches. They
+ * would then be missing from the card with no truncation hint to explain it,
+ * because the visible count would sit under the cap. Jira orders the category
+ * sequence To Do → In Progress → Done, which is exactly the priority the page
+ * wants, so the tail the cap discards is always the least interesting one.
+ *
+ * Creation date breaks the tie inside a category, so the rows still arrive in the
+ * order the renderer sorts them into anyway.
  */
 export function buildSprintJql(projectKey: string): string {
-  return `project = ${quoteJql(projectKey)} AND sprint in openSprints() ORDER BY created DESC`
+  return `project = ${quoteJql(projectKey)} AND sprint in openSprints() ORDER BY statusCategory ASC, created DESC`
 }
 
 /**

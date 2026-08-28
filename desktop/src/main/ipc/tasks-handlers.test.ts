@@ -355,7 +355,7 @@ describe('tasks:listOpenIssues — the Jira half', () => {
     expect(mockFetchSprintIssues.mock.calls[0][1]).toMatchObject({
       accessToken: 'atl-access',
       cloudId: 'cloud-1',
-      jql: 'project = "PROJ" AND sprint in openSprints() ORDER BY created DESC',
+      jql: 'project = "PROJ" AND sprint in openSprints() ORDER BY statusCategory ASC, created DESC',
     })
   })
 

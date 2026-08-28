@@ -39,8 +39,17 @@ export interface TaskAgentRef {
  */
 export const NO_AGENTS: ReadonlySet<string> = new Set<string>()
 
-/** A Jira issue key — `PROJ-123` — in any casing anyone might have typed it in. */
-const JIRA_KEY = /^[a-z]+-\d+$/i
+/**
+ * A Jira issue key — `PROJ-123` — in any casing anyone might have typed it in.
+ *
+ * The project part is a letter followed by letters, digits or underscores, which is
+ * what Jira itself accepts: `SUP2`, `AB_CD` and `X1` are all real project keys. A
+ * letters-only pattern reads as the common case and silently fails on the rest —
+ * the id would skip the upper-casing below, so an agent stored as `sup2-14` would
+ * never fold onto the `SUP2-14` the sprint query returns, and the row would show no
+ * agent against work somebody is visibly doing.
+ */
+const JIRA_KEY = /^[a-z][a-z0-9_]*-\d+$/i
 
 /**
  * A ticket id in the one form this page compares on.

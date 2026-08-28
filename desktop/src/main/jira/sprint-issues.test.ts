@@ -34,7 +34,7 @@ describe('buildSprintJql', () => {
     // No board id, and no `/rest/agile` call: `openSprints()` resolves the board
     // itself, which is what keeps the read inside the `read:jira-work` scope.
     expect(buildSprintJql('PROJ')).toBe(
-      'project = "PROJ" AND sprint in openSprints() ORDER BY created DESC',
+      'project = "PROJ" AND sprint in openSprints() ORDER BY statusCategory ASC, created DESC',
     )
   })
 
@@ -42,7 +42,21 @@ describe('buildSprintJql', () => {
     // Deliberate: an EMPTY answer to this query is what says "no active sprint",
     // and a status filter would make an empty To Do column indistinguishable from
     // a board with no sprint running.
-    expect(buildSprintJql('PROJ')).not.toContain('status')
+    expect(buildSprintJql('PROJ')).not.toContain('status =')
+    expect(buildSprintJql('PROJ')).not.toContain('statusCategory in')
+    expect(buildSprintJql('PROJ')).not.toContain('!=')
+  })
+
+  it('orders by category so the page cap never discards a To Do', () => {
+    // The cap applies to the SERVER's result, before `mapSprintIssues` drops the
+    // `done` ones. On a sprint bigger than `SPRINT_PAGE_SIZE`, any ordering that
+    // mixes categories lets finished tickets spend the budget and pushes real To Do
+    // rows onto a page nobody fetches — invisible, because the visible count would
+    // sit under the cap and show no truncation hint. Category first is what makes
+    // the discarded tail always the least interesting one.
+    const jql = buildSprintJql('PROJ')
+    expect(jql).toContain('ORDER BY statusCategory ASC')
+    expect(jql.indexOf('statusCategory')).toBeLessThan(jql.indexOf('created'))
   })
 
   it('escapes a project key that would otherwise break the query', () => {

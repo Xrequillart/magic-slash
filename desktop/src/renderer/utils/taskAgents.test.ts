@@ -52,6 +52,23 @@ describe('normalizeTicketId', () => {
     expect(normalizeTicketId(' #per-5030 ')).toBe('PER-5030')
   })
 
+  it('folds a project key carrying a digit or an underscore', () => {
+    // Jira accepts a letter followed by letters, digits or underscores, so `SUP2`
+    // and `AB_CD` are ordinary project keys. A letters-only rule reads as the
+    // common case and drops these on the floor: the id would skip the upper-casing
+    // and never fold onto the key the sprint query returns, leaving the row with no
+    // agent against work somebody is visibly doing.
+    expect(normalizeTicketId('sup2-14')).toBe('SUP2-14')
+    expect(normalizeTicketId('ab_cd-7')).toBe('AB_CD-7')
+    expect(normalizeTicketId('#x1-900')).toBe('X1-900')
+  })
+
+  it('still refuses a key that does not start with a letter', () => {
+    // The project part must BEGIN with a letter — `2fa-1` is not a Jira key, and
+    // widening the pattern must not start folding arbitrary hyphenated values.
+    expect(normalizeTicketId('2fa-1')).toBe('2fa-1')
+  })
+
   it('upper-cases nothing that is not a Jira key', () => {
     // The rule is deliberately narrow: this function must invent no equivalence it
     // cannot justify, so a branch name or any other free-text id is left as typed.
