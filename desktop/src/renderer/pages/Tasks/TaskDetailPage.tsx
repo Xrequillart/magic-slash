@@ -16,11 +16,11 @@ import { useLocale, useT, type Translate } from '../../i18n'
 import { BTN, BTN_ICON, BTN_NEUTRAL_STACKED, BTN_PRIMARY_STACKED } from '../../theme/controls'
 import { WaveLoader } from '../../components/WaveLoader'
 import MarkdownView from '../../components/file-preview/MarkdownView'
-import { StatusPill, TicketBadge } from '../Dashboard/parts'
+import { StatusPill } from '../Dashboard/parts'
 import type { NewTerminalDetail } from '../Terminals'
 import { JiraErrorLines, JiraStatusPill, TaskErrorLines } from './TasksRepoSection'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
-import { TrackerMark } from '../../components/icons/TrackerIcons'
+import { TrackerMark, TrackerTile } from '../../components/icons/TrackerIcons'
 
 /**
  * One ticket, given the whole page — the Tasks page's second view, not a panel
@@ -773,27 +773,31 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
         )}
       </div>
 
-      {/* Title and byline, GitHub's order: what it is, then its number, then the
-          state and who opened it. A Jira ticket wears its key as the badge the row
-          gave it, on the byline line rather than inside the heading — `PROJ-1234`
-          is a word, where `#234` is a suffix. */}
+      {/* Title and byline, GitHub's order: what it is, then its id, then the state
+          and who opened it. BOTH trackers wear the id in the heading now — a Jira
+          key used to be a badge on the byline instead, which is the same fact in a
+          different place on a page a reader moves between. */}
       <div ref={titleRef} className="flex flex-col gap-3 pb-5 border-b border-line">
         {/* The mark sits on the title's first line and OUTSIDE the heading text, as a
             flex sibling: inlined into the `h1` it would ride the text baseline and
-            sink below it on a title that wraps to two lines. `mt-1` is the optical
+            sink below it on a title that wraps to two lines. The tile is the list
+            row's own, at the repository tile's size — `mt-0.5` is the optical
             centring for the first line's cap height, which `items-center` on a
             two-line heading would get wrong by half a line. */}
-        <div className="flex items-start gap-2.5 min-w-0">
-          <TrackerMark tracker={tracker} title={trackerName} className="w-5 h-5 mt-1" />
+        <div className="flex items-start gap-3 min-w-0">
+          <TrackerTile tracker={tracker} size="md" title={trackerName} className="mt-0.5" />
           <h1 className="text-2xl font-semibold text-ink leading-snug min-w-0">
             {title}
-            {tracker === 'github' && (
-              <span className="font-normal text-text-secondary/40"> #{issueNumber}</span>
-            )}
+            {/* The ticket's id after the title and in grey, on BOTH halves. GitHub's
+                `#234` has always sat there; a Jira key was a badge on the byline
+                instead, which put the same fact in two different places on one page
+                — and made the two trackers' ticket pages read as two designs. */}
+            <span className="font-normal text-text-secondary/40">
+              {' '}{tracker === 'jira' ? issueKey : `#${issueNumber}`}
+            </span>
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          {tracker === 'jira' && <TicketBadge ticketId={issueKey} />}
           {/* Nothing until the state is actually known: a chip reading "Open"
               before the read lands would be a guess, and the one case it gets
               wrong is the issue that was just closed. The Jira pill has the row's

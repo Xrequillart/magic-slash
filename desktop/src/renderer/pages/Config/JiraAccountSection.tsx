@@ -5,6 +5,7 @@ import { useJiraAuth } from '../../hooks/useJiraAuth'
 import { BTN, BTN_PRIMARY } from '../../theme/controls'
 import { SectionHeader } from './SectionHeader'
 import { showToast } from '../../components/Toast'
+import { TrackerTile } from '../../components/icons/TrackerIcons'
 import { useT, type MessageKey } from '../../i18n'
 
 /**
@@ -188,58 +189,69 @@ export function JiraAccountSection() {
     <div>
       <SectionHeader icon={Ticket} title={t('jira.section')} />
       <div className="bg-surface border border-line-strong rounded-xl p-4">
-        {status.connected ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">{status.accountName || t('jira.connectedFallback')}</div>
-                <div className="text-xs text-text-secondary/50 mt-0.5">
-                  {status.siteUrl ? t('jira.connectedHint', { site: status.siteUrl }) : t('jira.connectedHintNoSite')}
-                </div>
-              </div>
-              <button
-                onClick={handleDisconnect}
-                className={BTN}
-              >
-                <Unlink className="w-3.5 h-3.5" />
-                {t('jira.disconnect')}
-              </button>
-            </div>
-
-            {/* The revoked branch. Sits INSIDE "connected" because the credential is
-                still on disk — it is simply no longer being accepted. */}
-            {status.unverified && (
-              <div className="border-t border-line-subtle pt-3 flex items-start justify-between gap-3">
-                <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 bg-red/10 rounded-lg flex-shrink-0">
-                    <ShieldAlert className="w-3.5 h-3.5 text-red" />
-                  </div>
+        {/* The mark on the left of the card, at the size the repository tile is
+            drawn at in Settings — this is the same kind of row (a thing you have
+            connected, and what to do about it) and it was the only one with nothing
+            in front of its name. Outside the state branches so all three wear it,
+            and `items-start` so it stays level with the first line when the revoked
+            branch below adds a second block under it. */}
+        <div className="flex items-start gap-4">
+          <TrackerTile tracker="jira" size="lg" title="Jira" />
+          <div className="flex-1 min-w-0">
+            {status.connected ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-medium">{t('jira.unverified')}</div>
-                    <div className="text-xs text-text-secondary/50 mt-0.5">{t('jira.unverifiedHint')}</div>
-                  </div>
-                </div>
-                {/* No client id left in this build: reconnecting is impossible, so say
-                    so instead of offering a dead button. Disconnect stays available. */}
-                {canConnect
-                  ? connectButton(t('jira.reconnect'), RefreshCw)
-                  : (
-                    <div className="text-xs text-text-secondary/40 flex-shrink-0 max-w-[12rem] text-right">
-                      {t('jira.notConfigured')}
+                    <div className="text-sm font-medium">{status.accountName || t('jira.connectedFallback')}</div>
+                    <div className="text-xs text-text-secondary/50 mt-0.5">
+                      {status.siteUrl ? t('jira.connectedHint', { site: status.siteUrl }) : t('jira.connectedHintNoSite')}
                     </div>
-                  )}
+                  </div>
+                  <button
+                    onClick={handleDisconnect}
+                    className={BTN}
+                  >
+                    <Unlink className="w-3.5 h-3.5" />
+                    {t('jira.disconnect')}
+                  </button>
+                </div>
+
+                {/* The revoked branch. Sits INSIDE "connected" because the credential is
+                    still on disk — it is simply no longer being accepted. */}
+                {status.unverified && (
+                  <div className="border-t border-line-subtle pt-3 flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-1.5 bg-red/10 rounded-lg flex-shrink-0">
+                        <ShieldAlert className="w-3.5 h-3.5 text-red" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">{t('jira.unverified')}</div>
+                        <div className="text-xs text-text-secondary/50 mt-0.5">{t('jira.unverifiedHint')}</div>
+                      </div>
+                    </div>
+                    {/* No client id left in this build: reconnecting is impossible, so say
+                        so instead of offering a dead button. Disconnect stays available. */}
+                    {canConnect
+                      ? connectButton(t('jira.reconnect'), RefreshCw)
+                      : (
+                        <div className="text-xs text-text-secondary/40 flex-shrink-0 max-w-[12rem] text-right">
+                          {t('jira.notConfigured')}
+                        </div>
+                      )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">{t('jira.notConnected')}</div>
+                  <div className="text-xs text-text-secondary/50 mt-0.5">{t('jira.notConnectedHint')}</div>
+                </div>
+                {connectButton(t('jira.connect'), Link2)}
               </div>
             )}
           </div>
-        ) : (
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{t('jira.notConnected')}</div>
-              <div className="text-xs text-text-secondary/50 mt-0.5">{t('jira.notConnectedHint')}</div>
-            </div>
-            {connectButton(t('jira.connect'), Link2)}
-          </div>
-        )}
+        </div>
 
         {/* Said in the UI rather than only in the code: the credential is nominative,
             encrypted by the OS keychain, and never reaches our servers. */}

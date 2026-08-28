@@ -78,3 +78,62 @@ export function TrackerMark({
     </span>
   )
 }
+
+/**
+ * The tracker's mark on a tile of its own — the repository tile's shape, applied to
+ * the two trackers.
+ *
+ * `RepoPage` and the rail draw a repository as a `rounded-xl` square filled with its
+ * own colour at 12% and the icon in that colour on top; a bare mark beside a ticket
+ * read as a smaller, flatter kind of thing on pages that show both. Same geometry
+ * here, with each tracker's own ground: Jira's brand blue, GitHub's neutral surface
+ * (its mark is `currentColor`, so it takes the theme's ink and stays legible on the
+ * dark themes too).
+ *
+ * The blue is an inline style rather than a class because it is the BRAND's blue —
+ * the same `#2684FF` the mark itself is painted in — and not a theme token. Tailwind
+ * only emits classes it can see, so an arbitrary value would also have to be spelled
+ * out per size.
+ *
+ * `title` rather than `aria-hidden`, for `TrackerMark`'s reason: on a mixed page the
+ * mark is the only thing saying which tracker a row came from, so it is content. The
+ * mark inside stays hidden from the tree — the accessible name is on the tile, or a
+ * screen reader would read the tracker twice.
+ */
+const TILE_SIZES = {
+  /** A list row: big enough to centre on two lines of text without crowding them. */
+  sm: { tile: 'w-8 h-8 rounded-lg', mark: 'w-4 h-4' },
+  /** A page title, and the repository tile's own size. */
+  md: { tile: 'w-10 h-10 rounded-xl', mark: 'w-5 h-5' },
+  /** A settings card, where the tile is the only thing on the left of the row. */
+  lg: { tile: 'w-12 h-12 rounded-xl', mark: 'w-6 h-6' },
+} as const
+
+export function TrackerTile({
+  tracker,
+  size = 'md',
+  title,
+  className = '',
+}: {
+  tracker: 'github' | 'jira'
+  size?: keyof typeof TILE_SIZES
+  title?: string
+  className?: string
+}) {
+  const { tile, mark } = TILE_SIZES[size]
+  const jira = tracker === 'jira'
+
+  return (
+    <span
+      className={`flex items-center justify-center flex-shrink-0 ${tile} ${
+        jira ? '' : 'bg-surface-strong text-ink'
+      } ${className}`}
+      style={jira ? { backgroundColor: 'rgba(38, 132, 255, 0.14)' } : undefined}
+      title={title}
+      role="img"
+      aria-label={title}
+    >
+      {jira ? <JiraMark className={mark} /> : <GithubMark className={mark} />}
+    </span>
+  )
+}

@@ -14,7 +14,7 @@ import { normalizeTicketId } from '../../utils/taskAgents'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 import { StatusPill, TicketBadge } from '../Dashboard/parts'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
-import { TrackerMark } from '../../components/icons/TrackerIcons'
+import { TrackerTile } from '../../components/icons/TrackerIcons'
 
 /**
  * One repository's card, in the shape the Team page's `RepoCard` established:
@@ -325,7 +325,7 @@ function rowActivation(onActivate: () => void) {
       e.preventDefault()
       onActivate()
     },
-    className: 'flex items-center gap-3 pl-9 pr-4 py-2.5 min-w-0 border-t border-line-subtle'
+    className: 'flex items-center gap-3 pl-4 pr-4 py-2.5 min-w-0 border-t border-line-subtle'
       + ' cursor-pointer transition-colors hover:bg-surface',
   } as const
 }
@@ -368,15 +368,14 @@ function IssueRow({
 }) {
   return (
     <div {...rowActivation(() => onSelect(issue.number))}>
+      {/* The tracker's tile, on the ROW rather than on the title's line: the row is
+          two lines tall and the mark belongs to all of it, so it is centred against
+          the whole card (`items-center` on the row) instead of riding the first line
+          like a piece of the title. See `TrackerTile`. */}
+      <TrackerTile tracker="github" size="sm" title="GitHub" />
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex items-center gap-3 min-w-0">
-          {/* Mark and id as ONE group, on a tighter gap than the row's: they are two
-              halves of the ticket's identity, and at the row's own `gap-3` the logo
-              read as a separate column. */}
-          <span className="flex items-center gap-2 flex-shrink-0">
-            <TrackerMark tracker="github" title="GitHub" />
-            <TicketBadge ticketId={`#${issue.number}`} />
-          </span>
+          <TicketBadge ticketId={`#${issue.number}`} />
           {issue.parent && (
             // The `TicketBadge` shape, in `StatusPill`'s neutral tokens rather than
             // the accent ones: two accent badges in a row would read as two tickets.
@@ -508,13 +507,11 @@ function JiraIssueRow({
 }) {
   return (
     <div {...rowActivation(() => onSelect(issue.key))}>
+      {/* On the row and not on the title's line, for `IssueRow`'s reason. */}
+      <TrackerTile tracker="jira" size="sm" title="Jira" />
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex items-center gap-3 min-w-0">
-          {/* Grouped with the key for `IssueRow`'s reason, and the same two sizes. */}
-          <span className="flex items-center gap-2 flex-shrink-0">
-            <TrackerMark tracker="jira" title="Jira" />
-            <TicketBadge ticketId={issue.key} />
-          </span>
+          <TicketBadge ticketId={issue.key} />
           <span className="text-sm text-ink truncate">{issue.title}</span>
         </div>
         {/* `IssueRow`'s second line, with Jira's own three facts on it. The status
