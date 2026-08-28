@@ -2,16 +2,18 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import type { TasksSnapshot } from '../../types'
 
 /**
- * The open GitHub issues of every GitHub-tracked repository, read once when the
- * page opens and again only when the reader asks.
+ * What is waiting on every configured repository — open GitHub issues, and the
+ * active sprint of every Jira-tracked project — read once when the page opens and
+ * again only when the reader asks.
  *
  * NO POLLER, deliberately, and no realtime feed: a backlog does not move the way a
  * PR under review does, and a page nobody is looking at has no business spending
- * GraphQL budget. `reload` is the whole refresh story.
+ * GraphQL or Jira budget. `reload` is the whole refresh story, and the main process
+ * puts a thirty-second floor under the Jira half of it.
  *
  * Everything goes through `window.electronAPI.tasks` — the renderer never calls
- * GitHub itself. The token lives in the main process, and a `fetch()` from here
- * would put it on the wrong side of the bridge.
+ * GitHub or Atlassian itself. Both credentials live in the main process, and a
+ * `fetch()` from here would put them on the wrong side of the bridge.
  */
 export function useTasks() {
   const [snapshot, setSnapshot] = useState<TasksSnapshot | null>(null)
@@ -41,11 +43,12 @@ export function useTasks() {
       if (request !== latestRequest.current) return
       setSnapshot(next)
     } catch {
-      // The IPC call itself failed — which is not the same as "GitHub said no", a
-      // state the snapshot carries per repository. Nothing to show but the
-      // disconnected panel, which is also the honest reading of it.
+      // The IPC call itself failed — which is not the same as "GitHub said no" or
+      // "Jira said no", states the snapshot carries per repository. Neither source
+      // was reached, so neither is reported as connected, and the page falls back to
+      // saying it has nothing rather than inventing a cause.
       if (request !== latestRequest.current) return
-      setSnapshot({ githubConnected: false, groups: [] })
+      setSnapshot({ connected: { github: false, jira: false }, groups: [] })
     } finally {
       // `finally` runs even on the early returns above, so it needs the same
       // guard: an outdated read must not clear the spinner a newer one raised.

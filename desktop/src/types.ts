@@ -216,22 +216,106 @@ export interface TaskIssueDetail {
 }
 
 /**
- * The open issues of ONE repository, plus what went wrong if they could not be read.
+ * Jira's own three-way grouping of statuses, and the ONLY status value this app
+ * branches on.
  *
- * `error` is per group on purpose: a repository whose fetch fails is reported as
- * failed in its own card while every other repository still renders. A global
- * rejection would blank the page over one bad token scope.
+ * Every Atlassian site renames its statuses — "To Do" is "Backlog" here, "À faire"
+ * there, "Ready" somewhere else — but the CATEGORY behind them is fixed by Jira and
+ * cannot be renamed. `new` is the To Do column, `indeterminate` is everything in
+ * flight, `done` is finished. Reading the status NAME to decide anything would work
+ * on our own site and quietly show the wrong column on everybody else's.
  *
- * No `color` field. The dot's colour is derived in the renderer from the FULL
- * repository list (see renderer/utils/taskRows.ts), so a repo's colour cannot
- * change because another repo's tracker did — a value computed here would depend
- * on the GitHub-tracked subset and drift.
+ * The name is still carried alongside (see `JiraTaskIssue.statusName`) — for
+ * DISPLAY, because the word the reader knows their board by is the site's, not ours.
  */
-export interface TaskRepoGroup {
+export type JiraStatusCategory = 'new' | 'indeterminate' | 'done'
+
+/**
+ * One ticket of a Jira project's ACTIVE SPRINT, as the Tasks page lists it.
+ *
+ * The Jira counterpart of `TaskIssue`, and deliberately NOT the same interface: a
+ * Jira ticket has no number (its identity is the key, `PROJ-123`), no labels the
+ * page shows, and no sub-issue hierarchy — while it has a status, which a GitHub
+ * issue on this page never does because the list only ever holds open ones.
+ *
+ * Thin for the same reason `TaskIssue` is: this crosses IPC for every ticket of
+ * every Jira-tracked repository on every reload. No description, no assignee, no
+ * story points, no avatar.
+ */
+export interface JiraTaskIssue {
+  /**
+   * The issue key — `PROJ-123`. The identity, where a GitHub issue has a number,
+   * and also the value `/magic:start` writes into `agents.ticket_id`, which is what
+   * lets the page tell that an agent is already on this ticket.
+   */
+  key: string
+  title: string
+  /** `https://acme.atlassian.net/browse/PROJ-123`, or `''` when no site could be resolved. */
+  url: string
+  /** When the ticket was CREATED, ISO-8601 as Jira returns it; the rows are sorted on it. */
+  createdAt: string
+  /** The status name as THIS site spells it. Display only — never branched on. */
+  statusName: string
+  /** What the page actually decides on. See `JiraStatusCategory`. */
+  statusCategory: JiraStatusCategory
+}
+
+/**
+ * Why one repository's Jira sprint could not be listed.
+ *
+ * The Jira twin of `PRWatchError`, and a separate union rather than a widening of
+ * it: two of these have no GitHub equivalent at all, and the fix sentences differ
+ * for every member they nominally share ("run `gh auth login`" is not advice about
+ * an Atlassian account).
+ *
+ *  • `not-connected`  — no Atlassian account on this machine, or its credential was
+ *    refused and is awaiting a reconnect. Said per group, with the route to Settings.
+ *  • `no-active-sprint` — the project answered, and has no sprint in progress. NOT a
+ *    failure of ours, and deliberately distinct from "the sprint has nothing to do".
+ *  • `invalid-query` — HTTP 400. The likeliest Jira failure here and the one with no
+ *    GitHub counterpart: a project key that does not exist, or a project with no Jira
+ *    Software in it, where the `sprint` field the query names is not a field at all.
+ *  • `offline` — the transport never reached Atlassian (status 0).
+ */
+export type JiraTaskError =
+  | 'not-connected'
+  | 'no-active-sprint'
+  | 'unauthorized'
+  | 'forbidden'
+  | 'not-found'
+  | 'rate-limited'
+  | 'offline'
+  | 'server-error'
+  | 'invalid-query'
+
+/**
+ * A named Jira failure, in `PRStatusError`'s shape so the two halves of the page
+ * report trouble the same way.
+ *
+ * `message` is for the LOG, never for the screen: it is authored in the main
+ * process, which cannot know the user's language, and it never carries a response
+ * body (see `main/jira/atlassian-api.ts`). The sentences the reader sees are picked
+ * from the catalogues by the error CODE.
+ */
+export interface JiraTaskStatusError {
+  error: JiraTaskError
+  message: string
+}
+
+/** The fields every group carries, whichever tracker it was read from. */
+interface TaskRepoGroupBase {
   /** The key in `Config.repositories` — the identity the renderer's colour map uses. */
   configKey: string
   /** What the card is titled: the repository's name. */
   name: string
+}
+
+/**
+ * The open issues of ONE GitHub-tracked repository, plus what went wrong if they
+ * could not be read.
+ */
+export interface GitHubTaskRepoGroup extends TaskRepoGroupBase {
+  tracker: 'github'
   issues: TaskIssue[]
   /**
    * How many issues are open in total, when the read said so.
@@ -245,14 +329,62 @@ export interface TaskRepoGroup {
 }
 
 /**
+ * The active sprint of ONE Jira-tracked repository's project.
+ *
+ * No `totalOpen`, and that is Jira's doing rather than an omission: `/rest/api/3/
+ * search/jql` is paginated by TOKEN and returns no `total` at all, so "50 of 214" is
+ * a sentence this side cannot say. `truncated` is what it can say instead — there is
+ * another page — and the card words it accordingly.
+ */
+export interface JiraTaskRepoGroup extends TaskRepoGroupBase {
+  tracker: 'jira'
+  issues: JiraTaskIssue[]
+  /** Set when Jira offered a further page and the read stopped at the cap. */
+  truncated?: boolean
+  error?: JiraTaskStatusError
+}
+
+/**
+ * One repository's card on the Tasks page, from whichever tracker owns its tickets.
+ *
+ * A UNION discriminated on `tracker`, not one interface with two optional halves:
+ * the two sources carry different issues and different failures, and a single shape
+ * would let a Jira group be handed a `no-token` error, or a GitHub row be asked for
+ * its status category. Every consumer branches on `tracker` once and is then talking
+ * about one tracker only.
+ *
+ * `error` is per group on purpose: a repository whose read fails is reported as
+ * failed in its own card while every other repository still renders. A global
+ * rejection would blank the page over one bad token scope.
+ *
+ * No `color` field. The dot's colour is derived in the renderer from the FULL
+ * repository list (see renderer/utils/taskRows.ts), so a repo's colour cannot
+ * change because another repo's tracker did — a value computed here would depend
+ * on the GitHub-tracked subset and drift.
+ */
+export type TaskRepoGroup = GitHubTaskRepoGroup | JiraTaskRepoGroup
+
+/**
  * Everything the Tasks page draws from one read.
  *
- * `githubConnected: false` is not "no issues": it is the state where `gh` is
- * missing or logged out, and the page must say so and offer the fix rather than
+ * `connected` is PER SOURCE, and that is the whole reason it is not the single
+ * boolean it used to be: the page short-circuited on the GitHub token, so a user
+ * whose repositories are all tracked in Jira and who has never installed `gh` was
+ * shown a "GitHub is not connected" wall in place of their sprint. A connection
+ * state belongs to the source it is about, and the page consults each one only when
+ * a repository actually depends on it.
+ *
+ * Either flag being false is not "no tickets": it is the state where the source
+ * cannot be read at all, and the page must say so and offer the fix rather than
  * render an empty backlog.
  */
 export interface TasksSnapshot {
-  githubConnected: boolean
+  connected: {
+    /** `gh` is installed and logged in. */
+    github: boolean
+    /** An Atlassian credential is stored on this machine and has not been refused. */
+    jira: boolean
+  }
   groups: TaskRepoGroup[]
 }
 

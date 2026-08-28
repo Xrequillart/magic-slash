@@ -4,6 +4,7 @@ import {
   exchangeCode,
   fetchAccessibleResources,
   fetchMyself,
+  fetchSprintIssues,
   refreshCredential,
   type AtlassianDeps,
   type FetchLike,
@@ -280,6 +281,75 @@ describe('fetchMyself', () => {
   })
 })
 
+describe('fetchSprintIssues', () => {
+  const ARGS = {
+    accessToken: 'atl-access-token',
+    cloudId: 'cloud-1',
+    jql: 'project = "PROJ" AND sprint in openSprints()',
+    fields: ['summary', 'status', 'created'],
+    maxResults: 50,
+  }
+
+  it('posts the JQL to the Jira proxy for this cloud id', async () => {
+    const { deps, calls } = stub(() => ({ body: { issues: [] } }))
+    await fetchSprintIssues(deps, ARGS)
+
+    expect(calls[0].url).toBe('https://api.atlassian.com/ex/jira/cloud-1/rest/api/3/search/jql')
+    expect(calls[0].method).toBe('POST')
+    expect(calls[0].headers.Authorization).toBe('Bearer atl-access-token')
+    expect(calls[0].body).toEqual({ jql: ARGS.jql, fields: ARGS.fields, maxResults: 50 })
+  })
+
+  it('encodes the cloud id rather than letting it reshape the URL', async () => {
+    const { deps, calls } = stub(() => ({ body: { issues: [] } }))
+    await fetchSprintIssues(deps, { ...ARGS, cloudId: '../../evil' })
+
+    expect(calls[0].url).toBe('https://api.atlassian.com/ex/jira/..%2F..%2Fevil/rest/api/3/search/jql')
+  })
+
+  it('sends the page token only when there is one', async () => {
+    const { deps, calls } = stub(() => ({ body: { issues: [] } }))
+    await fetchSprintIssues(deps, { ...ARGS, pageToken: 'cursor-2' })
+
+    expect(calls[0].body).toMatchObject({ nextPageToken: 'cursor-2' })
+  })
+
+  it('returns the issues untouched, and the cursor when Jira offers one', async () => {
+    // Shaping them is `sprint-issues.ts`'s job: this file owns the transport and the
+    // rule that no response body ever reaches an error or a log, and nothing else.
+    const { deps } = stub(() => ({ body: { issues: [{ key: 'PROJ-1' }], nextPageToken: 'cursor-2' } }))
+
+    expect(await fetchSprintIssues(deps, ARGS)).toEqual({
+      issues: [{ key: 'PROJ-1' }],
+      nextPageToken: 'cursor-2',
+    })
+  })
+
+  it('reads a last page as having no cursor', async () => {
+    // The search is paginated by TOKEN and reports no total at all, so the absence
+    // of a cursor is the only end-of-list signal there is.
+    const { deps } = stub(() => ({ body: { issues: [], isLast: true } }))
+    expect((await fetchSprintIssues(deps, ARGS)).nextPageToken).toBeNull()
+  })
+
+  it('refuses a body with no issues array instead of calling it an empty sprint', async () => {
+    // "Nothing to do" and "we did not understand the answer" must not look alike:
+    // an empty card would hide a broken read behind an ordinary-looking one.
+    const { deps } = stub(() => ({ body: { warningMessages: ['nope'] } }))
+    await expect(fetchSprintIssues(deps, ARGS)).rejects.toThrow('unexpected body')
+  })
+
+  it('reports an HTTP failure as an operation and a status', async () => {
+    const { deps } = stub(() => ({ status: 400, body: { errorMessages: ["Field 'sprint' does not exist"] } }))
+    await expect(fetchSprintIssues(deps, ARGS)).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('reports a transport failure as status 0', async () => {
+    const { deps } = stub(() => 'throw')
+    await expect(fetchSprintIssues(deps, ARGS)).rejects.toMatchObject({ status: 0 })
+  })
+})
+
 describe('never leaking a secret into an error', () => {
   // The reason this module reports failures as an operation plus a status: the
   // natural `throw new Error(await res.text())` puts the echoed request — code,
@@ -309,6 +379,17 @@ describe('never leaking a secret into an error', () => {
   it('keeps the refresh token out of a refresh failure', async () => {
     const { deps } = stub(() => ({ status: 400, body: { error: 'invalid_grant', hint: 'revoked' } }))
     assertClean(await refreshCredential(deps, { refreshToken: 'revoked' }).catch((e) => e))
+  })
+
+  it('keeps the access token out of a sprint read failure', async () => {
+    const { deps } = stub(() => ({ status: 403, body: { errorMessages: ['atl-access-token cannot browse PROJ'] } }))
+    assertClean(await fetchSprintIssues(deps, {
+      accessToken: 'atl-access-token',
+      cloudId: 'cloud-1',
+      jql: 'project = "PROJ"',
+      fields: ['summary'],
+      maxResults: 50,
+    }).catch((e) => e))
   })
 
   it('keeps the access token out of a read failure, transport included', async () => {

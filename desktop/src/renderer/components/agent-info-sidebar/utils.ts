@@ -1,5 +1,6 @@
 import type { Translate } from '../../i18n'
 import type { AgentType, TerminalMetadata } from '../../../types'
+import { JIRA_KEY, normalizeTicketId } from '../../utils/taskAgents'
 
 // Format a timestamp (ms) to compact relative time (now, 5min, 2h, 3d, 1w, 2mo, 1y).
 // The translator is a parameter rather than a hook call: this stays a pure
@@ -102,11 +103,22 @@ export function contextColors(pct: number): { bar: string; text: string } {
  *
  * Returns null for anything else: a hand-typed reference is still a valid ticket
  * ID, and a wrong mark next to it would be worse than none.
+ *
+ * The id goes through `normalizeTicketId` first, and the Jira shape is `JIRA_KEY` —
+ * both shared with the Tasks card rather than restated here. Sharing the pattern
+ * alone was not enough: that function trims and drops a leading `#` BEFORE testing
+ * the shape, so testing the raw value here still disagreed with it on ` #PROJ-123 `
+ * — folded to a Jira key there, `null` here, the ticket losing its mark and link in
+ * the sidebar while the card marked it. What the two must share is the whole
+ * question "what ticket is this", not just the last step of answering it.
+ *
+ * `\d+` needs no `#?` for the same reason: the normaliser has already removed it.
  */
 export function detectTicketProvider(ticketId: string | undefined): 'github' | 'jira' | null {
-  if (!ticketId) return null
-  if (/^#?\d+$/.test(ticketId)) return 'github'
-  if (/^[A-Z]+-\d+$/.test(ticketId)) return 'jira'
+  const id = normalizeTicketId(ticketId)
+  if (!id) return null
+  if (/^\d+$/.test(id)) return 'github'
+  if (JIRA_KEY.test(id)) return 'jira'
   return null
 }
 
@@ -116,20 +128,26 @@ export function detectTicketProvider(ticketId: string | undefined): 'github' | '
  *
  * Deliberately separate from `detectTicketProvider`: the mark shows on shape alone,
  * so an unlinkable ID still says which tracker it came from.
+ *
+ * The path segment is the NORMALISED id, which is what makes the widened detection
+ * safe: now that ` #PROJ-123 ` is recognised, appending it raw would have produced a
+ * URL carrying a space and a `#` — and everything after the `#` is a fragment, so
+ * the link would have opened the tracker's home page instead of the ticket. The
+ * normaliser strips both, and its trailing `#` comment above still holds: that
+ * character is display sugar and never part of a path.
  */
 export function buildTicketLink(
   ticketId: string | undefined,
   urls: { jiraUrl?: string; githubIssuesUrl?: string },
 ): string | null {
-  const provider = detectTicketProvider(ticketId)
-  if (!ticketId || !provider) return null
+  const id = normalizeTicketId(ticketId)
+  const provider = detectTicketProvider(id)
+  if (!id || !provider) return null
 
   const base = provider === 'github' ? urls.githubIssuesUrl : urls.jiraUrl
   if (!base) return null
 
-  // The `#` is display sugar, never part of the path.
-  const segment = provider === 'github' ? ticketId.replace(/^#/, '') : ticketId
-  return `${base.replace(/\/+$/, '')}/${segment}`
+  return `${base.replace(/\/+$/, '')}/${id}`
 }
 
 /**

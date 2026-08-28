@@ -1706,7 +1706,10 @@ export const en = {
 
   // ── Tasks ────────────────────────────────────────────────────────────────
   'tasks.title': 'Tasks',
-  'tasks.section': 'Open issues',
+  // Neutral on purpose. This header sits above BOTH halves of the page, and it read
+  // "Open issues" — GitHub's word — over a card listing a Jira sprint's To Do
+  // column, where "open" is not a state a ticket has.
+  'tasks.section': 'To do',
   'tasks.loading': 'Reading your backlog…',
   'tasks.reload': 'Reload',
   'tasks.openIssue': 'Open on GitHub',
@@ -1717,11 +1720,14 @@ export const en = {
   'tasks.copyLinkDone': 'Link copied',
   // The per-repository counter, and the page total above it. `.one` keeps `{count}`
   // so both catalogues can decide whether to spell the number out.
-  'tasks.openCount.one': '{count} open',
-  'tasks.openCount.other': '{count} open',
+  'tasks.openCount.one': '{count} to do',
+  'tasks.openCount.other': '{count} to do',
   // The query reads one capped page, so a big backlog comes back truncated. Saying
-  // "50 open" there would be a wrong number; this one says what was actually read.
-  'tasks.openCount.truncated': 'showing {count} of {total} open',
+  // "50" there would be a wrong number; this one says what was actually read.
+  'tasks.openCount.truncated': 'showing {count} of {total}',
+  // The sprint's own form. Jira's search returns no total at all, so a truncated
+  // sprint can say there is more and never how much more — see `sprintCountLabel`.
+  'tasks.sprintCount.truncated': 'showing the first {count}',
   // GitHub's native issue hierarchy, both read in the same query as the rows.
   // The badge carries the number because that is what fits on a row; the parent's
   // title goes in the hover text, where there is room for it.
@@ -1733,18 +1739,25 @@ export const en = {
   // Shown only on an issue that HAS sub-issues, so `.one` starts at 1, never 0.
   'tasks.subIssues.one': '{count} sub-issue · {completed} done',
   'tasks.subIssues.other': '{count} sub-issues · {completed} done',
-  'tasks.noOpenIssues': 'nothing open',
+  // Said of a repository that ANSWERED and has nothing waiting. Distinct from
+  // `tasks.jira.error.noSprint`, which is a board with no sprint running at all.
+  'tasks.noOpenIssues': 'nothing to do',
   'tasks.failed': 'could not be read',
-  // No repository resolves to GitHub at all — a different situation from an empty
+  // No repository resolves to a tracker at all — a different situation from an empty
   // backlog, and the fix is a per-repository setting, so the hint says where it is.
-  'tasks.noRepos': 'No repository is tracked on GitHub.',
+  'tasks.noRepos': 'No repository is tracked on GitHub or in Jira.',
   'tasks.noReposHint':
-    'Open Settings → Repositories → Tracker and point a repository at GitHub; its open issues show up here.',
+    'Open Settings → Repositories → Tracker and point a repository at GitHub or Jira; what is waiting on it shows up here.',
   // Repositories ARE tracked on GitHub — none of them has an address this page can
   // turn into an owner and a repo, which is a different fix from the one above.
   'tasks.noAddress': 'No GitHub-tracked repository has a readable address.',
   'tasks.noAddressHint':
     'Their issues URL does not look like `https://github.com/owner/repo` — fix it in Settings → Repositories → Issues, or clear it to use the repository’s own remote.',
+  // Both trackers are in use and neither side has usable coordinates. Naming only
+  // one of the two fixes would send half the repositories to the wrong field.
+  'tasks.noCoordinates': 'No repository here has coordinates this page can read.',
+  'tasks.noCoordinatesHint':
+    'A GitHub repository needs an issues URL like `https://github.com/owner/repo`; a Jira one needs its project key. Both live in Settings → Repositories.',
 
   // ── Tasks · the issue page ───────────────────────────────────────────────
   // Opened by clicking a row, it REPLACES the list and shows the half of an issue
@@ -1753,7 +1766,7 @@ export const en = {
   'tasks.detail.loading': 'Reading the issue…',
   // The way back to the backlog. Says where it goes rather than "Back", which on a
   // page reached from one place is a wasted word.
-  'tasks.detail.back': 'Open issues',
+  'tasks.detail.back': 'To do',
   // The list only ever holds OPEN issues, but the page re-reads by number and the
   // issue may have been closed since — so both states have a word here.
   'tasks.detail.stateOpen': 'Open',
@@ -1817,6 +1830,9 @@ export const en = {
   // The login is interactive and browser-bound: nothing here can run it, so the
   // step is stated as a command rather than offered as a button.
   'tasks.github.loginStep': 'Then run this in a terminal, and reload:',
+  // The one-line form, shown above the Jira cards when GitHub is the only half that
+  // could not be read. The full panel would cover a sprint that is perfectly fine.
+  'tasks.github.partialFix': 'Run `gh auth login` in a terminal and reload to see your GitHub issues too.',
 
   // ── Tasks · why one repository could not be read ─────────────────────────
   // Deliberately NOT `agentInfo.pr.error.*`: that copy says "Pull request not
@@ -1831,4 +1847,49 @@ export const en = {
   'tasks.error.rateLimitedFix': 'Wait for the quota to reset, then reload.',
   'tasks.error.network': 'GitHub unreachable',
   'tasks.error.networkFix': 'Check your internet connection, then reload.',
+
+  // ── Tasks · the Jira half ────────────────────────────────────────────────
+  // A Jira-tracked repository contributes its project's ACTIVE SPRINT: the To Do
+  // column, plus the In Progress tickets an agent is already on.
+  'tasks.jira.openIssue': 'Open in Jira',
+  // The card header's word for the two Jira outcomes that are not failures. Both
+  // are states of the board or of this machine, so neither wears "could not be read".
+  'tasks.jira.noSprintBadge': 'no active sprint',
+  'tasks.jira.notConnectedBadge': 'not connected',
+  // The way out of the `not-connected` card: the Account tab, where the Atlassian
+  // connection lives.
+  'tasks.jira.connect': 'Open Settings',
+  // Jira repositories ARE configured, and none of them names a project — the Jira
+  // twin of `tasks.noAddress`, and a different field from the GitHub one.
+  'tasks.jira.noProject': 'No Jira-tracked repository has a project key.',
+  'tasks.jira.noProjectHint':
+    'Set it in Settings → Repositories → Jira; the active sprint of that project shows up here.',
+
+  // ── Tasks · why one Jira project could not be read ───────────────────────
+  // Deliberately NOT `tasks.error.*`: every fix there is about the GitHub CLI, and
+  // "run `gh auth login`" is not advice about an Atlassian account.
+  'tasks.jira.error.notConnected': 'No Atlassian account connected',
+  'tasks.jira.error.notConnectedFix':
+    'Connect your Atlassian account in Settings → Account to read this project’s sprint.',
+  // Not a failure: the project answered, and its board has nothing running. Said
+  // apart from "nothing to do", which is a sprint that IS running.
+  'tasks.jira.error.noSprint': 'No active sprint',
+  'tasks.jira.error.noSprintFix': 'This project has no sprint in progress — start one in Jira, then reload.',
+  'tasks.jira.error.unauthorized': 'Atlassian refused the credential',
+  'tasks.jira.error.unauthorizedFix': 'Reconnect your Atlassian account in Settings → Account, then reload.',
+  'tasks.jira.error.forbidden': 'Access denied',
+  'tasks.jira.error.forbiddenFix':
+    'Your Atlassian account cannot browse this project — ask a Jira administrator for access.',
+  'tasks.jira.error.notFound': 'Project not found',
+  'tasks.jira.error.notFoundFix':
+    'It may have been renamed or deleted — check the project key in Settings → Repositories → Jira.',
+  'tasks.jira.error.rateLimited': 'Jira rate limit reached',
+  'tasks.jira.error.offline': 'Jira unreachable',
+  'tasks.jira.error.serverError': 'Jira could not answer',
+  'tasks.jira.error.serverErrorFix': 'The site returned something we could not read — try again in a few minutes.',
+  // HTTP 400, and the likeliest Jira failure of the lot: a project key that does not
+  // exist, or a project with no Jira Software in it — where `sprint` is not a field.
+  'tasks.jira.error.invalidQuery': 'Jira rejected the query',
+  'tasks.jira.error.invalidQueryFix':
+    'Check the project key in Settings → Repositories → Jira; a project without Jira Software has no sprints.',
 }

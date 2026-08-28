@@ -30,20 +30,54 @@ export interface TaskAgentRef {
   repositoryIds?: string[]
 }
 
-/** The one empty set every agent-free repository is given. See `buildAgentedIssues`. */
-const NO_AGENTS: ReadonlySet<string> = new Set<string>()
+/**
+ * The one empty set every agent-free repository is given. See `buildAgentedIssues`.
+ *
+ * Exported because `taskRows.ts` needs the SAME instance for its own fallback: two
+ * empty sets would be equal in content and different in identity, which is the one
+ * property this constant exists for.
+ */
+export const NO_AGENTS: ReadonlySet<string> = new Set<string>()
 
 /**
- * A ticket id in the one form this page compares on: the bare number GitHub
- * agents are actually written with.
+ * A Jira issue key — `PROJ-123` — in any casing anyone might have typed it in.
  *
- * `/magic:start` writes `agents.ticket_id` as `"234"`, and the display code is
- * what adds the `#`. A hand-typed `#234` is a real thing to find in that column
- * though, so both fold to the same key rather than silently failing to match.
+ * The project part is a letter followed by letters, digits or underscores, which is
+ * what Jira itself accepts: `SUP2`, `AB_CD` and `X1` are all real project keys. A
+ * letters-only pattern reads as the common case and silently fails on the rest —
+ * the id would skip the upper-casing below, so an agent stored as `sup2-14` would
+ * never fold onto the `SUP2-14` the sprint query returns, and the row would show no
+ * agent against work somebody is visibly doing.
+ *
+ * EXPORTED because it is the one answer to "is this a Jira key", and a second copy
+ * is what this constant exists to prevent. `agent-info-sidebar/utils.ts` decides
+ * the same question for the ticket mark and link, and the two drifting apart is not
+ * hypothetical: it happened here, and the symptom — a key this file folds correctly
+ * losing its mark in the sidebar — points at neither file. No `g` flag, so `.test()`
+ * carries no `lastIndex` between the two callers.
+ */
+export const JIRA_KEY = /^[a-z][a-z0-9_]*-\d+$/i
+
+/**
+ * A ticket id in the one form this page compares on.
+ *
+ * `/magic:start` writes `agents.ticket_id` as `"234"` for a GitHub issue, and the
+ * display code is what adds the `#`. A hand-typed `#234` is a real thing to find
+ * in that column though, so both fold to the same key rather than silently
+ * failing to match.
+ *
+ * A JIRA-SHAPED key is upper-cased on top of that, and nothing else is. Jira
+ * itself is case-insensitive about keys — `per-1234` browses to `PER-1234` — so
+ * the two spellings are one ticket and have to fold together, or a sprint row
+ * would show no agent against work somebody is visibly doing. The rule is
+ * deliberately narrow: upper-casing every id would turn a GitHub branch name or
+ * some other free-text value into a different string for no reason, and this
+ * function's whole job is to invent no equivalences it cannot justify.
  */
 export function normalizeTicketId(id?: string): string {
   if (!id) return ''
-  return id.trim().replace(/^#/, '').trim()
+  const bare = id.trim().replace(/^#/, '').trim()
+  return JIRA_KEY.test(bare) ? bare.toUpperCase() : bare
 }
 
 /**

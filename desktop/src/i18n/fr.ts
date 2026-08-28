@@ -1597,32 +1597,36 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Tâches ───────────────────────────────────────────────────────────────
   'tasks.title': 'Tâches',
-  'tasks.section': 'Tickets ouverts',
+  'tasks.section': 'À faire',
   'tasks.loading': 'Lecture de votre backlog…',
   'tasks.reload': 'Recharger',
   'tasks.openIssue': 'Ouvrir sur GitHub',
   'tasks.copyLink': 'Copier le lien',
   'tasks.copyLinkDone': 'Lien copié',
-  'tasks.openCount.one': '{count} ouvert',
-  'tasks.openCount.other': '{count} ouverts',
-  'tasks.openCount.truncated': '{count} affichés sur {total} ouverts',
+  'tasks.openCount.one': '{count} à faire',
+  'tasks.openCount.other': '{count} à faire',
+  'tasks.openCount.truncated': '{count} affichés sur {total}',
+  'tasks.sprintCount.truncated': 'les {count} premiers',
   'tasks.authorHint': 'Ouvert par {login}',
   'tasks.parent': '↳ #{number}',
   'tasks.parentHint': 'Sous-ticket de #{number} — {title}',
   'tasks.subIssues.one': '{count} sous-ticket · {completed} terminé',
   'tasks.subIssues.other': '{count} sous-tickets · {completed} terminés',
-  'tasks.noOpenIssues': 'rien d’ouvert',
+  'tasks.noOpenIssues': 'rien à faire',
   'tasks.failed': 'lecture impossible',
-  'tasks.noRepos': 'Aucun dépôt n’est suivi sur GitHub.',
+  'tasks.noRepos': 'Aucun dépôt n’est suivi sur GitHub ni dans Jira.',
   'tasks.noReposHint':
-    'Ouvrez Réglages → Dépôts → Tracker et pointez un dépôt vers GitHub : ses tickets ouverts apparaîtront ici.',
+    'Ouvrez Réglages → Dépôts → Tracker et pointez un dépôt vers GitHub ou Jira : ce qui vous attend dessus apparaîtra ici.',
   'tasks.noAddress': 'Aucun dépôt suivi sur GitHub n’a d’adresse lisible.',
   'tasks.noAddressHint':
     'Leur URL de tickets ne ressemble pas à `https://github.com/owner/repo` — corrigez-la dans Réglages → Dépôts → Tickets, ou videz-la pour utiliser le remote du dépôt.',
+  'tasks.noCoordinates': 'Aucun dépôt ici n’a de coordonnées lisibles par cette page.',
+  'tasks.noCoordinatesHint':
+    'Un dépôt GitHub a besoin d’une URL de tickets du type `https://github.com/owner/repo` ; un dépôt Jira a besoin de sa clé de projet. Les deux se règlent dans Réglages → Dépôts.',
 
   // ── Tâches · le panneau de détail ────────────────────────────────────────
   'tasks.detail.loading': 'Lecture du ticket…',
-  'tasks.detail.back': 'Tickets ouverts',
+  'tasks.detail.back': 'À faire',
   'tasks.detail.stateOpen': 'Ouvert',
   'tasks.detail.stateClosed': 'Fermé',
   'tasks.detail.openedBy': '@{login} a ouvert ce ticket le {date}',
@@ -1657,6 +1661,8 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.github.install': 'Installer gh',
   'tasks.github.installing': 'Installation…',
   'tasks.github.loginStep': 'Lancez ensuite ceci dans un terminal, puis rechargez :',
+  'tasks.github.partialFix':
+    'Lancez `gh auth login` dans un terminal et rechargez pour voir aussi vos tickets GitHub.',
 
   // ── Tâches · pourquoi un dépôt n’a pas pu être lu ────────────────────────
   'tasks.error.noToken': 'Aucun token GitHub',
@@ -1669,4 +1675,36 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.error.rateLimitedFix': 'Attendez la réinitialisation du quota, puis rechargez.',
   'tasks.error.network': 'GitHub injoignable',
   'tasks.error.networkFix': 'Vérifiez votre connexion Internet, puis rechargez.',
+
+  // ── Tâches · la moitié Jira ──────────────────────────────────────────────
+  'tasks.jira.openIssue': 'Ouvrir dans Jira',
+  'tasks.jira.noSprintBadge': 'aucun sprint actif',
+  'tasks.jira.notConnectedBadge': 'non connecté',
+  'tasks.jira.connect': 'Ouvrir les réglages',
+  'tasks.jira.noProject': 'Aucun dépôt suivi dans Jira n’a de clé de projet.',
+  'tasks.jira.noProjectHint':
+    'Renseignez-la dans Réglages → Dépôts → Jira : le sprint actif de ce projet apparaîtra ici.',
+
+  // ── Tâches · pourquoi un projet Jira n’a pas pu être lu ──────────────────
+  'tasks.jira.error.notConnected': 'Aucun compte Atlassian connecté',
+  'tasks.jira.error.notConnectedFix':
+    'Connectez votre compte Atlassian dans Réglages → Compte pour lire le sprint de ce projet.',
+  'tasks.jira.error.noSprint': 'Aucun sprint actif',
+  'tasks.jira.error.noSprintFix': 'Ce projet n’a aucun sprint en cours — démarrez-en un dans Jira, puis rechargez.',
+  'tasks.jira.error.unauthorized': 'Atlassian a refusé les identifiants',
+  'tasks.jira.error.unauthorizedFix': 'Reconnectez votre compte Atlassian dans Réglages → Compte, puis rechargez.',
+  'tasks.jira.error.forbidden': 'Accès refusé',
+  'tasks.jira.error.forbiddenFix':
+    'Votre compte Atlassian n’a pas accès à ce projet — demandez l’accès à un administrateur Jira.',
+  'tasks.jira.error.notFound': 'Projet introuvable',
+  'tasks.jira.error.notFoundFix':
+    'Il a peut-être été renommé ou supprimé — vérifiez la clé de projet dans Réglages → Dépôts → Jira.',
+  'tasks.jira.error.rateLimited': 'Limite de requêtes Jira atteinte',
+  'tasks.jira.error.offline': 'Jira injoignable',
+  'tasks.jira.error.serverError': 'Jira n’a pas pu répondre',
+  'tasks.jira.error.serverErrorFix':
+    'Le site a renvoyé une réponse illisible — réessayez dans quelques minutes.',
+  'tasks.jira.error.invalidQuery': 'Jira a rejeté la requête',
+  'tasks.jira.error.invalidQueryFix':
+    'Vérifiez la clé de projet dans Réglages → Dépôts → Jira ; un projet sans Jira Software n’a pas de sprints.',
 }

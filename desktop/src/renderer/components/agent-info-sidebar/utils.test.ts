@@ -117,15 +117,48 @@ describe('detectTicketProvider', () => {
     expect(detectTicketProvider('A-1')).toBe('jira')
   })
 
+  it('reads a project key carrying a digit or an underscore', () => {
+    // Jira accepts a letter followed by letters, digits or underscores, so these are
+    // ordinary project keys. The letters-only rule this replaces read as the common
+    // case and dropped them: no mark, no link, and nothing on screen to say why.
+    expect(detectTicketProvider('SUP2-14')).toBe('jira')
+    expect(detectTicketProvider('AB_CD-7')).toBe('jira')
+    expect(detectTicketProvider('X1-900')).toBe('jira')
+  })
+
+  it('reads a lower-case Jira key too', () => {
+    // This REVERSES an earlier decision here, deliberately. The old rule returned
+    // null for `proj-123`, reasoning that the skill uppercases before writing so the
+    // shape only arrives hand-typed. But `normalizeTicketId` folds `per-5030` onto
+    // `PER-5030` precisely because lower-case ids DO turn up in `agents.ticket_id` —
+    // the Tasks card marks them, and a sidebar that refuses the same id is the
+    // divergence this shared pattern exists to end. Jira browses keys
+    // case-insensitively, so the link built from it resolves.
+    expect(detectTicketProvider('proj-123')).toBe('jira')
+    expect(detectTicketProvider('sup2-14')).toBe('jira')
+  })
+
+  it('places an ID carrying a # or surrounding whitespace, exactly as the card does', () => {
+    // Sharing the pattern was not enough: `normalizeTicketId` trims and drops a
+    // leading `#` BEFORE testing the shape, so testing the raw value here still
+    // disagreed with it — ` #PROJ-123 ` folded to a Jira key on the Tasks card and
+    // to null in the sidebar, the same ticket losing its mark on one screen only.
+    expect(detectTicketProvider('#PROJ-123')).toBe('jira')
+    expect(detectTicketProvider(' PROJ-123 ')).toBe('jira')
+    expect(detectTicketProvider(' #sup2-14 ')).toBe('jira')
+    expect(detectTicketProvider(' 196 ')).toBe('github')
+  })
+
   it('returns null for anything it cannot place', () => {
     expect(detectTicketProvider(undefined)).toBeNull()
     expect(detectTicketProvider('')).toBeNull()
+    expect(detectTicketProvider('   ')).toBeNull()
     expect(detectTicketProvider('some free text')).toBeNull()
-    // Lower-case is not a Jira key: the skill uppercases before writing, so this
-    // shape only arrives hand-typed and guessing a tracker for it would be wrong.
-    expect(detectTicketProvider('proj-123')).toBeNull()
     expect(detectTicketProvider('#12a')).toBeNull()
     expect(detectTicketProvider('12-34-56')).toBeNull()
+    // The project part must still BEGIN with a letter, so widening the shape does
+    // not start claiming arbitrary hyphenated values for Jira.
+    expect(detectTicketProvider('2fa-1')).toBeNull()
   })
 })
 
@@ -142,6 +175,15 @@ describe('buildTicketLink', () => {
 
   it('links a Jira ticket', () => {
     expect(buildTicketLink('PROJ-123', urls)).toBe('https://acme.atlassian.net/browse/PROJ-123')
+  })
+
+  it('builds a clean path from an ID carrying a # or whitespace', () => {
+    // The segment is the NORMALISED id. Appending the raw one would put a space and
+    // a `#` in the URL — and everything after a `#` is a fragment, so the link would
+    // open the tracker's home page rather than the ticket.
+    expect(buildTicketLink(' #PROJ-123 ', urls)).toBe('https://acme.atlassian.net/browse/PROJ-123')
+    expect(buildTicketLink(' #196 ', urls)).toBe('https://github.com/owner/repo/issues/196')
+    expect(buildTicketLink('proj-123', urls)).toBe('https://acme.atlassian.net/browse/PROJ-123')
   })
 
   it('does not double the separator on a base URL that ends with one', () => {

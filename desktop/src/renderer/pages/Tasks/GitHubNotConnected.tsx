@@ -6,6 +6,11 @@ import { useT } from '../../i18n'
 /**
  * The whole page when `gh` cannot answer — missing, or installed and logged out.
  *
+ * Rendered only when GitHub is the ONLY tracker the reader has configured. A user
+ * whose repositories are all in Jira has nothing to fix here, and a user with both
+ * gets a one-line notice above their sprint instead; taking the whole page in either
+ * case is what used to hide a perfectly readable backlog behind an irrelevant wall.
+ *
  * Two distinct situations behind one snapshot flag, and the panel separates them
  * because the fixes do not overlap: a missing binary is a one-click install, a
  * logged-out one is a command the user has to run themselves (`gh auth login` is
@@ -30,9 +35,9 @@ export function GitHubNotConnected({ onRetry, busy }: { onRetry: () => void; bus
 
   /**
    * Only the BINARY is probed here. Whether `gh` is logged in is already settled —
-   * this panel renders precisely because the snapshot came back `githubConnected:
-   * false` — so a second `gh auth status` spawn could only confirm what put it on
-   * screen.
+   * this panel renders precisely because the snapshot came back with
+   * `connected.github: false` — so a second `gh auth status` spawn could only
+   * confirm what put it on screen.
    */
   const refresh = useCallback(() => {
     setSetup(null)
