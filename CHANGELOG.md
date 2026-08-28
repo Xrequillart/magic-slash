@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.86.2] - 2026-08-28
+
+### Added
+
+- **Desktop**: A repository tracked on both GitHub and Jira lists both backlogs in Tasks, one card per tracker
+- **Desktop**: The GitHub and Jira logos mark every ticket — in the list, on the ticket page, and in the pinned bar
+- **Desktop**: A Jira row carries its labels and its reporter, as a GitHub row already did
+- **Desktop**: A Jira ticket's comments are read on its page, with their author and date
+- **Desktop**: The Tasks backlog is filtered by repository and searched by ticket id or title
+
 ## [0.86.1] - 2026-08-28
 
 ### Changed
@@ -2535,6 +2545,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.86.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.2
 [0.86.1]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.1
 [0.86.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.0
 [0.85.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.85.0
