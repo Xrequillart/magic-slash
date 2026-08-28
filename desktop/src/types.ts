@@ -211,8 +211,31 @@ export interface TaskIssueDetail {
    * with no `img-src`, so a remote avatar could only be fetched and blocked.
    */
   assignees: string[]
-  /** How many comments the issue has. The panel says so; reading them is on GitHub. */
+  /**
+   * How many comments the issue HAS — `totalCount`, never `comments.length`.
+   *
+   * The two differ exactly when the thread outran the page `ISSUE_DETAIL_QUERY`
+   * asks for, which is what lets the panel say "47 comments" in the byline and
+   * "showing the last 50" over the thread rather than presenting a page as the
+   * whole conversation. Jira's half says the same thing through the inverse
+   * arrangement — see `JiraTaskIssueDetail.commentTotal`, which is absent when
+   * nothing was cut.
+   */
   commentCount: number
+  /**
+   * The issue's comments, oldest first.
+   *
+   * They ride along in the detail read (see `ISSUE_DETAIL_QUERY`) for the reason
+   * Jira's do: the panel already makes that request, and the bodies cost one field
+   * on a query made once per opened issue rather than a second round trip. This
+   * used to be a count alone, and the panel sent the reader to github.com to read
+   * a conversation the app was already one field away from having.
+   *
+   * The TAIL of the thread when it is longer than the page: a discussion is read
+   * for where it got to, and the first fifty comments of a hundred-comment issue
+   * are the half that is no longer being talked about.
+   */
+  comments: TicketComment[]
 }
 
 /**
@@ -386,22 +409,39 @@ export interface JiraTaskIssue {
 }
 
 /**
- * One comment on a Jira ticket, as the detail page renders it.
+ * One comment on a ticket, as the detail page renders it — from EITHER tracker.
  *
- * Read WITH the ticket rather than by a call of its own: `fields=comment` on the
- * one-ticket read returns them in the same response, so the panel costs one round
- * trip instead of two. That is also why the page is Jira's default rather than one
- * this app chose — see `JiraTaskIssueDetail.commentTotal`, which is how the panel
- * says so when there are more.
+ * One interface and not two, unlike every other pair on this page. `JiraTaskIssue`
+ * and `TaskIssue` are deliberately separate because a Jira ticket and a GitHub issue
+ * disagree about what a ticket IS — a key against a number, a status against a set
+ * of labels. A comment is the one thing the two trackers genuinely model alike:
+ * somebody, at a time, wrote some markdown, and possibly edited it since. Splitting
+ * it would buy two identical shapes and force `CommentCard` to take a union it would
+ * then have to narrow for no reason.
+ *
+ * Both are read WITH the ticket rather than by a call of their own — `fields=comment`
+ * on Jira's one-ticket read, `comments(last:)` on `ISSUE_DETAIL_QUERY` — so the panel
+ * costs one round trip per tracker instead of two. Neither read is made until somebody
+ * opens a ticket; see `TaskIssueDetail` and `JiraTaskIssueDetail` for why.
  *
  * No avatars, for `JiraTaskIssue.reporter`'s reason: the CSP would block them.
  */
-export interface JiraTaskComment {
-  /** Jira's own comment id. The React key, and nothing else. */
+export interface TicketComment {
+  /** The tracker's own comment id — Jira's string, GitHub's node id. The React key, and nothing else. */
   id: string
-  /** The author's display name. `''` when Jira reports none — the panel then omits the byline. */
+  /**
+   * Who wrote it: a display name on Jira, a bare login on GitHub.
+   *
+   * `''` when the tracker reports nobody, and the panel then omits the byline. Both
+   * have that case and they are different cases — an app posting through Jira's API,
+   * a GitHub account since deleted — but neither has a name to print, which is the
+   * only thing this field is for.
+   *
+   * NOT prefixed with `@` on the GitHub side, though the issue's own byline is. The
+   * prefix is added where it is rendered, so this stays the login itself.
+   */
   author: string
-  /** When it was posted, ISO-8601 as Jira returns it. `''` when absent. */
+  /** When it was posted, ISO-8601 as the tracker returns it. `''` when absent. */
   createdAt: string
   /**
    * When it was last edited, when that differs from `createdAt`. Absent otherwise.
@@ -412,8 +452,11 @@ export interface JiraTaskComment {
    */
   updatedAt?: string
   /**
-   * The comment body, converted from Atlassian Document Format to markdown by the
-   * same `adfToMarkdown` the description goes through. `''` for an empty comment.
+   * The comment body as markdown. `''` for an empty comment.
+   *
+   * Already markdown on GitHub, which authors in it; converted from Atlassian
+   * Document Format by the same `adfToMarkdown` the description goes through on
+   * Jira. Either way the panel renders it with one `MarkdownView`.
    */
   body: string
 }
@@ -478,7 +521,7 @@ export interface JiraTaskIssueDetail {
    * the bodies arrive in the response the panel already makes, so not rendering them
    * would be throwing away content already paid for.
    */
-  comments: JiraTaskComment[]
+  comments: TicketComment[]
   /**
    * How many comments the ticket HAS, when Jira said so and it is more than arrived.
    *

@@ -354,7 +354,13 @@ describe('fetchIssueDetail', () => {
     expect(ISSUE_DETAIL_QUERY).toContain('issue(number:$number)')
     expect(ISSUE_DETAIL_QUERY).toContain('body')
     expect(ISSUE_DETAIL_QUERY).toContain('state')
-    expect(ISSUE_DETAIL_QUERY).toContain('comments { totalCount }')
+    // The bodies AND the count: the panel renders the thread and says how big it is.
+    expect(ISSUE_DETAIL_QUERY).toContain('comments(last: 50)')
+    expect(ISSUE_DETAIL_QUERY).toContain('totalCount')
+    expect(ISSUE_DETAIL_QUERY).toContain('lastEditedAt')
+    // `last:` and not `first:` — a long discussion is read for where it got to.
+    expect(ISSUE_DETAIL_QUERY).not.toContain('comments(first:')
+    expect(OPEN_ISSUES_QUERY).not.toContain('comments')
     expect(OPEN_ISSUES_QUERY).not.toContain('body')
     // Logins and nothing else, for the same CSP reason as the list's author field.
     expect(ISSUE_DETAIL_QUERY).toContain('assignees(first: 10){ nodes { login } }')
@@ -375,7 +381,14 @@ describe('fetchIssueDetail', () => {
       state: 'OPEN',
       body: '## Goal\n\nA right-hand detail panel.',
       assignees: { nodes: [{ login: 'xrequillart' }, { login: 'ghost' }] },
-      comments: { totalCount: 3 },
+      comments: {
+        totalCount: 3,
+        nodes: [
+          { id: 'IC_1', createdAt: '2026-08-01T09:00:00Z', lastEditedAt: null, body: 'First', author: { login: 'ada' } },
+          { id: 'IC_2', createdAt: '2026-08-02T09:00:00Z', lastEditedAt: '2026-08-02T10:00:00Z', body: 'Second', author: { login: 'grace' } },
+          { id: 'IC_3', createdAt: '2026-08-03T09:00:00Z', lastEditedAt: null, body: 'Third', author: null },
+        ],
+      },
     })))
 
     expect(okOf(await fetchIssueDetail('acme', 'api', 234))).toEqual({
@@ -383,7 +396,67 @@ describe('fetchIssueDetail', () => {
       body: '## Goal\n\nA right-hand detail panel.',
       assignees: ['xrequillart', 'ghost'],
       commentCount: 3,
+      comments: [
+        { id: 'IC_1', author: 'ada', createdAt: '2026-08-01T09:00:00Z', body: 'First' },
+        // `lastEditedAt` becomes `updatedAt` only where GitHub reported one.
+        { id: 'IC_2', author: 'grace', createdAt: '2026-08-02T09:00:00Z', updatedAt: '2026-08-02T10:00:00Z', body: 'Second' },
+        // A since-deleted account: `''`, which the panel treats as "omit the byline".
+        { id: 'IC_3', author: '', createdAt: '2026-08-03T09:00:00Z', body: 'Third' },
+      ],
     })
+  })
+
+  it('reports how many comments the issue HAS, not how many arrived', async () => {
+    // `last: 50` is a cap: a hundred-comment issue sends fifty, and a panel that
+    // said "50 comments" over them would present a page as the whole conversation.
+    mockFetch.mockResolvedValue(graphQLResponse(detailPayload({
+      state: 'OPEN',
+      body: '',
+      comments: {
+        totalCount: 100,
+        nodes: [{ id: 'IC_1', createdAt: '', lastEditedAt: null, body: 'x', author: { login: 'ada' } }],
+      },
+    })))
+
+    const result = okOf(await fetchIssueDetail('acme', 'api', 234))
+    expect(result.commentCount).toBe(100)
+    expect(result.comments).toHaveLength(1)
+  })
+
+  it('never reports fewer comments than it is about to render', async () => {
+    // A missing `totalCount` must not make a thread that IS on screen read as "0
+    // comments" — the same floor `fetchOpenIssues` puts under its own count.
+    mockFetch.mockResolvedValue(graphQLResponse(detailPayload({
+      state: 'OPEN',
+      body: '',
+      comments: {
+        nodes: [{ id: 'IC_1', createdAt: '', lastEditedAt: null, body: 'x', author: { login: 'ada' } }],
+      },
+    })))
+
+    expect(okOf(await fetchIssueDetail('acme', 'api', 234)).commentCount).toBe(1)
+  })
+
+  it('drops a comment with no id and keeps the rest of the thread', async () => {
+    // The id is the only field a comment cannot be drawn without — it is the React
+    // key. Everything else degrades rather than costing the reader a turn of the
+    // conversation that really happened.
+    mockFetch.mockResolvedValue(graphQLResponse(detailPayload({
+      state: 'OPEN',
+      body: '',
+      comments: {
+        totalCount: 2,
+        nodes: [
+          null,
+          { id: null, createdAt: '', lastEditedAt: null, body: 'orphan', author: null },
+          { id: 'IC_2', createdAt: null, lastEditedAt: null, body: null, author: { login: null } },
+        ],
+      },
+    })))
+
+    expect(okOf(await fetchIssueDetail('acme', 'api', 234)).comments).toEqual([
+      { id: 'IC_2', author: '', createdAt: '', body: '' },
+    ])
   })
 
   it('reports an issue closed since the list was read', async () => {
@@ -412,6 +485,7 @@ describe('fetchIssueDetail', () => {
       body: '',
       assignees: [],
       commentCount: 0,
+      comments: [],
     })
   })
 

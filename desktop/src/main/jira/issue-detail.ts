@@ -1,4 +1,4 @@
-import type { JiraTaskComment, JiraTaskIssueDetail } from '../../types'
+import type { JiraTaskIssueDetail, TicketComment } from '../../types'
 import { readLabels, readPerson, readPriority, readReporter, readStatus } from './sprint-issues'
 
 /**
@@ -443,11 +443,11 @@ export function adfToMarkdown(description: unknown): string {
  * to nobody: a comment that exists is part of the conversation, and dropping it
  * would leave the reader with a thread that silently skips a turn.
  */
-function mapComments(raw: unknown): { comments: JiraTaskComment[]; commentTotal?: number } {
+function mapComments(raw: unknown): { comments: TicketComment[]; commentTotal?: number } {
   const page = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
   const entries = Array.isArray(page.comments) ? page.comments : []
 
-  const comments = entries.map((entry, index): JiraTaskComment => {
+  const comments = entries.map((entry, index): TicketComment => {
     const comment = entry && typeof entry === 'object' ? (entry as Record<string, unknown>) : {}
     const created = typeof comment.created === 'string' ? comment.created : ''
     const updated = typeof comment.updated === 'string' ? comment.updated : ''

@@ -23,7 +23,7 @@ import {
   toError,
 } from './github-graphql'
 import { isPRStatusError } from '../types'
-import type { PRStatusError, TaskIssue, TaskIssueDetail } from '../types'
+import type { PRStatusError, TaskIssue, TaskIssueDetail, TicketComment } from '../types'
 
 /**
  * `rateLimit` leads, as in every query here: it is the cheapest possible answer to
@@ -78,9 +78,25 @@ export const OPEN_ISSUES_QUERY = `query($owner:String!,$repo:String!){
  * happens later and by number, so the issue may have been closed since.
  *
  * Ten assignees, logins only: the same CSP that rules out an author avatar rules
- * out an assignee's. `comments { totalCount }` and no nodes — the panel says how
- * many there are and sends the reader to GitHub to read them, so pulling the
- * bodies over would be paying for a thing nothing renders.
+ * out an assignee's.
+ *
+ * `comments(last: 50)` with the BODIES, where this asked for `totalCount` alone and
+ * sent the reader to github.com. The panel already renders a Jira ticket's thread
+ * (`JiraTaskIssueDetail.comments`), and half a page that shows a conversation and
+ * half that counts one is two designs for one screen. The cost is bounded the same
+ * way Jira's is: this query is made once, for the single issue somebody opened —
+ * never on the list read, which is what `TaskIssueDetail` exists to keep thin.
+ *
+ * `last:` and not `first:`, which is the one choice here worth arguing. A discussion
+ * is read for where it GOT TO: on a hundred-comment issue the last fifty are the part
+ * still being talked about, and the first fifty are the part that is settled. GitHub
+ * returns a `last:` slice in chronological order, so the thread still reads top to
+ * bottom — it simply starts later. `totalCount` rides alongside so the panel can say
+ * so rather than presenting a page as the whole conversation.
+ *
+ * `lastEditedAt` is null until somebody actually edits, which is exactly the
+ * `TicketComment.updatedAt` contract — no comparison with `createdAt` needed on this
+ * side, unlike Jira's, which always sends an `updated`.
  */
 export const ISSUE_DETAIL_QUERY = `query($owner:String!,$repo:String!,$number:Int!){
   rateLimit { remaining }
@@ -89,7 +105,10 @@ export const ISSUE_DETAIL_QUERY = `query($owner:String!,$repo:String!,$number:In
       state
       body
       assignees(first: 10){ nodes { login } }
-      comments { totalCount }
+      comments(last: 50){
+        totalCount
+        nodes { id createdAt lastEditedAt body author { login } }
+      }
     }
   }
 }`
@@ -124,11 +143,19 @@ interface GQLIssuesResponse extends GQLEnvelope {
   } | null
 }
 
+interface GQLCommentNode {
+  id?: string | null
+  createdAt?: string | null
+  lastEditedAt?: string | null
+  body?: string | null
+  author?: { login?: string | null } | null
+}
+
 interface GQLIssueDetailNode {
   state?: string | null
   body?: string | null
   assignees?: { nodes?: ({ login?: string | null } | null)[] | null } | null
-  comments?: { totalCount?: number | null } | null
+  comments?: { totalCount?: number | null; nodes?: (GQLCommentNode | null)[] | null } | null
 }
 
 interface GQLIssueDetailResponse extends GQLEnvelope {
@@ -331,6 +358,7 @@ export async function fetchOpenIssues(
  * strength of an unknown string would be worse than the assumption it came from.
  */
 function mapIssueDetail(node: GQLIssueDetailNode): TaskIssueDetail {
+  const comments = mapComments(node.comments?.nodes ?? [])
   const commentCount = node.comments?.totalCount
   return {
     body: node.body || '',
@@ -338,12 +366,48 @@ function mapIssueDetail(node: GQLIssueDetailNode): TaskIssueDetail {
     assignees: (node.assignees?.nodes ?? [])
       .map((assignee) => assignee?.login)
       .filter((login): login is string => !!login),
-    commentCount: typeof commentCount === 'number' ? commentCount : 0,
+    // Falls back to what was actually mapped rather than to 0, for the reason
+    // `fetchOpenIssues` gives about `totalCount`: a missing count must not make a
+    // thread that IS on screen read as "0 comments".
+    commentCount: typeof commentCount === 'number' ? Math.max(commentCount, comments.length) : comments.length,
+    comments,
   }
 }
 
 /**
- * Reads ONE issue's body, state, assignees and comment count. Never throws, for
+ * The comment nodes as the panel renders them, dropping the holes GraphQL is allowed
+ * to leave.
+ *
+ * `mapIssues`' discipline one level down: the id is the only field a comment cannot
+ * be drawn without — it is the React key and nothing else has to be unique — and
+ * everything else degrades. A missing author is the deleted-account case `mapAuthor`
+ * describes and renders as an unattributed turn in the conversation; a missing body
+ * is a comment whose whole content was an attachment or a reaction, and the panel
+ * says so rather than drawing an empty box.
+ *
+ * `lastEditedAt` becomes `updatedAt` only when GitHub reports one — it is null on a
+ * comment nobody has edited, which is `TicketComment.updatedAt`'s "absent otherwise".
+ */
+function mapComments(nodes: (GQLCommentNode | null)[]): TicketComment[] {
+  const comments: TicketComment[] = []
+  for (const node of nodes) {
+    if (!node || typeof node.id !== 'string' || !node.id) continue
+    const comment: TicketComment = {
+      id: node.id,
+      // `''` and not the field's absence, which is what `TicketComment.author`
+      // documents: the panel treats an empty name as "omit the byline".
+      author: node.author?.login || '',
+      createdAt: node.createdAt || '',
+      body: node.body || '',
+    }
+    if (node.lastEditedAt) comment.updatedAt = node.lastEditedAt
+    comments.push(comment)
+  }
+  return comments
+}
+
+/**
+ * Reads ONE issue's body, state, assignees and comments. Never throws, for
  * the same reason as `fetchOpenIssues`: the panel says what went wrong in place
  * rather than blanking.
  *

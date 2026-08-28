@@ -1799,13 +1799,34 @@ export const en = {
   // nobody in front of it is not a sentence.
   'tasks.detail.openedBy': '@{login} opened this on {date}',
   'tasks.detail.openedOn': 'Opened on {date}',
-  // How many comments the issue has. Reading them is on GitHub — this page says
-  // there are some, and the button next to the title is how you get to them.
+  // ── The ticket's conversation, rendered in full on BOTH halves ───────────
+  // How many comments the ticket HAS, in the byline under the title. Both trackers
+  // send the bodies back in the response the panel already makes, so both are shown
+  // — the GitHub half used to carry this count alone and send the reader to
+  // github.com to read what it was counting.
   'tasks.detail.commentCount.one': '{count} comment',
   'tasks.detail.commentCount.other': '{count} comments',
   // The header strip of the body box, GitHub's own wording: "@login commented".
   // `description` is what it says when there is no author to attribute it to.
   'tasks.detail.commented': 'commented',
+  // The strip over a comment the tracker attributes to nobody — an app or an
+  // automation posting through Jira's API, a GitHub account since deleted.
+  // `tasks.detail.commented` covers the ones with an author.
+  'tasks.detail.comment': 'Comment',
+  // A comment somebody rewrote after posting it. The word on the strip, the date in
+  // the hover text: the strip has one line and a name already on it.
+  'tasks.detail.edited': 'edited',
+  'tasks.detail.editedOn': 'Edited on {date}',
+  // A comment with no body at all — an attachment, a reaction, or a transition Jira
+  // recorded as one. Still a turn in the conversation, so it keeps its card and says so.
+  'tasks.detail.emptyComment': 'This comment has no text.',
+  // Said only when the thread is longer than the page that arrived — a reader who
+  // reaches the bottom of a truncated thread must not believe they have read all of
+  // it. WHICH END differs by tracker and the two sentences say so: Jira pages its
+  // comment field from the start, while `ISSUE_DETAIL_QUERY` deliberately asks GitHub
+  // for the last N, because a long GitHub issue is read for where it got to.
+  'tasks.detail.commentsShowingFirst': 'showing the first {count}',
+  'tasks.detail.commentsShowingLast': 'showing the last {count}',
   'tasks.detail.description': 'Description',
   'tasks.detail.labels': 'Labels',
   'tasks.detail.assignees': 'Assigned to',
@@ -1911,23 +1932,6 @@ export const en = {
   // badge truncates first, and the key is what identifies the epic in Jira itself.
   'tasks.jira.epicHint': 'Epic {key}: {title}',
   'tasks.jira.sprintHint': 'Active sprint: {sprint}',
-  // ── The ticket's conversation, which the Jira half renders in full ───────
-  // The GitHub panel carries a count and sends the reader to github.com; Jira sends
-  // the bodies back in the response the panel already makes, so they are shown.
-  // The strip over a comment Jira attributes to nobody — an app or an automation
-  // posting through the API. `tasks.detail.commented` covers the ones with an author.
-  'tasks.jira.detail.comment': 'Comment',
-  // A comment somebody rewrote after posting it. The word on the strip, the date in
-  // the hover text: the strip has one line and a name already on it.
-  'tasks.jira.detail.edited': 'edited',
-  'tasks.jira.detail.editedOn': 'Edited on {date}',
-  // A comment with no body at all — an attachment, or a transition Jira recorded as
-  // one. Still a turn in the conversation, so it keeps its card and says so.
-  'tasks.jira.detail.emptyComment': 'This comment has no text.',
-  // Jira pages the comment field on its own terms and reports how many there really
-  // are. Said only when the two differ — a reader who reaches the bottom of a
-  // truncated thread must not believe they have read all of it.
-  'tasks.jira.detail.commentsTruncated': 'showing the first {count}',
   // HTTP 404 on the ONE-TICKET read, where `tasks.jira.error.notFound` is about the
   // project: "check the project key" is the wrong advice for a ticket that was
   // deleted or moved, and the key is demonstrably right — the list read used it.

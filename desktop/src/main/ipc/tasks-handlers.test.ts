@@ -156,7 +156,7 @@ function getIssueDetail(): (args: unknown) => Promise<TaskIssueDetail | PRStatus
 }
 
 function detail(overrides: Partial<TaskIssueDetail> = {}): TaskIssueDetail {
-  return { body: 'the body', state: 'OPEN', assignees: [], commentCount: 0, ...overrides }
+  return { body: 'the body', state: 'OPEN', assignees: [], commentCount: 0, comments: [], ...overrides }
 }
 
 /** The one the Jira detail panel calls on select. */

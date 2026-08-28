@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObjec
 import { ArrowLeft, CircleCheck, CircleDot, ExternalLink, MessageSquare, MessagesSquare, Play } from 'lucide-react'
 import type {
   InitialPromptMode,
-  JiraTaskComment,
+  TicketComment,
   JiraTaskIssue,
   JiraTaskIssueDetail,
   JiraTaskStatusError,
@@ -237,6 +237,18 @@ function PersonLine({ name }: { name: string }) {
 }
 
 /**
+ * Which tracker a ticket came from, as the several pieces of this page that branch on
+ * it take it.
+ *
+ * The same two values `TaskDetailPageProps` is discriminated on, named once so the
+ * components below the discriminated union can be given it as a plain prop. They are
+ * past the point where narrowing is available — a `CommentCard` holds a comment, not
+ * an issue — and still need to know, because a login wears an `@` and a display name
+ * does not.
+ */
+type TaskTracker = 'github' | 'jira'
+
+/**
  * One comment, in the description box's own shape: an author strip, then the body
  * under a hairline.
  *
@@ -249,70 +261,100 @@ function PersonLine({ name }: { name: string }) {
  * on a Jira ticket routinely carries a code block or a list, and the panel variant
  * would set those in the narrow measure meant for a sidebar.
  */
-function CommentCard({ comment, locale, t }: { comment: JiraTaskComment; locale: string; t: Translate }) {
+function CommentCard({
+  comment,
+  tracker,
+  locale,
+  t,
+}: {
+  comment: TicketComment
+  tracker: TaskTracker
+  locale: string
+  t: Translate
+}) {
   const postedOn = formatCommentDate(comment.createdAt, locale)
   const editedOn = comment.updatedAt ? formatCommentDate(comment.updatedAt, locale) : ''
 
   return (
     <div className="rounded-xl bg-surface border border-line-field overflow-hidden">
       <div className="flex items-center gap-1.5 px-5 py-2.5 bg-surface-subtle border-b border-line-subtle">
-        {/* Jira reports an author for every comment a person wrote; the ones it does
-            not are an app or an automation posting through the API, and "commented"
-            with nobody in front of it is not a sentence. */}
+        {/* Both trackers report an author for every comment a person wrote; the ones
+            they do not are an app posting through Jira's API or a GitHub account
+            since deleted, and "commented" with nobody in front of it is not a
+            sentence.
+
+            The `@` on the GitHub half only, matching the issue's own byline directly
+            above the thread: a login is a handle and wears one everywhere in that
+            product, while "Ada Lovelace" is a name and `@Ada Lovelace` reads as a
+            mention of an account that does not exist. */}
         {comment.author ? (
           <>
-            <span className="text-xs font-medium text-ink">{comment.author}</span>
+            <span className="text-xs font-medium text-ink">
+              {tracker === 'github' ? `@${comment.author}` : comment.author}
+            </span>
             <span className="text-xs text-text-secondary">{t('tasks.detail.commented')}</span>
           </>
         ) : (
-          <span className="text-xs font-medium text-ink">{t('tasks.jira.detail.comment')}</span>
+          <span className="text-xs font-medium text-ink">{t('tasks.detail.comment')}</span>
         )}
         {/* Only when it says something the posting date does not — see
-            `JiraTaskComment.updatedAt`. In the hover text rather than on the strip,
+            `TicketComment.updatedAt`. In the hover text rather than on the strip,
             which has one line and a name already on it. */}
         {editedOn && (
           <span
-            title={t('tasks.jira.detail.editedOn', { date: editedOn })}
+            title={t('tasks.detail.editedOn', { date: editedOn })}
             className="text-xs text-text-secondary/50"
           >
-            {t('tasks.jira.detail.edited')}
+            {t('tasks.detail.edited')}
           </span>
         )}
         {postedOn && <span className="ml-auto text-xs text-text-secondary/50">{postedOn}</span>}
       </div>
       {/* A comment with no body at all is still a turn in the conversation — an
-          attachment, or a transition Jira recorded as one — so it keeps its card and
-          says so, rather than rendering as an empty box. */}
+          attachment, a reaction, or a transition Jira recorded as one — so it keeps
+          its card and says so, rather than rendering as an empty box. */}
       {comment.body ? (
         <div className="px-5 py-4">
           <MarkdownView content={comment.body} variant="document" />
         </div>
       ) : (
-        <div className="px-5 py-4 text-sm text-text-secondary/40">{t('tasks.jira.detail.emptyComment')}</div>
+        <div className="px-5 py-4 text-sm text-text-secondary/40">{t('tasks.detail.emptyComment')}</div>
       )}
     </div>
   )
 }
 
 /**
- * The ticket's conversation, under its description.
+ * The ticket's conversation, under its description — on EITHER half of the page.
  *
  * Rendered only when there IS one: a "Comments" heading over nothing would read as a
- * thread that failed to load, where the truth is a ticket nobody has replied to. The
- * GitHub half has no counterpart to this — its panel carries a count and sends the
- * reader to github.com — because the two reads differ in what they cost. Jira
- * returns the bodies in the response the panel already makes (see `DETAIL_FIELDS`),
- * so not rendering them would be discarding content already paid for.
+ * thread that failed to load, where the truth is a ticket nobody has replied to.
+ *
+ * The GitHub half used to have no counterpart to this: its panel carried a count and
+ * sent the reader to github.com. That was a real trade once — the count was one field
+ * and the bodies were not — but it was never a large one, and it left one screen
+ * showing a conversation on one tracker and a number on the other. Both reads now
+ * bring the bodies back in the response the panel already makes (`DETAIL_FIELDS` on
+ * Jira, `ISSUE_DETAIL_QUERY` on GitHub), so not rendering them would be discarding
+ * content already paid for.
+ *
+ * WHICH END OF A LONG THREAD ARRIVED differs by tracker and this says so rather than
+ * papering over it: Jira pages its comment field from the start, GitHub is asked for
+ * the last fifty. A reader who reaches the bottom of a truncated thread must not
+ * believe they have read all of it — and must not think they have read the END of it
+ * when what they have is the beginning.
  */
-function JiraComments({
+function TicketComments({
   comments,
   total,
+  tracker,
   locale,
   t,
 }: {
-  comments: JiraTaskComment[]
-  /** How many the ticket HAS, when Jira said so and it is more than arrived. */
+  comments: TicketComment[]
+  /** How many the ticket HAS, when the tracker said so and it is more than arrived. */
   total?: number
+  tracker: TaskTracker
   locale: string
   t: Translate
 }) {
@@ -330,18 +372,19 @@ function JiraComments({
         <span className="text-xs font-medium text-text-secondary">
           {t(count === 1 ? 'tasks.detail.commentCount.one' : 'tasks.detail.commentCount.other', { count })}
         </span>
-        {/* Jira pages the field on its own terms, so the panel says when it is
-            showing a page. Silence here would let a reader who reached the bottom of
-            a truncated thread believe they had read all of it. The total is already
-            in the heading, so this half only has to say how much of it is on screen. */}
+        {/* The total is already in the heading, so this half only has to say how much
+            of it is on screen — and from which end. */}
         {total !== undefined && (
           <span className="text-xs text-text-secondary/50">
-            {t('tasks.jira.detail.commentsTruncated', { count: comments.length })}
+            {t(
+              tracker === 'github' ? 'tasks.detail.commentsShowingLast' : 'tasks.detail.commentsShowingFirst',
+              { count: comments.length },
+            )}
           </span>
         )}
       </div>
       {comments.map((comment) => (
-        <CommentCard key={comment.id} comment={comment} locale={locale} t={t} />
+        <CommentCard key={comment.id} comment={comment} tracker={tracker} locale={locale} t={t} />
       ))}
     </>
   )
@@ -664,6 +707,24 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
     : detail?.commentCount ?? 0
 
   /**
+   * The thread to render, and how many the ticket has when that is MORE than arrived.
+   *
+   * The two trackers report the same fact through opposite conventions, and this is
+   * where they are reconciled into the one pair `TicketComments` takes. Jira sends a
+   * `commentTotal` only when it paged (see `JiraTaskIssueDetail.commentTotal`), so it
+   * passes straight through; GitHub always sends a `totalCount`, so the comparison
+   * that Jira makes on its own side is made here instead. Either way `total` is
+   * `undefined` exactly when the whole conversation is on screen, which is what keeps
+   * "showing the last 50" off a thread of three.
+   */
+  const thread = tracker === 'jira'
+    ? jiraDetail && { comments: jiraDetail.comments, total: jiraDetail.commentTotal }
+    : detail && {
+      comments: detail.comments,
+      total: detail.commentCount > detail.comments.length ? detail.commentCount : undefined,
+    }
+
+  /**
    * The status as of THIS read, falling back to the row's until it lands.
    *
    * The detail read asks for the status again precisely so a ticket transitioned
@@ -884,13 +945,15 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
             />
           </div>
 
-          {/* Only the Jira half has a thread to render — see `JiraComments`. Nothing
-              is drawn while the read is out or after it failed: the component returns
-              null on an empty list, and `jiraDetail` is null in both cases. */}
-          {tracker === 'jira' && jiraDetail && (
-            <JiraComments
-              comments={jiraDetail.comments}
-              total={jiraDetail.commentTotal}
+          {/* Both halves now, off whichever read landed — see `TicketComments`.
+              Nothing is drawn while a read is out or after it failed: `thread` is
+              null in both cases, and the component itself returns null on a ticket
+              nobody has replied to. */}
+          {thread && (
+            <TicketComments
+              comments={thread.comments}
+              total={thread.total}
+              tracker={tracker}
               locale={locale}
               t={t}
             />
