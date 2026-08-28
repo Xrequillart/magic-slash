@@ -140,3 +140,35 @@ export function resolveTracker(repo?: TrackerSource | null): ResolvedTracker {
   if (hasJira) return hasGitHub ? 'ask' : 'jira'
   return hasGitHub ? 'github' : 'ask'
 }
+
+/**
+ * Whether a repository's tickets can be READ from this tracker.
+ *
+ * A different question from `resolveTracker`, and deliberately so. That one answers
+ * "where does a new ticket GO", and it has to name a single place: a skill about to
+ * file a ticket cannot file it in two, so when both sides are configured it declines
+ * and says `ask`. A LISTING surface is under no such constraint — it shows what is
+ * there — and for it `ask` is not a refusal to answer but the case where both sides
+ * have something to show. Excluding those repositories is what left the Tasks page
+ * blank for a repo that had a GitHub remote and a Jira site and had simply never
+ * been told which one wins.
+ *
+ * `ask` has TWO causes and conflating them is the trap here (see the ladder above):
+ * rows 2-3, where both sides are configured, and row 5, where NEITHER is and there
+ * is nothing to read anywhere. Only the first can be read from, so the coordinates
+ * are re-checked rather than inferred from the word `ask` — otherwise a repository
+ * with no remote and no Jira project would be queried on both.
+ *
+ * The reverse — a repo whose tracker is settled — is unchanged: a `github` answer
+ * never reads Jira even with a project key sitting in its config, because that
+ * setting is an explicit statement about where the tickets are.
+ */
+export function readsFrom(repo: TrackerSource | null | undefined, tracker: 'github' | 'jira'): boolean {
+  const resolved = resolveTracker(repo)
+  if (resolved === tracker) return true
+  if (resolved !== 'ask') return false
+
+  return tracker === 'jira'
+    ? !!(resolveJiraProject(repo) || resolveJiraSite(repo))
+    : hasGitHubCoordinates(repo)
+}

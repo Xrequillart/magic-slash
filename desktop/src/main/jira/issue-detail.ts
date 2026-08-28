@@ -1,5 +1,5 @@
-import type { JiraTaskIssueDetail } from '../../types'
-import { readStatus } from './sprint-issues'
+import type { JiraTaskComment, JiraTaskIssueDetail } from '../../types'
+import { readLabels, readPerson, readReporter, readStatus } from './sprint-issues'
 
 /**
  * Everything the ONE-TICKET read decides, with nothing it needs a machine for.
@@ -8,9 +8,11 @@ import { readStatus } from './sprint-issues'
  * filesystem, no ambient `fetch`, and no import of `connect.ts`. So the whole of
  * what this module actually does — turning Atlassian Document Format into the
  * markdown the panel renders — is exercised by `issue-detail.test.ts` without a
- * single mock. The one import from `sprint-issues.ts` is `readStatus`, which is
- * pure on the same terms: a shared vocabulary for Jira's own values, not a
- * dependency on the sprint read.
+ * single mock. What it imports from `sprint-issues.ts` — `readStatus`, `readPerson`,
+ * `readReporter`, `readLabels` — is pure on the same terms: a shared vocabulary for
+ * Jira's own values, not a dependency on the sprint read. Shared rather than copied
+ * because the panel is opened FROM a row, so any question the two answer differently
+ * shows up as a ticket changing its mind on being opened.
  *
  * It answers two questions and no others. WHAT TO ASK: `DETAIL_FIELDS`, the half
  * of a ticket the sprint read deliberately leaves behind. WHAT CAME BACK:
@@ -35,11 +37,21 @@ import { readStatus } from './sprint-issues'
  * a ticket transitioned in the meantime must not go on showing the word the list
  * captured (the same rule `TaskIssueDetail.state` follows next door).
  *
- * Nothing else. No `issuetype`, no story points, no comments: every field named
- * here is one more the read pays for, and the ticket asked for a description, a
- * status and the two people on it.
+ * `comment` is the one field here whose weight is worth naming. It brings the whole
+ * conversation back in the response the panel already makes — one round trip rather
+ * than the two a `/issue/{key}/comment` call would cost — and it is asked for only
+ * when somebody opens a ticket, never on the list read. Jira pages it on its own
+ * terms and reports a `total`, which is why `mapComments` carries that number out
+ * rather than letting the panel present a page as the whole thread.
+ *
+ * `reporter` and `labels` came with the row as of this story and are STILL asked
+ * for, for `status`' reason: this read happens later, and a ticket relabelled or
+ * reassigned in the meantime must not go on showing what the list captured.
+ *
+ * Nothing else. No `issuetype`, no story points: every field named here is one more
+ * the read pays for.
  */
-export const DETAIL_FIELDS = ['description', 'status', 'assignee', 'reporter', 'labels']
+export const DETAIL_FIELDS = ['description', 'status', 'assignee', 'reporter', 'creator', 'labels', 'comment']
 
 /** The shape of an ADF node, as far as anything here needs to know. */
 interface AdfNode {
@@ -292,15 +304,53 @@ export function adfToMarkdown(description: unknown): string {
   return renderBlock(asNode(description)).trim()
 }
 
-/** A Jira user object as the one word the panel prints for it. */
-function readPerson(person: unknown): string {
-  if (!person || typeof person !== 'object') return ''
-  const { displayName, accountId } = person as Record<string, unknown>
-  // `displayName` is the field Atlassian's privacy settings never hide, so the
-  // fallback is all but unreachable — and an account id is at least an identity,
-  // where an empty string would make an assigned ticket read as unassigned.
-  if (typeof displayName === 'string' && displayName !== '') return displayName
-  return typeof accountId === 'string' ? accountId : ''
+/**
+ * The comments on a ticket, plus how many there really are.
+ *
+ * Jira answers `fields.comment` as a PAGE — `{ comments, total, maxResults, startAt }`
+ * — and picks the size itself. So the count is carried out beside the array and the
+ * panel says "showing the first N" when they disagree; rendering the page as if it
+ * were the thread is the one outcome that is actually wrong, because a reader who
+ * scrolls to the bottom of a truncated conversation believes they have read it.
+ *
+ * `total` is only reported when it EXCEEDS what came back. Equal is the common case
+ * and needs no sentence, and a `total` smaller than the array is a Jira answering
+ * something impossible — trusting it there would produce "showing the first 20 of
+ * 3", so the array wins.
+ *
+ * Every comment is kept, including one whose body is empty and one Jira attributes
+ * to nobody: a comment that exists is part of the conversation, and dropping it
+ * would leave the reader with a thread that silently skips a turn.
+ */
+function mapComments(raw: unknown): { comments: JiraTaskComment[]; commentTotal?: number } {
+  const page = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const entries = Array.isArray(page.comments) ? page.comments : []
+
+  const comments = entries.map((entry, index): JiraTaskComment => {
+    const comment = entry && typeof entry === 'object' ? (entry as Record<string, unknown>) : {}
+    const created = typeof comment.created === 'string' ? comment.created : ''
+    const updated = typeof comment.updated === 'string' ? comment.updated : ''
+    return {
+      // The index is the fallback so the React key stays unique within the thread:
+      // an id Jira omitted is not a reason for two comments to collide into one row.
+      id: typeof comment.id === 'string' && comment.id !== '' ? comment.id : `comment-${index}`,
+      author: readPerson(comment.author),
+      createdAt: created,
+      // Carried only when it says something the created date does not. Jira sets
+      // `updated` to `created` on a comment nobody has touched, so passing it
+      // through unconditionally would mark every comment in the thread as edited.
+      ...(updated && updated !== created ? { updatedAt: updated } : {}),
+      body: adfToMarkdown(comment.body),
+    }
+  })
+
+  const total = page.total
+  const known = typeof total === 'number' && Number.isFinite(total) ? Math.trunc(total) : 0
+
+  return {
+    comments,
+    ...(known > comments.length ? { commentTotal: known } : {}),
+  }
 }
 
 /**
@@ -323,17 +373,18 @@ export function mapIssueDetail(raw: unknown): JiraTaskIssueDetail {
 
   const status = readStatus(fields.status)
   const assignee = readPerson(fields.assignee)
-  const reporter = readPerson(fields.reporter)
-  const labels = Array.isArray(fields.labels)
-    ? fields.labels.filter((label): label is string => typeof label === 'string' && label !== '')
-    : []
+  // The same `reporter` or `creator` choice the row made, through the same function:
+  // the panel showing a different name from the row it was opened from would read as
+  // two different tickets.
+  const reporter = readReporter(fields)
 
   return {
     description: adfToMarkdown(fields.description),
     ...(assignee ? { assignee } : {}),
     ...(reporter ? { reporter } : {}),
-    labels,
+    labels: readLabels(fields.labels),
     statusName: status.name,
     statusCategory: status.category,
+    ...mapComments(fields.comment),
   }
 }

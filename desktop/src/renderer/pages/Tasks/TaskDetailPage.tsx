@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObjec
 import { ArrowLeft, CircleCheck, CircleDot, ExternalLink, MessageSquare, MessagesSquare, Play } from 'lucide-react'
 import type {
   InitialPromptMode,
+  JiraTaskComment,
   JiraTaskIssue,
   JiraTaskIssueDetail,
   JiraTaskStatusError,
@@ -19,6 +20,7 @@ import { StatusPill, TicketBadge } from '../Dashboard/parts'
 import type { NewTerminalDetail } from '../Terminals'
 import { JiraErrorLines, JiraStatusPill, TaskErrorLines } from './TasksRepoSection'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
+import { TrackerMark } from '../../components/icons/TrackerIcons'
 
 /**
  * One ticket, given the whole page — the Tasks page's second view, not a panel
@@ -78,6 +80,22 @@ function formatIssueDate(iso: string, locale: string): string {
   const at = new Date(iso).getTime()
   if (Number.isNaN(at)) return ''
   return new Date(at).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+/**
+ * "24 Aug 2026, 14:32" — `formatIssueDate` plus the clock, for a comment.
+ *
+ * The time is not decoration here. A ticket is opened once, so the day is enough to
+ * place it; a conversation happens within days and often within one, and a thread
+ * whose every entry reads "24 Aug 2026" cannot be followed at all. `timeStyle`
+ * rather than a hand-built `HH:mm`, so a locale that writes 2:32 PM gets to.
+ */
+function formatCommentDate(iso: string, locale: string): string {
+  const at = new Date(iso).getTime()
+  if (Number.isNaN(at)) return ''
+  return new Date(at).toLocaleString(locale, {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
 }
 
 /**
@@ -216,6 +234,117 @@ function DetailBody({
  */
 function PersonLine({ name }: { name: string }) {
   return <span className="text-xs text-text-secondary min-w-0 break-words">{name}</span>
+}
+
+/**
+ * One comment, in the description box's own shape: an author strip, then the body
+ * under a hairline.
+ *
+ * The SAME box, deliberately. A ticket page is a description followed by a
+ * conversation, and giving the replies a different card would say they are a
+ * different kind of thing. What separates them is the strip: the description's says
+ * "Description", a comment's says who wrote it and when.
+ *
+ * `variant="document"` for the body, matching the description above it — a comment
+ * on a Jira ticket routinely carries a code block or a list, and the panel variant
+ * would set those in the narrow measure meant for a sidebar.
+ */
+function CommentCard({ comment, locale, t }: { comment: JiraTaskComment; locale: string; t: Translate }) {
+  const postedOn = formatCommentDate(comment.createdAt, locale)
+  const editedOn = comment.updatedAt ? formatCommentDate(comment.updatedAt, locale) : ''
+
+  return (
+    <div className="rounded-xl bg-surface border border-line-field overflow-hidden">
+      <div className="flex items-center gap-1.5 px-5 py-2.5 bg-surface-subtle border-b border-line-subtle">
+        {/* Jira reports an author for every comment a person wrote; the ones it does
+            not are an app or an automation posting through the API, and "commented"
+            with nobody in front of it is not a sentence. */}
+        {comment.author ? (
+          <>
+            <span className="text-xs font-medium text-ink">{comment.author}</span>
+            <span className="text-xs text-text-secondary">{t('tasks.detail.commented')}</span>
+          </>
+        ) : (
+          <span className="text-xs font-medium text-ink">{t('tasks.jira.detail.comment')}</span>
+        )}
+        {/* Only when it says something the posting date does not — see
+            `JiraTaskComment.updatedAt`. In the hover text rather than on the strip,
+            which has one line and a name already on it. */}
+        {editedOn && (
+          <span
+            title={t('tasks.jira.detail.editedOn', { date: editedOn })}
+            className="text-xs text-text-secondary/50"
+          >
+            {t('tasks.jira.detail.edited')}
+          </span>
+        )}
+        {postedOn && <span className="ml-auto text-xs text-text-secondary/50">{postedOn}</span>}
+      </div>
+      {/* A comment with no body at all is still a turn in the conversation — an
+          attachment, or a transition Jira recorded as one — so it keeps its card and
+          says so, rather than rendering as an empty box. */}
+      {comment.body ? (
+        <div className="px-5 py-4">
+          <MarkdownView content={comment.body} variant="document" />
+        </div>
+      ) : (
+        <div className="px-5 py-4 text-sm text-text-secondary/40">{t('tasks.jira.detail.emptyComment')}</div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The ticket's conversation, under its description.
+ *
+ * Rendered only when there IS one: a "Comments" heading over nothing would read as a
+ * thread that failed to load, where the truth is a ticket nobody has replied to. The
+ * GitHub half has no counterpart to this — its panel carries a count and sends the
+ * reader to github.com — because the two reads differ in what they cost. Jira
+ * returns the bodies in the response the panel already makes (see `DETAIL_FIELDS`),
+ * so not rendering them would be discarding content already paid for.
+ */
+function JiraComments({
+  comments,
+  total,
+  locale,
+  t,
+}: {
+  comments: JiraTaskComment[]
+  /** How many the ticket HAS, when Jira said so and it is more than arrived. */
+  total?: number
+  locale: string
+  t: Translate
+}) {
+  if (comments.length === 0) return null
+
+  // The heading counts what the ticket HAS, never what fitted in the page — so the
+  // two halves of this line cannot contradict each other. It said `comments.length`
+  // first, which read as "2 comments · showing the first 2 of 47".
+  const count = total ?? comments.length
+
+  return (
+    <>
+      <div className="flex items-center gap-2 px-1">
+        <MessageSquare className="w-3.5 h-3.5 text-text-secondary" />
+        <span className="text-xs font-medium text-text-secondary">
+          {t(count === 1 ? 'tasks.detail.commentCount.one' : 'tasks.detail.commentCount.other', { count })}
+        </span>
+        {/* Jira pages the field on its own terms, so the panel says when it is
+            showing a page. Silence here would let a reader who reached the bottom of
+            a truncated thread believe they had read all of it. The total is already
+            in the heading, so this half only has to say how much of it is on screen. */}
+        {total !== undefined && (
+          <span className="text-xs text-text-secondary/50">
+            {t('tasks.jira.detail.commentsTruncated', { count: comments.length })}
+          </span>
+        )}
+      </div>
+      {comments.map((comment) => (
+        <CommentCard key={comment.id} comment={comment} locale={locale} t={t} />
+      ))}
+    </>
+  )
 }
 
 /** What the page needs whichever tracker the ticket came from. */
@@ -513,6 +642,28 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
   const openedOn = formatIssueDate(createdAt, locale)
 
   /**
+   * The mark's accessible name and hover text. Untranslated — "GitHub" and "Jira"
+   * are product names, and a catalogue entry per language would only be somewhere
+   * for them to be spelled wrong.
+   */
+  const trackerName = tracker === 'jira' ? 'Jira' : 'GitHub'
+
+  /**
+   * How many comments the byline announces, from whichever read knows.
+   *
+   * `commentTotal` first on the Jira side: it is the number the TICKET has, where
+   * `comments.length` is the number that fitted in the page Jira sent. The byline
+   * says how big the conversation is; the line above the thread says how much of it
+   * is on screen.
+   *
+   * 0 while either read is out, which is what keeps the counter from appearing and
+   * then correcting itself.
+   */
+  const commentCount = tracker === 'jira'
+    ? jiraDetail?.commentTotal ?? jiraDetail?.comments.length ?? 0
+    : detail?.commentCount ?? 0
+
+  /**
    * The status as of THIS read, falling back to the row's until it lands.
    *
    * The detail read asks for the status again precisely so a ticket transitioned
@@ -579,6 +730,10 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           // Left-aligned next to the link it follows, and in the row's own type
           // size: this is the title standing in for itself, not a second heading.
           <>
+            {/* Ahead of the status, not after it: the mark answers "which tracker is
+                this" and the pill answers "where is it up to", and the first question
+                is the one a reader who has scrolled away from the title is asking. */}
+            <TrackerMark tracker={tracker} title={trackerName} />
             {statusChip}
             <span className="text-xs text-ink truncate min-w-0" title={title}>
               {title}
@@ -623,12 +778,20 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
           gave it, on the byline line rather than inside the heading — `PROJ-1234`
           is a word, where `#234` is a suffix. */}
       <div ref={titleRef} className="flex flex-col gap-3 pb-5 border-b border-line">
-        <h1 className="text-2xl font-semibold text-ink leading-snug">
-          {title}
-          {tracker === 'github' && (
-            <span className="font-normal text-text-secondary/40"> #{issueNumber}</span>
-          )}
-        </h1>
+        {/* The mark sits on the title's first line and OUTSIDE the heading text, as a
+            flex sibling: inlined into the `h1` it would ride the text baseline and
+            sink below it on a title that wraps to two lines. `mt-1` is the optical
+            centring for the first line's cap height, which `items-center` on a
+            two-line heading would get wrong by half a line. */}
+        <div className="flex items-start gap-2.5 min-w-0">
+          <TrackerMark tracker={tracker} title={trackerName} className="w-5 h-5 mt-1" />
+          <h1 className="text-2xl font-semibold text-ink leading-snug min-w-0">
+            {title}
+            {tracker === 'github' && (
+              <span className="font-normal text-text-secondary/40"> #{issueNumber}</span>
+            )}
+          </h1>
+        </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           {tracker === 'jira' && <TicketBadge ticketId={issueKey} />}
           {/* Nothing until the state is actually known: a chip reading "Open"
@@ -641,11 +804,14 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
               ? t('tasks.detail.openedBy', { login: props.issue.author, date: openedOn })
               : t('tasks.detail.openedOn', { date: openedOn })}
           </span>
-          {detail && detail.commentCount > 0 && (
+          {/* One counter for both halves, off the number each read actually knows:
+              GitHub reports a count and nothing else, Jira sends the comments
+              themselves and `commentTotal` when it sent only a page of them. */}
+          {commentCount > 0 && (
             <span className="flex items-center gap-1.5 text-xs text-text-secondary">
               <MessageSquare className="w-3.5 h-3.5" />
-              {t(detail.commentCount === 1 ? 'tasks.detail.commentCount.one' : 'tasks.detail.commentCount.other', {
-                count: detail.commentCount,
+              {t(commentCount === 1 ? 'tasks.detail.commentCount.one' : 'tasks.detail.commentCount.other', {
+                count: commentCount,
               })}
             </span>
           )}
@@ -655,7 +821,10 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
       {/* The two columns of a GitHub issue. `items-start` so the metadata card
           keeps its own height instead of stretching to a long body. */}
       <div className="flex items-start gap-6 min-w-0">
-        <div className="flex-1 min-w-0">
+        {/* A column now rather than a single box: the description is the first thing
+            in a conversation, not a thing beside one, so the thread stacks under it on
+            the same gap the page uses everywhere else. */}
+        <div className="flex-1 min-w-0 flex flex-col gap-3">
           {/* The comment box: an author strip, then the body under a hairline. */}
           <div className="rounded-xl bg-surface border border-line-field overflow-hidden">
             <div className="flex items-center gap-1.5 px-5 py-2.5 bg-surface-subtle border-b border-line-subtle">
@@ -678,6 +847,18 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
               t={t}
             />
           </div>
+
+          {/* Only the Jira half has a thread to render — see `JiraComments`. Nothing
+              is drawn while the read is out or after it failed: the component returns
+              null on an empty list, and `jiraDetail` is null in both cases. */}
+          {tracker === 'jira' && jiraDetail && (
+            <JiraComments
+              comments={jiraDetail.comments}
+              total={jiraDetail.commentTotal}
+              locale={locale}
+              t={t}
+            />
+          )}
         </div>
 
         {/* Sticky, so the action and the metadata stay put while a long issue

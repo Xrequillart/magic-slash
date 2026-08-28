@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type {
   Config,
+  GitHubTaskRepoGroup,
   JiraAuthStatus,
   JiraTaskIssueDetail,
   JiraTaskRepoGroup,
@@ -104,10 +105,23 @@ function sprintIssue(key: string, category = 'new', name = 'To Do') {
   }
 }
 
-/** The Jira group of one repository, narrowed out of the snapshot. */
+/**
+ * The Jira group of one repository, narrowed out of the snapshot.
+ *
+ * Matched on the TRACKER as well as the key: an undecided repository contributes a
+ * group to each half, and a find on the key alone returns whichever the handler
+ * concatenated first — the GitHub one — which this helper would then narrow away to
+ * `undefined` and report as "no sprint was read".
+ */
 function jiraGroupOf(snapshot: TasksSnapshot, configKey: string): JiraTaskRepoGroup | undefined {
-  const group = snapshot.groups.find((candidate) => candidate.configKey === configKey)
+  const group = snapshot.groups.find((c) => c.configKey === configKey && c.tracker === 'jira')
   return group?.tracker === 'jira' ? group : undefined
+}
+
+/** `jiraGroupOf`'s twin, for the same reason. */
+function githubGroupOf(snapshot: TasksSnapshot, configKey: string): GitHubTaskRepoGroup | undefined {
+  const group = snapshot.groups.find((c) => c.configKey === configKey && c.tracker === 'github')
+  return group?.tracker === 'github' ? group : undefined
 }
 
 function withRepos(repositories: Record<string, RepositoryConfig>): void {
@@ -226,9 +240,10 @@ describe('tasks:listOpenIssues', () => {
     expect(mockFetchOpenIssues).toHaveBeenCalledWith('acme', 'api')
   })
 
-  // `ask` is a real answer, and one this page cannot put to anybody: both sides are
-  // configured, so guessing GitHub would file the question in the wrong backlog.
-  it('shows no group for a repository the ladder leaves undecided', async () => {
+  // `ask` means both sides are configured, and this page cannot put the question to
+  // anybody — so it answers with BOTH backlogs rather than with silence. It used to
+  // send no group at all, which the page rendered as "nothing open here".
+  it('gives a repository the ladder leaves undecided one card per tracker', async () => {
     withRepos({
       api: githubRepo('api'),
       both: githubRepo('both', { plan: { tracker: 'ask' }, jira: { projectKey: 'PROJ' } }),
@@ -236,7 +251,26 @@ describe('tasks:listOpenIssues', () => {
 
     const snapshot = await listOpenIssues()()
 
-    expect(snapshot.groups.map((g) => g.configKey)).toEqual(['api'])
+    expect(snapshot.groups.filter((g) => g.configKey === 'both').map((g) => g.tracker).sort())
+      .toEqual(['github', 'jira'])
+    // And the GitHub half is a real read, not a placeholder card.
+    expect(mockFetchOpenIssues).toHaveBeenCalledWith('acme', 'both')
+  })
+
+  // The second half of the same rule. A Jira SITE with no project key is not
+  // readable — there is nothing to query — so the repository contributes its GitHub
+  // backlog and nothing else. Silently: an empty Jira card next to a full GitHub one
+  // would read as "the sprint is empty", which is a claim nothing here can make.
+  it('reads only GitHub for an undecided repository whose Jira project key is missing', async () => {
+    withRepos({
+      partial: githubRepo('partial', { jira: { siteUrl: 'https://acme.atlassian.net/browse/' } }),
+    })
+
+    const snapshot = await listOpenIssues()()
+
+    expect(snapshot.groups.map((g) => g.tracker)).toEqual(['github'])
+    expect(githubGroupOf(snapshot, 'partial')?.error).toBeUndefined()
+    expect(mockFetchSprintIssues).not.toHaveBeenCalled()
   })
 
   // A GHE issues host is not readable from api.github.com, so the ladder no longer
@@ -705,12 +739,13 @@ describe('tasks:getJiraIssueDetail', () => {
       labels: ['backend'],
       statusName: 'In Progress',
       statusCategory: 'indeterminate',
+      comments: [],
     })
     expect(mockFetchJiraIssue).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       accessToken: 'atl-access',
       cloudId: 'cloud-1',
       key: 'PROJ-42',
-      fields: ['description', 'status', 'assignee', 'reporter', 'labels'],
+      fields: ['description', 'status', 'assignee', 'reporter', 'creator', 'labels', 'comment'],
     }))
   })
 

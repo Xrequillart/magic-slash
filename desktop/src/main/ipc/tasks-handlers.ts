@@ -11,7 +11,7 @@ import type {
   TasksSnapshot,
 } from '../../types'
 import { isPRStatusError } from '../../types'
-import { resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite, resolveTracker } from '../../tracker'
+import { readsFrom, resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite } from '../../tracker'
 import { readConfig } from '../config/config'
 import { getGitHubToken } from '../github'
 import { fetchIssueDetail, fetchOpenIssues } from '../github-issues'
@@ -44,9 +44,11 @@ import {
  *
  * Resolved, not configured: `plan.tracker` is `ask` on most repositories, and the
  * ladder in `tracker.ts` is what turns that into an answer. A repo that resolves to
- * `ask` — a question a page cannot put to anybody — still gets no group at all,
- * because "no issues here" and "nobody has said where the issues are" are different
- * statements.
+ * `ask` contributes to BOTH halves — see `readsFrom` in `tracker.ts`. It used to
+ * contribute to neither, on the reasoning that a page cannot put the question to
+ * anybody; the flaw in that is that it cannot ANSWER the question either, and the
+ * silence read as "nothing open here" rather than "nobody has said where to look".
+ * Showing both backlogs, each labelled with its tracker, says the true thing.
  *
  * WHY THE CONNECTION STATE IS PER SOURCE. This handler used to return
  * `{ githubConnected: false, groups: [] }` before it had even read the config, so a
@@ -87,7 +89,13 @@ interface GitHubRepo {
 }
 
 /**
- * The GitHub-tracked repositories, with an owner and a repo parsed out of them.
+ * The repositories whose issues can be read from GitHub, with an owner and a repo
+ * parsed out of them.
+ *
+ * `readsFrom` and not `resolveTracker`, which is what makes an UNDECIDED repository
+ * — GitHub remote and Jira site both configured, `plan.tracker` never set — appear
+ * on this page at all. It contributes a group here AND one in `jiraRepos` below;
+ * see the note there on why two groups for one repository is the honest answer.
  *
  * A repo whose target does not parse is skipped rather than reported: an
  * `issues.githubIssuesUrl` override is free text, and a card saying "this is not a
@@ -96,7 +104,7 @@ interface GitHubRepo {
 function githubRepos(repositories: Record<string, RepositoryConfig>): GitHubRepo[] {
   const result: GitHubRepo[] = []
   for (const [configKey, repo] of Object.entries(repositories)) {
-    if (resolveTracker(repo) !== 'github') continue
+    if (!readsFrom(repo, 'github')) continue
     const parsed = parseOwnerRepo(resolveGitHubIssuesUrl(repo))
     if (!parsed) continue
     result.push({ configKey, name: repo.name || configKey, ...parsed })
@@ -132,7 +140,18 @@ interface JiraRepo {
 function jiraRepos(repositories: Record<string, RepositoryConfig>): JiraRepo[] {
   const result: JiraRepo[] = []
   for (const [configKey, repo] of Object.entries(repositories)) {
-    if (resolveTracker(repo) !== 'jira') continue
+    // `readsFrom`, so an UNDECIDED repository is read here as well as in
+    // `githubRepos` above. The two groups it produces are not a duplicate: they are
+    // two different backlogs that both belong to it, and the page labels each with
+    // its tracker. Deciding for the reader is what this page must not do — it cannot
+    // put the question to anybody, and picking one side silently would hide real
+    // tickets behind a setting nobody knew existed.
+    if (!readsFrom(repo, 'jira')) continue
+    // The project key is still the qualification, and it is the whole of why an
+    // undecided repo with a Jira SITE and no key produces a GitHub group only: there
+    // is nothing to query. Silence rather than a card, deliberately — an empty Jira
+    // card beside a full GitHub one reads as "the sprint is empty", which is a claim
+    // this code cannot make.
     const projectKey = resolveJiraProject(repo)
     if (!projectKey) continue
     result.push({

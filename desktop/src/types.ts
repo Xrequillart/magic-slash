@@ -258,6 +258,65 @@ export interface JiraTaskIssue {
   statusName: string
   /** What the page actually decides on. See `JiraStatusCategory`. */
   statusCategory: JiraStatusCategory
+  /**
+   * Who the ticket is reported by — the row's counterpart to `TaskIssue.author`.
+   *
+   * Jira's `reporter` with its `creator` as the fallback, resolved in the main
+   * process (see `readReporter` in `main/jira/sprint-issues.ts`). The two are
+   * different fields: `creator` is who pressed the button and cannot be changed,
+   * `reporter` is who the ticket is FOR and is what every Jira surface shows. A
+   * ticket filed on somebody's behalf names them in `reporter` and the filer in
+   * `creator`, so preferring `reporter` puts the same name on the row that the
+   * reader sees in Jira itself.
+   *
+   * A DISPLAY NAME, never an avatar: the renderer's CSP is `img-src 'self' data:`,
+   * so an `avatarUrls` entry could only be fetched and blocked. Absent when Jira
+   * reports neither person — an anonymous or bot-created ticket, or a site whose
+   * privacy settings withhold both.
+   */
+  reporter?: string
+  /**
+   * Label names, in Jira's own order. Empty when the ticket has none.
+   *
+   * `TaskIssue.labels`' twin, and shown by the same `StatusPill` on the row, so a
+   * mixed page reads as one list rather than two conventions. Uncapped where the
+   * GitHub query caps at 5: Jira returns the whole array in the field it was already
+   * asked for, so there is no page budget to spend by keeping them all.
+   */
+  labels: string[]
+}
+
+/**
+ * One comment on a Jira ticket, as the detail page renders it.
+ *
+ * Read WITH the ticket rather than by a call of its own: `fields=comment` on the
+ * one-ticket read returns them in the same response, so the panel costs one round
+ * trip instead of two. That is also why the page is Jira's default rather than one
+ * this app chose — see `JiraTaskIssueDetail.commentTotal`, which is how the panel
+ * says so when there are more.
+ *
+ * No avatars, for `JiraTaskIssue.reporter`'s reason: the CSP would block them.
+ */
+export interface JiraTaskComment {
+  /** Jira's own comment id. The React key, and nothing else. */
+  id: string
+  /** The author's display name. `''` when Jira reports none — the panel then omits the byline. */
+  author: string
+  /** When it was posted, ISO-8601 as Jira returns it. `''` when absent. */
+  createdAt: string
+  /**
+   * When it was last edited, when that differs from `createdAt`. Absent otherwise.
+   *
+   * A comment somebody rewrote after the fact is a different thing from the one
+   * that was posted, and the panel marks it — silently showing the new text under
+   * the original timestamp is the one reading that is actually wrong.
+   */
+  updatedAt?: string
+  /**
+   * The comment body, converted from Atlassian Document Format to markdown by the
+   * same `adfToMarkdown` the description goes through. `''` for an empty comment.
+   */
+  body: string
 }
 
 /**
@@ -303,6 +362,25 @@ export interface JiraTaskIssueDetail {
   statusName: string
   /** What the panel's pill colours on, as of the detail read. See `JiraStatusCategory`. */
   statusCategory: JiraStatusCategory
+  /**
+   * The ticket's comments, oldest first — the order a conversation is read in, and
+   * the order Jira returns them in.
+   *
+   * The GitHub half of this page carries a COUNT and sends the reader to github.com
+   * to read them (`TaskIssueDetail.commentCount`). Jira's differ in what they cost:
+   * the bodies arrive in the response the panel already makes, so not rendering them
+   * would be throwing away content already paid for.
+   */
+  comments: JiraTaskComment[]
+  /**
+   * How many comments the ticket HAS, when Jira said so and it is more than arrived.
+   *
+   * `fields=comment` returns a page whose size Jira picks, so `comments.length` is
+   * what the panel can show and not what the ticket holds. Absent when the two agree
+   * — which is the common case, and the case where a "showing N of M" line would be
+   * noise.
+   */
+  commentTotal?: number
 }
 
 /**

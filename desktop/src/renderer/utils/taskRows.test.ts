@@ -7,7 +7,17 @@ import type {
   TaskIssue,
   TaskRepoGroup,
 } from '../../types'
-import { buildTaskRows, countOpenIssues, countTotalOpen, sortIssues, type TaskRow } from './taskRows'
+import {
+  buildTaskRows,
+  countOpenIssues,
+  countTotalOpen,
+  filterTaskRows,
+  NO_FILTER,
+  rowKey,
+  sortIssues,
+  taskFilterRepos,
+  type TaskRow,
+} from './taskRows'
 
 function repo(overrides: Partial<RepositoryConfig> = {}): RepositoryConfig {
   return { path: '', keywords: [], ...overrides }
@@ -42,6 +52,7 @@ function jiraIssue(overrides: Partial<JiraTaskIssue> = {}): JiraTaskIssue {
     createdAt: '2026-08-01T10:00:00Z',
     statusName: 'To Do',
     statusCategory: 'new',
+    labels: [],
     ...overrides,
   }
 }
@@ -303,5 +314,219 @@ describe('counters', () => {
 
   it('counts nothing on an empty page, totals included', () => {
     expect(countTotalOpen([])).toEqual(0)
+  })
+})
+
+describe('rowKey', () => {
+  // The config key stopped being unique the day an undecided repository started
+  // producing two groups. Everything that keys a card — React's list key, the folded
+  // set, the detail page's lookup — goes through this, so the two cannot collide.
+  it('separates the two cards of one repository', () => {
+    expect(rowKey({ tracker: 'github', configKey: 'api' })).not.toBe(rowKey({ tracker: 'jira', configKey: 'api' }))
+  })
+
+  it('is stable for the same card', () => {
+    expect(rowKey({ tracker: 'jira', configKey: 'api' })).toBe(rowKey({ tracker: 'jira', configKey: 'api' }))
+  })
+})
+
+describe('buildTaskRows — an undecided repository', () => {
+  // Two cards under one name are a rendering bug unless each says where it came
+  // from, so the flag is on for both of them.
+  it('labels both cards with their tracker', () => {
+    const rows = build([
+      group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue()] }),
+      jiraGroup({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [jiraIssue()] }),
+    ])
+
+    expect(rows.map((row) => row.showTracker)).toEqual([true, true])
+    expect(rows.map(rowKey).sort()).toEqual(['github:poppins-pex', 'jira:poppins-pex'])
+  })
+
+  // And off for everybody else: a repository with one card has nothing to be told
+  // apart from, and stamping the tracker on every card in the list is noise.
+  it('leaves a single-card repository unlabelled', () => {
+    const rows = build([
+      group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue()] }),
+      jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [jiraIssue()] }),
+    ])
+
+    expect(rows.map((row) => row.showTracker)).toEqual([false, false])
+  })
+
+  // The sort's own rules still decide the order — failures first, then the fullest
+  // backlog — and the tracker only breaks a tie that would otherwise follow whichever
+  // half of the snapshot resolved first.
+  it('orders the pair by the page rules, tracker last', () => {
+    const rows = build([
+      jiraGroup({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [jiraIssue()] }),
+      group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue()] }),
+    ])
+
+    // Equal counts, same name: the tiebreak lands github before jira, every time.
+    expect(rows.map((row) => row.tracker)).toEqual(['github', 'jira'])
+
+    // A fuller backlog still wins over it.
+    const uneven = build([
+      group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue()] }),
+      jiraGroup({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [jiraIssue(), jiraIssue({ key: 'PROJ-2' })] }),
+    ])
+    expect(uneven.map((row) => row.tracker)).toEqual(['jira', 'github'])
+  })
+
+  // The agent index is keyed by REPOSITORY, so the two cards share one answer to
+  // "who is on what" — and the Jira card's In Progress filter still reads it.
+  it('shares the repository agent index between both cards', () => {
+    const rows = build(
+      [
+        group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue()] }),
+        jiraGroup({
+          configKey: 'poppins-pex',
+          name: 'poppins-pex',
+          issues: [jiraIssue({ key: 'PROJ-9', statusCategory: 'indeterminate' })],
+        }),
+      ],
+      REPOS,
+      { 'poppins-pex': new Set(['PROJ-9']) },
+    )
+
+    expect(keys(rows.find((row) => row.tracker === 'jira')!)).toEqual(['PROJ-9'])
+  })
+})
+
+describe('filterTaskRows', () => {
+  /** Two repositories with two tickets each, one tracker apiece. */
+  function backlog(): TaskRow[] {
+    return build([
+      group({
+        configKey: 'poppins-pex',
+        name: 'poppins-pex',
+        issues: [
+          issue({ number: 234, title: 'Fix the export' }),
+          issue({ number: 1023, title: 'Création du rapport' }),
+        ],
+      }),
+      jiraGroup({
+        configKey: 'jira-only',
+        name: 'jira-only',
+        issues: [
+          jiraIssue({ key: 'PER-1234', title: 'Sprint burndown' }),
+          jiraIssue({ key: 'PER-77', title: 'Quota par workspace' }),
+        ],
+      }),
+    ])
+  }
+
+  /** Every ticket left on screen, whichever card it is on. */
+  function shown(rows: TaskRow[]): string[] {
+    return rows.flatMap((row) => row.issues.map((i) => ('key' in i ? i.key : `#${i.number}`)))
+  }
+
+  it('returns the rows untouched when neither control is set', () => {
+    const rows = backlog()
+    // Identity, not merely equality: the page memoises on this, and a fresh array on
+    // every render would re-render every card for nothing.
+    expect(filterTaskRows(rows, NO_FILTER)).toBe(rows)
+  })
+
+  it('keeps one repository, and every card of it', () => {
+    // The control names a REPOSITORY, not a backlog: an undecided repo has a GitHub
+    // card and a Jira card, and picking it means both.
+    const rows = build([
+      group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue()] }),
+      jiraGroup({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [jiraIssue()] }),
+      group({ configKey: 'magic-slash', name: 'magic-slash', issues: [issue({ number: 9 })] }),
+    ])
+
+    const kept = filterTaskRows(rows, { configKey: 'poppins-pex', query: '' })
+
+    expect(kept).toHaveLength(2)
+    expect(kept.map((row) => row.tracker).sort()).toEqual(['github', 'jira'])
+  })
+
+  it('finds a GitHub issue by its number, with or without the hash', () => {
+    expect(shown(filterTaskRows(backlog(), { configKey: '', query: '234' }))).toContain('#234')
+    expect(shown(filterTaskRows(backlog(), { configKey: '', query: '#234' }))).toContain('#234')
+  })
+
+  it('finds a Jira ticket by its key, in any casing and by the number alone', () => {
+    expect(shown(filterTaskRows(backlog(), { configKey: '', query: 'per-77' }))).toEqual(['PER-77'])
+    expect(shown(filterTaskRows(backlog(), { configKey: '', query: 'PER-77' }))).toEqual(['PER-77'])
+    expect(shown(filterTaskRows(backlog(), { configKey: '', query: '77' }))).toEqual(['PER-77'])
+  })
+
+  it('searches the title too', () => {
+    expect(shown(filterTaskRows(backlog(), { configKey: '', query: 'burndown' }))).toEqual(['PER-1234'])
+    expect(shown(filterTaskRows(backlog(), { configKey: '', query: 'FIX THE' }))).toEqual(['#234'])
+  })
+
+  // Titles here are written in French as often as in English, and a box that will
+  // not find `création` when you type `creation` is a box people stop using.
+  it('ignores accents in both directions', () => {
+    expect(shown(filterTaskRows(backlog(), { configKey: '', query: 'creation' }))).toEqual(['#1023'])
+    expect(shown(filterTaskRows(backlog(), { configKey: '', query: 'création' }))).toEqual(['#1023'])
+  })
+
+  it('drops a card with nothing left on it', () => {
+    const kept = filterTaskRows(backlog(), { configKey: '', query: 'burndown' })
+
+    expect(kept).toHaveLength(1)
+    expect(kept[0].configKey).toBe('jira-only')
+  })
+
+  it('combines the two controls', () => {
+    const kept = filterTaskRows(backlog(), { configKey: 'poppins-pex', query: 'per' })
+
+    // `per` matches both Jira keys — and neither is in the repository asked for.
+    expect(kept).toEqual([])
+  })
+
+  // A failed row has no issues to match, so dropping it would be the page asserting
+  // there is no match in a repository it could not read at all.
+  it('never searches away a card that failed to load', () => {
+    const rows = build([
+      group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue({ title: 'Fix the export' })] }),
+      group({ configKey: 'magic-slash', name: 'magic-slash', issues: [], error: { error: 'no-token', message: 'x' } }),
+    ])
+
+    const kept = filterTaskRows(rows, { configKey: '', query: 'nothing matches this' })
+
+    expect(kept.map((row) => row.configKey)).toEqual(['magic-slash'])
+    expect(kept[0].error).toBeDefined()
+  })
+
+  // The repository filter still applies to it: a card the reader has filtered out is
+  // filtered out whether or not its read worked.
+  it('applies the repository filter to a failed card as well', () => {
+    const rows = build([
+      group({ configKey: 'magic-slash', name: 'magic-slash', issues: [], error: { error: 'no-token', message: 'x' } }),
+    ])
+
+    expect(filterTaskRows(rows, { configKey: 'poppins-pex', query: 'x' })).toEqual([])
+  })
+
+  it('treats a query of nothing but spaces as no query', () => {
+    const rows = backlog()
+    expect(filterTaskRows(rows, { configKey: '', query: '   ' })).toBe(rows)
+  })
+})
+
+describe('taskFilterRepos', () => {
+  it('offers each repository once, whatever its card count', () => {
+    const rows = build([
+      group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue()] }),
+      jiraGroup({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [jiraIssue()] }),
+      group({ configKey: 'magic-slash', name: 'magic-slash', issues: [issue({ number: 9 })] }),
+    ])
+
+    // In the order the CARDS are in, which is `buildTaskRows`' sort and not the order
+    // they were declared here: equal backlogs, so alphabetical decides.
+    expect(taskFilterRepos(rows).map((repo) => repo.configKey)).toEqual(['magic-slash', 'poppins-pex'])
+  })
+
+  it('carries the dot colour the cards are drawn with', () => {
+    const rows = build([group({ configKey: 'my-side-project', name: 'my-side-project', issues: [issue()] })])
+
+    expect(taskFilterRepos(rows)[0].color).toBe(rows[0].color)
   })
 })

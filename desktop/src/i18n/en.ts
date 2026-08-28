@@ -1759,6 +1759,20 @@ export const en = {
   'tasks.noCoordinatesHint':
     'A GitHub repository needs an issues URL like `https://github.com/owner/repo`; a Jira one needs its project key. Both live in Settings → Repositories.',
 
+  // ── Tasks · the two filters at the top of the backlog ────────────────────
+  // They narrow what is ON SCREEN and read nothing: the page already holds every
+  // open ticket of every repository, so this is a pass over an array in memory.
+  'tasks.filter.searchPlaceholder': 'Search by ticket ID or title…',
+  // The repository picker's neutral entry, and the state it opens on. Named rather
+  // than left blank: a picker showing nothing reads as one that failed to load.
+  'tasks.filter.allRepos': 'All repositories',
+  'tasks.filter.clearSearch': 'Clear the search',
+  // The filters matched nothing. Deliberately NOT one of the four states above:
+  // those send the reader to a settings field, which would be the page blaming its
+  // own configuration for a mistyped ticket id.
+  'tasks.filter.noMatch': 'No ticket matches these filters.',
+  'tasks.filter.clearAll': 'Clear the filters',
+
   // ── Tasks · the issue page ───────────────────────────────────────────────
   // Opened by clicking a row, it REPLACES the list and shows the half of an issue
   // the list deliberately does not carry: the body, the state, the labels, who it
@@ -1873,6 +1887,26 @@ export const en = {
   // Jira names both people on a ticket and the page shows both. GitHub's panel says
   // "Assigned to" and nothing else, which is why only this one is new.
   'tasks.jira.detail.reporter': 'Reported by',
+  // The row's hover text for the same person. A NAME and not a handle, so the
+  // sentence names them rather than prefixing an `@` the way the GitHub row does.
+  'tasks.jira.reporterHint': 'Reported by {name}',
+  // ── The ticket's conversation, which the Jira half renders in full ───────
+  // The GitHub panel carries a count and sends the reader to github.com; Jira sends
+  // the bodies back in the response the panel already makes, so they are shown.
+  // The strip over a comment Jira attributes to nobody — an app or an automation
+  // posting through the API. `tasks.detail.commented` covers the ones with an author.
+  'tasks.jira.detail.comment': 'Comment',
+  // A comment somebody rewrote after posting it. The word on the strip, the date in
+  // the hover text: the strip has one line and a name already on it.
+  'tasks.jira.detail.edited': 'edited',
+  'tasks.jira.detail.editedOn': 'Edited on {date}',
+  // A comment with no body at all — an attachment, or a transition Jira recorded as
+  // one. Still a turn in the conversation, so it keeps its card and says so.
+  'tasks.jira.detail.emptyComment': 'This comment has no text.',
+  // Jira pages the comment field on its own terms and reports how many there really
+  // are. Said only when the two differ — a reader who reaches the bottom of a
+  // truncated thread must not believe they have read all of it.
+  'tasks.jira.detail.commentsTruncated': 'showing the first {count}',
   // HTTP 404 on the ONE-TICKET read, where `tasks.jira.error.notFound` is about the
   // project: "check the project key" is the wrong advice for a ticket that was
   // deleted or moved, and the key is demonstrably right — the list read used it.

@@ -1,5 +1,7 @@
+import { useId } from 'react'
+
 /**
- * The two tracker marks shown next to a ticket ID (agent-info-sidebar/TicketHeader).
+ * The two tracker marks, and the one component that picks between them.
  *
  * Both are vectors rather than the source PNGs on purpose. The GitHub mark is a
  * knocked-out disc traced from the brand asset and painted with `currentColor`, so
@@ -7,6 +9,9 @@
  * black bitmap disappeared on the dark ones. The Jira mark keeps its own two blues
  * (#2684FF / #0052CC, sampled straight from the brand asset) because a brand mark
  * recoloured by the theme stops being the brand mark.
+ *
+ * Shown next to a ticket ID in the agent sidebar (`agent-info-sidebar/TicketHeader`)
+ * and, through `TrackerMark` below, on every Tasks row and ticket page.
  */
 
 interface TrackerIconProps {
@@ -24,17 +29,52 @@ export function GithubMark({ className }: TrackerIconProps) {
 }
 
 export function JiraMark({ className }: TrackerIconProps) {
+  // The gradient is referenced by `url(#id)`, which resolves against the WHOLE
+  // document — so a fixed id stops working the moment the mark is drawn more than
+  // once and the first copy unmounts, which the Tasks list does on every reload.
+  // `useId` gives each instance its own, and the reference below is built from it.
+  const gradientId = useId()
+
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
       <defs>
-        <linearGradient id="magic-jira-mark" x1="16.53" y1="7.95" x2="12.78" y2="11.7" gradientUnits="userSpaceOnUse">
+        <linearGradient id={gradientId} x1="16.53" y1="7.95" x2="12.78" y2="11.7" gradientUnits="userSpaceOnUse">
           <stop offset=".18" stopColor="#0052CC" />
           <stop offset="1" stopColor="#2684FF" />
         </linearGradient>
       </defs>
       <path fill="#2684FF" d="M11.53 2c0 2.4 1.97 4.35 4.35 4.35h1.78v1.7c0 2.4 1.94 4.34 4.34 4.35V2.84a.84.84 0 0 0-.84-.84z" />
-      <path fill="url(#magic-jira-mark)" d="M6.77 6.8a4.362 4.362 0 0 0 4.34 4.34h1.8v1.72a4.362 4.362 0 0 0 4.34 4.34V7.63a.84.84 0 0 0-.83-.83z" />
+      <path fill={`url(#${gradientId})`} d="M6.77 6.8a4.362 4.362 0 0 0 4.34 4.34h1.8v1.72a4.362 4.362 0 0 0 4.34 4.34V7.63a.84.84 0 0 0-.83-.83z" />
       <path fill="#0052CC" d="M2 11.6c0 2.4 1.94 4.34 4.34 4.34h1.8v1.7c.003 2.4 1.95 4.342 4.35 4.35V12.43a.84.84 0 0 0-.84-.83z" />
     </svg>
+  )
+}
+
+/**
+ * Whichever mark belongs to this tracker — the form every Tasks surface wants.
+ *
+ * The Tasks page shows the mark in four places (a list row, the page title, the
+ * pinned bar, and both of those for either tracker), and each of them held the same
+ * `tracker === 'jira' ? <JiraMark/> : <GithubMark/>` ternary. One component instead,
+ * so a third tracker is a change here rather than a hunt through the page.
+ *
+ * `title` rather than `aria-hidden`: on a mixed page the mark is the only thing
+ * saying which tracker a row came from, so it is content and not decoration. The
+ * marks themselves stay hidden from the tree — the accessible name belongs on the
+ * wrapper, or a screen reader would read the tracker twice.
+ */
+export function TrackerMark({
+  tracker,
+  className = 'w-3.5 h-3.5',
+  title,
+}: {
+  tracker: 'github' | 'jira'
+  className?: string
+  title?: string
+}) {
+  return (
+    <span className="flex-shrink-0 inline-flex" title={title} role="img" aria-label={title}>
+      {tracker === 'jira' ? <JiraMark className={className} /> : <GithubMark className={className} />}
+    </span>
   )
 }

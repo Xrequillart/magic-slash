@@ -33,7 +33,15 @@ function text(value: string, marks?: unknown[]) {
 
 describe('DETAIL_FIELDS', () => {
   it('asks for the half of a ticket the sprint read leaves behind', () => {
-    expect(DETAIL_FIELDS).toEqual(['description', 'status', 'assignee', 'reporter', 'labels'])
+    expect(DETAIL_FIELDS)
+      .toEqual(['description', 'status', 'assignee', 'reporter', 'creator', 'labels', 'comment'])
+  })
+
+  it('brings the conversation back in the response it already makes', () => {
+    // `fields=comment` rather than a second call to `/issue/{key}/comment`: the
+    // bodies arrive in the read the panel is making anyway, so the thread costs one
+    // round trip instead of two.
+    expect(DETAIL_FIELDS).toContain('comment')
   })
 
   it('asks for the status again rather than trusting the row’s', () => {
@@ -209,7 +217,19 @@ describe('mapIssueDetail', () => {
       labels: ['backend', 'urgent'],
       statusName: 'In Progress',
       statusCategory: 'indeterminate',
+      comments: [],
     })
+  })
+
+  // The panel is opened FROM a row, so the two must answer this the same way — which
+  // is why both go through `readReporter` rather than reading the field themselves.
+  it('prefers the reporter over the creator, as the row does', () => {
+    const detail = mapIssueDetail(rawIssue({
+      reporter: null,
+      creator: { displayName: 'Support Bot' },
+    }))
+
+    expect(detail.reporter).toBe('Support Bot')
   })
 
   it('omits an assignee Jira reports as nobody', () => {
@@ -240,7 +260,84 @@ describe('mapIssueDetail', () => {
   it('never fails on an answer it did not understand', () => {
     // Nothing here can report a failure: the panel was opened on a row that exists,
     // and every field degrades to an empty one.
-    expect(mapIssueDetail({})).toEqual({ description: '', labels: [], statusName: '', statusCategory: 'new' })
-    expect(mapIssueDetail(null)).toEqual({ description: '', labels: [], statusName: '', statusCategory: 'new' })
+    const empty = { description: '', labels: [], statusName: '', statusCategory: 'new', comments: [] }
+    expect(mapIssueDetail({})).toEqual(empty)
+    expect(mapIssueDetail(null)).toEqual(empty)
+  })
+})
+
+describe('mapIssueDetail — the comment thread', () => {
+  function comment(overrides: Record<string, unknown> = {}) {
+    return {
+      id: '10000',
+      author: { displayName: 'Ada Lovelace', accountId: 'acc-1' },
+      created: '2026-08-02T09:00:00.000+0200',
+      updated: '2026-08-02T09:00:00.000+0200',
+      body: doc(paragraph(text('Looks good to me.'))),
+      ...overrides,
+    }
+  }
+
+  function withComments(page: Record<string, unknown>) {
+    return mapIssueDetail(rawIssue({ comment: page }))
+  }
+
+  it('reads a comment through the same converter the description goes through', () => {
+    const detail = withComments({ comments: [comment()], total: 1 })
+
+    expect(detail.comments).toEqual([{
+      id: '10000',
+      author: 'Ada Lovelace',
+      createdAt: '2026-08-02T09:00:00.000+0200',
+      body: 'Looks good to me.',
+    }])
+    // Equal to what arrived: no "showing N of M" line on the common case.
+    expect(detail).not.toHaveProperty('commentTotal')
+  })
+
+  // Jira sets `updated` to `created` on a comment nobody has touched, so passing it
+  // through unconditionally would mark every comment in the thread as edited.
+  it('marks a comment as edited only when it really was', () => {
+    const untouched = withComments({ comments: [comment()] })
+    expect(untouched.comments[0]).not.toHaveProperty('updatedAt')
+
+    const rewritten = withComments({
+      comments: [comment({ updated: '2026-08-03T11:30:00.000+0200' })],
+    })
+    expect(rewritten.comments[0].updatedAt).toBe('2026-08-03T11:30:00.000+0200')
+  })
+
+  // The field is a PAGE whose size Jira picks. A reader who reaches the bottom of a
+  // truncated thread must not believe they have read all of it.
+  it('reports the real count when Jira sent only a page', () => {
+    const detail = withComments({ comments: [comment(), comment({ id: '10001' })], total: 47 })
+
+    expect(detail.comments).toHaveLength(2)
+    expect(detail.commentTotal).toBe(47)
+  })
+
+  // A total below what arrived is Jira answering something impossible; trusting it
+  // would render "showing the first 2 of 1".
+  it('ignores a total that is not bigger than what arrived', () => {
+    expect(withComments({ comments: [comment()], total: 1 })).not.toHaveProperty('commentTotal')
+    expect(withComments({ comments: [comment()], total: 0 })).not.toHaveProperty('commentTotal')
+    expect(withComments({ comments: [comment()], total: 'many' })).not.toHaveProperty('commentTotal')
+  })
+
+  // A comment that exists is a turn in the conversation. Dropping the odd ones would
+  // leave the reader with a thread that silently skips a turn.
+  it('keeps a comment with no author, no body and no id', () => {
+    const detail = withComments({ comments: [{}, {}] })
+
+    expect(detail.comments).toEqual([
+      { id: 'comment-0', author: '', createdAt: '', body: '' },
+      { id: 'comment-1', author: '', createdAt: '', body: '' },
+    ])
+  })
+
+  it('reads a ticket with no comment field as having none', () => {
+    expect(mapIssueDetail(rawIssue()).comments).toEqual([])
+    expect(withComments({}).comments).toEqual([])
+    expect(mapIssueDetail(rawIssue({ comment: 'nonsense' })).comments).toEqual([])
   })
 })

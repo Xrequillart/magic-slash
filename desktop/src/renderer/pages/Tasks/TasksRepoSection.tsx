@@ -8,12 +8,13 @@ import type {
   PRWatchError,
   TaskIssue,
 } from '../../../types'
-import type { TaskRow } from '../../utils/taskRows'
+import { rowKey, type TaskRow } from '../../utils/taskRows'
 import { useStore } from '../../store'
 import { normalizeTicketId } from '../../utils/taskAgents'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 import { StatusPill, TicketBadge } from '../Dashboard/parts'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
+import { TrackerMark } from '../../components/icons/TrackerIcons'
 
 /**
  * One repository's card, in the shape the Team page's `RepoCard` established:
@@ -369,7 +370,13 @@ function IssueRow({
     <div {...rowActivation(() => onSelect(issue.number))}>
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex items-center gap-3 min-w-0">
-          <TicketBadge ticketId={`#${issue.number}`} />
+          {/* Mark and id as ONE group, on a tighter gap than the row's: they are two
+              halves of the ticket's identity, and at the row's own `gap-3` the logo
+              read as a separate column. */}
+          <span className="flex items-center gap-2 flex-shrink-0">
+            <TrackerMark tracker="github" title="GitHub" />
+            <TicketBadge ticketId={`#${issue.number}`} />
+          </span>
           {issue.parent && (
             // The `TicketBadge` shape, in `StatusPill`'s neutral tokens rather than
             // the accent ones: two accent badges in a row would read as two tickets.
@@ -446,22 +453,29 @@ export function JiraStatusPill({ name, category }: { name: string; category: Jir
   // stale word, and a pill typed on `JiraTaskIssue` could only be handed the stale
   // one back.
   //
-  // The whole second line, wrapper included, so the "has this site named a status?"
-  // question is asked once. Returning a bare span would let it stretch to the width
-  // of the flex column it sits in, and a rounded-full pill the width of the card is
-  // not a pill.
+  // JUST THE PILL. It owned the whole second line of the row until that line grew a
+  // reporter and a set of labels to share with — so the flex wrapper moved out to the
+  // row, which is the side that knows what else is on it. `flex-shrink-0` is what
+  // keeps a bare span from stretching to the column it sits in, which is what the
+  // wrapper used to be for.
   if (!name) return null
   return (
-    <div className="flex items-center gap-2 flex-wrap min-w-0">
-      <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${JIRA_STATUS_CLASS[category]}`}>
-        {name}
-      </span>
-    </div>
+    <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${JIRA_STATUS_CLASS[category]}`}>
+      {name}
+    </span>
   )
 }
 
 /**
- * One sprint ticket, in `IssueRow`'s layout minus the parts Jira does not have.
+ * One sprint ticket, in `IssueRow`'s layout — the same two lines, filled with Jira's
+ * own facts.
+ *
+ * It used to be that layout MINUS most of it: a key, a title and a status pill,
+ * against a GitHub row carrying an author and its labels. The asymmetry was not a
+ * design, it was what the sprint query happened to ask for, and on a page that now
+ * shows both trackers side by side it read as Jira being the poorer half. The query
+ * asks for the labels and the reporter as of this story (see `SPRINT_FIELDS`), and
+ * the row puts them where their GitHub counterparts sit.
  *
  * CLICKABLE, exactly as its GitHub twin is, and opening the same page. It was
  * deliberately not, one story ago, because the panel behind it was typed on an issue
@@ -496,10 +510,40 @@ function JiraIssueRow({
     <div {...rowActivation(() => onSelect(issue.key))}>
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex items-center gap-3 min-w-0">
-          <TicketBadge ticketId={issue.key} />
+          {/* Grouped with the key for `IssueRow`'s reason, and the same two sizes. */}
+          <span className="flex items-center gap-2 flex-shrink-0">
+            <TrackerMark tracker="jira" title="Jira" />
+            <TicketBadge ticketId={issue.key} />
+          </span>
           <span className="text-sm text-ink truncate">{issue.title}</span>
         </div>
-        <JiraStatusPill name={issue.statusName} category={issue.statusCategory} />
+        {/* `IssueRow`'s second line, with Jira's own three facts on it. The status
+            leads because it is the one this page filters on; the reporter and the
+            labels then sit exactly where the GitHub row puts its author and its
+            labels, so a mixed page reads down one column rather than two.
+
+            Guarded as a whole, for the GitHub row's reason: an empty second line
+            would add a row's worth of height to every ticket that has none of the
+            three. */}
+        {(issue.statusName || issue.reporter || issue.labels.length > 0) && (
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <JiraStatusPill name={issue.statusName} category={issue.statusCategory} />
+            {issue.reporter && (
+              // The display name bare, where the GitHub row prefixes a login with `@`:
+              // "Ada Lovelace" is a name and not a handle, and `@Ada Lovelace` reads as
+              // a mention of an account that does not exist.
+              <span
+                title={t('tasks.jira.reporterHint', { name: issue.reporter })}
+                className="text-xs text-text-secondary truncate max-w-[16rem]"
+              >
+                {issue.reporter}
+              </span>
+            )}
+            {issue.labels.map((label) => (
+              <StatusPill key={label} status={label} />
+            ))}
+          </div>
+        )}
       </div>
       {/* Not decoration on this half: the one In Progress ticket allowed on the page
           is the one somebody is on, so the marker is the reason the row is here. */}
@@ -560,7 +604,12 @@ export const TasksRepoSection = memo(function TasksRepoSection({
 }: {
   row: TaskRow
   expanded: boolean
-  onToggle: (configKey: string) => void
+  /**
+   * Takes the ROW key — repository and tracker — not the config key. An undecided
+   * repository has two cards, and keyed on the repository alone one chevron folded
+   * both of them.
+   */
+  onToggle: (key: string) => void
   /** What the page opens on. See `TaskSelection`. */
   onSelect: (selection: TaskSelection) => void
   /** Ticket ids of this repository's issues that already have an agent. Built once for the page. */
@@ -577,7 +626,7 @@ export const TasksRepoSection = memo(function TasksRepoSection({
   return (
     <div className="rounded-lg bg-surface-subtle border border-line-field overflow-hidden">
       <button
-        onClick={() => onToggle(row.configKey)}
+        onClick={() => onToggle(rowKey(row))}
         disabled={!hasRows}
         className={`w-full flex items-center gap-3 px-4 py-3 min-w-0 text-left transition-colors ${
           hasRows ? 'hover:bg-surface-strong' : 'cursor-default'
@@ -585,7 +634,22 @@ export const TasksRepoSection = memo(function TasksRepoSection({
       >
         <Chevron className={`w-4 h-4 flex-shrink-0 ${hasRows ? 'text-text-secondary' : 'opacity-0'}`} />
         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
-        <span className="text-sm font-medium text-ink truncate flex-1">{row.name}</span>
+        {/* Name and tracker in one flexing box rather than as two siblings of the
+            header: the tracker has to sit NEXT TO the name, and the name is what
+            gives way when the row is narrow. `min-w-0` so `truncate` can actually
+            shrink it — a flex item's automatic minimum is its content otherwise. */}
+        <span className="flex-1 min-w-0 flex items-baseline gap-1.5">
+          <span className="text-sm font-medium text-ink truncate">{row.name}</span>
+          {/* Only when this repository has a twin card — see `TaskRow.showTracker`.
+              Untranslated on purpose: "GitHub" and "Jira" are product names, and a
+              catalogue entry per language would only offer somewhere for them to be
+              spelled wrong. */}
+          {row.showTracker && (
+            <span className="text-xs text-text-secondary/60 flex-shrink-0">
+              · {row.tracker === 'jira' ? 'Jira' : 'GitHub'}
+            </span>
+          )}
+        </span>
         <HeaderBadge row={row} t={t} />
       </button>
 

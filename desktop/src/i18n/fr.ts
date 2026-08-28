@@ -1625,6 +1625,11 @@ export const fr: Record<keyof typeof en, string> = {
     'Un dépôt GitHub a besoin d’une URL de tickets du type `https://github.com/owner/repo` ; un dépôt Jira a besoin de sa clé de projet. Les deux se règlent dans Réglages → Dépôts.',
 
   // ── Tâches · le panneau de détail ────────────────────────────────────────
+  'tasks.filter.searchPlaceholder': 'Rechercher par ID de ticket ou titre…',
+  'tasks.filter.allRepos': 'Tous les dépôts',
+  'tasks.filter.clearSearch': 'Effacer la recherche',
+  'tasks.filter.noMatch': 'Aucun ticket ne correspond à ces filtres.',
+  'tasks.filter.clearAll': 'Effacer les filtres',
   'tasks.detail.loading': 'Lecture du ticket…',
   'tasks.detail.back': 'À faire',
   'tasks.detail.stateOpen': 'Ouvert',
@@ -1687,6 +1692,12 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Tâches · la page d'un ticket Jira ────────────────────────────────────
   'tasks.jira.detail.reporter': 'Rapporté par',
+  'tasks.jira.reporterHint': 'Rapporté par {name}',
+  'tasks.jira.detail.comment': 'Commentaire',
+  'tasks.jira.detail.edited': 'modifié',
+  'tasks.jira.detail.editedOn': 'Modifié le {date}',
+  'tasks.jira.detail.emptyComment': 'Ce commentaire n’a pas de texte.',
+  'tasks.jira.detail.commentsTruncated': 'les {count} premiers affichés',
   'tasks.jira.detail.notFound': 'Ticket introuvable',
   'tasks.jira.detail.notFoundFix':
     'Il a peut-être été supprimé, ou déplacé dans un autre projet — rechargez la liste pour voir ce qui reste dans le sprint.',

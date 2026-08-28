@@ -91,7 +91,21 @@ describe('SPRINT_FIELDS', () => {
     // `created` looks optional and is not: `sortIssues` sinks anything without a
     // timestamp, so a read without it would pile every Jira row at the bottom of
     // its own card.
-    expect(SPRINT_FIELDS).toEqual(['summary', 'status', 'created'])
+    expect(SPRINT_FIELDS).toContain('created')
+  })
+
+  it('asks for what puts a Jira row on equal footing with a GitHub one', () => {
+    // The row carried a key, a title and a status while the GitHub row beside it
+    // carried its author and its labels. Both people are asked for and one is kept
+    // — see `readReporter`.
+    expect(SPRINT_FIELDS).toEqual(['summary', 'status', 'created', 'labels', 'reporter', 'creator'])
+  })
+
+  it('asks for nothing only the open ticket needs', () => {
+    // Every field here is serialised for every ticket of every Jira repository on
+    // every reload. A description is kilobytes per row; it belongs to DETAIL_FIELDS.
+    expect(SPRINT_FIELDS).not.toContain('description')
+    expect(SPRINT_FIELDS).not.toContain('comment')
   })
 })
 
@@ -120,14 +134,62 @@ describe('browseUrl', () => {
 
 describe('mapIssue', () => {
   it('reads the fields the row is drawn from', () => {
-    expect(mapIssue(rawIssue(), 'https://acme.atlassian.net')).toEqual({
+    const raw = rawIssue({}, {
+      labels: ['backend', 'urgent'],
+      reporter: { displayName: 'Ada Lovelace', accountId: 'acc-1' },
+    })
+
+    expect(mapIssue(raw, 'https://acme.atlassian.net')).toEqual({
       key: 'PROJ-1',
       title: 'Do the thing',
       url: 'https://acme.atlassian.net/browse/PROJ-1',
       createdAt: '2026-08-01T10:00:00.000+0200',
       statusName: 'To Do',
       statusCategory: 'new',
+      reporter: 'Ada Lovelace',
+      labels: ['backend', 'urgent'],
     })
+  })
+
+  // `reporter` is who the ticket is FOR and is what every Jira screen shows;
+  // `creator` is whoever pressed the button. On a ticket filed on someone's behalf
+  // they are two different people, and the reader recognises the reporter.
+  it('prefers the reporter over the creator', () => {
+    const mapped = mapIssue(rawIssue({}, {
+      reporter: { displayName: 'Ada Lovelace' },
+      creator: { displayName: 'Support Bot' },
+    }), 'https://acme.atlassian.net')
+
+    expect(mapped?.reporter).toBe('Ada Lovelace')
+  })
+
+  // An automation can file a ticket with no reporter at all, and the creator is then
+  // the only name there is. Preferring the reporter alone would blank the byline on
+  // exactly the tickets nobody can otherwise put a face to.
+  it('falls back to the creator when no reporter is set', () => {
+    const mapped = mapIssue(
+      rawIssue({}, { reporter: null, creator: { displayName: 'Support Bot' } }),
+      'https://acme.atlassian.net',
+    )
+
+    expect(mapped?.reporter).toBe('Support Bot')
+  })
+
+  // Omitted, never `''`: the field is optional in the type, and an empty string is a
+  // person whose name is blank.
+  it('omits the reporter when Jira names nobody', () => {
+    const mapped = mapIssue(rawIssue({}, { reporter: null, creator: null }), 'https://acme.atlassian.net')
+
+    expect(mapped).not.toHaveProperty('reporter')
+  })
+
+  // A site with labels disabled omits the field entirely, and the row `.map()`s over
+  // this without a guard.
+  it('always produces a labels array', () => {
+    expect(mapIssue(rawIssue(), 'https://acme.atlassian.net')?.labels).toEqual([])
+    expect(mapIssue(rawIssue({}, { labels: 'backend' }), 'https://acme.atlassian.net')?.labels).toEqual([])
+    expect(mapIssue(rawIssue({}, { labels: ['ok', '', 7] }), 'https://acme.atlassian.net')?.labels)
+      .toEqual(['ok'])
   })
 
   it('keeps the status NAME as this site spells it', () => {
@@ -161,6 +223,7 @@ describe('mapIssue', () => {
       createdAt: '',
       statusName: '',
       statusCategory: 'new',
+      labels: [],
     })
   })
 

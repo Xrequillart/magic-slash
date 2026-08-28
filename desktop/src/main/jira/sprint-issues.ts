@@ -31,11 +31,19 @@ import { AtlassianApiError } from './atlassian-api'
  * timestamp — so a sprint read without it would pile every Jira row at the bottom
  * of its own card in whatever order Jira happened to answer in.
  *
- * Nothing else. Every field named here is serialised for every ticket of every
- * Jira repository on every reload, and the detail panel (which would want a
- * description, an assignee, a comment count) is not this story.
+ * `labels` and the two PEOPLE fields are what put a Jira row on equal footing with
+ * a GitHub one: that row has carried its author and its labels from the start, and
+ * a sprint row beside it with neither read as the poorer half of the page. Both
+ * people are asked for and only one is kept — see `readReporter`, which is where
+ * the choice between them is made and explained.
+ *
+ * Nothing else. Every field named here is serialised for every ticket of every Jira
+ * repository on every reload, which is why what only the OPEN ticket needs — the
+ * description, the assignee, the comments — stays in `DETAIL_FIELDS` next door. The
+ * three added here cost a short array and one name per row; a description is
+ * kilobytes per row.
  */
-export const SPRINT_FIELDS = ['summary', 'status', 'created']
+export const SPRINT_FIELDS = ['summary', 'status', 'created', 'labels', 'reporter', 'creator']
 
 /**
  * How many tickets one repository's card can hold.
@@ -171,6 +179,60 @@ export function readStatus(status: unknown): { name: string; category: JiraStatu
 }
 
 /**
+ * A ticket's labels, as the array of non-empty strings both surfaces render.
+ *
+ * Jira answers `[]` for a ticket with none and omits the field entirely on a site
+ * where labels are disabled, so the absent case has to produce an array rather than
+ * `undefined` — the row and the panel both `.map()` over this without a guard.
+ *
+ * EXPORTED for `issue-detail.ts`, which asks for the same field. See `readPerson`.
+ */
+export function readLabels(labels: unknown): string[] {
+  return Array.isArray(labels)
+    ? labels.filter((label): label is string => typeof label === 'string' && label !== '')
+    : []
+}
+
+/**
+ * A Jira user object as the one word any surface here prints for it.
+ *
+ * `''` for no person at all, which every caller treats as "omit the field" rather
+ * than as a person whose name is blank.
+ *
+ * EXPORTED for `issue-detail.ts`, which reads the same user objects out of the same
+ * API — the arrangement `readStatus` above is already in, and for its reason: two
+ * copies would be two answers to what a privacy-restricted account is called, and
+ * the panel would then disagree with the row it was opened from.
+ */
+export function readPerson(person: unknown): string {
+  if (!person || typeof person !== 'object') return ''
+  const { displayName, accountId } = person as Record<string, unknown>
+  // `displayName` is the field Atlassian's privacy settings never hide, so the
+  // fallback is all but unreachable — and an account id is at least an identity,
+  // where an empty string would make an attributed ticket read as anonymous.
+  if (typeof displayName === 'string' && displayName !== '') return displayName
+  return typeof accountId === 'string' ? accountId : ''
+}
+
+/**
+ * Who a ticket is FROM, out of the two people Jira records for it.
+ *
+ * `reporter` wins, `creator` stands in. They are genuinely different fields:
+ * `creator` is whoever pressed the button and Jira will not let it be changed,
+ * while `reporter` is who the ticket is on behalf of and is what every Jira screen
+ * shows. On a ticket filed by a support agent for a customer they name two
+ * different people, and the one the reader recognises from Jira is the reporter.
+ *
+ * The fallback is not cosmetic: an automation or an integration can file a ticket
+ * with no reporter set, and `creator` is then the only name there is. Preferring
+ * `reporter` alone would blank the byline on exactly the tickets nobody can put a
+ * face to otherwise.
+ */
+export function readReporter(fields: Record<string, unknown>): string {
+  return readPerson(fields.reporter) || readPerson(fields.creator)
+}
+
+/**
  * One Jira issue as the page lists it, or null when it cannot be listed.
  *
  * A MAPPER, not a validator: the only field a row cannot do without is the key —
@@ -188,6 +250,7 @@ export function mapIssue(raw: unknown, siteUrl: string): JiraTaskIssue | null {
   const summary = issueFields.summary
   const created = issueFields.created
   const status = readStatus(issueFields.status)
+  const reporter = readReporter(issueFields)
 
   return {
     key,
@@ -196,6 +259,10 @@ export function mapIssue(raw: unknown, siteUrl: string): JiraTaskIssue | null {
     createdAt: typeof created === 'string' ? created : '',
     statusName: status.name,
     statusCategory: status.category,
+    // Omitted rather than `''` when Jira names nobody: the field is optional in the
+    // type, and an empty string would be a person whose name is blank.
+    ...(reporter ? { reporter } : {}),
+    labels: readLabels(issueFields.labels),
   }
 }
 

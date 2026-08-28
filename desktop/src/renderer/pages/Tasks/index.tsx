@@ -1,18 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Github, ListTodo, RefreshCw } from 'lucide-react'
+import { Github, ListTodo, RefreshCw, SearchX } from 'lucide-react'
 import { useConfig } from '../../hooks/useConfig'
 import { useOrgAgents } from '../../hooks/useOrgAgents'
 import { useTasks } from '../../hooks/useTasks'
 import { useStore } from '../../store'
-import { buildTaskRows, countOpenIssues, countTotalOpen } from '../../utils/taskRows'
+import {
+  buildTaskRows,
+  countOpenIssues,
+  countTotalOpen,
+  filterTaskRows,
+  NO_FILTER,
+  rowKey,
+  taskFilterRepos,
+} from '../../utils/taskRows'
 import { buildAgentedIssues, normalizeTicketId, taskAgentRefs, terminalAgentSignature } from '../../utils/taskAgents'
-import { resolveTracker } from '../../../tracker'
+import { readsFrom } from '../../../tracker'
 import { useT, type MessageKey } from '../../i18n'
 import { WaveLoader } from '../../components/WaveLoader'
 import { SweepPane } from '../../components/SweepPane'
 import { GitHubNotConnected } from './GitHubNotConnected'
 import { TaskDetailPage } from './TaskDetailPage'
 import { openCountLabel, TasksRepoSection, type TaskSelection } from './TasksRepoSection'
+import { TaskFilters, type TaskFilterValue } from './TaskFilters'
 
 /**
  * The two views this page swaps between, ranked. `SweepPane` reads the sign of
@@ -38,10 +47,15 @@ function alwaysSideways(): boolean {
  *
  * Structurally `pages/Dashboard/index.tsx`: the same full-screen shell inside a
  * PageModal, whose title and chrome the modal renders. What it lists is one card
- * per configured repository, from whichever tracker its RESOLVED tracker names —
- * open GitHub issues, or the active sprint of a Jira project. A repo the ladder
- * leaves at `ask` gets no group at all, because "nothing open" and "nobody has said
- * where the tickets are" must not read the same.
+ * per repository PER TRACKER it can be read from — open GitHub issues, or the
+ * active sprint of a Jira project, or both. A repo the ladder leaves at `ask` has
+ * both configured and gets a card for each, labelled with its tracker; it used to
+ * get none, which read as "nothing open here" when the truth was "nobody has said
+ * which of your two trackers to look in". See `readsFrom` in `tracker.ts`.
+ *
+ * A card is therefore identified by `rowKey(row)` — repository AND tracker — and
+ * not by the config key, which stopped being unique the day the second card
+ * appeared.
  *
  * The read happens in the main process (`tasks:listOpenIssues`) and arrives over
  * IPC: nothing here touches the network, and neither the GitHub token nor the
@@ -80,8 +94,20 @@ export function TasksPage() {
    * Which cards are FOLDED, not which are open: the page is a backlog, so every
    * card starts expanded and collapsing is the deliberate act. Tracking the
    * opposite would collapse a repository the moment its group first appeared.
+   *
+   * Holds ROW keys — `rowKey(row)`, repository and tracker — because an undecided
+   * repository has two cards and the config key no longer tells them apart.
    */
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+
+  /**
+   * What the two controls at the top are set to. See `TaskFilters`.
+   *
+   * Page state and not config: a filter is what you are doing right now, not how you
+   * like the page — and the modal unmounts this page when it closes, so a backlog
+   * narrowed to one repository never greets you narrowed the next time you open it.
+   */
+  const [filter, setFilter] = useState<TaskFilterValue>(NO_FILTER)
 
   /**
    * The selected ticket as a (repository, identity) PAIR, not as the ticket object.
@@ -125,7 +151,11 @@ export function TasksPage() {
    */
   const agentedIssues = useMemo(
     () => buildAgentedIssues(
-      (snapshot?.groups ?? []).map((group) => group.configKey),
+      // DEDUPLICATED, because an undecided repository contributes two groups and this
+      // index is keyed by repository, not by card: the two share one answer to "which
+      // of this repo's tickets has an agent", and asking twice would walk the whole
+      // roster a second time for a `Set` that must come out identical.
+      [...new Set((snapshot?.groups ?? []).map((group) => group.configKey))],
       config?.repositories ?? {},
       // Read non-reactively: `terminalsKey` above is this page's subscription to
       // the terminals, and it is in the dependency list in this read's stead.
@@ -134,10 +164,36 @@ export function TasksPage() {
     [snapshot?.groups, config?.repositories, agents, terminalsKey],
   )
 
+  /**
+   * Every row the read produced, before either control has had a say.
+   *
+   * Kept apart from `rows` below because three things need the UNFILTERED set: the
+   * repository picker's own list of options, the "nothing matched" state (which has
+   * to know there WAS something to match), and the counter's "of N" form.
+   */
+  const allRows = useMemo(
+    () => buildTaskRows(snapshot?.groups ?? [], config?.repositories ?? {}, agentedIssues),
+    [snapshot?.groups, config?.repositories, agentedIssues],
+  )
+
+  const filterRepos = useMemo(() => taskFilterRepos(allRows), [allRows])
+
   const { rows, total, totalOpen } = useMemo(() => {
-    const built = buildTaskRows(snapshot?.groups ?? [], config?.repositories ?? {}, agentedIssues)
-    return { rows: built, total: countOpenIssues(built), totalOpen: countTotalOpen(built) }
-  }, [snapshot?.groups, config?.repositories, agentedIssues])
+    const shown = filterTaskRows(allRows, filter)
+    const count = countOpenIssues(shown)
+    return {
+      rows: shown,
+      total: count,
+      // `countTotalOpen` reports what the REPOSITORIES hold — the number behind
+      // "showing 50 of 214" — and that sentence is false the moment a search is on:
+      // the 214 is the whole backlog, not the part that matched. Passing the shown
+      // count instead is what makes `openCountLabel` drop the second number rather
+      // than print a ratio nobody asked about. The repository filter alone keeps it,
+      // since a repository's own total is still its own total.
+      totalOpen: filter.query.trim() ? count : countTotalOpen(shown),
+    }
+  }, [allRows, filter])
+
 
   /**
    * The selected issue AND the repository row it belongs to, derived from the
@@ -148,7 +204,14 @@ export function TasksPage() {
    */
   const selection = useMemo(() => {
     if (!selected) return null
-    const row = rows.find((candidate) => candidate.configKey === selected.configKey)
+    // The TRACKER is half the lookup, not just half the guard below. An undecided
+    // repository has a GitHub card and a Jira card under one config key, and a find
+    // on the key alone returns whichever the sort put first — so opening a Jira
+    // ticket on such a repo would land on the GitHub row and bounce straight back to
+    // the list.
+    const row = rows.find(
+      (candidate) => candidate.configKey === selected.configKey && candidate.tracker === selected.tracker,
+    )
     if (!row) return null
 
     if (selected.tracker === 'jira') {
@@ -205,18 +268,24 @@ export function TasksPage() {
    */
   const { hasGitHubRepos, hasJiraRepos } = useMemo(() => {
     const repos = Object.values(config?.repositories ?? {})
+    // `readsFrom`, the same predicate the main process filters on, so these flags
+    // and the groups that arrive cannot disagree. An undecided repository counts on
+    // BOTH sides — it really does have both — which is what puts a logged-out `gh`
+    // behind the one-line notice rather than the full-page wall for someone whose
+    // Jira sprint is on screen and perfectly readable.
     return {
-      hasGitHubRepos: repos.some((repo) => resolveTracker(repo) === 'github'),
-      hasJiraRepos: repos.some((repo) => resolveTracker(repo) === 'jira'),
+      hasGitHubRepos: repos.some((repo) => readsFrom(repo, 'github')),
+      hasJiraRepos: repos.some((repo) => readsFrom(repo, 'jira')),
     }
   }, [config?.repositories])
 
   // Stable, so the memoised cards below only re-render when their own row or
-  // folded state actually changed — not on every keystroke the store sees.
-  const toggle = useCallback((configKey: string) => {
+  // folded state actually changed — not on every keystroke the store sees. Takes a
+  // ROW key, which is what the card passes: see `collapsed`.
+  const toggle = useCallback((key: string) => {
     setCollapsed((prev) => {
       const next = new Set(prev)
-      if (!next.delete(configKey)) next.add(configKey)
+      if (!next.delete(key)) next.add(key)
       return next
     })
   }, [])
@@ -362,7 +431,29 @@ export function TasksPage() {
               </div>
             )}
 
-            {rows.length === 0 ? (
+            {/* Only once there is a backlog to narrow. Two controls over an empty
+                page are two things to read before finding out there is nothing
+                there — and the picker would have no repositories to offer. */}
+            {allRows.length > 0 && (
+              <TaskFilters value={filter} repos={filterRepos} onChange={setFilter} />
+            )}
+
+            {/* The filters matched nothing. A DIFFERENT state from the four below,
+                and the distinction matters: those send the reader to a settings
+                field, and doing that because they mistyped a ticket id would be the
+                page blaming its configuration for their search. */}
+            {allRows.length > 0 && rows.length === 0 ? (
+              <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
+                <SearchX className="w-8 h-8 text-icon-muted" />
+                <p>{t('tasks.filter.noMatch')}</p>
+                <button
+                  onClick={() => setFilter(NO_FILTER)}
+                  className="mt-1 px-2.5 py-1 text-xs font-medium text-text-secondary border border-line rounded-lg hover:bg-surface-strong hover:text-ink transition-colors"
+                >
+                  {t('tasks.filter.clearAll')}
+                </button>
+              </div>
+            ) : rows.length === 0 ? (
               <div className="py-10 flex flex-col items-center justify-center text-text-secondary text-sm gap-2 bg-surface-subtle border border-line-subtle rounded-xl">
                 <ListTodo className="w-8 h-8 text-icon-muted" />
                 {/* Not "no tickets": nobody asked the question, or the ones who did
@@ -378,9 +469,14 @@ export function TasksPage() {
               <div className="flex flex-col gap-2">
                 {rows.map((row) => (
                   <TasksRepoSection
-                    key={row.configKey}
+                    key={rowKey(row)}
                     row={row}
-                    expanded={!collapsed.has(row.configKey)}
+                    // A search overrides the folded set for as long as it is on: a
+                    // card that matched and stayed shut would be a result the reader
+                    // is told about and cannot see. What was folded is still folded
+                    // when the box is cleared, because `collapsed` is never written
+                    // to here.
+                    expanded={!!filter.query.trim() || !collapsed.has(rowKey(row))}
                     onToggle={toggle}
                     onSelect={select}
                     agentedIssues={agentedIssues[row.configKey]}
