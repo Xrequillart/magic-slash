@@ -15,13 +15,15 @@ import { readsFrom, resolveGitHubIssuesUrl, resolveJiraProject, resolveJiraSite 
 import { readConfig } from '../config/config'
 import { getGitHubToken } from '../github'
 import { fetchIssueDetail, fetchOpenIssues } from '../github-issues'
-import { fetchJiraIssue, fetchSprintIssues, type AtlassianDeps } from '../jira/atlassian-api'
+import { fetchJiraFields, fetchJiraIssue, fetchSprintIssues, type AtlassianDeps } from '../jira/atlassian-api'
 import { ATLASSIAN_API_BASE_URL, TOKEN_URL } from '../jira/constants'
 import { getStatus as jiraStatus, reportUnauthorized, withFreshAccessToken } from '../jira/connect'
 import { DETAIL_FIELDS, mapIssueDetail as mapJiraIssueDetail } from '../jira/issue-detail'
 import {
   buildOpenSprintProbeJql,
   buildSprintJql,
+  findSprintFieldId,
+  pickSprintName,
   // `classifyUnexpected` and not `classify`: it delegates to it for an
   // `AtlassianApiError` and covers the throw that is a bug on our side, which must
   // still land in the panel rather than reject at the bridge.
@@ -231,6 +233,36 @@ function createSprintReader() {
   const sprintInFlight = new Map<string, Promise<JiraTaskRepoGroup>>()
 
   /**
+   * This site's id for the Sprint field, resolved once and kept for the process.
+   *
+   * "Sprint" is a custom field, so its id differs per site and the search will only
+   * return it when asked for by that id — see `fetchJiraFields`. Keyed by cloud id
+   * because a user can reconnect to a different site without restarting the app.
+   *
+   * Cached as a PROMISE, so the several repositories that read their sprints in
+   * parallel on the first page open share one lookup rather than making one each.
+   * A lookup that FAILS is dropped from the map, so the next page open tries again
+   * — the id is not knowledge worth keeping a network blip's answer for.
+   */
+  const sprintFieldIds = new Map<string, Promise<string>>()
+
+  function sprintFieldId(accessToken: string, cloudId: string): Promise<string> {
+    const cached = sprintFieldIds.get(cloudId)
+    if (cached) return cached
+    const attempt = fetchJiraFields(atlassianDeps, { accessToken, cloudId })
+      .then(findSprintFieldId)
+      // Never fatal, and never reported: the sprint's NAME is a caption on the card
+      // header, and a card that shows its tickets without it is the whole feature
+      // working. Failing the read over it would trade the page for the caption.
+      .catch(() => {
+        sprintFieldIds.delete(cloudId)
+        return ''
+      })
+    sprintFieldIds.set(cloudId, attempt)
+    return attempt
+  }
+
+  /**
    * One repository's active sprint, as a group.
    *
    * Never throws: every failure — including one from our own code — comes back as a
@@ -261,11 +293,18 @@ function createSprintReader() {
       }
 
       try {
+        // Asked for BEFORE the search rather than beside it: the id is what the
+        // search has to name to get the sprint back, and it is one call for the
+        // whole process (see `sprintFieldId`). `''` on a site with no Jira Software
+        // on it, which asks for nothing extra and shows no sprint name.
+        const fieldId = await sprintFieldId(fresh.accessToken, fresh.cloudId)
+        const fields = fieldId ? [...SPRINT_FIELDS, fieldId] : SPRINT_FIELDS
+
         const page = await fetchSprintIssues(atlassianDeps, {
           accessToken: fresh.accessToken,
           cloudId: fresh.cloudId,
           jql: buildSprintJql(repo.projectKey),
-          fields: SPRINT_FIELDS,
+          fields,
           maxResults: SPRINT_PAGE_SIZE,
         })
 
@@ -280,22 +319,30 @@ function createSprintReader() {
             accessToken: fresh.accessToken,
             cloudId: fresh.cloudId,
             jql: buildOpenSprintProbeJql(repo.projectKey),
-            fields: SPRINT_FIELDS,
+            fields,
             maxResults: PROBE_PAGE_SIZE,
           })
           if (probe.issues.length === 0) {
             return { ...base, issues: [], error: { error: 'no-active-sprint', message: `No open sprint in ${repo.projectKey}.` } }
           }
           // A sprint is running and everything in it is done. An empty group, not an
-          // error: the card says "nothing to do", which is the truth.
-          const done: JiraTaskRepoGroup = { ...base, issues: [] }
+          // error: the card says "nothing to do", which is the truth — and it can
+          // still say WHICH sprint has nothing left in it, off the probe's one row.
+          const doneSprint = pickSprintName(probe.issues, fieldId)
+          const done: JiraTaskRepoGroup = { ...base, issues: [], ...(doneSprint ? { sprintName: doneSprint } : {}) }
           sprintCache.set(key, { at: Date.now(), group: done })
           return done
         }
 
+        // Off the RAW page, not the mapped issues: the sprint is a fact about the
+        // card and not about any one row, so `JiraTaskIssue` carries no field for it
+        // — one name per card rather than the same string on all fifty of them.
+        const sprintName = pickSprintName(page.issues, fieldId)
+
         const group: JiraTaskRepoGroup = {
           ...base,
           issues: mapSprintIssues(page.issues, repo.siteUrl || credentialSiteUrl),
+          ...(sprintName ? { sprintName } : {}),
           ...(page.nextPageToken ? { truncated: true } : {}),
         }
         sprintCache.set(key, { at: Date.now(), group })

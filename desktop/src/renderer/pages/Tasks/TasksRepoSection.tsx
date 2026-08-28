@@ -646,6 +646,23 @@ export const TasksRepoSection = memo(function TasksRepoSection({
               · {row.tracker === 'jira' ? 'Jira' : 'GitHub'}
             </span>
           )}
+          {/* WHICH sprint these rows are — the other half of a Jira card's title.
+              The repository names the card, but the tickets under it are one
+              sprint's, and that was nowhere on the page.
+
+              Only ever the name Jira itself gave the sprint (see `sprintName`), so
+              a board called "PER Sprint 12" reads as its own number and one called
+              anything else reads as whatever the team calls it. Absent rather than
+              guessed at when the read could not name it, which is why there is no
+              fallback here. */}
+          {row.tracker === 'jira' && row.sprintName && (
+            <span
+              title={t('tasks.jira.sprintHint', { sprint: row.sprintName })}
+              className="text-xs text-text-secondary/60 truncate max-w-[14rem]"
+            >
+              · {row.sprintName}
+            </span>
+          )}
         </span>
         <HeaderBadge row={row} t={t} />
       </button>

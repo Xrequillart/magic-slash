@@ -3,6 +3,7 @@ import {
   AtlassianApiError,
   exchangeCode,
   fetchAccessibleResources,
+  fetchJiraFields,
   fetchJiraIssue,
   fetchMyself,
   fetchSprintIssues,
@@ -428,6 +429,48 @@ describe('fetchJiraIssue', () => {
   it('refuses a body that is not an object', async () => {
     const { deps } = stub(() => ({ body: 'not an issue' }))
     await expect(fetchJiraIssue(deps, ARGS)).rejects.toThrow('unexpected body')
+  })
+})
+
+describe('fetchJiraFields', () => {
+  const ARGS = { accessToken: 'atl-access-token', cloudId: 'cloud-1' }
+
+  it('GETs the site\u2019s field list from the Jira proxy for this cloud id', () => {
+    const { deps, calls } = stub(() => ({ body: [{ id: 'summary' }] }))
+    return fetchJiraFields(deps, ARGS).then(() => {
+      expect(calls).toHaveLength(1)
+      expect(calls[0].url).toBe('https://api.atlassian.com/ex/jira/cloud-1/rest/api/3/field')
+      expect(calls[0].method).toBe('GET')
+      expect(calls[0].headers.Authorization).toBe('Bearer atl-access-token')
+    })
+  })
+
+  it('encodes the cloud id rather than letting it reshape the URL', async () => {
+    const { deps, calls } = stub(() => ({ body: [] }))
+    await fetchJiraFields(deps, { ...ARGS, cloudId: '../../evil' })
+
+    expect(calls[0].url).toBe('https://api.atlassian.com/ex/jira/..%2F..%2Fevil/rest/api/3/field')
+  })
+
+  it('returns the array untouched — which entry is the sprint field is not its call', async () => {
+    const body = [{ id: 'customfield_10020', schema: { custom: 'com.pyxis.greenhopper.jira:gh-sprint' } }]
+    const { deps } = stub(() => ({ body }))
+
+    expect(await fetchJiraFields(deps, ARGS)).toEqual(body)
+  })
+
+  it('refuses an answer that is not a list of fields', async () => {
+    const { deps } = stub(() => ({ body: { fields: [] } }))
+    await expect(fetchJiraFields(deps, ARGS)).rejects.toThrow(AtlassianApiError)
+  })
+
+  it('reports a refused read as its status, with no body in the message', async () => {
+    const { deps } = stub(() => ({ status: 403, body: { errorMessages: ['atl-access-token is not permitted'] } }))
+    const error = await fetchJiraFields(deps, ARGS).catch((e) => e)
+
+    expect(error).toBeInstanceOf(AtlassianApiError)
+    expect(error.status).toBe(403)
+    expect(error.message).toBe('Jira fields failed (HTTP 403)')
   })
 })
 

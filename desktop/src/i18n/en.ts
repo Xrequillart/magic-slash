@@ -1890,6 +1890,10 @@ export const en = {
   // The row's hover text for the same person. A NAME and not a handle, so the
   // sentence names them rather than prefixing an `@` the way the GitHub row does.
   'tasks.jira.reporterHint': 'Reported by {name}',
+  // The sprint the card's rows are in, next to the repository name. Untranslated
+  // VALUE — the name is whatever the team called the sprint in Jira — so only the
+  // hover text is a sentence.
+  'tasks.jira.sprintHint': 'Active sprint: {sprint}',
   // ── The ticket's conversation, which the Jira half renders in full ───────
   // The GitHub panel carries a count and sends the reader to github.com; Jira sends
   // the bodies back in the response the panel already makes, so they are shown.

@@ -451,6 +451,42 @@ export async function fetchSprintIssues(
 }
 
 /**
+ * Every field this site defines — asked ONCE, to learn one id.
+ *
+ * "Sprint" is a Jira Software CUSTOM field, so its id is `customfield_10020` on one
+ * site and `customfield_10007` on the next, and `/search/jql` will only return a
+ * custom field asked for by its own id. There is no way round that from the search
+ * itself: naming it "sprint" in `fields` is not something the endpoint resolves.
+ *
+ * So the id is looked up here and cached by the caller for the life of the process
+ * (see `tasks-handlers.ts`) — one GET per session, never per read. The answer is
+ * long (a site has hundreds of fields), which is exactly why it is not asked for
+ * again.
+ *
+ * Covered by `read:jira-work`, like the two reads either side of it, so no scope
+ * changes with it. Failing is not fatal to anything: the caller drops the sprint
+ * NAME and reads the sprint's tickets as it always has.
+ *
+ * The array comes back RAW, for `fetchSprintIssues`' reason — which entry is the
+ * sprint field is a decision about values, and it lives in `sprint-issues.ts`.
+ */
+export async function fetchJiraFields(
+  deps: AtlassianDeps,
+  args: { accessToken: string; cloudId: string },
+): Promise<unknown[]> {
+  const operation = 'Jira fields'
+  const url = jiraApiUrl(deps, args.cloudId, '/field')
+  const response = await send(deps, operation, url, {
+    headers: { Authorization: `Bearer ${args.accessToken}`, Accept: 'application/json' },
+  })
+  const parsed = await readBody(response, operation)
+  if (!Array.isArray(parsed)) {
+    throw new AtlassianApiError(`${operation} (unexpected body)`, response.status)
+  }
+  return parsed
+}
+
+/**
  * ONE ticket, by key — what the detail panel opens on.
  *
  * A GET on `/rest/api/3/issue/{key}` rather than `fetchSprintIssues` with a

@@ -233,6 +233,106 @@ export function readReporter(fields: Record<string, unknown>): string {
 }
 
 /**
+ * How Jira Software identifies its own Sprint field, whatever id this site gave it.
+ *
+ * `schema.custom` is the field's TYPE and is the same string on every Jira site;
+ * `id` is per-site (`customfield_10020` here, `customfield_10007` there) and `name`
+ * is whatever an admin renamed it to, in whatever language. So the type is what is
+ * matched on, and the English name is only the fallback for a site whose field
+ * metadata omits the schema.
+ */
+const SPRINT_FIELD_SCHEMA = 'com.pyxis.greenhopper.jira:gh-sprint'
+
+/**
+ * This site's id for the Sprint field, out of `GET /rest/api/3/field`.
+ *
+ * `''` when the site has no such field — a Jira site with no Jira Software on it —
+ * which the caller treats as "no sprint name to show", never as a failed read.
+ */
+export function findSprintFieldId(fields: unknown[]): string {
+  let named = ''
+  for (const entry of fields) {
+    if (!entry || typeof entry !== 'object') continue
+    const { id, name, schema } = entry as Record<string, unknown>
+    if (typeof id !== 'string' || id === '') continue
+    const custom = schema && typeof schema === 'object'
+      ? (schema as Record<string, unknown>).custom
+      : undefined
+    if (custom === SPRINT_FIELD_SCHEMA) return id
+    if (!named && name === 'Sprint') named = id
+  }
+  return named
+}
+
+/**
+ * The name of the sprint a ticket is IN — "PER Sprint 12", the words the board is
+ * known by.
+ *
+ * The field is an ARRAY, because a ticket can carry the sprints it spilled out of
+ * as well as the one it is in now. The open one is what the card is about, so an
+ * `active` sprint wins; with none marked (an older site, or a closed sprint the
+ * ticket never left) the LAST entry stands in, which is Jira's own order of
+ * newest-last.
+ *
+ * Two shapes are accepted because two are answered. Modern sites send objects;
+ * older ones send the Java `toString` of the sprint — `…Sprint@1a2b[id=5,name=Sprint
+ * 3,state=ACTIVE,…]` — and a site answering that is a site whose sprint name would
+ * otherwise silently be blank.
+ */
+export function readSprintName(value: unknown): string {
+  if (!Array.isArray(value)) return ''
+  const sprints = value.flatMap((entry) => {
+    const sprint = readSprint(entry)
+    return sprint.name ? [sprint] : []
+  })
+  if (sprints.length === 0) return ''
+  return (sprints.find((sprint) => sprint.active) ?? sprints[sprints.length - 1]).name
+}
+
+/** One entry of the sprint field, in whichever of the two shapes it arrived. */
+function readSprint(entry: unknown): { name: string; active: boolean } {
+  if (typeof entry === 'string') {
+    const name = /\bname=([^,\]]*)/.exec(entry)
+    const state = /\bstate=([^,\]]*)/.exec(entry)
+    return {
+      name: (name?.[1] ?? '').trim(),
+      active: (state?.[1] ?? '').trim().toLowerCase() === 'active',
+    }
+  }
+  if (!entry || typeof entry !== 'object') return { name: '', active: false }
+  const { name, state } = entry as Record<string, unknown>
+  return {
+    name: typeof name === 'string' ? name.trim() : '',
+    active: typeof state === 'string' && state.toLowerCase() === 'active',
+  }
+}
+
+/**
+ * The sprint this card is showing, out of the RAW page the search answered.
+ *
+ * Read off the tickets rather than asked for separately: the query is
+ * `sprint in openSprints()`, so every row already carries the answer and a
+ * `/rest/agile` call for it would need a board id we do not have and a scope we do
+ * not ask for.
+ *
+ * The FIRST ticket that names one wins. A card can legitimately hold tickets from
+ * two open sprints (a project with two boards running), and the header has room for
+ * one name — so it names the sprint the first row is in rather than inventing a
+ * summary of both.
+ */
+export function pickSprintName(issues: unknown[], fieldId: string): string {
+  if (!fieldId) return ''
+  for (const entry of issues) {
+    if (!entry || typeof entry !== 'object') continue
+    const { fields } = entry as Record<string, unknown>
+    if (!fields || typeof fields !== 'object') continue
+    const name = readSprintName((fields as Record<string, unknown>)[fieldId])
+    if (name) return name
+  }
+  return ''
+}
+
+/**
  * One Jira issue as the page lists it, or null when it cannot be listed.
  *
  * A MAPPER, not a validator: the only field a row cannot do without is the key —

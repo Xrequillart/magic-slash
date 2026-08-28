@@ -476,6 +476,19 @@ export interface GitHubTaskRepoGroup extends TaskRepoGroupBase {
 export interface JiraTaskRepoGroup extends TaskRepoGroupBase {
   tracker: 'jira'
   issues: JiraTaskIssue[]
+  /**
+   * What the open sprint is CALLED — "PER Sprint 12" — when it could be read.
+   *
+   * The card's title is the repository, which on the Jira half is only half the
+   * answer: the rows under it are one sprint's, and which one was nowhere on the
+   * page. Read off the tickets themselves (see `pickSprintName`), so it costs no
+   * call of its own.
+   *
+   * Absent whenever the answer is not known rather than guessed at: a site with no
+   * Jira Software on it, a field lookup that failed, an empty sprint. The header
+   * simply says less in that case.
+   */
+  sprintName?: string
   /** Set when Jira offered a further page and the read stopped at the cap. */
   truncated?: boolean
   error?: JiraTaskStatusError

@@ -6,9 +6,12 @@ import {
   buildSprintJql,
   classify,
   classifyUnexpected,
+  findSprintFieldId,
   mapIssue,
   mapSprintIssues,
+  pickSprintName,
   PROBE_PAGE_SIZE,
+  readSprintName,
   SPRINT_FIELDS,
 } from './sprint-issues'
 
@@ -257,6 +260,80 @@ describe('mapSprintIssues', () => {
   it('skips an unmappable entry without losing the rest of the sprint', () => {
     const issues = mapSprintIssues([rawIssue({ key: 'PROJ-1' }), null, { fields: {} }], 'https://acme.atlassian.net')
     expect(issues.map((issue) => issue.key)).toEqual(['PROJ-1'])
+  })
+})
+
+describe('findSprintFieldId', () => {
+  const sprint = {
+    id: 'customfield_10020',
+    name: 'Sprint',
+    schema: { type: 'array', custom: 'com.pyxis.greenhopper.jira:gh-sprint' },
+  }
+
+  it('finds the field by its TYPE, whatever id this site gave it', () => {
+    expect(findSprintFieldId([{ id: 'summary', name: 'Summary' }, sprint])).toBe('customfield_10020')
+  })
+
+  it('is not fooled by a field an admin renamed', () => {
+    // The name is per-site and per-language; the schema is not.
+    expect(findSprintFieldId([{ ...sprint, name: 'Itération' }])).toBe('customfield_10020')
+  })
+
+  it('falls back to the English name when the site sent no schema', () => {
+    expect(findSprintFieldId([{ id: 'customfield_10007', name: 'Sprint' }])).toBe('customfield_10007')
+  })
+
+  it('prefers the typed field over one that merely shares its name', () => {
+    expect(findSprintFieldId([{ id: 'customfield_1', name: 'Sprint' }, sprint])).toBe('customfield_10020')
+  })
+
+  it('answers nothing for a site with no Jira Software on it', () => {
+    expect(findSprintFieldId([{ id: 'summary', name: 'Summary' }])).toBe('')
+    expect(findSprintFieldId([])).toBe('')
+    expect(findSprintFieldId([null, 'nonsense', {}])).toBe('')
+  })
+})
+
+describe('readSprintName', () => {
+  it('names the sprint the ticket is currently in', () => {
+    expect(readSprintName([
+      { id: 4, name: 'PER Sprint 11', state: 'closed' },
+      { id: 5, name: 'PER Sprint 12', state: 'active' },
+    ])).toBe('PER Sprint 12')
+  })
+
+  it('falls back to the newest entry when none is marked active', () => {
+    expect(readSprintName([{ name: 'Sprint 1' }, { name: 'Sprint 2' }])).toBe('Sprint 2')
+  })
+
+  it('reads the toString shape an older site answers with', () => {
+    expect(readSprintName([
+      'com.atlassian.greenhopper.service.sprint.Sprint@1a2b[id=5,rapidViewId=3,state=ACTIVE,name=Sprint 3,goal=<null>]',
+    ])).toBe('Sprint 3')
+  })
+
+  it('reads no sprint as no name rather than as an empty one', () => {
+    expect(readSprintName(null)).toBe('')
+    expect(readSprintName([])).toBe('')
+    expect(readSprintName([{ id: 5 }])).toBe('')
+  })
+})
+
+describe('pickSprintName', () => {
+  const issue = (name: string) => ({ fields: { customfield_10020: [{ name, state: 'active' }] } })
+
+  it('names the sprint the first row that knows is in', () => {
+    expect(pickSprintName([{ fields: {} }, issue('PER Sprint 12')], 'customfield_10020')).toBe('PER Sprint 12')
+  })
+
+  it('says nothing when the field id is not known on this site', () => {
+    // A site with no Jira Software on it: the search was never asked for the field,
+    // so there is nothing to read and nothing to claim.
+    expect(pickSprintName([issue('PER Sprint 12')], '')).toBe('')
+  })
+
+  it('says nothing rather than guessing when no row names one', () => {
+    expect(pickSprintName([null, 'nonsense', { fields: {} }], 'customfield_10020')).toBe('')
   })
 })
 
