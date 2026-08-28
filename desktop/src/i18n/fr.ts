@@ -795,6 +795,7 @@ export const fr: Record<keyof typeof en, string> = {
   'account.checklist.pending': 'Configuration en cours',
   'account.checklist.pendingHint': '{done} étape(s) sur {total} terminée(s).',
   'account.checklist.step.account': 'Compte cloud connecté',
+  'account.checklist.step.atlassian': 'Compte Atlassian lié',
   'account.checklist.step.profile': 'Profil renseigné',
   'account.checklist.step.repository': 'Au moins un dépôt utilisable',
   'account.checklist.step.setup': 'Configuration de la machine complète',

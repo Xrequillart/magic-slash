@@ -807,6 +807,7 @@ export const en = {
   'account.checklist.pending': 'Setup in progress',
   'account.checklist.pendingHint': '{done} of {total} steps done.',
   'account.checklist.step.account': 'Cloud account connected',
+  'account.checklist.step.atlassian': 'Atlassian account linked',
   'account.checklist.step.profile': 'Profile filled in',
   'account.checklist.step.repository': 'At least one usable repository',
   'account.checklist.step.setup': 'Machine setup complete',

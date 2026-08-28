@@ -3,6 +3,7 @@ import { CheckCircle2, Circle, ListChecks } from 'lucide-react'
 import type { InvalidRepo } from '../../../preload'
 import type { SetupStatus } from '../../../types'
 import { useAuth } from '../../hooks/useAuth'
+import { useJiraAuth } from '../../hooks/useJiraAuth'
 import { useStore } from '../../store'
 import { buildRepoSetup, needsRepoSetup } from '../../utils/repoSetup'
 import { useT, type MessageKey } from '../../i18n'
@@ -15,8 +16,12 @@ import { SectionHeader } from './SectionHeader'
  * its own modal (sign in), and each of them disappears the moment it is done or
  * dismissed. That left no place to answer the one question a user asks after
  * clicking through four modals: "am I actually set up?". This card answers it —
- * a verdict plus the four rows it is computed from, so a "not yet" says which
+ * a verdict plus the rows it is computed from, so a "not yet" says which
  * step is missing rather than just being a red light.
+ *
+ * Not every row is always there: the cloud account and the Atlassian link are each
+ * shown only when they are steps the user can actually complete, which is why the
+ * total in the hint is counted from the list rather than written as a constant.
  *
  * Read-only on purpose: each row's repair already lives one tab away (Application
  * for the machine setup, Repositories for the repos) or right below it in this
@@ -27,6 +32,10 @@ export function AccountChecklistCard() {
   const t = useT()
   const { status: authStatus, loading: authLoading } = useAuth()
   const config = useStore((s) => s.config)
+  // The same hook the Atlassian section below this card uses, so the row and the
+  // section it points at can never disagree — and so a connection made down there
+  // ticks the row without a reload, the push being what both of them listen to.
+  const { status: jiraStatus, loading: jiraLoading } = useJiraAuth()
 
   const [profileFilled, setProfileFilled] = useState<boolean | null>(null)
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
@@ -81,10 +90,13 @@ export function AccountChecklistCard() {
   // rows turning grey, which reads as something breaking rather than as loading.
   // The placeholder keeps the card's own shape, so the verdict lands in place
   // instead of pushing the sections under it down the page.
-  if (authLoading || profileFilled === null || setupStatus === null || !config) {
-    // Four rows is the shape of a stock install; only a build with no Supabase env
-    // drops the cloud row, and by then `authLoading` is over and the count is real.
-    return <ChecklistSkeleton rows={authLoading || authStatus.enabled ? 4 : 3} />
+  if (authLoading || jiraLoading || profileFilled === null || setupStatus === null || !config) {
+    // Five rows is the shape of a stock install: a build with no Supabase env drops
+    // the cloud row, and GitHub-only — or a build with no Atlassian application id —
+    // drops the Atlassian one. Neither is known yet here, so the skeleton assumes the
+    // default install and may show one bar too many for a beat; a bar that vanishes is
+    // cheaper than rows appearing under a verdict that has already landed.
+    return <ChecklistSkeleton rows={authLoading || authStatus.enabled ? 5 : 4} />
   }
 
   const steps: { key: MessageKey; done: boolean }[] = [
@@ -92,6 +104,21 @@ export function AccountChecklistCard() {
     // baked in — it cannot be a step the user is failing to complete.
     ...(authStatus.enabled
       ? [{ key: 'account.checklist.step.account' as MessageKey, done: authStatus.loggedIn }]
+      : []),
+    // Right after the cloud account, in the order the two sections appear below this
+    // card. Hidden unless it is a step that can be completed at all: Atlassian has to
+    // be one of the chosen integrations — someone on GitHub-only has no Jira to read —
+    // and the build has to carry an Atlassian application id, without which the Connect
+    // button below cannot even open a browser (`jira.notConfigured`).
+    ...(setupStatus.integrations.atlassian && jiraStatus.configured
+      ? [{
+        key: 'account.checklist.step.atlassian' as MessageKey,
+        // `unverified` is connected-but-refused — Atlassian turned the stored
+        // credential down, which usually means the user revoked the app. Ticking it
+        // would mark a step done whose feature returns nothing, which is the exact
+        // confusion this card exists to remove.
+        done: jiraStatus.connected && !jiraStatus.unverified,
+      }]
       : []),
     { key: 'account.checklist.step.profile', done: profileFilled },
     { key: 'account.checklist.step.repository', done: repoReady },
