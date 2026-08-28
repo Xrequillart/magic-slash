@@ -67,10 +67,31 @@ const SCALE: Record<NonNullable<Props['variant']>, string> = {
     [&_pre]:p-4 [&_pre]:mb-4 [&_pre]:text-xs [&_pre]:leading-relaxed`,
 }
 
+/**
+ * A table in a scroller of its own.
+ *
+ * `[&_table]:w-full` fits a table to the measure it is given, which is the right
+ * answer until the table is wider than that — a Jira ticket routinely carries a
+ * five-column grid, and in a panel that either overflowed the card or squeezed every
+ * column to two characters. The wrapper takes the overflow instead, so the page
+ * itself never scrolls sideways.
+ *
+ * A `components` override rather than a class, because the element needs a PARENT
+ * that markdown has no way to express. The `[&_table]` rules above still apply —
+ * they are descendant selectors, and the table is still a descendant.
+ */
+const COMPONENTS = {
+  table: ({ node: _node, ...props }: { node?: unknown } & JSX.IntrinsicElements['table']) => (
+    <div className="overflow-x-auto max-w-full">
+      <table {...props} />
+    </div>
+  ),
+}
+
 export default function MarkdownView({ content, variant = 'panel' }: Props) {
   return (
     <div className={`${STRUCTURE} ${SCALE[variant]}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={COMPONENTS}>
         {content}
       </ReactMarkdown>
     </div>

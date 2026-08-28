@@ -159,15 +159,20 @@ describe('adfToMarkdown', () => {
   // covered here.
 
   it('keeps the whole subtree of an unknown WRAPPER', () => {
-    // A description written entirely inside a `panel` would otherwise come back
-    // blank, and the panel would say "no description" about a ticket that has one.
+    // A description written entirely inside a layout column would otherwise come
+    // back blank, and the panel would say "no description" about a ticket that has
+    // one. Written with node types this module deliberately does NOT know: `panel`
+    // and `table` are handled now, so using either here would stop testing the rule.
     const markdown = adfToMarkdown(doc({
-      type: 'panel',
-      attrs: { panelType: 'warning' },
-      content: [
-        paragraph(text('Careful.')),
-        { type: 'expand', attrs: { title: 'More' }, content: [paragraph(text('Details here.'))] },
-      ],
+      type: 'layoutSection',
+      content: [{
+        type: 'layoutColumn',
+        attrs: { width: 50 },
+        content: [
+          paragraph(text('Careful.')),
+          { type: 'expand', attrs: { title: 'More' }, content: [paragraph(text('Details here.'))] },
+        ],
+      }],
     }))
 
     expect(markdown).toBe('Careful.\n\nDetails here.')
@@ -205,6 +210,98 @@ describe('adfToMarkdown', () => {
   it('drops an unknown leaf that has nothing to say rather than printing a hole', () => {
     expect(adfToMarkdown(doc(paragraph(text('a'), { type: 'mediaSingle', attrs: { layout: 'center' } }))))
       .toBe('a')
+  })
+})
+
+describe('adfToMarkdown — a table', () => {
+  /** ADF's own table shape: rows of cells, the first row optionally headers. */
+  function table(...rows: unknown[]) {
+    return { type: 'table', content: rows }
+  }
+  function row(...cells: unknown[]) {
+    return { type: 'tableRow', content: cells }
+  }
+  function th(value: string) {
+    return { type: 'tableHeader', content: [paragraph(text(value))] }
+  }
+  function td(value: string, attrs?: Record<string, unknown>) {
+    return { type: 'tableCell', ...(attrs ? { attrs } : {}), content: [paragraph(text(value))] }
+  }
+
+  it('renders a header row and its body as a GFM table', () => {
+    expect(adfToMarkdown(doc(table(
+      row(th('Field'), th('Value')),
+      row(td('Env'), td('prod')),
+      row(td('Owner'), td('Ada')),
+    )))).toBe([
+      '| Field | Value |',
+      '| --- | --- |',
+      '| Env | prod |',
+      '| Owner | Ada |',
+    ].join('\n'))
+  })
+
+  it('keeps a headerless table\u2019s first row as content rather than promoting it', () => {
+    // GFM has no headerless table, so the band above is empty — but every row of
+    // the ticket is still a row of the table.
+    expect(adfToMarkdown(doc(table(row(td('a'), td('b')), row(td('c'), td('d')))))).toBe([
+      '|  |  |',
+      '| --- | --- |',
+      '| a | b |',
+      '| c | d |',
+    ].join('\n'))
+  })
+
+  it('pads a short row so every later column stays under its heading', () => {
+    expect(adfToMarkdown(doc(table(row(th('a'), th('b'), th('c')), row(td('1')))))).toBe([
+      '| a | b | c |',
+      '| --- | --- | --- |',
+      '| 1 |  |  |',
+    ].join('\n'))
+  })
+
+  it('spends a merged cell\u2019s extra columns on empty ones', () => {
+    expect(adfToMarkdown(doc(table(
+      row(th('a'), th('b')),
+      row(td('wide', { colspan: 2 })),
+    )))).toBe([
+      '| a | b |',
+      '| --- | --- |',
+      '| wide |  |',
+    ].join('\n'))
+  })
+
+  it('flattens a multi-paragraph cell onto its one line, and escapes a pipe in it', () => {
+    const cell = { type: 'tableCell', content: [paragraph(text('one | two')), paragraph(text('three'))] }
+    expect(adfToMarkdown(doc(table(row(th('h')), row(cell))))).toBe([
+      '| h |',
+      '| --- |',
+      '| one \\| two three |',
+    ].join('\n'))
+  })
+
+  it('reads a table with no rows as nothing rather than as an empty grid', () => {
+    expect(adfToMarkdown(doc(paragraph(text('a')), table()))).toBe('a')
+  })
+})
+
+describe('adfToMarkdown — the other blocks a description is written in', () => {
+  it('keeps a panel as a quote rather than as ordinary prose', () => {
+    expect(adfToMarkdown(doc({
+      type: 'panel',
+      attrs: { panelType: 'warning' },
+      content: [paragraph(text('Careful')), paragraph(text('Really'))],
+    }))).toBe('> Careful\n>\n> Really')
+  })
+
+  it('marks a checklist with its own state', () => {
+    expect(adfToMarkdown(doc({
+      type: 'taskList',
+      content: [
+        { type: 'taskItem', attrs: { state: 'DONE' }, content: [text('shipped')] },
+        { type: 'taskItem', attrs: { state: 'TODO' }, content: [text('pending')] },
+      ],
+    }))).toBe('- [x] shipped\n- [ ] pending')
   })
 })
 

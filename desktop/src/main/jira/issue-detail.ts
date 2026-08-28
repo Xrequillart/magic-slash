@@ -97,8 +97,8 @@ const INLINE_TYPES = new Set([
  * A run of children, as one string.
  *
  * The block/inline decision is made once, here, from what the children ARE rather
- * than from what their parent is — which is what lets an unknown wrapper (`panel`,
- * `expand`, a table cell) be walked into without this module knowing it exists.
+ * than from what their parent is — which is what lets an unknown wrapper (`expand`,
+ * a layout column, a table cell) be walked into without this module knowing it exists.
  */
 function renderContent(nodes: unknown[]): string {
   if (nodes.length === 0) return ''
@@ -233,9 +233,128 @@ function renderBlock(node: AdfNode): string {
     }
     case 'listItem':
       return renderBlocks(kids)
+    case 'table':
+      return renderTable(node)
+    case 'taskList':
+      return renderTaskList(kids)
+    // A quote and a panel are the same shape in markdown, and the panel is the one
+    // that matters: Jira's "info"/"warning"/"note" boxes are how a description says
+    // "read this bit first", and walked into as an unknown wrapper they came out as
+    // an ordinary paragraph indistinguishable from the prose around it.
+    case 'blockquote':
+    case 'panel':
+      return renderQuote(kids)
     default:
       return renderUnknown(node)
   }
+}
+
+/**
+ * A quote, or one of Jira's panels — every line prefixed, blank lines included.
+ *
+ * The blank line between two blocks has to carry the marker too, or markdown ends
+ * the quote there and the second paragraph falls out of the box.
+ */
+function renderQuote(nodes: unknown[]): string {
+  const body = renderBlocks(nodes)
+  if (body === '') return ''
+  return body.split('\n').map((line) => (line === '' ? '>' : `> ${line}`)).join('\n')
+}
+
+/**
+ * A checklist, as markdown's own task list.
+ *
+ * Not `renderList`: the marker carries the state, and an ADF `taskItem` reports it
+ * as `attrs.state` — walked into as an unknown wrapper the whole list came out as
+ * unmarked paragraphs, which reads as prose rather than as work with a tick against
+ * half of it.
+ */
+function renderTaskList(items: unknown[]): string {
+  return items
+    .map((entry) => {
+      const item = asNode(entry)
+      if (typeOf(item) !== 'taskItem') return renderBlock(item)
+      const body = renderContent(children(item))
+      if (body === '') return ''
+      const done = attrs(item).state === 'DONE'
+      const pad = '      '
+      return body
+        .split('\n')
+        .map((line, i) => (i === 0 ? `- [${done ? 'x' : ' '}] ${line}` : line === '' ? '' : `${pad}${line}`))
+        .join('\n')
+    })
+    .filter((item) => item !== '')
+    .join('\n')
+}
+
+/**
+ * ONE CELL, flattened to a single line — which is the constraint the whole table
+ * renderer is built around.
+ *
+ * A GFM row is delimited by newlines, so a cell cannot contain one: a cell holding
+ * two paragraphs is joined with a space, and a `|` inside the text is escaped or it
+ * would open a column of its own. `<br>` is not an option — `MarkdownView` renders
+ * without `rehype-raw`, so raw HTML in a cell reaches the screen as nothing at all.
+ *
+ * `colspan` is carried out rather than applied: markdown has no merged cells, so the
+ * caller pads with empty ones instead, which keeps every later column under the
+ * heading it belongs to.
+ */
+function renderCell(node: AdfNode): { text: string; span: number } {
+  const span = attrs(node).colspan
+  return {
+    text: renderContent(children(node)).replace(/\s*\n+\s*/g, ' ').replace(/\|/g, '\\|').trim(),
+    span: typeof span === 'number' && Number.isInteger(span) && span > 1 ? span : 1,
+  }
+}
+
+/**
+ * A table, as a GFM table — the one ADF block whose absence was not quiet.
+ *
+ * Every other unknown wrapper degrades into readable prose (see `adfToMarkdown`); a
+ * table degrades into its cells one under another, with no hint that they were ever
+ * a grid. A ticket whose acceptance criteria are a table came out as a wall of
+ * fragments, which is what this exists to fix.
+ *
+ * WIDTH IS FIXED BY THE WIDEST ROW, and every shorter row is padded. GFM aligns
+ * columns by position, so a row with fewer cells than the header silently shifts
+ * everything after it one column left.
+ *
+ * THE HEADER is the first row only when it really is one — a row of `tableHeader`
+ * cells. GFM has no headerless table, so a table that starts with data gets an empty
+ * header band rather than having its first line of content promoted to a heading it
+ * never was.
+ */
+function renderTable(node: AdfNode): string {
+  const rows = children(node)
+    .map((row) => asNode(row))
+    .filter((row) => typeOf(row) === 'tableRow')
+    .map((row) => children(row).flatMap((cell) => {
+      const item = asNode(cell)
+      const { text, span } = renderCell(item)
+      return [
+        { text, header: typeOf(item) === 'tableHeader' },
+        // The columns a merged cell swallowed, so the rows below stay aligned.
+        ...Array.from({ length: span - 1 }, () => ({ text: '', header: typeOf(item) === 'tableHeader' })),
+      ]
+    }))
+    .filter((row) => row.length > 0)
+
+  if (rows.length === 0) return ''
+
+  const width = Math.max(...rows.map((row) => row.length))
+  const line = (cells: { text: string }[]): string =>
+    `| ${Array.from({ length: width }, (_, i) => cells[i]?.text ?? '').join(' | ')} |`
+
+  const headed = rows[0].every((cell) => cell.header)
+  const body = headed ? rows.slice(1) : rows
+  const head = headed ? rows[0] : []
+
+  return [
+    line(head),
+    `|${' --- |'.repeat(width)}`,
+    ...body.map(line),
+  ].join('\n')
 }
 
 /**
@@ -286,8 +405,8 @@ function renderList(items: unknown[], start: number | null): string {
  *
  * That is not defensive coding, it is the difference between a description and a
  * wrong description. ADF is an open format with node types this app has never seen:
- * dropping an unknown WRAPPER (`panel`, `expand`, `table`, `blockquote`, a layout
- * column) discards its entire subtree, so a description written as one panel comes
+ * dropping an unknown WRAPPER (`expand`, a layout column, a nested table) discards
+ * its entire subtree, so a description written as one panel comes
  * out blank — and the panel says "no description" about a ticket that has one.
  * Dropping an unknown LEAF is quieter and worse: `mention`, `inlineCard`,
  * `blockCard`, `emoji`, `status`, `taskItem` and `mediaSingle` carry no `text`
