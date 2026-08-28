@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, type KeyboardEvent } from 'react'
 import { AlertTriangle, ChevronDown, ChevronRight, ExternalLink, Settings } from 'lucide-react'
 import type {
   JiraStatusCategory,
@@ -21,6 +21,24 @@ import { CopyLinkButton } from '../../components/CopyLinkButton'
  * it. Same markup, same classes — two lists of "things grouped by repository" that
  * looked different would be a bug nobody could name.
  */
+
+/**
+ * The ticket the page has opened, as the pair that identifies it — DISCRIMINATED BY
+ * TRACKER, because the two halves of this page do not agree on what a ticket's
+ * identity is.
+ *
+ * A GitHub issue is a number, per repository. A Jira ticket is a key, `PROJ-123`,
+ * and has no number at all. Folding them into one `{ configKey, id: string }` would
+ * make every consumer re-derive which of the two reads to make from the shape of the
+ * string — and the detail panel's two IPC channels, two error unions and two `hasAgent`
+ * lookups all need the answer stated rather than sniffed.
+ *
+ * Lives here rather than in the page, because this is the component that produces
+ * one; the page consumes it.
+ */
+export type TaskSelection =
+  | { tracker: 'github'; configKey: string; number: number }
+  | { tracker: 'jira'; configKey: string; key: string }
 
 /**
  * Dedicated `tasks.error.*` copy, NOT the pull-request card's.
@@ -70,6 +88,26 @@ const JIRA_ERROR_KEYS: Record<JiraTaskError, { title: MessageKey; fix: MessageKe
 }
 
 /**
+ * The rows of `JIRA_ERROR_KEYS` that mean something ELSE on one ticket's page than
+ * they do on a repository card.
+ *
+ * Only one so far, and it is a genuine mis-statement rather than a nicety: on the
+ * card a 404 is the PROJECT, and "check the project key" is the fix. On the detail
+ * panel the project key is demonstrably right — the list read just used it to fetch
+ * the row that was clicked — and the 404 is the ticket, deleted or moved. Sending
+ * the reader to a settings field that is already correct is worse than saying
+ * nothing.
+ *
+ * A partial override rather than a second full table: every other failure —
+ * unauthorized, forbidden, offline, a rejected query — is the same fact and the
+ * same fix wherever it is met, and a copy of the other eight rows would be eight
+ * chances for the two surfaces to drift.
+ */
+const JIRA_DETAIL_ERROR_KEYS: Partial<Record<JiraTaskError, { title: MessageKey; fix: MessageKey }>> = {
+  'not-found': { title: 'tasks.jira.detail.notFound', fix: 'tasks.jira.detail.notFoundFix' },
+}
+
+/**
  * The two Jira outcomes that are not failures, and the word each gets instead.
  *
  * "Could not be read" is wrong for both. A project with no sprint in progress has not
@@ -116,11 +154,25 @@ export function TaskErrorLines({ error }: { error: { error: PRWatchError } }) {
  * over the one screen that fixes it. Settings is a modal like this page, so opening
  * it replaces the Tasks overlay rather than stacking on top of it.
  */
-function JiraErrorLines({ error }: { error: JiraTaskStatusError }) {
+export function JiraErrorLines({
+  error,
+  surface = 'card',
+}: {
+  error: JiraTaskStatusError
+  /**
+   * Which page is asking, because one failure does not mean the same thing on both.
+   * Named rather than handed in as a table of sentences: "the detail page words 404
+   * differently" is a fact about the copy, so it belongs beside the copy — a caller
+   * cannot get it subtly wrong, only pick the wrong one of two names.
+   */
+  surface?: 'card' | 'detail'
+}) {
   const t = useT()
+  const keys = (surface === 'detail' ? JIRA_DETAIL_ERROR_KEYS[error.error] : undefined)
+    ?? JIRA_ERROR_KEYS[error.error]
   return (
     <div className="flex flex-col gap-2 min-w-0">
-      <ErrorLines {...JIRA_ERROR_KEYS[error.error]} />
+      <ErrorLines {...keys} />
       {error.error === 'not-connected' && (
         <button
           onClick={() => useStore.getState().openSettingsModal('account')}
@@ -210,22 +262,21 @@ function AgentMarker({ t }: { t: Translate }) {
  * padding — so the two pills stand one height; spelled out per row, that invariant
  * held across four class strings and only one of them said why.
  *
- * `stopPropagation` is the one genuine difference: a GitHub row is itself a button
- * that opens the issue's page, so without it one click would do both. A Jira row is
- * a plain div and has nothing to stop.
+ * The click is stopped UNCONDITIONALLY, as `CopyLinkButton` already stops its own:
+ * every caller is a `role="button"` row that opens the ticket's page, so without it
+ * one click on "Open" would both browse and open the panel. A flag here would be an
+ * option with one value — a branch no caller can exercise and no test can cover.
  */
 function RowLinks({
   url,
   openLabel,
   copyLabel,
   copiedLabel,
-  stopPropagation,
 }: {
   url: string
   openLabel: string
   copyLabel: string
   copiedLabel: string
-  stopPropagation?: boolean
 }) {
   return (
     <>
@@ -237,7 +288,7 @@ function RowLinks({
       />
       <button
         onClick={(e) => {
-          if (stopPropagation) e.stopPropagation()
+          e.stopPropagation()
           window.electronAPI.shell.openExternal(url)
         }}
         title={openLabel}
@@ -248,6 +299,34 @@ function RowLinks({
       </button>
     </>
   )
+}
+
+/**
+ * What makes a row a row: the geometry, and the contract that it opens its ticket.
+ *
+ * A div with a `role`, not a `<button>`: the row contains buttons of its own, and a
+ * button inside a button is invalid markup no amount of `stopPropagation` fixes.
+ * That also means the keyboard half is ours to provide — a real button answers
+ * Enter and Space for free, and a `role="button"` that only answers the mouse is
+ * unreachable without one.
+ *
+ * ONE helper for both rows rather than the same ten lines twice: the two differ
+ * only in what they identify a ticket by, and a keyboard contract that lives in two
+ * places is one a later edit can fix in only one of them.
+ */
+function rowActivation(onActivate: () => void) {
+  return {
+    role: 'button',
+    tabIndex: 0,
+    onClick: onActivate,
+    onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return
+      e.preventDefault()
+      onActivate()
+    },
+    className: 'flex items-center gap-3 pl-9 pr-4 py-2.5 min-w-0 border-t border-line-subtle'
+      + ' cursor-pointer transition-colors hover:bg-surface',
+  } as const
 }
 
 /**
@@ -266,9 +345,8 @@ function RowLinks({
  * component is rendered once per issue, and a hook per row would register a
  * catalogue listener per row to translate the very same two constants.
  *
- * A div with a `role`, not a `<button>`: the row contains a button of its own,
- * and a button inside a button is invalid markup no amount of `stopPropagation`
- * fixes.
+ * The row's own shell — the geometry, the click and the keyboard — comes from
+ * `rowActivation`, which is where the reason for the div-with-a-role is written.
  */
 function IssueRow({
   issue,
@@ -288,17 +366,7 @@ function IssueRow({
   onSelect: (number: number) => void
 }) {
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect(issue.number)}
-      onKeyDown={(e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return
-        e.preventDefault()
-        onSelect(issue.number)
-      }}
-      className="flex items-center gap-3 pl-9 pr-4 py-2.5 min-w-0 border-t border-line-subtle cursor-pointer transition-colors hover:bg-surface"
-    >
+    <div {...rowActivation(() => onSelect(issue.number))}>
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex items-center gap-3 min-w-0">
           <TicketBadge ticketId={`#${issue.number}`} />
@@ -346,7 +414,6 @@ function IssueRow({
         openLabel={openLabel}
         copyLabel={copyLabel}
         copiedLabel={copiedLabel}
-        stopPropagation
       />
     </div>
   )
@@ -372,16 +439,22 @@ const JIRA_STATUS_CLASS: Record<JiraStatusCategory, string> = {
   done: 'bg-green/15 text-green',
 }
 
-function JiraStatusPill({ issue }: { issue: JiraTaskIssue }) {
+export function JiraStatusPill({ name, category }: { name: string; category: JiraStatusCategory }) {
+  // The two VALUES rather than the ticket they came from, because the detail panel
+  // feeds it the status of its own read: that page re-asks Jira for the status
+  // precisely so a ticket transitioned since the list was drawn stops showing the
+  // stale word, and a pill typed on `JiraTaskIssue` could only be handed the stale
+  // one back.
+  //
   // The whole second line, wrapper included, so the "has this site named a status?"
   // question is asked once. Returning a bare span would let it stretch to the width
   // of the flex column it sits in, and a rounded-full pill the width of the card is
   // not a pill.
-  if (!issue.statusName) return null
+  if (!name) return null
   return (
     <div className="flex items-center gap-2 flex-wrap min-w-0">
-      <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${JIRA_STATUS_CLASS[issue.statusCategory]}`}>
-        {issue.statusName}
+      <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${JIRA_STATUS_CLASS[category]}`}>
+        {name}
       </span>
     </div>
   )
@@ -390,12 +463,14 @@ function JiraStatusPill({ issue }: { issue: JiraTaskIssue }) {
 /**
  * One sprint ticket, in `IssueRow`'s layout minus the parts Jira does not have.
  *
- * NOT CLICKABLE, and that is a scope decision rather than an oversight: the detail
- * panel and starting an agent are the next story, and the row identity every piece
- * of that plumbing is typed on is a `number` a Jira ticket does not have. A row that
- * opened a panel which could only say "not found" is worse than a row that does not
- * pretend to be a button — so this is a plain div, and the two buttons on it (copy,
- * open in Jira) are the whole of what it does.
+ * CLICKABLE, exactly as its GitHub twin is, and opening the same page. It was
+ * deliberately not, one story ago, because the panel behind it was typed on an issue
+ * NUMBER and could only have said "not found" about a ticket — the selection is
+ * discriminated by tracker now, and `tasks:getJiraIssueDetail` is what answers on
+ * this side.
+ *
+ * Its shell is `IssueRow`'s, through `rowActivation` — one keyboard contract and one
+ * set of row classes for both trackers.
  *
  * `t` arrives as a prop for `IssueRow`'s reason: one catalogue listener per ticket
  * to translate the same two constants is a listener per ticket too many.
@@ -407,6 +482,7 @@ function JiraIssueRow({
   copiedLabel,
   t,
   hasAgent,
+  onSelect,
 }: {
   issue: JiraTaskIssue
   openLabel: string
@@ -414,15 +490,16 @@ function JiraIssueRow({
   copiedLabel: string
   t: Translate
   hasAgent: boolean
+  onSelect: (key: string) => void
 }) {
   return (
-    <div className="flex items-center gap-3 pl-9 pr-4 py-2.5 min-w-0 border-t border-line-subtle">
+    <div {...rowActivation(() => onSelect(issue.key))}>
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex items-center gap-3 min-w-0">
           <TicketBadge ticketId={issue.key} />
           <span className="text-sm text-ink truncate">{issue.title}</span>
         </div>
-        <JiraStatusPill issue={issue} />
+        <JiraStatusPill name={issue.statusName} category={issue.statusCategory} />
       </div>
       {/* Not decoration on this half: the one In Progress ticket allowed on the page
           is the one somebody is on, so the marker is the reason the row is here. */}
@@ -430,7 +507,8 @@ function JiraIssueRow({
       {/* Both buttons hang off a browse URL, which needs a Jira site to have been
           resolved. A repository that declares only a project key, read with a
           credential whose site URL is missing, has no link to offer — and a dead
-          "Open" button is a worse answer than no button. */}
+          "Open" button is a worse answer than no button. The row itself still opens
+          the panel, which needs no site at all. */}
       {issue.url && (
         <RowLinks
           url={issue.url}
@@ -483,8 +561,8 @@ export const TasksRepoSection = memo(function TasksRepoSection({
   row: TaskRow
   expanded: boolean
   onToggle: (configKey: string) => void
-  /** Takes the config key as well as the number: an issue number alone is not an identity. */
-  onSelect: (configKey: string, number: number) => void
+  /** What the page opens on. See `TaskSelection`. */
+  onSelect: (selection: TaskSelection) => void
   /** Ticket ids of this repository's issues that already have an agent. Built once for the page. */
   agentedIssues: ReadonlySet<string>
 }) {
@@ -512,9 +590,10 @@ export const TasksRepoSection = memo(function TasksRepoSection({
       </button>
 
       {expanded && <ErrorRow row={row} />}
-      {/* One branch per tracker, top to bottom, because the two rows share neither
-          their identity (a number against a key) nor their affordances (a GitHub row
-          opens a detail page; a Jira row cannot yet). */}
+      {/* One branch per tracker, top to bottom, because the two rows do not share
+          their identity — a number against a key — and that is exactly what
+          `TaskSelection` is discriminated on. The affordances are the same now: both
+          open the detail page. */}
       {expanded && row.tracker === 'jira' && row.issues.map((issue) => (
         <JiraIssueRow
           key={issue.key}
@@ -527,6 +606,7 @@ export const TasksRepoSection = memo(function TasksRepoSection({
           // case-insensitive about keys, and an agent whose ticket was typed
           // `per-1234` is on `PER-1234`.
           hasAgent={agentedIssues.has(normalizeTicketId(issue.key))}
+          onSelect={(key) => onSelect({ tracker: 'jira', configKey: row.configKey, key })}
         />
       ))}
       {expanded && row.tracker === 'github' && row.issues.map((issue) => (
@@ -538,7 +618,7 @@ export const TasksRepoSection = memo(function TasksRepoSection({
           copiedLabel={copiedLabel}
           t={t}
           hasAgent={agentedIssues.has(String(issue.number))}
-          onSelect={(number) => onSelect(row.configKey, number)}
+          onSelect={(number) => onSelect({ tracker: 'github', configKey: row.configKey, number })}
         />
       ))}
     </div>

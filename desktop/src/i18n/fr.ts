@@ -1685,6 +1685,12 @@ export const fr: Record<keyof typeof en, string> = {
   'tasks.jira.noProjectHint':
     'Renseignez-la dans Réglages → Dépôts → Jira : le sprint actif de ce projet apparaîtra ici.',
 
+  // ── Tâches · la page d'un ticket Jira ────────────────────────────────────
+  'tasks.jira.detail.reporter': 'Rapporté par',
+  'tasks.jira.detail.notFound': 'Ticket introuvable',
+  'tasks.jira.detail.notFoundFix':
+    'Il a peut-être été supprimé, ou déplacé dans un autre projet — rechargez la liste pour voir ce qui reste dans le sprint.',
+
   // ── Tâches · pourquoi un projet Jira n’a pas pu être lu ──────────────────
   'tasks.jira.error.notConnected': 'Aucun compte Atlassian connecté',
   'tasks.jira.error.notConnectedFix':

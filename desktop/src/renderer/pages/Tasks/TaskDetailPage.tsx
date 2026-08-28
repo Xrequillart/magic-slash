@@ -1,19 +1,36 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { ArrowLeft, CircleCheck, CircleDot, ExternalLink, MessageSquare, MessagesSquare, Play } from 'lucide-react'
-import type { InitialPromptMode, PRStatusError, RepositoryConfig, TaskIssue, TaskIssueDetail } from '../../../types'
-import { isPRStatusError } from '../../../types'
+import type {
+  InitialPromptMode,
+  JiraTaskIssue,
+  JiraTaskIssueDetail,
+  JiraTaskStatusError,
+  PRStatusError,
+  RepositoryConfig,
+  TaskIssue,
+  TaskIssueDetail,
+} from '../../../types'
+import { isJiraStatusError, isPRStatusError } from '../../../types'
 import { useLocale, useT, type Translate } from '../../i18n'
 import { BTN, BTN_ICON, BTN_NEUTRAL_STACKED, BTN_PRIMARY_STACKED } from '../../theme/controls'
 import { WaveLoader } from '../../components/WaveLoader'
 import MarkdownView from '../../components/file-preview/MarkdownView'
-import { StatusPill } from '../Dashboard/parts'
+import { StatusPill, TicketBadge } from '../Dashboard/parts'
 import type { NewTerminalDetail } from '../Terminals'
-import { TaskErrorLines } from './TasksRepoSection'
+import { JiraErrorLines, JiraStatusPill, TaskErrorLines } from './TasksRepoSection'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 
 /**
- * One issue, given the whole page — the Tasks page's second view, not a panel
+ * One ticket, given the whole page — the Tasks page's second view, not a panel
  * beside its first.
+ *
+ * TWO TICKETS, in fact: a GitHub issue and a Jira sprint ticket, discriminated by
+ * `tracker`. They are one page and not two because everything that makes this a
+ * PAGE is common to both — the pinned bar that takes over from the title, the
+ * sticky action column, the sweep it arrives on, the Escape that goes back — while
+ * what differs is the identity (a number against a key), the read behind it, and
+ * the four blocks of metadata down the right. Two components would have been two
+ * copies of the chrome, drifting.
  *
  * This started as a 500px right-hand column and the width was the problem: an
  * issue body is prose with headings, code blocks and tables in it, and 500px
@@ -138,23 +155,28 @@ function NoneYet({ t }: { t: Translate }) {
 }
 
 /**
- * The issue's body, or the reason it is not there yet.
+ * The ticket's body, or the reason it is not there yet.
  *
- * The failure is rendered by the SAME component the repository card uses: this
- * read goes through the same GraphQL ladder, so a token that cannot see a
- * private repo has to fail identically — and read identically — in both places.
+ * The failure arrives ALREADY WORDED, as a node, rather than as an error this
+ * component looks up. The two trackers fail into two different named unions with
+ * two different tables behind them — a Jira error code is not a member of
+ * `ERROR_KEYS` and would render two blank lines through it — so the caller, which
+ * is the side that knows which read it made, picks the table. What stays here is
+ * the box, the loader and the empty state, which are the same either way.
  *
  * `document` rather than `panel` markdown: this is the variant for markdown with
- * a page to itself, and a full-width issue body is exactly that.
+ * a page to itself, and a full-width ticket body is exactly that.
  */
-function IssueBody({
-  detail,
-  error,
+function DetailBody({
+  content,
+  errorLines,
   loading,
   t,
 }: {
-  detail: TaskIssueDetail | null
-  error: PRStatusError | null
+  /** The markdown to render. `''` for a ticket with no description, and while the read is out. */
+  content: string
+  /** The read's failure, worded by whichever tracker's table owns it. Null when there is none. */
+  errorLines: ReactNode
   loading: boolean
   t: Translate
 }) {
@@ -167,15 +189,11 @@ function IssueBody({
     )
   }
 
-  if (error) {
-    return (
-      <div className="px-5 py-4">
-        <TaskErrorLines error={error} />
-      </div>
-    )
+  if (errorLines) {
+    return <div className="px-5 py-4">{errorLines}</div>
   }
 
-  if (!detail?.body) {
+  if (!content) {
     return (
       <div className="px-5 py-4 text-sm text-text-secondary/40">{t('tasks.detail.emptyBody')}</div>
     )
@@ -183,26 +201,38 @@ function IssueBody({
 
   return (
     <div className="px-5 py-4">
-      <MarkdownView content={detail.body} variant="document" />
+      <MarkdownView content={content} variant="document" />
     </div>
   )
 }
 
-interface TaskDetailPageProps {
-  /** The issue on screen. Mounted only for a selected issue, so never null. */
-  issue: TaskIssue
-  /** The config key of the repository the issue came from — what the detail read is keyed by. */
+/**
+ * A person on a Jira ticket, as a NAME and never as a face.
+ *
+ * The renderer's CSP is `img-src 'self' data:`, so an `avatarUrls` entry from
+ * Atlassian could only be fetched and blocked — a broken image where a person
+ * should be. The display name is what Jira's privacy settings never withhold, so
+ * it is what this prints.
+ */
+function PersonLine({ name }: { name: string }) {
+  return <span className="text-xs text-text-secondary min-w-0 break-words">{name}</span>
+}
+
+/** What the page needs whichever tracker the ticket came from. */
+interface TaskDetailPageBaseProps {
+  /** The config key of the repository the ticket came from — what the detail read is keyed by. */
   configKey: string
   /** That repository's name, for the trail back to the list it came from. */
   repoName: string
   /** That repository's configuration, when it still has one. Absent means nothing can be launched. */
   repo?: RepositoryConfig
   /**
-   * Whether an agent is already on this issue — the same answer the list's dot gives.
+   * Whether an agent is already on this ticket — the same answer the list's dot gives.
    *
    * Computed by the Tasks page rather than here: `buildAgentedIssues` unions the org
    * roster with the local terminals in one pass for the whole page, and asking the
    * question again per detail page would be a second, differently-shaped answer to it.
+   * It is also the side that knows to fold a Jira key through `normalizeTicketId`.
    */
   hasAgent: boolean
   /**
@@ -219,9 +249,57 @@ interface TaskDetailPageProps {
   onBack: () => void
 }
 
-export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, paneRef, onBack }: TaskDetailPageProps) {
+/**
+ * The ticket on screen, and which tracker it belongs to — CORRELATED, as a union
+ * rather than as two independent props.
+ *
+ * Mounted only for a selected ticket, so `issue` is never null. Pairing it with the
+ * tracker in one member is what stops a Jira ticket being handed to the GitHub
+ * branch: the two shapes share three field names (`title`, `url`, `createdAt`) and
+ * differ in the only one that matters, so a mismatched pair would compile and then
+ * read `undefined` as an issue number.
+ */
+type TaskDetailPageProps = TaskDetailPageBaseProps & (
+  | { tracker: 'github'; issue: TaskIssue }
+  | { tracker: 'jira'; issue: JiraTaskIssue }
+)
+
+export function TaskDetailPage(props: TaskDetailPageProps) {
+  const { configKey, repoName, repo, hasAgent, paneRef, onBack } = props
   const t = useT()
   const locale = useLocale()
+
+  // The ticket's identity, narrowed once. Everything downstream — the read, the
+  // agent launch, the prompt, the effect's dependencies — wants a primitive rather
+  // than the union, and narrowing it here means the correlation is checked in one
+  // place instead of at every use.
+  const tracker = props.tracker
+  const issueNumber = props.tracker === 'github' ? props.issue.number : 0
+  const issueKey = props.tracker === 'jira' ? props.issue.key : ''
+  /**
+   * The identity `/magic:start` writes into `agents.ticket_id`, and the one this
+   * page hands to `pickUpTask`.
+   *
+   * `String(issue.number)` was the only form before, and on a Jira ticket it
+   * stringifies to `"undefined"` — which is what made every one of the three uses
+   * below a bug the moment a Jira row became clickable.
+   */
+  const ticketId = tracker === 'jira' ? issueKey : String(issueNumber)
+
+  /**
+   * The three fields both shapes carry, so the chrome can read them without branching.
+   *
+   * `url` comes off the issue for BOTH halves, including Jira — the main process
+   * already built it as `browseUrl(repo.siteUrl || credentialSiteUrl, key)`, which
+   * keeps the credential-site fallback for a repository that declares only a project
+   * key and normalises the trailing `/browse` that would otherwise produce
+   * `…/browse/browse/PROJ-1`. Rebuilding it here from `resolveJiraSite(repo)` would
+   * lose the fallback and duplicate the normalisation.
+   *
+   * It is `''` when no site could be resolved at all, which is why both controls in
+   * the bar are guarded: a dead "Open" button is a worse answer than no button.
+   */
+  const { title, url, createdAt } = props.issue
 
   /**
    * Whether the title has gone behind the top bar, which is when that bar starts
@@ -236,50 +314,78 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
   const titleRef = useRef<HTMLDivElement>(null)
   const [condensed, setCondensed] = useState(false)
   useEffect(() => {
-    const title = titleRef.current
+    const titleEl = titleRef.current
     const pane = paneRef.current
-    if (!title || !pane) return
+    if (!titleEl || !pane) return
     const observer = new IntersectionObserver(
       ([entry]) => setCondensed(!entry.isIntersecting),
       { root: pane, rootMargin: `-${TOP_BAR_H}px 0px 0px 0px` },
     )
-    observer.observe(title)
+    observer.observe(titleEl)
     return () => observer.disconnect()
   }, [paneRef])
 
+  /**
+   * TWO detail states and TWO error states, one pair per tracker.
+   *
+   * The errors could not be folded even if the details could: `PRStatusError` and
+   * `JiraTaskStatusError` are disjoint unions with two different tables behind them,
+   * and a Jira code sent through `ERROR_KEYS` misses every row of it — which renders
+   * as two empty lines where the reason should be. Keeping them apart is what makes
+   * a failed Jira read say something.
+   *
+   * Only one pair is ever populated, because only one read is ever made.
+   */
   const [detail, setDetail] = useState<TaskIssueDetail | null>(null)
   const [detailError, setDetailError] = useState<PRStatusError | null>(null)
+  const [jiraDetail, setJiraDetail] = useState<JiraTaskIssueDetail | null>(null)
+  const [jiraError, setJiraError] = useState<JiraTaskStatusError | null>(null)
   const [loading, setLoading] = useState(false)
   const [startFailed, setStartFailed] = useState(false)
 
   /**
-   * The rest of the issue, read on mount.
+   * The rest of the ticket, read on mount.
    *
-   * The page exists only while an issue is selected, so "on selection" and "on
+   * The page exists only while a ticket is selected, so "on selection" and "on
    * mount" are now the same moment — which is what the panel's guard against
    * fetching while closed used to be for. `cancelled` is still needed, and is
    * the same guard `useTasks` explains at length: the IPC call has no
-   * cancellation, so a response for an issue that is no longer on screen is
+   * cancellation, so a response for a ticket that is no longer on screen is
    * ignored rather than aborted.
+   *
+   * Keyed on the tracker and on PRIMITIVES, not on the issue object: the object is
+   * re-derived from a fresh snapshot on every reload, so an object dependency would
+   * re-read the ticket every time the list behind the page was refreshed.
    */
   useEffect(() => {
     let cancelled = false
     setDetail(null)
     setDetailError(null)
+    setJiraDetail(null)
+    setJiraError(null)
     setStartFailed(false)
     setLoading(true)
 
-    window.electronAPI.tasks
-      .getIssueDetail(configKey, issue.number)
-      .then((result) => {
+    const read = tracker === 'jira'
+      ? window.electronAPI.tasks.getJiraIssueDetail(configKey, issueKey).then((result) => {
+        if (cancelled) return
+        if (isJiraStatusError(result)) setJiraError(result)
+        else setJiraDetail(result)
+      })
+      : window.electronAPI.tasks.getIssueDetail(configKey, issueNumber).then((result) => {
         if (cancelled) return
         if (isPRStatusError(result)) setDetailError(result)
         else setDetail(result)
       })
+
+    read
       .catch(() => {
         // The IPC call itself failed, which the handler's own try/catch cannot
-        // cover. Reported as the same named failure so the page has one error path.
-        if (!cancelled) setDetailError({ error: 'network', message: 'IPC call failed' })
+        // cover. Reported as the named failure of whichever half asked, so each
+        // tracker keeps one error path rather than borrowing the other's.
+        if (cancelled) return
+        if (tracker === 'jira') setJiraError({ error: 'offline', message: 'IPC call failed' })
+        else setDetailError({ error: 'network', message: 'IPC call failed' })
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -288,7 +394,7 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
     return () => {
       cancelled = true
     }
-  }, [configKey, issue.number])
+  }, [configKey, tracker, issueKey, issueNumber])
 
   /**
    * Escape goes back to the LIST, not out of the whole page.
@@ -318,16 +424,18 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
    * a team repo nobody has bound to a folder on this machine has no directory to
    * open a terminal in. Asked here rather than by letting `pickUpTask` throw,
    * because that error is an untranslated English sentence and this one is a
-   * state the page can explain and act on.
+   * state the page can explain and act on — which is the whole of what makes a
+   * repository with no local path say so instead of failing silently.
    */
   const canStart = !!repo && !repo.needsLocalPath && !!repo.path
 
   /**
-   * Open an agent in this issue's repository with a first prompt already typed.
+   * Open an agent in this ticket's repository with a first prompt already typed.
    *
-   * ONE launcher for both buttons, because everything except that prompt is identical —
-   * resolving the local path, the failure the page has to explain, and the fact that the
-   * agents page rather than this one owns every guard on creating an agent.
+   * ONE launcher for both buttons and both trackers, because everything except that
+   * prompt is identical — resolving the local path, the failure the page has to
+   * explain, and the fact that the agents page rather than this one owns every guard
+   * on creating an agent.
    *
    * The prompt MUST be a single line, in either mode. Run, it travels to the PTY as
    * `claude "<prompt>"` with `JSON.stringify` doing the quoting, so a newline is escaped
@@ -343,7 +451,10 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
       // the wrong verb for either of these. The matching itself is left exactly as it is —
       // this passes it the local path it already knows, so it resolves to that same
       // repository, and `expandPath` on the way out is why this is worth calling at all.
-      const { cwd } = await window.electronAPI.org.pickUpTask(String(issue.number), [repo.path])
+      //
+      // `ticketId`, not the issue number: `pickUpTask` has always been ticket-id
+      // agnostic, and a Jira ticket reaching it as `"undefined"` would match nothing.
+      const { cwd } = await window.electronAPI.org.pickUpTask(ticketId, [repo.path])
       // The agents page owns every guard on creating one (max agents, unreachable
       // repositories, which pane it lands in), so this asks for an agent the same
       // way the sidebar's "+" does rather than launching one itself.
@@ -354,19 +465,36 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
       // catalogue entry, and this page is translated.
       setStartFailed(true)
     }
-  }, [issue.number, repo?.path])
-
-  const startAgent = useCallback(() => openAgent(`/magic:start ${issue.url}`), [openAgent, issue.url])
+  }, [ticketId, repo?.path])
 
   /**
-   * The other thing a reader might want from an issue: to think about it rather than do it.
+   * The page's one affirmative action, per tracker.
+   *
+   * A Jira ticket is started on its KEY — `/magic:start PER-1234` — and not on its
+   * browse URL. The key is what the skill resolves a ticket by, what it writes into
+   * `agents.ticket_id`, and what the branch and the commit trailers are named after;
+   * a URL would have to be parsed back into it first. A GitHub issue has no such
+   * portable identity across repositories, so it goes on being started on its URL.
+   */
+  const startAgent = useCallback(
+    () => openAgent(`/magic:start ${tracker === 'jira' ? issueKey : url}`),
+    [openAgent, tracker, issueKey, url],
+  )
+
+  /**
+   * The other thing a reader might want from a ticket: to think about it rather than do it.
    *
    * A plain-prose prompt rather than a skill, because there is no `/magic:` verb for this and
-   * inventing one would be a second surface to keep in step with eight others. The URL is what
-   * the agent reads the issue through — `gh` is a prerequisite the app already checks for.
+   * inventing one would be a second surface to keep in step with eight others. It is a prompt
+   * addressed to Claude and not text the reader sees, which is why it is a literal here rather
+   * than a catalogue key — the agent's language is the repository's, not the app's.
    *
-   * The "do not implement" clause is load-bearing. Without it an agent handed a GitHub issue in
-   * a repository does the obvious thing and starts implementing it, which is precisely what the
+   * A GitHub issue is named by its URL, which is what `gh` reads it through; a Jira ticket is
+   * named by its KEY, which is what the Atlassian MCP server resolves. Both are prerequisites
+   * the app already checks for.
+   *
+   * The "do not implement" clause is load-bearing. Without it an agent handed a ticket in a
+   * repository does the obvious thing and starts implementing it, which is precisely what the
    * button above is for and precisely what this one is not.
    *
    * DRAFTED, not run, and that is the difference between the two buttons: starting work needs
@@ -375,12 +503,47 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
    * this fills the input box and stops, and the trailing space is where they carry on typing.
    */
   const discussAgent = useCallback(() => openAgent(
-    `Let's discuss GitHub issue ${issue.url} — read it first, then help me explain, summarise, `
+    (tracker === 'jira'
+      ? `Let's discuss Jira ticket ${issueKey} — read it first, then help me explain, summarise, `
+      : `Let's discuss GitHub issue ${url} — read it first, then help me explain, summarise, `)
     + 'refine or rewrite it. Do not implement it and do not create a branch. ',
     'draft',
-  ), [openAgent, issue.url])
+  ), [openAgent, tracker, issueKey, url])
 
-  const openedOn = formatIssueDate(issue.createdAt, locale)
+  const openedOn = formatIssueDate(createdAt, locale)
+
+  /**
+   * The status as of THIS read, falling back to the row's until it lands.
+   *
+   * The detail read asks for the status again precisely so a ticket transitioned
+   * since the list was drawn stops showing the stale word — but showing nothing at
+   * all while the read is out would make the pill blink on every open, so the row's
+   * value stands in until it is replaced.
+   */
+  const jiraStatus = tracker === 'jira'
+    ? jiraDetail ?? { statusName: props.issue.statusName, statusCategory: props.issue.statusCategory }
+    : null
+
+  /**
+   * The read's failure, already worded by whichever tracker's table owns it.
+   *
+   * Picked HERE rather than inside `DetailBody`, because this is the side that knows
+   * which of the two reads it made: a Jira code sent through the GitHub table misses
+   * every row of it and renders as two blank lines.
+   */
+  const errorLines = tracker === 'jira'
+    ? jiraError && <JiraErrorLines error={jiraError} surface="detail" />
+    : detailError && <TaskErrorLines error={detailError} />
+
+  /**
+   * The status chip, in the one form both places that show it want.
+   *
+   * The pinned bar and the byline draw the same chip, so the "which tracker, and has
+   * its read landed?" question is answered once instead of twice in the JSX.
+   */
+  const statusChip = jiraStatus
+    ? <JiraStatusPill name={jiraStatus.statusName} category={jiraStatus.statusCategory} />
+    : detail && <StateChip state={detail.state} t={t} />
 
   return (
     <div className="flex flex-col gap-5">
@@ -416,52 +579,66 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
           // Left-aligned next to the link it follows, and in the row's own type
           // size: this is the title standing in for itself, not a second heading.
           <>
-            {detail && <StateChip state={detail.state} t={t} />}
-            <span className="text-xs text-ink truncate min-w-0" title={issue.title}>
-              {issue.title}
+            {statusChip}
+            <span className="text-xs text-ink truncate min-w-0" title={title}>
+              {title}
             </span>
-            <span className="text-xs text-text-secondary/40 flex-shrink-0">#{issue.number}</span>
+            <span className="text-xs text-text-secondary/40 flex-shrink-0">
+              {tracker === 'jira' ? issueKey : `#${issueNumber}`}
+            </span>
           </>
         ) : (
           <span className="text-xs text-text-secondary/50 truncate">{repoName}</span>
         )}
         {/* `ml-auto` moved onto the pair's leading element: it is what pushes both
             buttons to the right edge, and left on the second one it would have put
-            the whole gap between them instead. */}
-        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-          {/* `BTN_ICON` rather than hand-rolled classes: it is the module's
-              icon-only tier and stands the same 30px as the `BTN` beside it. */}
-          <CopyLinkButton
-            url={issue.url}
-            copyLabel={t('tasks.copyLink')}
-            copiedLabel={t('tasks.copyLinkDone')}
-            className={BTN_ICON}
-          />
-          <button
-            onClick={() => window.electronAPI.shell.openExternal(issue.url)}
-            className={`${BTN} flex-shrink-0`}
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            <span>{t('tasks.openIssue')}</span>
-          </button>
-        </div>
+            the whole gap between them instead.
+
+            Both are guarded on the URL rather than only the Jira one, because it is
+            the same guard: a ticket with no site resolved has nothing to copy and
+            nothing to open. A GitHub issue always has one. */}
+        {url && (
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+            {/* `BTN_ICON` rather than hand-rolled classes: it is the module's
+                icon-only tier and stands the same 30px as the `BTN` beside it. */}
+            <CopyLinkButton
+              url={url}
+              copyLabel={t('tasks.copyLink')}
+              copiedLabel={t('tasks.copyLinkDone')}
+              className={BTN_ICON}
+            />
+            <button
+              onClick={() => window.electronAPI.shell.openExternal(url)}
+              className={`${BTN} flex-shrink-0`}
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>{t(tracker === 'jira' ? 'tasks.jira.openIssue' : 'tasks.openIssue')}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Title and byline, GitHub's order: what it is, then its number, then the
-          state and who opened it. */}
+          state and who opened it. A Jira ticket wears its key as the badge the row
+          gave it, on the byline line rather than inside the heading — `PROJ-1234`
+          is a word, where `#234` is a suffix. */}
       <div ref={titleRef} className="flex flex-col gap-3 pb-5 border-b border-line">
         <h1 className="text-2xl font-semibold text-ink leading-snug">
-          {issue.title}{' '}
-          <span className="font-normal text-text-secondary/40">#{issue.number}</span>
+          {title}
+          {tracker === 'github' && (
+            <span className="font-normal text-text-secondary/40"> #{issueNumber}</span>
+          )}
         </h1>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          {tracker === 'jira' && <TicketBadge ticketId={issueKey} />}
           {/* Nothing until the state is actually known: a chip reading "Open"
               before the read lands would be a guess, and the one case it gets
-              wrong is the issue that was just closed. */}
-          {detail && <StateChip state={detail.state} t={t} />}
+              wrong is the issue that was just closed. The Jira pill has the row's
+              value to stand on in the meantime, which is why it is not held back. */}
+          {statusChip}
           <span className="text-xs text-text-secondary">
-            {issue.author
-              ? t('tasks.detail.openedBy', { login: issue.author, date: openedOn })
+            {tracker === 'github' && props.issue.author
+              ? t('tasks.detail.openedBy', { login: props.issue.author, date: openedOn })
               : t('tasks.detail.openedOn', { date: openedOn })}
           </span>
           {detail && detail.commentCount > 0 && (
@@ -482,9 +659,9 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
           {/* The comment box: an author strip, then the body under a hairline. */}
           <div className="rounded-xl bg-surface border border-line-field overflow-hidden">
             <div className="flex items-center gap-1.5 px-5 py-2.5 bg-surface-subtle border-b border-line-subtle">
-              {issue.author ? (
+              {tracker === 'github' && props.issue.author ? (
                 <>
-                  <span className="text-xs font-medium text-ink">@{issue.author}</span>
+                  <span className="text-xs font-medium text-ink">@{props.issue.author}</span>
                   <span className="text-xs text-text-secondary">{t('tasks.detail.commented')}</span>
                 </>
               ) : (
@@ -494,7 +671,12 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
                 <span className="ml-auto text-xs text-text-secondary/50">{openedOn}</span>
               )}
             </div>
-            <IssueBody detail={detail} error={detailError} loading={loading} t={t} />
+            <DetailBody
+              content={tracker === 'jira' ? jiraDetail?.description ?? '' : detail?.body ?? ''}
+              errorLines={errorLines}
+              loading={loading}
+              t={t}
+            />
           </div>
         </div>
 
@@ -508,7 +690,7 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
           style={{ top: TOP_BAR_H + 16 }}
         >
           {/* The page's one affirmative action, and it is first: the metadata
-              under it is what you read about the issue, this is what you do
+              under it is what you read about the ticket, this is what you do
               about it. */}
           <div className="rounded-xl bg-surface-subtle border border-line-field p-4 flex flex-col gap-2">
             {/* ABOVE the buttons, not under them: it is the reason both are off, and a
@@ -517,7 +699,7 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
                 hints inside the buttons and in `text-ink` for the same reason: at this
                 moment it is the card's message, and the actions are the footnote.
 
-                The dot is the list row's own marker for an issue somebody is on, so the
+                The dot is the list row's own marker for a ticket somebody is on, so the
                 two surfaces say the same thing in the same vocabulary. */}
             {hasAgent && (
               <div className="flex items-start gap-2">
@@ -533,9 +715,9 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
                 reads as a warning. */}
             <button
               onClick={startAgent}
-              // Both buttons go off once somebody is already on this issue: a second
+              // Both buttons go off once somebody is already on this ticket: a second
               // `/magic:start` on the same ticket is a second worktree and a second branch
-              // for one piece of work, and a third agent reading the same issue over the
+              // for one piece of work, and a third agent reading the same ticket over the
               // shoulder of the one working it is noise on the same ticket.
               disabled={!canStart || hasAgent}
               // `pointer-events-none` while disabled, not a `disabled:` colour per state:
@@ -554,7 +736,7 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
               </span>
             </button>
             {/* Under the primary rather than beside it: they are alternatives on the same
-                issue, and side by side at this column's width both labels would wrap. */}
+                ticket, and side by side at this column's width both labels would wrap. */}
             <button
               onClick={discussAgent}
               disabled={!canStart || hasAgent}
@@ -568,6 +750,9 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
                 </span>
               </span>
             </button>
+            {/* Said in place instead of failing on the click, and BEFORE any call is
+                made: a repository nobody has bound to a folder on this machine has no
+                directory to open a terminal in, and the fix is a setting. */}
             {!canStart && (
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs text-ink">{t('tasks.noLocalRepo')}</span>
@@ -578,49 +763,69 @@ export function TaskDetailPage({ issue, configKey, repoName, repo, hasAgent, pan
           </div>
 
           <div className="rounded-xl bg-surface-subtle border border-line-field overflow-hidden">
-            {/* Assignees only exist once the detail read lands, so they say
-                "none" rather than nothing while it is out. Labels came with the
-                row and are shown straight away. */}
-            <SideBlock title={t('tasks.detail.assignees')}>
-              {detail && detail.assignees.length > 0
-                ? detail.assignees.map((login) => (
-                  <span key={login} className="text-xs text-text-secondary">@{login}</span>
-                ))
-                : <NoneYet t={t} />}
-            </SideBlock>
-            <SideBlock title={t('tasks.detail.labels')}>
-              {issue.labels.length === 0
-                ? <NoneYet t={t} />
-                : issue.labels.map((label) => <StatusPill key={label} status={label} />)}
-            </SideBlock>
-            {/* Both blocks below exist only when GitHub reported the hierarchy —
-                an empty "Sub-issues" on the vast majority of issues would be a
-                row of nothing on every page. */}
-            {issue.subIssues && (
-              <SideBlock title={t('tasks.detail.subIssues')}>
-                <div className="w-full flex flex-col gap-1.5">
-                  <span className="text-xs text-text-secondary">
-                    {t('tasks.detail.subIssuesDone', {
-                      completed: issue.subIssues.completed,
-                      count: issue.subIssues.total,
-                    })}
-                  </span>
-                  {/* The progress GitHub draws there. Rounded to the pixel by the
-                      browser, so the bar can read as full one issue early — the
-                      count above it is the number of record. */}
-                  <div className="h-1.5 w-full rounded-full bg-surface-strong overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-green transition-[width]"
-                      style={{ width: `${(issue.subIssues.completed / issue.subIssues.total) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </SideBlock>
-            )}
-            {issue.parent && (
-              <SideBlock title={t('tasks.detail.parent')}>
-                <ParentLink parent={issue.parent} />
-              </SideBlock>
+            {tracker === 'jira' ? (
+              <>
+                {/* The people and the labels only exist once the detail read lands,
+                    so they say "none" rather than nothing while it is out. */}
+                <SideBlock title={t('tasks.detail.assignees')}>
+                  {jiraDetail?.assignee ? <PersonLine name={jiraDetail.assignee} /> : <NoneYet t={t} />}
+                </SideBlock>
+                <SideBlock title={t('tasks.jira.detail.reporter')}>
+                  {jiraDetail?.reporter ? <PersonLine name={jiraDetail.reporter} /> : <NoneYet t={t} />}
+                </SideBlock>
+                <SideBlock title={t('tasks.detail.labels')}>
+                  {jiraDetail && jiraDetail.labels.length > 0
+                    ? jiraDetail.labels.map((label) => <StatusPill key={label} status={label} />)
+                    : <NoneYet t={t} />}
+                </SideBlock>
+              </>
+            ) : (
+              <>
+                {/* Assignees only exist once the detail read lands, so they say
+                    "none" rather than nothing while it is out. Labels came with the
+                    row and are shown straight away. */}
+                <SideBlock title={t('tasks.detail.assignees')}>
+                  {detail && detail.assignees.length > 0
+                    ? detail.assignees.map((login) => (
+                      <span key={login} className="text-xs text-text-secondary">@{login}</span>
+                    ))
+                    : <NoneYet t={t} />}
+                </SideBlock>
+                <SideBlock title={t('tasks.detail.labels')}>
+                  {props.issue.labels.length === 0
+                    ? <NoneYet t={t} />
+                    : props.issue.labels.map((label) => <StatusPill key={label} status={label} />)}
+                </SideBlock>
+                {/* Both blocks below exist only when GitHub reported the hierarchy —
+                    an empty "Sub-issues" on the vast majority of issues would be a
+                    row of nothing on every page. */}
+                {props.issue.subIssues && (
+                  <SideBlock title={t('tasks.detail.subIssues')}>
+                    <div className="w-full flex flex-col gap-1.5">
+                      <span className="text-xs text-text-secondary">
+                        {t('tasks.detail.subIssuesDone', {
+                          completed: props.issue.subIssues.completed,
+                          count: props.issue.subIssues.total,
+                        })}
+                      </span>
+                      {/* The progress GitHub draws there. Rounded to the pixel by the
+                          browser, so the bar can read as full one issue early — the
+                          count above it is the number of record. */}
+                      <div className="h-1.5 w-full rounded-full bg-surface-strong overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-green transition-[width]"
+                          style={{ width: `${(props.issue.subIssues.completed / props.issue.subIssues.total) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </SideBlock>
+                )}
+                {props.issue.parent && (
+                  <SideBlock title={t('tasks.detail.parent')}>
+                    <ParentLink parent={props.issue.parent} />
+                  </SideBlock>
+                )}
+              </>
             )}
           </div>
         </div>

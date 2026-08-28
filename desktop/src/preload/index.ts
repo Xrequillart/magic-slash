@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { AgentSortMode, PRComment, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot, TaskIssueDetail, InitialPromptMode } from '../types'
+import type { AgentSortMode, PRComment, PRStatusError, TerminalMetadata, PlanSettingsInput, RepositoryConfig, UserProfile, ClaudeAccount, SpendSummary, Config, AuthStatus, GitHubAuthStatus, JiraAuthStatus, JiraConnectResult, JiraDisconnectReason, Org, Member, Invitation, MembershipRole, OrgSharedConfig, OrgActivity, OrgAgent, OrgAgentChange, RealtimeStatus, SkillCounts, SkillHours, UsageStats, TelemetryHealth, ThemeId, CodeThemeMode, LanguageId, SetupStatus, McpServerId, PrerequisiteId, TrayState, TrayAnswerChoice, TrayAnswerResult, FilePreviewResult, MenuCommand, TasksSnapshot, TaskIssueDetail, JiraTaskIssueDetail, JiraTaskStatusError, InitialPromptMode } from '../types'
 
 export type TerminalState = 'idle' | 'working' | 'waiting' | 'completed' | 'error'
 
@@ -649,6 +649,11 @@ const tasksApi = {
   // process owns the parsing, and the renderer has no business naming a host.
   getIssueDetail: (configKey: string, number: number): Promise<TaskIssueDetail | PRStatusError> =>
     ipcRenderer.invoke('tasks:getIssueDetail', { configKey, number }),
+  // The Jira twin, keyed by the issue KEY because that is a Jira ticket's identity.
+  // A separate channel rather than a widened one: the two reads go to different
+  // APIs, need different credentials, and fail into two different named unions.
+  getJiraIssueDetail: (configKey: string, key: string): Promise<JiraTaskIssueDetail | JiraTaskStatusError> =>
+    ipcRenderer.invoke('tasks:getJiraIssueDetail', { configKey, key }),
 }
 
 // Org API (organization membership + invitations + multi-org management)

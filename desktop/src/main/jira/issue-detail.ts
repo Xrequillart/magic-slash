@@ -1,0 +1,339 @@
+import type { JiraTaskIssueDetail } from '../../types'
+import { readStatus } from './sprint-issues'
+
+/**
+ * Everything the ONE-TICKET read decides, with nothing it needs a machine for.
+ *
+ * PURE in `sprint-issues.ts`'s sense and for its reasons: no `electron`, no
+ * filesystem, no ambient `fetch`, and no import of `connect.ts`. So the whole of
+ * what this module actually does — turning Atlassian Document Format into the
+ * markdown the panel renders — is exercised by `issue-detail.test.ts` without a
+ * single mock. The one import from `sprint-issues.ts` is `readStatus`, which is
+ * pure on the same terms: a shared vocabulary for Jira's own values, not a
+ * dependency on the sprint read.
+ *
+ * It answers two questions and no others. WHAT TO ASK: `DETAIL_FIELDS`, the half
+ * of a ticket the sprint read deliberately leaves behind. WHAT CAME BACK:
+ * `mapIssueDetail`, which fills every hole with an empty value rather than letting
+ * `undefined` reach the renderer.
+ *
+ * WHY IT FAILED is NOT here. `classify` and `classifyUnexpected` already live in
+ * `sprint-issues.ts` and the handler imports them from there: the failure ladder is
+ * the same one, and re-exporting it through this module would be indirection with
+ * nothing on the other side of it.
+ */
+
+/**
+ * The fields the detail read asks for, and the reason each is there.
+ *
+ * The complement of `SPRINT_FIELDS`, not a superset of it: `summary` and `created`
+ * came with the row and the panel still holds them, so asking again would only
+ * create a second copy that could disagree.
+ *
+ * `status` IS asked for again, on purpose. It came with the row too, but this read
+ * happens when someone opens a ticket that may have been listed minutes ago — and
+ * a ticket transitioned in the meantime must not go on showing the word the list
+ * captured (the same rule `TaskIssueDetail.state` follows next door).
+ *
+ * Nothing else. No `issuetype`, no story points, no comments: every field named
+ * here is one more the read pays for, and the ticket asked for a description, a
+ * status and the two people on it.
+ */
+export const DETAIL_FIELDS = ['description', 'status', 'assignee', 'reporter', 'labels']
+
+/** The shape of an ADF node, as far as anything here needs to know. */
+interface AdfNode {
+  type?: unknown
+  content?: unknown
+  text?: unknown
+  marks?: unknown
+  attrs?: unknown
+}
+
+function asNode(value: unknown): AdfNode {
+  return value && typeof value === 'object' ? (value as AdfNode) : {}
+}
+
+function children(node: AdfNode): unknown[] {
+  return Array.isArray(node.content) ? node.content : []
+}
+
+function attrs(node: AdfNode): Record<string, unknown> {
+  return node.attrs && typeof node.attrs === 'object' ? (node.attrs as Record<string, unknown>) : {}
+}
+
+function typeOf(node: AdfNode): string {
+  return typeof node.type === 'string' ? node.type : ''
+}
+
+/**
+ * ADF's inline nodes — the closed set the format defines, and the ONLY thing this
+ * list decides.
+ *
+ * It picks a SEPARATOR, never what is kept: a run of children that are all inline
+ * is joined with nothing (`text` + `mention` + `text` is one sentence), anything
+ * else is joined with a blank line. An unknown type therefore reads as a block,
+ * which is the safe direction to be wrong in — a spurious blank line, never two
+ * words run together.
+ */
+const INLINE_TYPES = new Set([
+  'text', 'hardBreak', 'mention', 'emoji', 'date', 'status', 'inlineCard', 'placeholder',
+  'inlineExtension', 'mediaInline',
+])
+
+/**
+ * A run of children, as one string.
+ *
+ * The block/inline decision is made once, here, from what the children ARE rather
+ * than from what their parent is — which is what lets an unknown wrapper (`panel`,
+ * `expand`, a table cell) be walked into without this module knowing it exists.
+ */
+function renderContent(nodes: unknown[]): string {
+  if (nodes.length === 0) return ''
+  const inline = nodes.every((child) => INLINE_TYPES.has(typeOf(asNode(child))))
+  return inline ? renderInlineRun(nodes) : renderBlocks(nodes)
+}
+
+function renderBlocks(nodes: unknown[]): string {
+  return nodes
+    .map((node) => renderBlock(asNode(node)))
+    .filter((block) => block !== '')
+    .join('\n\n')
+}
+
+function renderInlineRun(nodes: unknown[]): string {
+  return nodes.map((node) => renderInline(asNode(node))).join('')
+}
+
+/** The text of a run with every mark stripped — what a code block holds. */
+function plainText(nodes: unknown[]): string {
+  return nodes.map((node) => {
+    const child = asNode(node)
+    if (typeof child.text === 'string') return child.text
+    const nested = children(child)
+    return nested.length > 0 ? plainText(nested) : ''
+  }).join('')
+}
+
+/**
+ * A node type this module has never heard of — the point of the whole converter
+ * (see `adfToMarkdown`).
+ *
+ * It recurses into its content when it has any, and otherwise gives up its `text`
+ * or its `url` — which is the ONLY thing a `mention`, an `inlineCard`, an `emoji`
+ * or a `status` carries. Returning `''` instead would silently delete the person
+ * somebody was assigned to, or the link the whole paragraph was about.
+ *
+ * ONE function, called from both `renderInline`'s default arm and `renderBlock`'s,
+ * because it is one rule: written out twice, a later edit could fix the block half
+ * and leave the inline half dropping content.
+ */
+function renderUnknown(node: AdfNode): string {
+  const nested = children(node)
+  return nested.length > 0 ? renderContent(nested) : leafText(node)
+}
+
+/** One inline node. Its default arm is `renderUnknown`, for that function's reason. */
+function renderInline(node: AdfNode): string {
+  switch (typeOf(node)) {
+    case 'text':
+      return applyMarks(typeof node.text === 'string' ? node.text : '', node.marks)
+    // Two trailing spaces, which is markdown's own line break inside a paragraph:
+    // `remarkGfm` does not turn a bare newline into one.
+    case 'hardBreak':
+      return '  \n'
+    default:
+      return renderUnknown(node)
+  }
+}
+
+/**
+ * A `code` mark, with a delimiter long enough to survive its own contents.
+ *
+ * The same rule `renderCodeBlock` applies to fences, and for the same reason: a
+ * single backtick around text that itself contains one closes the span early, so
+ * `` foo`bar `` would render as the code `foo` followed by stray prose. The
+ * delimiter therefore grows past the longest run inside it. The padding space is
+ * markdown's own escape for a span that starts or ends on a backtick — a reader
+ * strips one leading and one trailing space, so it never reaches the screen.
+ */
+function inlineCode(text: string): string {
+  const longest = Math.max(0, ...[...text.matchAll(/`+/g)].map((run) => run[0].length))
+  const fence = '`'.repeat(longest + 1)
+  const pad = text.startsWith('`') || text.endsWith('`') ? ' ' : ''
+  return `${fence}${pad}${text}${pad}${fence}`
+}
+
+/** Whatever an attribute-only leaf has to say for itself. */
+function leafText(node: AdfNode): string {
+  const { text, url } = attrs(node)
+  if (typeof text === 'string' && text !== '') return text
+  if (typeof url === 'string' && url !== '') return url
+  return ''
+}
+
+/**
+ * A text node's marks, applied innermost first.
+ *
+ * `code` goes on first so the emphasis around it is not swallowed by the backticks,
+ * and `link` goes on last so the whole styled run is what the link wraps — which is
+ * the order the markdown these produce has to nest in.
+ */
+function applyMarks(text: string, marks: unknown): string {
+  if (text === '' || !Array.isArray(marks)) return text
+  const types = new Set(marks.map((mark) => typeOf(asNode(mark))))
+  let out = text
+  if (types.has('code')) out = inlineCode(out)
+  if (types.has('strong')) out = `**${out}**`
+  if (types.has('em')) out = `*${out}*`
+  if (types.has('strike')) out = `~~${out}~~`
+  const link = marks.find((mark) => typeOf(asNode(mark)) === 'link')
+  if (link) {
+    const href = attrs(asNode(link)).href
+    if (typeof href === 'string' && href !== '') out = `[${out}](${href})`
+  }
+  return out
+}
+
+/** One block node. Its default arm is `renderUnknown`, the same one `renderInline` ends on. */
+function renderBlock(node: AdfNode): string {
+  const kids = children(node)
+  switch (typeOf(node)) {
+    case 'doc':
+      return renderBlocks(kids)
+    case 'paragraph':
+      return renderInlineRun(kids)
+    case 'heading': {
+      const level = attrs(node).level
+      const depth = typeof level === 'number' && level >= 1 && level <= 6 ? Math.trunc(level) : 1
+      const body = renderInlineRun(kids)
+      return body === '' ? '' : `${'#'.repeat(depth)} ${body}`
+    }
+    case 'codeBlock':
+      return renderCodeBlock(node)
+    case 'rule':
+      return '---'
+    case 'bulletList':
+      return renderList(kids, null)
+    case 'orderedList': {
+      const order = attrs(node).order
+      return renderList(kids, typeof order === 'number' && Number.isInteger(order) ? order : 1)
+    }
+    case 'listItem':
+      return renderBlocks(kids)
+    default:
+      return renderUnknown(node)
+  }
+}
+
+/**
+ * A fenced block, with a fence long enough to survive its own contents.
+ *
+ * Three backticks are the usual fence and are wrong for the one thing a Jira
+ * description routinely holds: a snippet that itself contains a markdown fence.
+ * The fence therefore grows past the longest run inside it.
+ */
+function renderCodeBlock(node: AdfNode): string {
+  const code = plainText(children(node))
+  const language = attrs(node).language
+  const longest = Math.max(0, ...[...code.matchAll(/`+/g)].map((run) => run[0].length))
+  const fence = '`'.repeat(Math.max(3, longest + 1))
+  return `${fence}${typeof language === 'string' ? language : ''}\n${code}\n${fence}`
+}
+
+/**
+ * A list, with every line of a multi-block item indented under its own marker.
+ *
+ * The continuation indent is what keeps a nested list nested and a second paragraph
+ * inside the item rather than after it; blank lines are left blank rather than
+ * padded, so the markdown carries no trailing whitespace.
+ */
+function renderList(items: unknown[], start: number | null): string {
+  let index = start ?? 0
+  return items
+    .map((item) => {
+      const body = renderBlock(asNode(item))
+      if (body === '') return ''
+      const marker = start === null ? '- ' : `${index++}. `
+      const pad = ' '.repeat(marker.length)
+      return body
+        .split('\n')
+        .map((line, i) => (i === 0 ? `${marker}${line}` : line === '' ? '' : `${pad}${line}`))
+        .join('\n')
+    })
+    .filter((item) => item !== '')
+    .join('\n')
+}
+
+/**
+ * A Jira description as markdown.
+ *
+ * ─── The rule this converter exists to enforce ──────────────────────────────────
+ * A node type it does not know about RECURSES into its content, and gives up its
+ * `attrs.text` or `attrs.url` when it has none. Never `''`.
+ *
+ * That is not defensive coding, it is the difference between a description and a
+ * wrong description. ADF is an open format with node types this app has never seen:
+ * dropping an unknown WRAPPER (`panel`, `expand`, `table`, `blockquote`, a layout
+ * column) discards its entire subtree, so a description written as one panel comes
+ * out blank — and the panel says "no description" about a ticket that has one.
+ * Dropping an unknown LEAF is quieter and worse: `mention`, `inlineCard`,
+ * `blockCard`, `emoji`, `status`, `taskItem` and `mediaSingle` carry no `text`
+ * child at all, so the sentence still renders, with the person, the link or the
+ * decision silently missing from the middle of it.
+ *
+ * A string rather than ADF is passed through untouched: `/rest/api/3` answers with
+ * ADF, but a site behind an older renderer answering wiki markup is content we can
+ * show as-is, and refusing it would be losing it.
+ */
+export function adfToMarkdown(description: unknown): string {
+  if (typeof description === 'string') return description.trim()
+  if (!description || typeof description !== 'object') return ''
+  return renderBlock(asNode(description)).trim()
+}
+
+/** A Jira user object as the one word the panel prints for it. */
+function readPerson(person: unknown): string {
+  if (!person || typeof person !== 'object') return ''
+  const { displayName, accountId } = person as Record<string, unknown>
+  // `displayName` is the field Atlassian's privacy settings never hide, so the
+  // fallback is all but unreachable — and an account id is at least an identity,
+  // where an empty string would make an assigned ticket read as unassigned.
+  if (typeof displayName === 'string' && displayName !== '') return displayName
+  return typeof accountId === 'string' ? accountId : ''
+}
+
+/**
+ * One Jira issue as the detail panel reads it.
+ *
+ * A MAPPER, not a validator, in `mapIssue`'s sense: nothing here can fail, because
+ * the panel was opened on a row that already exists and every field it wants
+ * degrades to an empty one. A ticket with no description shows the empty-body line,
+ * one with no assignee shows "none" — neither is a reason to report a failed read.
+ *
+ * `assignee` and `reporter` are OMITTED rather than set to `''` when Jira reports
+ * nobody: the field is optional in the type, and an empty string would be a person
+ * whose name is blank.
+ */
+export function mapIssueDetail(raw: unknown): JiraTaskIssueDetail {
+  const issue = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const fields = issue.fields && typeof issue.fields === 'object'
+    ? (issue.fields as Record<string, unknown>)
+    : {}
+
+  const status = readStatus(fields.status)
+  const assignee = readPerson(fields.assignee)
+  const reporter = readPerson(fields.reporter)
+  const labels = Array.isArray(fields.labels)
+    ? fields.labels.filter((label): label is string => typeof label === 'string' && label !== '')
+    : []
+
+  return {
+    description: adfToMarkdown(fields.description),
+    ...(assignee ? { assignee } : {}),
+    ...(reporter ? { reporter } : {}),
+    labels,
+    statusName: status.name,
+    statusCategory: status.category,
+  }
+}

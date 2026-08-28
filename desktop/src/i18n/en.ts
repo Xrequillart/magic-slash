@@ -1763,7 +1763,7 @@ export const en = {
   // Opened by clicking a row, it REPLACES the list and shows the half of an issue
   // the list deliberately does not carry: the body, the state, the labels, who it
   // is assigned to.
-  'tasks.detail.loading': 'Reading the issue…',
+  'tasks.detail.loading': 'Reading the ticket…',
   // The way back to the backlog. Says where it goes rather than "Back", which on a
   // page reached from one place is a wasted word.
   'tasks.detail.back': 'To do',
@@ -1794,13 +1794,13 @@ export const en = {
   // Said rather than left blank: an empty row next to a label reads as "not loaded
   // yet", which is a different thing from "there are none".
   'tasks.detail.none': 'none',
-  'tasks.detail.emptyBody': 'This issue has no description.',
+  'tasks.detail.emptyBody': 'This ticket has no description.',
   // The page's one affirmative action: a terminal in the repository's local
   // folder, pre-filled with `/magic:start` and this issue's URL. The second line
   // is that sentence said plainly — the label alone says what the button IS, and
   // people hesitate over a button whose consequence they have to guess.
   'tasks.startAgent': 'Start an agent',
-  'tasks.startAgentHint': 'Opens a terminal in this repository and runs /magic:start on this issue.',
+  'tasks.startAgentHint': 'Opens a terminal in this repository and runs /magic:start on this ticket.',
   // The alternative to starting the work: an agent that reads the issue and talks about it.
   // "Discuss with", not "Start a discussion with" — it sits directly under "Start an agent",
   // and two labels both opening on the same verb read as two ways of doing one thing.
@@ -1814,11 +1814,11 @@ export const en = {
     'Set its folder in Settings → Repositories, and an agent can be started on its issues from here.',
   // The backstop, for the case the check above passed and the launch still failed.
   // Deliberately generic: the underlying error is an untranslated English sentence.
-  'tasks.startFailed': 'This issue could not be handed to an agent.',
+  'tasks.startFailed': 'This ticket could not be handed to an agent.',
   // The row marker: an issue somebody is already working on. A word next to the
   // dot, because a bare coloured dot says nothing on its own.
   'tasks.hasAgent': 'agent',
-  'tasks.hasAgentHint': 'An agent is already working on this issue.',
+  'tasks.hasAgentHint': 'An agent is already working on this ticket.',
 
   // ── Tasks · GitHub is not connected ──────────────────────────────────────
   'tasks.github.title': 'GitHub is not connected.',
@@ -1864,6 +1864,21 @@ export const en = {
   'tasks.jira.noProject': 'No Jira-tracked repository has a project key.',
   'tasks.jira.noProjectHint':
     'Set it in Settings → Repositories → Jira; the active sprint of that project shows up here.',
+
+  // ── Tasks · one Jira ticket's page ───────────────────────────────────────
+  // The Jira half of the issue page. Almost every word on it is already in
+  // `tasks.detail.*` and is reused verbatim — the ones here are the ones a GitHub
+  // issue has no equivalent of, plus the one failure that means something else on
+  // a ticket than it does on a project.
+  // Jira names both people on a ticket and the page shows both. GitHub's panel says
+  // "Assigned to" and nothing else, which is why only this one is new.
+  'tasks.jira.detail.reporter': 'Reported by',
+  // HTTP 404 on the ONE-TICKET read, where `tasks.jira.error.notFound` is about the
+  // project: "check the project key" is the wrong advice for a ticket that was
+  // deleted or moved, and the key is demonstrably right — the list read used it.
+  'tasks.jira.detail.notFound': 'Ticket not found',
+  'tasks.jira.detail.notFoundFix':
+    'It may have been deleted, or moved to another project — reload the list to see what is still in the sprint.',
 
   // ── Tasks · why one Jira project could not be read ───────────────────────
   // Deliberately NOT `tasks.error.*`: every fix there is about the GitHub CLI, and
