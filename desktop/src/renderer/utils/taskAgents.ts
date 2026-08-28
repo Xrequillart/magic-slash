@@ -48,8 +48,15 @@ export const NO_AGENTS: ReadonlySet<string> = new Set<string>()
  * the id would skip the upper-casing below, so an agent stored as `sup2-14` would
  * never fold onto the `SUP2-14` the sprint query returns, and the row would show no
  * agent against work somebody is visibly doing.
+ *
+ * EXPORTED because it is the one answer to "is this a Jira key", and a second copy
+ * is what this constant exists to prevent. `agent-info-sidebar/utils.ts` decides
+ * the same question for the ticket mark and link, and the two drifting apart is not
+ * hypothetical: it happened here, and the symptom — a key this file folds correctly
+ * losing its mark in the sidebar — points at neither file. No `g` flag, so `.test()`
+ * carries no `lastIndex` between the two callers.
  */
-const JIRA_KEY = /^[a-z][a-z0-9_]*-\d+$/i
+export const JIRA_KEY = /^[a-z][a-z0-9_]*-\d+$/i
 
 /**
  * A ticket id in the one form this page compares on.

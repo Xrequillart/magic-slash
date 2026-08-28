@@ -1,5 +1,6 @@
 import type { Translate } from '../../i18n'
 import type { AgentType, TerminalMetadata } from '../../../types'
+import { JIRA_KEY } from '../../utils/taskAgents'
 
 // Format a timestamp (ms) to compact relative time (now, 5min, 2h, 3d, 1w, 2mo, 1y).
 // The translator is a parameter rather than a hook call: this stays a pure
@@ -102,11 +103,18 @@ export function contextColors(pct: number): { bar: string; text: string } {
  *
  * Returns null for anything else: a hand-typed reference is still a valid ticket
  * ID, and a wrong mark next to it would be worse than none.
+ *
+ * The Jira shape comes from `JIRA_KEY`, shared with `normalizeTicketId`, rather than
+ * spelled out again here. The two must agree on what a key is: that function folds
+ * `sup2-14` onto `SUP2-14` so the Tasks card can mark it, and a narrower rule here
+ * would drop the very same id back to `null` — no mark, no link, and nothing in
+ * either file to suggest why. Sharing the constant is what makes that impossible
+ * rather than merely unlikely.
  */
 export function detectTicketProvider(ticketId: string | undefined): 'github' | 'jira' | null {
   if (!ticketId) return null
   if (/^#?\d+$/.test(ticketId)) return 'github'
-  if (/^[A-Z]+-\d+$/.test(ticketId)) return 'jira'
+  if (JIRA_KEY.test(ticketId)) return 'jira'
   return null
 }
 
