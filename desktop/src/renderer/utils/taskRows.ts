@@ -1,4 +1,4 @@
-import type { JiraTaskIssue, JiraTaskRepoGroup, RepositoryConfig, TaskRepoGroup } from '../../types'
+import type { JiraPriorityLevel, JiraTaskIssue, JiraTaskRepoGroup, RepositoryConfig, TaskRepoGroup } from '../../types'
 import { getProjectColorMap } from './projectColors'
 import { NO_AGENTS, normalizeTicketId } from './taskAgents'
 
@@ -148,20 +148,46 @@ export function buildTaskRows(
 }
 
 /**
- * What the two controls at the top of the page are set to.
+ * How the tickets inside each card are ordered.
  *
- * One object rather than two arguments, so a caller cannot pass them the wrong way
- * round — they are both strings, and the compiler would have nothing to say about it.
+ * `recent` is what the page has always done and is still the default: a backlog is
+ * read from the top, and the newest ticket is the one most likely to be news.
+ * `priority` is the other question asked of a sprint — what should I pick up — and
+ * it is a SORT rather than a filter because the answer is the whole list in a
+ * different order, not a subset of it.
+ *
+ * Only two, deliberately. Every additional key is a menu entry that has to earn the
+ * width it takes from the search box beside it.
+ */
+export type TaskSort = 'recent' | 'priority'
+
+/**
+ * What the controls at the top of the page are set to.
+ *
+ * One object rather than an argument each, so a caller cannot pass them the wrong way
+ * round — they are all strings, and the compiler would have nothing to say about it.
  */
 export interface TaskFilter {
   /** The repository to keep, by config key. `''` is every repository. */
   configKey: string
   /** What was typed into the search box. `''` is not searching. */
   query: string
+  /** The Jira epic to keep, by epic key. `''` is every epic AND every ticket without one. */
+  epicKey: string
+  /**
+   * The order the tickets inside each card are in.
+   *
+   * Carried in the same object as the three narrowing controls even though
+   * `filterTaskRows` has no use for it, because it is one thing the reader has set on
+   * one bar: splitting it out would give the page two pieces of state to keep in step
+   * and `TaskFilters` two props that are always passed together. `sortTaskRows` is
+   * what reads it.
+   */
+  sort: TaskSort
 }
 
 /** Neither control touched — the shape the page starts in, and a stable identity. */
-export const NO_FILTER: TaskFilter = { configKey: '', query: '' }
+export const NO_FILTER: TaskFilter = { configKey: '', query: '', epicKey: '', sort: 'recent' }
 
 /**
  * A string in the one form the search compares on: case-folded and stripped of
@@ -223,15 +249,22 @@ function matches(issue: TaskRow['issues'][number], query: string): boolean {
  * repository it could not read at all. The card stays and goes on saying it could
  * not be read, which is the only true thing available. Every other row with nothing
  * left in it goes.
+ *
+ * THE EPIC FILTER IS JIRA-ONLY AND SAYS SO BY EMPTYING THE GITHUB CARDS. An epic is
+ * a Jira relationship with no GitHub counterpart — an issue's `parent` is another
+ * issue, not a container — so a GitHub card has nothing that can match, and the same
+ * "no issues left" rule that drops an unmatched Jira card drops it. That is the
+ * honest answer rather than a special case: picking an epic is asking to see one
+ * epic's work, and none of it is on GitHub.
  */
 export function filterTaskRows(rows: TaskRow[], filter: TaskFilter): TaskRow[] {
   const query = fold(filter.query.trim())
-  if (!filter.configKey && !query) return rows
+  if (!filter.configKey && !query && !filter.epicKey) return rows
 
   const kept: TaskRow[] = []
   for (const row of rows) {
     if (filter.configKey && row.configKey !== filter.configKey) continue
-    if (!query) {
+    if (!query && !filter.epicKey) {
       kept.push(row)
       continue
     }
@@ -245,14 +278,80 @@ export function filterTaskRows(rows: TaskRow[], filter: TaskFilter): TaskRow[] {
     // has to happen INSIDE each arm: hoisting the filtered array out widens it to
     // `TaskIssue[] | JiraTaskIssue[]`, which fits neither member of the row union.
     if (row.tracker === 'jira') {
-      const issues = row.issues.filter((issue) => matches(issue, query))
+      const issues = row.issues.filter(
+        (issue) => (!query || matches(issue, query)) && (!filter.epicKey || issue.epic?.key === filter.epicKey),
+      )
       if (issues.length > 0) kept.push({ ...row, issues })
     } else {
+      // No `epic` to compare against on this half, so an epic filter empties the card
+      // outright — see the note above. Written as an early `continue` rather than a
+      // predicate that is always false, which would read as an oversight.
+      if (filter.epicKey) continue
       const issues = row.issues.filter((issue) => matches(issue, query))
       if (issues.length > 0) kept.push({ ...row, issues })
     }
   }
   return kept
+}
+
+/**
+ * Jira's priority scale as a sort key: 0 is the most urgent thing on the page.
+ *
+ * `unknown` sits below the five named steps rather than in the middle of them. It is
+ * the tier a site's own scheme lands in when this app cannot place it (see
+ * `JiraPriorityLevel`), and sorting an unplaceable priority above a `low` would be
+ * the page asserting an order it has just admitted it does not know.
+ */
+const PRIORITY_RANK: Record<JiraPriorityLevel, number> = {
+  highest: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  lowest: 4,
+  unknown: 5,
+}
+
+/**
+ * Where a ticket sits in that order, with NO PRIORITY AT ALL last.
+ *
+ * 6 — one past `unknown` — and that is the point: a project with the priority field
+ * switched off has tickets with no priority rather than tickets that are unimportant,
+ * and the only honest place for them is after everything that does have one, where
+ * their own relative order is still the date order they arrived in.
+ */
+function priorityRank(issue: JiraTaskIssue): number {
+  return issue.priority ? PRIORITY_RANK[issue.priority.level] : 6
+}
+
+/**
+ * The rows again, with each card's tickets in the order the sort control asks for.
+ *
+ * A SEPARATE PASS from `filterTaskRows`, and applied after it, because the two answer
+ * different questions — which tickets, and in what order — and folding them together
+ * would put a comparator inside a loop that already short-circuits on an untouched
+ * filter. Kept out of the page for `filterTaskRows`' reason: the suite runs in Node
+ * with no jsdom, so a comparator left in a `useMemo` is a comparator no test reaches.
+ *
+ * `recent` returns the rows UNTOUCHED rather than re-sorting them into the order they
+ * are already in: `buildTaskRows` sorted every card by date on the way in, so this is
+ * both the identity and the cheap path.
+ *
+ * A GITHUB CARD IS NEVER REORDERED. A GitHub issue has no priority — labels are the
+ * nearest thing and they are a set, not a scale — so ranking one would mean inventing
+ * a scheme out of label names. Its card keeps its date order, which is what the
+ * control's other setting means anyway, and a mixed page therefore changes only where
+ * there is something to change.
+ */
+export function sortTaskRows(rows: TaskRow[], sort: TaskSort): TaskRow[] {
+  if (sort === 'recent') return rows
+  return rows.map((row) => {
+    if (row.tracker !== 'jira' || row.issues.length < 2) return row
+    // The date order is the TIEBREAK, not a second sort: the array arrives sorted
+    // newest-first, and `Array.prototype.sort` is stable in every engine this ships
+    // on — so two tickets of one priority stay in the order the card already had.
+    const issues = [...row.issues].sort((a, b) => priorityRank(a) - priorityRank(b))
+    return { ...row, issues }
+  })
 }
 
 /**
@@ -274,6 +373,39 @@ export function taskFilterRepos(rows: TaskRow[]): { configKey: string; name: str
     repos.push({ configKey: row.configKey, name: row.name, color: row.color })
   }
   return repos
+}
+
+/**
+ * The epics the control can offer, in the order the cards are in.
+ *
+ * `taskFilterRepos`' twin one relationship down, and built from the ROWS for its
+ * reason: the control filters what is on screen, so an epic that no visible ticket
+ * hangs off is an entry that can only ever empty the page. That is also what keeps
+ * the list short — a project has hundreds of epics and a sprint touches four.
+ *
+ * Deduplicated by KEY and not by title. Two epics can legitimately share a summary
+ * ("Intercom" appears twice in a long-lived project, one per year), and folding them
+ * onto one entry would silently filter to whichever was seen first.
+ *
+ * The FIRST spelling of an epic wins where two rows disagree — the colour arrives
+ * from a per-card read (see `colourEpics`), so a card whose colour lookup failed
+ * would otherwise be able to strip the dot off an epic another card coloured in.
+ */
+export function taskFilterEpics(rows: TaskRow[]): { key: string; title: string; color?: string }[] {
+  const seen = new Set<string>()
+  const epics: { key: string; title: string; color?: string }[] = []
+  for (const row of rows) {
+    if (row.tracker !== 'jira') continue
+    for (const issue of row.issues) {
+      const epic = issue.epic
+      if (!epic || seen.has(epic.key)) continue
+      seen.add(epic.key)
+      epics.push({ key: epic.key, title: epic.title, ...(epic.color ? { color: epic.color } : {}) })
+    }
+  }
+  // By title rather than by key: the control is read as a list of names, and `PER-42`
+  // sorting before `PER-4269` is an order about ids that nobody is looking at.
+  return epics.sort((a, b) => a.title.localeCompare(b.title))
 }
 
 /** How many tickets the page is showing, across every repository that answered. */

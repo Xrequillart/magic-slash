@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type {
   GitHubTaskRepoGroup,
+  JiraPriorityLevel,
   JiraTaskIssue,
   JiraTaskRepoGroup,
   RepositoryConfig,
@@ -15,6 +16,8 @@ import {
   NO_FILTER,
   rowKey,
   sortIssues,
+  sortTaskRows,
+  taskFilterEpics,
   taskFilterRepos,
   type TaskRow,
 } from './taskRows'
@@ -438,44 +441,44 @@ describe('filterTaskRows', () => {
       group({ configKey: 'magic-slash', name: 'magic-slash', issues: [issue({ number: 9 })] }),
     ])
 
-    const kept = filterTaskRows(rows, { configKey: 'poppins-pex', query: '' })
+    const kept = filterTaskRows(rows, { ...NO_FILTER, configKey: 'poppins-pex', query: '' })
 
     expect(kept).toHaveLength(2)
     expect(kept.map((row) => row.tracker).sort()).toEqual(['github', 'jira'])
   })
 
   it('finds a GitHub issue by its number, with or without the hash', () => {
-    expect(shown(filterTaskRows(backlog(), { configKey: '', query: '234' }))).toContain('#234')
-    expect(shown(filterTaskRows(backlog(), { configKey: '', query: '#234' }))).toContain('#234')
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, configKey: '', query: '234' }))).toContain('#234')
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, configKey: '', query: '#234' }))).toContain('#234')
   })
 
   it('finds a Jira ticket by its key, in any casing and by the number alone', () => {
-    expect(shown(filterTaskRows(backlog(), { configKey: '', query: 'per-77' }))).toEqual(['PER-77'])
-    expect(shown(filterTaskRows(backlog(), { configKey: '', query: 'PER-77' }))).toEqual(['PER-77'])
-    expect(shown(filterTaskRows(backlog(), { configKey: '', query: '77' }))).toEqual(['PER-77'])
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, configKey: '', query: 'per-77' }))).toEqual(['PER-77'])
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, configKey: '', query: 'PER-77' }))).toEqual(['PER-77'])
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, configKey: '', query: '77' }))).toEqual(['PER-77'])
   })
 
   it('searches the title too', () => {
-    expect(shown(filterTaskRows(backlog(), { configKey: '', query: 'burndown' }))).toEqual(['PER-1234'])
-    expect(shown(filterTaskRows(backlog(), { configKey: '', query: 'FIX THE' }))).toEqual(['#234'])
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, configKey: '', query: 'burndown' }))).toEqual(['PER-1234'])
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, configKey: '', query: 'FIX THE' }))).toEqual(['#234'])
   })
 
   // Titles here are written in French as often as in English, and a box that will
   // not find `création` when you type `creation` is a box people stop using.
   it('ignores accents in both directions', () => {
-    expect(shown(filterTaskRows(backlog(), { configKey: '', query: 'creation' }))).toEqual(['#1023'])
-    expect(shown(filterTaskRows(backlog(), { configKey: '', query: 'création' }))).toEqual(['#1023'])
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, configKey: '', query: 'creation' }))).toEqual(['#1023'])
+    expect(shown(filterTaskRows(backlog(), { ...NO_FILTER, configKey: '', query: 'création' }))).toEqual(['#1023'])
   })
 
   it('drops a card with nothing left on it', () => {
-    const kept = filterTaskRows(backlog(), { configKey: '', query: 'burndown' })
+    const kept = filterTaskRows(backlog(), { ...NO_FILTER, configKey: '', query: 'burndown' })
 
     expect(kept).toHaveLength(1)
     expect(kept[0].configKey).toBe('jira-only')
   })
 
   it('combines the two controls', () => {
-    const kept = filterTaskRows(backlog(), { configKey: 'poppins-pex', query: 'per' })
+    const kept = filterTaskRows(backlog(), { ...NO_FILTER, configKey: 'poppins-pex', query: 'per' })
 
     // `per` matches both Jira keys — and neither is in the repository asked for.
     expect(kept).toEqual([])
@@ -489,7 +492,7 @@ describe('filterTaskRows', () => {
       group({ configKey: 'magic-slash', name: 'magic-slash', issues: [], error: { error: 'no-token', message: 'x' } }),
     ])
 
-    const kept = filterTaskRows(rows, { configKey: '', query: 'nothing matches this' })
+    const kept = filterTaskRows(rows, { ...NO_FILTER, configKey: '', query: 'nothing matches this' })
 
     expect(kept.map((row) => row.configKey)).toEqual(['magic-slash'])
     expect(kept[0].error).toBeDefined()
@@ -502,12 +505,12 @@ describe('filterTaskRows', () => {
       group({ configKey: 'magic-slash', name: 'magic-slash', issues: [], error: { error: 'no-token', message: 'x' } }),
     ])
 
-    expect(filterTaskRows(rows, { configKey: 'poppins-pex', query: 'x' })).toEqual([])
+    expect(filterTaskRows(rows, { ...NO_FILTER, configKey: 'poppins-pex', query: 'x' })).toEqual([])
   })
 
   it('treats a query of nothing but spaces as no query', () => {
     const rows = backlog()
-    expect(filterTaskRows(rows, { configKey: '', query: '   ' })).toBe(rows)
+    expect(filterTaskRows(rows, { ...NO_FILTER, configKey: '', query: '   ' })).toBe(rows)
   })
 })
 
@@ -528,5 +531,214 @@ describe('taskFilterRepos', () => {
     const rows = build([group({ configKey: 'my-side-project', name: 'my-side-project', issues: [issue()] })])
 
     expect(taskFilterRepos(rows)[0].color).toBe(rows[0].color)
+  })
+})
+
+/** A ticket in an epic, since the two new suites below are entirely about them. */
+function epicIssue(key: string, epicKey: string, title: string, color?: string): JiraTaskIssue {
+  return jiraIssue({
+    key,
+    epic: { key: epicKey, title, url: `https://acme.atlassian.net/browse/${epicKey}`, ...(color ? { color } : {}) },
+  })
+}
+
+describe('filterTaskRows, by epic', () => {
+  it('keeps only the tickets of the epic that was picked', () => {
+    const rows = build([
+      jiraGroup({
+        configKey: 'jira-only',
+        name: 'jira-only',
+        issues: [
+          epicIssue('PER-1', 'PER-100', 'Remboursement'),
+          epicIssue('PER-2', 'PER-200', 'Pilotes US'),
+          epicIssue('PER-3', 'PER-100', 'Remboursement'),
+          // A top-level ticket: it hangs off no epic, so no epic filter can keep it.
+          jiraIssue({ key: 'PER-4' }),
+        ],
+      }),
+    ])
+
+    const kept = filterTaskRows(rows, { ...NO_FILTER, epicKey: 'PER-100' })
+
+    expect(kept).toHaveLength(1)
+    expect(kept[0].issues.map((i) => 'key' in i && i.key)).toEqual(['PER-1', 'PER-3'])
+  })
+
+  it('empties a GitHub card outright, because an issue cannot be in a Jira epic', () => {
+    // Not a special case: the card has nothing that can match, and the same "no
+    // issues left" rule that drops an unmatched Jira card drops it.
+    const rows = build([
+      group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue()] }),
+      jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [epicIssue('PER-1', 'PER-100', 'Remb')] }),
+    ])
+
+    const kept = filterTaskRows(rows, { ...NO_FILTER, epicKey: 'PER-100' })
+
+    expect(kept.map((row) => row.tracker)).toEqual(['jira'])
+  })
+
+  it('narrows on the epic AND the search together', () => {
+    const rows = build([
+      jiraGroup({
+        configKey: 'jira-only',
+        name: 'jira-only',
+        issues: [
+          epicIssue('PER-1', 'PER-100', 'Remb'),
+          { ...epicIssue('PER-2', 'PER-100', 'Remb'), title: 'Export the ledger' },
+        ],
+      }),
+    ])
+
+    const kept = filterTaskRows(rows, { ...NO_FILTER, epicKey: 'PER-100', query: 'ledger' })
+
+    expect(kept[0].issues.map((i) => 'key' in i && i.key)).toEqual(['PER-2'])
+  })
+
+  it('never filters a failed row away, epic or no epic', () => {
+    // Its read did not come back, so dropping it would be the page asserting there
+    // is no such epic in a repository it could not read at all.
+    const rows = build([
+      jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [], error: { error: 'offline', message: 'x' } }),
+    ])
+
+    expect(filterTaskRows(rows, { ...NO_FILTER, epicKey: 'PER-100' })).toHaveLength(1)
+  })
+})
+
+describe('taskFilterEpics', () => {
+  it('offers each epic once, by title', () => {
+    const rows = build([
+      jiraGroup({
+        configKey: 'jira-only',
+        name: 'jira-only',
+        issues: [
+          epicIssue('PER-1', 'PER-200', 'Pilotes US', '#36B37E'),
+          epicIssue('PER-2', 'PER-100', 'Remboursement', '#FFC400'),
+          epicIssue('PER-3', 'PER-200', 'Pilotes US', '#36B37E'),
+          jiraIssue({ key: 'PER-4' }),
+        ],
+      }),
+    ])
+
+    expect(taskFilterEpics(rows)).toEqual([
+      { key: 'PER-200', title: 'Pilotes US', color: '#36B37E' },
+      { key: 'PER-100', title: 'Remboursement', color: '#FFC400' },
+    ])
+  })
+
+  it('tells two epics that share a title apart by their key', () => {
+    // "Intercom" appears twice in a long-lived project, one per year. Folding them
+    // onto one entry would silently filter to whichever was seen first.
+    const rows = build([
+      jiraGroup({
+        configKey: 'jira-only',
+        name: 'jira-only',
+        issues: [epicIssue('PER-1', 'PER-10', 'Intercom'), epicIssue('PER-2', 'PER-20', 'Intercom')],
+      }),
+    ])
+
+    expect(taskFilterEpics(rows).map((epic) => epic.key)).toEqual(['PER-10', 'PER-20'])
+  })
+
+  it('carries no colour for an epic whose site records none', () => {
+    const rows = build([
+      jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [epicIssue('PER-1', 'PER-10', 'Data')] }),
+    ])
+
+    expect(taskFilterEpics(rows)[0]).not.toHaveProperty('color')
+  })
+
+  it('offers nothing at all when no visible ticket is in an epic', () => {
+    // What hides the control: an option list that can only ever empty the page.
+    const rows = build([
+      group({ configKey: 'poppins-pex', name: 'poppins-pex', issues: [issue()] }),
+      jiraGroup({ configKey: 'jira-only', name: 'jira-only', issues: [jiraIssue()] }),
+    ])
+
+    expect(taskFilterEpics(rows)).toEqual([])
+  })
+})
+
+describe('sortTaskRows', () => {
+  function priced(key: string, level: JiraPriorityLevel | null, createdAt: string): JiraTaskIssue {
+    return jiraIssue({
+      key,
+      createdAt,
+      ...(level ? { priority: { name: level, level } } : {}),
+    })
+  }
+
+  it('returns the rows untouched on the default order', () => {
+    // Identity, not merely equality: the page memoises on this, and `buildTaskRows`
+    // already sorted every card by date on the way in.
+    const rows = build([jiraGroup({ issues: [jiraIssue(), jiraIssue({ key: 'PROJ-2' })] })])
+    expect(sortTaskRows(rows, 'recent')).toBe(rows)
+  })
+
+  it('puts the most urgent ticket first', () => {
+    const rows = build([
+      jiraGroup({
+        issues: [
+          priced('PROJ-1', 'low', '2026-08-05T10:00:00Z'),
+          priced('PROJ-2', 'highest', '2026-08-04T10:00:00Z'),
+          priced('PROJ-3', 'medium', '2026-08-03T10:00:00Z'),
+        ],
+      }),
+    ])
+
+    const sorted = sortTaskRows(rows, 'priority')
+
+    expect(sorted[0].issues.map((i) => 'key' in i && i.key)).toEqual(['PROJ-2', 'PROJ-3', 'PROJ-1'])
+  })
+
+  it('sinks a ticket with no priority below every ticket that has one', () => {
+    // A project with the field switched off has tickets with no priority, not
+    // tickets that are unimportant — and `unknown` is below `lowest`, not in the
+    // middle of the scale.
+    const rows = build([
+      jiraGroup({
+        issues: [
+          priced('PROJ-1', null, '2026-08-05T10:00:00Z'),
+          priced('PROJ-2', 'unknown', '2026-08-04T10:00:00Z'),
+          priced('PROJ-3', 'lowest', '2026-08-03T10:00:00Z'),
+        ],
+      }),
+    ])
+
+    expect(sortTaskRows(rows, 'priority')[0].issues.map((i) => 'key' in i && i.key))
+      .toEqual(['PROJ-3', 'PROJ-2', 'PROJ-1'])
+  })
+
+  it('keeps the date order inside one priority', () => {
+    // The sort is stable, so two tickets of one priority stay in the order the card
+    // already had — which `buildTaskRows` made newest-first.
+    const rows = build([
+      jiraGroup({
+        issues: [
+          priced('PROJ-OLD', 'high', '2026-08-01T10:00:00Z'),
+          priced('PROJ-NEW', 'high', '2026-08-09T10:00:00Z'),
+        ],
+      }),
+    ])
+
+    expect(sortTaskRows(rows, 'priority')[0].issues.map((i) => 'key' in i && i.key))
+      .toEqual(['PROJ-NEW', 'PROJ-OLD'])
+  })
+
+  it('leaves a GitHub card in its date order', () => {
+    // A GitHub issue has no priority — labels are a set, not a scale — so ranking
+    // one would mean inventing a scheme out of label names.
+    const rows = build([
+      group({
+        configKey: 'poppins-pex',
+        name: 'poppins-pex',
+        issues: [issue({ number: 1, createdAt: '2026-08-01T10:00:00Z' }), issue({ number: 2, createdAt: '2026-08-09T10:00:00Z' })],
+      }),
+    ])
+
+    const sorted = sortTaskRows(rows, 'priority')
+
+    expect(sorted[0]).toBe(rows[0])
+    expect(sorted[0].issues.map((i) => 'number' in i && i.number)).toEqual([2, 1])
   })
 })

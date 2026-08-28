@@ -10,6 +10,8 @@ import {
   countTotalOpen,
   filterTaskRows,
   NO_FILTER,
+  sortTaskRows,
+  taskFilterEpics,
   rowKey,
   taskFilterRepos,
 } from '../../utils/taskRows'
@@ -101,7 +103,7 @@ export function TasksPage() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   /**
-   * What the two controls at the top are set to. See `TaskFilters`.
+   * What the controls at the top are set to. See `TaskFilters`.
    *
    * Page state and not config: a filter is what you are doing right now, not how you
    * like the page — and the modal unmounts this page when it closes, so a backlog
@@ -178,8 +180,18 @@ export function TasksPage() {
 
   const filterRepos = useMemo(() => taskFilterRepos(allRows), [allRows])
 
+  /**
+   * The epics the picker can offer, off the UNFILTERED rows for `filterRepos`' reason
+   * — an option list that narrows as you use it takes away the entry you meant to
+   * switch to. An empty array is what hides the control entirely; see `TaskFilters`.
+   */
+  const filterEpics = useMemo(() => taskFilterEpics(allRows), [allRows])
+
   const { rows, total, totalOpen } = useMemo(() => {
-    const shown = filterTaskRows(allRows, filter)
+    // Sorted AFTER filtering, which is both the cheaper order and the only correct
+    // one for the counts below: they are taken off what is on screen, and a sort that
+    // ran first would reorder rows the filter is about to drop.
+    const shown = sortTaskRows(filterTaskRows(allRows, filter), filter.sort)
     const count = countOpenIssues(shown)
     return {
       rows: shown,
@@ -435,7 +447,7 @@ export function TasksPage() {
                 page are two things to read before finding out there is nothing
                 there — and the picker would have no repositories to offer. */}
             {allRows.length > 0 && (
-              <TaskFilters value={filter} repos={filterRepos} onChange={setFilter} />
+              <TaskFilters value={filter} repos={filterRepos} epics={filterEpics} onChange={setFilter} />
             )}
 
             {/* The filters matched nothing. A DIFFERENT state from the four below,

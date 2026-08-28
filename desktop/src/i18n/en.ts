@@ -1766,6 +1766,15 @@ export const en = {
   // The repository picker's neutral entry, and the state it opens on. Named rather
   // than left blank: a picker showing nothing reads as one that failed to load.
   'tasks.filter.allRepos': 'All repositories',
+  // The two orders the sort picker offers, and its own default. "Newest" is what the
+  // page has always done; "Priority" is the other question asked of a sprint. Only
+  // the Jira half can be reordered — a GitHub issue has no priority — so a mixed page
+  // changes only where there is something to change.
+  'tasks.filter.sortRecent': 'Newest',
+  'tasks.filter.sortPriority': 'Priority',
+  // The epic picker's cleared state. Shown only when some visible ticket actually
+  // hangs off an epic, so a GitHub-only page never sees this control at all.
+  'tasks.filter.allEpics': 'All epics',
   'tasks.filter.clearSearch': 'Clear the search',
   // The filters matched nothing. Deliberately NOT one of the four states above:
   // those send the reader to a settings field, which would be the page blaming its

@@ -1627,6 +1627,9 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Tâches · le panneau de détail ────────────────────────────────────────
   'tasks.filter.searchPlaceholder': 'Rechercher par ID de ticket ou titre…',
   'tasks.filter.allRepos': 'Tous les dépôts',
+  'tasks.filter.sortRecent': 'Plus récents',
+  'tasks.filter.sortPriority': 'Priorité',
+  'tasks.filter.allEpics': 'Tous les epics',
   'tasks.filter.clearSearch': 'Effacer la recherche',
   'tasks.filter.noMatch': 'Aucun ticket ne correspond à ces filtres.',
   'tasks.filter.clearAll': 'Effacer les filtres',
