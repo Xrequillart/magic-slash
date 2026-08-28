@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.86.6] - 2026-08-28
+
+### Added
+
+- **Desktop**: Two repositories pointed at the same tracker target — one Jira project, or one GitHub repository — share a single block on the Tasks page, whose header names both, instead of drawing the same backlog twice. Starting an agent on such a ticket picks no repository: `/magic:start` resolves the scope itself
+- **Desktop**: The onboarding checklist links to Atlassian
+
 ## [0.86.5] - 2026-08-28
 
 ### Added
@@ -2576,6 +2583,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.86.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.6
 [0.86.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.5
 [0.86.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.4
 [0.86.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.3
