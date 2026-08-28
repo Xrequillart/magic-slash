@@ -374,12 +374,17 @@ function CommentEntry({ comment, now, t }: { comment: PRComment; now: number; t:
     ? `${comment.path.split('/').pop()}${typeof comment.line === 'number' ? `:${comment.line}` : ''}`
     : undefined
 
+  /**
+   * A settled thread is one line, not a card: the body is what is left to ACT on,
+   * and once the thread is resolved there is nothing left. What survives is the
+   * question a reader still asks of a closed comment — who, where, when — plus the
+   * green check that says it is closed. The text stays one click away on GitHub,
+   * and dropping it here stops resolved threads burying the live ones they sit
+   * beside. That is also why the row keeps its full opacity: it is already the
+   * quiet one by being a single line, so the check can actually read as green.
+   */
   return (
-    <li
-      className={`rounded-md border border-border/30 bg-surface px-2 py-1.5 space-y-1 ${
-        comment.resolved ? 'opacity-50' : ''
-      }`}
-    >
+    <li className={`rounded-md border border-border/30 bg-surface px-2 py-1.5 ${comment.resolved ? '' : 'space-y-1'}`}>
       <div className="flex items-center gap-1.5 text-xs min-w-0">
         <span className="font-medium text-ink/80 truncate">{comment.author}</span>
         {badge && (
@@ -390,65 +395,74 @@ function CommentEntry({ comment, now, t }: { comment: PRComment; now: number; t:
         {where && (
           <span className="text-text-secondary/60 font-mono truncate" title={comment.path}>{where}</span>
         )}
+        {/* `ml-auto` here rather than on the date, so the pair travels together to
+            the right edge and the label reads as attached to the timestamp. */}
         {comment.resolved && (
-          <span className="text-text-secondary/60 flex-shrink-0">{t('agentInfo.pr.commentResolved')}</span>
+          <span className="ml-auto flex items-center gap-1 flex-shrink-0 text-text-secondary/60">
+            <CheckCircle2 className="w-3 h-3 text-green" />
+            {t('agentInfo.pr.commentResolved')}
+          </span>
         )}
         {Number.isFinite(createdAt) && (
-          <span className="text-text-secondary/40 ml-auto flex-shrink-0">{formatTimestamp(createdAt, now, t)}</span>
+          <span className={`text-text-secondary/40 flex-shrink-0 ${comment.resolved ? '' : 'ml-auto'}`}>{formatTimestamp(createdAt, now, t)}</span>
         )}
       </div>
-      {/* `whitespace-pre-wrap` so a bullet list stays a list. `break-words` because a
-          stack trace or a URL in a 260 px column would otherwise push the card wide. */}
-      <div
-        ref={bodyRef}
-        className={`text-xs leading-relaxed text-text-secondary/80 whitespace-pre-wrap break-words ${
-          expanded ? '' : `${BODY_COLLAPSED} overflow-hidden`
-        }`}
-      >
-        {comment.body}
-      </div>
-      {/* Two flexible gutters around the toggle, so it is centred on the CARD rather
-          than on what is left of the row — the permalink on the right would otherwise
-          push it off-centre by its own width. The left gutter stays empty on purpose. */}
-      <div className="flex items-center gap-1">
-        <span className="flex-1" />
-        {(overflows || expanded) && (
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-icon bg-surface hover:text-ink hover:bg-surface-strong transition-colors"
-          >
-            <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-            {t(expanded ? 'agentInfo.pr.commentLess' : 'agentInfo.pr.commentMore')}
-          </button>
-        )}
-        {/* The copy sits immediately left of the GitHub button, both in the shared
-            pill above, so the pair reads as one control with two halves rather than
-            as two buttons that happen to be near. The copy is square — a label there
-            would take its width from the one element that has none to give. */}
-        <span className="flex-1 flex justify-end items-center gap-1">
-          {comment.url && (
-            <>
-              <CopyLinkButton
-                url={comment.url}
-                copyLabel={t('agentInfo.pr.commentCopyLink')}
-                copiedLabel={t('agentInfo.pr.commentCopyLinkDone')}
-                className={`${COMMENT_ACTION} w-5`}
-                // `w-3`, matching the GitHub glyph beside it rather than the
-                // component's `w-3.5` default, which is sized for the Tasks page.
-                iconClassName="w-3 h-3"
-              />
-              <button
-                onClick={() => window.electronAPI.shell.openExternal(comment.url)}
-                title={t('agentInfo.pr.commentOpen')}
-                className={`${COMMENT_ACTION} gap-1 px-1.5`}
-              >
-                <GitHubIcon className="w-3 h-3" />
-                {t('agentInfo.openOnGitHub')}
-              </button>
-            </>
+      {!comment.resolved && (
+        <>
+        {/* `whitespace-pre-wrap` so a bullet list stays a list. `break-words` because a
+            stack trace or a URL in a 260 px column would otherwise push the card wide. */}
+        <div
+          ref={bodyRef}
+          className={`text-xs leading-relaxed text-text-secondary/80 whitespace-pre-wrap break-words ${
+            expanded ? '' : `${BODY_COLLAPSED} overflow-hidden`
+          }`}
+        >
+          {comment.body}
+        </div>
+        {/* Two flexible gutters around the toggle, so it is centred on the CARD rather
+            than on what is left of the row — the permalink on the right would otherwise
+            push it off-centre by its own width. The left gutter stays empty on purpose. */}
+        <div className="flex items-center gap-1">
+          <span className="flex-1" />
+          {(overflows || expanded) && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-icon bg-surface hover:text-ink hover:bg-surface-strong transition-colors"
+            >
+              <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+              {t(expanded ? 'agentInfo.pr.commentLess' : 'agentInfo.pr.commentMore')}
+            </button>
           )}
-        </span>
-      </div>
+          {/* The copy sits immediately left of the GitHub button, both in the shared
+              pill above, so the pair reads as one control with two halves rather than
+              as two buttons that happen to be near. The copy is square — a label there
+              would take its width from the one element that has none to give. */}
+          <span className="flex-1 flex justify-end items-center gap-1">
+            {comment.url && (
+              <>
+                <CopyLinkButton
+                  url={comment.url}
+                  copyLabel={t('agentInfo.pr.commentCopyLink')}
+                  copiedLabel={t('agentInfo.pr.commentCopyLinkDone')}
+                  className={`${COMMENT_ACTION} w-5`}
+                  // `w-3`, matching the GitHub glyph beside it rather than the
+                  // component's `w-3.5` default, which is sized for the Tasks page.
+                  iconClassName="w-3 h-3"
+                />
+                <button
+                  onClick={() => window.electronAPI.shell.openExternal(comment.url)}
+                  title={t('agentInfo.pr.commentOpen')}
+                  className={`${COMMENT_ACTION} gap-1 px-1.5`}
+                >
+                  <GitHubIcon className="w-3 h-3" />
+                  {t('agentInfo.openOnGitHub')}
+                </button>
+              </>
+            )}
+          </span>
+        </div>
+        </>
+      )}
     </li>
   )
 }
