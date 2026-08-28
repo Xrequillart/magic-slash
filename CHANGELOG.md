@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.86.5] - 2026-08-28
+
+### Added
+
+- **Desktop**: A GitHub issue's comments are shown on its page, the way a Jira ticket's already were — the panel used to count them and send you to github.com to read them
+- **Desktop**: A Jira ticket names the epic it belongs to, between its status and its priority, in the epic's own colour from Jira
+- **Desktop**: The backlog sorts by priority and filters by Jira epic, from two new pickers in the filter bar
+
 ## [0.86.4] - 2026-08-28
 
 ### Added
@@ -2568,6 +2576,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.86.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.5
 [0.86.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.4
 [0.86.3]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.3
 [0.86.2]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.2
