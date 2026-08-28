@@ -11,6 +11,7 @@ import {
   mapSprintIssues,
   pickSprintName,
   PROBE_PAGE_SIZE,
+  readPriority,
   readSprintName,
   SPRINT_FIELDS,
 } from './sprint-issues'
@@ -101,7 +102,9 @@ describe('SPRINT_FIELDS', () => {
     // The row carried a key, a title and a status while the GitHub row beside it
     // carried its author and its labels. Both people are asked for and one is kept
     // — see `readReporter`.
-    expect(SPRINT_FIELDS).toEqual(['summary', 'status', 'created', 'labels', 'reporter', 'creator'])
+    expect(SPRINT_FIELDS).toEqual(
+      ['summary', 'status', 'priority', 'created', 'labels', 'reporter', 'creator'],
+    )
   })
 
   it('asks for nothing only the open ticket needs', () => {
@@ -135,10 +138,56 @@ describe('browseUrl', () => {
   })
 })
 
+
+describe('readPriority', () => {
+  it('places Jira\'s five defaults by id, whatever the site calls them', () => {
+    // The ID and not the name, because the id survives translation: a French site
+    // calls priority 2 "Élevée" and an English one "High", and both are the same
+    // step on the same scale.
+    expect(readPriority({ id: '1', name: 'Highest' })?.level).toBe('highest')
+    expect(readPriority({ id: '2', name: 'Élevée' })?.level).toBe('high')
+    expect(readPriority({ id: '3', name: 'Medium' })?.level).toBe('medium')
+    expect(readPriority({ id: '4', name: 'Basse' })?.level).toBe('low')
+    expect(readPriority({ id: '5', name: 'Lowest' })?.level).toBe('lowest')
+  })
+
+  it('keeps the site\'s own word to print', () => {
+    // The level is what the badge draws, the name is what it says — `readStatus`'s
+    // split, one field along.
+    expect(readPriority({ id: '2', name: 'Élevée' })).toEqual({ name: 'Élevée', level: 'high' })
+  })
+
+  it('falls back to the name on a site running its own scheme', () => {
+    // A custom scheme gets ids Jira assigned to nothing in particular, so the id
+    // misses and the words such schemes reuse are what is left to go on.
+    expect(readPriority({ id: '10004', name: 'Blocker' })?.level).toBe('highest')
+    expect(readPriority({ id: '10007', name: 'P2' })?.level).toBe('high')
+    expect(readPriority({ id: '10009', name: 'trivial' })?.level).toBe('lowest')
+  })
+
+  it('admits it cannot place a priority rather than guessing', () => {
+    // `unknown` renders the site's own word in the neutral tier. Calling this one
+    // "Medium" would be a guess presented to the reader as a fact about their
+    // ticket — the one outcome worse than showing no level at all.
+    expect(readPriority({ id: '10021', name: 'Yesterday' }))
+      .toEqual({ name: 'Yesterday', level: 'unknown' })
+  })
+
+  it('reports no priority at all for the three ways a ticket has none', () => {
+    // The field removed from the project's screens (omitted), the ticket set to
+    // "None" (null), and an object with no name to print. None is an error, and
+    // none should produce a badge.
+    expect(readPriority(undefined)).toBeUndefined()
+    expect(readPriority(null)).toBeUndefined()
+    expect(readPriority({ id: '3', name: '   ' })).toBeUndefined()
+  })
+})
+
 describe('mapIssue', () => {
   it('reads the fields the row is drawn from', () => {
     const raw = rawIssue({}, {
       labels: ['backend', 'urgent'],
+      priority: { id: '2', name: 'High' },
       reporter: { displayName: 'Ada Lovelace', accountId: 'acc-1' },
     })
 
@@ -149,6 +198,7 @@ describe('mapIssue', () => {
       createdAt: '2026-08-01T10:00:00.000+0200',
       statusName: 'To Do',
       statusCategory: 'new',
+      priority: { name: 'High', level: 'high' },
       reporter: 'Ada Lovelace',
       labels: ['backend', 'urgent'],
     })
@@ -184,6 +234,12 @@ describe('mapIssue', () => {
     const mapped = mapIssue(rawIssue({}, { reporter: null, creator: null }), 'https://acme.atlassian.net')
 
     expect(mapped).not.toHaveProperty('reporter')
+  })
+
+  // A project with the priority field off its screens sends no priority, and a row
+  // that then carried one would be inventing a fact about the ticket.
+  it('omits the priority when the ticket has none', () => {
+    expect(mapIssue(rawIssue(), 'https://acme.atlassian.net')).not.toHaveProperty('priority')
   })
 
   // A site with labels disabled omits the field entirely, and the row `.map()`s over

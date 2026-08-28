@@ -231,6 +231,41 @@ export interface TaskIssueDetail {
 export type JiraStatusCategory = 'new' | 'indeterminate' | 'done'
 
 /**
+ * Where a ticket sits on Jira's priority scale, and the ONLY priority value this
+ * app branches on.
+ *
+ * `JiraStatusCategory`'s arrangement, for the same reason: a site renames its
+ * priorities ("Blocker", "P1", "Urgent", "Élevée") and can define its own, so the
+ * word cannot be branched on — but the ORDER is a scale, and a five-step scale is
+ * what a colour and an arrow can be read off.
+ *
+ * `unknown` is the honest answer for a priority this app cannot place: a custom
+ * scheme, a site in a language the reader below does not know. It renders in the
+ * neutral tier WITH ITS NAME, which is strictly more than the nothing the field
+ * showed before — never as "Medium", which would be a guess presented as a fact.
+ */
+export type JiraPriorityLevel = 'highest' | 'high' | 'medium' | 'low' | 'lowest' | 'unknown'
+
+/**
+ * A ticket's priority, as both surfaces that show it need it.
+ *
+ * The pair `JiraTaskIssue.statusName` / `statusCategory` already is, in one object
+ * because — unlike the status — the whole thing is optional: a project can have the
+ * priority field switched off, and half a priority (a level with no name, a name
+ * with no level) is not a state any renderer here should have to think about.
+ *
+ * No `iconUrl`, though Jira sends one on every priority. The renderer's CSP is
+ * `img-src 'self' data:`, so Atlassian's own icon could only be fetched and blocked
+ * — which is why the arrow beside the name is drawn locally from `level`.
+ */
+export interface JiraPriority {
+  /** The priority name as THIS site spells it. Display only — never branched on. */
+  name: string
+  /** What the badge colours and points on. See `JiraPriorityLevel`. */
+  level: JiraPriorityLevel
+}
+
+/**
  * One ticket of a Jira project's ACTIVE SPRINT, as the Tasks page lists it.
  *
  * The Jira counterpart of `TaskIssue`, and deliberately NOT the same interface: a
@@ -275,6 +310,16 @@ export interface JiraTaskIssue {
    * privacy settings withhold both.
    */
   reporter?: string
+  /**
+   * How urgent the ticket is, when the project records it at all.
+   *
+   * ABSENT rather than a default when Jira sends none: the priority field can be
+   * removed from a project's screens entirely, and a row that then showed "Medium"
+   * would be inventing a fact about a ticket that has none. The GitHub half of this
+   * page has no counterpart — an issue has labels and nothing else — which is why
+   * this is the one field on the row with no twin next door.
+   */
+  priority?: JiraPriority
   /**
    * Label names, in Jira's own order. Empty when the ticket has none.
    *
@@ -362,6 +407,14 @@ export interface JiraTaskIssueDetail {
   statusName: string
   /** What the panel's pill colours on, as of the detail read. See `JiraStatusCategory`. */
   statusCategory: JiraStatusCategory
+  /**
+   * The ticket's priority as of the detail read, or absent when it has none.
+   *
+   * Re-read with the status and for its reason: a ticket opened minutes after the
+   * list was drawn may have been re-prioritised since, and the panel must not go on
+   * showing the value the row captured.
+   */
+  priority?: JiraPriority
   /**
    * The ticket's comments, oldest first — the order a conversation is read in, and
    * the order Jira returns them in.

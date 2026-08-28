@@ -1,5 +1,5 @@
 import type { JiraTaskComment, JiraTaskIssueDetail } from '../../types'
-import { readLabels, readPerson, readReporter, readStatus } from './sprint-issues'
+import { readLabels, readPerson, readPriority, readReporter, readStatus } from './sprint-issues'
 
 /**
  * Everything the ONE-TICKET read decides, with nothing it needs a machine for.
@@ -35,7 +35,9 @@ import { readLabels, readPerson, readReporter, readStatus } from './sprint-issue
  * `status` IS asked for again, on purpose. It came with the row too, but this read
  * happens when someone opens a ticket that may have been listed minutes ago — and
  * a ticket transitioned in the meantime must not go on showing the word the list
- * captured (the same rule `TaskIssueDetail.state` follows next door).
+ * captured (the same rule `TaskIssueDetail.state` follows next door). `priority` is
+ * asked for again for exactly that reason: it is the other field on this ticket a
+ * human moves between the list read and the click.
  *
  * `comment` is the one field here whose weight is worth naming. It brings the whole
  * conversation back in the response the panel already makes — one round trip rather
@@ -51,7 +53,7 @@ import { readLabels, readPerson, readReporter, readStatus } from './sprint-issue
  * Nothing else. No `issuetype`, no story points: every field named here is one more
  * the read pays for.
  */
-export const DETAIL_FIELDS = ['description', 'status', 'assignee', 'reporter', 'creator', 'labels', 'comment']
+export const DETAIL_FIELDS = ['description', 'status', 'priority', 'assignee', 'reporter', 'creator', 'labels', 'comment']
 
 /** The shape of an ADF node, as far as anything here needs to know. */
 interface AdfNode {
@@ -482,7 +484,9 @@ function mapComments(raw: unknown): { comments: JiraTaskComment[]; commentTotal?
  *
  * `assignee` and `reporter` are OMITTED rather than set to `''` when Jira reports
  * nobody: the field is optional in the type, and an empty string would be a person
- * whose name is blank.
+ * whose name is blank. `priority` is omitted on the same rule, decided inside
+ * `readPriority` — a project with the field switched off has no priority, which is
+ * not the same thing as a low one.
  */
 export function mapIssueDetail(raw: unknown): JiraTaskIssueDetail {
   const issue = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
@@ -491,6 +495,7 @@ export function mapIssueDetail(raw: unknown): JiraTaskIssueDetail {
     : {}
 
   const status = readStatus(fields.status)
+  const priority = readPriority(fields.priority)
   const assignee = readPerson(fields.assignee)
   // The same `reporter` or `creator` choice the row made, through the same function:
   // the panel showing a different name from the row it was opened from would read as
@@ -504,6 +509,9 @@ export function mapIssueDetail(raw: unknown): JiraTaskIssueDetail {
     labels: readLabels(fields.labels),
     statusName: status.name,
     statusCategory: status.category,
+    // Absent, not "None": see `readPriority`. The panel's own block says so in a
+    // word the reader can tell apart from a priority actually called "None".
+    ...(priority ? { priority } : {}),
     ...mapComments(fields.comment),
   }
 }

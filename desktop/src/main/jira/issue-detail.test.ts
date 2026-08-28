@@ -34,7 +34,9 @@ function text(value: string, marks?: unknown[]) {
 describe('DETAIL_FIELDS', () => {
   it('asks for the half of a ticket the sprint read leaves behind', () => {
     expect(DETAIL_FIELDS)
-      .toEqual(['description', 'status', 'assignee', 'reporter', 'creator', 'labels', 'comment'])
+      .toEqual([
+        'description', 'status', 'priority', 'assignee', 'reporter', 'creator', 'labels', 'comment',
+      ])
   })
 
   it('brings the conversation back in the response it already makes', () => {
@@ -327,6 +329,20 @@ describe('mapIssueDetail', () => {
     }))
 
     expect(detail.reporter).toBe('Support Bot')
+  })
+
+  // Re-read with the status and for its reason: a ticket re-prioritised between the
+  // list read and the click must not go on showing the value the row captured.
+  it('reads the priority back, through the same reader the row used', () => {
+    expect(mapIssueDetail(rawIssue({ priority: { id: '1', name: 'Highest' } })).priority)
+      .toEqual({ name: 'Highest', level: 'highest' })
+  })
+
+  it('omits the priority on a ticket that has none', () => {
+    // A project with the field off its screens, or a ticket set to "None". Absent
+    // is what the panel treats as "this ticket does not have one".
+    expect('priority' in mapIssueDetail(rawIssue({ priority: null }))).toBe(false)
+    expect('priority' in mapIssueDetail(rawIssue())).toBe(false)
   })
 
   it('omits an assignee Jira reports as nobody', () => {

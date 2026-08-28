@@ -18,7 +18,7 @@ import { WaveLoader } from '../../components/WaveLoader'
 import MarkdownView from '../../components/file-preview/MarkdownView'
 import { StatusPill } from '../Dashboard/parts'
 import type { NewTerminalDetail } from '../Terminals'
-import { JiraErrorLines, JiraStatusPill, TaskErrorLines } from './TasksRepoSection'
+import { JiraErrorLines, JiraPriorityBadge, JiraStatusPill, TaskErrorLines } from './TasksRepoSection'
 import { CopyLinkButton } from '../../components/CopyLinkButton'
 import { TrackerTile } from '../../components/icons/TrackerIcons'
 
@@ -676,6 +676,19 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
     : null
 
   /**
+   * The priority as of THIS read, on the same terms — with one difference that has
+   * to be written as a branch rather than a `??`.
+   *
+   * A landed detail read with NO priority is an answer: the ticket was
+   * de-prioritised, or its project never had the field. Falling through to the row's
+   * value there would leave the badge showing a priority Jira has just said the
+   * ticket does not have, which is the one case this whole re-read exists to catch.
+   */
+  const jiraPriority = tracker !== 'jira'
+    ? undefined
+    : jiraDetail ? jiraDetail.priority : props.issue.priority
+
+  /**
    * The read's failure, already worded by whichever tracker's table owns it.
    *
    * Picked HERE rather than inside `DetailBody`, because this is the side that knows
@@ -808,6 +821,11 @@ export function TaskDetailPage(props: TaskDetailPageProps) {
               wrong is the issue that was just closed. The Jira pill has the row's
               value to stand on in the meantime, which is why it is not held back. */}
           {statusChip}
+          {/* Beside the status and after it, which is the order the list row reads
+              in — the ticket's two moving facts, in the same sequence on both
+              surfaces. Nothing at all when the ticket has no priority: see
+              `JiraTaskIssue.priority`. */}
+          {jiraPriority && <JiraPriorityBadge priority={jiraPriority} t={t} />}
           <span className="text-xs text-text-secondary">
             {tracker === 'github' && props.issue.author
               ? t('tasks.detail.openedBy', { login: props.issue.author, date: openedOn })

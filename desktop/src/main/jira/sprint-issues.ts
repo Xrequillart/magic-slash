@@ -1,4 +1,4 @@
-import type { JiraStatusCategory, JiraTaskIssue, JiraTaskStatusError } from '../../types'
+import type { JiraPriority, JiraPriorityLevel, JiraStatusCategory, JiraTaskIssue, JiraTaskStatusError } from '../../types'
 import { AtlassianApiError } from './atlassian-api'
 
 /**
@@ -31,6 +31,11 @@ import { AtlassianApiError } from './atlassian-api'
  * timestamp — so a sprint read without it would pile every Jira row at the bottom
  * of its own card in whatever order Jira happened to answer in.
  *
+ * `priority` is the one fact on a Jira ticket that the reader sorts their own day
+ * by and that a GitHub issue has no equivalent of. It costs one short object per
+ * row and is what `readPriority` turns into a badge — a field a project has
+ * switched off simply comes back absent, which is a state both surfaces render.
+ *
  * `labels` and the two PEOPLE fields are what put a Jira row on equal footing with
  * a GitHub one: that row has carried its author and its labels from the start, and
  * a sprint row beside it with neither read as the poorer half of the page. Both
@@ -43,7 +48,7 @@ import { AtlassianApiError } from './atlassian-api'
  * three added here cost a short array and one name per row; a description is
  * kilobytes per row.
  */
-export const SPRINT_FIELDS = ['summary', 'status', 'created', 'labels', 'reporter', 'creator']
+export const SPRINT_FIELDS = ['summary', 'status', 'priority', 'created', 'labels', 'reporter', 'creator']
 
 /**
  * How many tickets one repository's card can hold.
@@ -175,6 +180,85 @@ export function readStatus(status: unknown): { name: string; category: JiraStatu
   return {
     name: typeof name === 'string' ? name : '',
     category: (typeof key === 'string' && CATEGORIES[key]) || 'new',
+  }
+}
+
+/**
+ * Jira's five default priorities, by the id its own seed data gives them.
+ *
+ * The ID and not the name, because the id is what survives translation: a French
+ * site calls priority 2 "Élevée" and an English one "High", and both mean the same
+ * step on the same scale. Every Atlassian site is created with exactly these five
+ * under exactly these ids, so this hits on the overwhelming majority of tickets
+ * without a word of any language in it.
+ */
+const DEFAULT_PRIORITY_IDS: Record<string, JiraPriorityLevel> = {
+  '1': 'highest',
+  '2': 'high',
+  '3': 'medium',
+  '4': 'low',
+  '5': 'lowest',
+}
+
+/**
+ * The fallback for a site that runs its own priority scheme: the NAME, lower-cased,
+ * for the words such a scheme almost always reuses.
+ *
+ * Deliberately small, and deliberately not clever. A scheme built out of "P1…P4",
+ * "Blocker/Critical/Major" or "Urgent" is common enough to be worth placing; one
+ * built out of anything else lands on `unknown`, which renders the site's own word
+ * in the neutral tier. That is the point of having an `unknown` at all — the
+ * alternative to admitting we cannot place a priority is guessing, and a ticket
+ * shown as Low because its name was unfamiliar is worse than one shown as itself.
+ */
+const PRIORITY_NAMES: Record<string, JiraPriorityLevel> = {
+  highest: 'highest',
+  blocker: 'highest',
+  critical: 'highest',
+  urgent: 'highest',
+  p1: 'highest',
+  high: 'high',
+  major: 'high',
+  p2: 'high',
+  medium: 'medium',
+  normal: 'medium',
+  moyenne: 'medium',
+  p3: 'medium',
+  low: 'low',
+  minor: 'low',
+  basse: 'low',
+  p4: 'low',
+  lowest: 'lowest',
+  trivial: 'lowest',
+  p5: 'lowest',
+}
+
+/**
+ * A ticket's priority, as the name to print and the step to colour — or `undefined`
+ * when the ticket has none.
+ *
+ * THREE ways a ticket legitimately has no priority, and all three come out the same:
+ * the project removed the field from its screens (Jira omits it), the ticket sits at
+ * "None" (Jira sends `null`), or the object arrived without a name to print. None of
+ * them is an error, and none of them should produce a badge — `undefined` is what
+ * both surfaces treat as "this ticket does not have one".
+ *
+ * The LEVEL is what the badge draws and the NAME is what it says, which is
+ * `readStatus`'s split one field along: the id is fixed by Jira and can be branched
+ * on, the name is the site's own word and is the only thing worth showing.
+ *
+ * EXPORTED for `issue-detail.ts`, which asks for the same field on the same ticket:
+ * two copies would be two answers to what an unfamiliar priority means, and the
+ * panel would then contradict the row it was opened from.
+ */
+export function readPriority(value: unknown): JiraPriority | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const { id, name } = value as Record<string, unknown>
+  if (typeof name !== 'string' || name.trim() === '') return undefined
+  const byId = typeof id === 'string' ? DEFAULT_PRIORITY_IDS[id] : undefined
+  return {
+    name: name.trim(),
+    level: byId || PRIORITY_NAMES[name.trim().toLowerCase()] || 'unknown',
   }
 }
 
@@ -351,6 +435,7 @@ export function mapIssue(raw: unknown, siteUrl: string): JiraTaskIssue | null {
   const created = issueFields.created
   const status = readStatus(issueFields.status)
   const reporter = readReporter(issueFields)
+  const priority = readPriority(issueFields.priority)
 
   return {
     key,
@@ -359,6 +444,9 @@ export function mapIssue(raw: unknown, siteUrl: string): JiraTaskIssue | null {
     createdAt: typeof created === 'string' ? created : '',
     statusName: status.name,
     statusCategory: status.category,
+    // Omitted rather than present-and-empty for `reporter`'s reason: a ticket whose
+    // project has no priority field must not carry one that renders.
+    ...(priority ? { priority } : {}),
     // Omitted rather than `''` when Jira names nobody: the field is optional in the
     // type, and an empty string would be a person whose name is blank.
     ...(reporter ? { reporter } : {}),

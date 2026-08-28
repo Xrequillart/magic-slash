@@ -1693,6 +1693,7 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Tâches · la page d'un ticket Jira ────────────────────────────────────
   'tasks.jira.detail.reporter': 'Rapporté par',
   'tasks.jira.reporterHint': 'Rapporté par {name}',
+  'tasks.jira.priorityHint': 'Priorité : {name}',
   'tasks.jira.sprintHint': 'Sprint actif : {sprint}',
   'tasks.jira.detail.comment': 'Commentaire',
   'tasks.jira.detail.edited': 'modifié',

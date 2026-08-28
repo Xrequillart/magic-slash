@@ -745,7 +745,9 @@ describe('tasks:getJiraIssueDetail', () => {
       accessToken: 'atl-access',
       cloudId: 'cloud-1',
       key: 'PROJ-42',
-      fields: ['description', 'status', 'assignee', 'reporter', 'creator', 'labels', 'comment'],
+      fields: [
+        'description', 'status', 'priority', 'assignee', 'reporter', 'creator', 'labels', 'comment',
+      ],
     }))
   })
 

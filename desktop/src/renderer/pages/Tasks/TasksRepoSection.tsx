@@ -1,6 +1,19 @@
 import { memo, type KeyboardEvent } from 'react'
-import { AlertTriangle, ChevronDown, ChevronRight, ExternalLink, Settings } from 'lucide-react'
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  ChevronsDown,
+  ChevronsUp,
+  Equal,
+  ExternalLink,
+  Minus,
+  Settings,
+} from 'lucide-react'
 import type {
+  JiraPriority,
+  JiraPriorityLevel,
   JiraStatusCategory,
   JiraTaskError,
   JiraTaskIssue,
@@ -466,6 +479,51 @@ export function JiraStatusPill({ name, category }: { name: string; category: Jir
 }
 
 /**
+ * A Jira priority as an arrow and a word.
+ *
+ * `JiraStatusPill`'s twin, one field along and with the same split behind it: the
+ * LEVEL picks the arrow and the colour because Jira fixes it, the NAME is printed
+ * because it is the word the reader's own board uses. What differs is that this one
+ * leads with a glyph — a priority is read at a glance down a column of rows, and an
+ * arrow's direction survives being skimmed in a way a word never does.
+ *
+ * The arrow is Jira's own vocabulary, not an invention: its issue views have drawn
+ * priority as a double chevron up, a chevron up, a bar, a chevron down and a double
+ * chevron down for as long as there have been priorities. Drawn locally rather than
+ * taken from the `iconUrl` Jira sends with every priority, which the renderer's CSP
+ * (`img-src 'self' data:`) would block.
+ *
+ * `unknown` is the honest tier — the site's own word, in the neutral colours, behind
+ * a flat bar that claims nothing about where on the scale it sits. See
+ * `JiraPriorityLevel`.
+ */
+const PRIORITY_STYLE: Record<JiraPriorityLevel, { icon: typeof ChevronUp; className: string }> = {
+  highest: { icon: ChevronsUp, className: 'bg-red/15 text-red' },
+  high: { icon: ChevronUp, className: 'bg-orange/15 text-orange' },
+  medium: { icon: Equal, className: 'bg-yellow/15 text-yellow' },
+  low: { icon: ChevronDown, className: 'bg-blue/15 text-blue' },
+  lowest: { icon: ChevronsDown, className: 'bg-surface text-text-secondary' },
+  unknown: { icon: Minus, className: 'bg-surface text-text-secondary' },
+}
+
+export function JiraPriorityBadge({ priority, t }: { priority: JiraPriority; t: Translate }) {
+  const { icon: Icon, className } = PRIORITY_STYLE[priority.level]
+  return (
+    // The hover text names the FIELD, because the badge itself only shows its value:
+    // "Urgent" beside a status pill and two labels is a word with no column header,
+    // and a site whose priorities are called "P1"…"P4" gives the reader nothing to
+    // recognise it by at all.
+    <span
+      title={t('tasks.jira.priorityHint', { name: priority.name })}
+      className={`text-xs pl-1 pr-2 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-0.5 ${className}`}
+    >
+      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+      {priority.name}
+    </span>
+  )
+}
+
+/**
  * One sprint ticket, in `IssueRow`'s layout — the same two lines, filled with Jira's
  * own facts.
  *
@@ -515,16 +573,22 @@ function JiraIssueRow({
           <span className="text-sm text-ink truncate">{issue.title}</span>
         </div>
         {/* `IssueRow`'s second line, with Jira's own three facts on it. The status
-            leads because it is the one this page filters on; the reporter and the
-            labels then sit exactly where the GitHub row puts its author and its
-            labels, so a mixed page reads down one column rather than two.
+            leads because it is the one this page filters on, the priority follows
+            it, and the reporter and the labels then sit exactly where the GitHub row
+            puts its author and its labels, so a mixed page reads down one column
+            rather than two.
 
             Guarded as a whole, for the GitHub row's reason: an empty second line
             would add a row's worth of height to every ticket that has none of the
             three. */}
-        {(issue.statusName || issue.reporter || issue.labels.length > 0) && (
+        {(issue.statusName || issue.priority || issue.reporter || issue.labels.length > 0) && (
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <JiraStatusPill name={issue.statusName} category={issue.statusCategory} />
+            {/* Directly after the status, and before the people: "where is it up to"
+                and "how urgent is it" are the two questions asked of a sprint row,
+                and they are asked together. Absent on a project that does not use
+                the field at all — see `JiraTaskIssue.priority`. */}
+            {issue.priority && <JiraPriorityBadge priority={issue.priority} t={t} />}
             {issue.reporter && (
               // The display name bare, where the GitHub row prefixes a login with `@`:
               // "Ada Lovelace" is a name and not a handle, and `@Ada Lovelace` reads as
