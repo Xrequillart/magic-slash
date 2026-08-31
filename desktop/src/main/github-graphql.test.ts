@@ -516,12 +516,24 @@ describe('fetchPRStatusGraphQL', () => {
 })
 
 describe('PR_COMMENTS_QUERY', () => {
-  it('asks for plain text and for the newest of each connection', () => {
-    // `body` is the markdown source; the card renders text and clamps it.
-    expect(PR_COMMENTS_QUERY).toContain('bodyText')
+  it('asks for the markdown source and for the newest of each connection', () => {
+    // `body` is the markdown source and `bodyText` GitHub's lossy flattening of it — the
+    // panel is the only reader and renders the first as markdown, so the second must not
+    // come back in its place. A word-boundary match rather than `toContain('body')`,
+    // which `bodyText` alone would satisfy without the field being there.
+    expect(PR_COMMENTS_QUERY).toMatch(/\bbody\b/)
+    expect(PR_COMMENTS_QUERY).not.toContain('bodyText')
     expect(PR_COMMENTS_QUERY).toContain('comments(last:30)')
     expect(PR_COMMENTS_QUERY).toContain('reviewThreads(last:50)')
     expect(PR_COMMENTS_QUERY).not.toContain('comments(first:')
+  })
+
+  it('names authors by login and nothing else', () => {
+    // Same rule as `OPEN_ISSUES_QUERY`: the renderer's CSP is `img-src 'self' data:`,
+    // so an avatar URL in this selection could only be fetched and silently blocked.
+    // The panel draws initials instead.
+    expect(PR_COMMENTS_QUERY).toContain('author{login}')
+    expect(PR_COMMENTS_QUERY).not.toContain('avatarUrl')
   })
 
   it('asks for what makes a thread a thread', () => {
@@ -538,5 +550,28 @@ describe('PR_COMMENTS_QUERY', () => {
     // field to stay correct.
     expect(PR_COMMENTS_QUERY).toContain('originalLine')
     expect(PR_COMMENTS_QUERY).toContain('comments(last:20){ totalCount')
+  })
+
+  it('asks for the diff a thread hangs on, at the level that has it', () => {
+    // `diffHunk` exists on `PullRequestReviewComment` and NOT on
+    // `PullRequestReviewThread`: at thread level it is a schema error, which GitHub
+    // answers before running anything — the whole query is rejected and every thread
+    // is lost. So it must sit inside the thread's `comments` sub-selection, which is
+    // what the ordering of these two assertions pins.
+    const threadLevel = PR_COMMENTS_QUERY.indexOf('id isResolved isOutdated')
+    const commentsLevel = PR_COMMENTS_QUERY.indexOf('comments(last:20)')
+    const hunk = PR_COMMENTS_QUERY.indexOf('diffHunk')
+    expect(hunk).toBeGreaterThan(commentsLevel)
+    expect(commentsLevel).toBeGreaterThan(threadLevel)
+  })
+
+  it('asks for both ends of a multi-line range, and for the side it is measured on', () => {
+    // A comment left on a range reports its foot in `line` and its head in
+    // `startLine`; `diffSide` says which file's numbering both are in. Without the
+    // three, the panel can only highlight the last line of what was commented on, and
+    // a comment on a deleted line would be highlighted against the wrong file.
+    expect(PR_COMMENTS_QUERY).toContain('startLine')
+    expect(PR_COMMENTS_QUERY).toContain('originalStartLine')
+    expect(PR_COMMENTS_QUERY).toContain('diffSide')
   })
 })

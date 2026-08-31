@@ -14,7 +14,7 @@
 import type { PRComment, PRReviewThread } from '../types'
 
 /**
- * How many comments of a single thread the card is willing to hold — the root plus
+ * How many comments of a single thread survive to the renderer — the root plus
  * `MAX_COMMENTS_PER_THREAD - 1` replies.
  *
  * A cap PER THREAD, replacing the flat list's global one. A global cap cut the list
@@ -23,10 +23,23 @@ import type { PRComment, PRReviewThread } from '../types'
  * cap keeps every thread whole and only ever drops the MIDDLE of a long one — the
  * root, which frames it, and the newest replies, which are what is left to answer.
  *
+ * Pinned to the `comments(last:20)` the query fetches, which makes it SLACK rather than
+ * a live cut: twenty nodes come back, one of them is the root, so `capReplies` never has
+ * a twentieth reply to drop. That is the intent, not an oversight — it was 10 while the
+ * only reader was a 500 px sidebar row, where the whole exchange was a reply COUNT, and
+ * the panel is 70% of the window and shows the conversation, so cutting eight of eighteen
+ * replies there is dropping the middle of something somebody is reading. What the
+ * constant still does is hold the shape of the truncation for the day the query asks for
+ * more: raise `comments(last:)` and this is what decides how much of the middle survives.
+ * The two are meant to move together, and this one is the floor.
+ *
  * No companion cap on the number of threads: `reviewThreads(last:50)`,
  * `reviews(last:30)` and `comments(last:30)` already bound the set at the query.
+ *
+ * `countReplies` is unaffected either way — it reports GitHub's own total, so a thread
+ * still says how many replies it has rather than how many got through.
  */
-export const MAX_COMMENTS_PER_THREAD = 10
+export const MAX_COMMENTS_PER_THREAD = 20
 
 // --- The payload, by shape ------------------------------------------------
 // Mirrors the connections PR_COMMENTS_QUERY asks for, and nothing else. Every field
@@ -40,9 +53,15 @@ interface ThreadActor {
 interface ThreadCommentNode {
   id?: string | null
   author?: ThreadActor | null
-  bodyText?: string | null
+  /** The markdown SOURCE — see `PRComment.body` for why not `bodyText`. */
+  body?: string | null
   createdAt?: string | null
   url?: string | null
+  /**
+   * Inline only: the unified-diff excerpt, a field of the COMMENT and never of the
+   * thread. Only the root's survives the grouping — see `PRReviewThread.diffHunk`.
+   */
+  diffHunk?: string | null
   /** Null on the comment that opened the thread. */
   replyTo?: { id?: string | null } | null
   pullRequestReview?: { id?: string | null } | null
@@ -54,7 +73,7 @@ interface ThreadReviewNode {
   state?: string | null
   submittedAt?: string | null
   url?: string | null
-  bodyText?: string | null
+  body?: string | null
 }
 
 /** The three connections this module reads, as `GQLPullRequest` happens to shape them. */
@@ -69,6 +88,12 @@ export interface ThreadablePullRequest {
       line?: number | null
       /** All that survives of the location once the thread is outdated. */
       originalLine?: number | null
+      /** The head of a multi-line comment's range; null on a single-line one. */
+      startLine?: number | null
+      /** `startLine`'s outdated twin, in the pre-change numbering. */
+      originalStartLine?: number | null
+      /** `RIGHT` (the file after the change) or `LEFT` (before it). */
+      diffSide?: string | null
       comments?: { totalCount?: number | null; nodes?: (ThreadCommentNode | null)[] | null } | null
     } | null)[] | null
   } | null
@@ -85,6 +110,14 @@ export interface ThreadablePullRequest {
 interface ThreadEntry {
   comment: PRComment
   isReply: boolean
+  /**
+   * The comment's own `diffHunk`, held HERE rather than on the comment: only the root's
+   * survives, onto the thread (see `PRReviewThread.diffHunk`), and which entry is the
+   * root is not known until after the sort below. Parking it on the entry — the shape
+   * that exists only for the length of the grouping — is what keeps the nineteen dead
+   * copies from ever being built into the payload in the first place.
+   */
+  diffHunk?: string
 }
 
 /**
@@ -117,7 +150,7 @@ function toComment(
   extra: Partial<PRComment> = {},
 ): PRComment | null {
   if (!node) return null
-  const body = (node.bodyText || '').trim()
+  const body = (node.body || '').trim()
   if (!body) return null
   return {
     // GraphQL always returns an id here; the fallback only keeps React from
@@ -224,15 +257,20 @@ export function groupPullRequestThreads(pr: ThreadablePullRequest): PRReviewThre
 
     const entries: ThreadEntry[] = []
     for (const [position, node] of (thread.comments?.nodes ?? []).entries()) {
-      // No `path`/`line` here: those live on the thread itself, below — every
-      // comment in it shares the same location, so stamping it a second time per
-      // comment would just be the same value copied onto a shape nothing reads it
-      // from.
+      // No `path`/`line`/`diffHunk` here: those describe the THREAD, and every comment
+      // in it shares them, so stamping them per comment would just be the same value
+      // copied onto a shape nothing reads it from. GitHub reports `diffHunk` on the
+      // comment only because the thread type has no such field, so it rides on the
+      // entry below and is lifted onto the thread once the root is known.
       const comment = toComment(node, 'inline', node?.createdAt, `inline:${index}:${position}`, {
         ...(node?.pullRequestReview?.id ? { reviewId: node.pullRequestReview.id } : {}),
       })
       if (!comment) continue
-      entries.push({ comment, isReply: !!node?.replyTo?.id })
+      entries.push({
+        comment,
+        isReply: !!node?.replyTo?.id,
+        ...(node?.diffHunk ? { diffHunk: node.diffHunk } : {}),
+      })
     }
     // Every body in the thread was empty, so there is no exchange left to list.
     if (entries.length === 0) continue
@@ -260,6 +298,17 @@ export function groupPullRequestThreads(pr: ThreadablePullRequest): PRReviewThre
         : typeof thread.originalLine === 'number'
           ? { line: thread.originalLine }
           : {}),
+      // The same four numbers UNMERGED, beside the fallback above rather than instead
+      // of it: the card wants one number and does not care which file it counts in,
+      // the panel has to highlight a range inside a hunk and therefore cares about
+      // nothing else. Collapsing them here is what would make the second impossible.
+      ...(typeof thread.originalLine === 'number' ? { originalLine: thread.originalLine } : {}),
+      ...(typeof thread.startLine === 'number' ? { startLine: thread.startLine } : {}),
+      ...(typeof thread.originalStartLine === 'number' ? { originalStartLine: thread.originalStartLine } : {}),
+      ...(thread.diffSide ? { diffSide: thread.diffSide } : {}),
+      // The ROOT's excerpt, which is the one the hunk was captured for. The replies'
+      // copies of it are dropped with their entries.
+      ...(rootEntry.diffHunk ? { diffHunk: rootEntry.diffHunk } : {}),
       state: threadState(thread.isResolved, thread.isOutdated),
       // The newest comment, not the root's stamp: a thread whose last reply landed
       // this morning belongs at the bottom of the list, wherever it was opened.

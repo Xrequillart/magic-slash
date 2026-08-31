@@ -51,10 +51,14 @@ export interface PRComment {
   kind: 'inline' | 'conversation' | 'review'
   author: string
   /**
-   * PLAIN TEXT (`bodyText`), never the markdown source. A sidebar card clamps to a
-   * few lines, and Greptile/Claude Code bodies are mostly headings, code fences and
-   * tables — rendering them raw is noise, and rendering them properly is a markdown
-   * pipeline this card has no business carrying.
+   * The MARKDOWN SOURCE (`body`), not GitHub's flattening of it.
+   *
+   * It used to be `bodyText`, on the grounds that a markdown pipeline was not the sidebar
+   * card's business. The panel is that pipeline, and it changes which of the two fields is
+   * lossy for us: Greptile and Claude Code bodies are mostly headings, fenced code and
+   * tables, and `bodyText` hands those over as one run of prose with the fences gone —
+   * unrenderable, and unrecoverable. The card is unharmed either way: it renders no body
+   * at all, only the author, the location and the counts.
    */
   body: string
   /** ISO-8601 as GitHub returns it; the card turns it into "2 h ago". */
@@ -118,8 +122,63 @@ export interface PRReviewThread {
    * Inline only. GitHub returns `line` as null once a thread is `outdated`, so this
    * falls back to `originalLine` — the line it was written against — rather than
    * leaving the row with a bare filename.
+   *
+   * A HEADING number and nothing more, for the card's `file:line` and the panel's: being
+   * a fallback chain is exactly what stops it saying which file it counts in, so nothing
+   * that has to place a position inside a diff may read it. `CommentAnchor` in
+   * `utils/diffHunk` does not declare it, which is what keeps that true.
    */
   line?: number
+  /**
+   * Inline only, and RAW: the numbering the thread's own `diffHunk` is written in.
+   *
+   * `line` above is already a fallback chain, which is what the card wants and what the
+   * panel must not be given. Highlighting the commented range inside a hunk needs to know
+   * which numbering the range is in, and `line` no longer says — it may hold an
+   * `originalLine` that means a position in the file BEFORE the change. So the four
+   * numbers travel unmerged.
+   *
+   * The hunk is a frozen excerpt, captured when the comment was written and never
+   * rewritten, so it is this pair — not `line` / `startLine`, which follow the file as it
+   * stands now — that indexes into it, on BOTH sides. `diffSide` answers a different
+   * question, and `utils/diffHunk` uses it for that question alone: which COLUMN of the
+   * excerpt to match the range against.
+   *
+   * `startLine` / `originalStartLine` are the head of a multi-line comment's range and
+   * are absent on the ordinary single-line one, where the range is just the foot.
+   * `startLine` rides along for the card's sake, like `line`, and is read by nothing that
+   * draws a hunk.
+   */
+  originalLine?: number
+  startLine?: number
+  originalStartLine?: number
+  /**
+   * Inline only: which COLUMN of the diff the thread hangs on — `RIGHT` for the file
+   * after the change, `LEFT` for the file before it. It does NOT say which of the two
+   * numberings above to count in; that is settled independently, and always in favour of
+   * the capture-time pair. Kept as GitHub's own string rather than narrowed to a union,
+   * because it is read through one comparison in `utils/diffHunk` and a narrowing here
+   * would only move the "GitHub answered something else" case from that comparison to a
+   * cast.
+   */
+  diffSide?: string
+  /**
+   * Inline only: the unified-diff excerpt the thread was written against, exactly as
+   * GitHub captured it — `@@` header included, `+`/`-`/space prefixes intact.
+   *
+   * Here, beside the location fields it belongs with, even though GitHub reports it one
+   * level DOWN: `PullRequestReviewThread` has no such field, and asking for one there is
+   * a schema error that costs the entire query (see `PR_COMMENTS_QUERY`), so it can only
+   * be fetched per comment. `groupPullRequestThreads` lifts the root's onto the thread
+   * and drops the rest — every comment carries the same excerpt, so keeping one per
+   * comment would ship the same string twenty times through IPC and into the store for
+   * the nineteen copies nobody reads.
+   *
+   * Parsed at render time by `utils/diffHunk`, never at fetch time: it is text, the
+   * parse is cheap, and keeping it raw means the panel can change how it draws a hunk
+   * without a round trip through the main process.
+   */
+  diffHunk?: string
   /**
    * Inline only in practice: GitHub tracks no state for a conversation comment or a
    * review summary, so a singleton is always `open` and the card reads this on

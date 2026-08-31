@@ -101,7 +101,13 @@ export const REVIEWS_PAGE_QUERY = `query($owner:String!,$repo:String!,$number:In
  * anywhere. Merging them would put comment text on the polling path and in the jsonb,
  * which is exactly what this design avoids.
  *
- * `bodyText` rather than `body`: the card shows plain text (see `PRComment`).
+ * `body` rather than `bodyText`: the MARKDOWN SOURCE, because the comments panel renders
+ * it as markdown. `bodyText` is GitHub's flattening of the same body, and the flattening
+ * is lossy in exactly the way that matters here — a Greptile or Claude Code review is
+ * mostly headings, fenced code and tables, and `bodyText` hands them over as one run of
+ * prose with the fences gone. Nothing is given up by the swap: the sidebar row that also
+ * reads these threads renders no body at all, only the author, the location and the
+ * counts, so the panel is the only reader either field ever had.
  * `last:` throughout, for the same reason as the status query — the bots post late,
  * and the tail is the part anyone still needs to read.
  *
@@ -116,6 +122,25 @@ export const REVIEWS_PAGE_QUERY = `query($owner:String!,$repo:String!,$number:In
  * it was written against survives. Without it, the one state this query added is also
  * the one row that loses half of its `file:line`.
  *
+ * `startLine` / `originalStartLine` beside their singular twins because a review comment
+ * can be left on a RANGE. GitHub reports the range's foot in `line` and its head in
+ * `startLine`, and `startLine` is null on the ordinary single-line comment — so the two
+ * fields together are what let the panel highlight the whole of what was commented on
+ * instead of its last line. `originalStartLine` is the same pair on the outdated side,
+ * for the same reason `originalLine` is here.
+ *
+ * `diffSide` says which of the two numberings the pair above is written in: `RIGHT` is
+ * the file after the change, `LEFT` the file before it. Without it a comment left on a
+ * deleted line would be highlighted against the new-file numbers, which point at
+ * unrelated code.
+ *
+ * `diffHunk` is on the COMMENT, not on the thread, and that placement is not a
+ * preference — `PullRequestReviewThread` has no `diffHunk` field at all. Asking for one
+ * there fails SCHEMA VALIDATION, which GitHub answers before it runs anything: the whole
+ * query is rejected and every thread is lost, not just the hunk. It lives on
+ * `PullRequestReviewComment`, so it is fetched per comment and read off the thread's
+ * root, which is the comment the hunk was captured for.
+ *
  * `totalCount` on the thread's comments so the row can say how many replies GitHub
  * holds rather than how many came back: `last:20` truncates a long exchange, and a
  * count taken from the nodes would read "19 replies" on a forty-comment thread. Same
@@ -125,12 +150,12 @@ export const PR_COMMENTS_QUERY = `query($owner:String!,$repo:String!,$number:Int
   rateLimit { remaining }
   repository(owner:$owner,name:$repo){
     pullRequest(number:$number){
-      reviews(last:30){ nodes { id author{login} state submittedAt url bodyText } }
+      reviews(last:30){ nodes { id author{login} state submittedAt url body } }
       reviewThreads(last:50){ nodes {
-        id isResolved isOutdated path line originalLine
-        comments(last:20){ totalCount nodes { id author{login} createdAt url bodyText replyTo{id} pullRequestReview{id} } }
+        id isResolved isOutdated path line originalLine startLine originalStartLine diffSide
+        comments(last:20){ totalCount nodes { id author{login} createdAt url body diffHunk replyTo{id} pullRequestReview{id} } }
       } }
-      comments(last:30){ nodes { id author{login} createdAt url bodyText } }
+      comments(last:30){ nodes { id author{login} createdAt url body } }
     }
   }
 }`
@@ -199,6 +224,12 @@ export interface GQLPullRequest {
       line?: number | null
       /** Comments query only — the line the thread was written against, which is all that survives once it is outdated. */
       originalLine?: number | null
+      /** Comments query only — the head of a multi-line comment's range; null on a single-line one. */
+      startLine?: number | null
+      /** Comments query only — `startLine`'s outdated twin, in the pre-change numbering. */
+      originalStartLine?: number | null
+      /** Comments query only — `RIGHT` (the file after the change) or `LEFT` (before it). */
+      diffSide?: string | null
       comments?: { totalCount?: number; nodes?: (GQLCommentNode | null)[] | null } | null
     } | null)[] | null
   } | null
@@ -221,9 +252,16 @@ export interface GQLPullRequest {
 interface GQLCommentNode {
   id?: string | null
   author?: GQLActor | null
-  bodyText?: string | null
+  /** Comments query only: the markdown SOURCE — see `PR_COMMENTS_QUERY` on why not `bodyText`. */
+  body?: string | null
   createdAt?: string | null
   url?: string | null
+  /**
+   * Comments query, inline only: the unified-diff excerpt this comment was left on, as
+   * GitHub captured it at the time. A field of `PullRequestReviewComment` and of nothing
+   * else — the thread has none, see `PR_COMMENTS_QUERY`.
+   */
+  diffHunk?: string | null
   /** Comments query, inline only: null on the comment that OPENED the thread. */
   replyTo?: { id?: string | null } | null
   /** Comments query, inline only: the review pass this comment was submitted with. */
@@ -234,11 +272,15 @@ export interface GQLReviewNode {
   author?: GQLActor | null
   state?: string | null
   submittedAt?: string | null
+  /**
+   * Asked for by BOTH queries now, where the comments query used to take `bodyText`
+   * instead: the status query only ever tests it for emptiness, and the comments query
+   * renders it as markdown, so one field serves the two readings.
+   */
   body?: string | null
   /** Comments query only — see `GQLCommentNode` on why the shapes are shared. */
   id?: string | null
   url?: string | null
-  bodyText?: string | null
 }
 
 /**
