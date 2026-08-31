@@ -1452,6 +1452,30 @@ export const en = {
   'agentInfo.pr.threadOutdated': 'outdated',
   'agentInfo.pr.threadOpen': 'open',
   'agentInfo.pr.threadReview': 'review',
+  // Handing a thread to the agent. The row's own action first: it composes the context —
+  // the file, the line, the hunk and every message — and pastes it into the prompt with
+  // `/magic:resolve` in front. It does NOT send it, which is why the label says "prepare"
+  // rather than "resolve": the reader reads the paste and presses Enter themselves.
+  //
+  // `prepare*`, never `send*`, and the keys are held to it: `filePreview.sendToAgent` below
+  // is a control that really does hand text over, and a key here that borrowed its verb
+  // would put the catalogue at odds with the one thing this whole feature promises.
+  'agentInfo.pr.prepareThread': 'Prepare /magic:resolve for this thread',
+  // The same action over the whole fold. Only the inline threads still open go — a resolved
+  // or outdated one is settled, and the conversation and review rows have no state of their
+  // own to be open or not.
+  //
+  // `prepareAllThreads` rather than the plural of the key above: elsewhere in this namespace
+  // a singular/plural pair (`threadReply`/`threadReplies`) is one message counted two ways,
+  // and these two are different actions — one row against the whole list.
+  'agentInfo.pr.prepareAllThreads': 'Prepare the unresolved threads',
+  // Why the two controls above can be dead. The target is ONE named agent — the one this
+  // card belongs to — so "no agent is running" would be a plain falsehood whenever another
+  // agent happens to be selected. Nothing to point at instead: a thread row has no Copy.
+  'agentInfo.pr.prepareThreadNoAgent': 'The agent this pull request belongs to is no longer running',
+  // The write did not reach a pty. A toast rather than a state in the row: 500 px of row
+  // has no space for a sentence, and this card already reports its failures this way.
+  'agentInfo.pr.prepareThreadFailed': 'Could not reach the agent — nothing was pasted',
   'agentInfo.pr.lastChecked': 'checked {time}',
   'agentInfo.pr.neverChecked': 'never checked',
   'agentInfo.pr.refresh': 'Refresh now',
