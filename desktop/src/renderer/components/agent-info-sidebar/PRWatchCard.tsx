@@ -601,7 +601,20 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
     // the button and the click that fires it.
     const state = useStore.getState()
     const id = resolveAgentTarget(agentId, state.activeTerminalId, state.terminals)
-    if (!id || text === '') return
+    // Said out loud, not swallowed: a click that writes nothing and reports nothing reads as
+    // a broken button. The disabled tooltip's own sentence is the accurate one here — the
+    // target was there at render and is gone now — and it beats the generic delivery failure
+    // below, which would blame a write that never happened.
+    if (!id) {
+      showToast(t('agentInfo.pr.prepareThreadNoAgent'), 'error')
+      return
+    }
+    // No toast on empty text, and it is a different situation: nothing was composed, so
+    // nothing was lost. Unreachable from both call sites anyway — the row passes one thread
+    // and `formatThreadContext` always writes a block for it, and the bulk control only
+    // renders when `unresolvedThreads` is non-empty. A toast here would be a sentence no
+    // reader can provoke, phrased for a state the UI does not have.
+    if (text === '') return
 
     // AWAITED, and the answer acted on: an exited terminal keeps its entry in the store with
     // `state` set to `completed`/`error` — the same two values an agent idle at its prompt
