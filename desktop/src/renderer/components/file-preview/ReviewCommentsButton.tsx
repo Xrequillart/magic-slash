@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { AlertTriangle, Check, Copy, MessageSquare, SendHorizontal, Trash2 } from 'lucide-react'
 import { useAnchoredPanel } from '../useAnchoredPanel'
 import { BUTTON_ACTION, BUTTON_COMMENTS } from './ChangeNavigator'
-import { resolveAgentTarget } from '../../utils/agentTerminals'
+import { bracketedPaste, resolveAgentTarget } from '../../utils/agentTerminals'
 import { commentLabel } from '../../utils/commentAnchors'
 import {
   formatReviewComments, type ReviewComment, type ReviewCommentGroup,
@@ -39,23 +39,6 @@ const COPIED_MS = 2000
  * read a failure.
  */
 const SEND_FAILED_MS = 6000
-
-/**
- * A paste, as a terminal reads one.
- *
- * The markers are what tell the program on the other end that what arrives between them was
- * PASTED rather than typed, which is how it knows not to interpret a newline in the middle
- * of it as a submission. The text is written straight to the pty, so this only means "paste"
- * to a program that has turned bracketed paste on (mode 2004) — every TUI that takes
- * multi-line input does, including the agent this app drives.
- *
- * There is deliberately no `\r` and no trailing newline anywhere near this: the text lands
- * in the prompt and the reader presses Enter themselves, having seen what they are about to
- * send. `pages/Skills` writes a trailing `\r` on purpose for a one-line command; a review's
- * worth of comments is not that.
- */
-const PASTE_START = '\x1b[200~'
-const PASTE_END = '\x1b[201~'
 
 /**
  * The trigger in a card HEADER, at the scale the row it joins is set to.
@@ -263,7 +246,7 @@ function ReviewCommentsButton({
     // that is no longer running.
     const delivered = await window.electronAPI.terminal.write(
       id,
-      `${PASTE_START}${formatReviewComments(groups)}${PASTE_END}`,
+      bracketedPaste(formatReviewComments(groups)),
     )
 
     if (!delivered) {

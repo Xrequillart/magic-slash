@@ -88,3 +88,35 @@ export function resolveAgentTarget(
   if (named && !terminals.some(terminal => terminal.id === id)) return null
   return id
 }
+
+/**
+ * A paste, as a terminal reads one.
+ *
+ * The markers are what tell the program on the other end that what arrives between them was
+ * PASTED rather than typed, which is how it knows not to interpret a newline in the middle
+ * of it as a submission. The text is written straight to the pty, so this only means "paste"
+ * to a program that has turned bracketed paste on (mode 2004) — every TUI that takes
+ * multi-line input does, including the agent this app drives.
+ *
+ * There is deliberately no `\r` and no trailing newline anywhere near this: the text lands
+ * in the prompt and the reader presses Enter themselves, having seen what they are about to
+ * send. `pages/Skills` writes a trailing `\r` on purpose for a one-line command; a review's
+ * worth of comments is not that, and neither is a review thread.
+ *
+ * HERE rather than beside the first control that pasted, because there are two of them now —
+ * the review's comments and a PR review thread — and this module is already the answer to
+ * "which terminal do I hand text to". The bytes that make it a paste belong with it.
+ *
+ * A FUNCTION rather than two exported markers, because every caller did the same
+ * concatenation with them and the two that matter are easy to get wrong once: an unterminated
+ * paste leaves the terminal in bracketed-paste mode, and a `\r` appended after the end marker
+ * submits the thing this whole design exists to leave sitting in the prompt. Composing the
+ * three pieces here means a call site cannot spell either mistake.
+ */
+const PASTE_START = '\x1b[200~'
+const PASTE_END = '\x1b[201~'
+
+/** `text`, wrapped so the terminal reads it as pasted rather than typed. */
+export function bracketedPaste(text: string): string {
+  return `${PASTE_START}${text}${PASTE_END}`
+}

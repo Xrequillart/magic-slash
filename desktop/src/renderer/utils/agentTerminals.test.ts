@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isAgentTerminal, resolveAgentTarget } from './agentTerminals'
+import { bracketedPaste, isAgentTerminal, resolveAgentTarget } from './agentTerminals'
 
 describe('isAgentTerminal', () => {
   it('accepts an ordinary agent id', () => {
@@ -82,5 +82,41 @@ describe('resolveAgentTarget', () => {
   it('has nowhere to write with nothing selected and nothing named', () => {
     expect(resolveAgentTarget(undefined, null, LIVE)).toBeNull()
     expect(resolveAgentTarget(undefined, undefined, [])).toBeNull()
+  })
+})
+
+describe('bracketedPaste', () => {
+  // Written as escapes rather than pasted in: the markers ARE control bytes, and a literal
+  // ESC in a source file is invisible to whoever reads the diff next.
+  const START = '\x1b[200~'
+  const END = '\x1b[201~'
+
+  it('wraps the text in the two markers', () => {
+    expect(bracketedPaste('hello')).toBe(`${START}hello${END}`)
+  })
+
+  it('TERMINATES the paste, which is the first of the two mistakes it exists to prevent', () => {
+    // An unterminated paste leaves the terminal in bracketed-paste mode, and everything the
+    // user types next is swallowed by it.
+    const wrapped = bracketedPaste('line one\nline two')
+    expect(wrapped.startsWith(START)).toBe(true)
+    expect(wrapped.endsWith(END)).toBe(true)
+  })
+
+  it('appends no submission byte, which is the second', () => {
+    // The whole design is that the text LANDS in the prompt and the reader presses Enter,
+    // having seen what they are about to send. A trailing `\r` sends it for them.
+    const wrapped = bracketedPaste('/magic:resolve\n\nReview thread (open)')
+    expect(wrapped).not.toContain('\r')
+    expect(wrapped.endsWith('\n')).toBe(false)
+    expect(wrapped.slice(END.length * -1 - 1, END.length * -1)).not.toBe('\n')
+  })
+
+  it('keeps the payload\'s newlines, which are what the markers are for', () => {
+    expect(bracketedPaste('a\nb\nc')).toBe(`${START}a\nb\nc${END}`)
+  })
+
+  it('still terminates an empty paste', () => {
+    expect(bracketedPaste('')).toBe(`${START}${END}`)
   })
 })
