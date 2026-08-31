@@ -89,6 +89,16 @@ export default function PRCommentsPanel() {
    * being so. Same guard, same reason, as `FilePreviewPanel`.
    */
   const isClosingRef = useRef(false)
+  /**
+   * The pending exit timer, kept so a reopen can cancel it.
+   *
+   * Clearing the two flags below is not enough: the timeout is already scheduled, and its
+   * callback ends in `closePRComments()`. Reopen the panel inside those 310 ms — activate
+   * a focused thread row from the keyboard, which the backdrop does not cover — and the
+   * store gets a fresh `prComments`, then the stale timer fires and drops it. The panel
+   * opens and vanishes on its own.
+   */
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isOpen = prComments !== null
 
@@ -96,7 +106,8 @@ export default function PRCommentsPanel() {
     if (isClosingRef.current) return
     isClosingRef.current = true
     setIsClosing(true)
-    setTimeout(() => {
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null
       isClosingRef.current = false
       setIsClosing(false)
       closePRComments()
@@ -106,8 +117,16 @@ export default function PRCommentsPanel() {
   // Reopening must not inherit the last exit. The panel is not unmounted between two
   // opens — it is mounted for the life of the app — so without this a second open would
   // render straight into `animate-slide-out` and be invisible.
+  //
+  // Cancelling the timer is part of the same job, not a separate concern: an exit that is
+  // still in flight owns a `closePRComments()` call, and only clearing it makes the reopen
+  // actually stick.
   useEffect(() => {
     if (isOpen) {
+      if (closeTimerRef.current !== null) {
+        clearTimeout(closeTimerRef.current)
+        closeTimerRef.current = null
+      }
       isClosingRef.current = false
       setIsClosing(false)
     }
