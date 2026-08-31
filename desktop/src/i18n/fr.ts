@@ -83,6 +83,7 @@ export const fr: Record<keyof typeof en, string> = {
 
   // ── Réglages → Langue et région ──────────────────────────────────────────
   'settings.tab.account': 'Compte',
+  'settings.tab.connections': 'Connexions',
   'settings.tab.organization': 'Organisation',
   'settings.tab.repositories': 'Dépôts',
   'settings.tab.claudeCode': 'Claude Code',
@@ -838,12 +839,13 @@ export const fr: Record<keyof typeof en, string> = {
   'toast.accountDeleted': 'Votre compte a été supprimé',
   'toast.accountDeleteFailed': 'Impossible de supprimer le compte',
 
-  // ── Réglages → Compte → Compte Atlassian ─────────────────────────────────
+  // ── Réglages → Connexions → Compte Atlassian ─────────────────────────────
   'jira.section': 'Compte Atlassian',
   'jira.notConfigured': 'La connexion Atlassian n’est pas disponible dans cette version',
   'jira.notConfiguredHint': 'Cette copie de Magic Slash a été compilée sans identifiant d’application Atlassian.',
   'jira.notConnected': 'Non connecté',
-  'jira.notConnectedHint': 'Connectez votre propre compte Atlassian pour que les skills lisent vos tickets Jira.',
+  'jira.notConnectedHint':
+    'Affiche vos tickets Jira dans l’application. Les skills, eux, lisent Jira via le serveur MCP (Application → Configuration de la machine).',
   'jira.connect': 'Connecter Atlassian',
   'jira.connecting': 'En attente de votre navigateur…',
   'jira.connectedFallback': 'Compte Atlassian connecté',
@@ -1713,11 +1715,11 @@ export const fr: Record<keyof typeof en, string> = {
   // ── Tâches · pourquoi un projet Jira n’a pas pu être lu ──────────────────
   'tasks.jira.error.notConnected': 'Aucun compte Atlassian connecté',
   'tasks.jira.error.notConnectedFix':
-    'Connectez votre compte Atlassian dans Réglages → Compte pour lire le sprint de ce projet.',
+    'Connectez votre compte Atlassian dans Réglages → Connexions pour lire le sprint de ce projet.',
   'tasks.jira.error.noSprint': 'Aucun sprint actif',
   'tasks.jira.error.noSprintFix': 'Ce projet n’a aucun sprint en cours — démarrez-en un dans Jira, puis rechargez.',
   'tasks.jira.error.unauthorized': 'Atlassian a refusé les identifiants',
-  'tasks.jira.error.unauthorizedFix': 'Reconnectez votre compte Atlassian dans Réglages → Compte, puis rechargez.',
+  'tasks.jira.error.unauthorizedFix': 'Reconnectez votre compte Atlassian dans Réglages → Connexions, puis rechargez.',
   'tasks.jira.error.forbidden': 'Accès refusé',
   'tasks.jira.error.forbiddenFix':
     'Votre compte Atlassian n’a pas accès à ce projet — demandez l’accès à un administrateur Jira.',

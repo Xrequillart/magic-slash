@@ -24,17 +24,18 @@ import { SectionHeader } from './SectionHeader'
  * total in the hint is counted from the list rather than written as a constant.
  *
  * Read-only on purpose: each row's repair already lives one tab away (Application
- * for the machine setup, Repositories for the repos) or right below it in this
- * same tab. Duplicating those affordances here would mean two places to keep in
- * sync for no new capability.
+ * for the machine setup, Repositories for the repos, Connections for the
+ * Atlassian link) or right below it in this same tab. Duplicating those
+ * affordances here would mean two places to keep in sync for no new capability.
  */
 export function AccountChecklistCard() {
   const t = useT()
   const { status: authStatus, loading: authLoading } = useAuth()
   const config = useStore((s) => s.config)
-  // The same hook the Atlassian section below this card uses, so the row and the
-  // section it points at can never disagree — and so a connection made down there
-  // ticks the row without a reload, the push being what both of them listen to.
+  // The same hook the Atlassian section on the Connections tab uses, so the row
+  // and the section it points at can never disagree — and so a connection made
+  // over there ticks the row without a reload, the push being what both of them
+  // listen to.
   const { status: jiraStatus, loading: jiraLoading } = useJiraAuth()
 
   const [profileFilled, setProfileFilled] = useState<boolean | null>(null)
@@ -105,11 +106,12 @@ export function AccountChecklistCard() {
     ...(authStatus.enabled
       ? [{ key: 'account.checklist.step.account' as MessageKey, done: authStatus.loggedIn }]
       : []),
-    // Right after the cloud account, in the order the two sections appear below this
+    // Right after the cloud account: it is the next thing to set up, even though the
+    // section that sets it up now lives on the Connections tab rather than under this
     // card. Hidden unless it is a step that can be completed at all: Atlassian has to
     // be one of the chosen integrations — someone on GitHub-only has no Jira to read —
     // and the build has to carry an Atlassian application id, without which the Connect
-    // button below cannot even open a browser (`jira.notConfigured`).
+    // button on Connections cannot even open a browser (`jira.notConfigured`).
     ...(setupStatus.integrations.atlassian && jiraStatus.configured
       ? [{
         key: 'account.checklist.step.atlassian' as MessageKey,

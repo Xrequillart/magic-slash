@@ -105,6 +105,7 @@ export const en = {
 
   // ── Settings → Language & Region ─────────────────────────────────────────
   'settings.tab.account': 'Account',
+  'settings.tab.connections': 'Connections',
   'settings.tab.organization': 'Organization',
   'settings.tab.repositories': 'Repositories',
   'settings.tab.claudeCode': 'Claude Code',
@@ -849,12 +850,19 @@ export const en = {
   'toast.accountDeleted': 'Your account has been deleted',
   'toast.accountDeleteFailed': 'Failed to delete account',
 
-  // ── Settings → Account → Atlassian account ───────────────────────────────
+  // ── Settings → Connections → Atlassian account ───────────────────────────
+  // This credential is what the APP reads Jira with — the Tasks page, a ticket's
+  // own page. It is not what the skills use: those go through the Atlassian MCP
+  // server, registered with Claude Code in Application → Machine setup. Two
+  // different connections, and the copy below has to keep saying so — someone who
+  // reads "the skills need this" will disconnect it and wonder why /magic:start
+  // still works.
   'jira.section': 'Atlassian account',
   'jira.notConfigured': 'Atlassian sign-in is not available in this build',
   'jira.notConfiguredHint': 'This copy of Magic Slash was built without an Atlassian application id.',
   'jira.notConnected': 'Not connected',
-  'jira.notConnectedHint': 'Connect your own Atlassian account to let the skills read your Jira tickets.',
+  'jira.notConnectedHint':
+    'Shows your Jira tickets in the app. The skills read Jira through the MCP server instead (Application → Machine setup).',
   'jira.connect': 'Connect Atlassian',
   'jira.connecting': 'Waiting for your browser…',
   'jira.connectedFallback': 'Atlassian account connected',
@@ -1901,8 +1909,8 @@ export const en = {
   // are states of the board or of this machine, so neither wears "could not be read".
   'tasks.jira.noSprintBadge': 'no active sprint',
   'tasks.jira.notConnectedBadge': 'not connected',
-  // The way out of the `not-connected` card: the Account tab, where the Atlassian
-  // connection lives.
+  // The way out of the `not-connected` card: the Connections tab, where the
+  // Atlassian connection lives.
   'tasks.jira.connect': 'Open Settings',
   // Jira repositories ARE configured, and none of them names a project — the Jira
   // twin of `tasks.noAddress`, and a different field from the GitHub one.
@@ -1945,13 +1953,13 @@ export const en = {
   // "run `gh auth login`" is not advice about an Atlassian account.
   'tasks.jira.error.notConnected': 'No Atlassian account connected',
   'tasks.jira.error.notConnectedFix':
-    'Connect your Atlassian account in Settings → Account to read this project’s sprint.',
+    'Connect your Atlassian account in Settings → Connections to read this project’s sprint.',
   // Not a failure: the project answered, and its board has nothing running. Said
   // apart from "nothing to do", which is a sprint that IS running.
   'tasks.jira.error.noSprint': 'No active sprint',
   'tasks.jira.error.noSprintFix': 'This project has no sprint in progress — start one in Jira, then reload.',
   'tasks.jira.error.unauthorized': 'Atlassian refused the credential',
-  'tasks.jira.error.unauthorizedFix': 'Reconnect your Atlassian account in Settings → Account, then reload.',
+  'tasks.jira.error.unauthorizedFix': 'Reconnect your Atlassian account in Settings → Connections, then reload.',
   'tasks.jira.error.forbidden': 'Access denied',
   'tasks.jira.error.forbiddenFix':
     'Your Atlassian account cannot browse this project — ask a Jira administrator for access.',

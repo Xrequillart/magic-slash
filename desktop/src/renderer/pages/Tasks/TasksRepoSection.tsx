@@ -194,7 +194,7 @@ export function JiraErrorLines({
       <ErrorLines {...keys} />
       {error.error === 'not-connected' && (
         <button
-          onClick={() => useStore.getState().openSettingsModal('account')}
+          onClick={() => useStore.getState().openSettingsModal('connections')}
           className="self-start flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-md hover:bg-accent/20 transition-colors"
         >
           <Settings className="w-3 h-3" />

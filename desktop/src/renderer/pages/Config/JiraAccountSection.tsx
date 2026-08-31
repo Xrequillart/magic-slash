@@ -9,7 +9,7 @@ import { TrackerTile } from '../../components/icons/TrackerIcons'
 import { useT, type MessageKey } from '../../i18n'
 
 /**
- * Atlassian block of the Account tab: one button, one browser consent screen.
+ * Atlassian block of the Connections tab: one button, one browser consent screen.
  *
  * Built on `CloudAccountSection` — same header, same card, same rows, same CTA — with
  * THREE states where that one has two, and the third is the point:
@@ -178,7 +178,11 @@ export function JiraAccountSection() {
       onClick={handleConnect}
       disabled={pending || !canConnect}
       title={canConnect ? undefined : t('jira.notConfigured')}
-      className={`${BTN_PRIMARY} disabled:opacity-40`}
+      // `shrink-0 whitespace-nowrap` so the row's text is what gives way when the
+      // subtitle runs long: without it the flex parent squeezes the button first and
+      // "Connect Atlassian" breaks over two lines, which is the one element on the
+      // card that must stay one line whatever the copy says.
+      className={`${BTN_PRIMARY} shrink-0 whitespace-nowrap disabled:opacity-40`}
     >
       {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
       {pending ? t('jira.connecting') : label}
@@ -248,8 +252,8 @@ export function JiraAccountSection() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-between min-h-12">
-                <div>
+              <div className="flex items-center justify-between gap-4 min-h-12">
+                <div className="min-w-0">
                   <div className="text-sm font-medium">{t('jira.notConnected')}</div>
                   <div className="text-xs text-text-secondary/50 mt-0.5">{t('jira.notConnectedHint')}</div>
                 </div>

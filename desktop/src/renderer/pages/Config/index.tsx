@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode } from 'react'
-import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit2, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, Bot, type LucideIcon } from 'lucide-react'
+import { Github, Plus, ChevronRight, Check, X, Folder, Sparkles, FolderGit2, Keyboard, Info, Columns, Clock, MonitorSmartphone, Search, ChevronDown, AlertTriangle, Shield, GitPullRequest, Gauge, User, Coins, BarChart3, Bell, LogOut, Building2, Lock, CircleUserRound, Plug, SquareTerminal, Palette, Languages, AppWindow, Lightbulb, Bot, type LucideIcon } from 'lucide-react'
 import { AccountPage } from './AccountPage'
+import { ConnectionsPage } from './ConnectionsPage'
 import { RepoPage } from './RepoPage'
 import { OrgPage, resolveActiveOrgId } from './OrgPage'
 import { AppearancePage } from './AppearancePage'
@@ -62,6 +63,7 @@ const AGENT_TYPE_OPTIONS: { value: AgentType; labelKey: MessageKey; descriptionK
 // booted in. The labels are resolved in the render path instead.
 const SETTINGS_TABS: { id: SettingsTab; labelKey: MessageKey; icon: LucideIcon }[] = [
   { id: 'account', labelKey: 'settings.tab.account', icon: CircleUserRound },
+  { id: 'connections', labelKey: 'settings.tab.connections', icon: Plug },
   { id: 'organization', labelKey: 'settings.tab.organization', icon: Building2 },
   { id: 'repositories', labelKey: 'settings.tab.repositories', icon: FolderGit2 },
   { id: 'application', labelKey: 'settings.tab.application', icon: AppWindow },
@@ -876,6 +878,11 @@ function WelcomePage({ route }: { route: SettingsRoute }) {
       {/* Account tab — cloud identity + Claude profile */}
       {contentTab === 'account' && (
         <AccountPage />
+      )}
+
+      {/* Connections tab — the outside services this machine is linked to */}
+      {contentTab === 'connections' && (
+        <ConnectionsPage />
       )}
 
       {/* Organization tab */}
