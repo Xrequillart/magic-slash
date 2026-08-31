@@ -10,7 +10,6 @@ import { execFileSync } from 'child_process'
 import { clearGitHubTokenCache } from './github'
 import {
   fetchPRStatusGraphQL,
-  mapPullRequestToComments,
   PR_COMMENTS_QUERY,
   PR_STATUS_QUERY,
   type GQLPullRequest,
@@ -516,33 +515,7 @@ describe('fetchPRStatusGraphQL', () => {
   })
 })
 
-describe('mapPullRequestToComments', () => {
-  /** The three connections, with bodies — the shape PR_COMMENTS_QUERY brings back. */
-  function commentedPR(): GQLPullRequest {
-    return {
-      reviews: {
-        nodes: [
-          { id: 'r1', author: { login: 'alice' }, state: 'CHANGES_REQUESTED', submittedAt: '2025-01-01T09:00:00Z', url: 'https://gh/r1', bodyText: 'Needs a test.' },
-          // Bare approval: a verdict, not a comment.
-          { id: 'r2', author: { login: 'bob' }, state: 'APPROVED', submittedAt: '2025-01-01T12:00:00Z', url: 'https://gh/r2', bodyText: '   ' },
-        ],
-      },
-      reviewThreads: {
-        nodes: [
-          {
-            isResolved: true,
-            path: 'desktop/src/main/watcher.ts',
-            line: 42,
-            comments: { nodes: [{ id: 'c1', author: { login: 'greptile' }, createdAt: '2025-01-01T10:00:00Z', url: 'https://gh/c1', bodyText: 'Off by one.' }] },
-          },
-        ],
-      },
-      comments: {
-        nodes: [{ id: 'c2', author: { login: 'claude-bot' }, createdAt: '2025-01-01T11:00:00Z', url: 'https://gh/c2', bodyText: 'CI is green.' }],
-      },
-    }
-  }
-
+describe('PR_COMMENTS_QUERY', () => {
   it('asks for plain text and for the newest of each connection', () => {
     // `body` is the markdown source; the card renders text and clamps it.
     expect(PR_COMMENTS_QUERY).toContain('bodyText')
@@ -551,53 +524,19 @@ describe('mapPullRequestToComments', () => {
     expect(PR_COMMENTS_QUERY).not.toContain('comments(first:')
   })
 
-  it('flattens the three connections into one chronological list', () => {
-    const comments = mapPullRequestToComments(commentedPR())
-
-    expect(comments.map((c) => [c.kind, c.author])).toEqual([
-      ['review', 'alice'],
-      ['inline', 'greptile'],
-      ['conversation', 'claude-bot'],
-    ])
+  it('asks for what makes a thread a thread', () => {
+    // The grouping in `pr-review-threads.ts` is only as good as these four fields:
+    // without them a reply is indistinguishable from the comment it answers.
+    expect(PR_COMMENTS_QUERY).toContain('id isResolved isOutdated path line')
+    expect(PR_COMMENTS_QUERY).toContain('replyTo{id}')
+    expect(PR_COMMENTS_QUERY).toContain('pullRequestReview{id}')
   })
 
-  it('drops bodyless reviews rather than listing a verdict as a comment', () => {
-    // The header badge already says "approved"; a blank row would only push a real
-    // comment off the cap.
-    expect(mapPullRequestToComments(commentedPR()).some((c) => c.author === 'bob')).toBe(false)
-  })
-
-  it('carries the thread location and resolution onto each inline comment', () => {
-    const inline = mapPullRequestToComments(commentedPR()).find((c) => c.kind === 'inline')
-
-    expect(inline).toMatchObject({
-      path: 'desktop/src/main/watcher.ts',
-      line: 42,
-      resolved: true,
-      url: 'https://gh/c1',
-    })
-  })
-
-  it('keeps the newest comments when a PR blows past the cap', () => {
-    // The tail, not the head: on a long bot thread the recent exchange is what the
-    // card is opened for.
-    const many = Array.from({ length: 80 }, (_, i) => ({
-      id: `c${i}`,
-      author: { login: 'bot' },
-      // Zero-padded so string ordering is chronological ordering.
-      createdAt: `2025-01-01T${String(i % 24).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}:00Z`,
-      url: `https://gh/c${i}`,
-      bodyText: `comment ${i}`,
-    }))
-    const comments = mapPullRequestToComments({ comments: { nodes: many } })
-
-    expect(comments).toHaveLength(60)
-    expect(comments.at(-1)?.body).toBe(
-      [...many].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1)).at(-1)?.bodyText,
-    )
-  })
-
-  it('survives a pull request with no comment connections at all', () => {
-    expect(mapPullRequestToComments({})).toEqual([])
+  it('asks for what survives a truncation', () => {
+    // `line` is null on an outdated thread and `last:20` cuts a long exchange, so
+    // both rows the card draws — the location and the reply count — need a second
+    // field to stay correct.
+    expect(PR_COMMENTS_QUERY).toContain('originalLine')
+    expect(PR_COMMENTS_QUERY).toContain('comments(last:20){ totalCount')
   })
 })

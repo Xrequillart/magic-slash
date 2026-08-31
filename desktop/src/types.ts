@@ -42,9 +42,12 @@ export interface PRCommentCounts {
  * somebody opens the fold, held in renderer memory, and dropped with the card.
  */
 export interface PRComment {
-  /** GraphQL node id — stable, and the React key. */
+  /**
+   * GraphQL node id — stable, and the fallback React key. The fold keys its rows on
+   * `PRReviewThread.id`, not on this: a row is a thread now, not a comment.
+   */
   id: string
-  /** Which of the three buckets it came from; the card labels and groups by this. */
+  /** Which of the three connections it came from; the thread carries the same value. */
   kind: 'inline' | 'conversation' | 'review'
   author: string
   /**
@@ -58,13 +61,74 @@ export interface PRComment {
   createdAt: string
   /** Permalink to the comment itself, not to the PR. */
   url: string
-  /** Inline only: where in the diff the thread hangs. */
-  path?: string
-  line?: number
-  /** Inline only: the thread is settled, so the card can step it back. */
-  resolved?: boolean
   /** Reviews only: the verdict the body was submitted with. */
   reviewState?: string
+  /**
+   * Inline only: the review this comment was submitted with, when GitHub attaches
+   * one. Carried rather than dropped because a thread's replies come back with the
+   * review that batched them, and that is what lets a panel say "part of alice's
+   * changes-requested pass" without a second query.
+   */
+  reviewId?: string
+}
+
+/**
+ * One conversation on a pull request — the unit the card lists.
+ *
+ * A thread, not a comment, because a reply is not a sibling of the comment it
+ * answers: the sidebar is 500 px wide, so the card is where you SCAN, one row per
+ * exchange. GitHub's `reviewThreads` already groups the inline ones; the two
+ * connections that have no notion of a thread (the PR conversation, and the review
+ * summaries) become singletons here, so the renderer has one shape to walk rather
+ * than three.
+ *
+ * Same lifetime as `PRComment`: fetched when somebody opens the fold, never
+ * persisted, dropped with the card.
+ */
+export interface PRReviewThread {
+  /**
+   * The React key of the fold's list, so it has to be stable AND unique: the
+   * GraphQL thread id for `inline`, and the underlying comment's or review's own
+   * id for the `conversation` / `review` singletons, which have no thread of their
+   * own to be identified by.
+   */
+  id: string
+  /** Which connection it came from; the card distinguishes inline from the rest. */
+  kind: 'inline' | 'conversation' | 'review'
+  /** What opened the exchange — the comment the row is labelled with. */
+  root: PRComment
+  /**
+   * The answers, oldest first, capped by `MAX_COMMENTS_PER_THREAD`. Always empty on
+   * a singleton. The row shows `replyCount`, not this length.
+   */
+  replies: PRComment[]
+  /**
+   * How many replies GitHub reported, which is NOT `replies.length`: two separate
+   * truncations sit between the API and the row — `comments(last:20)` in the query
+   * and `MAX_COMMENTS_PER_THREAD` after it — and a row saying "3 replies" over a
+   * list of two is the honest reading, whereas counting what survived would hide
+   * that anything was cut. Taken from the connection's `totalCount`, so it stays
+   * exact past twenty. Excludes nothing: a reply with an empty body is not listed
+   * but is still a reply.
+   */
+  replyCount: number
+  /** Inline only: where in the diff the thread hangs. */
+  path?: string
+  /**
+   * Inline only. GitHub returns `line` as null once a thread is `outdated`, so this
+   * falls back to `originalLine` — the line it was written against — rather than
+   * leaving the row with a bare filename.
+   */
+  line?: number
+  /**
+   * Inline only in practice: GitHub tracks no state for a conversation comment or a
+   * review summary, so a singleton is always `open` and the card reads this on
+   * inline rows alone. `resolved` wins over `outdated` — a settled thread is settled
+   * whether or not the diff moved under it, and it is the more final of the two.
+   */
+  state: 'open' | 'resolved' | 'outdated'
+  /** ISO-8601 of the newest comment in the thread; what the list is sorted on. */
+  updatedAt: string
 }
 
 /**

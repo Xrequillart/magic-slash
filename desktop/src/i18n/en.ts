@@ -1441,12 +1441,17 @@ export const en = {
   'agentInfo.pr.commentsCount': '{count} comments',
   'agentInfo.pr.commentsLoading': 'Reading the comments…',
   'agentInfo.pr.commentsEmpty': 'Nothing written — approvals only.',
+  // Shared by the thread rows: a resolved thread and a resolved comment are the
+  // same state, so there is one word for it.
   'agentInfo.pr.commentResolved': 'resolved',
-  'agentInfo.pr.commentOpen': 'Open on GitHub',
-  'agentInfo.pr.commentCopyLink': 'Copy the link',
-  'agentInfo.pr.commentCopyLinkDone': 'Link copied',
-  'agentInfo.pr.commentMore': 'Show more',
-  'agentInfo.pr.commentLess': 'Show less',
+  // On a thread row: how many answers the exchange has drawn. Two keys because the
+  // catalogue interpolates but does not pluralise.
+  'agentInfo.pr.threadReply': '{count} reply',
+  'agentInfo.pr.threadReplies': '{count} replies',
+  // The diff moved under the thread, so the line it was left on is gone.
+  'agentInfo.pr.threadOutdated': 'outdated',
+  'agentInfo.pr.threadOpen': 'open',
+  'agentInfo.pr.threadReview': 'review',
   'agentInfo.pr.lastChecked': 'checked {time}',
   'agentInfo.pr.neverChecked': 'never checked',
   'agentInfo.pr.refresh': 'Refresh now',
