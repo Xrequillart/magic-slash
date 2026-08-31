@@ -1,3 +1,5 @@
+
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-readme-dark.svg">
@@ -348,7 +350,7 @@ npm run desktop:package
 | File                                       | Description                                            |
 | ------------------------------------------ | ------------------------------------------------------ |
 | `~/.claude/settings.json`                  | MCP servers, hooks, statusline and permission allowlist |
-| `~/.claude/skills/magic-start/` (…and 6 more) | The installed skills, one directory each            |
+| `~/.claude/skills/magic-start/` (…and 7 more) | The installed skills, one directory each            |
 | `~/.config/magic-slash/profile.md`         | User profile — a local mirror of the cloud profile, read by the skills |
 | `~/.config/magic-slash/appearance.json`    | Theme and language, so a cold start paints correctly   |
 | `~/.config/magic-slash/cloud-session.enc`  | Your session, encrypted with the OS keychain           |
