@@ -119,14 +119,66 @@ function isMagicSlashStatusLine(sl: StatusLineConfig | undefined): boolean {
  * The two Read() entries are not decoration: the skills read their own reference
  * files (messages, glossary, plan templates) and the Magic Slash config at run time,
  * and without these the very first step of every skill stops on a permission prompt.
+ *
+ * WHAT THIS FILE IS ACTUALLY DOING, AND WHY THE Bash ENTRIES ARE SHAPED THE WAY THEY ARE
+ * ─────────────────────────────────────────────────────────────────────────────────────
+ * These land in `~/.claude/settings.json`, which is GLOBAL. They apply to every Claude
+ * Code session on the machine, in every repository, whether or not Magic Slash started
+ * it and whether or not a skill is running. That is the one fact to hold on to when
+ * adding a line here, because it is what makes a convenient grant expensive.
+ *
+ * This list used to read `Bash(git *)`, `Bash(npm *)`, `Bash(yarn *)`, `Bash(pnpm *)`,
+ * `Bash(bun *)`, `Bash(gh *)`, `Bash(jq *)` and `Bash(*http://127.0.0.1:*)`. Every one
+ * of those is a route to arbitrary command execution, not by any flaw in the matcher
+ * but through the documented features of the tool named:
+ *
+ *  • `git config alias.x '!sh -c …'`, then `git x`. Also `git -c core.pager=…` and
+ *    `git -c core.sshCommand=…`, which run a command on the next fetch.
+ *  • `npm run` / `npx` / `pnpm dlx` / `bun x` — fetching and executing a package, or
+ *    running a script out of whatever `package.json` happens to be in the directory.
+ *  • `gh api --method DELETE`, `gh secret set`, `gh workflow run`.
+ *  • A LEADING wildcard, as in `Bash(*http://127.0.0.1:*)`, matches a command that
+ *    merely CONTAINS the substring: `sh -c 'anything' # http://127.0.0.1:` qualified.
+ *
+ * On its own that is a broad grant the user never explicitly agreed to. Combined with
+ * what the skills read — PR review comments, issue and ticket descriptions, all of it
+ * written by whoever can comment on the repository — it removes the human from the
+ * loop precisely where untrusted text is being turned into actions. The skills now say
+ * so themselves (see the "Untrusted content" section in each SKILL.md); this is the
+ * other half of that fix.
+ *
+ * So the Bash entries below are PREFIX-scoped to the verbs the skills actually run,
+ * taken from the commands in `skills/`. The shape matters in three ways:
+ *
+ *  1. Every rule names a subcommand, so no rule grants a whole tool. `git config` is
+ *    absent, and `Bash(git fetch:*)` does not match `git -c core.sshCommand=… fetch`
+ *    either — the `-c` vector closes by construction rather than by a filter.
+ *  2. Package managers get `install` (bare) and `run`/`test`. Not `npx`, `pnpm dlx`,
+ *    `bun x` or `npm exec`: those exist to execute code fetched from the network, and
+ *    a prompt is the correct answer to one of those every time.
+ *  3. A missing rule costs a permission PROMPT, never a failure. That is what makes
+ *    erring narrow the cheap direction here, and why the list should stay reactive to
+ *    real friction rather than pre-emptively generous.
+ *
+ * `gh api` stays broad, and is the one place this list still grants more than it can
+ * justify by shape alone. The skills use it for GraphQL reads and for posting threaded
+ * review replies, both of which are `gh api` with a method flag, so there is no prefix
+ * that admits the second without admitting a DELETE. Narrowing it needs the skills to
+ * route writes through the MCP tools instead — worth doing, bigger than this file.
  */
 const MAGIC_SLASH_BASE_PERMISSIONS = [
   // Skill reference files. Absolute, because Claude Code does not expand $HOME here.
   `Read(${path.join(os.homedir(), '.claude', 'skills', 'magic-*')})`,
   // Magic Slash config
   `Read(${path.join(STABLE_CONFIG_DIR, '*')})`,
-  // Desktop communication
-  'Bash(*http://127.0.0.1:*)',
+  // Desktop communication: the hooks and skills read the live config and report state
+  // over the local status server. Anchored at `curl`, so the rule can no longer be
+  // satisfied by an unrelated command that merely mentions the address — and listed
+  // per flag combination because prefix matching has no way to say "these flags in
+  // any order". These three are what `skills/` actually sends.
+  'Bash(curl -s "http://127.0.0.1:*)',
+  'Bash(curl -sf "http://127.0.0.1:*)',
+  'Bash(curl -sf --max-time 5 "http://127.0.0.1:*)',
   // GitHub MCP tools
   'mcp__github__get_issue',
   'mcp__github__add_issue_comment',
@@ -150,14 +202,78 @@ const MAGIC_SLASH_BASE_PERMISSIONS = [
   'mcp__github__issue_write',
   'mcp__github__sub_issue_write',
   'mcp__github__get_me',
-  // Common Bash commands used by skills
-  'Bash(git *)',
-  'Bash(npm *)',
-  'Bash(yarn *)',
-  'Bash(pnpm *)',
-  'Bash(bun *)',
-  'Bash(jq *)',
-  'Bash(gh *)',
+  // ── git ────────────────────────────────────────────────────────────────────
+  // The subcommands the skills run, and only those. `git config` is deliberately
+  // absent: an alias is a stored shell command, so granting it grants everything.
+  'Bash(git status:*)',
+  'Bash(git diff:*)',
+  'Bash(git log:*)',
+  'Bash(git branch:*)',
+  'Bash(git rev-parse:*)',
+  'Bash(git ls-files:*)',
+  'Bash(git check-ignore:*)',
+  'Bash(git remote:*)',
+  'Bash(git merge-base:*)',
+  'Bash(git merge-tree:*)',
+  'Bash(git fetch:*)',
+  'Bash(git pull:*)',
+  'Bash(git add:*)',
+  'Bash(git commit:*)',
+  'Bash(git push:*)',
+  'Bash(git checkout:*)',
+  'Bash(git worktree:*)',
+  'Bash(git rebase:*)',
+  'Bash(git reset:*)',
+  // The multi-repo flows address a sibling worktree as `git -C <path> <subcommand>`,
+  // always read-only (branch, check-ignore, log, ls-files, status). A rule with the
+  // path in the MIDDLE is a glob rather than a prefix, and whether the matcher honours
+  // one is a Claude Code detail this file cannot verify. Included because the failure
+  // is safe in the direction that matters: a rule that never matches costs a prompt,
+  // never a wider grant. If these turn out to be dead weight, the durable fix is for
+  // the skills to `cd` into the worktree instead of reaching into it with `-C`.
+  'Bash(git -C * status:*)',
+  'Bash(git -C * branch:*)',
+  'Bash(git -C * log:*)',
+  'Bash(git -C * ls-files:*)',
+  'Bash(git -C * check-ignore:*)',
+  // ── package managers ───────────────────────────────────────────────────────
+  // Bare `install` — restoring the dependencies a freshly created worktree is missing,
+  // from the repository's own lockfile. NOT `install <package>`, which fetches and runs
+  // whatever it is pointed at, and not the `npx`/`dlx`/`x`/`exec` verbs at all.
+  'Bash(npm install)',
+  'Bash(npm ci)',
+  'Bash(yarn install)',
+  'Bash(pnpm install)',
+  'Bash(bun install)',
+  // Scripts, which are defined by the repository the user chose to work in. This is the
+  // loosest grant of the three groups, and knowingly so: `npm run` executes whatever
+  // `package.json` says, so it is only as safe as the working directory. It stays
+  // because the verify step of every skill is `npm test` or `npm run lint`, and a
+  // prompt on each of those is a prompt on the main loop of the product.
+  'Bash(npm run:*)',
+  'Bash(npm test:*)',
+  'Bash(yarn run:*)',
+  'Bash(yarn test:*)',
+  'Bash(pnpm run:*)',
+  'Bash(pnpm test:*)',
+  'Bash(bun run:*)',
+  'Bash(bun test:*)',
+  // ── jq ─────────────────────────────────────────────────────────────────────
+  // Every skill parses the config with it. A filter language with no way to spawn a
+  // process; the residual is that it reads any file named on its command line.
+  'Bash(jq:*)',
+  // ── gh ─────────────────────────────────────────────────────────────────────
+  // Per subcommand, for the same reason as git. See the note above on `gh api`, which
+  // is the one entry here still wider than its purpose.
+  'Bash(gh api:*)',
+  'Bash(gh auth status:*)',
+  'Bash(gh repo view:*)',
+  'Bash(gh pr view:*)',
+  'Bash(gh pr list:*)',
+  'Bash(gh pr edit:*)',
+  'Bash(gh pr checks:*)',
+  'Bash(gh issue view:*)',
+  'Bash(gh run view:*)',
   // WebFetch is deliberately NOT pre-approved: /magic:start declares it in
   // allowed-tools to resolve public design URLs, but an unscoped grant would widen
   // every future session for a rare path. The user is prompted on the first fetch.
@@ -185,23 +301,65 @@ const MAGIC_SLASH_ATLASSIAN_PERMISSIONS = [
   'mcp__atlassian__addCommentToJiraIssue',
 ]
 
-const MAGIC_SLASH_PERMISSION_MARKERS = [
-  '.claude/skills/magic-',
-  '.config/magic-slash',
-  '127.0.0.1',
-  'mcp__github__',
-  'mcp__atlassian__',
-  'Bash(git ',
-  'Bash(npm ',
-  'Bash(yarn ',
-  'Bash(pnpm ',
-  'Bash(bun ',
-  'Bash(jq ',
-  'Bash(gh ',
+/**
+ * Entries earlier versions of this file wrote and this one does not.
+ *
+ * Removing our own stale grants is the entire reason ownership has to be decidable at
+ * all: the allowlist is rewritten from scratch on every launch, so an entry that is no
+ * longer recognised as ours is an entry that survives forever. The broad `Bash(git *)`
+ * family lives here rather than being quietly dropped — an install that has been
+ * running since before this change is exactly the one still holding them.
+ *
+ * `.config/magic-slash` appears as a literal path because `STABLE_CONFIG_DIR` did not
+ * always name it, and a machine that upgraded across that change has the older string.
+ */
+const LEGACY_MAGIC_SLASH_PERMISSIONS = [
+  'Bash(*http://127.0.0.1:*)',
+  'Bash(* curl -s "http://127.0.0.1:*" *)',
+  'Bash(git *)',
+  'Bash(npm *)',
+  'Bash(yarn *)',
+  'Bash(pnpm *)',
+  'Bash(bun *)',
+  'Bash(jq *)',
+  'Bash(gh *)',
+  `Read(${path.join(os.homedir(), '.config', 'magic-slash', '*')})`,
+]
+
+/**
+ * Which entries in the user's allowlist belong to us, by EXACT match.
+ *
+ * This used to ask whether the entry contained one of a list of substrings —
+ * `mcp__github__`, `127.0.0.1`, `Bash(git `, `.config/magic-slash` — and that was
+ * wrong in the destructive direction. A user who had granted `mcp__github__delete_file`
+ * themselves, or any rule of their own mentioning a local address, had it silently
+ * deleted on the next launch: the app rewrites this list on every start, so the entry
+ * was removed and not put back. Nothing reported it, and re-granting it lasted until
+ * the next launch.
+ *
+ * A set of the exact strings this file has ever written has no such failure mode. It is
+ * also exhaustive in a way substrings could not be checked to be — the union below IS
+ * the definition of "ours", so adding a permission above cannot forget to teach the
+ * cleanup about it.
+ *
+ * The one thing exactness cannot express is our two `Read()` paths, which embed
+ * `os.homedir()` and have been spelled more than one way. Those keep a prefix test,
+ * narrow enough that it can only match a path inside our own directories.
+ */
+const OWNED_PERMISSIONS = new Set([
+  ...MAGIC_SLASH_BASE_PERMISSIONS,
+  ...MAGIC_SLASH_ATLASSIAN_PERMISSIONS,
+  ...LEGACY_MAGIC_SLASH_PERMISSIONS,
+])
+
+const OWNED_READ_PREFIXES = [
+  `Read(${path.join(os.homedir(), '.claude', 'skills', 'magic-')}`,
+  `Read(${path.join(os.homedir(), '.config', 'magic-slash')}`,
+  `Read(${STABLE_CONFIG_DIR}`,
 ]
 
 function isMagicSlashPermission(perm: string): boolean {
-  return MAGIC_SLASH_PERMISSION_MARKERS.some(marker => perm.includes(marker))
+  return OWNED_PERMISSIONS.has(perm) || OWNED_READ_PREFIXES.some((p) => perm.startsWith(p))
 }
 
 interface HookConfig {

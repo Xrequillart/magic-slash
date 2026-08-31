@@ -320,6 +320,130 @@ describe('the permission allowlist', () => {
     configureClaudeHooks()
     expect(new Set(allow()).size).toBe(allow().length)
   })
+
+  /**
+   * The SHAPE of the Bash grants, which is the part that made this list a finding.
+   *
+   * These entries land in the user's GLOBAL settings and apply to every session on the
+   * machine, so the tests below are about what the list may never say again rather than
+   * about any single rule. They are written against the shape and not against a fixed
+   * inventory on purpose: a rule added later is caught by them without anyone
+   * remembering to update a list of forbidden strings.
+   */
+  describe('the shape of the Bash grants', () => {
+    const bash = (): string[] => allow().filter((p) => p.startsWith('Bash('))
+    const inner = (rule: string): string => rule.slice('Bash('.length, -1)
+
+    it('never grants a whole command, only named subcommands', () => {
+      configureClaudeHooks()
+      // `Bash(git *)` and friends: one word, then a wildcard covering every verb the
+      // tool has — including the ones that store a command and run it later.
+      const wholeTool = bash().filter((rule) => /^Bash\([a-z-]+ \*\)$/.test(rule))
+      expect(wholeTool).toEqual([])
+    })
+
+    it('never uses a leading wildcard, which matches a command that merely mentions it', () => {
+      configureClaudeHooks()
+      // `Bash(*http://127.0.0.1:*)` was satisfied by any command containing the
+      // address anywhere — a trailing comment was enough.
+      expect(bash().filter((rule) => inner(rule).startsWith('*'))).toEqual([])
+    })
+
+    it('does not grant the verbs whose job is executing code from elsewhere', () => {
+      configureClaudeHooks()
+      // Each of these fetches or stores a command and runs it. `git config` writes an
+      // alias, which is a shell command by another name; the rest execute a package
+      // resolved from the network at call time.
+      for (const verb of ['git config', 'npx', 'npm exec', 'pnpm dlx', 'bun x', 'yarn dlx']) {
+        expect(bash().filter((rule) => inner(rule).startsWith(verb))).toEqual([])
+      }
+    })
+
+    it('grants installs only in their bare form, never with a package name', () => {
+      configureClaudeHooks()
+      // `Bash(npm install:*)` would cover `npm install <anything>`, which is a request
+      // to run a stranger's postinstall script. Restoring a lockfile is the use case,
+      // and it takes no argument.
+      const installs = bash().filter((rule) => /install/.test(inner(rule)))
+      expect(installs.length).toBeGreaterThan(0)
+      for (const rule of installs) expect(inner(rule)).not.toMatch(/install:?\*/)
+    })
+
+    it('anchors the local-server grants at curl', () => {
+      configureClaudeHooks()
+      const local = bash().filter((rule) => inner(rule).includes('127.0.0.1'))
+      expect(local.length).toBeGreaterThan(0)
+      for (const rule of local) expect(inner(rule)).toMatch(/^curl /)
+    })
+  })
+
+  /**
+   * Ownership: what the app takes back, and what it must never touch.
+   *
+   * The allowlist is rewritten from scratch at every launch, so both directions are
+   * silent when they go wrong — a stale grant of ours lives forever, and a deleted
+   * grant of the user's comes back deleted however many times they re-add it.
+   */
+  describe('deciding which entries are its own', () => {
+    it('withdraws the broad grants earlier versions wrote', () => {
+      // The upgrade path, and the only thing that makes narrowing the list mean
+      // anything: an install running since before the change is holding these.
+      const legacy = [
+        'Bash(git *)',
+        'Bash(npm *)',
+        'Bash(yarn *)',
+        'Bash(pnpm *)',
+        'Bash(bun *)',
+        'Bash(jq *)',
+        'Bash(gh *)',
+        'Bash(*http://127.0.0.1:*)',
+        'Bash(* curl -s "http://127.0.0.1:*" *)',
+      ]
+      fs.mkdirSync(path.join(TMP_HOME, '.claude'), { recursive: true })
+      fs.writeFileSync(SETTINGS, JSON.stringify({ permissions: { allow: legacy } }))
+
+      configureClaudeHooks()
+
+      for (const rule of legacy) expect(allow()).not.toContain(rule)
+      // And it did not merely empty the list: the narrow replacements are there.
+      expect(allow()).toContain('Bash(git status:*)')
+    })
+
+    it("leaves the user's own MCP grants alone, even in our own namespace", () => {
+      // The regression this replaced: ownership was decided by substring, so
+      // `mcp__github__` matched every GitHub tool the user had granted themselves and
+      // deleted it. Re-granting lasted exactly until the next launch.
+      fs.mkdirSync(path.join(TMP_HOME, '.claude'), { recursive: true })
+      fs.writeFileSync(
+        SETTINGS,
+        JSON.stringify({ permissions: { allow: ['mcp__github__delete_file'] } }),
+      )
+      configureClaudeHooks()
+      expect(allow()).toContain('mcp__github__delete_file')
+    })
+
+    it("leaves the user's own rules alone when they happen to mention a local address", () => {
+      // `127.0.0.1` was a marker, so any rule of the user's containing it was ours to
+      // delete. Someone running a local API had their own grant removed on every launch.
+      fs.mkdirSync(path.join(TMP_HOME, '.claude'), { recursive: true })
+      fs.writeFileSync(
+        SETTINGS,
+        JSON.stringify({ permissions: { allow: ['Bash(http --json http://127.0.0.1:8080/*)'] } }),
+      )
+      configureClaudeHooks()
+      expect(allow()).toContain('Bash(http --json http://127.0.0.1:8080/*)')
+    })
+
+    it("leaves the user's own Read grants alone outside our directories", () => {
+      fs.mkdirSync(path.join(TMP_HOME, '.claude'), { recursive: true })
+      fs.writeFileSync(
+        SETTINGS,
+        JSON.stringify({ permissions: { allow: [`Read(${path.join(TMP_HOME, 'notes', '*')})`] } }),
+      )
+      configureClaudeHooks()
+      expect(allow()).toContain(`Read(${path.join(TMP_HOME, 'notes', '*')})`)
+    })
+  })
 })
 
 /**
