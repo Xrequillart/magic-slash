@@ -26,6 +26,7 @@ import { SetupWizard } from './components/SetupWizard'
 import { RepoSetupWizard } from './components/RepoSetupWizard'
 import { useWindowSplitMode } from './hooks/useWindowSplitMode'
 import FilePreviewPanel from './components/FilePreviewPanel'
+import PRCommentsPanel from './components/pr-comments/PRCommentsPanel'
 import { useT, type MessageKey } from './i18n'
 import { BTN_PRIMARY } from './theme/controls'
 
@@ -463,7 +464,13 @@ export function App() {
         )}
       </div>
 
+      {/* The two shapes of the sliding drawer, both mounted once and both driven purely
+          by store state. Side by side rather than one inside the other: they are
+          mutually exclusive by construction (see `openPRComments`), so at most one of
+          them ever renders anything, and each returning null is cheaper than a branch
+          up here that would have to know about both. */}
       <FilePreviewPanel />
+      <PRCommentsPanel />
 
       {/* Page overlays — Settings, Skills, Team and Tasks */}
       {activeModal === 'settings' && (

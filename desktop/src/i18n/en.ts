@@ -1479,6 +1479,30 @@ export const en = {
   'agentInfo.pr.error.network': 'GitHub unreachable',
   'agentInfo.pr.error.networkFix': 'Check your internet connection, then refresh.',
 
+  // ── Pull request comments panel ──────────────────────────────────────────
+  // The sliding drawer the card's thread rows open. Its own namespace rather than
+  // more `agentInfo.pr.*`: that block is copy for a 500 px card, written to read
+  // against a snapshot with almost nothing in it, and this is a reading surface.
+  // The few strings the two genuinely share — "resolved", "outdated", the reply
+  // counts — are reused from there rather than restated here.
+  'prComments.openThread': 'Open the conversation',
+  // Beside the repo slug in the header. Two keys: the catalogue interpolates but
+  // does not pluralise.
+  'prComments.threadCount': '{count} thread',
+  'prComments.threadsCount': '{count} threads',
+  // The three groups, in reading order. "Review threads" are the comments left on
+  // specific lines; the other two are the PR's own conversation and the verdicts.
+  'prComments.sectionThreads': 'Review threads',
+  'prComments.sectionConversation': 'Conversation',
+  'prComments.sectionReviews': 'Review summaries',
+  // On an outdated thread: the line it was written against, which is the only
+  // location it still has — the current file no longer has one.
+  'prComments.outdatedAnchor': 'originally line {line}',
+  // The fold on a thread heading. A resolved thread starts shut.
+  'prComments.showThread': 'Show this thread',
+  'prComments.hideThread': 'Hide this thread',
+  'prComments.empty': 'Nothing to read — this pull request has no comments.',
+
   // ── Status picker (agent info sidebar) ───────────────────────────────────
   // Lower-case on purpose — these render inside a small inline pill, not as a
   // sentence, and they are a different register from the `status.*` badges.

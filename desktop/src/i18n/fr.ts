@@ -1425,6 +1425,18 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.pr.error.network': 'GitHub injoignable',
   'agentInfo.pr.error.networkFix': 'Vérifie ta connexion internet, puis rafraîchis.',
 
+  // ── Panneau des commentaires de la pull request ──────────────────────────
+  'prComments.openThread': 'Ouvrir la conversation',
+  'prComments.threadCount': '{count} fil',
+  'prComments.threadsCount': '{count} fils',
+  'prComments.sectionThreads': 'Fils de review',
+  'prComments.sectionConversation': 'Conversation',
+  'prComments.sectionReviews': 'Résumés de review',
+  'prComments.outdatedAnchor': 'ligne {line} à l’origine',
+  'prComments.showThread': 'Afficher ce fil',
+  'prComments.hideThread': 'Masquer ce fil',
+  'prComments.empty': 'Rien à lire — cette pull request n’a aucun commentaire.',
+
   // ── Sélecteur d'état (barre d'infos de l'agent) ──────────────────────────
   'statusPill.none': 'aucun état',
   'statusPill.planning': 'planification',

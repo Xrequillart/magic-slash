@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { ChangedFile, Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, SettingsTab, Org } from '../../types'
+import type { ChangedFile, Config, TerminalInfo, TerminalState, TerminalMetadata, ScriptTerminalInfo, SettingsTab, Org, PRReviewThread } from '../../types'
 import { reviewFileKey } from '../utils/reviewLayout'
 import {
   commentFileKey, commentFileKeyPrefix,
@@ -99,6 +99,44 @@ export interface RepoReview {
    * nothing else about the review changed — same repository, same list, same path, same
    * bytes already read. Object identity plays that role for `selectedFile`; a review is
    * compared field by field, so it carries the counter explicitly.
+   */
+  anchorSeq: number
+}
+
+/**
+ * A pull request's conversation, as the sliding panel reads it.
+ *
+ * A COPY of the threads the card fetched, taken at click time, and for `RepoReview`'s
+ * reason turned inside out: the card re-fetches its threads whenever the fold is
+ * reopened or the refresh button is pressed, and a panel reading that state live would
+ * have the exchange it is scrolled into replaced mid-read. Freezing the list is what
+ * makes the panel a picture of one moment rather than a second subscriber to a poll.
+ *
+ * Never persisted, in either `partialize`, and cleared on the same events the file
+ * preview is: these are whole comment BODIES — the thing `RepositoryMetadata` is
+ * carefully kept free of — and they have no business outliving the reading of them.
+ *
+ * No `prTitle`, deliberately. Nothing that opens this panel knows one: the card renders
+ * from `prUrl` and a `RepositoryMetadata` that carries a state, some counts and no
+ * title. A field only the store could fill with a placeholder is a field that would be
+ * a placeholder forever, so the header names the PR by its number, read off the URL.
+ */
+export interface PRCommentsView {
+  prUrl: string
+  threads: PRReviewThread[]
+  /**
+   * The thread the reader clicked, or null when the panel was opened on the list as a
+   * whole. It positions the scroll and nothing else — every thread is rendered either
+   * way, exactly as `RepoReview.anchorPath` works.
+   */
+  anchorThreadId: string | null
+  /**
+   * Bumped on every open, including re-opening on the thread already anchored.
+   *
+   * `RepoReview.anchorSeq`'s twin, and it exists for the identical reason: clicking the
+   * same row twice has to take the reader back to it the second time, and every other
+   * field would be identical. The panel keys its scroll effect on this counter, not on
+   * `anchorThreadId`.
    */
   anchorSeq: number
 }
@@ -254,6 +292,17 @@ interface AppState {
   review: RepoReview | null
 
   /**
+   * The PR comments panel, when one is open.
+   *
+   * A THIRD occupant of the same slot, mutually exclusive with the two above: all three
+   * are the same sliding drawer over the same backdrop, and two of them open at once
+   * would be two panels stacked on one z-index with only one backdrop between them. So
+   * every action that opens one clears the other two, and this field is listed wherever
+   * `selectedFile` and `review` are.
+   */
+  prComments: PRCommentsView | null
+
+  /**
    * Which cards the reader has folded shut, keyed by `reviewFileKey`.
    *
    * Deliberately NOT in either `partialize`. The store is a module singleton, so
@@ -379,6 +428,13 @@ interface AppState {
    * list has to stop moving the moment the drawer opens.
    */
   openRepoReview: (repo: { repoPath: string; repoName: string; files: ChangedFile[] }, anchorPath: string) => void
+  /**
+   * Open a pull request's conversation, scrolled to `anchorThreadId`.
+   *
+   * `threads` is copied here rather than referenced — see `PRCommentsView` for why the
+   * list has to stop moving the moment the panel opens.
+   */
+  openPRComments: (view: { prUrl: string; threads: PRReviewThread[] }, anchorThreadId: string | null) => void
   /** Fold a card shut, or open it again. */
   toggleReviewFileCollapsed: (repoPath: string, path: string) => void
   /**
@@ -422,7 +478,40 @@ interface AppState {
    */
   focusFileComment: (target: CommentTarget, id: string) => void
   closeFilePreview: () => void
+  /**
+   * Dismiss the comments panel, and only it.
+   *
+   * The narrow twin of `closeFilePreview`, which clears all three shapes of the drawer.
+   * Since they are mutually exclusive the two are equivalent whenever this panel is the
+   * one open, so this is about NAMING rather than blast radius: a caller that means "shut
+   * the conversation" should not have to reach for an action named after the file
+   * preview, and the day the drawer stops being one slot the narrow one is still right.
+   */
+  closePRComments: () => void
 }
+
+/**
+ * The drawer, shut — every one of its three shapes at once, plus the focus request that
+ * only means anything while one of them is open.
+ *
+ * One constant rather than the same four nulls written out at each of the five sites that
+ * open or close the drawer, because they are not four independent fields: they are one
+ * slot with three possible occupants, and the invariant is that at most one is ever set.
+ * Spelled out per site, that invariant is enforced by nobody — adding `prComments` meant
+ * finding and editing every existing site, and missing one would have left two panels
+ * stacked on a single backdrop with no error anywhere. Spread instead, a fourth shape
+ * costs one line here and the sites keep it for free.
+ *
+ * `as const satisfies` so the spread stays exactly-typed against `AppState`: a field
+ * renamed out from under this object fails to compile rather than quietly clearing
+ * nothing.
+ */
+const DRAWER_CLOSED = {
+  selectedFile: null,
+  review: null,
+  prComments: null,
+  focusedComment: null,
+} as const satisfies Partial<AppState>
 
 export const useStore = create<AppState>()(
   persist(
@@ -462,6 +551,7 @@ export const useStore = create<AppState>()(
         repoSetupDismissed: false,
         selectedFile: null,
         review: null,
+        prComments: null,
         collapsedFiles: {},
         fileComments: {},
         focusedComment: null,
@@ -558,15 +648,18 @@ export const useStore = create<AppState>()(
             scriptTerminalModal: null,
             scriptTerminalModalOpen: false,
             closeAgentModal: null,
-            selectedFile: null,
-            review: null,
+            // The whole drawer, whichever shape it was in. Not merely tidiness on this
+            // path: the PR conversation holds whole comment bodies from someone's
+            // repository, and this is the logout. Leaving them in a module singleton
+            // across an account switch is the next account inheriting the previous
+            // one's review.
+            ...DRAWER_CLOSED,
             // The collapsed-card map goes too: it is keyed by repository path, and the
             // next account's repositories are not this one's. So do the comments, for
             // the same reason and a stronger one — they are the reader's own words about
             // someone else's diff.
             collapsedFiles: {},
             fileComments: {},
-            focusedComment: null,
             rightSidebar: null,
           }),
 
@@ -635,14 +728,12 @@ export const useStore = create<AppState>()(
         setSettingsInitialTab: (settingsInitialTab) => set({ settingsInitialTab }),
         setSettingsOrgId: (settingsOrgId) => set({ settingsOrgId }),
         // Modals are overlays, never destinations: the agents page stays mounted
-        // and visible behind them. Two things are normalised on open — the file
-        // preview panel is dismissed (it sits above the overlay in the z-order),
-        // and a blank agents page gets its first agent selected so the overlay
-        // never floats over an empty app.
+        // and visible behind them. Two things are normalised on open — every shape
+        // of the sliding drawer is dismissed (they all sit above the overlay in the
+        // z-order), and a blank agents page gets its first agent selected so the
+        // overlay never floats over an empty app.
         openModal: (modal) => set((state) => {
-          const updates: Partial<AppState> = {
-            activeModal: modal, selectedFile: null, review: null, focusedComment: null,
-          }
+          const updates: Partial<AppState> = { ...DRAWER_CLOSED, activeModal: modal }
           if (!state.activeTerminalId && state.terminals.length > 0) {
             updates.activeTerminalId = state.terminals[0].id
           }
@@ -696,17 +787,16 @@ export const useStore = create<AppState>()(
         // Launch repository-setup modal actions
         setRepoSetupDismissed: (repoSetupDismissed) => set({ repoSetupDismissed }),
 
-        // The two previews share one drawer, so opening either closes the other. The
-        // reader can only be looking at one thing, and leaving the review mounted
-        // behind a spec preview would keep forty cards — and forty reads — alive
-        // underneath it.
-        setSelectedFile: (selectedFile) => set({ selectedFile, review: null, focusedComment: null }),
+        // The three previews share one drawer, so opening any of them closes the other
+        // two. The reader can only be looking at one thing, and leaving the review
+        // mounted behind a spec preview would keep forty cards — and forty reads —
+        // alive underneath it.
+        setSelectedFile: (selectedFile) => set({ ...DRAWER_CLOSED, selectedFile }),
 
+        // `DRAWER_CLOSED` first, then the occupant: it also drops `focusedComment`, which
+        // named a file of the review being replaced and cannot survive the switch.
         openRepoReview: (repo, anchorPath) => set((state) => ({
-          selectedFile: null,
-          // A comment of the review being replaced names a file the next one may not
-          // hold, so the request does not survive the switch.
-          focusedComment: null,
+          ...DRAWER_CLOSED,
           review: {
             repoPath: repo.repoPath,
             repoName: repo.repoName,
@@ -717,6 +807,23 @@ export const useStore = create<AppState>()(
             // Read off the review being replaced rather than kept as a counter of its
             // own, so it never restarts and the panel can compare two renders of it.
             anchorSeq: (state.review?.anchorSeq ?? 0) + 1,
+          },
+        })),
+
+        openPRComments: (view, anchorThreadId) => set((state) => ({
+          ...DRAWER_CLOSED,
+          prComments: {
+            prUrl: view.prUrl,
+            // Copied, not referenced: the array this came from is replaced wholesale
+            // whenever the card refetches, and the panel must not follow it.
+            threads: [...view.threads],
+            anchorThreadId,
+            // Read off the view being replaced, exactly as `openRepoReview` does it.
+            // It RESTARTS at 1 whenever the panel has been closed in between, which is
+            // harmless and is why a module-level counter like `focusSeq` would be
+            // overkill: all the panel asks of it is that it differ from the value the
+            // previous render saw, and after a close there was no previous render.
+            anchorSeq: (state.prComments?.anchorSeq ?? 0) + 1,
           },
         })),
 
@@ -809,7 +916,9 @@ export const useStore = create<AppState>()(
           focusedComment: { target, id, seq: ++focusSeq },
         }),
 
-        closeFilePreview: () => set({ selectedFile: null, review: null, focusedComment: null }),
+        closeFilePreview: () => set(DRAWER_CLOSED),
+
+        closePRComments: () => set({ prComments: null }),
       }),
       // Session storage persist for activeTerminalId (cleared on app close)
       {

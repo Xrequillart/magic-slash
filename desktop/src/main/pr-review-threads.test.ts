@@ -14,7 +14,7 @@ function comment(
   id: string,
   login: string,
   createdAt: string,
-  bodyText: string,
+  body: string,
   replyToId?: string,
 ) {
   return {
@@ -22,7 +22,7 @@ function comment(
     author: { login },
     createdAt,
     url: `https://gh/${id}`,
-    bodyText,
+    body,
     replyTo: replyToId ? { id: replyToId } : null,
     pullRequestReview: { id: `rev-${id}` },
   }
@@ -33,9 +33,9 @@ function commentedPR(): ThreadablePullRequest {
   return {
     reviews: {
       nodes: [
-        { id: 'r1', author: { login: 'alice' }, state: 'CHANGES_REQUESTED', submittedAt: '2025-01-01T09:00:00Z', url: 'https://gh/r1', bodyText: 'Needs a test.' },
+        { id: 'r1', author: { login: 'alice' }, state: 'CHANGES_REQUESTED', submittedAt: '2025-01-01T09:00:00Z', url: 'https://gh/r1', body: 'Needs a test.' },
         // Bare approval: a verdict, not a comment.
-        { id: 'r2', author: { login: 'bob' }, state: 'APPROVED', submittedAt: '2025-01-01T12:00:00Z', url: 'https://gh/r2', bodyText: '   ' },
+        { id: 'r2', author: { login: 'bob' }, state: 'APPROVED', submittedAt: '2025-01-01T12:00:00Z', url: 'https://gh/r2', body: '   ' },
       ],
     },
     reviewThreads: {
@@ -241,5 +241,73 @@ describe('groupPullRequestThreads', () => {
     })
 
     expect(thread.line).toBe(42)
+  })
+
+  it('carries the four line numbers unmerged, beside the fallback the card reads', () => {
+    // `line` above is a fallback chain and cannot say which file it counts in. The
+    // panel highlights a range inside a frozen hunk, so it needs the raw pair and the
+    // side — collapsing them here is what would make that impossible.
+    const nodes = [comment('c1', 'greptile', '2025-01-01T10:00:00Z', 'a range')]
+    const [thread] = groupPullRequestThreads({
+      reviewThreads: {
+        nodes: [{
+          id: 't',
+          path: 'a.ts',
+          line: 42, startLine: 40,
+          originalLine: 117, originalStartLine: 115,
+          diffSide: 'LEFT',
+          comments: { nodes },
+        }],
+      },
+    })
+
+    expect(thread).toMatchObject({
+      line: 42, startLine: 40, originalLine: 117, originalStartLine: 115, diffSide: 'LEFT',
+    })
+  })
+
+  it('leaves the range fields off a thread GitHub reported none for', () => {
+    // Absent, not zero: `commentedRange` distinguishes "no range" from "line 0", and a
+    // defaulted number would highlight the top of every hunk.
+    const nodes = [comment('c1', 'greptile', '2025-01-01T10:00:00Z', 'single line')]
+    const [thread] = groupPullRequestThreads({
+      reviewThreads: { nodes: [{ id: 't', path: 'a.ts', line: 42, comments: { nodes } }] },
+    })
+
+    expect(thread.startLine).toBeUndefined()
+    expect(thread.originalStartLine).toBeUndefined()
+    expect(thread.diffSide).toBeUndefined()
+  })
+
+  it('lifts the root comment\'s diff excerpt onto the thread and drops the copies', () => {
+    // GitHub reports `diffHunk` per comment because the thread type has no such field —
+    // see `PR_COMMENTS_QUERY`. Every comment carries the same excerpt, so the root's is
+    // promoted to the thread and the replies' duplicates never reach the payload.
+    const hunk = '@@ -40,2 +40,2 @@\n-const a = 1\n+const a = 2'
+    const [thread] = groupPullRequestThreads({
+      reviewThreads: {
+        nodes: [{
+          id: 't',
+          comments: {
+            nodes: [
+              { ...comment('c1', 'greptile', '2025-01-01T10:00:00Z', 'off by one'), diffHunk: hunk },
+              { ...comment('c2', 'xavier', '2025-01-01T10:05:00Z', 'fixed', 'c1'), diffHunk: hunk },
+            ],
+          },
+        }],
+      },
+    })
+
+    expect(thread.diffHunk).toBe(hunk)
+    // The reply's identical copy is dead weight over IPC and in the store, so it is not
+    // carried: nothing downstream reads a hunk off anything but the thread.
+    expect(thread.root).not.toHaveProperty('diffHunk')
+    expect(thread.replies[0]).not.toHaveProperty('diffHunk')
+    // Absent rather than empty when GitHub sends none, so the panel's one length test
+    // covers "no hunk" and "unparseable hunk" together.
+    const [bare] = groupPullRequestThreads({
+      reviewThreads: { nodes: [{ id: 't', comments: { nodes: [comment('c1', 'a', '2025-01-01T10:00:00Z', 'x')] } }] },
+    })
+    expect(bare.diffHunk).toBeUndefined()
   })
 })

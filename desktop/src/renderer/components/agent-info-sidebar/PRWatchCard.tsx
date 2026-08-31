@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   AlertTriangle,
   CheckCircle,
@@ -64,8 +64,12 @@ interface ChecklistItem {
  * there, so the PR is open — while "Changes requested" is what they opened the
  * sidebar to find out. Same tint scale as `STATE_BADGE`, so whichever of the two
  * ends up in the slot reads as the same badge.
+ *
+ * Exported for the comments panel, which draws the same verdict on a review summary.
+ * Shared rather than respelled there: two copies of a mapping from an API enum to a
+ * word and a tint is how the row and the panel end up disagreeing about `DISMISSED`.
  */
-const REVIEW_BADGE: Record<
+export const REVIEW_BADGE: Record<
   NonNullable<RepositoryMetadata['prReviewStatus']>,
   { label: MessageKey; tone: string }
 > = {
@@ -289,7 +293,7 @@ function ChecklistRow({
  * back to the neutral marker below rather than rendering unlabelled — otherwise a
  * dismissed review would be indistinguishable from a PR conversation comment.
  */
-const REVIEW_STATE_BADGE: Record<string, keyof typeof REVIEW_BADGE> = {
+export const REVIEW_STATE_BADGE: Record<string, keyof typeof REVIEW_BADGE> = {
   APPROVED: 'approved',
   CHANGES_REQUESTED: 'changes-requested',
   COMMENTED: 'commented',
@@ -302,13 +306,40 @@ const REVIEW_STATE_BADGE: Record<string, keyof typeof REVIEW_BADGE> = {
  * the tinted-capsule treatment on this card, and a second one in the same row would
  * read as a second verdict. The `resolved` label is the one the flat list already had
  * — same state, same word.
+ *
+ * Exported for the comments panel, for the same reason as `REVIEW_BADGE` above: it is a
+ * mapping from a state enum to an icon, a tint and a word, and the row and the panel must
+ * not be able to disagree about what `outdated` looks like. The panel draws the icon one
+ * size up, but the size is at the call site rather than in here, so there is nothing in
+ * this map for it to fork.
  */
-const THREAD_STATE: Record<PRReviewThread['state'], { Icon: typeof CheckCircle2; tone: string; label: MessageKey }> = {
+export const THREAD_STATE: Record<PRReviewThread['state'], { Icon: typeof CheckCircle2; tone: string; label: MessageKey }> = {
   open: { Icon: Circle, tone: 'text-blue', label: 'agentInfo.pr.threadOpen' },
   resolved: { Icon: CheckCircle2, tone: 'text-green', label: 'agentInfo.pr.commentResolved' },
   // The diff moved out from under it, so the line it hangs on no longer exists —
   // quiet rather than tinted: nothing is wrong, it is just stale.
   outdated: { Icon: MinusCircle, tone: 'text-text-secondary/60', label: 'agentInfo.pr.threadOutdated' },
+}
+
+/**
+ * The `owner/repo` and the number, off a pull request URL.
+ *
+ * Both surfaces that name a PR — this card's header and the comments panel's — identify
+ * it the same way and from the same string, so the grammar is written once. A second copy
+ * is two places to fix when GitHub Enterprise or a trailing `/files` shows up.
+ *
+ * Deliberately loose, and not the anchored `parsePRUrl` in `main/github.ts`: that one is
+ * the gate on what the app will act on, and it lives in a module that pulls in
+ * `child_process`, so the renderer cannot have it. This one only decides what a header
+ * prints, where refusing a URL the app is already watching would be worse than showing
+ * the slug out of it.
+ *
+ * `undefined` on both halves rather than a null object, so a caller can fall back per
+ * field — the panel prints the number without the slug when only one parses.
+ */
+export function prUrlParts(url: string): { repoSlug?: string; prNumber?: string } {
+  const parsed = url.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/)
+  return parsed ? { repoSlug: `${parsed[1]}/${parsed[2]}`, prNumber: parsed[3] } : {}
 }
 
 /**
@@ -328,10 +359,30 @@ const THREAD_STATE: Record<PRReviewThread['state'], { Icon: typeof CheckCircle2;
  * has to stop the rows running together — which is also why this is not a call to
  * `Chip`, whose padding is sized for the checklist.
  *
- * No hover state and nothing clickable: every action on a thread lives in the panel,
- * and lighting the row up would promise one that is not here.
+ * A BUTTON across the full width, opening the comments panel on this thread. The row
+ * used to be inert and said so, on the grounds that lighting it up would promise an
+ * action that did not exist; the panel is that action, so the affordance is now the
+ * truth rather than the promise. Full-width because the target is the row — every part
+ * of it names the same thread, and a chevron at one end would be a smaller target
+ * saying the same thing.
+ *
+ * The panel it opens is given the WHOLE thread list, not just this one thread: it is a
+ * conversation, and dropping the reader into it with a single exchange and no way to
+ * reach the others would be a worse surface than the fold they came from. Its own thread
+ * is the anchor, which is where the panel scrolls to — see `PRCommentsView`.
+ *
+ * The row does not assemble that itself, though: it reports an ID through `onOpen` and
+ * knows nothing of the list, the PR URL or the store. The card holds all three already,
+ * so passing them down would be fifty rows each carrying a copy of the list they are in
+ * and each opening a store subscription, to answer a click that only ever names a thread.
  */
-function ThreadEntry({ thread, now, t }: { thread: PRReviewThread; now: number; t: Translate }) {
+function ThreadEntry({ thread, onOpen, now, t }: {
+  thread: PRReviewThread
+  /** Hand the panel this thread's id; the card knows what to open it on. */
+  onOpen: (threadId: string) => void
+  now: number
+  t: Translate
+}) {
   const { root } = thread
   // The LAST activity, not when the thread was opened — the same stamp the list is
   // sorted on, so the ages read down the column in order instead of jumping about.
@@ -351,48 +402,55 @@ function ThreadEntry({ thread, now, t }: { thread: PRReviewThread; now: number; 
   const state = thread.kind === 'inline' ? THREAD_STATE[thread.state] : undefined
 
   return (
-    <li className="flex items-center gap-1.5 min-w-0 rounded-md border border-border/30 bg-surface px-2 py-1.5 text-xs">
-      {/* The author can give way to the location: on an inline thread "which file"
-          is the part that places the row, and a truncated login is still readable. */}
-      <span className="font-medium text-ink/80 truncate">{root.author}</span>
-      {badge && (
-        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 ${REVIEW_BADGE[badge].tone}`}>
-          {t(REVIEW_BADGE[badge].label)}
-        </span>
-      )}
-      {/* A review whose verdict this card has no badge for — DISMISSED, today. Untinted
-          on purpose: it is not a fourth verdict, it is the row saying which of the three
-          connections it came from, which is the only thing separating it from a
-          conversation comment once the badge is gone. */}
-      {thread.kind === 'review' && !badge && (
-        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 bg-surface-strong text-text-secondary/70">
-          {t('agentInfo.pr.threadReview')}
-        </span>
-      )}
-      {where && (
-        <span className="text-text-secondary/60 font-mono truncate" title={thread.path}>{where}</span>
-      )}
-      {/* One group travelling to the right edge, so the counts and states line up
-          column-wise down the list rather than trailing each row's own text. */}
-      <span className="ml-auto flex items-center gap-1.5 flex-shrink-0 text-[10px]">
-        {/* The real number of answers, which is not how many the thread carries once
-            the per-thread cap has bitten. Two keys rather than one: the catalogue
-            interpolates but does not pluralise. */}
-        {thread.replyCount > 0 && (
-          <span className="text-text-secondary/70 tabular-nums">
-            {t(thread.replyCount === 1 ? 'agentInfo.pr.threadReply' : 'agentInfo.pr.threadReplies', { count: thread.replyCount })}
+    <li>
+      <button
+        type="button"
+        onClick={() => onOpen(thread.id)}
+        title={t('prComments.openThread')}
+        className="w-full flex items-center gap-1.5 min-w-0 rounded-md border border-border/30 bg-surface hover:bg-surface-strong px-2 py-1.5 text-xs text-left transition-colors"
+      >
+        {/* The author can give way to the location: on an inline thread "which file"
+            is the part that places the row, and a truncated login is still readable. */}
+        <span className="font-medium text-ink/80 truncate">{root.author}</span>
+        {badge && (
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 ${REVIEW_BADGE[badge].tone}`}>
+            {t(REVIEW_BADGE[badge].label)}
           </span>
         )}
-        {state && (
-          <span className="flex items-center gap-1 text-text-secondary/60">
-            <state.Icon className={`w-3 h-3 ${state.tone}`} />
-            {t(state.label)}
+        {/* A review whose verdict this card has no badge for — DISMISSED, today. Untinted
+            on purpose: it is not a fourth verdict, it is the row saying which of the three
+            connections it came from, which is the only thing separating it from a
+            conversation comment once the badge is gone. */}
+        {thread.kind === 'review' && !badge && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 bg-surface-strong text-text-secondary/70">
+            {t('agentInfo.pr.threadReview')}
           </span>
         )}
-        {Number.isFinite(updatedAt) && (
-          <span className="text-text-secondary/40">{formatTimestamp(updatedAt, now, t)}</span>
+        {where && (
+          <span className="text-text-secondary/60 font-mono truncate" title={thread.path}>{where}</span>
         )}
-      </span>
+        {/* One group travelling to the right edge, so the counts and states line up
+            column-wise down the list rather than trailing each row's own text. */}
+        <span className="ml-auto flex items-center gap-1.5 flex-shrink-0 text-[10px]">
+          {/* The real number of answers, which is not how many the thread carries once
+              the per-thread cap has bitten. Two keys rather than one: the catalogue
+              interpolates but does not pluralise. */}
+          {thread.replyCount > 0 && (
+            <span className="text-text-secondary/70 tabular-nums">
+              {t(thread.replyCount === 1 ? 'agentInfo.pr.threadReply' : 'agentInfo.pr.threadReplies', { count: thread.replyCount })}
+            </span>
+          )}
+          {state && (
+            <span className="flex items-center gap-1 text-text-secondary/60">
+              <state.Icon className={`w-3 h-3 ${state.tone}`} />
+              {t(state.label)}
+            </span>
+          )}
+          {Number.isFinite(updatedAt) && (
+            <span className="text-text-secondary/40">{formatTimestamp(updatedAt, now, t)}</span>
+          )}
+        </span>
+      </button>
     </li>
   )
 }
@@ -426,6 +484,19 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   const watcherOff = useStore((state) => state.config?.prReviews?.enabled) === false
   const setConfig = useStore((state) => state.setConfig)
 
+  /**
+   * Hand the sliding panel this card's whole loaded list, anchored on the row clicked.
+   *
+   * Here rather than in `ThreadEntry` because everything it needs is already here: the
+   * list, the URL, and one store subscription instead of one per row. `comments` cannot
+   * be null at the call site — the rows only render inside `comments.length > 0` — but
+   * the guard is cheaper than the assertion that says so.
+   */
+  const openPRComments = useStore((state) => state.openPRComments)
+  const openComments = useCallback((threadId: string) => {
+    if (comments) openPRComments({ prUrl, threads: comments }, threadId)
+  }, [openPRComments, prUrl, comments])
+
   // The "checked X ago" label goes stale on its own; re-render every 30s like the
   // usage card does, rather than only when a poll happens to land.
   const [now, setNow] = useState(() => Date.now())
@@ -434,9 +505,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
     return () => clearInterval(id)
   }, [])
 
-  const parsed = prUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/)
-  const repoSlug = parsed ? `${parsed[1]}/${parsed[2]}` : undefined
-  const prNumber = parsed?.[3]
+  const { repoSlug, prNumber } = prUrlParts(prUrl)
 
   // `prState` is the field to trust, but it is absent from every row written
   // before this feature — those only ever carried the two booleans. Falling back
@@ -776,7 +845,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                 {comments !== null && comments.length > 0 && (
                   <ul className="space-y-1 pt-1">
                     {comments.map((thread) => (
-                      <ThreadEntry key={thread.id} thread={thread} now={now} t={t} />
+                      <ThreadEntry key={thread.id} thread={thread} onOpen={openComments} now={now} t={t} />
                     ))}
                   </ul>
                 )}
