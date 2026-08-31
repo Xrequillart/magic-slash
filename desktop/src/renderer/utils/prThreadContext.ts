@@ -2,9 +2,19 @@
  * A pull request review thread as the text the agent is handed.
  *
  * The app stays READ-ONLY towards GitHub: nothing here replies, resolves or posts. What it
- * does is assemble the context a targeted `/magic:resolve` needs for ONE conversation — the
- * file, the line, the frozen diff excerpt and every message of it — so the reader can act on
- * a single thread instead of pointing the skill at the whole pull request.
+ * does is assemble the context of ONE conversation — the file, the line, the frozen diff
+ * excerpt and every message of it — so the reader can point their session at a single thread
+ * instead of at the whole pull request.
+ *
+ * DATA, with no slash command in front of it, and that was DECIDED rather than overlooked.
+ * The paste led with `/magic:resolve` and must not: that skill takes a TICKET ID as its
+ * argument and its own step 3 re-fetches every review comment on the pull request from
+ * GitHub, so it never reads what was pasted beneath it. A paste leading with the command
+ * therefore does not run a targeted resolve — pressing Enter launches a resolve over the
+ * WHOLE pull request, with the thread above it ignored, which is worse than firing nothing.
+ * Teaching the receiving skill to consume a pasted thread is a separate change; until it is
+ * made, this emits context and no instruction verb, exactly as `formatReviewComments` next
+ * door does, and the reader types whatever they want in front of it.
  *
  * EVERY field this module reads off a thread is third-party text. The bodies obviously are;
  * so are the authors, the path and the diff hunk, which on a fork pull request is written by
@@ -55,23 +65,14 @@ export interface ContextThread {
 }
 
 /**
- * The command the paste LEADS with, and it has to be the first thing in the prompt: a slash
- * command only fires at the very start of Claude Code's input, so a data-only paste would
- * leave the reader to type it in front of a screenful of quoted text.
- *
- * Written once for the whole paste rather than once per thread — the bulk hand-off is one
- * invocation over several conversations, not several invocations.
- */
-const COMMAND = '/magic:resolve'
-
-/**
  * How much text one bulk paste may carry.
  *
  * `reviewThreads(last:50)` times `MAX_COMMENTS_PER_THREAD = 20` bodies is a paste of
  * hundreds of kilobytes, which is not a prompt anyone reads before pressing Enter — and the
- * point of this feature is that they do read it. Past the cap the threads are DROPPED with a
- * count, on `hiddenChecks`' model in `PRWatchCard`: said out loud rather than silently
+ * point of this feature is that they do read it. Past the cap the OLDEST threads are DROPPED
+ * with a count, on `hiddenChecks`' model in `PRWatchCard`: said out loud rather than silently
  * missing, and the rows they came from can still send them one at a time.
+ * `formatThreadsContext` carries why it is the oldest that go.
  */
 const MAX_CONTEXT_CHARS = 20_000
 
@@ -102,8 +103,8 @@ const MIN_FENCE = 8
  *
  * ESC is the one that matters: `bracketedPaste` wraps this text in `\x1b[200~` / `\x1b[201~`,
  * so a body containing the end marker itself leaves bracketed-paste mode early, and any `\r`
- * after that submits a prompt which by construction starts with `/magic:resolve`. CR is the
- * common one — GitHub bodies routinely arrive with `\r\n` endings — and it is a submission
+ * after that submits whatever the prompt then holds — a prompt this module filled from
+ * somebody else's comment, and one the reader has not read yet. CR is the common one — GitHub bodies routinely arrive with `\r\n` endings — and it is a submission
  * byte on its own, marker or no marker.
  *
  * The whole C0 range goes with them rather than just those two, plus DEL and C1: `\x9b` is
@@ -300,7 +301,7 @@ function locationLine(thread: ContextThread): string {
 }
 
 /**
- * One thread, without the command in front of it — the part the bulk formatter repeats.
+ * One thread's block — the part the bulk formatter repeats, once per conversation.
  *
  * Takes the fence rather than computing one: it is a property of the PASTE, for the reason
  * `fenceFor` gives. A block is therefore not byte-identical whether it was sent alone or as
@@ -355,15 +356,17 @@ function threadBlock(thread: ContextThread, fence: string): string {
  * ONE thread as the text the agent is handed.
  *
  * No trailing newline, and no `\r`: this is written into the terminal as a bracketed paste
- * that must NOT submit itself. The reader sees what is about to be sent and presses Enter —
- * a command composed from third-party text is precisely the thing that may not fire on its
- * own. `bracketedPaste` in `agentTerminals` carries the other half of that contract, and
- * `sanitize` above carries the half that no wrapper can: a `\r` inside a body is a
- * submission whatever it is wrapped in.
+ * that must NOT submit itself. The reader sees what landed in their prompt, adds whatever
+ * they want to ask of it, and presses Enter — a prompt composed from third-party text is
+ * precisely the thing that may not fire on its own, and that stays true of a paste that
+ * carries no command: what a stray `\r` would submit is somebody else's comment, read as the
+ * reader's own request. `bracketedPaste` in `agentTerminals` carries the other half of that
+ * contract, and `sanitize` above carries the half that no wrapper can: a `\r` inside a body
+ * is a submission whatever it is wrapped in.
  *
  * The one-thread case of the bulk formatter, and spelled as one rather than as a second
  * assembly of the same shape: the two agree by construction — same fence, same per-thread
- * budget — instead of by two developers keeping `${COMMAND}\n\n…` in step. It stays a named
+ * budget — instead of by two developers keeping two framings in step. It stays a named
  * export because a row sending itself is the feature, and `formatThreadsContext([thread])` at
  * the call site would not say so.
  */
@@ -393,18 +396,32 @@ export function selectUnresolvedThreads<T extends ContextThread>(threads: readon
 /**
  * SEVERAL threads as one paste — the bulk hand-off.
  *
- * The command appears once, at the top, for the reason `COMMAND` gives. The blocks are
- * separated by a blank line, share one fence, and the cap cuts the TAIL rather than picking
- * whichever threads happen to fit: the list arrives newest-first, so stopping keeps a run of
- * it that reads in order, where skipping would hand the agent a conversation with holes in it.
+ * The blocks are separated by a blank line and share one fence. Two orders are at play and
+ * they are deliberately not the same one:
+ *
+ * FILLED newest-first. The caller hands the list over oldest-first — `groupPullRequestThreads`
+ * sorts on `updatedAt` ascending so the fold reads as a conversation — so filling in the order
+ * received and stopping at the cap would keep the OLDEST discussions and drop the newest,
+ * cutting away the round of feedback that is actually still live. Walking from the end keeps
+ * the newest, which is what a reader handing over "the unresolved threads" means by them.
+ *
+ * EMITTED oldest-first, by reversing what was kept. A review reads forward in time, like the
+ * fold it was sent from and like `PRThread`'s own chronological order; handing the agent the
+ * same conversations backwards would buy nothing for the cap and cost that reading.
+ *
+ * Stopping (rather than skipping a block that does not fit and trying the next) keeps the kept
+ * threads a CONTIGUOUS run of the newest: a set picked for how well each block happened to fit
+ * would hand the agent a discussion with holes in it, and the "+N more" line below could not
+ * tell the reader which ones.
  *
  * The fence is measured over every thread that was PASSED, including the ones the cap goes on
  * to drop. Slightly longer than it strictly needs to be, in exchange for a fence that does
  * not depend on where the cap happened to fall.
  *
- * An empty list gives an empty string rather than a bare command. The caller does not render
- * the control with nothing to send, but a paste that was only `/magic:resolve` would launch
- * the skill on the whole pull request — the one outcome this feature exists to avoid.
+ * An empty list gives an empty string. The caller does not render the control with nothing to
+ * send, so this is the belt to that braces: the alternative is a paste made of nothing but
+ * framing — a fence around no comment, or a bare "+0 more threads" — landing in the prompt
+ * and saying nothing to the reader who pressed the button.
  *
  * No trailing newline, like `formatThreadContext`.
  */
@@ -414,26 +431,24 @@ export function formatThreadsContext(threads: readonly ContextThread[]): string 
   const cleaned = threads.map(cleanThread)
   const fence = fenceFor(cleaned.flatMap(untrustedText))
 
-  const blocks: string[] = []
+  const kept: string[] = []
   let used = 0
-  let dropped = 0
 
-  for (let index = 0; index < cleaned.length; index++) {
+  for (let index = cleaned.length - 1; index >= 0; index--) {
     const block = threadBlock(cleaned[index], fence)
     // The blank line between blocks is part of what the next one costs; the first pays none.
-    const cost = block.length + (blocks.length > 0 ? 2 : 0)
-    // The FIRST block goes in whatever it costs — `MAX_THREAD_CHARS` has already bounded it,
-    // and returning nothing but a "+1 more" line would hand the reader a paste that says only
-    // that something was left out.
-    if (blocks.length > 0 && used + cost > MAX_CONTEXT_CHARS) {
-      dropped = cleaned.length - index
-      break
-    }
-    blocks.push(block)
+    const cost = block.length + (kept.length > 0 ? 2 : 0)
+    // The first block admitted — the NEWEST thread — goes in whatever it costs:
+    // `MAX_THREAD_CHARS` has already bounded it, and returning nothing but a "+1 more" line
+    // would hand the reader a paste that says only that something was left out.
+    if (kept.length > 0 && used + cost > MAX_CONTEXT_CHARS) break
+    kept.push(block)
     used += cost
   }
 
-  const parts = [COMMAND, blocks.join('\n\n')]
+  const dropped = cleaned.length - kept.length
+  // Back into reading order: `kept` was filled from the newest backwards.
+  const parts = [kept.reverse().join('\n\n')]
   if (dropped > 0) {
     parts.push(
       `+${dropped} more ${dropped === 1 ? 'thread' : 'threads'} not included — send them from their own rows.`,

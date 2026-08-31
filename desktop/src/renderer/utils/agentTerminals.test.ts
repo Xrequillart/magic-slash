@@ -106,7 +106,7 @@ describe('bracketedPaste', () => {
   it('appends no submission byte, which is the second', () => {
     // The whole design is that the text LANDS in the prompt and the reader presses Enter,
     // having seen what they are about to send. A trailing `\r` sends it for them.
-    const wrapped = bracketedPaste('/magic:resolve\n\nReview thread (open)')
+    const wrapped = bracketedPaste('Review thread (open)\n\nOpened by alice:')
     expect(wrapped).not.toContain('\r')
     expect(wrapped.endsWith('\n')).toBe(false)
     expect(wrapped.slice(END.length * -1 - 1, END.length * -1)).not.toBe('\n')
