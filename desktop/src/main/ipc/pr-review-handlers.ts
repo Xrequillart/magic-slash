@@ -82,7 +82,11 @@ export function setupPRReviewHandlers(watcher: PRReviewWatcher) {
   })
 
   /**
-   * The comment BODIES of one PR, read on demand when the card's fold is opened.
+   * The comment THREADS of one PR, read on demand when the card's fold is opened.
+   *
+   * Threads rather than a flat list of comments: the card shows one row per exchange,
+   * and the grouping belongs on this side of the bridge so the renderer never has to
+   * reconstruct it from `replyTo` ids.
    *
    * Outside the watcher entirely — no tick, no cache, nothing persisted. The watcher
    * exists to keep a snapshot fresh in the jsonb; this exists to answer one question

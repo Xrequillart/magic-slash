@@ -17,13 +17,11 @@ import {
   Users,
   XCircle,
 } from 'lucide-react'
-import { GitHubIcon } from './icons'
 import { formatTimestamp } from './utils'
 import { useStore } from '../../store'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 import { showToast } from '../Toast'
-import { CopyLinkButton } from '../CopyLinkButton'
-import type { PRCheck, PRComment, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
+import type { PRCheck, PRReviewThread, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
 import { isPRStatusError } from '../../../types'
 
 interface PRWatchCardProps {
@@ -283,8 +281,13 @@ function ChecklistRow({
 
 /**
  * GraphQL review verdicts, mapped onto the badge vocabulary the card already speaks.
- * DISMISSED and PENDING never reach the list: the first is not feedback and the
- * second is an unsubmitted draft only its author can see.
+ *
+ * PENDING never reaches the list — an unsubmitted draft only its author can see. But
+ * DISMISSED does: `reviews(last:30)` returns a retracted review, body and all, and
+ * this map has no key for it because `REVIEW_BADGE` is typed on `prReviewStatus`,
+ * which has none either. So a verdict may legitimately fail to map, and the row falls
+ * back to the neutral marker below rather than rendering unlabelled — otherwise a
+ * dismissed review would be indistinguishable from a PR conversation comment.
  */
 const REVIEW_STATE_BADGE: Record<string, keyof typeof REVIEW_BADGE> = {
   APPROVED: 'approved',
@@ -293,176 +296,103 @@ const REVIEW_STATE_BADGE: Record<string, keyof typeof REVIEW_BADGE> = {
 }
 
 /**
- * How tall a folded body is allowed to be — roughly four lines.
+ * The three states a review thread can be in, as the row's trailing pill.
  *
- * There is deliberately no counterpart for the unfolded state: expanding removes the
- * ceiling outright rather than raising it. A bounded expansion means a scrollbar
- * INSIDE a card that already sits inside a scrolling sidebar, and asking someone to
- * find the right one of two nested scroll areas to finish a sentence is worse than a
- * long card. The sidebar scrolls; a comment does not.
+ * Icon plus a word, not a tinted capsule: the review verdicts beside it already own
+ * the tinted-capsule treatment on this card, and a second one in the same row would
+ * read as a second verdict. The `resolved` label is the one the flat list already had
+ * — same state, same word.
  */
-const BODY_COLLAPSED = 'max-h-20'
+const THREAD_STATE: Record<PRReviewThread['state'], { Icon: typeof CheckCircle2; tone: string; label: MessageKey }> = {
+  open: { Icon: Circle, tone: 'text-blue', label: 'agentInfo.pr.threadOpen' },
+  resolved: { Icon: CheckCircle2, tone: 'text-green', label: 'agentInfo.pr.commentResolved' },
+  // The diff moved out from under it, so the line it hangs on no longer exists —
+  // quiet rather than tinted: nothing is wrong, it is just stale.
+  outdated: { Icon: MinusCircle, tone: 'text-text-secondary/60', label: 'agentInfo.pr.threadOutdated' },
+}
 
 /**
- * The dashed pill the two actions under a comment are drawn in — the repository
- * card's GitHub button, verbatim, minus its box: same outline, same hover, one
- * treatment for "this acts on the thing above", wherever it appears in the sidebar.
+ * One thread, on one line: who opened it, where, how many answers, and whether it is
+ * settled.
  *
- * One constant rather than the classes spelled twice, because the pair has to stand
- * the SAME height and the content was deciding it: `text-[10px]` sets a font size
- * and no line-height, so the worded button took its height from an inherited line
- * box while the icon-only one took its from a 12px glyph, and they landed a few
- * pixels apart. `h-5` takes that decision away from the text — the same reason
- * `BTN_ICON` and `BTN_COMPACT` in theme/controls.ts state `h-7` outright.
+ * A row to SCAN, not to read. The sidebar is 500 px wide and does not resize, so the
+ * bodies are deliberately absent here — a card per comment turned a bot-reviewed PR
+ * into a page of prose in a column too narrow for it, and the question this fold
+ * answers is "what is still open, and where", not "what exactly was said". Reading the
+ * conversation is a panel of its own.
  *
- * Height only: the widths differ on purpose, one carrying a label and the other a
- * square glyph.
+ * `bg-surface` — the same token the PR card itself is painted with, so the rows belong
+ * to the card rather than to a palette of their own. It still reads a shade lighter
+ * than that card: these are TRANSLUCENT overlays, and a row sits on three of them
+ * (card, chip, row), not one. The separation comes from the border, and the fill only
+ * has to stop the rows running together — which is also why this is not a call to
+ * `Chip`, whose padding is sized for the checklist.
+ *
+ * No hover state and nothing clickable: every action on a thread lives in the panel,
+ * and lighting the row up would promise one that is not here.
  */
-const COMMENT_ACTION =
-  'flex items-center justify-center h-5 text-[10px] font-semibold text-icon border border-dashed border-border/40 rounded hover:border-ink/50 hover:text-ink hover:bg-ink/5 transition-colors'
-
-/**
- * One comment: who, where, when, and what it says.
- *
- * The body is plain text on purpose (see `PRComment`), bounded by the heights above
- * and unfolded by its own explicit button. Neither the text nor the card reacts to
- * hover: the only clickable things here are the permalink and that button, and
- * lighting the whole row up on hover claimed otherwise.
- *
- * A card per comment, on `bg-surface` — the same token the PR card itself is painted
- * with, so the rows belong to the card rather than to a palette of their own. It
- * still reads a shade lighter than that card: these are TRANSLUCENT overlays, and a
- * comment sits on three of them (card, chip, comment), not one. The separation comes
- * from the border, and the fill only has to stop the rows running together — which is
- * also why this is not simply a call to `Chip`, whose own padding suits a single line.
- */
-function CommentEntry({ comment, now, t }: { comment: PRComment; now: number; t: Translate }) {
-  const [expanded, setExpanded] = useState(false)
-  const [overflows, setOverflows] = useState(false)
-  const bodyRef = useRef<HTMLDivElement>(null)
-
-  /**
-   * Does the folded body actually hide anything?
-   *
-   * MEASURED, not guessed from the text: a character count cannot know where the
-   * line breaks land in a column whose width follows the sidebar and whose font
-   * size follows the app's zoom, so it would offer "show more" on comments with
-   * nothing more to show and withhold it on ones that were cut.
-   *
-   * Only ever measured while COLLAPSED. Expanding raises the ceiling, which would
-   * read back as "fits now" and take the "show less" button away with it — so the
-   * observer is detached for the duration and the verdict from the folded state
-   * stands.
-   */
-  useEffect(() => {
-    const el = bodyRef.current
-    if (!el || expanded) return
-    const measure = () => setOverflows(el.scrollHeight > el.clientHeight + 1)
-    measure()
-    if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(measure)
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [comment.body, expanded])
-
-  const createdAt = comment.createdAt ? Date.parse(comment.createdAt) : NaN
-  const badge = comment.kind === 'review' ? REVIEW_STATE_BADGE[(comment.reviewState || '').toUpperCase()] : undefined
+function ThreadEntry({ thread, now, t }: { thread: PRReviewThread; now: number; t: Translate }) {
+  const { root } = thread
+  // The LAST activity, not when the thread was opened — the same stamp the list is
+  // sorted on, so the ages read down the column in order instead of jumping about.
+  // Identical to the root's on a singleton, which has no later comment to have one.
+  const updatedAt = thread.updatedAt ? Date.parse(thread.updatedAt) : NaN
+  const badge = thread.kind === 'review' ? REVIEW_STATE_BADGE[(root.reviewState || '').toUpperCase()] : undefined
 
   // The basename only: a sidebar column cannot hold `desktop/src/main/…/watcher.ts`,
   // and the full path is one click away on GitHub. The title attribute keeps it.
-  const where = comment.kind === 'inline' && comment.path
-    ? `${comment.path.split('/').pop()}${typeof comment.line === 'number' ? `:${comment.line}` : ''}`
+  const where = thread.path
+    ? `${thread.path.split('/').pop()}${typeof thread.line === 'number' ? `:${thread.line}` : ''}`
     : undefined
 
-  /**
-   * A settled thread is one line, not a card: the body is what is left to ACT on,
-   * and once the thread is resolved there is nothing left. What survives is the
-   * question a reader still asks of a closed comment — who, where, when — plus the
-   * green check that says it is closed. The text stays one click away on GitHub,
-   * and dropping it here stops resolved threads burying the live ones they sit
-   * beside. That is also why the row keeps its full opacity: it is already the
-   * quiet one by being a single line, so the check can actually read as green.
-   */
+  // Only the inline threads have one: a conversation comment and a review summary are
+  // not threads GitHub tracks the state of, and pinning "open" to every one of them
+  // would spend the row's width saying nothing.
+  const state = thread.kind === 'inline' ? THREAD_STATE[thread.state] : undefined
+
   return (
-    <li className={`rounded-md border border-border/30 bg-surface px-2 py-1.5 ${comment.resolved ? '' : 'space-y-1'}`}>
-      <div className="flex items-center gap-1.5 text-xs min-w-0">
-        <span className="font-medium text-ink/80 truncate">{comment.author}</span>
-        {badge && (
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 ${REVIEW_BADGE[badge].tone}`}>
-            {t(REVIEW_BADGE[badge].label)}
-          </span>
-        )}
-        {where && (
-          <span className="text-text-secondary/60 font-mono truncate" title={comment.path}>{where}</span>
-        )}
-        {/* `ml-auto` here rather than on the date, so the pair travels together to
-            the right edge and the label reads as attached to the timestamp. */}
-        {comment.resolved && (
-          <span className="ml-auto flex items-center gap-1 flex-shrink-0 text-text-secondary/60">
-            <CheckCircle2 className="w-3 h-3 text-green" />
-            {t('agentInfo.pr.commentResolved')}
-          </span>
-        )}
-        {Number.isFinite(createdAt) && (
-          <span className={`text-text-secondary/40 flex-shrink-0 ${comment.resolved ? '' : 'ml-auto'}`}>{formatTimestamp(createdAt, now, t)}</span>
-        )}
-      </div>
-      {!comment.resolved && (
-        <>
-        {/* `whitespace-pre-wrap` so a bullet list stays a list. `break-words` because a
-            stack trace or a URL in a 260 px column would otherwise push the card wide. */}
-        <div
-          ref={bodyRef}
-          className={`text-xs leading-relaxed text-text-secondary/80 whitespace-pre-wrap break-words ${
-            expanded ? '' : `${BODY_COLLAPSED} overflow-hidden`
-          }`}
-        >
-          {comment.body}
-        </div>
-        {/* Two flexible gutters around the toggle, so it is centred on the CARD rather
-            than on what is left of the row — the permalink on the right would otherwise
-            push it off-centre by its own width. The left gutter stays empty on purpose. */}
-        <div className="flex items-center gap-1">
-          <span className="flex-1" />
-          {(overflows || expanded) && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-icon bg-surface hover:text-ink hover:bg-surface-strong transition-colors"
-            >
-              <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-              {t(expanded ? 'agentInfo.pr.commentLess' : 'agentInfo.pr.commentMore')}
-            </button>
-          )}
-          {/* The copy sits immediately left of the GitHub button, both in the shared
-              pill above, so the pair reads as one control with two halves rather than
-              as two buttons that happen to be near. The copy is square — a label there
-              would take its width from the one element that has none to give. */}
-          <span className="flex-1 flex justify-end items-center gap-1">
-            {comment.url && (
-              <>
-                <CopyLinkButton
-                  url={comment.url}
-                  copyLabel={t('agentInfo.pr.commentCopyLink')}
-                  copiedLabel={t('agentInfo.pr.commentCopyLinkDone')}
-                  className={`${COMMENT_ACTION} w-5`}
-                  // `w-3`, matching the GitHub glyph beside it rather than the
-                  // component's `w-3.5` default, which is sized for the Tasks page.
-                  iconClassName="w-3 h-3"
-                />
-                <button
-                  onClick={() => window.electronAPI.shell.openExternal(comment.url)}
-                  title={t('agentInfo.pr.commentOpen')}
-                  className={`${COMMENT_ACTION} gap-1 px-1.5`}
-                >
-                  <GitHubIcon className="w-3 h-3" />
-                  {t('agentInfo.openOnGitHub')}
-                </button>
-              </>
-            )}
-          </span>
-        </div>
-        </>
+    <li className="flex items-center gap-1.5 min-w-0 rounded-md border border-border/30 bg-surface px-2 py-1.5 text-xs">
+      {/* The author can give way to the location: on an inline thread "which file"
+          is the part that places the row, and a truncated login is still readable. */}
+      <span className="font-medium text-ink/80 truncate">{root.author}</span>
+      {badge && (
+        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 ${REVIEW_BADGE[badge].tone}`}>
+          {t(REVIEW_BADGE[badge].label)}
+        </span>
       )}
+      {/* A review whose verdict this card has no badge for — DISMISSED, today. Untinted
+          on purpose: it is not a fourth verdict, it is the row saying which of the three
+          connections it came from, which is the only thing separating it from a
+          conversation comment once the badge is gone. */}
+      {thread.kind === 'review' && !badge && (
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 bg-surface-strong text-text-secondary/70">
+          {t('agentInfo.pr.threadReview')}
+        </span>
+      )}
+      {where && (
+        <span className="text-text-secondary/60 font-mono truncate" title={thread.path}>{where}</span>
+      )}
+      {/* One group travelling to the right edge, so the counts and states line up
+          column-wise down the list rather than trailing each row's own text. */}
+      <span className="ml-auto flex items-center gap-1.5 flex-shrink-0 text-[10px]">
+        {/* The real number of answers, which is not how many the thread carries once
+            the per-thread cap has bitten. Two keys rather than one: the catalogue
+            interpolates but does not pluralise. */}
+        {thread.replyCount > 0 && (
+          <span className="text-text-secondary/70 tabular-nums">
+            {t(thread.replyCount === 1 ? 'agentInfo.pr.threadReply' : 'agentInfo.pr.threadReplies', { count: thread.replyCount })}
+          </span>
+        )}
+        {state && (
+          <span className="flex items-center gap-1 text-text-secondary/60">
+            <state.Icon className={`w-3 h-3 ${state.tone}`} />
+            {t(state.label)}
+          </span>
+        )}
+        {Number.isFinite(updatedAt) && (
+          <span className="text-text-secondary/40">{formatTimestamp(updatedAt, now, t)}</span>
+        )}
+      </span>
     </li>
   )
 }
@@ -478,9 +408,9 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   // Comments start folded, always: the count is the answer most of the time, and who
   // said it is the follow-up question.
   const [commentsOpen, setCommentsOpen] = useState(false)
-  // The bodies themselves, which no poll carries and nothing persists — they are
+  // The threads themselves, which no poll carries and nothing persists — they are
   // fetched the first time the fold is opened and live exactly as long as this card.
-  const [comments, setComments] = useState<PRComment[] | null>(null)
+  const [comments, setComments] = useState<PRReviewThread[] | null>(null)
   const [commentsError, setCommentsError] = useState<PRWatchError | null>(null)
   const [commentsLoading, setCommentsLoading] = useState(false)
   /**
@@ -598,7 +528,7 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
     : legacyCommentCount
 
   /**
-   * Read the bodies when the fold opens, and again when the watcher reports that
+   * Read the threads when the fold opens, and again when the watcher reports that
    * the comments moved.
    *
    * The signature is what the counts and the last review timestamp say together: a
@@ -844,9 +774,9 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                   </div>
                 )}
                 {comments !== null && comments.length > 0 && (
-                  <ul className="space-y-1.5 pt-1">
-                    {comments.map((comment) => (
-                      <CommentEntry key={comment.id} comment={comment} now={now} t={t} />
+                  <ul className="space-y-1 pt-1">
+                    {comments.map((thread) => (
+                      <ThreadEntry key={thread.id} thread={thread} now={now} t={t} />
                     ))}
                   </ul>
                 )}

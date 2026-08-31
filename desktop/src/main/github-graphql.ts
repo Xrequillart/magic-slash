@@ -1,10 +1,11 @@
 /**
  * The single GraphQL read behind the PR watcher.
  *
- * Kept in its own module — and importing nothing but `../types` and `./github` — on
- * purpose: the test suite runs on the ROOT node_modules, where `electron`, `node-pty`
- * and `@supabase/supabase-js` are absent. Anything reachable from here must resolve
- * without them, and `./github` only reaches `child_process`.
+ * Kept in its own module — and importing nothing but `../types`, `./github` and
+ * `./pr-review-threads` — on purpose: the test suite runs on the ROOT node_modules,
+ * where `electron`, `node-pty` and `@supabase/supabase-js` are absent. Anything
+ * reachable from here must resolve without them; `./github` only reaches
+ * `child_process`, and `./pr-review-threads` reaches nothing at all.
  *
  * One query replaces the three REST calls it used to take (PR, reviews, review
  * comments), and it also returns what REST could not without more round-trips:
@@ -16,11 +17,14 @@ import type {
   GitHubReviewComment,
 } from './github'
 import { aggregatePRStatus, clearGitHubTokenCache, getGitHubToken, githubHeaders } from './github'
+// One-way: the grouping module never imports back from here, which is what lets it
+// declare the payload shape it consumes structurally (see its header).
+import { groupPullRequestThreads } from './pr-review-threads'
 import type {
   PRCheck,
   PRChecksSummary,
-  PRComment,
   PRCommentCounts,
+  PRReviewThread,
   PRState,
   PRStatusError,
   PRStatusSnapshot,
@@ -100,6 +104,22 @@ export const REVIEWS_PAGE_QUERY = `query($owner:String!,$repo:String!,$number:In
  * `bodyText` rather than `body`: the card shows plain text (see `PRComment`).
  * `last:` throughout, for the same reason as the status query — the bots post late,
  * and the tail is the part anyone still needs to read.
+ *
+ * The thread `id` and `replyTo { id }` are what make a thread a thread rather than a
+ * flat run of comments: the first identifies the exchange (and is the renderer's
+ * React key), the second says which comment opened it. `isOutdated` is the third
+ * state a thread can be in — the diff moved out from under it — and it is the one
+ * GitHub reports separately from `isResolved`.
+ *
+ * `originalLine` beside `line` because `line` comes back NULL on exactly the threads
+ * `isOutdated` marks: once the diff has moved out from under a thread, only the line
+ * it was written against survives. Without it, the one state this query added is also
+ * the one row that loses half of its `file:line`.
+ *
+ * `totalCount` on the thread's comments so the row can say how many replies GitHub
+ * holds rather than how many came back: `last:20` truncates a long exchange, and a
+ * count taken from the nodes would read "19 replies" on a forty-comment thread. Same
+ * shape the status query already uses for its author roll-up.
  */
 export const PR_COMMENTS_QUERY = `query($owner:String!,$repo:String!,$number:Int!){
   rateLimit { remaining }
@@ -107,20 +127,13 @@ export const PR_COMMENTS_QUERY = `query($owner:String!,$repo:String!,$number:Int
     pullRequest(number:$number){
       reviews(last:30){ nodes { id author{login} state submittedAt url bodyText } }
       reviewThreads(last:50){ nodes {
-        isResolved path line
-        comments(last:20){ nodes { id author{login} createdAt url bodyText } }
+        id isResolved isOutdated path line originalLine
+        comments(last:20){ totalCount nodes { id author{login} createdAt url bodyText replyTo{id} pullRequestReview{id} } }
       } }
       comments(last:30){ nodes { id author{login} createdAt url bodyText } }
     }
   }
 }`
-
-/**
- * Hard cap on what one fold renders. Reached only by PRs with a long bot history,
- * where the newest comments are the ones anybody is opening the card for — hence the
- * cut keeps the TAIL (see `mapPullRequestToComments`).
- */
-const MAX_COMMENTS = 60
 
 /**
  * Ceiling on the extra pages walked, so a pathological PR cannot spin the tick.
@@ -178,9 +191,14 @@ export interface GQLPullRequest {
   reviews?: GQLReviewConnection | null
   reviewThreads?: {
     nodes?: ({
+      /** Comments query only — the status query has no use for the thread itself. */
+      id?: string | null
       isResolved?: boolean | null
+      isOutdated?: boolean | null
       path?: string | null
       line?: number | null
+      /** Comments query only — the line the thread was written against, which is all that survives once it is outdated. */
+      originalLine?: number | null
       comments?: { totalCount?: number; nodes?: (GQLCommentNode | null)[] | null } | null
     } | null)[] | null
   } | null
@@ -206,6 +224,10 @@ interface GQLCommentNode {
   bodyText?: string | null
   createdAt?: string | null
   url?: string | null
+  /** Comments query, inline only: null on the comment that OPENED the thread. */
+  replyTo?: { id?: string | null } | null
+  /** Comments query, inline only: the review pass this comment was submitted with. */
+  pullRequestReview?: { id?: string | null } | null
 }
 
 export interface GQLReviewNode {
@@ -575,71 +597,10 @@ async function fetchOlderReviews(
 }
 
 /**
- * Flatten the three comment connections into one chronological list.
+ * Reads the comment bodies of one PR, on demand, grouped into threads.
  *
- * Exported for the test suite, like `mapPullRequestToSnapshot` next door.
- *
- * Empty bodies are dropped rather than listed: an APPROVED review with nothing
- * written on it is a verdict, which the header badge already states, and a blank row
- * saying "someone approved" would push the comments that do say something off the cap.
- */
-export function mapPullRequestToComments(pr: GQLPullRequest): PRComment[] {
-  const out: PRComment[] = []
-
-  const push = (
-    node: GQLCommentNode | GQLReviewNode | null | undefined,
-    kind: PRComment['kind'],
-    createdAt: string | null | undefined,
-    extra: Partial<PRComment> = {},
-  ): void => {
-    if (!node) return
-    const body = (node.bodyText || '').trim()
-    if (!body) return
-    out.push({
-      // GraphQL always returns an id here; the fallback only keeps React from
-      // collapsing two rows onto the same key if it ever did not.
-      id: node.id || `${kind}:${out.length}`,
-      kind,
-      author: node.author?.login || 'ghost',
-      body,
-      createdAt: createdAt || '',
-      url: node.url || '',
-      ...extra,
-    })
-  }
-
-  for (const review of pr.reviews?.nodes ?? []) {
-    push(review, 'review', review?.submittedAt, {
-      ...(review?.state ? { reviewState: review.state } : {}),
-    })
-  }
-
-  for (const thread of pr.reviewThreads?.nodes ?? []) {
-    if (!thread) continue
-    for (const comment of thread.comments?.nodes ?? []) {
-      push(comment, 'inline', comment?.createdAt, {
-        ...(thread.path ? { path: thread.path } : {}),
-        ...(typeof thread.line === 'number' ? { line: thread.line } : {}),
-        // Written even when false: the card greys the settled ones, and `undefined`
-        // would read as "unknown" on a thread GitHub told us about.
-        resolved: thread.isResolved === true,
-      })
-    }
-  }
-
-  for (const comment of pr.comments?.nodes ?? []) {
-    push(comment, 'conversation', comment?.createdAt)
-  }
-
-  // Oldest first — a review reads as a conversation, not as a feed. The cap then
-  // takes the TAIL, so what survives on a 300-comment PR is the recent exchange
-  // rather than the opening bot dump.
-  out.sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0))
-  return out.length > MAX_COMMENTS ? out.slice(-MAX_COMMENTS) : out
-}
-
-/**
- * Reads the comment bodies of one PR, on demand.
+ * The grouping itself lives in `pr-review-threads.ts` — a pure transformation, kept
+ * out of here so it can be tested without a token or a `fetch`.
  *
  * Never throws, and returns the same named errors as the status read so the card can
  * reuse the labels it already has for them.
@@ -648,7 +609,7 @@ export async function fetchPRCommentsGraphQL(
   owner: string,
   repo: string,
   number: number,
-): Promise<PRComment[] | PRStatusError> {
+): Promise<PRReviewThread[] | PRStatusError> {
   const token = getGitHubToken()
   if (!token) {
     return { error: 'no-token', message: 'No GitHub token: run `gh auth login` to read pull request comments.' }
@@ -657,7 +618,7 @@ export async function fetchPRCommentsGraphQL(
   const result = await postGraphQL(PR_COMMENTS_QUERY, { owner, repo, number }, owner, repo, number)
   if ('error' in result) return result
 
-  return mapPullRequestToComments(result.pullRequest)
+  return groupPullRequestThreads(result.pullRequest)
 }
 
 /**
