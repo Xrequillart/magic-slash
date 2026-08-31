@@ -14,11 +14,16 @@ import {
   MessagesSquare,
   MinusCircle,
   RefreshCw,
+  SendHorizontal,
   Users,
   XCircle,
 } from 'lucide-react'
 import { formatTimestamp } from './utils'
 import { useStore } from '../../store'
+import { bracketedPaste, resolveAgentTarget } from '../../utils/agentTerminals'
+import {
+  formatThreadContext, formatThreadsContext, selectUnresolvedThreads,
+} from '../../utils/prThreadContext'
 import { useT, type MessageKey, type Translate } from '../../i18n'
 import { showToast } from '../Toast'
 import type { PRCheck, PRReviewThread, PRState, PRWatchError, RepositoryMetadata } from '../../../types'
@@ -343,6 +348,34 @@ export function prUrlParts(url: string): { repoSlug?: string; prNumber?: string 
 }
 
 /**
+ * The two hand-off controls of the comments fold, at the sidebar's own `[10px]` scale.
+ *
+ * Bespoke rather than a token from `theme/controls` composed with a padding, which is that
+ * module's standing rule: compose, never re-declare, and if a control genuinely needs another
+ * size, add a tier — because two utilities from the same Tailwind group are decided by their
+ * order in the GENERATED stylesheet, not in the string, so `${BTN_ICON} p-1` keeps whichever
+ * was emitted last. That module does have an icon tier — `BTN_ICON`, square and `h-7` like
+ * this row — but it is a bordered `bg-surface` chip sized for a form, and these two sit
+ * INSIDE an already-bordered row at the sidebar's `[10px]` scale, where a second border
+ * reads as a box in a box. `ReviewCommentsButton`'s `HEADER_TRIGGER` and the `BUTTON_ACTION`
+ * next door to it are bespoke for the same reason, at the same scale.
+ *
+ * A BASE plus two suffixes, on `ChangeNavigator`'s `BUTTON_BASE` model: the base holds
+ * everything the two share — the shape, the resting tone, the disabled chrome — and each
+ * suffix adds only layout and padding, which the base deliberately does not set, so nothing
+ * here is one Tailwind group overriding itself. The row's is an icon in a square; the fold's
+ * carries a word beside it.
+ */
+const SEND_BASE =
+  'flex items-center rounded-md bg-transparent border-none cursor-pointer transition-colors ' +
+  'text-text-secondary/70 hover:text-ink hover:bg-surface-strong ' +
+  'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-secondary/70'
+
+const THREAD_SEND = `${SEND_BASE} flex-shrink-0 justify-center p-1`
+
+const THREADS_SEND = `${SEND_BASE} gap-1 py-1 px-1.5 text-[10px] font-medium`
+
+/**
  * One thread, on one line: who opened it, where, how many answers, and whether it is
  * settled.
  *
@@ -376,10 +409,22 @@ export function prUrlParts(url: string): { repoSlug?: string; prNumber?: string 
  * so passing them down would be fifty rows each carrying a copy of the list they are in
  * and each opening a store subscription, to answer a click that only ever names a thread.
  */
-function ThreadEntry({ thread, onOpen, now, t }: {
+function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
   thread: PRReviewThread
   /** Hand the panel this thread's id; the card knows what to open it on. */
   onOpen: (threadId: string) => void
+  /**
+   * Hand the agent this thread — the whole object, not an id, because what is composed
+   * from it is text and the card would otherwise look the thread back up in a list it
+   * already gave this row.
+   */
+  onSend: (thread: PRReviewThread) => void
+  /**
+   * Whether there is an agent terminal to paste into. Resolved ONCE by the card and passed
+   * down, for the reason `onOpen` is: fifty rows each opening a store subscription to answer
+   * a question with one answer for the whole list.
+   */
+  canSend: boolean
   now: number
   t: Translate
 }) {
@@ -401,13 +446,24 @@ function ThreadEntry({ thread, onOpen, now, t }: {
   // would spend the row's width saying nothing.
   const state = thread.kind === 'inline' ? THREAD_STATE[thread.state] : undefined
 
+  // One string for both the accessible name and the tooltip: an icon-only control needs
+  // both, and they must not be able to drift into saying two different things.
+  const prepareLabel = canSend
+    ? t('agentInfo.pr.prepareThread')
+    : t('agentInfo.pr.prepareThreadNoAgent')
+
   return (
-    <li>
+    /* The row is a BUTTON and stays one — the send is a sibling after it rather than a child,
+       because a `<button>` cannot nest a `<button>`. Turning the row into a `div onClick` to
+       make room would have been the smaller diff and the wrong one: it would silently drop
+       the keyboard access and the focus ring the row has today. The `ml-auto` metadata group
+       still travels to the right edge INSIDE the row button, so the columns stay aligned. */
+    <li className="flex items-center gap-1">
       <button
         type="button"
         onClick={() => onOpen(thread.id)}
         title={t('prComments.openThread')}
-        className="w-full flex items-center gap-1.5 min-w-0 rounded-md border border-border/30 bg-surface hover:bg-surface-strong px-2 py-1.5 text-xs text-left transition-colors"
+        className="flex-1 flex items-center gap-1.5 min-w-0 rounded-md border border-border/30 bg-surface hover:bg-surface-strong px-2 py-1.5 text-xs text-left transition-colors"
       >
         {/* The author can give way to the location: on an inline thread "which file"
             is the part that places the row, and a truncated login is still readable. */}
@@ -450,6 +506,20 @@ function ThreadEntry({ thread, onOpen, now, t }: {
             <span className="text-text-secondary/40">{formatTimestamp(updatedAt, now, t)}</span>
           )}
         </span>
+      </button>
+      {/* DISABLED rather than hidden when there is no agent to paste into, and the tooltip is
+          what makes that state worth having: a control that vanished would leave the reader
+          looking for it, where this one names the reason. There is nothing to fall back on
+          here — unlike the review's popover, a thread row carries no Copy. */}
+      <button
+        type="button"
+        onClick={() => onSend(thread)}
+        disabled={!canSend}
+        aria-label={prepareLabel}
+        title={prepareLabel}
+        className={THREAD_SEND}
+      >
+        <SendHorizontal className="w-3 h-3" />
       </button>
     </li>
   )
@@ -496,6 +566,75 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
   const openComments = useCallback((threadId: string) => {
     if (comments) openPRComments({ prUrl, threads: comments }, threadId)
   }, [openPRComments, prUrl, comments])
+
+  /**
+   * Whether there is a terminal to paste into at all.
+   *
+   * A NAMED target — this card's own agent — never the selection, which is what makes the
+   * disabled tooltip say "the agent this pull request belongs to" rather than "no agent is
+   * running": with another agent selected, the second sentence would be false. The rule and
+   * the reason both live in `resolveAgentTarget`, and it is read twice on purpose — here for
+   * the disabled state, again in the handler for the guard — so the two cannot disagree.
+   *
+   * The selector narrows to the BOOLEAN rather than keeping the id: the id it would return
+   * is never the one written to — the handler re-reads its own — so holding it would only
+   * re-render this card when the target changed from one live agent to another.
+   */
+  const canSendToAgent = useStore(
+    (state) => resolveAgentTarget(agentId, state.activeTerminalId, state.terminals) !== null,
+  )
+
+  /**
+   * Paste a composed context into the agent's prompt — and stop there.
+   *
+   * A raw `terminal.write` rather than the `runSlashCommand` → `prWatcher.sendCommand` path
+   * the Done button next door uses, and the difference is not plumbing: that path is a skill
+   * AUTO-LAUNCH, gated on `prReviews.autoLaunchSkills`, and it submits. This does not submit.
+   * The text is composed from review comments — written by anyone who can comment on the pull
+   * request — so it lands in the prompt, the reader reads it, and the reader presses Enter. A
+   * command assembled from third-party text that fired on its own is exactly the thing that
+   * must not happen, which is why it may not borrow a mechanism that would.
+   */
+  const sendToAgent = useCallback(async (text: string) => {
+    // Re-read from the store rather than trusted from the render, and guarded as well as
+    // disabled: the agent this card belongs to can be closed between the render that enabled
+    // the button and the click that fires it.
+    const state = useStore.getState()
+    const id = resolveAgentTarget(agentId, state.activeTerminalId, state.terminals)
+    // Said out loud, not swallowed: a click that writes nothing and reports nothing reads as
+    // a broken button. The disabled tooltip's own sentence is the accurate one here — the
+    // target was there at render and is gone now — and it beats the generic delivery failure
+    // below, which would blame a write that never happened.
+    if (!id) {
+      showToast(t('agentInfo.pr.prepareThreadNoAgent'), 'error')
+      return
+    }
+    // No toast on empty text, and it is a different situation: nothing was composed, so
+    // nothing was lost. Unreachable from both call sites anyway — the row passes one thread
+    // and `formatThreadContext` always writes a block for it, and the bulk control only
+    // renders when `unresolvedThreads` is non-empty. A toast here would be a sentence no
+    // reader can provoke, phrased for a state the UI does not have.
+    if (text === '') return
+
+    // AWAITED, and the answer acted on: an exited terminal keeps its entry in the store with
+    // `state` set to `completed`/`error` — the same two values an agent idle at its prompt
+    // reports — so a dead pty is only knowable from the write itself.
+    const delivered = await window.electronAPI.terminal.write(id, bracketedPaste(text))
+    // A toast, which is this card's established failure channel: the row is 500 px wide with
+    // no room for a sentence, and nothing here was consumed — the thread is still in the list
+    // and the button still works.
+    if (!delivered) showToast(t('agentInfo.pr.prepareThreadFailed'), 'error')
+  }, [agentId, t])
+
+  const sendThread = useCallback((thread: PRReviewThread) => {
+    void sendToAgent(formatThreadContext(thread))
+  }, [sendToAgent])
+
+  // What the fold's bulk control is about, and what it says on the tin: the inline threads
+  // still open. `selectUnresolvedThreads` carries why the two halves of that filter are both
+  // needed — a resolved or outdated thread is settled, and the singletons are `open` by
+  // construction rather than by anything GitHub tracks.
+  const unresolvedThreads = comments ? selectUnresolvedThreads(comments) : []
 
   // The "checked X ago" label goes stale on its own; re-render every 30s like the
   // usage card does, rather than only when a poll happens to land.
@@ -845,9 +984,45 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
                 {comments !== null && comments.length > 0 && (
                   <ul className="space-y-1 pt-1">
                     {comments.map((thread) => (
-                      <ThreadEntry key={thread.id} thread={thread} onOpen={openComments} now={now} t={t} />
+                      <ThreadEntry
+                        key={thread.id}
+                        thread={thread}
+                        onOpen={openComments}
+                        onSend={sendThread}
+                        canSend={canSendToAgent}
+                        now={now}
+                        t={t}
+                      />
                     ))}
                   </ul>
+                )}
+                {/* The same hand-off over the whole list. In CHILDREN, beside the `<ul>`, and
+                    not in `detail`: this fold is an `ItemCard` with a `toggle`, and `ItemCard`
+                    renders `detail` inside that header `<button>` — a button in a button, and
+                    a click on it would also fold the list away under the paste.
+
+                    Rendered only when there is something to send. A permanently dead bulk
+                    control on a fully resolved PR teaches nothing, where its absence is
+                    already the whole message — the same reading as Send in the review's
+                    footer bar. Disabled, though, when the agent is gone: that state is worth
+                    naming, and the tooltip is what names it. */}
+                {unresolvedThreads.length > 0 && (
+                  <div className="flex pt-1">
+                    <button
+                      type="button"
+                      onClick={() => void sendToAgent(formatThreadsContext(unresolvedThreads))}
+                      disabled={!canSendToAgent}
+                      /* No tooltip while it works: this button carries its label in the open,
+                         two lines below, and a `title` repeating it is a hover that says what
+                         is already on screen. The disabled reason is not on screen anywhere,
+                         which is the case a tooltip is actually for. */
+                      title={canSendToAgent ? undefined : t('agentInfo.pr.prepareThreadNoAgent')}
+                      className={THREADS_SEND}
+                    >
+                      <SendHorizontal className="w-3 h-3" />
+                      {t('agentInfo.pr.prepareAllThreads')}
+                    </button>
+                  </div>
                 )}
                 {/* Counted but unreadable: every body came back empty, which on a PR
                     with a count means bare approvals and nothing written. */}
