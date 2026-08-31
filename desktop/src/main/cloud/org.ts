@@ -180,9 +180,19 @@ export function pickUpTask(ticketId: string, repositories: string[]): PickUpTask
   if (typeof ticketId !== 'string' || ticketId.trim().length === 0) {
     throw new Error('pickUpTask requires a ticketId')
   }
-  // ticketId comes from agents.ticket_id, which any org member can write. It is
-  // embedded in initialPrompt and may later be typed into a PTY, so reject
-  // control characters (newline/CR/NUL) that could inject a second command.
+  // ticketId comes from agents.ticket_id, which any org member can write, and it is
+  // embedded in the prompt below.
+  //
+  // This check is NOT what makes that safe, and it used to be described as though it
+  // were. Shell safety lives at the sink: the prompt is interpolated into a command
+  // line by `pty/terminal-manager.ts`, which quotes it with `shQuote` — a filter here
+  // would have to enumerate shell metacharacters correctly forever, and the version
+  // that only rejected newlines let `$(…)` and backticks straight through.
+  //
+  // What it still buys, and why it stays: a newline or a NUL in a ticket id is
+  // meaningless as an identifier and would corrupt the prompt as a prompt — Claude
+  // Code reads a bare newline as "send", so a two-line prompt submits its first line
+  // and abandons the second. Refusing early names the bad data instead of acting on it.
   if (/[\r\n\0]/.test(ticketId)) {
     throw new Error('pickUpTask received a ticketId with illegal control characters')
   }

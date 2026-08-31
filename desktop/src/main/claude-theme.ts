@@ -9,6 +9,7 @@ import {
 } from '../claude-theme'
 import type { ThemeId } from '../types'
 import { readConfig } from './config/config'
+import { shQuote } from './utils/sh'
 
 /**
  * Keeps Claude Code's own colours in step with the app's theme.
@@ -89,13 +90,15 @@ function decide(): SyncDecision {
  * The command-line fragment that activates the generated theme, or an empty
  * string when the feature is off. Appended to the `claude` invocation.
  *
- * Double-encoded on purpose: the inner JSON.stringify builds the settings
- * object, the outer one quotes it for the shell that `pty.spawn` runs it
- * through.
+ * Two encodings, one each way: `JSON.stringify` builds the settings object because
+ * `--settings` takes JSON, and `shQuote` makes that object one word for the shell
+ * `pty.spawn` runs it through. The outer one used to be a second `JSON.stringify`,
+ * which happens to work for a constant and is the wrong tool the moment it is not —
+ * see the note on `shQuote` for why double quotes are not shell quoting.
  */
 export function claudeThemeFlag(): string {
   if (!decide().active) return ''
-  return ` --settings ${JSON.stringify(JSON.stringify({ theme: CLAUDE_THEME_REF }))}`
+  return ` --settings ${shQuote(JSON.stringify({ theme: CLAUDE_THEME_REF }))}`
 }
 
 /**

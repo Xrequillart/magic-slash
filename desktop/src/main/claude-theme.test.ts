@@ -84,10 +84,13 @@ describe('syncClaudeTheme', () => {
 describe('claudeThemeFlag', () => {
   it('quotes the settings JSON for the shell that runs the command', () => {
     // pty.spawn runs `sh -c "<string>"`, so the JSON has to survive one round of
-    // shell parsing: the inner quotes are escaped, and the whole thing is one
-    // argument. Asserting the exact string because getting this subtly wrong
-    // produces a command that still launches, just without the theme.
-    expect(claudeThemeFlag()).toBe(` --settings "{\\"theme\\":\\"${CLAUDE_THEME_REF}\\"}"`)
+    // shell parsing as ONE argument. Single quotes now, not escaped double quotes:
+    // inside double quotes a shell still expands `$` and backticks, and while this
+    // particular payload is a constant with neither, the spawn path must not carry
+    // an example of quoting-for-the-shell-with-JSON for the next reader to copy.
+    // Asserting the exact string because getting this subtly wrong produces a
+    // command that still launches, just without the theme.
+    expect(claudeThemeFlag()).toBe(` --settings '{"theme":"${CLAUDE_THEME_REF}"}'`)
   })
 
   it('is empty when the setting is off, so the command line is untouched', () => {

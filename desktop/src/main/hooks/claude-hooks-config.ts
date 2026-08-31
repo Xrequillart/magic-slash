@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import { STABLE_CONFIG_DIR } from '../config/paths'
+import { shQuote } from '../utils/sh'
 
 const CLAUDE_SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json')
 const MAGIC_SLASH_HOOK_MARKER = 'magic-slash-desktop'
@@ -29,10 +30,6 @@ const STATUSLINE_DEFAULT_PATH = path.join(STABLE_CONFIG_DIR, 'statusline-default
 const SPOOL_DIR_RELATIVE = '.config/magic-slash'
 const SKILL_SPOOL_RELATIVE = `${SPOOL_DIR_RELATIVE}/pending-skills.ndjson`
 
-// Wrap a string as a safe single-quoted POSIX shell literal.
-function shSingleQuote(s: string): string {
-  return `'${s.replace(/'/g, `'\\''`)}'`
-}
 
 /**
  * The statusline Magic Slash renders when the user has none of their own: working
@@ -90,7 +87,7 @@ exit 0
 // started OUTSIDE the desktop app (where MAGIC_SLASH_INNER_STATUSLINE is not
 // injected) still renders it. Inside the app the env var takes precedence.
 function buildStatusLineScript(innerCommand: string): string {
-  const baked = shSingleQuote(innerCommand)
+  const baked = shQuote(innerCommand)
   return `#!/usr/bin/env bash
 # Managed by Magic Slash Desktop — captures Claude Code usage for the app sidebar.
 input=$(cat)
@@ -318,7 +315,7 @@ function getSkillHookConfig(): HookConfig {
     'fromjson? | .tool_input.skill // empty ' +
     '| select((sub("^.*:";"")) | startswith("magic-")) ' +
     '| {type: "start", skill: ., agentId: $id, occurredAt: ($ts | tonumber * 1000), source: "tool"} | tojson'
-  const command = `mkdir -p ${dir} 2>/dev/null; jq -rR --slurp --arg id "$MAGIC_SLASH_TERMINAL_ID" --arg ts "$(date +%s)" ${shSingleQuote(filter)} 2>/dev/null >> ${spool} || true # ${MAGIC_SLASH_HOOK_MARKER}`
+  const command = `mkdir -p ${dir} 2>/dev/null; jq -rR --slurp --arg id "$MAGIC_SLASH_TERMINAL_ID" --arg ts "$(date +%s)" ${shQuote(filter)} 2>/dev/null >> ${spool} || true # ${MAGIC_SLASH_HOOK_MARKER}`
 
   return {
     matcher: 'Skill',
@@ -378,7 +375,7 @@ function getPromptSkillHookConfig(): HookConfig {
     '| sub("^.*:"; "") ' +
     '| select(startswith("magic-")) ' +
     '| {type: "start", skill: ., agentId: $id, occurredAt: ($ts | tonumber * 1000), source: "prompt"} | tojson'
-  const command = `mkdir -p ${dir} 2>/dev/null; jq -rR --slurp --arg id "$MAGIC_SLASH_TERMINAL_ID" --arg ts "$(date +%s)" ${shSingleQuote(filter)} 2>/dev/null >> ${spool} || true # ${MAGIC_SLASH_HOOK_MARKER}`
+  const command = `mkdir -p ${dir} 2>/dev/null; jq -rR --slurp --arg id "$MAGIC_SLASH_TERMINAL_ID" --arg ts "$(date +%s)" ${shQuote(filter)} 2>/dev/null >> ${spool} || true # ${MAGIC_SLASH_HOOK_MARKER}`
 
   return {
     hooks: [{
@@ -621,7 +618,7 @@ export function configureStatusLine(): string {
       fs.chmodSync(STATUSLINE_DEFAULT_PATH, 0o755)
       // Nobody else's statusline to relay, so render ours. Quoted because it is
       // reached through `eval` and a home directory may contain spaces.
-      if (!inner) inner = `sh ${shSingleQuote(STATUSLINE_DEFAULT_PATH)}`
+      if (!inner) inner = `sh ${shQuote(STATUSLINE_DEFAULT_PATH)}`
     } catch (e) {
       // Non-fatal: an unwritable default costs the statusline, not the usage capture
       // the wrapper exists for. Leave `inner` empty and relay nothing, as before.

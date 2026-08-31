@@ -4,6 +4,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { execSync, execFileSync } from 'child_process'
 import { claudeThemeFlag } from '../claude-theme'
+import { shQuote } from '../utils/sh'
 import { readConfig } from '../config/config'
 import { updateAgentMetadata, updateAgentRepositories, createDefaultMetadata, mergeMetadata } from '../config/agents'
 import { withDetectedBranch } from './initial-metadata'
@@ -500,12 +501,33 @@ export function launchClaude(
   // Function to create and attach a new PTY process
   const createPtyProcess = (currentCwd: string, cols: number = 120, rows: number = DEFAULT_PTY_ROWS) => {
     const launchMode = launchModeOverride ?? readConfig().launchMode
-    const modeFlag = launchMode && launchMode !== 'default' ? ` --permission-mode ${launchMode}` : ''
+    // Quoted even though `isValidLaunchMode` has already reduced this to one of four
+    // words. The validation lives three modules away and an override arrives over IPC;
+    // quoting here means the guarantee is local to the line that needs it.
+    const modeFlag = launchMode && launchMode !== 'default' ? ` --permission-mode ${shQuote(launchMode)}` : ''
     // Resolved per spawn rather than per terminal, so a restart picks up a theme
     // (or a setting) changed while the session was running.
     const themeFlag = claudeThemeFlag()
+    /**
+     * The command line, with the prompt as ONE shell word.
+     *
+     * `shQuote`, never `JSON.stringify`. This line used to read
+     * `` `claude … ${JSON.stringify(pendingPrompt)}` ``, which quoted the prompt for
+     * JSON and then handed it to `sh -lc` — where the double quotes JSON produces
+     * still expand `$(…)`, backticks and `${…}`. A prompt containing `$(curl …|sh)`
+     * therefore ran it, BEFORE Claude Code started and with no permission prompt,
+     * because no tool call was involved at all.
+     *
+     * That was reachable from three places, none of them exotic: whatever someone
+     * types or PASTES into Quick Launch, a `/magic:start` built from tracker data, and
+     * `/magic:continue <ticketId>` where the id comes from `agents.ticket_id` — a
+     * column any member of the organization can write (see cloud/org.ts). The fix
+     * belongs here, at the sink, rather than in a filter at each of those three: the
+     * next caller to build a prompt gets it for free, and a filter would have to
+     * enumerate shell metacharacters correctly forever.
+     */
     const claudeCmd = pendingPrompt
-      ? `claude${modeFlag}${themeFlag} ${JSON.stringify(pendingPrompt)}`
+      ? `claude${modeFlag}${themeFlag} ${shQuote(pendingPrompt)}`
       : `claude${modeFlag}${themeFlag}`
     pendingPrompt = null
     const ptyProcess = pty.spawn(shell, ['-li', '-c', claudeCmd], {
