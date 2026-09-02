@@ -1352,6 +1352,7 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.openRepoOnGitHub': 'Ouvrir le dépôt sur GitHub',
   'agentInfo.scripts': 'Scripts',
   'agentInfo.stopScript': 'Arrêter le script',
+  'agentInfo.openServerInBrowser': 'Ouvrir {url} dans le navigateur',
   'agentInfo.launchDone': 'Lancer magic-done',
   'agentInfo.files.one': '{count} fichier',
   'agentInfo.files.other': '{count} fichiers',

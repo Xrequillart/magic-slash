@@ -1382,6 +1382,7 @@ export const en = {
   'agentInfo.openRepoOnGitHub': 'Open the repository on GitHub',
   'agentInfo.scripts': 'Scripts',
   'agentInfo.stopScript': 'Stop script',
+  'agentInfo.openServerInBrowser': 'Open {url} in the browser',
   'agentInfo.launchDone': 'Launch magic-done',
   'agentInfo.files.one': '{count} file',
   'agentInfo.files.other': '{count} files',

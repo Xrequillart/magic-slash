@@ -39,8 +39,9 @@ function parseTestResults(buffer: string): { passed: number; failed: number; tot
   return null
 }
 
-// Global listener registered once
+// Global listeners registered once
 let exitListenerRegistered = false
+let serverUrlListenerRegistered = false
 
 function registerExitListener() {
   if (exitListenerRegistered) return
@@ -88,11 +89,29 @@ function registerExitListener() {
   })
 }
 
+/**
+ * A running script telling the app which URL it serves on.
+ *
+ * Registered globally for the same reason the exit listener is: the event is about a
+ * script, not about whichever card happens to be mounted, and a `RunningScripts` is
+ * mounted per attached repository. Main sends one of these per server the script
+ * announces — two for a `dev:local` that starts an API and a front end.
+ */
+function registerServerUrlListener() {
+  if (serverUrlListenerRegistered) return
+  serverUrlListenerRegistered = true
+
+  window.electronAPI.scripts.onServerUrl(({ id, url }) => {
+    useStore.getState().addScriptServerUrl(id, url)
+  })
+}
+
 export function useScriptRunner() {
   const { scriptTerminals, addScriptTerminal, removeScriptTerminal } = useStore()
 
-  // Register the global exit listener once
+  // Register the global listeners once
   registerExitListener()
+  registerServerUrlListener()
 
   const runScript = useCallback(async (
     repoPath: string,

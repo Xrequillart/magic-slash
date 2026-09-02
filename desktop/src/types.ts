@@ -2271,6 +2271,17 @@ export interface ScriptTerminalInfo {
   agentName: string
   projectPath: string
   state: 'running' | 'error'
+  /**
+   * The local URLs this script announced it serves on, in the order they were printed.
+   *
+   * A list and not a single URL because one script routinely starts several servers —
+   * `dev:local` running the API next to the front end — and the first one to boot is not
+   * the one the person wants to open. Empty (or absent) for every script that serves
+   * nothing — a linter, a test run, a build — which is exactly what makes it the test
+   * for "offer to open this in a browser". Filled from the script's own output (see
+   * `src/server-url.ts`), never guessed from its name.
+   */
+  serverUrls?: string[]
 }
 
 /** One selectable answer of an `AskUserQuestion` call. */

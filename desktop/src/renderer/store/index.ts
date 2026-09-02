@@ -414,6 +414,8 @@ interface AppState {
   addScriptTerminal: (script: ScriptTerminalInfo) => void
   removeScriptTerminal: (id: string) => void
   updateScriptTerminalState: (id: string, state: 'running' | 'error') => void
+  /** Record one more address a running script announced it serves on. */
+  addScriptServerUrl: (id: string, url: string) => void
   openScriptTerminalModal: (script: ScriptTerminalInfo) => void
   closeScriptTerminalModal: () => void
 
@@ -777,6 +779,20 @@ export const useStore = create<AppState>()(
           set((state) => ({
             scriptTerminals: state.scriptTerminals.map((s) =>
               s.id === id ? { ...s, state: newState } : s
+            ),
+          })),
+
+        // A script that has already exited keeps no card, so a URL arriving after that
+        // has nowhere to land — `map` over the current list is what makes that a no-op
+        // rather than a resurrected entry. Main already reports each origin once; the
+        // `includes` guard is what survives a duplicate anyway (a replayed event, a
+        // second listener) without doubling a row.
+        addScriptServerUrl: (id, url) =>
+          set((state) => ({
+            scriptTerminals: state.scriptTerminals.map((s) =>
+              s.id === id && !(s.serverUrls ?? []).includes(url)
+                ? { ...s, serverUrls: [...(s.serverUrls ?? []), url] }
+                : s
             ),
           })),
 

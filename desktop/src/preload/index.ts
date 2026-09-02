@@ -411,6 +411,16 @@ const scriptsApi = {
     ipcRenderer.invoke('scripts:run', { repoPath, scriptName, packageManager, agentId, agentName }),
   stop: (id: string) =>
     ipcRenderer.invoke('scripts:stop', { id }),
+
+  /**
+   * The URL a running script announced it serves on — sent once per script, by
+   * `main/ipc/script-handlers.ts`, and only for the ones that print one at all.
+   */
+  onServerUrl: (callback: (data: { id: string; url: string }) => void) => {
+    const listener = (_event: IpcRendererEvent, data: { id: string; url: string }) => callback(data)
+    ipcRenderer.on('scripts:serverUrl', listener)
+    return () => ipcRenderer.removeListener('scripts:serverUrl', listener)
+  },
 }
 
 // Tray API (for popover window)
