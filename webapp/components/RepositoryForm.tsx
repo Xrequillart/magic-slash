@@ -546,8 +546,7 @@ export function RepositoryForm({
             }
           >
             {repo.orgId ? (
-              <Button variant="ghost" onClick={() => onPatch({ orgId: null })} className="border border-black/10">
-                <Lock className="h-4 w-4" />
+              <Button icon={Lock} onClick={() => onPatch({ orgId: null })}>
                 {t('repo.scope.makePersonal')}
               </Button>
             ) : orgs.length > 0 ? (

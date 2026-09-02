@@ -185,6 +185,12 @@ export function ChipList({
           ))}
         </div>
       )}
+      {/* Not an `<Input>`, and the one place that stays inline. The tag row conflicts
+          with `FIELD` on TWO properties, not one: it is `py-2` on both halves so the
+          field and its Add button are the same height (`FIELD` is `py-2.5`), and it is
+          `flex-1` in a flex row where `FIELD` is `w-full`. Neither can be appended —
+          see the header of `components/ui.tsx` — so reuse here would mean two slots on
+          `FIELD` to serve one call site. The copy is cheaper than the machinery. */}
       <div className="flex gap-2">
         <input
           id={inputId}

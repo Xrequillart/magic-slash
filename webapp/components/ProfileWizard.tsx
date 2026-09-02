@@ -152,8 +152,7 @@ export function ProfileWizard({
       footer={
         <>
           {step > 1 && (
-            <Button variant="ghost" onClick={() => setStep(step - 1)} className="mr-auto">
-              <ChevronLeft className="h-4 w-4" />
+            <Button variant="ghost" icon={ChevronLeft} onClick={() => setStep(step - 1)} className="mr-auto">
               {t('common.back')}
             </Button>
           )}
@@ -163,8 +162,7 @@ export function ProfileWizard({
               <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button onClick={finish} disabled={busy || !profile.name.trim()} className="ml-auto">
-              <Check className="h-4 w-4" />
+            <Button icon={Check} onClick={finish} disabled={busy || !profile.name.trim()} className="ml-auto">
               {busy ? t('common.saving') : t('common.finish')}
             </Button>
           )}

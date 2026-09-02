@@ -95,9 +95,7 @@ function EmptyState({ filtered }: { filtered: boolean }) {
       <p className="mx-auto mt-2 max-w-md text-sm text-muted">
         {t(filtered ? 'plans.empty.filteredBody' : 'plans.empty.body')}
       </p>
-      {!filtered && (
-        <p className="mt-4 font-mono text-xs text-brand">/magic:plan &lt;your idea&gt;</p>
-      )}
+      {!filtered && <Eyebrow spacing="mt-4">/magic:plan &lt;your idea&gt;</Eyebrow>}
     </Card>
   )
 }

@@ -255,11 +255,16 @@ export function SkillHoursOptIn({ onEnabled }: { onEnabled: () => void }) {
               instead of it. 460 at 0.72 lands within a few pixels of the single figure
               at 340 × 0.84. */}
           <div className="relative z-10 w-[460px] transition-transform duration-500 [transform:rotateY(-16deg)_rotateX(7deg)_rotate(-2deg)_scale(0.72)] motion-safe:group-hover:[transform:rotateY(-9deg)_rotateX(4deg)_rotate(-1deg)_scale(0.76)]">
-            <SkillHoursCard
-              hours={sample}
-              stats={['total', 'week']}
-              className="shadow-[0_16px_36px_-18px_rgba(19,16,48,0.4)]"
-            />
+            {/* `shadow-lift` — the same pixels this used to spell out as an arbitrary
+                class, now the token it seeded. A card tilted in 3D and floating off
+                the page is the only thing in the app that needs a real drop shadow.
+
+                Through the `shadow` SLOT and not `className`: Tailwind shadows do not
+                compose, so this rung has to REPLACE the `shadow-card` the surface
+                carries. Appended as a className it would only have replaced it if
+                Tailwind's own sort happened to emit `.shadow-lift` after
+                `.shadow-card`, which is not a thing this file gets to decide. */}
+            <SkillHoursCard hours={sample} stats={['total', 'week']} shadow="shadow-lift" />
           </div>
         </div>
       </div>
