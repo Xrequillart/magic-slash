@@ -12,6 +12,7 @@ import { useT } from '../i18n'
 import type { RepoGitData } from './agent-info-sidebar/types'
 import type { TerminalMetadata } from '../../types'
 import { resolveGitHubIssuesUrl, resolveJiraSite } from '../../tracker'
+import { withoutShadowedCheckouts } from '../../repoMatch'
 
 const MIN_WIDTH = 288 // w-72
 
@@ -180,9 +181,13 @@ export function AgentInfoSidebar() {
     return false
   }, [config?.repositories])
 
-  // Filter attached repos to only show those in config
+  // Filter attached repos to only show those in config — and, when an agent has both a
+  // repository and one of its own worktrees attached, only the worktree: the main
+  // checkout's card repeats the same repo's name over a branch, a diff, a PR and a
+  // script list that belong somewhere else (see `withoutShadowedCheckouts`). Detaching
+  // the hidden one is still possible from the repositories modal.
   const configuredAttachedRepos = useMemo(() => {
-    return attachedRepos.filter(repoPath => isRepoInConfig(repoPath))
+    return withoutShadowedCheckouts(attachedRepos.filter(repoPath => isRepoInConfig(repoPath)))
   }, [attachedRepos, isRepoInConfig])
 
   // The ± button on the session card writes the same setting the Appearance tab's

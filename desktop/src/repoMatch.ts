@@ -57,6 +57,37 @@ export function pathBelongsToRepo(agentPath: string, name: string, repoPath?: st
 }
 
 /**
+ * True when `candidate` is a /magic:start worktree OF the checkout at `repoPath`.
+ *
+ * The asymmetric half of `pathBelongsToRepo`: that one answers "same repository", which
+ * a repo and its worktree both satisfy, and this one answers which of the two is the
+ * worktree.
+ */
+export function isWorktreePathOf(candidate: string, repoPath: string): boolean {
+  const base = repoBasename(candidate)
+  const root = repoBasename(repoPath)
+  if (!base || !root || base === root) return false
+  return base.startsWith(`${root}-`) && TICKET_SUFFIX.test(base.slice(root.length + 1))
+}
+
+/**
+ * The attached paths worth showing, with a main checkout dropped when one of its OWN
+ * worktrees is attached alongside it.
+ *
+ * An agent working in `poppins-pex-PER-5138` has nothing to do in `poppins-pex`: the
+ * branch, the diff, the PR and the scripts all belong to the worktree, and the second
+ * card repeats every one of them against a checkout nobody is touching — offering, in
+ * the script dropdown, a `dev` that would serve the wrong tree. The worktree wins
+ * because it is where the work is.
+ *
+ * Only the SHADOWED checkout goes: two worktrees of the same repo are two real places
+ * to work and both stay, and a repo with no worktree attached is untouched.
+ */
+export function withoutShadowedCheckouts(paths: string[]): string[] {
+  return paths.filter(p => !paths.some(other => other !== p && isWorktreePathOf(other, p)))
+}
+
+/**
  * The ids of the configured repositories these working directories belong to.
  *
  * This is what turns an agent's paths into a real link to the `repositories`

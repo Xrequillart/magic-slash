@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { RepositoryConfig } from './types'
-import { repoBasename, pathBelongsToRepo, resolveRepoIds } from './repoMatch'
+import { repoBasename, pathBelongsToRepo, resolveRepoIds, isWorktreePathOf, withoutShadowedCheckouts } from './repoMatch'
 
 describe('repoBasename', () => {
   it('returns the last segment', () => {
@@ -107,5 +107,57 @@ describe('resolveRepoIds', () => {
   it('matches an unbound team repo by name alone', () => {
     const repos = { 'design-system': repo({ id: 'r9', path: '' }) }
     expect(resolveRepoIds(['/home/other/design-system'], repos, expand)).toEqual(['r9'])
+  })
+})
+
+describe('withoutShadowedCheckouts', () => {
+  it('drops the main checkout when one of its worktrees is attached too', () => {
+    expect(withoutShadowedCheckouts([
+      '/Users/me/Documents/poppins-pex',
+      '/Users/me/Documents/poppins-pex-PER-5138',
+    ])).toEqual(['/Users/me/Documents/poppins-pex-PER-5138'])
+  })
+
+  it('keeps every worktree of the same repository', () => {
+    const paths = [
+      '/Users/me/Documents/poppins-pex',
+      '/Users/me/Documents/poppins-pex-PER-5138',
+      '/Users/me/Documents/poppins-pex-PER-5071',
+    ]
+    expect(withoutShadowedCheckouts(paths)).toEqual([
+      '/Users/me/Documents/poppins-pex-PER-5138',
+      '/Users/me/Documents/poppins-pex-PER-5071',
+    ])
+  })
+
+  it('leaves a repository attached on its own alone', () => {
+    expect(withoutShadowedCheckouts(['/Users/me/Documents/poppins-pex']))
+      .toEqual(['/Users/me/Documents/poppins-pex'])
+  })
+
+  it('never lets one repository shadow another', () => {
+    // `magic-slash` is not a worktree of `magic`: the suffix has to be a ticket id.
+    const paths = ['/Users/me/Documents/magic', '/Users/me/Documents/magic-slash']
+    expect(withoutShadowedCheckouts(paths)).toEqual(paths)
+  })
+
+  it('keeps two unrelated repositories', () => {
+    const paths = ['/Users/me/Documents/api', '/Users/me/Documents/web-42']
+    expect(withoutShadowedCheckouts(paths)).toEqual(paths)
+  })
+})
+
+describe('isWorktreePathOf', () => {
+  it('accepts a Jira key and a bare issue number as the suffix', () => {
+    expect(isWorktreePathOf('/r/api-PER-5138', '/r/api')).toBe(true)
+    expect(isWorktreePathOf('/r/api-456', '/r/api')).toBe(true)
+  })
+
+  it('rejects a repository that merely starts with the same name', () => {
+    expect(isWorktreePathOf('/r/api-gateway', '/r/api')).toBe(false)
+  })
+
+  it('is not satisfied by the checkout itself', () => {
+    expect(isWorktreePathOf('/r/api', '/r/api')).toBe(false)
   })
 })
