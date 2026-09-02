@@ -87,7 +87,16 @@
 
 /* Read-only sections. A disabled <fieldset> stops the interaction but shows
    nothing, so the controls it locks are greyed here — the repository page turns
-   read-only for members who may not edit a team repo. */
+   read-only for members who may not edit a team repo.
+
+   `button` STAYS in this list even though `Button` now declares its own disabled
+   look per variant, because most of the buttons a locked fieldset contains are not
+   `Button`s: the colour swatches, the tag-row Add, every `Dropdown` trigger. Drop
+   them from here and those would look live while doing nothing.
+
+   The cost is that the 0.5 MULTIPLIES whatever a variant declares, so a disabled
+   `Button` inside a fieldset lands at half of it. `BUTTON_VARIANTS` in
+   `components/ui.tsx` is where that constraint is paid for. */
 fieldset:disabled input,
 fieldset:disabled select,
 fieldset:disabled textarea,

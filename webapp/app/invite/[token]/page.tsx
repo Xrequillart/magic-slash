@@ -7,6 +7,7 @@ import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktopRelease'
 import { useT } from '@/lib/i18n/useLanguage'
 import type { MessageKey } from '@/lib/i18n'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { Button, ButtonLink, Input } from '@/components/ui'
 
 interface InvitationPreview {
   org_name: string
@@ -164,12 +165,9 @@ export default function InvitePage({ params }: { params: { token: string } }) {
                 {t(UNAVAILABLE_KEYS[preview.status] ?? 'invite.unavailable.fallback')}
               </p>
               {preview.status === 'accepted' && (
-                <a
-                  href={DESKTOP_DOWNLOAD_URL}
-                  className="mt-6 inline-block rounded-full bg-ink px-6 py-3 font-display text-sm font-medium text-white transition-colors hover:bg-black/80"
-                >
+                <ButtonLink href={DESKTOP_DOWNLOAD_URL} size="lg" className="mt-6">
                   {t('invite.downloadApp')}
-                </a>
+                </ButtonLink>
               )}
             </div>
           )}
@@ -202,7 +200,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
                   <label className="mb-1 block text-xs font-medium text-muted">
                     {t('invite.password')}
                   </label>
-                  <input
+                  <Input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -210,7 +208,6 @@ export default function InvitePage({ params }: { params: { token: string } }) {
                     minLength={8}
                     autoFocus
                     placeholder={t('invite.passwordPlaceholder')}
-                    className="w-full rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-accent"
                   />
                 </div>
 
@@ -220,15 +217,11 @@ export default function InvitePage({ params }: { params: { token: string } }) {
                   </div>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={submitting || password.length < 8}
-                  className="w-full rounded-full bg-ink px-4 py-3 font-display text-sm font-medium text-white transition-colors hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-40"
-                >
+                <Button type="submit" size="lg" className="w-full" disabled={submitting || password.length < 8}>
                   {submitting
                     ? t('invite.submitting')
                     : t('invite.submit', { org: preview.org_name })}
-                </button>
+                </Button>
               </form>
             </>
           )}

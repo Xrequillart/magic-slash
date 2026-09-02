@@ -6,7 +6,7 @@ import { getSupabase } from '@/lib/supabase'
 import { HOME_PATH, useRequireGuest } from '@/lib/session'
 import { useT } from '@/lib/i18n/useLanguage'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
-import { FullPageLoader } from '@/components/ui'
+import { Button, Card, FullPageLoader, Input } from '@/components/ui'
 
 export default function Login() {
   const router = useRouter()
@@ -44,31 +44,29 @@ export default function Login() {
           <p className="mt-2 text-sm text-muted">{t('login.subtitle')}</p>
         </div>
 
-        <div className="rounded-2xl border border-black/5 bg-white p-7 shadow-sm">
+        <Card className="p-7">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1 block text-xs font-medium text-muted">{t('login.email')}</label>
-              <input
+              <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoFocus
                 placeholder={t('login.emailPlaceholder')}
-                className="w-full rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-accent"
               />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted">
                 {t('login.password')}
               </label>
-              <input
+              <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-accent"
               />
             </div>
 
@@ -78,15 +76,13 @@ export default function Login() {
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={submitting || !email || !password}
-              className="w-full rounded-full bg-ink px-4 py-3 font-display text-sm font-medium text-white transition-colors hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-40"
-            >
+            {/* `lg` carries the height; its horizontal padding is inert on a button
+                that spans the form. */}
+            <Button type="submit" size="lg" className="w-full" disabled={submitting || !email || !password}>
               {submitting ? t('login.submitting') : t('login.submit')}
-            </button>
+            </Button>
           </form>
-        </div>
+        </Card>
 
         <p className="mt-6 text-center text-xs text-muted">{t('login.invited')}</p>
 

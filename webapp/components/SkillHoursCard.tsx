@@ -50,11 +50,19 @@ const COLUMNS: Record<number, string> = {
 export function SkillHoursCard({
   hours,
   className = '',
+  shadow,
   stats = SKILL_HOURS_STATS,
 }: {
   /** null draws placeholders — the read is still in flight. */
   hours: SkillHours | null
   className?: string
+  /**
+   * Passed straight to `Card`'s `shadow` slot; undefined leaves the surface at its
+   * own rung. Here rather than folded into `className` because a shadow REPLACES
+   * the one `Card` carries instead of adding to it — the illustration in
+   * `SkillHoursOptIn` is the one caller that needs another rung.
+   */
+  shadow?: string
   /**
    * Which figures to draw. Everything, unless told otherwise.
    *
@@ -70,7 +78,7 @@ export function SkillHoursCard({
   const loading = hours === null
 
   return (
-    <Card className={`p-6 ${className}`}>
+    <Card shadow={shadow} className={`p-6 ${className}`}>
       <div className="flex flex-wrap items-center gap-x-8 gap-y-6">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
           <Timer className="h-5 w-5" />

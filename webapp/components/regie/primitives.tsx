@@ -279,7 +279,17 @@ const BUTTON_BASE =
 
 const BUTTON_TONES = {
   default: 'bg-black/[0.04] text-ink hover:bg-black/[0.08]',
-  brand: 'bg-brand text-white hover:bg-brand/90',
+  // The armed state of an affirmative action — promote, demote, restore. Was
+  // `bg-brand`, the last blue CTA left in the product; `ink` instead, which is
+  // still LOUDER than the `default` tone it replaces on the same button. That
+  // direction matters more than the hue: an armed state quieter than the resting
+  // one asks "are you sure?" in a smaller voice than the question it is confirming.
+  //
+  // Named `solid` for the same reason `danger-solid` is: it says what it does to
+  // the button, not which brand colour it used to borrow. Deliberately NOT the
+  // white primary from `components/ui.tsx` — a console action button has its own
+  // base (11px uppercase, `rounded-lg`) and is not a second primary button.
+  solid: 'bg-ink text-white hover:bg-black/80',
   danger: 'bg-red/[0.1] text-red hover:bg-red/[0.18]',
   // The armed state of a destructive action. A separate tone rather than a
   // className override on `danger`: `bg-red` and `bg-red/[0.1]` have equal
@@ -422,7 +432,7 @@ export function ConfirmAction({
   return (
     <span className="inline-flex items-center gap-1">
       <ActionButton
-        tone={tone === 'danger' ? 'danger-solid' : 'brand'}
+        tone={tone === 'danger' ? 'danger-solid' : 'solid'}
         disabled={busy}
         onClick={() => {
           setArmed(false)

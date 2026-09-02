@@ -55,8 +55,7 @@ export function AppHeaderCard() {
           <p className="font-display text-lg font-black text-ink">{t('appStatus.notInUse')}</p>
           <p className="mt-1 text-xs text-muted">{t('appStatus.notInUseHint')}</p>
         </div>
-        <ButtonLink href={DESKTOP_DOWNLOAD_URL} className="shrink-0">
-          <Download className="h-4 w-4" />
+        <ButtonLink href={DESKTOP_DOWNLOAD_URL} icon={Download} className="shrink-0">
           {t('common.download')}
         </ButtonLink>
       </Card>
@@ -78,8 +77,7 @@ export function AppHeaderCard() {
         {/* Only offered when it would actually do something. On the newest version
             a download button is an invitation to reinstall what you already have. */}
         {isBehind(current.appVersion) && (
-          <ButtonLink href={DESKTOP_DOWNLOAD_URL} variant="ghost" className="ml-auto shrink-0">
-            <Download className="h-4 w-4" />
+          <ButtonLink href={DESKTOP_DOWNLOAD_URL} variant="ghost" icon={Download} className="ml-auto shrink-0">
             {t('common.download')}
           </ButtonLink>
         )}
