@@ -11,9 +11,22 @@ interface ModalProps {
   footer?: ReactNode
   hero?: ReactNode
   maxWidth?: string
+  /**
+   * Give the body all the height that is left instead of letting the dialog grow to
+   * its content and scroll.
+   *
+   * For the one kind of child that has to be told how tall it is rather than announce
+   * it — a terminal. Sized in rows from its container, a terminal in an auto-height
+   * dialog either has to name a height of its own (`h-[60vh]`, which then collides
+   * with the dialog's own `max-h` and gets cut halfway through) or collapses. With
+   * this, the dialog claims a fixed share of the window, the header and footer keep
+   * their natural height, and everything left over goes to the body — which is what
+   * `h-full` inside it can finally mean something against.
+   */
+  fillHeight?: boolean
 }
 
-export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth = 'max-w-md' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth = 'max-w-md', fillHeight = false }: ModalProps) {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose()
@@ -51,9 +64,9 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
     >
       <div
         onAnimationEnd={onExitAnimationEnd}
-        className={`bg-bg-secondary border border-line rounded-xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto ${
-          closing ? 'animate-modal-content-out' : 'animate-modal-content'
-        }`}
+        className={`bg-bg-secondary border border-line rounded-xl w-full ${maxWidth} ${
+          fillHeight ? 'h-[85vh] flex flex-col' : 'max-h-[90vh] overflow-y-auto'
+        } ${closing ? 'animate-modal-content-out' : 'animate-modal-content'}`}
       >
         {/* Hero */}
         {hero && (
@@ -69,7 +82,7 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4">
+        <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-4">
           <h3 className="text-base font-semibold">{title}</h3>
           {!hero && (
             <button
@@ -82,13 +95,16 @@ export function Modal({ isOpen, onClose, title, children, footer, hero, maxWidth
         </div>
 
         {/* Body */}
-        <div className="px-5 pb-5 text-sm text-text-secondary">
+        {/* `min-h-0` is what makes `flex-1` a real height here rather than a floor: a
+            flex child defaults to its content's minimum size, and without it a terminal
+            asking for 100% would push the footer off the bottom instead of fitting. */}
+        <div className={`px-5 pb-5 text-sm text-text-secondary ${fillHeight ? 'flex-1 min-h-0' : ''}`}>
           {children}
         </div>
 
         {/* Footer */}
         {footer && (
-          <div className="flex gap-2 justify-end px-5 pb-5">
+          <div className="flex-shrink-0 flex gap-2 justify-end px-5 pb-5">
             {footer}
           </div>
         )}

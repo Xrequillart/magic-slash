@@ -42,6 +42,9 @@ export function ScriptTerminalModal() {
       onClose={closeScriptTerminalModal}
       title={script.scriptName}
       maxWidth="max-w-4xl"
+      // The terminal is sized in rows from the box it is given, so the box has to be
+      // the one thing in this dialog that knows its own height.
+      fillHeight
       footer={
         <>
           {exited && (
@@ -65,9 +68,12 @@ export function ScriptTerminalModal() {
         </>
       }
     >
-      {/* `relative` and an explicit height, both required: `TerminalView` renders
-          `absolute inset-0`, so a static or auto-height host gives it nothing to fill. */}
-      <div className="relative h-[60vh] rounded-lg border border-line overflow-hidden">
+      {/* `relative` and a real height, both required: `TerminalView` renders
+          `absolute inset-0`, so a static or auto-height host gives it nothing to fill.
+          `h-full` rather than a `vh` fraction of its own — the dialog's body is already
+          exactly the height that is left, and a second opinion on the matter is what
+          used to leave the terminal cut off partway down the card. */}
+      <div className="relative h-full rounded-lg border border-line overflow-hidden">
         <TerminalView
           terminal={{
             id: script.id,

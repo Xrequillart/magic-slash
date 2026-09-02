@@ -47,7 +47,10 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
   const lastGridRef = useRef({ cols: 0, rows: 0 })
   // Held in refs so the effects below can reach the current one without listing
   // it as a dependency: re-running them would tear down the xterm session.
-  const fitNowRef = useRef<() => void>(() => {})
+  const fitNowRef = useRef<() => boolean>(() => false)
+  // Cancels the mount-time retry loop above, so a dialog dismissed in its first second
+  // does not leave a frame callback reaching for a disposed terminal.
+  const cancelMountFitRef = useRef<(() => void) | null>(null)
   const cancelPendingFitRef = useRef<(() => void) | null>(null)
   // Whether this terminal has been hidden since it was last shown, i.e. whether
   // the repaint below is owed anything at all.
@@ -60,23 +63,36 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
   tokensRef.current = tokens
 
   /**
-   * Fit the terminal to its container, once, right now.
+   * Fit the terminal to its container, once, right now. Answers whether the container
+   * is now known to be fitted — false means "ask again", not "nothing to do".
    *
-   * Both guards matter. An unchanged container costs nothing, so the frames where
-   * only the visibility flipped do no work at all. And the PTY hears about a
-   * resize only when the grid actually moved: a SIGWINCH makes Claude Code repaint
-   * its entire UI and re-wrap its history, so one that changes no dimension is
-   * pure jank.
+   * Three guards matter. An unchanged container costs nothing, so the frames where
+   * only the visibility flipped do no work at all. The PTY hears about a resize only
+   * when the grid actually moved: a SIGWINCH makes Claude Code repaint its entire UI
+   * and re-wrap its history, so one that changes no dimension is pure jank.
+   *
+   * And the geometry is recorded only once the fit can ACTUALLY happen. `FitAddon`
+   * gives up silently when the renderer has not measured a character cell yet — it
+   * returns no dimensions and resizes nothing — which is the state a terminal is in
+   * for the first frames after `open()`. Recording the container's size for a fit that
+   * did nothing was self-poisoning: every later attempt saw the same size, took the
+   * early return, and left the terminal at xterm's default 24 rows with the rest of
+   * the box empty under it. Nothing corrected it either, because a ResizeObserver
+   * watching a box that never changes has nothing to report.
    */
-  const fitNow = useCallback(() => {
+  const fitNow = useCallback((): boolean => {
     const container = containerRef.current
     const xterm = xtermRef.current
     const fitAddon = fitAddonRef.current
-    if (!container || !xterm || !fitAddon) return
+    if (!container || !xterm || !fitAddon) return false
 
     const { offsetWidth, offsetHeight } = container
-    if (offsetWidth <= 0 || offsetHeight <= 0) return
-    if (offsetWidth === lastFitRef.current.width && offsetHeight === lastFitRef.current.height) return
+    if (offsetWidth <= 0 || offsetHeight <= 0) return false
+    if (offsetWidth === lastFitRef.current.width && offsetHeight === lastFitRef.current.height) return true
+
+    const proposed = fitAddon.proposeDimensions()
+    if (!proposed || !Number.isFinite(proposed.cols) || !Number.isFinite(proposed.rows)) return false
+
     lastFitRef.current = { width: offsetWidth, height: offsetHeight }
 
     fitAddon.fit()
@@ -85,6 +101,7 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
       lastGridRef.current = { cols, rows }
       window.electronAPI.terminal.resize(terminal.id, cols, rows)
     }
+    return true
   }, [terminal.id])
   fitNowRef.current = fitNow
 
@@ -158,13 +175,22 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
     xtermRef.current = xterm
     fitAddonRef.current = fitAddon
 
-    // Double RAF ensures browser has fully computed the layout (sidebar, flex, etc.)
-    // before we measure the container and fit the terminal
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        fitNowRef.current()
-      })
+    // Two frames for the browser to compute the layout (sidebar, flex, dialog), then
+    // as many more as it takes for xterm to have measured a character cell — until
+    // then a fit resizes nothing, and there is no second event coming to catch it: a
+    // terminal opened into a box that never changes size again (a dialog, above all)
+    // would keep xterm's default 24 rows for as long as it stayed open. Bounded at a
+    // second, because a terminal that cannot measure itself by then is not going to.
+    let frames = 0
+    let pendingFit = 0
+    const fitWhenMeasurable = () => {
+      if (fitNowRef.current() || ++frames > 60) return
+      pendingFit = requestAnimationFrame(fitWhenMeasurable)
+    }
+    pendingFit = requestAnimationFrame(() => {
+      pendingFit = requestAnimationFrame(fitWhenMeasurable)
     })
+    cancelMountFitRef.current = () => cancelAnimationFrame(pendingFit)
 
     // Handle Shift+Enter to insert newline without sending
     xterm.attachCustomKeyEventHandler((event) => {
@@ -259,6 +285,8 @@ export function TerminalView({ terminal, isVisible, isFocused, onFocusRequest }:
       if (cleanupRef.current) {
         cleanupRef.current()
       }
+      cancelMountFitRef.current?.()
+      cancelMountFitRef.current = null
       containerRef.current?.removeEventListener('copy', copyHandler)
       fitAddon.dispose()
       webLinksAddon.dispose()
