@@ -130,7 +130,14 @@ export default function PRThread({ thread, now, t }: Props) {
         type="button"
         onClick={() => setExpanded(v => !v)}
         title={t(expanded ? 'prComments.hideThread' : 'prComments.showThread')}
-        className="w-full flex items-center gap-2 min-w-0 text-left rounded-md px-1 py-1 hover:bg-surface transition-colors"
+        /* A resolved heading is tinted and the fold under it starts shut — so the row
+           reads as "done, skip" before the label is read. The same green, at the same
+           weight, as the row in the sidebar card: one thread, one state, one look. */
+        className={`w-full flex items-center gap-2 min-w-0 text-left rounded-md transition-colors ${
+          thread.state === 'resolved'
+            ? 'px-2 py-1.5 bg-green/5 border border-green/20 hover:bg-green/10'
+            : 'px-1 py-1 hover:bg-surface'
+        }`}
       >
         <Chevron className="w-3.5 h-3.5 shrink-0 text-icon" />
         {where && (
@@ -158,7 +165,7 @@ export default function PRThread({ thread, now, t }: Props) {
             </span>
           )}
           {state && (
-            <span className="flex items-center gap-1 text-text-secondary/60">
+            <span className={`flex items-center gap-1 ${state.pill}`}>
               <state.Icon className={`w-3.5 h-3.5 ${state.tone}`} />
               {t(state.label)}
             </span>

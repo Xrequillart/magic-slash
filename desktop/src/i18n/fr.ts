@@ -1399,7 +1399,7 @@ export const fr: Record<keyof typeof en, string> = {
   'agentInfo.pr.commentsCount': '{count} commentaires',
   'agentInfo.pr.commentsLoading': 'Lecture des commentaires…',
   'agentInfo.pr.commentsEmpty': 'Rien d’écrit — que des approbations.',
-  'agentInfo.pr.commentResolved': 'résolu',
+  'agentInfo.pr.commentResolved': 'Résolu',
   'agentInfo.pr.threadReply': '{count} réponse',
   'agentInfo.pr.threadReplies': '{count} réponses',
   'agentInfo.pr.threadOutdated': 'obsolète',

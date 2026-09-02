@@ -318,12 +318,25 @@ export const REVIEW_STATE_BADGE: Record<string, keyof typeof REVIEW_BADGE> = {
  * size up, but the size is at the call site rather than in here, so there is nothing in
  * this map for it to fork.
  */
-export const THREAD_STATE: Record<PRReviewThread['state'], { Icon: typeof CheckCircle2; tone: string; label: MessageKey }> = {
-  open: { Icon: Circle, tone: 'text-blue', label: 'agentInfo.pr.threadOpen' },
-  resolved: { Icon: CheckCircle2, tone: 'text-green', label: 'agentInfo.pr.commentResolved' },
+export const THREAD_STATE: Record<
+  PRReviewThread['state'],
+  { Icon: typeof CheckCircle2; tone: string; label: MessageKey; pill: string }
+> = {
+  open: { Icon: Circle, tone: 'text-blue', label: 'agentInfo.pr.threadOpen', pill: 'text-text-secondary/60' },
+  // The one state drawn as a BADGE — same tint scale as `REVIEW_BADGE` — rather than as a
+  // word beside an icon. Resolved is the state the reader is looking for: it is what
+  // separates "still to do" from "done" in a list of twenty threads, and a grey word at
+  // 60 % was the same weight as "outdated", which says nothing of the kind. The badge is
+  // what lets a row be skipped at a glance.
+  resolved: {
+    Icon: CheckCircle2,
+    tone: 'text-green',
+    label: 'agentInfo.pr.commentResolved',
+    pill: 'bg-green/10 text-green font-semibold px-1.5 py-0.5 rounded',
+  },
   // The diff moved out from under it, so the line it hangs on no longer exists —
   // quiet rather than tinted: nothing is wrong, it is just stale.
-  outdated: { Icon: MinusCircle, tone: 'text-text-secondary/60', label: 'agentInfo.pr.threadOutdated' },
+  outdated: { Icon: MinusCircle, tone: 'text-text-secondary/60', label: 'agentInfo.pr.threadOutdated', pill: 'text-text-secondary/60' },
 }
 
 /**
@@ -463,11 +476,17 @@ function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
         type="button"
         onClick={() => onOpen(thread.id)}
         title={t('prComments.openThread')}
-        className="flex-1 flex items-center gap-1.5 min-w-0 rounded-md border border-border/30 bg-surface hover:bg-surface-strong px-2 py-1.5 text-xs text-left transition-colors"
+        /* A resolved row steps back — border tinted green, text dimmed — the same reading
+           as the card's checklist, where a ticked line goes quiet so the eye lands on what
+           is still open. The badge inside it stays at full strength: it is the one thing
+           on the row that has to be readable without stopping. */
+        className={`flex-1 flex items-center gap-1.5 min-w-0 rounded-md border bg-surface hover:bg-surface-strong px-2 py-1.5 text-xs text-left transition-colors ${
+          thread.state === 'resolved' ? 'border-green/30' : 'border-border/30'
+        }`}
       >
         {/* The author can give way to the location: on an inline thread "which file"
             is the part that places the row, and a truncated login is still readable. */}
-        <span className="font-medium text-ink/80 truncate">{root.author}</span>
+        <span className={`font-medium truncate ${thread.state === 'resolved' ? 'text-ink/50' : 'text-ink/80'}`}>{root.author}</span>
         {badge && (
           <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 ${REVIEW_BADGE[badge].tone}`}>
             {t(REVIEW_BADGE[badge].label)}
@@ -502,8 +521,8 @@ function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
               {t(state.label)}
             </span>
           )}
-          {Number.isFinite(updatedAt) && (
-            <span className="text-text-secondary/40">{formatTimestamp(updatedAt, now, t)}</span>
+          {Number.isFinite(createdAt) && (
+            <span className="text-text-secondary/40">{formatTimestamp(createdAt, now, t)}</span>
           )}
         </span>
       </button>

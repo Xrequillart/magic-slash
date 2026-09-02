@@ -1444,7 +1444,7 @@ export const en = {
   'agentInfo.pr.commentsEmpty': 'Nothing written — approvals only.',
   // Shared by the thread rows: a resolved thread and a resolved comment are the
   // same state, so there is one word for it.
-  'agentInfo.pr.commentResolved': 'resolved',
+  'agentInfo.pr.commentResolved': 'Resolved',
   // On a thread row: how many answers the exchange has drawn. Two keys because the
   // catalogue interpolates but does not pluralise.
   'agentInfo.pr.threadReply': '{count} reply',
