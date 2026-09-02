@@ -310,8 +310,8 @@ export function groupPullRequestThreads(pr: ThreadablePullRequest): PRReviewThre
       // copies of it are dropped with their entries.
       ...(rootEntry.diffHunk ? { diffHunk: rootEntry.diffHunk } : {}),
       state: threadState(thread.isResolved, thread.isOutdated),
-      // The newest comment, not the root's stamp: a thread whose last reply landed
-      // this morning belongs at the bottom of the list, wherever it was opened.
+      // The newest comment, not the root's stamp — the last time anything happened here.
+      // Carried, not sorted on: see the sort below.
       updatedAt: entries[entries.length - 1].comment.createdAt,
     })
   }
@@ -321,8 +321,11 @@ export function groupPullRequestThreads(pr: ThreadablePullRequest): PRReviewThre
     pushSingleton(threads, root, 'conversation')
   }
 
-  // Oldest first — a review reads as a conversation, not as a feed. Same order the
-  // flat list had, so the fold still starts where the PR started.
-  threads.sort((a, b) => compareISO(a.updatedAt, b.updatedAt))
+  // Oldest first, by when each exchange was OPENED — a review reads as a conversation,
+  // not as a feed. Not on `updatedAt`: sorting on the last reply made a thread jump to
+  // the bottom of the fold every time somebody answered it, so the list reshuffled under
+  // the reader between two refreshes and a row was never where it had been. Creation
+  // order is the one that holds still, and it is the order the review was written in.
+  threads.sort((a, b) => compareISO(a.root.createdAt, b.root.createdAt))
   return threads
 }

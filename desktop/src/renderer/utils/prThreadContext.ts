@@ -400,7 +400,7 @@ export function selectUnresolvedThreads<T extends ContextThread>(threads: readon
  * they are deliberately not the same one:
  *
  * FILLED newest-first. The caller hands the list over oldest-first — `groupPullRequestThreads`
- * sorts on `updatedAt` ascending so the fold reads as a conversation — so filling in the order
+ * sorts on the root's `createdAt` ascending so the fold reads as a conversation — so filling in the order
  * received and stopping at the cap would keep the OLDEST discussions and drop the newest,
  * cutting away the round of feedback that is actually still live. Walking from the end keeps
  * the newest, which is what a reader handing over "the unresolved threads" means by them.

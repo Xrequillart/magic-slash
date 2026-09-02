@@ -94,6 +94,31 @@ describe('groupPullRequestThreads', () => {
     expect(threads.filter((thread) => thread.replies.length > 0)).toHaveLength(1)
   })
 
+  it('orders threads by when they were opened, not by their last reply', () => {
+    const pr: ThreadablePullRequest = {
+      reviewThreads: {
+        nodes: [
+          // Opened second, but answered last: sorting on activity would put it at the bottom.
+          {
+            id: 'answered',
+            comments: {
+              nodes: [
+                comment('a1', 'greptile', '2025-01-01T02:00:00Z', 'Second question.'),
+                comment('a2', 'xavier', '2025-01-01T09:00:00Z', 'Late answer.', 'a1'),
+              ],
+            },
+          },
+          { id: 'first', comments: { nodes: [comment('f1', 'greptile', '2025-01-01T01:00:00Z', 'First question.')] } },
+          { id: 'third', comments: { nodes: [comment('t1', 'greptile', '2025-01-01T03:00:00Z', 'Third question.')] } },
+        ],
+      },
+    }
+
+    expect(groupPullRequestThreads(pr).map((thread) => thread.id)).toEqual(['first', 'answered', 'third'])
+    // The activity stamp still travels — it is just not the sort key any more.
+    expect(groupPullRequestThreads(pr)[1].updatedAt).toBe('2025-01-01T09:00:00Z')
+  })
+
   it('carries the review verdict onto the review row and the review id onto inline comments', () => {
     const threads = groupPullRequestThreads(commentedPR())
 

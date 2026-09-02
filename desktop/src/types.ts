@@ -186,7 +186,11 @@ export interface PRReviewThread {
    * whether or not the diff moved under it, and it is the more final of the two.
    */
   state: 'open' | 'resolved' | 'outdated'
-  /** ISO-8601 of the newest comment in the thread; what the list is sorted on. */
+  /**
+   * ISO-8601 of the newest comment in the thread. NOT what the list is sorted on — that
+   * is `root.createdAt`, so a thread keeps its place when it is answered — but kept as
+   * the last-activity stamp for whatever wants to say "quiet since Tuesday".
+   */
   updatedAt: string
 }
 

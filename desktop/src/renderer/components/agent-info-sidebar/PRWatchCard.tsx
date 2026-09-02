@@ -429,10 +429,10 @@ function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
   t: Translate
 }) {
   const { root } = thread
-  // The LAST activity, not when the thread was opened — the same stamp the list is
-  // sorted on, so the ages read down the column in order instead of jumping about.
-  // Identical to the root's on a singleton, which has no later comment to have one.
-  const updatedAt = thread.updatedAt ? Date.parse(thread.updatedAt) : NaN
+  // When the thread was OPENED — the same stamp the list is sorted on, so the ages read
+  // down the column in order instead of jumping about. Not `updatedAt`: a row that
+  // said "5 min ago" between two saying "2 d ago" would look misfiled.
+  const createdAt = root.createdAt ? Date.parse(root.createdAt) : NaN
   const badge = thread.kind === 'review' ? REVIEW_STATE_BADGE[(root.reviewState || '').toUpperCase()] : undefined
 
   // The basename only: a sidebar column cannot hold `desktop/src/main/…/watcher.ts`,
@@ -497,7 +497,7 @@ function ThreadEntry({ thread, onOpen, onSend, canSend, now, t }: {
             </span>
           )}
           {state && (
-            <span className="flex items-center gap-1 text-text-secondary/60">
+            <span className={`flex items-center gap-1 ${state.pill}`}>
               <state.Icon className={`w-3 h-3 ${state.tone}`} />
               {t(state.label)}
             </span>
