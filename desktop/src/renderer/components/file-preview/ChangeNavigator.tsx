@@ -82,8 +82,11 @@ const BUTTON_BASE =
  * generated stylesheet, never by their order in the string (the rule spelled out in
  * renderer/theme/controls.ts).
  */
-const BUTTON_PREVIOUS = `${BUTTON_BASE} pl-2 pr-3`
-const BUTTON_NEXT = `${BUTTON_BASE} pl-3 pr-2`
+// Exported for `ThreadNavigator`, which walks the code comments of a PR conversation with
+// the same two buttons: a reader who has learnt this bar in a file should find the same
+// one in the drawer next door.
+export const BUTTON_PREVIOUS = `${BUTTON_BASE} pl-2 pr-3`
+export const BUTTON_NEXT = `${BUTTON_BASE} pl-3 pr-2`
 
 /**
  * The right-hand group's button, exported so whatever fills that end is the same control as

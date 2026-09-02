@@ -5,8 +5,8 @@ import { DRAWER_HEADER, DrawerCloseButton } from '../file-preview/FileHeader'
 import { cumulativeOffsetTop } from '../../utils/scrollGeometry'
 import { prUrlParts } from '../agent-info-sidebar/PRWatchCard'
 import PRThread from './PRThread'
-import { useT, type MessageKey } from '../../i18n'
-import type { PRReviewThread } from '../../../types'
+import ThreadNavigator from './ThreadNavigator'
+import { useT } from '../../i18n'
 
 /**
  * A pull request's conversation, in the sliding drawer.
@@ -53,22 +53,23 @@ const CLOSE_MS = 310
 const ANCHOR_MARGIN_PX = 12
 
 /**
- * The three groups, in reading order, keyed by the `kind` the threads already carry.
+ * Where the scroller lands a thread it is taking the reader to.
  *
- * Inline threads first because they are what a review IS — an argument about specific
- * lines — and what anybody opens this panel to read. The PR conversation and the review
- * summaries follow: both are singletons (see `PRReviewThread`), and both are context for
- * the threads rather than the substance of them.
- *
- * A section with nothing in it is not rendered at all, heading included. A PR with no
- * inline threads is the ordinary case for a bot-reviewed branch, and an empty "Review
- * threads" heading over a gap says the panel failed rather than that the PR has none.
+ * Layout offsets rather than `scrollIntoView`, for the reason given on the anchor effect
+ * below: this can run while the panel is still sliding in, and everything rect-based is
+ * post-transform. Shared by that effect and by the navigator, so the two cannot land the
+ * same thread at two different heights.
  */
-const SECTIONS: { kind: PRReviewThread['kind']; label: MessageKey }[] = [
-  { kind: 'inline', label: 'prComments.sectionThreads' },
-  { kind: 'conversation', label: 'prComments.sectionConversation' },
-  { kind: 'review', label: 'prComments.sectionReviews' },
-]
+function scrollToThread(container: HTMLElement, threadId: string): void {
+  const target = container.querySelector<HTMLElement>(`[data-thread-id="${CSS.escape(threadId)}"]`)
+  // No fallback scroll when the thread is missing: the top of the list is where the
+  // container already is, so there is nothing to do rather than something to undo.
+  if (!target) return
+  container.scrollTop = Math.max(
+    0,
+    cumulativeOffsetTop(target) - cumulativeOffsetTop(container) - ANCHOR_MARGIN_PX,
+  )
+}
 
 export default function PRCommentsPanel() {
   const t = useT()
@@ -174,37 +175,72 @@ export default function PRCommentsPanel() {
    * currently is rather than where it is going. `cumulativeOffsetTop` is pure layout and
    * immune to it, which is the same argument that put it in `scrollGeometry`.
    */
-  useLayoutEffect(() => {
-    const anchorId = prComments?.anchorThreadId
-    const container = scrollRef.current
-    if (!anchorId || !container) return
-    const target = container.querySelector<HTMLElement>(`[data-thread-id="${CSS.escape(anchorId)}"]`)
-    // No fallback scroll when the anchor is missing: the top of the list is where the
-    // container already is, so there is nothing to do rather than something to undo.
-    if (!target) return
-    container.scrollTop = Math.max(
-      0,
-      cumulativeOffsetTop(target) - cumulativeOffsetTop(container) - ANCHOR_MARGIN_PX,
-    )
-  }, [prComments?.anchorSeq, prComments?.anchorThreadId])
+  /**
+   * The code comments, in list order — what the navigator walks.
+   *
+   * ONE list, not three sections. The threads arrive sorted by when each was opened (see
+   * `groupPullRequestThreads`) and are rendered in exactly that order, summaries and PR
+   * comments interleaved with the inline threads: a review is a conversation, and the first
+   * thing the reviewer said belongs at the top whether it was a summary or a line note.
+   * Grouping by kind put every line note above every summary, so a reader opened the panel
+   * on the tail of the exchange with the opening comment somewhere below the fold.
+   *
+   * The inline ids are memoised on the frozen list, so they survive every render caused by
+   * a thread being folded or by the clock ticking — see `PRCommentsView` for why the list
+   * is a copy that never moves.
+   */
+  const threads = prComments?.threads ?? []
+  const inlineIds = useMemo(
+    () => (prComments?.threads ?? []).filter(thread => thread.kind === 'inline').map(thread => thread.id),
+    [prComments?.threads],
+  )
 
   /**
-   * The threads split into their three groups, empty groups dropped.
+   * Which code comment the navigator is on — an INDEX into `inlineIds`, -1 for none.
    *
-   * One `filter` per section rather than a single grouping loop: three passes over at
-   * most a hundred-odd threads, run once per open, is not worth a `Record` that then has
-   * to be walked back into `SECTIONS` order to render.
-   *
-   * Memoised on the frozen list, so it survives every render caused by a thread being
-   * folded or by the clock ticking — see `PRCommentsView` for why the list is a copy that
-   * never moves.
+   * -1 rather than 0 at open: the reader is at the top of the list, or on whatever row
+   * they clicked in the card, and the first press of Next should take them to the FIRST
+   * code comment rather than skip it. Reset by the anchor effect below, which runs on
+   * every open: a new view is a new walk.
    */
-  const sections = useMemo(() => {
-    const threads = prComments?.threads ?? []
-    return SECTIONS
-      .map(section => ({ ...section, threads: threads.filter(thread => thread.kind === section.kind) }))
-      .filter(section => section.threads.length > 0)
-  }, [prComments?.threads])
+  const [currentIndex, setCurrentIndex] = useState(-1)
+
+  const goTo = useCallback((index: number) => {
+    const container = scrollRef.current
+    const id = inlineIds[index]
+    if (!container || !id) return
+    setCurrentIndex(index)
+    scrollToThread(container, id)
+  }, [inlineIds])
+  const goPrevious = useCallback(() => goTo(Math.max(0, currentIndex - 1)), [goTo, currentIndex])
+  const goNext = useCallback(() => goTo(Math.min(inlineIds.length - 1, currentIndex + 1)), [goTo, currentIndex, inlineIds.length])
+
+  // Alt+↑/↓ walks the code comments, as it walks the changes in a file — the same keys for
+  // the same gesture in the two drawers. Separate from the Escape listener above rather
+  // than folded into it: that one has its own scoping argument, and this one is only
+  // meaningful with something to walk.
+  useEffect(() => {
+    if (!isOpen || inlineIds.length === 0) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.altKey) return
+      if (e.key === 'ArrowDown') { e.preventDefault(); goNext() }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); goPrevious() }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, inlineIds.length, goNext, goPrevious])
+
+  useLayoutEffect(() => {
+    const anchorId = prComments?.anchorThreadId ?? null
+    // The navigator picks up from the row that was clicked: landing on the fourth code
+    // comment and having Next go to the first would be the bar contradicting the scroll.
+    // A non-inline anchor, or none, leaves it at -1, and Next starts from the top. Runs on
+    // every open — `anchorSeq` moves each time — so this is also the reset between views.
+    setCurrentIndex(anchorId ? inlineIds.indexOf(anchorId) : -1)
+    const container = scrollRef.current
+    if (!anchorId || !container) return
+    scrollToThread(container, anchorId)
+  }, [prComments?.anchorSeq, prComments?.anchorThreadId, inlineIds])
 
   /**
    * One clock for the whole panel, ticking on the same 30 s as the card's.
@@ -266,26 +302,24 @@ export default function PRCommentsPanel() {
              that covers 70% of it. Same pairing as the review comments list. */
           className="flex-1 overflow-y-auto overscroll-contain"
         >
-          {sections.length === 0 ? (
+          {threads.length === 0 ? (
             <div className="px-5 py-8 text-sm text-text-secondary/50">{t('prComments.empty')}</div>
           ) : (
-            sections.map(section => (
-              <section key={section.kind}>
-                {/* Sticky, so the group being read stays named while its threads scroll
-                    under it — the same treatment, and the same classes, as the review
-                    comments list's per-file headings. */}
-                <h2 className="sticky top-0 z-10 px-5 py-2 bg-bg-secondary text-[11px] font-medium text-text-secondary truncate">
-                  {t(section.label)}
-                </h2>
-                <div className="px-5 py-4 space-y-6">
-                  {section.threads.map(thread => (
-                    <PRThread key={thread.id} thread={thread} now={now} t={t} />
-                  ))}
-                </div>
-              </section>
-            ))
+            /* Bottom padding clears the navigator, so the last thread can be scrolled out
+               from under the pill rather than ending behind it. */
+            <div className="px-5 py-4 pb-20 space-y-6">
+              {threads.map(thread => (
+                <PRThread key={thread.id} thread={thread} now={now} t={t} />
+              ))}
+            </div>
           )}
         </div>
+        <ThreadNavigator
+          current={currentIndex + 1}
+          total={inlineIds.length}
+          onPrevious={goPrevious}
+          onNext={goNext}
+        />
       </div>
     </>
   )

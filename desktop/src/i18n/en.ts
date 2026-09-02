@@ -1523,9 +1523,9 @@ export const en = {
   'prComments.threadsCount': '{count} threads',
   // The three groups, in reading order. "Review threads" are the comments left on
   // specific lines; the other two are the PR's own conversation and the verdicts.
-  'prComments.sectionThreads': 'Review threads',
-  'prComments.sectionConversation': 'Conversation',
-  'prComments.sectionReviews': 'Review summaries',
+  'prComments.codeCommentCounter': '{current} / {total} code comments',
+  'prComments.previousCodeComment': 'Previous code comment',
+  'prComments.nextCodeComment': 'Next code comment',
   // On an outdated thread: the line it was written against, which is the only
   // location it still has — the current file no longer has one.
   'prComments.outdatedAnchor': 'originally line {line}',
