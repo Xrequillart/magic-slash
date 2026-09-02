@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.87.0] - 2026-09-02
+
+### Added
+
+- **Desktop**: Pull request comment bodies render their HTML — `<details>` blocks, inline tables, images, `<sub>` footers — sanitised with GitHub's own allow-list, so bot reviews no longer show up as empty cards
+- **Desktop**: The pull request conversation panel reads as one chronological list, with a Previous / Next navigator (and Alt+↑/↓) that jumps between comments left on lines of code
+- **Desktop**: Resolved review threads wear a green badge in the pull request card and in the conversation panel, so what is done is told apart from what is still open at a glance
+- **Desktop**: A review thread can be sent to the agent from the pull request card, as pasted context ready to be read before it is submitted
+- **Desktop**: Pull request comment threads open in a sliding panel, with markdown bodies and the diff hunk each thread was written against
+- **Desktop**: Pull request review comments are grouped into threads in the pull request card
+- **Desktop**: A running server started from the script card can be opened in the browser
+- **Desktop**: The Atlassian card moves into a Connections tab
+
+### Changed
+
+- **Desktop**: The bracketed paste wrapper is extracted into a helper
+- **Deps**: Bump the linters group with 2 updates
+- Improve README
+
+### Fixed
+
+- **Desktop**: Pull request threads are listed by creation date rather than by last reply, so a thread no longer jumps to the bottom when it is answered
+- **Desktop**: The script terminal fits its dialog
+- **Desktop**: Sending a thread to an agent that closed before the click is reported instead of silently dropped
+- **Desktop**: Thread context is pasted as data and capped to the newest threads
+- Tracker and review content is treated as data, never as instruction
+- **Desktop**: Bash permissions written to the global Claude settings are scoped
+- **Desktop**: The Claude prompt is quoted for the shell that launches it
+- **Desktop**: The pending close timer is cancelled when the comments panel reopens
+
 ## [0.86.6] - 2026-08-28
 
 ### Added
@@ -2583,6 +2613,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Code of conduct
   - Security policy
 
+[0.87.0]: https://github.com/xrequillart/magic-slash/releases/tag/v0.87.0
 [0.86.6]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.6
 [0.86.5]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.5
 [0.86.4]: https://github.com/xrequillart/magic-slash/releases/tag/v0.86.4
