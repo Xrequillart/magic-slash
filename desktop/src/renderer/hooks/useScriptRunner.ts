@@ -113,14 +113,17 @@ export function useScriptRunner() {
   registerExitListener()
   registerServerUrlListener()
 
-  const runScript = useCallback(async (
-    repoPath: string,
-    scriptName: string,
-    packageManager: string,
-    agentId: string,
+  const runScript = useCallback(async (options: {
+    repoPath: string
+    /** Repo-relative package directory the script lives in; absent at the root. */
+    workspace?: string
+    scriptName: string
+    packageManager: string
+    agentId: string
     agentName: string
-  ) => {
-    const { id } = await window.electronAPI.scripts.run(repoPath, scriptName, packageManager, agentId, agentName)
+  }) => {
+    const { repoPath, workspace, scriptName, packageManager, agentId, agentName } = options
+    const { id } = await window.electronAPI.scripts.run(options)
     const fullCommand = packageManager === 'npm' ? `npm run ${scriptName}` : `${packageManager} ${scriptName}`
 
     const script: ScriptTerminalInfo = {
@@ -129,7 +132,10 @@ export function useScriptRunner() {
       fullCommand,
       agentId,
       agentName,
+      // The attached repository, so the card lands under it — `workspace` carries the
+      // package the process actually runs in.
       projectPath: repoPath,
+      workspace,
       state: 'running',
     }
 

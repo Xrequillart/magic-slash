@@ -4,6 +4,7 @@ import { useScriptRunner } from '../../hooks/useScriptRunner'
 import { useStore } from '../../store'
 import { useT } from '../../i18n'
 import { serverUrlLabel } from '../../../server-url'
+import { scriptLabel } from '../../utils/scriptTerminals'
 
 interface RunningScriptsProps {
   /** Only the scripts launched against this repo are this card's business. */
@@ -74,7 +75,13 @@ export function RunningScripts({ repoPath, agentId }: RunningScriptsProps) {
                 <XCircle className="w-4 h-4 flex-shrink-0" />
               )}
               <div className="flex-1 text-left min-w-0">
-                <div className="truncate text-xs font-medium" title={script.scriptName}>{script.scriptName}</div>
+                {/* The package prefixes the name, dimmed: on a monorepo the card would
+                    otherwise read `dev` three times over, and which package is serving
+                    is the whole question a person opens this card with. */}
+                <div className="truncate text-xs font-medium" title={scriptLabel(script)}>
+                  {script.workspace && <span className="font-normal text-on-brand/70">{script.workspace}/</span>}
+                  {script.scriptName}
+                </div>
               </div>
               {/* Always visible and worded, never a hover reveal on a lone glyph:
                   stopping a server is the action a person comes to this card for, and

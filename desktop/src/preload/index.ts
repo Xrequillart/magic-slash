@@ -407,8 +407,19 @@ const skillsApi = {
 const scriptsApi = {
   getProjectScripts: (repoPath: string) =>
     ipcRenderer.invoke('scripts:getProjectScripts', { repoPath }),
-  run: (repoPath: string, scriptName: string, packageManager: string, agentId: string, agentName: string) =>
-    ipcRenderer.invoke('scripts:run', { repoPath, scriptName, packageManager, agentId, agentName }),
+  /**
+   * `workspace` is the repo-relative package directory the script runs in — absent for
+   * the repository root. An object rather than six positional arguments precisely
+   * because that one is optional and sits in the middle of the meaningful ones.
+   */
+  run: (options: {
+    repoPath: string
+    workspace?: string
+    scriptName: string
+    packageManager: string
+    agentId: string
+    agentName: string
+  }) => ipcRenderer.invoke('scripts:run', options),
   stop: (id: string) =>
     ipcRenderer.invoke('scripts:stop', { id }),
 

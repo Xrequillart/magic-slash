@@ -1,11 +1,12 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import * as fs from 'fs'
 import * as path from 'path'
 import { createTerminal, getTerminal, killTerminal, writeToTerminal } from '../pty/terminal-manager'
-import { getNodeActivationPrefix } from '../pty/node-version'
+import { getNodeActivationPrefix, findNodeVersionDir } from '../pty/node-version'
+import { getProjectScripts } from '../project-scripts'
+import { shQuote } from '../utils/sh'
 import { createServerUrlScanner, serverUrlPort } from '../../server-url'
 import { listeningPorts, listeningPortsOwnedBy } from '../listening-ports'
-import type { PackageManager, ScriptCategory, PackageScript, ProjectScripts } from '../../types'
+import type { ProjectScripts } from '../../types'
 
 let getMainWindow: () => BrowserWindow | null
 
@@ -104,51 +105,42 @@ function scanForServerUrls(id: string, data: string): void {
   }
 }
 
-function detectPackageManager(repoPath: string): PackageManager {
-  if (fs.existsSync(path.join(repoPath, 'bun.lockb')) || fs.existsSync(path.join(repoPath, 'bun.lock'))) return 'bun'
-  if (fs.existsSync(path.join(repoPath, 'pnpm-lock.yaml'))) return 'pnpm'
-  if (fs.existsSync(path.join(repoPath, 'yarn.lock'))) return 'yarn'
-  return 'npm'
-}
-
-function categorizeScript(name: string): ScriptCategory {
-  if (/^(dev|start|serve|watch)/.test(name)) return 'dev'
-  if (/^(build|compile)/.test(name)) return 'build'
-  if (/^(test|spec|e2e)/.test(name)) return 'test'
-  if (/^(lint|format|prettier|eslint)/.test(name)) return 'lint'
-  return 'other'
+/**
+ * The directory a script actually runs in.
+ *
+ * `workspace` comes back from `getProjectScripts`, so it is always a directory this app
+ * itself found — but it arrives over IPC, and a path that resolves outside the
+ * repository is a script launched somewhere nobody asked for. Containment is checked
+ * here rather than trusted, and anything that fails it runs at the root.
+ */
+function resolveWorkspace(repoPath: string, workspace?: string): string {
+  // Resolved even with no workspace, so that a repository path carrying a trailing
+  // slash compares equal to the directories derived from it.
+  const root = path.resolve(repoPath)
+  if (!workspace) return root
+  const dir = path.resolve(root, workspace)
+  return dir === root || dir.startsWith(root + path.sep) ? dir : root
 }
 
 export function setupScriptHandlers(mainWindowGetter: () => BrowserWindow | null) {
   getMainWindow = mainWindowGetter
 
   ipcMain.handle('scripts:getProjectScripts', async (_event, { repoPath }: { repoPath: string }) => {
-    const pkgPath = path.join(repoPath, 'package.json')
-    if (!fs.existsSync(pkgPath)) {
-      return { packageManager: 'npm', scripts: [] } as ProjectScripts
-    }
-
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
-    const rawScripts = pkg.scripts || {}
-    const packageManager = detectPackageManager(repoPath)
-
-    const scripts: PackageScript[] = Object.entries(rawScripts).map(([name, command]) => ({
-      name,
-      command: command as string,
-      category: categorizeScript(name),
-    }))
-
-    return { packageManager, scripts } as ProjectScripts
+    // Every package of the repository, not just the root one — see main/project-scripts.ts.
+    return getProjectScripts(repoPath) as ProjectScripts
   })
 
-  ipcMain.handle('scripts:run', async (_event, { repoPath, scriptName, packageManager, agentId: _agentId, agentName }: {
+  ipcMain.handle('scripts:run', async (_event, { repoPath, workspace, scriptName, packageManager, agentId: _agentId, agentName }: {
     repoPath: string
+    /** Repo-relative package directory to run in; absent or empty means the root. */
+    workspace?: string
     scriptName: string
     packageManager: string
     agentId: string
     agentName: string
   }) => {
     const id = `script-${Date.now()}`
+    const cwd = resolveWorkspace(repoPath, workspace)
     const mainWindow = getMainWindow()
     urlScanners.set(id, createServerUrlScanner())
     // Taken BEFORE the shell is spawned, so nothing this script opens can already be in
@@ -161,8 +153,10 @@ export function setupScriptHandlers(mainWindowGetter: () => BrowserWindow | null
     try {
       createTerminal(
         id,
-        `${scriptName} (${agentName})`,
-        repoPath,
+        // The package is part of the name, or the two `dev` terminals of a monorepo are
+        // told apart by nothing at all.
+        workspace ? `${workspace}/${scriptName} (${agentName})` : `${scriptName} (${agentName})`,
+        cwd,
         (data) => {
           scanForServerUrls(id, data)
           if (mainWindow) {
@@ -189,9 +183,19 @@ export function setupScriptHandlers(mainWindowGetter: () => BrowserWindow | null
 
     // Write the run command with `exec` so the shell is replaced by the command.
     // When the command exits (including via Ctrl+C), the PTY exits and terminal:exit fires.
-    const runCommand = packageManager === 'npm' ? `npm run ${scriptName}` : `${packageManager} ${scriptName}`
-    const nodePrefix = getNodeActivationPrefix(repoPath)
-    const fullCommand = nodePrefix ? `${nodePrefix} && exec ${runCommand}` : `exec ${runCommand}`
+    const runCommand = packageManager === 'npm'
+      ? `npm run ${shQuote(scriptName)}`
+      : `${packageManager} ${shQuote(scriptName)}`
+    // The activation runs where the version file is and the shell then steps back into
+    // the package: a monorepo pins Node once at its root, and `nvm use` from a package
+    // that has no `.nvmrc` of its own fails — taking the `&& exec` behind it down with
+    // it. See `findNodeVersionDir`.
+    const versionDir = findNodeVersionDir(cwd, repoPath)
+    const nodePrefix = getNodeActivationPrefix(versionDir)
+    const activation = nodePrefix && versionDir !== cwd
+      ? `cd ${shQuote(versionDir)} && ${nodePrefix} && cd ${shQuote(cwd)}`
+      : nodePrefix
+    const fullCommand = activation ? `${activation} && exec ${runCommand}` : `exec ${runCommand}`
     // Small delay to let the shell initialize
     setTimeout(() => {
       try {

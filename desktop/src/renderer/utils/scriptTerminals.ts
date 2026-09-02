@@ -14,7 +14,9 @@
  * question — "is this script NAME already running for this repo and agent", to grey out a
  * second launch — and deliberately ignores state, so the two are not merged.
  *
- * No DOM types and no store import, so the node test suite can load it.
+ * No DOM types and no store import, so the node test suite can load it. The same goes
+ * for `scriptLabel` below, which answers the other question every one of those surfaces
+ * has to: what to CALL a script when the repository has several packages defining it.
  */
 
 /** The shape this needs from a `ScriptTerminalInfo`, and no more. */
@@ -32,4 +34,22 @@ interface ScriptLiveness {
  */
 export function hasScriptExited(scripts: readonly ScriptLiveness[], id: string): boolean {
   return !scripts.some(s => s.id === id && s.state === 'running')
+}
+
+/** The shape a name needs: the script, and the package it was run from. */
+interface ScriptIdentity {
+  scriptName: string
+  workspace?: string
+}
+
+/**
+ * How a script is named wherever it is shown on its own — a card, a dialog title, a
+ * terminal tab.
+ *
+ * `webapp/dev` and not `dev`, because a repository is routinely several packages and
+ * the script names repeat across them: three cards reading `dev` name nothing at all.
+ * The root keeps the bare name, so a single-package repository is unchanged.
+ */
+export function scriptLabel(script: ScriptIdentity): string {
+  return script.workspace ? `${script.workspace}/${script.scriptName}` : script.scriptName
 }

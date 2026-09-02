@@ -4,7 +4,7 @@ import { useStore } from '../store'
 import { useScriptRunner } from '../hooks/useScriptRunner'
 import { useT } from '../i18n'
 import { BTN, BTN_DANGER } from '../theme/controls'
-import { hasScriptExited } from '../utils/scriptTerminals'
+import { hasScriptExited, scriptLabel } from '../utils/scriptTerminals'
 
 /**
  * A running script's terminal, in a dialog you dismiss.
@@ -40,7 +40,7 @@ export function ScriptTerminalModal() {
     <Modal
       isOpen={isOpen}
       onClose={closeScriptTerminalModal}
-      title={script.scriptName}
+      title={scriptLabel(script)}
       maxWidth="max-w-4xl"
       // The terminal is sized in rows from the box it is given, so the box has to be
       // the one thing in this dialog that knows its own height.
@@ -77,7 +77,7 @@ export function ScriptTerminalModal() {
         <TerminalView
           terminal={{
             id: script.id,
-            name: `${script.scriptName} (${script.agentName})`,
+            name: `${scriptLabel(script)} (${script.agentName})`,
             state: exited ? 'error' : 'working',
             repositories: [script.projectPath],
           }}

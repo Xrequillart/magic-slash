@@ -75,7 +75,7 @@ export function RepositoryCard({
           {repoName}
         </span>
         <div className="flex items-center gap-1.5 ml-auto">
-          <ScriptsDropdown repoPath={repoPath} agentId={agentId} agentName={agentName} />
+          <ScriptsDropdown repoPath={repoPath} repoName={repoName} agentId={agentId} agentName={agentName} />
           {/* Open in VSCode button */}
           <button
             onClick={() => window.electronAPI.shell.openInVSCode(repoPath)}

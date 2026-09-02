@@ -2262,9 +2262,28 @@ export interface PackageScript {
   category: ScriptCategory
 }
 
-export interface ProjectScripts {
+/**
+ * One `package.json` of a repository, with the scripts it can run.
+ *
+ * A repository is offered as a LIST of these and not as one flat script list, because a
+ * monorepo has several packages defining the same `dev` and the same `build`, and the
+ * package they belong to is the only thing that tells them apart. Single-package
+ * repositories simply come back with one entry.
+ */
+export interface ScriptPackage {
+  /** Repo-relative directory of the package — `''` for the repository root. */
+  workspace: string
+  /** What the dropdown heads the group with: the directory name (repo name at the root). */
+  label: string
+  /** Resolved per package, by walking up to the repository's lockfile. */
   packageManager: PackageManager
+  /** Ordered by category (dev first, `other` last), then by name. */
   scripts: PackageScript[]
+}
+
+export interface ProjectScripts {
+  /** Packages with at least one script, root first. Empty for a repository with none. */
+  packages: ScriptPackage[]
 }
 
 export interface ScriptTerminalInfo {
@@ -2273,7 +2292,21 @@ export interface ScriptTerminalInfo {
   fullCommand: string
   agentId: string
   agentName: string
+  /**
+   * The ATTACHED repository the script belongs to, which is what its card is filed
+   * under — never the package directory it actually runs in. That one is `workspace`,
+   * and keeping the two apart is what puts a `webapp/dev` card on the repository card
+   * that launched it.
+   */
   projectPath: string
+  /**
+   * Repo-relative package directory the script runs in, absent at the repository root.
+   *
+   * Also what distinguishes two running scripts of the same name: `dev` in `webapp` and
+   * `dev` in `desktop` are two processes, and only this tells the surfaces that list
+   * them — and the dropdown greying out an already-running entry — which is which.
+   */
+  workspace?: string
   state: 'running' | 'error'
   /**
    * The local URLs this script announced it serves on, in the order they were printed.
