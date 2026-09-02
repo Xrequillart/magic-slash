@@ -189,23 +189,25 @@ async function runSlashCommand(terminalId: string, command: string, t: Translate
 }
 
 /**
- * The chip every item on this card is drawn in — a checklist line, the comments —
- * so the bands read as one grid rather than as separate treatments. The surface is
- * the commit-hash button's, one shade up from the card it sits on, where
- * `surface-sunken` punched a dark hole instead.
+ * The band every item on this card is drawn in — a checklist line, the comments —
+ * so the rows read as one list rather than as separate treatments. Edge to edge,
+ * with no chrome of its own: the rows sit flush in the card, separated by the
+ * container's dividers. The surface only comes up while the row is unfolded — the
+ * commit-hash button's, one shade up from the card — so the open item is the one
+ * that stands out and the closed ones stay part of the card.
  */
-function Chip({ children }: { children: ReactNode }) {
-  return <div className="rounded-md border border-border/30 bg-surface px-2">{children}</div>
+function Chip({ open = false, children }: { open?: boolean; children: ReactNode }) {
+  return <div className={`w-full px-3 transition-colors ${open ? 'bg-surface' : ''}`}>{children}</div>
 }
 
 /**
  * A chip holding one item: an icon gutter, what the item is about, and an optional
  * detail pinned right.
  *
- * `min-h-7` rather than a fixed height: every single-line item lands on exactly the
- * same 28 px — a line carrying a button is no taller than one carrying a word, and a
- * checklist of ragged boxes stops reading as a list — while a line whose content
- * wraps is still allowed to grow.
+ * A fixed `h-9`, not a `min-h`: every header line lands on exactly the same 36 px — a
+ * line carrying a button is no taller than one carrying a word, and a checklist of
+ * ragged boxes stops reading as a list. Safe because every header truncates rather
+ * than wraps; only `children`, below the line, are allowed to grow.
  *
  * The icon is a flex item OF the header line, not centred in its own box beside it:
  * that box only lines up while the line happens to be exactly as tall as it is.
@@ -241,15 +243,15 @@ function ItemCard({
   )
 
   return (
-    <Chip>
+    <Chip open={Boolean(toggle?.open)}>
       {toggle ? (
-        <button onClick={toggle.onToggle} className="group w-full min-h-7 py-1 flex items-center gap-2 text-left">
+        <button onClick={toggle.onToggle} className="group w-full h-9 flex items-center gap-2 text-left">
           {line}
         </button>
       ) : (
-        <div className="min-h-7 py-1 flex items-center gap-2">{line}</div>
+        <div className="h-9 flex items-center gap-2">{line}</div>
       )}
-      {children && (!toggle || toggle.open) && <div className="pb-2 pl-6">{children}</div>}
+      {children && (!toggle || toggle.open) && <div className="pb-2.5 pl-6">{children}</div>}
     </Chip>
   )
 }
@@ -932,11 +934,11 @@ export function PRWatchCard({ prUrl, agentId, metadata }: PRWatchCardProps) {
             differently-shaped panels because the shape itself carries the meaning:
             same gutter, same box, so the open items are the ones that stand out.
             Rendered whenever any line has something to say. */}
-        {showChecklist && <div className="border-t border-line-subtle p-2 space-y-1">
+        {showChecklist && <div className="border-t border-line-subtle [&>*+*]:shadow-[inset_0_1px_0_0_var(--c-line-subtle)]">
           {/* Why the watcher is blind, and how to fix it. Above the verdict on
               purpose: a stale verdict is worth less than the reason it is stale. */}
           {watchError && (
-            <div className="flex items-start gap-2 rounded-md border border-red/20 bg-red/10 px-2 py-1.5">
+            <div className="flex items-start gap-2 bg-red/10 px-3 py-2">
               <AlertTriangle className="w-3.5 h-3.5 text-red flex-shrink-0 mt-px" />
               <div className="min-w-0">
                 <div className="text-[11px] text-red font-medium">{t(WATCH_ERROR_LABELS[watchError].label)}</div>
