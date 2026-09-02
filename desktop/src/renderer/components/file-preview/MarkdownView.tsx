@@ -1,5 +1,7 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 
 interface Props {
   content: string
@@ -27,7 +29,13 @@ const STRUCTURE = `text-ink/90
   [&_td]:border [&_td]:border-line [&_td]:text-ink/80
   [&_code]:bg-surface-strong [&_code]:rounded [&_code]:font-mono [&_code]:text-ink/90
   [&_pre]:bg-surface [&_pre]:rounded-lg [&_pre]:overflow-auto
-  [&_pre_code]:bg-transparent [&_pre_code]:p-0`
+  [&_pre_code]:bg-transparent [&_pre_code]:p-0
+  [&_details]:rounded-lg [&_details]:border [&_details]:border-line [&_details]:bg-surface [&_details]:px-3 [&_details]:py-2 [&_details]:mb-3
+  [&_details>summary]:cursor-pointer [&_details>summary]:font-medium [&_details>summary]:text-ink [&_details>summary]:select-none
+  [&_details[open]>summary]:mb-2
+  [&_img]:max-w-full [&_img]:rounded-md
+  [&_sub]:text-ink/60 [&_sup]:text-ink/60
+  [&_kbd]:font-mono [&_kbd]:text-xs [&_kbd]:px-1 [&_kbd]:py-0.5 [&_kbd]:rounded [&_kbd]:border [&_kbd]:border-line [&_kbd]:bg-surface-strong`
 
 // The type scale, per variant. Kept whole rather than merged with STRUCTURE at
 // the call site: two Tailwind utilities from the same group (text-sm vs text-base)
@@ -88,10 +96,37 @@ const COMPONENTS = {
   ),
 }
 
+/**
+ * Raw HTML, let through and then scrubbed.
+ *
+ * `react-markdown` drops every HTML tag in the source by default, and a GitHub comment is
+ * full of them: Greptile wraps its findings in `<details><summary>`, Claude Code writes
+ * `<sub>` footers and `<br>`-separated tables, humans paste `<img>` screenshots. Dropped,
+ * a `<details>` block takes its whole body with it — which is how a review comment came to
+ * render as an empty card, or as a heading over nothing.
+ *
+ * `rehype-raw` parses the HTML back in; `rehype-sanitize` runs AFTER it, on the whole tree,
+ * with GitHub's own schema (`defaultSchema` is the allow-list github.com applies to comment
+ * bodies): no scripts, no event handlers, no `javascript:` URLs, no `style`. Order matters
+ * and is fixed here — sanitising before `raw` would only ever see the markdown's own nodes
+ * and wave the HTML through untouched. The bodies are written by anyone who can comment on
+ * a pull request, which is why the scrub is not optional.
+ *
+ * `clobberPrefix` set to nothing: the default prefixes every `id` with `user-content-`,
+ * which breaks the `#anchor` links Greptile writes to its own headings. Clobbering guards
+ * a page against an `id` colliding with the host document's; this markdown renders inside
+ * a panel with no ids of its own to protect.
+ */
+const SANITIZE_SCHEMA = { ...defaultSchema, clobberPrefix: '' }
+
 export default function MarkdownView({ content, variant = 'panel' }: Props) {
   return (
     <div className={`${STRUCTURE} ${SCALE[variant]}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={COMPONENTS}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA]]}
+        components={COMPONENTS}
+      >
         {content}
       </ReactMarkdown>
     </div>
