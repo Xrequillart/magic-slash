@@ -274,6 +274,53 @@ describe('message catalogues', () => {
         // same word in French — "Skills" is the product's name for them, and AGENTS /
         // SESSION / Commits are borrowed whole, exactly as they are in the app.
         'site.mockup.menuSkills',
+        // And the features page's own heading for the eight, for the same reason as
+        // `site.mockup.menuSkills` right above: "Skills" is the product's word for
+        // them in both languages, so the two catalogues hold the same string on
+        // purpose. See the note on `site.features.groupSkillsTitle` in the catalogues.
+        'site.features.groupSkillsTitle',
+        // The same call for the cloud family's heading: "Cloud" is the word in both
+        // languages, and the alternatives ("Nuage") are not what anyone says.
+        'site.features.groupCloudTitle',
+        // The desktop family's Notifications row: one word, and the same one in French.
+        'site.features.hooksTitle',
+        // Quick Launch's placeholder, which is a ticket id followed by a command and
+        // therefore the same string on both screens — the app's own catalogues hold it
+        // identically too.
+        'site.spotlightCard.placeholder',
+        // The Agents sidebar's own two: "Skills" is the product's word for them in both
+        // languages, and so is "Agents" — the label over the list, which the app's French
+        // catalogue also leaves as it is.
+        'site.agentsCard.skills',
+        // The info sidebar's cards print the app's own labels, and the app keeps these
+        // in English in both languages: a card heading, a menu, its script categories.
+        'site.infoSidebar.session',
+        'site.infoSidebar.commits',
+        'site.infoSidebar.scripts',
+        'site.infoSidebar.scriptsDev',
+        'site.infoSidebar.scriptsBuild',
+        'site.infoSidebar.scriptsTest',
+        'site.agentsCard.agents',
+        // The Tasks mockup's agent marker. It is the app's own word beside the dot, and
+        // the app's French catalogue spells it "agent" too — this string is the app's,
+        // not a translation of it.
+        'site.tasksCard.agent',
+        // The Settings drawing prints the app's own tab labels, and three of the eleven
+        // are the same word in French — as the app's own `settings.tab.*` keys are. The
+        // agent counts are the app's too: "1 agent" and "2 agents" spell identically.
+        'site.reposCard.tabApplication',
+        'site.reposCard.tabClaudeCode',
+        'site.reposCard.tabNotifications',
+        'site.reposCard.agents.one',
+        'site.reposCard.agents.other',
+        // The launch modes grid: four of the five mode names are the app's own single
+        // words, and the app's French catalogue keeps them too. "Format" heads the
+        // commit formats table in both languages.
+        'site.launchModes.plan',
+        'site.launchModes.default',
+        'site.launchModes.auto',
+        'site.launchModes.bypass',
+        'site.commitCfg.tableFormat',
         'site.mockup.agentsLabel',
         'site.mockup.session',
         'site.mockup.commits',

@@ -1,8 +1,10 @@
 'use client'
 
-import { Card, Eyebrow } from '@/components/ui'
+import { ArrowRight } from 'lucide-react'
+import { ButtonLink, Card, Eyebrow } from '@/components/ui'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
+import { PAGE_CHROME } from '@/lib/features'
 import { HomeHeading, HomeSection } from './Shell'
 
 /**
@@ -15,6 +17,23 @@ import { HomeHeading, HomeSection } from './Shell'
  *
  * `id="how"` is linked from the site header and from the footer, so it has to keep that
  * id whatever else moves.
+ *
+ * AND THIS IS THE HOMEPAGE'S WAY OUT TO `/features`, which is worth explaining because
+ * the obvious place was the closing band. Three answers were possible and two are wrong:
+ *
+ *   • the HERO's buttons are a product decision documented at length in
+ *     `HeroSection.tsx` — start free, or download — and a third would undo it;
+ *   • the CLOSING band is documented as ONE BUTTON, NOT TWO (`FinalCtaSection.tsx`), on
+ *     the argument that the end of a landing page is the one place a second option is a
+ *     question rather than a convenience. A features link there is exactly that
+ *     question, asked after the reader had decided.
+ *
+ * So it lands here, at the end of the band that has just said what using the product
+ * feels like — which is precisely where a reader asks "what else does it do?" — and the
+ * page keeps one ask per band. `secondary`, since the page's `primary` belongs to the
+ * hero's CTA, and `site.nav.allFeatures` for the label: the header's row for the same
+ * destination says the same words, and one string for one place is the point of reusing
+ * the key rather than writing a second one.
  */
 
 const STEPS: { n: string; title: MessageKey; description: MessageKey }[] = [
@@ -43,6 +62,17 @@ export function HowItWorksSection() {
             <p className="mt-2 text-sm leading-relaxed text-muted">{t(step.description)}</p>
           </Card>
         ))}
+      </div>
+
+      {/* The margin is on a WRAPPER rather than on the button's own `className`, which
+          is how the retired commands band closed too: `ButtonLink` is `inline-flex`, and
+          a block around it is what gives the gap something to push against. An
+          `ArrowRight` because this one LEAVES the page — every other control on the
+          homepage either scrolls it or downloads the app. */}
+      <div className="mt-10">
+        <ButtonLink href="/features" variant="secondary" icon={ArrowRight}>
+          {t(PAGE_CHROME.allFeatures)}
+        </ButtonLink>
       </div>
     </HomeSection>
   )

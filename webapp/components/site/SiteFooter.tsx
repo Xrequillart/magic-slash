@@ -28,9 +28,10 @@ import { GITHUB_REPO_URL, LICENSE_URL, NEW_ISSUE_URL, SECURITY_URL } from './lin
  * GitHub on purpose — see the note on `LICENSE_URL` in `links.ts`, and the one on
  * `site.footer.legal` in the catalogue.
  *
- * Every destination here EXISTS. `PUBLIC_PATHS` in `lib/hostRouting.ts` is `/`,
- * `/story` and `/documentation`, so a footer link to `/faq` or `/pricing` would not 404
- * on production — it would 307 the reader to a login form, which is worse.
+ * Every destination here EXISTS, and an internal one has to be a path `PUBLIC_PATHS` in
+ * `lib/hostRouting.ts` enumerates: a footer link to `/faq` or `/pricing` would not 404 on
+ * production — it would 307 the reader to a login form, which is worse. That list is
+ * named rather than copied, for the reason given on `LICENSE_URL` in `links.ts`.
  */
 
 /**
@@ -56,11 +57,15 @@ const COLUMNS: Column[] = [
     title: 'site.footer.product',
     rows: [
       // Both of these were same-page anchors — `/#features` and `/#commands` — and both
-      // bands are gone. "Features" survives, repointed at the docs section that lists
-      // them; "The commands" does not, because there is nothing left that is about the
-      // commands specifically. Its `site.footer.commands` key stays in the catalogues
-      // unreferenced, like every other family this rebuild retired.
-      { href: '/documentation#skills', label: 'site.footer.features' },
+      // bands are gone. "Features" survives and now points at the page that replaced
+      // the grid: `/features`, the whole inventory read out of `lib/features.ts`. It
+      // spent one release pointing at `/documentation#skills`, which was the closest
+      // thing that existed at the time and listed the eight commands only. "The
+      // commands" does not survive, because there is nothing left that is about the
+      // commands specifically — and `/features#workflow` is where they live now anyway.
+      // Its `site.footer.commands` key stays in the catalogues unreferenced, like every
+      // other family this rebuild retired.
+      { href: '/features', label: 'site.footer.features' },
       { href: '/#how', label: 'site.footer.howItWorks' },
       // The .dmg itself, not a releases page — see `DESKTOP_DOWNLOAD_URL`. A plain
       // anchor because GitHub answers it with `Content-Disposition: attachment`, so

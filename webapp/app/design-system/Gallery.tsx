@@ -26,12 +26,20 @@ import {
   Eyebrow,
   Input,
   Label,
+  LogoPlate,
+  PLATE_GROUNDS,
+  type PlateFit,
+  type PlateGround,
   Section,
   SectionHeader,
   Select,
+  ShowcaseCard,
   Textarea,
   type BadgeTone,
   type ButtonVariant,
+  CARD_TONES,
+  ToneCard,
+  type CardTone,
 } from '@/components/ui'
 
 /**
@@ -143,6 +151,20 @@ function Spec({ name, note, children }: { name: string; note?: string; children:
       {note && <p className="font-mono text-[11px] text-muted">{note}</p>}
     </div>
   )
+}
+
+/**
+ * One mark per plate, for the specimens above, each with the fit its artwork wants.
+ * Here rather than inline so the block stays a loop: the point of the row is that five
+ * different logos take the same treatment, which is hard to see if each is written out
+ * by hand — and the two that bleed are what make `fit` visible rather than described.
+ */
+const PLATE_MARKS: Record<PlateGround, { src: string; fit: PlateFit }> = {
+  jira: { src: '/img/jira-logo.png', fit: 'bleed' },
+  github: { src: '/img/github-logo.png', fit: 'inset' },
+  vscode: { src: '/img/vscode-logo.png', fit: 'inset' },
+  claude: { src: '/img/claudecode-color.png', fit: 'inset' },
+  magic: { src: '/img/app-icon-desktop.png', fit: 'bleed' },
 }
 
 export function Gallery() {
@@ -621,6 +643,121 @@ export function Gallery() {
               <p className="text-sm text-muted">Eyebrow is typography, never a control — which is why it keeps brand.</p>
             </Card>
           </div>
+        </Block>
+
+        <Block
+          title="The coloured card — five tones, and the ink comes with them"
+          why="Card is the product's surface: white, a hairline, one shadow rung, ~35 screens where the CONTENT is what should be read. ToneCard is the marketing pages' counterpart — the ground carries the colour, so the copy has to change ink with it. That pairing is why tone is a slot and not a className: a text-ink title on midnight is invisible, renders fine, and passes every check. Naming the tone names the ink. The gradients are declared in the Tailwind config, so an inline linear-gradient at a call site is the same unfindable value an arbitrary shadow is."
+        >
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            {(Object.keys(CARD_TONES) as CardTone[]).map((tone) => (
+              <Spec key={tone} name={`tone="${tone}"`} note={CARD_TONES[tone].surface}>
+                {/* `w-full` so the specimen fills its cell — additive layout, which is
+                    all `className` is ever for on a `ui.tsx` component. */}
+                <ToneCard
+                  tone={tone}
+                  title="Every command"
+                  description="Two light grounds take the page's own ink; the two dark ones take white and the declared white-on-dark body alpha."
+                  className="w-full"
+                />
+              </Spec>
+            ))}
+          </div>
+          <p className="mt-5 max-w-2xl text-sm text-muted">
+            FOUR of them cycle and the fifth does not, and that split is the idea. A tone is normally a
+            SURFACE in a family rather than an identity, so{' '}
+            <code className="font-mono text-ink">CARD_TONE_CYCLE</code> runs four across the eight skills on{' '}
+            <code className="font-mono text-ink">/features</code> — two light then two dark, so a four-column
+            row lands one of each and no two neighbours carry the same weight, and a ninth skill costs no new
+            colour. <code className="font-mono text-ink">mint</code> is out of that cycle because it MEANS
+            something: it dresses the card for <code className="font-mono text-ink">/magic:done</code>, and
+            green is already how this product says finished. A tone that means something is asked for by
+            name, so it survives a reorder.
+          </p>
+          <div className="mt-8">
+            <Spec name={'layout="beside"'} note="stacks below md">
+              {/* A full-row card. The `beside` slot turns it into a row and caps the copy
+                  at a readable measure; `stacked` — the default, shown in the four
+                  specimens above — puts the visual under the copy at full width. */}
+              <ToneCard
+                tone="mist"
+                layout="beside"
+                title="A card wide enough for both"
+                description="A full-row card whose copy is two lines leaves a band of empty ground under it, and a visual pushed to the bottom edge reads as an afterthought rather than as the point."
+                className="w-full"
+              >
+                <div className="-mr-14 py-7 pl-7">
+                  <div className="min-w-96 rounded-xl bg-white p-4 text-xs text-muted shadow-lift">
+                    Where the visual sits is the CARD&apos;s business, not the visual&apos;s. A visual that
+                    placed itself with mt-auto had to know the card was a flex column, and it stopped
+                    working silently the day the card became a row.
+                  </div>
+                </div>
+              </ToneCard>
+            </Spec>
+          </div>
+          <p className="mt-3 max-w-2xl text-sm text-muted">
+            No shadow, and <code className="font-mono text-ink">rounded-2xl</code> rather than a radius of its
+            own. <code className="font-mono text-ink">shadow-card</code> under a saturated gradient reads as dirt
+            rather than as lift, and the config says outright that there is no{' '}
+            <code className="font-mono text-ink">borderRadius.card</code> because{' '}
+            <code className="font-mono text-ink">rounded-2xl</code> is already the surface convention
+            everywhere. <code className="font-mono text-ink">children</code> is left UNPADDED on purpose: that is
+            the difference between an icon sitting in the card and a screenshot bleeding out of it.
+          </p>
+        </Block>
+
+        <Block
+          title="The showcase card — a white ground, and one panel allowed to be loud"
+          why="The third card shape, and the gap it fills is a specific one: a row about SOMEBODY ELSE'S product. Card keeps everything white and readable. ToneCard puts the colour under the copy, which means the page has to wear the colour. This puts the colour on one panel instead — so a plate can be Atlassian blue or GitHub near-black without the page becoming Atlassian or GitHub. The white tile under every mark is what makes that safe: logos arrive in whatever colour their owner drew them in, and no single ground holds VS Code blue, GitHub black and Jira's own pale square at once. On a tile, all three do."
+        >
+          <div className="space-y-5">
+            <ShowcaseCard
+              title="Open in VS Code"
+              description="The copy takes a little more than half the row and the artwork takes the rest — a share rather than a max-width, so a wide page does not leave a band of empty white."
+              art={<LogoPlate ground="vscode" src="/img/vscode-logo.png" className="h-full" />}
+            />
+            <ShowcaseCard
+              title="A card with no artwork"
+              description="art is a slot and an optional one. Without it the card is copy on a plain surface, which is what makes this the arrangement rather than a picture frame."
+            />
+          </div>
+          <p className="mt-5 max-w-2xl text-sm text-muted">
+            The five grounds are declared as{' '}
+            <code className="font-mono text-ink">PLATES</code> in{' '}
+            <code className="font-mono text-ink">tailwind.config.ts</code>, in their own namespace
+            beside <code className="font-mono text-ink">TONES</code> and deliberately NOT merged with
+            them. A tone is a surface in a family and cycles because it means nothing; a plate is a
+            product&apos;s own hue and is always asked for by name. One table, and{' '}
+            <code className="font-mono text-ink">CARD_TONE_CYCLE</code> could deal a skill card the
+            GitHub grey.
+          </p>
+          <div className="mt-6 grid gap-5 sm:grid-cols-3 xl:grid-cols-5">
+            {(Object.keys(PLATE_GROUNDS) as PlateGround[]).map((ground) => (
+              <Spec
+                key={ground}
+                name={`ground="${ground}"`}
+                note={`${PLATE_GROUNDS[ground]} · ${PLATE_MARKS[ground].fit}`}
+              >
+                <LogoPlate
+                  ground={ground}
+                  src={PLATE_MARKS[ground].src}
+                  fit={PLATE_MARKS[ground].fit}
+                  className="w-full"
+                />
+              </Spec>
+            ))}
+          </div>
+          <p className="mt-5 max-w-2xl text-sm text-muted">
+            <code className="font-mono text-ink">fit</code> is the one thing a call site has to get
+            right, and it describes the ARTWORK rather than the plate. A bare glyph on transparency is{' '}
+            <code className="font-mono text-ink">inset</code> — 64px in the 96px tile, and the white
+            margin is what makes the tile read as a tile. A finished app icon that brings its own
+            square ground is <code className="font-mono text-ink">bleed</code>: inset, it would draw a
+            coloured box inside a white box; filling the tile, the artwork simply becomes the tile and
+            takes its corner. Jira&apos;s mark and ours are the two that bleed — which is why they are
+            the two specimens above that have no white margin.
+          </p>
         </Block>
 
         <Block

@@ -18,11 +18,16 @@ export const RELEASE_TAG_URL = `${GITHUB_REPO_URL}/releases/tag/v${LATEST_DESKTO
 /**
  * The three LEGAL documents, which live in the repository rather than on this site.
  *
- * There is no `/terms`, no `/privacy` and no `/license` route: `PUBLIC_PATHS` in
- * `lib/hostRouting.ts` is `/`, `/story` and `/documentation`, and anything else on a
- * production host 307s to `app.magic-slash.io`. So the footer's Legal column points at
- * the files themselves until story #273 gives them pages — a link that leaves for
+ * There is no `/terms`, no `/privacy` and no `/license` route: the public site owns
+ * exactly the paths `PUBLIC_PATHS` in `lib/hostRouting.ts` enumerates, and anything else
+ * on a production host 307s to `app.magic-slash.io`. So the footer's Legal column points
+ * at the files themselves until story #273 gives them pages — a link that leaves for
  * GitHub is honest, where a link that bounces a reader into a login form is not.
+ *
+ * The list is NOT copied here. It was, and #269 adding `/features` to it meant editing
+ * this sentence and one in `SiteFooter.tsx` to match a line neither file reads — three
+ * copies of one fact, none of them tested, and a stale copy is worse than no copy
+ * because the reasoning above is asserted on it.
  *
  * `blob/main` rather than a tag: these three are read as the CURRENT policy, not as
  * the policy that shipped with a release, which is the opposite of what

@@ -11,6 +11,11 @@ describe('canonicalHost', () => {
   describe('the apex — the public site, and nothing else', () => {
     it('keeps the public pages', () => {
       expect(canonicalHost('magic-slash.io', '/')).toBeNull()
+      // `/features` is the newest of them, and the one whose absence from the list
+      // would be least visible: a 307 to `app.magic-slash.io` is a login form, not a
+      // 404, so a reader following a link off the homepage would think the site had
+      // signed them out rather than that a page was missing.
+      expect(canonicalHost('magic-slash.io', '/features')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/story')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/documentation')).toBeNull()
     })
@@ -35,6 +40,7 @@ describe('canonicalHost', () => {
       // Next normalises `/story/` to `/story`, but in the routing layer — this runs
       // first, and an unmatched public page here is not re-rendered, it is sent away.
       expect(canonicalHost('magic-slash.io', '/story/')).toBeNull()
+      expect(canonicalHost('magic-slash.io', '/features/')).toBeNull()
       expect(canonicalHost('magic-slash.io', '/documentation/')).toBeNull()
     })
 
@@ -119,6 +125,10 @@ describe('resolveRewrite', () => {
 
     it('leaves every other public page alone', () => {
       expect(resolveRewrite('magic-slash.io', '/story')).toBeNull()
+      // The features page, linked from the homepage, the header and the footer. Only
+      // the ROOT of a host is ever rewritten, so a new public page needs no rule of its
+      // own here — this pins that, since the failure would be a rewrite nobody wrote.
+      expect(resolveRewrite('magic-slash.io', '/features')).toBeNull()
       // Unlinked from the site's nav, but still reachable — the desktop app links here.
       expect(resolveRewrite('magic-slash.io', '/documentation')).toBeNull()
     })

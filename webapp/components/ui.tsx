@@ -342,6 +342,373 @@ export function Card({
   return <div className={cx(SURFACE, shadow, className)} {...props} />
 }
 
+/**
+ * THE COLOURED CARD. A gradient surface with a headline, a line under it and room
+ * for a visual — the marketing pages' loud counterpart to `Card`, which is white and
+ * deliberately quiet.
+ *
+ * WHY IT IS NOT A VARIANT OF `Card`. `Card` is the product's surface: white, a
+ * hairline border, one shadow rung, and it appears on ~35 screens where the content
+ * is what should be read. This one has no border and no shadow, its ground carries
+ * the colour, and the copy inside it changes ink depending on that ground. A `tone`
+ * prop on `Card` would have made every one of those 35 call sites able to reach for
+ * a gradient, and made `Card`'s own recipe conditional on a prop it has no other use
+ * for. Two components, one for each job.
+ *
+ * THE TONE IS A SLOT AND IT CARRIES ITS OWN INK. That pairing is the point of the
+ * table below: `midnight` is near-black, so its title has to be white and its body
+ * a white alpha, and `mist` is barely a tint, so the same card needs `ink`. Left to
+ * a caller, that is two decisions that can disagree — a `text-ink` title on a
+ * `midnight` ground is invisible, renders fine and passes every check. Here they
+ * cannot come apart: naming the tone names the ink with it.
+ *
+ * `className` STAYS ADDITIVE, as everywhere in this file: layout only — a column
+ * span, a min-height. Anything that would argue with the recipe (the ground, the
+ * radius, the ink) is a slot or is not available.
+ */
+export const CARD_TONES = {
+  mist: { surface: 'bg-tone-mist', title: 'text-ink', body: 'text-ink/60' },
+  sky: { surface: 'bg-tone-sky', title: 'text-ink', body: 'text-ink/60' },
+  // `onink-body` is the declared white-on-dark body alpha the footer plate already
+  // uses, rather than a second `text-white/60` spelling of the same number.
+  indigo: { surface: 'bg-tone-indigo', title: 'text-white', body: 'text-onink-body' },
+  midnight: { surface: 'bg-tone-midnight', title: 'text-white', body: 'text-onink-body' },
+  // Green, and the only tone outside the blue family. See the note on `tone-mint` in
+  // `tailwind.config.ts` for why it is earned rather than added, why it is PALE rather
+  // than the saturated green it started as, and why it is absent from the cycle below:
+  // it MEANS something, so it is asked for by name.
+  //
+  // Light ground, so it takes the same dark ink `mist` and `sky` take. That pairing is
+  // not a detail — it changed with the ground, and `lib/designTokens.test.ts` is what
+  // makes sure the two moved together.
+  mint: { surface: 'bg-tone-mint', title: 'text-ink', body: 'text-ink/60' },
+} as const
+
+export type CardTone = keyof typeof CARD_TONES
+
+/**
+ * The tone order the grids cycle through, and it is an ORDER rather than a set: two
+ * light then two dark, so a four-column row lands one of each and no two neighbours
+ * carry the same weight. Exported because the cycling belongs to the caller — it
+ * knows how many cards it has and how wide its grid is.
+ */
+export const CARD_TONE_CYCLE: readonly CardTone[] = ['mist', 'sky', 'indigo', 'midnight']
+
+/**
+ * `rounded-2xl`, not a radius of its own. The Tailwind config says it outright —
+ * "there is no `borderRadius.card` because `rounded-2xl` is already the surface
+ * convention everywhere" — and a coloured card is still a surface. The reference
+ * these were drawn from rounds a little harder; one surface convention is worth more
+ * than the four pixels.
+ *
+ * `overflow-hidden` so a visual handed to `children` can bleed to the card's edges
+ * and still be clipped to the corner. NO SHADOW: the ground is doing the separating,
+ * and `shadow-card` under a saturated gradient reads as dirt rather than as lift.
+ */
+const TONE_SURFACE = 'relative overflow-hidden rounded-2xl'
+
+/**
+ * ONE HEIGHT FOR EVERY COLOURED CARD, and it lives here rather than at the call sites.
+ *
+ * A grid already equalises the cards in a ROW — that is what `items-stretch` does by
+ * default — but not across rows, so a grid of eight came out as four different heights
+ * and read as a wall rather than as a set. The eye reads unequal cards as unequal
+ * IMPORTANCE, which is exactly the wrong thing to say about eight commands.
+ *
+ * `min-h-` AND NOT `h-`, which is the part worth writing down. A fixed height clips, and
+ * what it clips first is the longest translation: French runs 15-20% longer than English
+ * across these catalogues, so a height tuned on the English copy would cut a French
+ * description on the one card that needed the room. A minimum equalises every card that
+ * fits and lets the one that does not grow instead of losing a line — and since a grid
+ * row stretches to its tallest member, one card growing takes its neighbour with it and
+ * the set stays level.
+ *
+ * 20rem is measured against the tallest content the page actually has: a card carrying a
+ * drawn visual (`p-7` of copy over a panel ~11rem tall). The copy-only cards then hold
+ * their whitespace on purpose — the room under a two-line description is what makes the
+ * grid read as a grid.
+ */
+const TONE_HEIGHT = 'min-h-80'
+
+/**
+ * How a card arranges its copy and its visual.
+ *
+ * `stacked` is the default and what a half-width card wants: copy at the top, visual
+ * under it, both the full width of the card.
+ *
+ * `beside` is for a card wide enough that stacking wastes it — a full-row card whose
+ * copy is two lines leaves a band of empty ground under it, and the visual pushed to the
+ * bottom edge reads as an afterthought rather than as the point. Side by side, the copy
+ * gets a column it can be read in and the visual gets the rest.
+ *
+ * IT STAYS STACKED BELOW `md` in either case. A 24rem copy column and a panel beside it
+ * do not both fit on a phone, and the thing that gives way is the copy — so the row only
+ * exists where there is width for it.
+ */
+export type ToneCardLayout = 'stacked' | 'beside'
+
+export function ToneCard({
+  tone = 'mist',
+  layout = 'stacked',
+  title,
+  description,
+  children,
+  className,
+}: {
+  /** The ground, and with it the ink. See `CARD_TONES`. */
+  tone?: CardTone
+  /** Copy over visual, or copy beside it. See `ToneCardLayout`. */
+  layout?: ToneCardLayout
+  title: string
+  description: string
+  /**
+   * The visual, if there is one. Rendered UNPADDED, so a caller can either pad it or let
+   * it run to the card's edges — which is the difference between an icon sitting in the
+   * card and a screenshot bleeding out of it.
+   *
+   * WHERE it sits is this component's business, not the visual's. A visual that placed
+   * itself with `mt-auto` was a visual that had to know the card was a flex column, and
+   * it silently stopped working the day the card became a row. The card owns the box; the
+   * visual owns what is inside it.
+   */
+  children?: React.ReactNode
+  /** Additive layout only: a column span. Never the ground, the ink, or the arrangement. */
+  className?: string
+}) {
+  const { surface, title: titleInk, body } = CARD_TONES[tone]
+  const beside = layout === 'beside'
+
+  return (
+    <div
+      className={cx(
+        TONE_SURFACE,
+        TONE_HEIGHT,
+        surface,
+        // The direction is the component's, not the caller's — it used to arrive as a
+        // `flex flex-col` in `className`, which is exactly the conflicting utility the
+        // house rule keeps out of that prop: two arrangements racing, decided by
+        // Tailwind sorting class names.
+        beside ? 'flex flex-col md:flex-row' : 'flex flex-col',
+        className,
+      )}
+    >
+      {/* `p-7` rather than the `p-6` the white `Card` uses at its call sites: a coloured
+          ground needs more margin before its own edge, or the type looks pinned to the
+          corner. In a row the copy is capped so it stays a readable measure — a
+          full-width card would otherwise set its description across 1000px. */}
+      <div className={cx('p-7', beside ? 'md:max-w-sm md:shrink-0' : undefined)}>
+        <h3 className={cx('font-display text-xl font-bold leading-tight', titleInk)}>{title}</h3>
+        {/* `text-base` at `font-medium` — 16px, 500.
+            
+            The SIZE went up (from 14px) because this is the card's only prose: there is
+            no third tier under it to crowd, so the size that would be too loud in a
+            dense layout is simply the size one line wants.
+            
+            The WEIGHT went up only one step, not two. 400 was too thin — a coloured
+            ground eats weight, and a light face loses more to a saturated background
+            than a heavy one does, so the title and the description were drifting apart
+            on `indigo` and `midnight` while looking right on `mist`. But 600 at 16px
+            overcorrected: the description started competing with the `font-bold` title
+            above it, and two headlines on a card is none. 500 is the step that fixes
+            the thinness without picking a fight. */}
+        <p className={cx('mt-2 text-base font-medium leading-relaxed', body)}>{description}</p>
+      </div>
+
+      {children ? (
+        // Stacked: pushed to the bottom edge whatever the copy above it measures, so a
+        // pair of cards in a grid row still line up.
+        // Beside: takes the rest of the row and centres, because a panel aligned to the
+        // bottom of a card taller than itself leaves a gap above it that reads as a
+        // mistake. `min-w-0` because a flex item's automatic minimum is its content, and
+        // these visuals are deliberately wider than their box.
+        <div className={beside ? 'min-w-0 flex-1 md:self-center' : 'mt-auto'}>{children}</div>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * THE PRODUCT PLATES, name → the ground declared for it in `tailwind.config.ts`.
+ *
+ * The same shape as `CARD_TONES` above and, deliberately, NOT the same table. A tone is
+ * a surface in a family — four of them cycle across the skill cards because none of them
+ * means anything in particular. A plate is a product's own hue: it means exactly one
+ * thing and it is always asked for by name. Keeping them apart is what stops
+ * `CARD_TONE_CYCLE` from ever dealing a card the GitHub grey.
+ *
+ * No ink travels with a plate, which is the other difference. A tone carries its title
+ * and body colours because copy sits ON it; a plate carries a mark on a white tile and a
+ * caption that is white on all five grounds, so there is no pairing to get wrong.
+ */
+export const PLATE_GROUNDS = {
+  jira: 'bg-plate-jira',
+  github: 'bg-plate-github',
+  vscode: 'bg-plate-vscode',
+  claude: 'bg-plate-claude',
+  magic: 'bg-plate-magic',
+} as const
+
+export type PlateGround = keyof typeof PLATE_GROUNDS
+
+/**
+ * How a mark meets the tile it sits on. See the note on `LogoPlate` — it describes the
+ * ARTWORK, not the plate: a bare glyph is inset, a finished app icon fills the tile.
+ */
+export type PlateFit = 'inset' | 'bleed'
+
+/**
+ * A product's mark, centred on its own coloured ground — the artwork half of a
+ * `ShowcaseCard`, and the reason that card can hold five different logos without five
+ * different treatments.
+ *
+ * THE WHITE TILE IS THE WHOLE TRICK. Marks arrive in whatever colour their owner drew
+ * them in — VS Code's is blue, GitHub's is black — and no single ground can hold both.
+ * A logo on a white tile on a coloured ground has that problem solved once: the plate is
+ * then free to be the product's real, saturated hue, including VS Code blue under a VS
+ * Code blue mark. It is also what an app icon looks like everywhere else on a screen, so
+ * it reads as an object rather than as a sticker.
+ *
+ * `fit` IS THE ONE THING A CALLER HAS TO GET RIGHT, and it is a fact about the ARTWORK
+ * rather than a taste about the plate. Marks come in two kinds:
+ *
+ *   `inset` — a bare glyph on transparency, which is most of them. It sits at 64px in
+ *   the 96px tile, and the white margin around it is what makes the tile read as a tile.
+ *
+ *   `bleed` — a finished app icon that brings its own square ground, which Jira's mark
+ *   and ours both do. Inset, those draw a coloured box inside a white box; filling the
+ *   tile instead, the artwork simply BECOMES the tile and takes its corner.
+ *
+ * `overflow-hidden` on the tile is what makes `bleed` work: the sources are hard squares,
+ * and the rounding is done here rather than in the artwork.
+ *
+ * NO CAPTION. There was one — a ticket key, a PR number — and it was a second thing to
+ * read on a panel whose whole job is to be recognised without reading. The mark says
+ * which product this is faster than a word under it can, and the card's title beside it
+ * says what you get.
+ *
+ * `object-contain` for an inset glyph, because a mark is not guaranteed square.
+ * `object-cover` for a bleeding one, because an app icon is.
+ *
+ * `alt=""` and not the product's name: the card's own title names it, and a screen reader
+ * that hears "Jira" twice has learnt nothing the second time.
+ */
+export function LogoPlate({
+  ground,
+  src,
+  fit = 'inset',
+  className,
+}: {
+  /** Which product's ground. See `PLATE_GROUNDS`. */
+  ground: PlateGround
+  /** The mark, as a path under `public/`. */
+  src: string
+  /** How the mark meets the tile. See the note above — it is a fact about the artwork. */
+  fit?: PlateFit
+  /** Additive layout only. */
+  className?: string
+}) {
+  return (
+    <div
+      className={cx(
+        // `rounded-xl` inside the card's `rounded-2xl`: one step down, so the inner
+        // corner looks concentric with the outer rather than parallel to it.
+        //
+        // `min-h-44` is what gives the plate a body when the copy beside it is two
+        // lines. Without it a short row would draw a letterbox, and a column of rows
+        // would have a different plate height each.
+        'flex min-h-44 items-center justify-center rounded-xl p-6',
+        PLATE_GROUNDS[ground],
+        className,
+      )}
+    >
+      {/* The tile. `shadow-lift` — the scale's loudest rung — because it is floating on
+          a saturated ground, where `shadow-card` would be invisible. */}
+      <span className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lift">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt=""
+          className={
+            fit === 'bleed' ? 'h-full w-full object-cover' : 'h-16 w-16 object-contain'
+          }
+        />
+      </span>
+    </div>
+  )
+}
+
+/**
+ * A white card whose copy sits beside a piece of artwork: a title, a sentence or two
+ * under it, and a panel on the right holding the picture.
+ *
+ * WHAT IT IS FOR, AND WHERE IT SITS BETWEEN THE OTHER TWO. `Card` is the product's plain
+ * surface — white, a hairline, one shadow rung, and whatever you put in it. `ToneCard`
+ * is the marketing counterpart, where the GROUND carries the colour and the copy has to
+ * change ink with it. This is the third shape: the ground stays white and readable, and
+ * the colour is spent on one artwork panel that is allowed to be as loud as it likes.
+ * That is what makes it the right card for a row about somebody else's product — the
+ * plate can be their brand without the page becoming it.
+ *
+ * `art` IS A SLOT, NOT A `LogoPlate`. The pairing is the common case and not the only
+ * one: anything that wants to be a panel beside a paragraph goes in here, and the card
+ * stays the one that knows how a card is arranged. Rendered UNPADDED for the same reason
+ * `ToneCard`'s `children` is — the panel decides its own inset — except that here the
+ * card supplies the frame's padding, since an artwork bleeding to a WHITE card's edge
+ * would lose the border rather than escape it.
+ *
+ * IT STACKS BELOW `md`. A readable measure of copy and a panel beside it do not both fit
+ * on a phone; stacked, the copy leads and the artwork follows, which is the reading
+ * order either way.
+ *
+ * `md:items-stretch` so the plate matches the card's height rather than floating in the
+ * middle of it — which is what makes a column of these read as a column.
+ */
+export function ShowcaseCard({
+  title,
+  description,
+  art,
+  className,
+}: {
+  title: string
+  description: string
+  /** The artwork panel. `LogoPlate` is the usual one. */
+  art?: React.ReactNode
+  /** Additive layout only: never the ground, the ink, or the arrangement. */
+  className?: string
+}) {
+  return (
+    <div
+      className={cx(
+        SURFACE,
+        // NO SHADOW, unlike `Card`. `shadow-card` was tuned for a surface you are meant
+        // to read INTO — a panel of settings, a list — where a whisper of lift says
+        // "this is a thing on the page". This card is mostly one saturated plate, and a
+        // lift under something already that loud reads as a smudge under it rather than
+        // as elevation. The hairline is enough to hold it off a white ground, which is
+        // the same call `ToneCard` makes for the same reason.
+        'flex flex-col gap-0 overflow-hidden md:flex-row md:items-stretch',
+        className,
+      )}
+    >
+      {/* `md:basis-0 md:grow-[5]` against the panel's `grow-[4]`, so the copy takes a
+          little more than half the row. A fixed `max-w` here would have left a band of
+          empty white on a wide page; a share of the row scales with it.
+          
+          `justify-center` so a one-line description sits level with the plate's middle
+          rather than pinned to the card's top edge. */}
+      <div className="flex flex-col justify-center p-7 md:basis-0 md:grow-[5] md:p-9">
+        <h3 className="font-display text-2xl font-bold leading-tight text-ink">{title}</h3>
+        <p className="mt-3 text-base leading-relaxed text-ink/60">{description}</p>
+      </div>
+      {art ? (
+        // `min-w-0` because a flex item's automatic minimum is its content, and a plate
+        // is happy to be wider than its share if nothing stops it.
+        <div className="min-w-0 p-4 md:basis-0 md:grow-[4] md:py-5 md:pl-0 md:pr-5">{art}</div>
+      ) : null}
+    </div>
+  )
+}
+
 export function Section({
   title,
   description,

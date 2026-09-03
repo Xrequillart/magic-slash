@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Anchor jumps glide rather than snap — the `/features` rail is a column of `#anchor`
+   links into one long page, and a jump that teleports loses the reader's sense of
+   how far they went. On the root element, because it is the document that scrolls, and
+   only for readers who have not asked the OS for less motion: for them the jump stays a
+   jump. The sections' own `scroll-mt-24` still clears the fixed bar at the landing. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 /* Self-hosted brand fonts (same as the /docs landing). */
 @font-face {
   font-family: 'Avenir';

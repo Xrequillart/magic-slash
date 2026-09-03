@@ -7,6 +7,7 @@ import type { Session } from '@supabase/supabase-js'
 import { Button, ButtonLink } from '@/components/ui'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n/useLanguage'
+import { PAGE_CHROME } from '@/lib/features'
 import { HOME_PATH, LOGIN_PATH } from '@/lib/routes'
 import { useSession } from '@/lib/session'
 import {
@@ -75,41 +76,62 @@ import { useRevealClass } from './Reveal'
  * nav row and the way in, because a homepage whose only route to sign-in is the footer
  * is worse than a bar that overflows.
  *
- * THE BAR IS DOWN TO THREE THINGS — wordmark, one nav link, the way in — and both cuts
- * were requested rather than forced by width. The Product dropdown went (see
- * `NAV_LINKS`), and so did the LANGUAGE PICKER: `LanguageMenu` now appears only in the
- * footer, in the dress written for exactly that, and its own note is that the footer is
- * where people go LOOKING for the control. Its `header` dress is consequently unused;
- * it is left in place rather than deleted, since the component's two-dress API is what
- * lets a later story put a picker back somewhere without reinventing one.
+ * THE BAR IS WORDMARK, TWO NAV LINKS, THE WAY IN — and every cut behind that shape was
+ * requested rather than forced by width. The Product dropdown went (see `NAV_LINKS`),
+ * and so did the LANGUAGE PICKER: `LanguageMenu` now appears only in the footer, in the
+ * dress written for exactly that, and its own note is that the footer is where people go
+ * LOOKING for the control. Its `header` dress is consequently unused; it is left in
+ * place rather than deleted, since the component's two-dress API is what lets a later
+ * story put a picker back somewhere without reinventing one.
  *
- * The collapse below `md` stays regardless. Three controls still do not fit: the
- * wordmark alone is 165px at `h-12`, "Comment ça marche" is ~145px with its padding and
- * the way in ~86px, which is ~412px of content against the 327px a 375px viewport
- * offers. Removing controls moved the number, not the verdict.
+ * The second nav link — "All features", pointing at the `/features` page — went back in
+ * once that page existed for the dropdown's orphaned row to point at.
+ *
+ * The collapse below `md` stays regardless, and the newest row only widens the case.
+ * Three controls already did not fit: the wordmark alone is 165px at `h-12`, "Comment ça
+ * marche" is ~145px with its padding and the way in ~86px, which was ~412px of content
+ * against the 327px a 375px viewport offers. "Toutes les fonctionnalités" adds ~185px on
+ * top. Adding and removing controls moves the number, not the verdict.
  */
 
 /**
- * The nav, which is now one row: "how it works", and nothing else.
+ * The nav: two rows — the features page, then the homepage's "how it works" band.
  *
- * IT WAS A PRODUCT MENU plus this anchor — six rows behind a dropdown trigger, pointing
+ * IT WAS A PRODUCT MENU plus that anchor — six rows behind a dropdown trigger, pointing
  * into the documentation at anchors `DocSidebar` publishes. The dropdown is gone by
  * request, and with it the last reason this file needed `NavDropdown`'s own component.
- * The `site.nav.{product,allFeatures,gettingStarted,skillsReference,configuration,
+ * The `site.nav.{product,gettingStarted,skillsReference,configuration,
  * documentationCategory,changelog}` keys stay in the catalogues unreferenced, like every
  * other family this rebuild has retired: nothing tests for an unused key, and pruning
  * them means editing `i18n.test.ts`'s exact `SAME_IN_BOTH` allow-list in lockstep. The
  * footer still carries the same destinations, so nothing became unreachable.
  *
+ * `site.nav.allFeatures` is the one that came BACK, and it was parked here waiting for
+ * exactly this: the dropdown's "All features" row had nowhere to point when the
+ * homepage's grid was cut, and `/features` is that somewhere. It is a route now rather
+ * than a same-page anchor, which is the first row in this array that leaves the page.
+ *
+ * ORDER: features first. The bar reads left to right as "what is it" then "how does it
+ * work", which is the order a first-time reader asks those two questions in.
+ *
  * The MOBILE panel is fed from the same array rather than a second copy of it — the two
  * lists drifting apart is exactly what a shared constant is for, and the reason the bar
- * and the panel agree about what the nav contains at every width.
+ * and the panel agree about what the nav contains at every width. So is the BAR itself,
+ * as of this row: it used to restate its single link inline, which was harmless while
+ * there was one and is how the two halves start to disagree once there are two.
+ *
+ * WIDTH. The row is `hidden md:flex`, so the mobile arithmetic in the note above is
+ * untouched — below 768px both rows are `MobileMenu`'s panel. At 768px the content box
+ * is 720px against a 165px wordmark, ~185px for "Toutes les fonctionnalités" (the wider
+ * of the two labels, in the wider of the two languages), ~145px for "Comment ça marche",
+ * an ~86px way in and 24px of gaps: ~605px asked for, 720px available.
  *
  * At module scope with `label` as a `MessageKey`, so `tsc` checks the key — the same
  * shape the homepage's own `STEPS` rows use. `t()` cannot be called here, so the label
  * is resolved in the render below.
  */
 const NAV_LINKS: { href: string; label: MessageKey }[] = [
+  { href: '/features', label: PAGE_CHROME.allFeatures },
   { href: '/#how', label: 'site.nav.howItWorks' },
 ]
 
@@ -297,19 +319,30 @@ export function SiteHeader() {
         {/* `hidden md:flex`: 768px is the threshold `marketing.css` used, and the same one
             `MobileMenu` takes over below. */}
         <nav className="hidden items-center gap-1 md:flex">
-          {/* An anchor rather than a route, so it works from the homepage without a
-              navigation — and there is no page to point it at anyway. `NAV_ITEM` is the
-              bar's own control recipe; it used to be shared with the Product trigger
-              that stood beside this link, and it stays in `NavDropdown.tsx` because
-              `MobileMenu` and the footer's picker still draw on that file's popover
-              vocabulary. This link once restated the recipe inline and arrived without
-              the focus ring, which is the drift the shared constant exists to stop.
+          {/* MAPPED FROM `NAV_LINKS`, which is the change worth noting: this row used to
+              restate its one link inline, and the array fed only `MobileMenu`. One
+              hardcoded link and one array agreeing about a single row is luck; a second
+              row is where they start to disagree, and the bar showing a nav the mobile
+              panel does not is a failure nothing announces.
 
-              Below `md` this row is a row of `MobileMenu`'s panel — the same `NAV_LINKS`
-              entry, rendered in the other place. */}
-          <Link href="/#how" className={NAV_ITEM}>
-            {t('site.nav.howItWorks')}
-          </Link>
+              `/#how` is an anchor rather than a route — it works from the homepage
+              without a navigation, and there is no page to point it at. `Link` handles
+              both shapes, so a mixed list needs no branch.
+
+              `NAV_ITEM` is the bar's own control recipe; it used to be shared with the
+              Product trigger that stood here, and it stays in `NavDropdown.tsx` because
+              `MobileMenu` and the footer's picker still draw on that file's popover
+              vocabulary. The inline link this replaces had restated the recipe once and
+              arrived without the focus ring, which is the drift the shared constant
+              exists to stop.
+
+              Below `md` these rows are `MobileMenu`'s panel — the same entries,
+              rendered in the other place. */}
+          {NAV_LINKS.map((link) => (
+            <Link key={link.href} href={link.href} className={NAV_ITEM}>
+              {t(link.label)}
+            </Link>
+          ))}
         </nav>
 
         <div className="ml-auto hidden items-center gap-2 md:flex">
