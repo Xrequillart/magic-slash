@@ -17,9 +17,19 @@ import { FinalCtaSection } from '@/components/site/home/FinalCtaSection'
  * on this page for it to be true of. The decision was explicit and it is the product
  * owner's to make; what follows from it is that #268 cannot claim that criterion, and
  * that story #269 (the `/features` page) now has no homepage entry point to link back
- * from. `FeaturesSection.tsx` and `FeatureCard.tsx` are KEPT ON DISK, rendered nowhere,
- * so restoring the band is one import and one line — and #269 needs `FeatureCard`
- * regardless.
+ * from.
+ *
+ * THE CUT BANDS' COMPONENTS ARE GONE, not parked. They were kept on disk for one round —
+ * unrendered, so that restoring a band was one import and one line — and the review
+ * (Greptile, PR #278) rightly called that what it was: this PR ADDING dead code, which is
+ * worse than a PR retaining some. `FeaturesSection.tsx`, `FeatureCard.tsx` and
+ * `CommandsSection.tsx` were deleted in the same PR that introduced them, so #269 writes
+ * its own card component and reads the grid out of this PR's history rather than off the
+ * branch.
+ *
+ * `lib/commands.ts` is the exception and stays: `desktop/src/main/skills-registry.test.ts`
+ * reads it as one of the eight duplicated skill lists, and `lib/commands.test.ts` pins its
+ * order — it is exercised data, not an unrendered component.
  *
  * The knock-on: `/#features` and `/#commands` were live same-page anchors from the
  * header's Product menu and the footer's Product column. Both bands are gone, so both
