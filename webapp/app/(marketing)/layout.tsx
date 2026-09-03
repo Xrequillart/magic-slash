@@ -1,18 +1,24 @@
 import type { Metadata } from 'next'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteFooter } from '@/components/site/SiteFooter'
-import './marketing.css'
 
 /**
- * The public site's shell — everything magic-slash.io shares across its five pages.
+ * The public site's shell — the header and footer `/` and `/story` share.
  *
- * `marketing.css` is imported HERE rather than in `app/globals.css` on purpose: it is
- * the old static site's stylesheet, with element selectors (`*`, `html body`, `h1`)
- * that would otherwise reach the signed-in app. Importing it in this layout scopes it
- * to these routes — Next only sends it with the marketing bundle.
+ * `marketing.css` IS NO LONGER IMPORTED HERE. It was the old static site's stylesheet,
+ * ~5,000 lines of it, and both pages under this layout have been taken off it: the
+ * homepage is rebuilt on the design system (`components/ui.tsx` over the tokens in
+ * `tailwind.config.ts`), and `/story` keeps its own `story.css`, which now carries the
+ * handful of closing-CTA rules it used to borrow. The file itself STAYS on disk —
+ * `app/(docs)/layout.tsx` still imports it for the Documentation page's typography, and
+ * `lib/marketingCss.test.ts` reads it from disk.
  *
- * `/` resolves to this group's `page.tsx`. On `app.magic-slash.io` the root is
- * rewritten to `/login` by `middleware.ts`, so the product keeps its front door.
+ * Nothing global takes its place. The background is painted by whichever page owns it
+ * (`bg-canvas` on the homepage's own root, `html body` in `story.css`) rather than here,
+ * because the two pages do not agree on what colour the page is.
+ *
+ * `/` resolves to this group's `page.tsx`. On `app.magic-slash.io` the root is rewritten
+ * to `/login` by `middleware.ts`, so the product keeps its front door.
  */
 
 export const metadata: Metadata = {

@@ -5,7 +5,15 @@
  * so it only ships with that page.
  */
 
-        body {
+/* `html body`, NOT `body`.
+ *
+ * `marketing.css` used to declare `html body { background: #D9E8FF }` and win this on
+ * specificity; the `(marketing)` layout no longer imports it, which leaves a bare
+ * `body` here TYING with `html, body { background-color: #ffffff }` in
+ * `app/globals.css` (l. 149-152) — both a single type selector. A tie is decided by
+ * which stylesheet Next injects last, and that is not a thing this page should be
+ * betting its background colour on. */
+        html body {
             background: #D9E8FF;
             color: #000;
         }
@@ -251,6 +259,130 @@
             color: rgba(255, 255, 255, 0.75);
         }
 
+/* ── The closing CTA, ported from `marketing.css` ───────────────────────────────
+ *
+ * `StoryContent` ends on `.cta-section > .cta-inner > (.cta-mascot, .cta-content >
+ * (.cta-title, .cta-subtitle, a.btn-get-started.cta-btn))`, and every one of those
+ * classes was defined ONLY in `marketing.css` — this file had just the `padding`
+ * override at the end. The `(marketing)` layout no longer imports that stylesheet, so
+ * without these rules the page would end in unstyled left-aligned text and a plain
+ * blue link.
+ *
+ * Ported rather than rewritten, and the story markup is untouched: #268 rebuilds the
+ * HOMEPAGE, and `/story` is explicitly out of its scope. So these are the original
+ * declarations, at the values they COMPUTE to today — the two base `.cta-section`
+ * rules in `marketing.css` (l. 1490 and l. 1508) are collapsed into one, and each
+ * media query keeps only the winner where it set the same property twice (`padding`
+ * and `.cta-title`'s `font-size` were both set twice inside the 768px block).
+ *
+ * `.cta-install-box` did NOT come along: that markup left the page when the closing
+ * CTA stopped ending in a `curl` command, and nothing renders it. */
         .cta-section {
+            text-align: center;
+            background: #C0D4F5;
             padding: 6rem 2rem;
+            max-width: none;
+            overflow: hidden;
+        }
+        .cta-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 4rem;
+        }
+        .cta-mascot {
+            width: 340px;
+            height: auto;
+            flex-shrink: 0;
+            filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.12));
+        }
+        .cta-content {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            text-align: right;
+            gap: 0.5rem;
+            margin-left: auto;
+        }
+        .cta-title {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #000;
+            line-height: 1.2;
+            margin: 0;
+        }
+        .cta-subtitle {
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1.1rem;
+            color: rgba(0, 0, 0, 0.6);
+            margin: 0 0 1.5rem;
+        }
+        /* The button. `.btn-get-started` was one of eleven button definitions in
+         * `marketing.css`; it is not being revived as a system — it is this page's
+         * closing button and nothing else's, which is why it lives in this file's
+         * scope rather than anywhere shareable. New buttons use `Button` /
+         * `ButtonLink` from `components/ui.tsx`. */
+        .btn-get-started {
+            display: inline-flex;
+            align-items: center;
+            background: #000;
+            color: #fff;
+            font-family: "Cera Pro", system-ui, sans-serif;
+            font-size: 1.2rem;
+            font-weight: 500;
+            text-decoration: none;
+            padding: 15px 32px;
+            border-radius: 50px;
+            transition: background 0.3s ease, transform 0.3s ease;
+        }
+        .btn-get-started:hover {
+            background: #222;
+        }
+        /* `.cta-content` is a right-aligned flex column with a gap, so the button only
+         * needs to stop stretching to the column's width. */
+        .cta-btn {
+            align-self: flex-end;
+            margin-top: 0.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .cta-inner {
+                flex-direction: column;
+                text-align: center;
+                gap: 2.5rem;
+            }
+            .cta-content {
+                align-items: center;
+                text-align: center;
+                margin-left: 0;
+            }
+            .cta-mascot {
+                width: 200px;
+            }
+        }
+        @media (max-width: 768px) {
+            .cta-section {
+                padding: 4rem 1.5rem;
+            }
+            .cta-inner {
+                gap: 2rem;
+            }
+            .cta-mascot {
+                width: 140px;
+            }
+            .cta-title {
+                font-size: 1.6rem;
+            }
+            .cta-subtitle {
+                font-size: 0.95rem;
+                margin-bottom: 1rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .btn-get-started {
+                font-size: 1rem;
+                padding: 12px 24px;
+            }
         }

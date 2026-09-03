@@ -32,6 +32,17 @@
 export const marketingEn = {
   // ── Nav ────────────────────────────────────────────────────────────────────
   'site.nav.howItWorks': 'How it works',
+  /** Names the header's mobile disclosure — an icon-only trigger, so this IS its
+      accessible name and not a tooltip beside one. Static while the glyph toggles,
+      because `aria-expanded` on the button already announces open from closed. */
+  'site.nav.menu': 'Site menu',
+  /** The header's Product dropdown: its trigger, then the entry that opens the
+      homepage's own features grid. Its five other entries reuse the documentation
+      keys below — `skillsReference`, `gettingStarted`, `configuration`,
+      `documentationCategory` and `changelog` were orphaned when the Resources menu
+      lost its columns, and are back rather than retyped under new names. */
+  'site.nav.product': 'Product',
+  'site.nav.allFeatures': 'All features',
   'site.nav.resources': 'Resources',
   /** The header's account control, signed out. Signed in it shows the email instead. */
   'site.nav.signIn': 'Sign in',
@@ -48,12 +59,24 @@ export const marketingEn = {
   'site.nav.ourStory': 'Our Story',
 
   // ── Hero ───────────────────────────────────────────────────────────────────
-  'site.hero.title': "Describe what's next.<br>It gets built.",
-  'site.hero.subtitle':
-    'Magic Slash works on the product you already have — and takes each job start to finish.',
+  'site.hero.title': 'Your ideas become<br>AI-powered features.',
+  /**
+   * One line, and it names the AUDIENCE rather than the mechanism. The band that used
+   * to carry the "works on your existing product" claim is gone, and the feature grid
+   * says what the thing does — so the hero's job here is to tell a reader whether the
+   * page is addressed to them.
+   */
+  'site.hero.subtitle': 'The app for product builders.',
   'site.hero.cta': 'Start free',
   /** Scrolls to the "how it works" section rather than leaving for the docs. */
   'site.hero.howCta': 'See how it works',
+  /**
+   * The hero's SECOND button — `secondary`, the safe alternative beside the blue
+   * primary. It points at `DESKTOP_DOWNLOAD_URL`, which is the build itself rather
+   * than a releases page, so the label names the platform: an arm64 .dmg is the only
+   * artifact the release workflow publishes.
+   */
+  'site.hero.downloadCta': 'Download for Mac',
 
   // ── ② How it works ─────────────────────────────────────────────────────────
   'site.how.title': 'How it actually works.',
@@ -80,6 +103,59 @@ export const marketingEn = {
   'site.how.resolveDesc': '<strong>/magic:resolve</strong> applies the review feedback.',
   'site.how.doneDesc': '<strong>/magic:done</strong> closes it out and cleans up.',
   'site.how.seeDocs': 'See the docs',
+
+  // ── The eight commands ─────────────────────────────────────────────────────
+  // One line each, and deliberately NOT the `site.how.*Desc` family above: those open
+  // with the command's own name in `<strong>`, which the card already prints as its
+  // title. These say what the command DOES and nothing else.
+  //
+  // The list itself — the ids, the order, the icons — is `lib/commands.ts`, which has
+  // no imports so the root test suite can read it. Only the prose lives here, keyed by
+  // the same ids, so adding a command is one entry in each of three files rather than a
+  // renumbering.
+  'site.commands.subtitle':
+    'One for each step of the cycle. Type <strong>/magic:</strong> and Claude Code lists them all.',
+  'site.commands.plan': 'Turns a rough idea into an epic and the stories under it.',
+  'site.commands.start': 'Reads the ticket, prepares the branch, and starts building.',
+  'site.commands.continue': 'Picks a job back up exactly where you left it.',
+  'site.commands.commit': 'Cuts the work into atomic commits, each with a clear message.',
+  'site.commands.pr': 'Pushes, opens the pull request, updates the ticket.',
+  'site.commands.review': 'Reads the diff back against your project’s conventions.',
+  'site.commands.resolve': 'Applies the review feedback and force-pushes the fix.',
+  'site.commands.done': 'Closes the ticket once merged, and cleans up behind it.',
+
+  // ── The features grid ──────────────────────────────────────────────────────
+  // Nine cards, each a title, one line, and a link to where the thing is written up.
+  // Every destination is a section that EXISTS — eight anchors in the documentation
+  // and one on this page — because a tile that 404s is worse than a tile that is not
+  // there. `commands` is the on-page one: it opens `#commands` above rather than a
+  // detail page nobody has written.
+  'site.features.title': 'Everything it comes with.',
+  'site.features.subtitle': 'Nine things the product does — and where each one is written up.',
+  /** Shared by all nine cards: the link is the card, this is only its wording. */
+  'site.features.learnMore': 'Learn more',
+  'site.features.commandsTitle': 'Eight commands',
+  'site.features.commandsDesc': 'One per step, from the first idea to the merge.',
+  'site.features.workflowsTitle': 'Workflows',
+  'site.features.workflowsDesc': 'The chains of commands that carry a whole task.',
+  'site.features.desktopTitle': 'The desktop app',
+  'site.features.desktopDesc': 'Up to twelve agents at once, each in its own worktree.',
+  'site.features.multiRepoTitle': 'Several repositories',
+  'site.features.multiRepoDesc': 'Ten projects, ten sets of habits, one window.',
+  'site.features.configurationTitle': 'Your conventions',
+  'site.features.configurationDesc':
+    'Commit format, languages, templates — set once per project.',
+  'site.features.integrationsTitle': 'GitHub and Jira',
+  'site.features.integrationsDesc':
+    'Tickets, issues and pull requests, read and written in place.',
+  'site.features.hooksTitle': 'Hooks and notifications',
+  'site.features.hooksDesc': 'Your Mac tells you the moment a job needs you.',
+  'site.features.securityTitle': 'Security',
+  'site.features.securityDesc':
+    'What runs where, what leaves your machine, and what never does.',
+  'site.features.troubleshootingTitle': 'Troubleshooting',
+  'site.features.troubleshootingDesc':
+    'The fixes for what goes wrong, written down rather than remembered.',
 
   // ── ③ On the product you already have ──────────────────────────────────────
   'site.yourProduct.title': 'On the product you already have.',
@@ -154,6 +230,15 @@ export const marketingEn = {
   'site.faq.viewAll': 'View all FAQ',
 
   // ── Closing CTA ────────────────────────────────────────────────────────────
+  // ── Closing CTA (homepage) ─────────────────────────────────────────────────
+  //
+  // SEPARATE FROM `site.cta.*`, which `/story` renders in its own closing block. The two
+  // pages ended on the same three keys, so retuning one rewrote the other; these belong
+  // to the homepage's dark closing sheet and nothing else reads them.
+  'site.finalCta.title': 'Upgrade your product builder workflow today.',
+  'site.finalCta.subtitle': 'Try Magic Slash.',
+  'site.finalCta.button': 'Get Magic Slash for Mac',
+
   'site.cta.title': 'Start building.',
   'site.cta.subtitle': 'Free, and about a minute to set up.',
   'site.cta.button': 'Start free',
@@ -364,6 +449,9 @@ export const marketingEn = {
   // ── Footer ─────────────────────────────────────────────────────────────────
   'site.footer.tagline': 'Your product, built.',
   'site.footer.product': 'Product',
+  'site.footer.features': 'Features',
+  'site.footer.commands': 'The commands',
+  'site.footer.download': 'Download',
   'site.footer.howItWorks': 'How it works',
   'site.footer.gettingStarted': 'Getting Started',
   'site.footer.updates': 'Updates',
@@ -373,6 +461,16 @@ export const marketingEn = {
   'site.footer.documentation': 'Documentation',
   'site.footer.faq': 'FAQ',
   'site.footer.ourStory': 'Our Story',
+  /**
+   * The third column. It is LEGAL rather than the `company` heading above it because
+   * every entry in it is a document, and every one of those documents lives on GitHub:
+   * there is no `/terms` and no `/privacy` route on this site (story #273 adds them),
+   * and `hostRouting.ts` would 307 a link to either straight to the app host. So the
+   * column points off-site on purpose — `site.footer.termsLink` and
+   * `site.footer.privacyLink` stay unused below until there is somewhere to send them.
+   */
+  'site.footer.legal': 'Legal',
+  'site.footer.security': 'Security policy',
   'site.footer.company': 'Company',
   'site.footer.license': 'License',
   'site.footer.reportIssue': 'Report an issue',

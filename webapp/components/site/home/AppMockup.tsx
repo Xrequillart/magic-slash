@@ -20,6 +20,30 @@ import { mountMockup } from './mockupAnimation'
 import { MkLoader } from './MkLoader'
 
 /**
+ * NOTHING RENDERS THIS TODAY, AND THAT IS DELIBERATE. Do not delete it.
+ *
+ * The homepage rebuild (#268) replaced the hero's animated window with a static one:
+ * six bands of Tailwind over the design system, and a visual that has to hold up with
+ * no timeline behind it. Twelve components went with the old page; these three did not.
+ * This file, plus `MkLoader.tsx` and `mockupAnimation.ts` — which it is the only
+ * importer of — are kept for **issue #270**, which converts the scene from
+ * TIME-DRIVEN to SCROLL-PROGRESS-DRIVEN and reuses all three. Two reviews in a row
+ * have read them as three files someone forgot to remove, hence this note.
+ *
+ * WHERE IT GOES BACK IN: `HeroVisual` in `HeroSection.tsx`, which is the static window
+ * standing in for it.
+ *
+ * AND THE TRAP #270 HAS TO PLAN FOR. The markup below references ~81 distinct `mk-*`
+ * class names, and every one of them is defined ONLY in
+ * `app/(marketing)/marketing.css` — which the `(marketing)` layout no longer imports
+ * (that is acceptance criterion 3 of #268, and `lib/homepageStylesheet.test.ts` guards
+ * it). So dropping this component back into the hero renders it completely UNSTYLED.
+ * #270 has to bring the styling with it: ported to Tailwind over the tokens in
+ * `tailwind.config.ts`, or scoped into a stylesheet of its own the way `/story` keeps
+ * `story.css`. Re-adding the global import is not an option.
+ */
+
+/**
  * The animated app window in the hero — sidebar, terminal, info panel.
  *
  * Two lineages meet here. The LOOK is the app's real "midnight" theme, measured off a
