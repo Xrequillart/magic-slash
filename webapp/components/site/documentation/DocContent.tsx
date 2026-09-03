@@ -144,16 +144,9 @@ export function DocContent({ versions }: { versions: ChangelogVersion[] }) {
                         <RichText k="site.doc.skills.3" as="p" />
 
                         {/* First in the section because it runs first in the cycle: /magic:plan
-                            is what happens before a ticket exists.
-
-                            NO `doc-skill-img`: there is no `skill-plan.png` and no source for
-                            one in `design/`, and an <img> pointing at a 404 is worse than none.
-                            `.doc-skill h3` is a flex row, so the header simply loses the 48px
-                            icon and its indent — the same shape the "create your own" block and
-                            the workflow cards below already have. Add the element back the day
-                            the artwork lands. */}
+                            is what happens before a ticket exists. */}
                         <div className="doc-skill">
-                            <h3><span className="doc-skill-name">/magic:plan</span> <span className="doc-skill-tag">{t('site.doc.tag.lifecycle')}</span> <a href="https://github.com/xrequillart/magic-slash/blob/main/skills/magic-plan/SKILL.md" target="_blank" className="doc-skill-source"><ExternalLink size={16} /> {t('site.doc.skillSource')}</a></h3>
+                            <h3><img src="/img/skill-plan.png" alt="skill /magic:plan icon" className="doc-skill-img" /><span className="doc-skill-name">/magic:plan</span> <span className="doc-skill-tag">{t('site.doc.tag.lifecycle')}</span> <a href="https://github.com/xrequillart/magic-slash/blob/main/skills/magic-plan/SKILL.md" target="_blank" className="doc-skill-source"><ExternalLink size={16} /> {t('site.doc.skillSource')}</a></h3>
                             <RichText k="site.doc.skills.109" as="p" className="doc-skill-desc" />
                             <div className="doc-skill-details">
                                 <div className="doc-skill-col">
