@@ -331,5 +331,12 @@ describe('overflow', () => {
     expect(ids.length).toBeLessThanOrEqual(1100)
     expect(ids).toContain('claude-1199')
     expect(ids).not.toContain('claude-0')
-  })
+    // Its own timeout, because this is the one test that drives the spool far outside
+    // the regime it is written for. `enqueuePendingArchive` re-reads and re-parses the
+    // whole spool on every call to deduplicate — cheap on the handful of entries
+    // production ever holds, quadratic on the 1200 it takes to prove the bound. Under
+    // a second on a developer's SSD, over the 5s default on the macOS CI runner, where
+    // it failed on main. Raise the ceiling rather than weaken the assertion: the cap is
+    // what this test exists for, and a cheaper file would no longer reach it.
+  }, 30_000)
 })
