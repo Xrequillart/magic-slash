@@ -1603,6 +1603,9 @@ export const en = {
     'Failed to save your {kind} to the cloud. Your latest change may not have been saved — reloaded from the server.',
   'toast.cloudWriteKind.config': 'settings',
   'toast.cloudWriteKind.agents': 'agents',
+  'toast.connectionLost':
+    'Lost the connection to the cloud — retrying. Your changes won’t be saved until it is back.',
+  'toast.connectionRestored': 'Back online',
 
   // ── Agent relaunched in its repository ───────────────────────────────────
   'toast.cwdRelaunched': 'Agent relaunched in “{dir}”',

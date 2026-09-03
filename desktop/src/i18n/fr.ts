@@ -1509,6 +1509,9 @@ export const fr: Record<keyof typeof en, string> = {
     'Impossible d’enregistrer {kind} dans le cloud. Votre dernière modification n’a peut-être pas été sauvegardée — les données ont été rechargées depuis le serveur.',
   'toast.cloudWriteKind.config': 'vos réglages',
   'toast.cloudWriteKind.agents': 'vos agents',
+  'toast.connectionLost':
+    'Connexion au cloud perdue — nouvelle tentative en cours. Vos modifications ne seront pas enregistrées tant qu’elle n’est pas rétablie.',
+  'toast.connectionRestored': 'Connexion rétablie',
 
   // ── Agent relancé dans son dépôt ─────────────────────────────────────────
   'toast.cwdRelaunched': 'Agent relancé dans « {dir} »',
