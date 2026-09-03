@@ -124,6 +124,17 @@ Analyze `$ARGUMENTS`:
 - **GitHub**: Number with optional `#` (regex: `^#?\d+$`) → Step 2B
 - **Unrecognized**: Ask user to clarify.
 
+**`$TICKET_ID` is the canonical tracker id — set here, and never rewritten by a later step.**
+Jira: `PROJ-123`, upper-cased. GitHub: the bare issue number, digits only — no `#`, and **never**
+prefixed with the repo name (`268`, never `magic-slash-268`).
+
+That shape is load-bearing, not cosmetic. The Desktop derives the ticket link from the id alone:
+bare digits resolve against the repo's issues URL, a Jira key against Jira, and **anything else is
+stored as dead text** — the sidebar shows the id with no link for the whole life of the agent, and
+the "resume this task" launcher hands `/magic:continue magic-slash-268` to a skill whose Step 1
+cannot parse it. The repo-prefixed form exists for **branch names only**, as `$BRANCH_ID`
+(Step 4.1). Keep the two variables apart, and never send `$BRANCH_ID` to `/metadata`.
+
 ## Step 2A: Retrieve the Jira ticket
 
 Use `mcp__atlassian__getJiraIssue` to retrieve ticket details. If you don't know the `cloudId`, use `mcp__atlassian__getAccessibleAtlassianResources` first.
@@ -235,6 +246,12 @@ Custom-field text discovered in Step 2A feeds this summarisation but must never 
 ```
 
 Replace `{TICKET_ID}`, `{TICKET_TITLE}` (max 30 chars), `{DESCRIPTION}`, `{DEV_BRANCH}`.
+
+`ticketId` carries `$TICKET_ID` in its canonical Step 1 shape and nothing else — `PROJ-123`, or
+`268` for a GitHub issue. Not the branch id, not the worktree directory name: substitute
+`magic-slash-268` here and the ticket loses its link in the sidebar. Sanity-check the value before
+sending it — a GitHub id that is not `^\d+$` means a repo prefix leaked in, so strip it back to the
+number.
 
 ## Step 2.6: Update ticket status to "In Progress"
 
@@ -377,8 +394,13 @@ If `git pull --rebase` fails with conflicts, use `AskUserQuestion` with `MSG_REB
 **Create the worktree:**
 
 ```bash
-BRANCH_NAME="feature/$TICKET_ID"
-[ -n "$SLUG" ] && BRANCH_NAME="feature/$TICKET_ID-$SLUG"
+# $BRANCH_ID is the branch's own identifier: a GitHub number is prefixed with the repo name so two
+# repos' issue #12 cannot collide. $TICKET_ID itself is NEVER reassigned — it stays the canonical
+# tracker id (Step 1), which is what /metadata reports and what the Desktop links.
+BRANCH_ID="$TICKET_ID"
+printf '%s' "$TICKET_ID" | grep -qE '^[0-9]+$' && BRANCH_ID="${REPO_NAME}-$TICKET_ID"
+BRANCH_NAME="feature/$BRANCH_ID"
+[ -n "$SLUG" ] && BRANCH_NAME="feature/$BRANCH_ID-$SLUG"
 git worktree add -b "$BRANCH_NAME" ../${REPO_NAME}-$TICKET_ID "$BASE_REF"
 ```
 
@@ -388,9 +410,11 @@ If this fails because the branch already exists, use `AskUserQuestion` with `MSG
 - Option 3: Stop
 
 **Branch naming**:
-- Jira: `feature/PROJ-1234-implement-stripe-refunds`
-- GitHub: `feature/repo-name-123-add-user-profile` (prefix with repo name to avoid conflicts)
-- If the slug is empty, falls back to `feature/$TICKET_ID` (no trailing hyphen)
+- Jira: `feature/PROJ-1234-implement-stripe-refunds` (`$BRANCH_ID` = `$TICKET_ID`)
+- GitHub: `feature/repo-name-123-add-user-profile` (`$BRANCH_ID` = `{repo}-{number}`, to avoid conflicts)
+- If the slug is empty, falls back to `feature/$BRANCH_ID` (no trailing hyphen)
+- The worktree directory keeps `../${REPO_NAME}-$TICKET_ID` in both cases — that is the pattern
+  `/magic:pr` and `/magic:commit` read the id back out of
 
 **Change to the worktree** — the rest of the skill operates from inside the worktree, so all subsequent file operations and commands target the right directory:
 

@@ -115,7 +115,20 @@ Analyze `$ARGUMENTS`:
     
     Then stop.
 - **GitHub**: Number with optional `#` (regex: `^#?\d+$`) → Step 2B
+- **Repo-prefixed GitHub id**: matches `^[A-Za-z][A-Za-z0-9_-]*-\d+$` but is not a Jira key —
+  i.e. the prefix itself contains a hyphen, as in `magic-slash-268`. Drop everything up to the
+  last hyphen, keep the number, and continue with that → Step 2B. This is the shape a branch name
+  carries and the shape an older agent may have stored as its `ticketId`, so the launcher's
+  `/magic:continue magic-slash-268` has to resolve rather than fail.
 - **Unrecognized**: Display `MSG_FORMAT_UNRECOGNIZED`.
+
+**`$TICKET_ID` is the canonical tracker id from here on**: `PROJ-123` upper-cased for Jira, the
+bare issue number for GitHub — digits only, no `#`, no repo prefix. Normalising at this step is the
+whole point: the value flows straight into `ticketId` in Step 2.5.2, and the Desktop links a ticket
+by its shape alone — bare digits against the repo's issues URL, a Jira key against Jira, anything
+else stored as unlinkable dead text. Searching for worktrees and branches (Steps 3 and 4) is
+unaffected: both match `*$TICKET_ID*`, so the bare number still finds
+`magic-slash-268` / `feature/magic-slash-268-…`.
 
 ## Step 2A: Retrieve the Jira ticket
 
@@ -170,6 +183,12 @@ Generate a concise description (2-3 sentences max) in the configured language, b
 ```
 
 Replace `{TICKET_ID}`, `{TICKET_TITLE}` (max 30 chars), `{DESCRIPTION}`, `{DEV_BRANCH}`.
+
+`ticketId` carries `$TICKET_ID` in its canonical Step 1 shape and nothing else — `PROJ-123`, or
+`268` for a GitHub issue. Never the branch name, the worktree directory name, or the repo-prefixed
+form you may have received as `$ARGUMENTS`: sending `magic-slash-268` here re-poisons the stored id
+and the ticket link stays dead. This call is also the repair path — an agent that arrived with the
+broken shape gets a linkable id back the moment it runs.
 
 ## Step 2.6: Update ticket status to "In Progress"
 

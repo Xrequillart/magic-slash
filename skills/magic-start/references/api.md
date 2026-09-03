@@ -68,7 +68,7 @@ Updates the agent metadata in the sidebar.
 |-----------|------|----------|-------------|
 | `id` | string | Yes | Terminal ID (`$MAGIC_SLASH_TERMINAL_ID`) |
 | `title` | string | No | Sidebar title (URL-encoded) |
-| `ticketId` | string | No | Ticket ID (e.g.: `PROJ-123`, `#456`) |
+| `ticketId` | string | No | Ticket ID, canonical shape only — `PROJ-123` or `456`/`#456`. See the note below |
 | `description` | string | No | Short description (URL-encoded) |
 | `status` | string | No | `"in progress"`, `"committed"`, `"PR created"` |
 | `type` | string | No | `"coder"` or `"planner"`. Sent once, by the skill that establishes what the agent is; an unknown value is ignored |
@@ -85,6 +85,15 @@ Updates the agent metadata in the sidebar.
 MS_PORT="${MAGIC_SLASH_PORT:-$(cat ~/.config/magic-slash/port 2>/dev/null)}"
 curl -s "http://127.0.0.1:$MS_PORT/metadata?id=$MAGIC_SLASH_TERMINAL_ID&title=PROJ-123%3A%20Add%20login&status=in%20progress"
 ```
+
+**Note on `ticketId`** — the app builds the tracker link from the id's SHAPE, and only two are
+recognised: bare digits (optionally `#`-prefixed) link to the repository's issues URL, and a Jira
+key — a prefix of letters, digits or underscores, then a hyphen and digits — links to Jira. Every
+other value is accepted and stored, then rendered as text with no link and no tracker mark, for the
+whole life of the agent. The one that shows up in practice is the branch/worktree form
+`magic-slash-268`: the hyphen inside the prefix disqualifies it as a Jira key, so send the bare
+issue number instead. It also has to round-trip — the "resume this task" launcher builds
+`/magic:continue <ticketId>` from the stored value.
 
 **Note on `branchName`** — every parameter is optional and the server MERGES what it
 receives into the existing metadata, so a call may carry this one alone. Two traps:

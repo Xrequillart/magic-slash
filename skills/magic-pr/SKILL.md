@@ -149,7 +149,12 @@ Extract the TICKET-ID using the pattern and store it as `$TICKET_ID`:
 - **Jira**: `[A-Z]+-\d+` (e.g.: `PROJ-123`, `ABC-456`)
 - **GitHub**: the last numeric segment after the repo name (e.g.: `123` in `my-api-123`)
 
-If no ID is detected from the worktree name, try extracting from the **current branch name** (e.g., `feature/PROJ-123-description` → `PROJ-123`). If still no ID is found, `$TICKET_ID` remains empty — the user will be asked later (Step 8) if they want to link a ticket.
+If no ID is detected from the worktree name, try extracting from the **current branch name**: Jira
+`feature/PROJ-123-description` → `PROJ-123`; GitHub `feature/magic-slash-268-rebuild-the-landing-page`
+→ `268`. A branch carries the repo name to keep two repos' issue numbers apart — the ticket id never
+does, so strip that prefix down to the bare number rather than passing `magic-slash-268` on.
+
+If still no ID is found, `$TICKET_ID` remains empty — the user will be asked later (Step 8) if they want to link a ticket.
 
 Skip worktree detection (Steps 0.2–0.4) if you are in a regular repo, not a worktree, and proceed to **Step 1**.
 
